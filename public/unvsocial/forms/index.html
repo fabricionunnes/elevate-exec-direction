@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Diagnóstico de Redes Sociais | UNV Social</title>
+<meta name="description" content="Responda 8 perguntas rápidas e descubra o que está travando o crescimento do seu Instagram." />
+<meta name="robots" content="noindex,nofollow" />
+<meta name="theme-color" content="#150428" />
+<link rel="icon" href="/unvsocial/favicon-32.png" sizes="32x32" />
+<link rel="apple-touch-icon" href="/unvsocial/favicon-180.png" />
+<link rel="preload" as="image" href="/unvsocial/forms/logo.webp" />
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --roxo-fundo:#150428; --roxo:#7B2FF2; --roxo-claro:#A56BFF; --roxo-escuro:#3B0B6B;
+  --magenta:#E11D74; --rosa:#FF3D8A;
+  --ink:#170A26; --muted:#6D5B85; --line:#EDE6F5;
+  --ok:#10A56A;
+  --pad:20px;
+}
+html,body{margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--roxo-fundo);
+  color:var(--ink);
+  min-height:100svh;
+  display:flex;flex-direction:column;
+  overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(900px 520px at 12% -5%, rgba(123,47,242,.50), transparent 62%),
+    radial-gradient(720px 440px at 100% 2%, rgba(225,29,116,.30), transparent 58%),
+    radial-gradient(600px 400px at 50% 105%, rgba(165,107,255,.16), transparent 60%);
+}
+
+/* ── topo ── */
+header{position:relative;z-index:2;padding:16px var(--pad) 0;display:flex;align-items:center;gap:12px}
+header picture{display:block;line-height:0}
+header img{width:74px;height:auto;display:block}
+.badge{
+  margin-left:auto;font-size:11px;font-weight:800;letter-spacing:.12em;color:#D9BBFF;
+  border:1px solid rgba(217,187,255,.34);border-radius:999px;padding:6px 11px;white-space:nowrap;
+}
+
+/* ── progresso ── */
+.pwrap{position:relative;z-index:2;padding:16px var(--pad) 0}
+.pbar{height:7px;border-radius:999px;background:rgba(255,255,255,.14);overflow:hidden}
+.pfill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,var(--roxo-claro),var(--magenta));transition:width .45s cubic-bezier(.22,1,.36,1)}
+.pmeta{display:flex;justify-content:space-between;align-items:center;margin-top:9px;font-size:12px;color:#B79DD8;font-weight:600}
+.pmeta b{color:#fff}
+
+/* ── palco ── */
+main{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;justify-content:center;padding:18px var(--pad) 26px;max-width:560px;width:100%;margin:0 auto}
+.step{display:none;animation:in .42s cubic-bezier(.22,1,.36,1) both}
+.step.on{display:block}
+@keyframes in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.step{animation:none}.pfill{transition:none}}
+
+.kicker{font-size:12px;font-weight:800;letter-spacing:.14em;color:var(--rosa);text-transform:uppercase;margin:0 0 10px}
+h1,h2{color:#fff;font-weight:800;letter-spacing:-.02em;margin:0 0 8px;line-height:1.18}
+h1{font-size:clamp(26px,7vw,36px)}
+h2{font-size:clamp(21px,5.6vw,27px)}
+.sub{color:#C0A8DF;font-size:15px;line-height:1.5;margin:0 0 22px}
+.sub strong{color:#fff}
+
+/* ── campos ── */
+label.f{display:block;margin-bottom:14px}
+input{
+  width:100%;font-size:16px;font-family:inherit;color:#fff;
+  background:rgba(255,255,255,.07);
+  border:1.5px solid rgba(255,255,255,.18);border-radius:14px;
+  padding:17px 16px;outline:none;transition:border-color .18s,background .18s;
+}
+input::placeholder{color:#8E7AAE}
+input:focus{border-color:var(--roxo-claro);background:rgba(255,255,255,.11)}
+input.bad{border-color:var(--rosa)}
+
+/* ── opções (cards) ── */
+.opts{display:grid;gap:10px;margin-bottom:6px}
+.opt{
+  display:flex;align-items:center;gap:13px;width:100%;text-align:left;cursor:pointer;
+  background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.16);
+  border-radius:14px;padding:16px;min-height:60px;
+  color:#fff;font-size:15.5px;font-weight:600;font-family:inherit;line-height:1.35;
+  transition:transform .14s,border-color .18s,background .18s;
+}
+.opt:active{transform:scale(.982)}
+.opt .dot{
+  flex:0 0 22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,.4);
+  display:grid;place-items:center;transition:border-color .18s,background .18s;
+}
+.opt .dot svg{width:12px;height:12px;opacity:0;transform:scale(.5);transition:opacity .18s,transform .18s}
+.opt.sel{border-color:var(--roxo-claro);background:rgba(165,107,255,.24)}
+.opt.sel .dot{background:var(--roxo-claro);border-color:var(--roxo-claro)}
+.opt.sel .dot svg{opacity:1;transform:none}
+@media (hover:hover){.opt:hover{border-color:rgba(255,255,255,.42)}}
+
+/* ── botões ── */
+.btn{
+  width:100%;border:0;border-radius:14px;cursor:pointer;font-family:inherit;
+  font-size:17px;font-weight:800;letter-spacing:.01em;padding:18px;min-height:58px;
+  background:linear-gradient(180deg,var(--rosa),var(--magenta));color:#fff;
+  box-shadow:0 10px 24px rgba(225,29,116,.36);
+  transition:transform .14s,opacity .18s;margin-top:6px;
+}
+.btn:active{transform:translateY(1px) scale(.995)}
+.btn:disabled{opacity:.6;cursor:default}
+.btn.wa{background:linear-gradient(180deg,#2ACB5C,#18A94A);box-shadow:0 10px 24px rgba(24,169,74,.34);display:block;text-align:center;text-decoration:none;line-height:1.3}
+.back{
+  background:none;border:0;color:#A38CC4;font-family:inherit;font-size:14px;font-weight:600;
+  padding:14px 4px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+}
+.err{color:#FFA8C8;font-size:13.5px;font-weight:600;margin:10px 0 0;min-height:18px}
+.hint{color:#8E7AAE;font-size:12.5px;margin:12px 0 0;text-align:center;line-height:1.5}
+
+/* ── resultado ── */
+.card{background:#fff;border-radius:18px;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+.card h3{margin:0 0 6px;font-size:19px;color:var(--roxo-escuro);font-weight:800;letter-spacing:-.01em}
+.card p{margin:0;color:#4B3B60;font-size:14.5px;line-height:1.58}
+.diag{margin:16px 0 0;padding:15px;border-radius:13px;background:#F7F2FE;border-left:4px solid var(--magenta)}
+.diag b{color:var(--roxo-escuro)}
+.rows{list-style:none;margin:16px 0 0;padding:0;border-top:1px solid var(--line)}
+.rows li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+.rows span{color:var(--muted);flex:0 0 108px;font-weight:600}
+.rows b{color:var(--ink);font-weight:700;word-break:break-word}
+.chk{width:56px;height:56px;border-radius:50%;background:rgba(16,165,106,.16);display:grid;place-items:center;margin:0 auto 16px}
+.chk svg{width:28px;height:28px}
+
+.ftr{position:relative;z-index:2;text-align:center;color:#75619180;padding:0 0 18px}
+.ftr small{color:#7B6691;font-size:11.5px}
+</style>
+</head>
+<body>
+
+<header>
+  <picture>
+    <source srcset="/unvsocial/forms/logo.webp" type="image/webp" />
+    <img src="/unvsocial/logo-mark.png" alt="UNV Social" width="600" height="426" />
+  </picture>
+  <span class="badge" id="badge">DIAGNÓSTICO · 1 MIN</span>
+</header>
+
+<div class="pwrap" id="pwrap" hidden>
+  <div class="pbar"><div class="pfill" id="pfill"></div></div>
+  <div class="pmeta"><span id="pstep">Pergunta 1 de 8</span><span><b id="ppct">0%</b> concluído</span></div>
+</div>
+
+<main>
+
+  <!-- 0 — abertura -->
+  <section class="step on" id="s0">
+    <p class="kicker">Antes de falar de proposta</p>
+    <h1>Descubra o que está travando o crescimento do seu Instagram.</h1>
+    <p class="sub">São <strong>8 perguntas rápidas</strong>. No final você recebe uma leitura do seu cenário e fala direto comigo no WhatsApp.</p>
+    <button class="btn" id="go">Começar o diagnóstico</button>
+    <p class="hint">Leva menos de 1 minuto. Seus dados não vão pra lista nenhuma.</p>
+  </section>
+
+  <!-- 10 — perfil. Numerada fora da sequência de propósito, pra que uma tela
+       nova no meio do funil não desloque o índice de todas as outras. -->
+  <section class="step" id="s10">
+    <p class="kicker">Pergunta 1 de 8</p>
+    <h2>Hoje, você trabalha como:</h2>
+    <p class="sub">Isso muda completamente a estratégia de conteúdo que faz sentido pra você.</p>
+    <div class="opts" id="optPerfil"></div>
+    <p class="err" id="e10"></p>
+    <button class="back" data-back="10" data-back-to="0">← Voltar</button>
+  </section>
+
+  <!-- 1 — nome -->
+  <section class="step" id="s1">
+    <p class="kicker">Pergunta 2 de 8</p>
+    <h2>Como você se chama?</h2>
+    <p class="sub">Pra eu te chamar pelo nome, e não de "olá, tudo bem?".</p>
+    <label class="f"><input id="nome" type="text" name="name" autocomplete="name" autocapitalize="words" placeholder="Seu nome completo" maxlength="80" enterkeyhint="next" /></label>
+    <button class="btn" data-next="1">Continuar</button>
+    <p class="err" id="e1"></p>
+    <button class="back" data-back="1" data-back-to="10">← Voltar</button>
+  </section>
+
+  <!-- 2 — whatsapp -->
+  <section class="step" id="s2">
+    <p class="kicker">Pergunta 3 de 8</p>
+    <h2>Qual seu WhatsApp?</h2>
+    <p class="sub">É por onde eu te mando o diagnóstico. Sem robô e sem disparo em massa.</p>
+    <label class="f"><input id="tel" type="tel" name="tel" inputmode="numeric" autocomplete="tel" placeholder="(31) 99999-9999" maxlength="24" enterkeyhint="next" /></label>
+    <button class="btn" data-next="2">Continuar</button>
+    <p class="err" id="e2"></p>
+    <button class="back" data-back="2">← Voltar</button>
+  </section>
+
+  <!-- 3 — email -->
+  <section class="step" id="s3">
+    <p class="kicker">Pergunta 4 de 8</p>
+    <h2>E seu melhor e-mail?</h2>
+    <p class="sub">Só pra registrar no sistema. Nada de spam.</p>
+    <label class="f"><input id="email" type="email" name="email" inputmode="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="voce@suaempresa.com.br" maxlength="120" enterkeyhint="next" /></label>
+    <button class="btn" data-next="3">Continuar</button>
+    <p class="err" id="e3"></p>
+    <button class="back" data-back="3">← Voltar</button>
+  </section>
+
+  <!-- 4 — instagram -->
+  <section class="step" id="s4">
+    <p class="kicker">Pergunta 5 de 8</p>
+    <h2>Qual o Instagram do seu negócio?</h2>
+    <p class="sub">Esse aqui é o mais importante. Eu abro seu perfil antes de falar com você, e é dele que sai metade do diagnóstico.</p>
+    <label class="f"><input id="insta" type="text" inputmode="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="@suaempresa" maxlength="60" enterkeyhint="next" /></label>
+    <button class="btn" data-next="4">Continuar</button>
+    <p class="err" id="e4"></p>
+    <button class="back" data-back="4">← Voltar</button>
+  </section>
+
+  <!-- 5 — gestão hoje -->
+  <section class="step" id="s5">
+    <p class="kicker">Pergunta 6 de 8</p>
+    <h2>Como está a gestão das suas redes hoje?</h2>
+    <p class="sub">Escolhe o que mais parece com a sua realidade.</p>
+    <div class="opts" id="optGestao"></div>
+    <p class="err" id="e5"></p>
+    <button class="back" data-back="5">← Voltar</button>
+  </section>
+
+  <!-- 6 — motivo -->
+  <section class="step" id="s6">
+    <p class="kicker">Pergunta 7 de 8</p>
+    <h2>O que fez você procurar ajuda com as redes agora?</h2>
+    <p class="sub">O "agora" importa. Quase sempre tem um motivo por trás.</p>
+    <div class="opts" id="optMotivo"></div>
+    <div id="outroWrap" hidden>
+      <label class="f" style="margin-top:12px"><input id="outro" type="text" placeholder="Conta com suas palavras" maxlength="160" enterkeyhint="done" /></label>
+      <button class="btn" id="outroGo">Continuar</button>
+    </div>
+    <p class="err" id="e6"></p>
+    <button class="back" data-back="6">← Voltar</button>
+  </section>
+
+  <!-- 7 — faturamento -->
+  <section class="step" id="s7">
+    <p class="kicker">Última pergunta</p>
+    <h2>Aproximadamente, quanto sua empresa fatura por mês?</h2>
+    <p class="sub">É o que me diz qual nível de operação faz sentido pro seu caso.</p>
+    <div class="opts" id="optFat"></div>
+    <p class="err" id="e7"></p>
+    <button class="back" data-back="7">← Voltar</button>
+  </section>
+
+  <!-- 8 — enviando -->
+  <section class="step" id="s8">
+    <h2>Montando seu diagnóstico…</h2>
+    <p class="sub">Um segundo. Estou cruzando suas respostas.</p>
+  </section>
+
+  <!-- 9 — resultado -->
+  <section class="step" id="s9">
+    <div class="card">
+      <div class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="#10A56A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+      <h3 id="rTitle">Diagnóstico pronto</h3>
+      <p id="rSub">Recebi suas respostas. Agora é comigo.</p>
+      <div class="diag" id="rDiag"></div>
+      <a class="btn wa" id="waBtn" href="#" rel="noopener">Falar com o Fabrício no WhatsApp</a>
+      <p class="hint" style="color:#7B6691;margin-top:10px">A mensagem já vai preenchida com suas respostas. É só apertar enviar.</p>
+      <ul class="rows" id="rRows"></ul>
+    </div>
+  </section>
+
+  <!-- 11 — fora do perfil. O fluxo termina aqui: nada vai pro CRM e nenhum
+       evento sai pro pixel. -->
+  <section class="step" id="s11">
+    <div class="card">
+      <h3>Esse diagnóstico é pra quem tem um negócio.</h3>
+      <p>Ele parte de faturamento, time e gestão de perfil, coisas que só quem toca o negócio consegue responder. Não vou tomar seu tempo pra te entregar no final uma leitura que não serve pro seu caso.</p>
+      <a class="btn" href="https://instagram.com/unvholdings" target="_blank" rel="noopener" style="margin-top:18px;display:block;text-align:center;text-decoration:none;line-height:1.3">Acompanhar no Instagram</a>
+      <p class="hint" style="color:#6D5B85">Se você trabalha numa empresa e acha que isso serve pro seu dono, manda esse link pra ele.</p>
+    </div>
+  </section>
+
+</main>
+
+<div class="ftr"><small>UNV Social · Universidade Nacional de Vendas</small></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ── config ── */
+var FORM_TOKEN = "16a1b711485c9b5088bba10721f3edd3";              // funil Social Media
+var SUPA = "https://xrncvhzxjmddqluxoosu.supabase.co";
+var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+var PIXEL = "1747516463051359";
+var WA_NUMBER = "5511927008490";
+var ORIGEM = "Veio do diagnóstico de redes (8 perguntas)";   // separa da landing /unvsocial
+
+var PERFIL = [
+  {v:"Dono(a) de uma empresa",                s:"dono"},
+  {v:"Sócio(a) de uma empresa",               s:"socio"},
+  {v:"Profissional ou prestador(a) de serviço", s:"prestador"},
+  {v:"Nenhum desses",                         s:"nenhum"}
+];
+var FAT = [
+  {v:"Até R$ 20 mil por mês",          s:"ate20k"},
+  {v:"R$ 20 mil a R$ 50 mil",          s:"20a50k"},
+  {v:"R$ 50 mil a R$ 100 mil",         s:"50a100k"},
+  {v:"R$ 100 mil a R$ 300 mil",        s:"100a300k"},
+  {v:"Acima de R$ 300 mil por mês",    s:"300k+"}
+];
+var GESTAO = [
+  {v:"Eu mesmo(a) faço tudo",                                            s:"eu"},
+  {v:"Tenho social media, agência ou alguém da equipe responsável",      s:"tem"},
+  {v:"Já trabalhei com social media ou agência, mas hoje não tenho ninguém", s:"tinha"},
+  {v:"Praticamente não produzo conteúdo hoje",                           s:"nada"}
+];
+var MOTIVO = [
+  {v:"Não representa o nível da minha empresa",                          s:"nivel"},
+  {v:"Já invisto em marketing, mas não estou satisfeito(a) com o resultado", s:"insatisfeito"},
+  {v:"Não consigo manter uma produção de conteúdo consistente",          s:"consistencia"},
+  {v:"Quero atrair mais clientes pelo Instagram",                        s:"clientes"},
+  {v:"Quero profissionalizar a gestão do meu perfil",                    s:"profissionalizar"},
+  {v:"Outro",                                                            s:"outro"}
+];
+
+/* ── util ── */
+function $(id){ return document.getElementById(id); }
+function qp(n){ try { return new URLSearchParams(location.search).get(n) || undefined; } catch(e){ return undefined; } }
+function buzz(ms){ try { if(navigator.vibrate) navigator.vibrate(ms||12); } catch(e){} }
+var MINUS = ["de","da","do","das","dos","e"];
+function capitalize(s){
+  return s.toLowerCase().split(" ").map(function(w,i){
+    if(i > 0 && MINUS.indexOf(w) !== -1) return w;
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }).join(" ");
+}
+function fb(){ try { fbq.apply(null, arguments); } catch(e){} }
+
+/* ── Meta Pixel ── */
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");
+fb("set", "autoConfig", false, PIXEL);   // corta os eventos automáticos de clique do pixel
+fb("init", PIXEL);
+fb("track","PageView");
+
+/* ── estado ── */
+var A = { nome:"", tel:"", email:"", insta:"", perfil:null, gestao:null, motivo:null, fat:null, prefill:"" };
+var cur = 0, maxSeen = 0;
+var STEP_NAMES = { 10:"perfil", 1:"nome", 2:"whatsapp", 3:"email", 4:"instagram",
+                   5:"gestao", 6:"motivo", 7:"faturamento" };
+
+// A ordem em que as perguntas aparecem. É daqui que sai o "Pergunta X de Y",
+// então mudar a sequência é mexer só nesta linha.
+var ORDEM = [10, 1, 2, 3, 4, 5, 6, 7];
+function numPergunta(i){
+  var k = ORDEM.indexOf(i === undefined ? cur : i);
+  return k < 0 ? 0 : k + 1;          // 0 = não é pergunta (abertura, envio, resultado, saída)
+}
+function totalSteps(){ return ORDEM.length; }
+
+function paint(){
+  var n = totalSteps(), q = numPergunta();
+  var pct = Math.round(Math.max(0, Math.min(q, n)) / n * 100);
+  $("pfill").style.width = pct + "%";
+  $("ppct").textContent = pct + "%";
+  $("pstep").textContent = q ? ("Pergunta " + q + " de " + n) : "Quase lá";
+  $("pwrap").hidden = !q;
+}
+
+function show(i){
+  var el = document.querySelector(".step.on");
+  if(el) el.classList.remove("on");
+  $("s" + i).classList.add("on");
+  cur = i;
+  paint();
+  var q = numPergunta();
+  if(q){
+    var k = $("s" + i).querySelector(".kicker");
+    if(k) k.textContent = (i === 7) ? "Última pergunta" : ("Pergunta " + q + " de " + totalSteps());
+    if(q > maxSeen && i !== 10){
+      maxSeen = q;
+      fb("trackCustom","FormStep",{ step:q, step_name:STEP_NAMES[i], form:"unvsocial-diagnostico" });
+    }
+  }
+  var inp = $("s" + i).querySelector("input");
+  if(inp && window.matchMedia("(min-width:768px)").matches) setTimeout(function(){ inp.focus(); }, 260);
+  try { window.scrollTo(0,0); } catch(e){}
+}
+
+function err(i, msg){
+  var e = $("e" + i); if(e) e.textContent = msg || "";
+  var inp = $("s" + i).querySelector("input");
+  if(inp){ inp.classList.toggle("bad", !!msg); if(msg) inp.focus(); }
+  if(msg) buzz(40);
+}
+
+/* ── máscara de telefone (tolera DDI colado pelo autofill) ── */
+function maskPhone(v){
+  var d = v.replace(/\D/g,"");
+  if(d.length > 11 && d.slice(0,2) === "55") d = d.slice(2);
+  d = d.slice(0,11);
+  if(d.length <= 2) return d.length ? "(" + d : d;
+  if(d.length <= 6) return "(" + d.slice(0,2) + ") " + d.slice(2);
+  if(d.length <= 10) return "(" + d.slice(0,2) + ") " + d.slice(2,6) + "-" + d.slice(6);
+  return "(" + d.slice(0,2) + ") " + d.slice(2,7) + "-" + d.slice(7);
+}
+$("tel").addEventListener("input", function(){ this.value = maskPhone(this.value); });
+
+/* ── pré-preenchimento ──────────────────────────────────────────────
+   Duas fontes: o que veio no link (e-mail, WhatsApp, remarketing) e o que
+   a pessoa já digitou aqui antes, no mesmo aparelho. O link manda, porque
+   é o dado mais novo. Nada disso pula etapa: ela vê o campo cheio e só
+   confirma, então um dado velho ou errado ainda dá pra corrigir. */
+var LS = "unvsocial_lead", LS_TTL = 90 * 24 * 3600 * 1000;
+
+function lsGet(){
+  try {
+    var o = JSON.parse(localStorage.getItem(LS) || "{}");
+    if(!o.t || Date.now() - o.t > LS_TTL) return {};   // dado velho não serve
+    return o;
+  } catch(e){ return {}; }
+}
+function lsSet(k, v){
+  try { var o = lsGet(); o[k] = v; o.t = Date.now(); localStorage.setItem(LS, JSON.stringify(o)); } catch(e){}
+}
+
+function firstQp(){
+  for(var i = 0; i < arguments.length; i++){ var v = qp(arguments[i]); if(v) return v; }
+}
+
+var PESSOAIS = ["nome","name","full_name","tel","telefone","phone","whatsapp",
+                "email","e_mail","insta","instagram"];
+
+function prefill(){
+  var saved = lsGet(), achou = [];
+
+  var nome = firstQp("nome","name","full_name") || saved.nome;
+  if(nome && nome.trim().length >= 2){
+    $("nome").value = capitalize(nome.trim().replace(/\s+/g," ")); achou.push("nome");
+  }
+
+  var tel = firstQp("tel","telefone","phone","whatsapp") || saved.tel;
+  if(tel && String(tel).replace(/\D/g,"").length >= 10){
+    $("tel").value = maskPhone(String(tel)); achou.push("tel");
+  }
+
+  var mail = firstQp("email","e_mail") || saved.email;
+  if(mail && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(mail).trim())){
+    $("email").value = String(mail).trim(); achou.push("email");
+  }
+
+  var insta = firstQp("insta","instagram") || saved.insta;
+  if(insta) $("insta").value = "@" + String(insta).trim().replace(/^@+/,"");
+
+  // Tira os dados pessoais da barra de endereço depois de ler. Não ficam no
+  // print, no referrer nem no histórico. As UTMs seguem intactas.
+  try {
+    var u = new URL(location.href), mexeu = false;
+    PESSOAIS.forEach(function(k){ if(u.searchParams.has(k)){ u.searchParams.delete(k); mexeu = true; } });
+    if(mexeu){
+      var qs = u.searchParams.toString();
+      history.replaceState(null, "", u.pathname + (qs ? "?" + qs : "") + u.hash);
+    }
+  } catch(e){}
+
+  A.prefill = achou.join(",");   // só vira evento depois da triagem
+}
+
+/* ── cards de opção ── */
+function buildOpts(box, items, onPick){
+  box.innerHTML = "";
+  items.forEach(function(it){
+    var label = typeof it === "string" ? it : it.v;
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "opt";
+    b.innerHTML = '<span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><span>' + label + '</span>';
+    b.addEventListener("click", function(){
+      Array.prototype.forEach.call(box.children, function(c){ c.classList.remove("sel"); });
+      b.classList.add("sel"); buzz(14);
+      setTimeout(function(){ onPick(it); }, 190);
+    });
+    box.appendChild(b);
+  });
+}
+
+buildOpts($("optPerfil"), PERFIL, function(it){
+  A.perfil = it;
+  err(10,"");
+  if(it.s === "nenhum"){
+    // Fim de linha. Não chama finish(), então nada chega no CRM, e nenhum
+    // evento sai pro pixel: esse visitante não entra como lead em lugar nenhum.
+    show(11);
+    return;
+  }
+  // Só conta como início de formulário depois que sabemos que tem negócio.
+  fb("trackCustom","FormStart",{ form:"unvsocial-diagnostico" });
+  fb("trackCustom","FormAnswer",{ field:"perfil", value:it.s });
+  if(A.prefill) fb("trackCustom","FormPrefill",{ campos:A.prefill, form:"unvsocial-diagnostico" });
+  show(1);
+});
+
+buildOpts($("optGestao"), GESTAO, function(it){
+  A.gestao = it;
+  err(5,"");
+  fb("trackCustom","FormAnswer",{ field:"gestao", value:it.s });
+  show(6);
+});
+
+buildOpts($("optMotivo"), MOTIVO, function(it){
+  err(6,"");
+  if(it.s === "outro"){
+    // não avança: abre o campo livre e espera a pessoa escrever
+    $("outroWrap").hidden = false;
+    $("outro").focus();
+    return;
+  }
+  $("outroWrap").hidden = true;
+  A.motivo = it;
+  fb("trackCustom","FormAnswer",{ field:"motivo", value:it.s });
+  show(7);
+});
+
+$("outroGo").addEventListener("click", function(){
+  var t = $("outro").value.trim().replace(/\s+/g," ");
+  if(t.length < 3){ err(6,"Escreve em poucas palavras o que te trouxe aqui."); return; }
+  A.motivo = { v:t, s:"outro" };
+  err(6,"");
+  fb("trackCustom","FormAnswer",{ field:"motivo", value:"outro" });
+  show(7);
+});
+
+buildOpts($("optFat"), FAT, function(it){
+  A.fat = it;
+  err(7,"");
+  fb("trackCustom","FormAnswer",{ field:"faturamento", value:it.s });
+  finish();
+});
+
+/* ── navegação ── */
+$("go").addEventListener("click", function(){ show(10); });
+
+function validate(i){
+  if(i === 1){
+    var v = $("nome").value.trim().replace(/\s+/g," ");
+    if(v.length < 2){ err(1,"Escreve seu nome pra eu te chamar direito."); return false; }
+    A.nome = capitalize(v); lsSet("nome", A.nome); err(1,""); return true;
+  }
+  if(i === 2){
+    var d = $("tel").value.replace(/\D/g,"");
+    if(d.length < 10){ err(2,"Coloca seu WhatsApp com DDD."); return false; }
+    A.tel = d; lsSet("tel", d); err(2,""); return true;
+  }
+  if(i === 3){
+    var e = $("email").value.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)){ err(3,"Confere o e-mail, parece que faltou algo."); return false; }
+    A.email = e; lsSet("email", e); err(3,""); return true;
+  }
+  if(i === 4){
+    A.insta = $("insta").value.trim().replace(/^@+/,"");
+    if(A.insta) lsSet("insta", A.insta);
+    err(4,""); return true;   // opcional
+  }
+  return true;
+}
+
+Array.prototype.forEach.call(document.querySelectorAll("[data-next]"), function(b){
+  b.addEventListener("click", function(){
+    var i = +b.getAttribute("data-next");
+    if(validate(i)) show(i + 1);
+  });
+});
+Array.prototype.forEach.call(document.querySelectorAll("[data-back]"), function(b){
+  b.addEventListener("click", function(){
+    var to = b.getAttribute("data-back-to");
+    if(to !== null) return show(+to);
+    show(+b.getAttribute("data-back") - 1);
+  });
+});
+Array.prototype.forEach.call(document.querySelectorAll("input"), function(inp){
+  inp.addEventListener("keydown", function(ev){
+    if(ev.key === "Enter"){
+      ev.preventDefault();
+      var b = (cur === 6) ? $("outroGo") : $("s" + cur).querySelector("[data-next]");
+      if(b) b.click();
+    }
+  });
+});
+
+/* ── diagnóstico ── */
+function diagnose(){
+  var g = A.gestao ? A.gestao.s : null;
+  if(g === "eu")    return "Hoje o seu perfil depende de você ter tempo, e tempo é justamente o que falta pra quem toca o negócio. Por isso a produção anda em ondas: some numa semana cheia e volta na semana calma. Quem compra não vê constância, vê abandono.";
+  if(g === "tinha") return "Você já testou terceirizar e não deu certo. Na esmagadora maioria dos casos o problema não foi a pessoa, foi a falta de direção comercial: alguém postando bonito sem saber o que precisa ser vendido no mês.";
+  if(g === "nada")  return "Seu perfil hoje é uma página em branco pra quem pesquisa você antes de comprar. E esse cliente pesquisa. Sem conteúdo, ele encontra o vazio e vai olhar o concorrente que aparece.";
+  return "Você já tem alguém cuidando, então o gargalo raramente é volume de post. É direção: conteúdo que gera salvamento e comentário, mas não gera conversa no direct nem cliente na agenda.";
+}
+
+function motivoLeitura(){
+  var m = A.motivo ? A.motivo.s : null;
+  if(m === "nivel")            return " E tem um agravante: quando o perfil não representa o nível da empresa, ele derruba o seu preço antes de você abrir a boca. O cliente chega achando que você é menor do que é, e negocia como se fosse.";
+  if(m === "insatisfeito")     return " Você já investe e não vê retorno. Isso quase sempre é sintoma de conteúdo desconectado do que o comercial precisa vender, não de verba curta.";
+  if(m === "consistencia")     return " Consistência não se resolve com força de vontade, se resolve com processo e pauta pronta com antecedência.";
+  if(m === "clientes")         return " Pra o Instagram trazer cliente, o conteúdo precisa ter caminho de venda, não só alcance.";
+  if(m === "profissionalizar") return " Profissionalizar o perfil é o passo que faz o preço parar de ser questionado logo na primeira conversa.";
+  return "";
+}
+
+function proporcao(){
+  var f = A.fat ? A.fat.s : null, g = A.gestao ? A.gestao.s : null;
+  if((f === "100a300k" || f === "300k+") && (g === "eu" || g === "nada"))
+    return " Uma operação do seu tamanho com a rede social na mão do dono, ou parada, é a distância mais cara entre o que a empresa é e o que ela parece ser.";
+  if((f === "ate20k") && g === "tem")
+    return " No seu momento, o que decide não é volume de post: é o conteúdo puxar conversa suficiente pra pagar a própria gestão.";
+  return "";
+}
+
+/* ── envio ── */
+function payloadDesafio(){
+  var parts = [];
+  if(A.fat)    parts.push("Faturamento: " + A.fat.v);
+  if(A.perfil) parts.push("Perfil: " + A.perfil.v);
+  if(A.gestao) parts.push("Gestão hoje: " + A.gestao.v);
+  if(A.motivo) parts.push("Motivo: " + A.motivo.v);
+  return parts.join(" | ");
+}
+
+function waText(){
+  var t = "Oi Fabrício, acabei de preencher o diagnóstico de redes da UNV Social.\n\n";
+  t += "Nome: " + A.nome + "\n";
+  t += "WhatsApp: " + $("tel").value + "\n";
+  t += "E-mail: " + A.email + "\n";
+  if(A.insta)  t += "Instagram: @" + A.insta + "\n";
+  if(A.fat)    t += "Faturamento: " + A.fat.v + "\n";
+  if(A.perfil) t += "Sou: " + A.perfil.v + "\n";
+  if(A.gestao) t += "Gestão hoje: " + A.gestao.v + "\n";
+  if(A.motivo) t += "O que me trouxe: " + A.motivo.v + "\n";
+  t += "\nQuero entender como a UNV Social pode resolver isso pra mim.";
+  return t;
+}
+
+function render(){
+  $("rTitle").textContent = A.nome.split(" ")[0] + ", seu diagnóstico está pronto.";
+  $("rSub").textContent = "Já recebi suas respostas aqui do lado. Olha o que elas dizem sobre o seu cenário:";
+  $("rDiag").innerHTML = "<b>O que eu já consigo ver:</b><br>" + diagnose() + motivoLeitura() + proporcao();
+  var rows = [["Nome", A.nome], ["WhatsApp", $("tel").value], ["E-mail", A.email]];
+  if(A.insta)  rows.push(["Instagram", "@" + A.insta]);
+  if(A.perfil) rows.push(["Perfil", A.perfil.v]);
+  if(A.fat)    rows.push(["Faturamento", A.fat.v]);
+  if(A.gestao) rows.push(["Gestão hoje", A.gestao.v]);
+  if(A.motivo) rows.push(["Motivo", A.motivo.v]);
+  $("rRows").innerHTML = rows.map(function(r){ return "<li><span>" + r[0] + "</span><b>" + r[1] + "</b></li>"; }).join("");
+
+  var wa = $("waBtn");
+  wa.href = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(waText());
+  wa.addEventListener("click", function(){ fb("trackCustom","WhatsAppClick",{ form:"unvsocial-diagnostico" }); });
+  show(9);
+}
+
+var sending = false;
+function finish(){
+  if(sending) return;
+  sending = true;
+  show(8);
+
+  var payload = {
+    form_token: FORM_TOKEN,
+    nome: A.nome,
+    telefone: A.tel,
+    email: A.email,
+    instagram: A.insta || undefined,
+    desafio: payloadDesafio(),
+    observacao: ORIGEM,
+    utm_source: qp("utm_source"), utm_medium: qp("utm_medium"),
+    utm_campaign: qp("utm_campaign"), utm_content: qp("utm_content"), utm_term: qp("utm_term"),
+    fbclid: qp("fbclid"),
+    ad_name: qp("ad_name"), adset_name: qp("adset_name"), campaign_name: qp("campaign_name"),
+    meta_campaign_id: qp("meta_campaign_id") || qp("campaign_id"),
+    meta_adset_id: qp("meta_adset_id") || qp("adset_id"),
+    meta_ad_id: qp("meta_ad_id") || qp("ad_id")
+  };
+
+  fetch(SUPA + "/functions/v1/submit-pipeline-form", {
+    method: "POST",
+    headers: { "Content-Type":"application/json", "Authorization":"Bearer " + ANON, "apikey": ANON },
+    body: JSON.stringify(payload)
+  }).then(function(r){
+    return r.json().then(function(d){ return { ok:r.ok, data:d }; });
+  }).then(function(res){
+    if(!res.ok) throw new Error((res.data && res.data.error) || "Erro ao enviar");
+    var leadId = res.data && res.data.lead_id;
+
+    // Conversão. O event_id casa com o que a trigger do banco manda pela CAPI
+    // (lead_id + ":Lead"), então o Meta conta UM Lead só.
+    fb("track","Lead", {
+      content_name: "Diagnóstico UNV Social",
+      content_category: A.gestao ? A.gestao.s : "-",
+      value: 1, currency: "BRL"
+    }, leadId ? { eventID: leadId + ":Lead" } : undefined);
+
+    render();
+  }).catch(function(e){
+    sending = false;
+    // Não perde o lead: mostra o resultado e joga pro WhatsApp do mesmo jeito.
+    fb("trackCustom","FormError",{ msg: String(e && e.message || e).slice(0,100) });
+    render();
+  });
+}
+
+prefill();
+paint();
+})();
+</script>
+</body>
+</html>
