@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ScheduleLeadMeetingDialog } from "@/components/crm/lead-detail/ScheduleLeadMeetingDialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -768,6 +769,55 @@ export function ConversationSidebar({
     }
   };
 
+  // Mudar a etapa do lead sem sair do Atendimento (pedido do Fabrício, 25/09/2026)
+  const [etapaAtual, setEtapaAtual] = useState<string>("");
+  const [etapasDoLead, setEtapasDoLead] = useState<{ value: string; label: string }[]>([]);
+  const [funilDoLead, setFunilDoLead] = useState<string>("");
+  const [trocandoEtapa, setTrocandoEtapa] = useState(false);
+
+  useEffect(() => {
+    const leadId = conversation.lead_id;
+    if (!leadId) { setEtapasDoLead([]); setEtapaAtual(""); setFunilDoLead(""); return; }
+    let vivo = true;
+    (async () => {
+      const { data: lead } = await supabase
+        .from("crm_leads")
+        .select("id, stage_id, pipeline_id, pipeline:crm_pipelines(name)")
+        .eq("id", leadId)
+        .maybeSingle();
+      if (!vivo || !lead?.pipeline_id) return;
+      setEtapaAtual(lead.stage_id || "");
+      setFunilDoLead((lead as any).pipeline?.name || "");
+      const { data: sts } = await supabase
+        .from("crm_stages")
+        .select("id, name")
+        .eq("pipeline_id", lead.pipeline_id)
+        .order("sort_order");
+      if (vivo) setEtapasDoLead((sts || []).map((x: any) => ({ value: x.id, label: x.name })));
+    })();
+    return () => { vivo = false; };
+  }, [conversation.lead_id, conversation.id]);
+
+  const mudarEtapa = async (novaEtapa: string) => {
+    if (!conversation.lead_id || !novaEtapa || novaEtapa === etapaAtual) return;
+    const anterior = etapaAtual;
+    setEtapaAtual(novaEtapa);
+    setTrocandoEtapa(true);
+    const { error } = await supabase
+      .from("crm_leads")
+      .update({ stage_id: novaEtapa, stage_entered_at: new Date().toISOString() })
+      .eq("id", conversation.lead_id);
+    setTrocandoEtapa(false);
+    if (error) {
+      setEtapaAtual(anterior);
+      // etapa de ganho exige valor do negócio, e o banco barra com mensagem própria
+      toast.error(error.message?.includes("valor") ? error.message : "Não consegui mudar a etapa");
+      return;
+    }
+    toast.success(`Movido para ${etapasDoLead.find((e) => e.value === novaEtapa)?.label || "a nova etapa"}`);
+    refetchLinkedLeads?.();
+  };
+
   return (
     <div className="w-[320px] h-full min-h-0 border-l border-border bg-card flex flex-col overflow-y-auto [&>*]:shrink-0">
       {/* Header with Lead/Deal info */}
@@ -827,6 +877,22 @@ export function ConversationSidebar({
           <Calendar className="h-4 w-4" />
           Agendar reunião
         </Button>
+
+        {/* Etapa do funil: move o lead sem abrir o CRM */}
+        {!!conversation.lead_id && etapasDoLead.length > 0 && (
+          <div className="mt-3">
+            <p className="text-[11px] text-muted-foreground mb-1">
+              Etapa{funilDoLead ? ` · ${funilDoLead}` : ""}
+            </p>
+            <SearchableSelect
+              value={etapaAtual}
+              onValueChange={mudarEtapa}
+              options={etapasDoLead}
+              placeholder="Escolher etapa"
+              disabled={trocandoEtapa}
+            />
+          </div>
+        )}
       </div>
 
       {/* Agente IA: liga/desliga e troca de agente só nesta conversa */}
