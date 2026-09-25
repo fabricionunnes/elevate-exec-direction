@@ -118,7 +118,9 @@ export const CRMProspectPage = () => {
     }
   };
 
-  const podeExecutar = !!pipelineId && ((total ?? 0) > 0 || total === -1);
+  // 25/09/2026 (ideia do Fabrício): contar a base inteira é o que demora. A entrega não
+  // depende mais disso, basta escolher o funil e a quantidade. Contar virou informação.
+  const podeExecutar = !!pipelineId && quantidade > 0;
 
   return (
     <div className="p-4 sm:p-6 space-y-4 max-w-6xl mx-auto">
@@ -227,10 +229,14 @@ export const CRMProspectPage = () => {
             </div>
 
             <div className="space-y-2">
-              <Button onClick={contar} disabled={contando} className="w-full sm:w-auto">
+              <Button variant="outline" onClick={contar} disabled={contando} className="w-full sm:w-auto">
                 {contando ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
-                {contando ? "Contando..." : "Contar empresas"}
+                {contando ? "Contando..." : "Contar empresas (opcional)"}
               </Button>
+              <p className="text-xs text-muted-foreground">
+                Contar varre a base inteira e demora. Pra mandar empresas pro funil você não
+                precisa disso: escolha o funil e a quantidade ali do lado.
+              </p>
               {/* O resultado ficava só numa linha pequena do outro card e passava
                   despercebido depois de esperar alguns segundos (23/09/2026). */}
               {contando && <p className="text-xs text-muted-foreground">Procurando na base da Receita. Em segmento grande isso leva alguns segundos.</p>}
