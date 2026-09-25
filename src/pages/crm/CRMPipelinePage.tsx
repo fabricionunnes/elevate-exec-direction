@@ -496,8 +496,44 @@ export const CRMPipelinePage = () => {
     toast.success(`${linhas.length} lead(s) exportado(s)`);
   };
 
+  // O kanban carrega por página, então digitar no buscar só encontrava quem já tinha
+  // chegado na tela. Agora, a partir de 3 letras, a busca vai ao banco e traz o resto
+  // (25/09/2026: o Erick, da distribuidora de pet, não aparecia por isso).
+  const [leadsBusca, setLeadsBusca] = useState<Lead[]>([]);
+  useEffect(() => {
+    const termo = (filters.search || "").trim();
+    if (termo.length < 3 || !selectedPipeline) { setLeadsBusca([]); return; }
+    let vivo = true;
+    const t = setTimeout(async () => {
+      const like = `%${termo.replace(/[%,]/g, " ")}%`;
+      let q = supabase
+        .from("crm_leads")
+        .select(`
+          id, name, company, phone, email, document, stage_id, origin_id, owner_staff_id, closer_staff_id,
+          opportunity_value, estimated_revenue, probability, last_activity_at, next_activity_at, urgency, notes, created_at, stage_entered_at,
+          utm_source, utm_campaign, utm_content, utm_term, meta_campaign_id, meta_adset_id, meta_ad_id,
+          campaign_name, adset_name, ad_name,
+          origin:crm_origins(name),
+          owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name, avatar_url),
+          closer:onboarding_staff!crm_leads_closer_staff_id_fkey(name, avatar_url),
+          tags:crm_lead_tags(tag:crm_tags(id, name, color)),
+          meeting_events:crm_meeting_events(event_type)
+        `)
+        .eq("pipeline_id", selectedPipeline)
+        .or(`name.ilike.${like},company.ilike.${like},email.ilike.${like},phone.ilike.${like}`)
+        .limit(300);
+      if (selectedOrigin) q = q.eq("origin_id", selectedOrigin);
+      const { data } = await q;
+      if (vivo) setLeadsBusca((data || []) as any);
+    }, 350);
+    return () => { vivo = false; clearTimeout(t); };
+  }, [filters.search, selectedPipeline, selectedOrigin]);
+
   const filteredLeads = useMemo(() => {
-    return leads.filter(lead => {
+    const porId = new Map<string, Lead>();
+    for (const l of leads) porId.set(l.id, l);
+    for (const l of leadsBusca) if (!porId.has(l.id)) porId.set(l.id, l);
+    return [...porId.values()].filter(lead => {
       // Search filter
       if (filters.search) {
         const search = filters.search.toLowerCase();
@@ -578,7 +614,7 @@ export const CRMPipelinePage = () => {
 
       return true;
     });
-  }, [leads, filters, stages]);
+  }, [leads, leadsBusca, filters, stages]);
 
   const handleDragStart = (e: React.DragEvent, lead: Lead) => {
     setDraggedLead(lead);
