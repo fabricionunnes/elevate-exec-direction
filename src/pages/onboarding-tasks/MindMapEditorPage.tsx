@@ -86,7 +86,7 @@ function larguraTexto(txt: string, fonte: string): number {
   return w;
 }
 
-/** quantas linhas o texto ocupa quebrando em palavras dentro de maxW */
+/** quantas linhas UM parágrafo ocupa quebrando em palavras dentro de maxW */
 function contarLinhas(txt: string, maxW: number, fonte: string): number {
   const palavras = txt.split(/\s+/).filter(Boolean);
   if (!palavras.length) return 1;
@@ -118,10 +118,18 @@ function medida(n: MMNode, isRoot = false): { w: number; h: number } {
   const maxW = isRoot ? ROOT_MAX_W : NODE_MAX_W;
   const lineH = isRoot ? ROOT_LINE_H : LINE_H;
   const alturaMin = isRoot ? ROOT_H : NODE_H;
-  const umaLinha = larguraTexto(txt, fonte) + PAD_X;
-  const m = umaLinha <= maxW
-    ? { w: Math.max(minW, Math.ceil(umaLinha)), h: Math.max(alturaMin, lineH + PAD_Y) }
-    : { w: maxW, h: Math.max(alturaMin, contarLinhas(txt, maxW - PAD_X, fonte) * lineH + PAD_Y) };
+  // O texto pode ter quebra de linha própria (listas com traço, por exemplo) e
+  // o CSS preserva ela (whitespace-pre-wrap). Medir tudo como um parágrafo só
+  // contava linhas a menos: a caixa saía baixa, o texto era cortado embaixo e o
+  // nó vizinho subia por cima. Cada parágrafo conta o seu wrap separado.
+  const paragrafos = txt.split("\n");
+  const maiorLinha = Math.max(...paragrafos.map((p) => larguraTexto(p, fonte)));
+  const larguraIdeal = maiorLinha + PAD_X;
+  const w = Math.min(maxW, Math.max(minW, Math.ceil(larguraIdeal)));
+  const linhas = paragrafos.length === 1 && larguraIdeal <= maxW
+    ? 1
+    : paragrafos.reduce((soma, par) => soma + contarLinhas(par, w - PAD_X, fonte), 0);
+  const m = { w, h: Math.max(alturaMin, linhas * lineH + PAD_Y) };
   if (_medidas.size > 4000) _medidas.clear();
   _medidas.set(k, m);
   return m;
