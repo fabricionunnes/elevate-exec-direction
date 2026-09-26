@@ -57,13 +57,82 @@ function findNode(root: MMNode, id: string, parent: MMNode | null = null): { nod
 }
 
 // ─────────────────────────── layout radial (dois lados) ───────────────────────────
-const NODE_W = 180, NODE_H = 40, GAP_X = 70, GAP_Y = 14;
+// O nó cresce com o texto. Antes a caixa era fixa em 180px com truncate: frase
+// longa virava "Quando o potencial cli…" e o mapa não servia pra ler nada.
+const NODE_MIN_W = 130, NODE_MAX_W = 270, NODE_H = 40, GAP_X = 70, GAP_Y = 14;
+const ROOT_MIN_W = 220, ROOT_MAX_W = 340, ROOT_H = 52;
+// box-sizing: border-box — a largura do style já inclui padding E borda, então
+// a conta precisa dos dois. Com 26 sobrava 2px e frase que cabia numa linha
+// quebrava em duas sem precisar.
+const PAD_X = 28;  // px-3 (12+12) + borda 2px de cada lado
+const PAD_Y = 20;  // py-2 (8+8) + borda 2px de cada lado
+const LINE_H = 18, ROOT_LINE_H = 21;
+const FONTE = '13px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
+const FONTE_ROOT = '600 15px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
+
+// Medir texto de verdade (canvas) em vez de chutar por número de caracteres:
+// "Iiii" e "MMMM" têm o mesmo tamanho no chute e larguras bem diferentes na tela.
+let _ctx: CanvasRenderingContext2D | null | undefined;
+const _larguras = new Map<string, number>();
+function larguraTexto(txt: string, fonte: string): number {
+  const k = `${fonte}|${txt}`;
+  const cache = _larguras.get(k);
+  if (cache !== undefined) return cache;
+  if (_ctx === undefined) _ctx = typeof document !== "undefined" ? document.createElement("canvas").getContext("2d") : null;
+  // sem canvas (SSR, navegador antigo): estimativa grosseira, melhor que quebrar
+  const w = _ctx ? (_ctx.font = fonte, _ctx.measureText(txt).width) : txt.length * 7;
+  if (_larguras.size > 4000) _larguras.clear();
+  _larguras.set(k, w);
+  return w;
+}
+
+/** quantas linhas o texto ocupa quebrando em palavras dentro de maxW */
+function contarLinhas(txt: string, maxW: number, fonte: string): number {
+  const palavras = txt.split(/\s+/).filter(Boolean);
+  if (!palavras.length) return 1;
+  let linhas = 1, atual = "";
+  for (const p of palavras) {
+    const larguraP = larguraTexto(p, fonte);
+    // palavra sozinha maior que a caixa: o CSS quebra no meio dela (break-words)
+    if (larguraP > maxW) {
+      if (atual) { linhas++; atual = ""; }
+      linhas += Math.ceil(larguraP / maxW) - 1;
+      continue;
+    }
+    const teste = atual ? `${atual} ${p}` : p;
+    if (larguraTexto(teste, fonte) <= maxW) atual = teste;
+    else { linhas++; atual = p; }
+  }
+  return linhas;
+}
+
+const _medidas = new Map<string, { w: number; h: number }>();
+/** largura e altura que a caixa precisa ter pro texto caber inteiro */
+function medida(n: MMNode, isRoot = false): { w: number; h: number } {
+  const txt = n.text || "vazio";
+  const k = `${isRoot ? "r" : "n"}|${txt}`;
+  const cache = _medidas.get(k);
+  if (cache) return cache;
+  const fonte = isRoot ? FONTE_ROOT : FONTE;
+  const minW = isRoot ? ROOT_MIN_W : NODE_MIN_W;
+  const maxW = isRoot ? ROOT_MAX_W : NODE_MAX_W;
+  const lineH = isRoot ? ROOT_LINE_H : LINE_H;
+  const alturaMin = isRoot ? ROOT_H : NODE_H;
+  const umaLinha = larguraTexto(txt, fonte) + PAD_X;
+  const m = umaLinha <= maxW
+    ? { w: Math.max(minW, Math.ceil(umaLinha)), h: Math.max(alturaMin, lineH + PAD_Y) }
+    : { w: maxW, h: Math.max(alturaMin, contarLinhas(txt, maxW - PAD_X, fonte) * lineH + PAD_Y) };
+  if (_medidas.size > 4000) _medidas.clear();
+  _medidas.set(k, m);
+  return m;
+}
 
 /** altura total de um ramo (respeitando colapso) */
 function subtreeHeight(n: MMNode): number {
-  if (n.collapsed || n.children.length === 0) return NODE_H;
+  const propria = medida(n).h;
+  if (n.collapsed || n.children.length === 0) return propria;
   const h = n.children.reduce((s, c) => s + subtreeHeight(c), 0) + GAP_Y * (n.children.length - 1);
-  return Math.max(NODE_H, h);
+  return Math.max(propria, h);
 }
 
 function layout(root: MMNode, kind: LayoutKind = "radial", theme = "unv") {
@@ -75,36 +144,45 @@ function layout(root: MMNode, kind: LayoutKind = "radial", theme = "unv") {
 
   if (kind === "tree") {
     // organograma: raiz em cima, filhos abaixo, ramos descem
-    const W = NODE_W + 24, GY = 70;
-    const width = (n: MMNode): number => (n.collapsed || !n.children.length) ? W
-      : Math.max(W, n.children.reduce((s, c) => s + width(c), 0));
-    nodes.push({ id: root.id, type: "mm", position: { x: -110, y: 0 }, data: { node: root, isRoot: true, depth: 0, side: 0, rootColor } });
-    const place = (children: MMNode[], parent: MMNode, cx: number, py: number, depth: number, color?: string, idx = 0) => {
+    const GY = 70;
+    const W = (n: MMNode) => medida(n).w + 24;
+    const width = (n: MMNode): number => (n.collapsed || !n.children.length) ? W(n)
+      : Math.max(W(n), n.children.reduce((s, c) => s + width(c), 0));
+    const mr = medida(root, true);
+    nodes.push({ id: root.id, type: "mm", position: { x: -mr.w / 2, y: 0 }, data: { node: root, isRoot: true, depth: 0, side: 0, rootColor, w: mr.w, h: mr.h } });
+    // o nível de baixo começa depois da altura REAL do pai: com caixa de três
+    // linhas, a distância fixa fazia a linha do ramo entrar por cima do texto
+    const place = (children: MMNode[], parent: MMNode, cx: number, py: number, parentH: number, depth: number, color?: string, idx = 0) => {
       const total = children.reduce((s, c) => s + width(c), 0);
       let x = cx - total / 2;
       children.forEach((c, i) => {
         const w = width(c);
         const ncx = x + w / 2;
-        const ny = py + GY + NODE_H;
+        const m = medida(c);
+        const ny = py + parentH + GY;
         const col = c.color || color || pal[(depth === 1 ? i : idx) % pal.length];
-        nodes.push({ id: c.id, type: "mm", position: { x: ncx - NODE_W / 2, y: ny }, data: { node: c, isRoot: false, depth, side: 0, color: col, rootColor } });
+        nodes.push({ id: c.id, type: "mm", position: { x: ncx - m.w / 2, y: ny }, data: { node: c, isRoot: false, depth, side: 0, color: col, rootColor, w: m.w, h: m.h } });
         edges.push({ id: `${parent.id}-${c.id}`, source: parent.id, target: c.id, sourceHandle: "b", targetHandle: "t",
           type: "smoothstep", style: { stroke: col, strokeWidth: Math.max(1.5, 3.5 - depth * 0.7) } });
-        if (!c.collapsed) place(c.children, c, ncx, ny, depth + 1, col, depth === 1 ? i : idx);
+        if (!c.collapsed) place(c.children, c, ncx, ny, m.h, depth + 1, col, depth === 1 ? i : idx);
         x += w;
       });
     };
-    place(kids, root, 0, 0, 1);
+    place(kids, root, 0, 0, mr.h, 1);
     return { nodes, edges };
   }
 
   // radial (dois lados) ou direita (um lado só)
   const cx = 0, cy = 0;
-  nodes.push({ id: root.id, type: "mm", position: { x: cx - 110, y: cy - NODE_H / 2 },
-    data: { node: root, isRoot: true, depth: 0, side: 0, rootColor } });
+  const mr = medida(root, true);
+  nodes.push({ id: root.id, type: "mm", position: { x: cx - mr.w / 2, y: cy - mr.h / 2 },
+    data: { node: root, isRoot: true, depth: 0, side: 0, rootColor, w: mr.w, h: mr.h } });
   const right = kind === "right" ? kids : kids.filter((_, i) => i % 2 === 0);
   const left = kind === "right" ? [] : kids.filter((_, i) => i % 2 === 1);
 
+  // px é a BORDA do pai (direita no lado direito, esquerda no esquerdo), não o
+  // centro: com caixa de largura variável, medir pelo centro empurrava nó largo
+  // por cima do vizinho. Assim os irmãos começam todos na mesma coluna.
   const place = (children: MMNode[], side: 1 | -1, parent: MMNode, px: number, py: number, depth: number, color?: string, baseIdx = 0) => {
     if (!children.length) return;
     const total = children.reduce((s, c) => s + subtreeHeight(c), 0) + GAP_Y * (children.length - 1);
@@ -112,19 +190,20 @@ function layout(root: MMNode, kind: LayoutKind = "radial", theme = "unv") {
     children.forEach((c, i) => {
       const h = subtreeHeight(c);
       const ny = y + h / 2;
-      const nx = px + side * (NODE_W + GAP_X);
+      const m = medida(c);
+      const nx = side === 1 ? px + GAP_X : px - GAP_X - m.w;
       const col = c.color || color || pal[(baseIdx + i) % pal.length];
-      nodes.push({ id: c.id, type: "mm", position: { x: nx - NODE_W / 2, y: ny - NODE_H / 2 },
-        data: { node: c, isRoot: false, depth, side, color: col, rootColor } });
+      nodes.push({ id: c.id, type: "mm", position: { x: nx, y: ny - m.h / 2 },
+        data: { node: c, isRoot: false, depth, side, color: col, rootColor, w: m.w, h: m.h } });
       edges.push({ id: `${parent.id}-${c.id}`, source: parent.id, target: c.id,
         sourceHandle: side === 1 ? "r" : "l", targetHandle: side === 1 ? "l" : "r",
         type: "smoothstep", style: { stroke: col, strokeWidth: Math.max(1.5, 3.5 - depth * 0.7) } });
-      if (!c.collapsed) place(c.children, side, c, nx, ny, depth + 1, col, baseIdx + i);
+      if (!c.collapsed) place(c.children, side, c, side === 1 ? nx + m.w : nx, ny, depth + 1, col, baseIdx + i);
       y += h + GAP_Y;
     });
   };
-  place(right, 1, root, cx, cy, 1, undefined, 0);
-  place(left, -1, root, cx, cy, 1, undefined, right.length);
+  place(right, 1, root, cx + mr.w / 2, cy, 1, undefined, 0);
+  place(left, -1, root, cx - mr.w / 2, cy, 1, undefined, right.length);
   return { nodes, edges };
 }
 
@@ -148,7 +227,8 @@ function MMNodeView({ id, data, selected }: NodeProps) {
         selected && "ring-2 ring-offset-2 ring-primary/60 shadow-md",
       )}
       style={{
-        width: d.isRoot ? 220 : NODE_W, minHeight: d.isRoot ? 52 : NODE_H,
+        width: d.w ?? (d.isRoot ? ROOT_MIN_W : NODE_MIN_W),
+        minHeight: d.h ?? (d.isRoot ? ROOT_H : NODE_H),
         borderColor: color, background: d.isRoot ? color : "#fff",
       }}
       onDoubleClick={(e) => { e.stopPropagation(); d.startEdit(id); }}
@@ -160,12 +240,17 @@ function MMNodeView({ id, data, selected }: NodeProps) {
       <Handle type="target" position={Position.Top} id="t" className="!opacity-0 !w-2 !h-2" />
       <Handle type="source" position={Position.Bottom} id="b" className="!opacity-0 !w-2 !h-2" />
       {editing ? (
-        <input
+        // textarea e não input: em texto de três linhas o input mostrava só um
+        // pedaço enquanto a pessoa digitava. Enter continua criando irmão.
+        <textarea
           autoFocus
-          className="nodrag nopan w-full bg-transparent outline-none py-2"
+          rows={1}
+          className="nodrag nopan w-full bg-transparent outline-none py-2 resize-none overflow-hidden"
+          style={{ lineHeight: `${d.isRoot ? ROOT_LINE_H : LINE_H}px` }}
           value={txt}
+          ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = `${el.scrollHeight}px`; } }}
           onFocus={(e) => { const v = e.target.value; e.target.setSelectionRange(v.length, v.length); }}
-          onChange={(e) => setTxt(e.target.value)}
+          onChange={(e) => { setTxt(e.target.value); e.target.style.height = "auto"; e.target.style.height = `${e.target.scrollHeight}px`; }}
           onBlur={() => d.commitEdit(id, txt)}
           onMouseDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => {
@@ -177,7 +262,10 @@ function MMNodeView({ id, data, selected }: NodeProps) {
           }}
         />
       ) : (
-        <span className="py-2 truncate">{n.text || <span className="opacity-50">vazio</span>}</span>
+        <span className="py-2 w-full whitespace-pre-wrap break-words"
+          style={{ lineHeight: `${d.isRoot ? ROOT_LINE_H : LINE_H}px` }}>
+          {n.text || <span className="opacity-50">vazio</span>}
+        </span>
       )}
       {hasKids && !d.isRoot && (
         <button
