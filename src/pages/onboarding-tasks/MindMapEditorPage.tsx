@@ -63,7 +63,10 @@ function findNode(root: MMNode, id: string, parent: MMNode | null = null): { nod
 // ─────────────────────────── layout radial (dois lados) ───────────────────────────
 // O nó cresce com o texto. Antes a caixa era fixa em 180px com truncate: frase
 // longa virava "Quando o potencial cli…" e o mapa não servia pra ler nada.
-const NODE_MIN_W = 130, NODE_MAX_W = 270, NODE_H = 40, GAP_X = 70, GAP_Y = 14;
+// GAP_Y era 14: com caixas de alturas diferentes, as bordas ficavam a 14px uma
+// da outra e, no zoom que um mapa grande exige, isso lê como retângulo colado
+// no outro. GAP_X desconta os 8px que o botão de colapsar invade do vão.
+const NODE_MIN_W = 130, NODE_MAX_W = 270, NODE_H = 40, GAP_X = 88, GAP_Y = 26;
 const ROOT_MIN_W = 220, ROOT_MAX_W = 340, ROOT_H = 52;
 // box-sizing: border-box — a largura do style já inclui padding E borda, então
 // a conta precisa dos dois. Com 26 sobrava 2px e frase que cabia numa linha
@@ -176,7 +179,7 @@ function layout(root: MMNode, kind: LayoutKind = "radial", theme = "unv") {
 
   if (kind === "tree") {
     // organograma: raiz em cima, filhos abaixo, ramos descem
-    const GY = 70;
+    const GY = 88;
     const W = (n: MMNode) => medida(n).w + 24;
     const width = (n: MMNode): number => (n.collapsed || !n.children.length) ? W(n)
       : Math.max(W(n), n.children.reduce((s, c) => s + width(c), 0));
