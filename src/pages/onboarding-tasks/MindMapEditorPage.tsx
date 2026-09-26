@@ -12,7 +12,7 @@ import "@xyflow/react/dist/style.css";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Loader2, Save, Plus, Trash2, Undo2, Redo2, ChevronsUpDown, Palette, Download, LayoutTemplate } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Plus, Trash2, Undo2, Redo2, ChevronsUpDown, Palette, Download, LayoutTemplate, Maximize2 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import {
@@ -29,6 +29,10 @@ export interface MMNode {
   collapsed?: boolean;
   color?: string;
   note?: string;
+  /** largura escolhida na mão (px). Sem isso, a caixa se mede pelo texto. */
+  w?: number;
+  /** altura escolhida na mão (px). Nunca menor que o texto precisa. */
+  h?: number;
 }
 type LayoutKind = "radial" | "right" | "tree";
 interface MMData { root: MMNode; layout?: LayoutKind; theme?: string }
@@ -92,24 +96,44 @@ function contarLinhas(txt: string, maxW: number, fonte: string): number {
   if (!palavras.length) return 1;
   let linhas = 1, atual = "";
   for (const p of palavras) {
-    const larguraP = larguraTexto(p, fonte);
-    // palavra sozinha maior que a caixa: o CSS quebra no meio dela (break-words)
-    if (larguraP > maxW) {
-      if (atual) { linhas++; atual = ""; }
-      linhas += Math.ceil(larguraP / maxW) - 1;
-      continue;
-    }
     const teste = atual ? `${atual} ${p}` : p;
-    if (larguraTexto(teste, fonte) <= maxW) atual = teste;
-    else { linhas++; atual = p; }
+    if (larguraTexto(teste, fonte) <= maxW) { atual = teste; continue; }
+    // não coube nesta linha, mas cabe sozinha na próxima
+    if (larguraTexto(p, fonte) <= maxW) { linhas++; atual = p; continue; }
+    // palavra maior que a caixa inteira: o CSS quebra DENTRO dela (break-words),
+    // caractere a caractere. Dividir largura/maxW errava pra menos e a caixa
+    // saía baixa demais.
+    if (atual) { linhas++; atual = ""; }
+    for (const ch of p) {
+      const t2 = atual + ch;
+      if (larguraTexto(t2, fonte) <= maxW) atual = t2;
+      else { linhas++; atual = ch; }
+    }
   }
   return linhas;
 }
+
+// Limites do tamanho na mão: largura livre dentro do razoável; a altura o
+// usuário só aumenta, porque diminuir abaixo do texto voltaria a cortar frase,
+// que é exatamente o problema que a medida automática resolve.
+const MANUAL_MIN_W = 80, MANUAL_MAX_W = 900, MANUAL_MAX_H = 2000;
 
 const _medidas = new Map<string, { w: number; h: number }>();
 /** largura e altura que a caixa precisa ter pro texto caber inteiro */
 function medida(n: MMNode, isRoot = false): { w: number; h: number } {
   const txt = n.text || "vazio";
+  // tamanho na mão: a largura manda, e a altura é o maior entre o pedido e o
+  // que o texto precisa nessa largura
+  if (n.w || n.h) {
+    const fonte = isRoot ? FONTE_ROOT : FONTE;
+    const lineH = isRoot ? ROOT_LINE_H : LINE_H;
+    const alturaMin = isRoot ? ROOT_H : NODE_H;
+    const w = n.w ? Math.min(MANUAL_MAX_W, Math.max(MANUAL_MIN_W, Math.round(n.w))) : medida({ ...n, w: undefined, h: undefined }, isRoot).w;
+    const linhas = txt.split("\n").reduce((soma, par) => soma + contarLinhas(par, w - PAD_X, fonte), 0);
+    const precisa = Math.max(alturaMin, linhas * lineH + PAD_Y);
+    const h = n.h ? Math.min(MANUAL_MAX_H, Math.max(precisa, Math.round(n.h))) : precisa;
+    return { w, h };
+  }
   const k = `${isRoot ? "r" : "n"}|${txt}`;
   const cache = _medidas.get(k);
   if (cache) return cache;
@@ -275,6 +299,36 @@ function MMNodeView({ id, data, selected }: NodeProps) {
           {n.text || <span className="opacity-50">vazio</span>}
         </span>
       )}
+      {/* puxador pra ajustar o tamanho na mão. Aparece com o nó selecionado.
+          Duplo clique volta pro tamanho automático (medido pelo texto). */}
+      {selected && d.canEdit && (
+        <div
+          // por dentro da borda, senão encosta no botão de colapsar (que fica
+          // fora, em -12) e rouba o clique dele em nó de uma linha
+          className="nodrag nopan absolute bottom-0.5 right-0.5 h-3 w-3 rounded-sm border-2 bg-white z-20"
+          style={{ borderColor: color, cursor: "nwse-resize" }}
+          title={n.w || n.h ? "Arraste pra ajustar · duplo clique volta ao automático" : "Arraste pra ajustar o tamanho"}
+          onDoubleClick={(e) => { e.stopPropagation(); d.resetSize(id); }}
+          onMouseDown={(e) => {
+            e.stopPropagation(); e.preventDefault();
+            const zoom = d.getZoom?.() || 1;
+            const x0 = e.clientX, y0 = e.clientY;
+            const w0 = d.w, h0 = d.h;
+            const mover = (ev: MouseEvent) => {
+              d.resize(id, w0 + (ev.clientX - x0) / zoom, h0 + (ev.clientY - y0) / zoom, false);
+            };
+            const soltar = (ev: MouseEvent) => {
+              window.removeEventListener("mousemove", mover);
+              window.removeEventListener("mouseup", soltar);
+              // só aqui entra no histórico: arrastar vira UM passo de desfazer,
+              // não um por pixel
+              d.resize(id, w0 + (ev.clientX - x0) / zoom, h0 + (ev.clientY - y0) / zoom, true);
+            };
+            window.addEventListener("mousemove", mover);
+            window.addEventListener("mouseup", soltar);
+          }}
+        />
+      )}
       {hasKids && !d.isRoot && (
         <button
           className="nodrag absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full border bg-white text-[10px] font-bold flex items-center justify-center shadow z-10"
@@ -308,6 +362,8 @@ function Editor() {
   const [canEdit, setCanEdit] = useState(true);
   const undo = useRef<MMData[]>([]);
   const redo = useRef<MMData[]>([]);
+  // estado de antes do arraste do puxador de tamanho
+  const baseResize = useRef<MMData | null>(null);
   const staffIdRef = useRef<string | null>(null);
 
   // carga
@@ -337,6 +393,46 @@ function Editor() {
   const mutate = useCallback((fn: (root: MMNode) => void) => {
     if (!canEdit) return;
     const next = clone(data); fn(next.root); push(next);
+  }, [data, push, canEdit]);
+
+  // Redimensionar na mão. Enquanto arrasta, mexe no estado direto (sem empilhar
+  // desfazer a cada pixel); no fim do arraste (comHistorico) grava um passo só.
+  const resize = useCallback((id: string, w: number, h: number, comHistorico: boolean) => {
+    if (!canEdit) return;
+    const aplicar = (base: MMData) => {
+      const next = clone(base);
+      const f = findNode(next.root, id);
+      if (!f) return null;
+      // guarda já dentro dos limites: arrastar pra fora da tela gravava número
+      // negativo no JSON do mapa
+      f.node.w = Math.min(MANUAL_MAX_W, Math.max(MANUAL_MIN_W, Math.round(w)));
+      f.node.h = Math.min(MANUAL_MAX_H, Math.max(NODE_H, Math.round(h)));
+      return next;
+    };
+    if (comHistorico) {
+      // push() empilharia o estado ATUAL, que já é o último quadro do arraste —
+      // desfazer voltaria um pixel. Empilha o estado de ANTES do arraste.
+      const antes = baseResize.current || clone(data);
+      baseResize.current = null;
+      const next = aplicar(data);
+      if (!next) return;
+      undo.current.push(antes);
+      if (undo.current.length > 80) undo.current.shift();
+      redo.current = [];
+      setData(next); setDirty(true);
+      return;
+    }
+    if (!baseResize.current) baseResize.current = clone(data);
+    const next = aplicar(data);
+    if (next) { setData(next); setDirty(true); }
+  }, [data, canEdit]);
+
+  const resetSize = useCallback((id: string) => {
+    if (!canEdit) return;
+    const next = clone(data);
+    const f = findNode(next.root, id); if (!f) return;
+    delete f.node.w; delete f.node.h;
+    push(next);
   }, [data, push, canEdit]);
 
   const addChild = useCallback((pid: string) => {
@@ -494,11 +590,12 @@ function Editor() {
         ...n, selected: n.id === selectedId,
         data: { ...n.data, editingId, seed: n.id === editingId ? editSeed : undefined,
           startEdit: (id: string) => { if (!canEdit) return; setEditSeed(null); setEditingId(id); },
-          commitEdit, addChild, addSibling, toggle },
+          commitEdit, addChild, addSibling, toggle, resize, resetSize, canEdit,
+          getZoom: () => rf.getZoom() },
       })),
       edges: l.edges,
     };
-  }, [data, selectedId, editingId, editSeed, commitEdit, addChild, addSibling, toggle, canEdit]);
+  }, [data, selectedId, editingId, editSeed, commitEdit, addChild, addSibling, toggle, canEdit, resize, resetSize, rf]);
 
   useEffect(() => { if (!loading) setTimeout(() => rf.fitView({ padding: 0.3, duration: 300 }), 50); }, [loading]); // eslint-disable-line
 
@@ -537,6 +634,15 @@ function Editor() {
                 <button className="text-[10px] text-muted-foreground hover:text-foreground ml-1" onClick={() => setColor(selectedId, "")}>limpar</button>
               )}
             </div>
+          )}
+          {/* o puxador do nó também resolve, mas quem ajustou sem querer precisa
+              de um caminho óbvio pra desfazer */}
+          {sel && canEdit && (sel.w || sel.h) && (
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5 ml-1"
+              onClick={() => resetSize(selectedId)}
+              title="Volta a caixa a se medir pelo texto">
+              <Maximize2 className="h-3.5 w-3.5" /> Tamanho automático
+            </Button>
           )}
           <div className="flex items-center gap-1 ml-2 pl-2 border-l">
             <DropdownMenu>
@@ -600,7 +706,7 @@ function Editor() {
         </ReactFlow>
       </div>
       <div className="px-3 py-1.5 border-t text-[11px] text-muted-foreground bg-background">
-        <b>Duplo clique</b> edita o texto · <b>Tab</b> filho · <b>Enter</b> irmão · <b>Delete</b> apagar · <b>Espaço</b> colapsar · <b>Ctrl+Z</b> desfazer
+        <b>Duplo clique</b> edita o texto · <b>Tab</b> filho · <b>Enter</b> irmão · <b>Delete</b> apagar · <b>Espaço</b> colapsar · <b>Ctrl+Z</b> desfazer · <b>canto do nó</b> ajusta o tamanho (duplo clique volta ao automático)
       </div>
     </div>
   );
