@@ -44,6 +44,8 @@ import { useCompanyIdentification } from "@/hooks/useCompanyIdentification";
 import { CompanyFinancialSidePanel } from "./CompanyFinancialSidePanel";
 import { ConversationTagsSection } from "./ConversationTagsSection";
 import { LinkExistingLeadDialog } from "./LinkExistingLeadDialog";
+import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
+import { trackMeetingEventOnStageChange, isRealizedStage } from "@/hooks/useMeetingEventTracker";
 
 interface CRMStaff {
   id: string;
@@ -774,6 +776,8 @@ export function ConversationSidebar({
   const [etapasDoLead, setEtapasDoLead] = useState<{ value: string; label: string }[]>([]);
   const [funilDoLead, setFunilDoLead] = useState<string>("");
   const [trocandoEtapa, setTrocandoEtapa] = useState(false);
+  const [funilIdDoLead, setFunilIdDoLead] = useState<string>("");
+  const [tarefaObrigatoriaLeadId, setTarefaObrigatoriaLeadId] = useState<string | null>(null);
 
   useEffect(() => {
     const leadId = conversation.lead_id;
@@ -786,6 +790,7 @@ export function ConversationSidebar({
         .eq("id", leadId)
         .maybeSingle();
       if (!vivo || !lead?.pipeline_id) return;
+      setFunilIdDoLead(lead.pipeline_id);
       setEtapaAtual(lead.stage_id || "");
       setFunilDoLead((lead as any).pipeline?.name || "");
       const { data: sts } = await supabase
@@ -814,8 +819,17 @@ export function ConversationSidebar({
       toast.error(error.message?.includes("valor") ? error.message : "Não consegui mudar a etapa");
       return;
     }
-    toast.success(`Movido para ${etapasDoLead.find((e) => e.value === novaEtapa)?.label || "a nova etapa"}`);
+    const nomeEtapa = etapasDoLead.find((e) => e.value === novaEtapa)?.label || "";
+    // Mudar etapa por aqui não registrava o evento da reunião: reunião marcada
+    // como realizada no Atendimento não entrava na contagem do closer
+    // (o Kanban e o detalhe do lead já registravam).
+    if (staffId && funilIdDoLead) {
+      await trackMeetingEventOnStageChange(conversation.lead_id, funilIdDoLead, novaEtapa, nomeEtapa, staffId);
+    }
+    toast.success(`Movido para ${nomeEtapa || "a nova etapa"}`);
     refetchLinkedLeads?.();
+    // Reunião realizada: exige o follow-up com data e hora
+    if (isRealizedStage(nomeEtapa)) setTarefaObrigatoriaLeadId(conversation.lead_id);
   };
 
   return (
@@ -1526,6 +1540,24 @@ export function ConversationSidebar({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Follow-up OBRIGATÓRIO depois de marcar a reunião como realizada */}
+      {tarefaObrigatoriaLeadId && (
+        <AddActivityDialog
+          open
+          onOpenChange={(o) => {
+            if (o) return;
+            toast.error("Marque o follow-up com data e hora — reunião realizada não fica sem próximo passo");
+          }}
+          leadId={tarefaObrigatoriaLeadId}
+          exigirDataHora
+          tituloDialogo="Follow-up da reunião"
+          aviso="A reunião foi marcada como realizada. Agende agora o próximo contato com data e hora — sem isso o lead sai da sua régua."
+          tipoPadrao="followup"
+          tituloPadrao="Follow-up pós-reunião"
+          onSuccess={() => setTarefaObrigatoriaLeadId(null)}
+        />
+      )}
     </div>
   );
 }

@@ -30,7 +30,7 @@ import { ImportLeadsDialog } from "@/components/crm/ImportLeadsDialog";
 import { createStageActivities } from "@/hooks/useStageActions";
 import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
-import { trackMeetingEventOnStageChange } from "@/hooks/useMeetingEventTracker";
+import { trackMeetingEventOnStageChange, isRealizedStage } from "@/hooks/useMeetingEventTracker";
 import { CRMFiltersBar, CRMFilters } from "@/components/crm/CRMFiltersBar";
 import { useCRMContext } from "./CRMLayout";
 import { KanbanLeadCard } from "@/components/crm/KanbanLeadCard";
@@ -145,7 +145,7 @@ export const CRMPipelinePage = () => {
 
   // Stage move dialog state
   // Tarefa obrigatória de próximo contato ao mover pra etapa de reunião agendada
-  const [forcedTaskLeadId, setForcedTaskLeadId] = useState<string | null>(null);
+  const [forcedTask, setForcedTask] = useState<{ leadId: string; motivo: "agendada" | "realizada" } | null>(null);
   const [stageMoveDialog, setStageMoveDialog] = useState<{
     open: boolean;
     leadId: string;
@@ -734,9 +734,13 @@ export const CRMPipelinePage = () => {
       
       await createStageActivities(stageMoveDialog.leadId, stageMoveDialog.targetStageId);
 
-      // Etapa de reunião agendada: obriga criar a tarefa do próximo contato
-      if (/agendad/i.test(stageMoveDialog.targetStageName || "")) {
-        setForcedTaskLeadId(stageMoveDialog.leadId);
+      // Reunião agendada OU realizada: obriga criar a tarefa do próximo contato.
+      // Realizada entrou em 28/09/2026 (Fabrício): reunião feita sem follow-up
+      // marcado é lead que esfria sozinho.
+      {
+        const nome = stageMoveDialog.targetStageName || "";
+        if (isRealizedStage(nome)) setForcedTask({ leadId: stageMoveDialog.leadId, motivo: "realizada" });
+        else if (/agendad/i.test(nome)) setForcedTask({ leadId: stageMoveDialog.leadId, motivo: "agendada" });
       }
       
       // Track meeting events (scheduled/realized) for CRM metrics
@@ -1146,16 +1150,25 @@ export const CRMPipelinePage = () => {
         defaultPipelineId={selectedPipeline}
       />
 
-      {/* Tarefa OBRIGATÓRIA de próximo contato (lead movido pra reunião agendada) */}
-      {forcedTaskLeadId && (
+      {/* Tarefa OBRIGATÓRIA de próximo contato (reunião agendada ou realizada) */}
+      {forcedTask && (
         <AddActivityDialog
-          open={!!forcedTaskLeadId}
+          open
           onOpenChange={(o) => {
             if (o) return;
-            toast.error("Crie a tarefa do próximo contato — reunião agendada não fica sem follow-up");
+            toast.error(forcedTask.motivo === "realizada"
+              ? "Marque o follow-up com data e hora — reunião realizada não fica sem próximo passo"
+              : "Crie a tarefa do próximo contato — reunião agendada não fica sem follow-up");
           }}
-          leadId={forcedTaskLeadId}
-          onSuccess={() => setForcedTaskLeadId(null)}
+          leadId={forcedTask.leadId}
+          exigirDataHora={forcedTask.motivo === "realizada"}
+          tituloDialogo={forcedTask.motivo === "realizada" ? "Follow-up da reunião" : "Nova Atividade"}
+          aviso={forcedTask.motivo === "realizada"
+            ? "A reunião foi marcada como realizada. Agende agora o próximo contato com data e hora — sem isso o lead sai da sua régua."
+            : undefined}
+          tipoPadrao={forcedTask.motivo === "realizada" ? "followup" : undefined}
+          tituloPadrao={forcedTask.motivo === "realizada" ? "Follow-up pós-reunião" : undefined}
+          onSuccess={() => setForcedTask(null)}
         />
       )}
     </div>

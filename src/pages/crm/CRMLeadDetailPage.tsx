@@ -74,7 +74,7 @@ import { toast } from "sonner";
 import { useCRMContext } from "./CRMLayout";
 import { createStageActivities } from "@/hooks/useStageActions";
 import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
-import { trackMeetingEventOnStageChange } from "@/hooks/useMeetingEventTracker";
+import { trackMeetingEventOnStageChange, isRealizedStage } from "@/hooks/useMeetingEventTracker";
 import {
   LeadActivitiesTab,
   LeadCustomFieldsTab,
@@ -98,6 +98,7 @@ import { OfficialTemplateSendDialog } from "@/components/crm/OfficialTemplateSen
 import { ConvertLeadToCompanyDialog } from "@/components/crm/lead-detail/ConvertLeadToCompanyDialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 
 interface Lead {
   id: string;
@@ -182,6 +183,8 @@ export const CRMLeadDetailPage = () => {
   const adNames = useMetaAdNames();
   const [stages, setStages] = useState<Stage[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+  // Reunião realizada sem follow-up marcado é lead que esfria sozinho (Fabrício, 28/09/2026)
+  const [tarefaObrigatoriaLeadId, setTarefaObrigatoriaLeadId] = useState<string | null>(null);
   const [lossReasons, setLossReasons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   // lead existe mas está com outra pessoa (RLS esconde): mostra aviso em vez de erro
@@ -509,6 +512,11 @@ export const CRMLeadDetailPage = () => {
           targetStage.name,
           staffId
         );
+      }
+
+      // Reunião realizada: exige o follow-up com data e hora antes de seguir
+      if (targetStage && isRealizedStage(targetStage.name)) {
+        setTarefaObrigatoriaLeadId(lead.id);
       }
 
       toast.success("Etapa atualizada");
@@ -1745,6 +1753,24 @@ export const CRMLeadDetailPage = () => {
           onOpenChange={setConvertDialogOpen}
           lead={lead}
           onSuccess={loadLead}
+        />
+      )}
+
+      {/* Follow-up OBRIGATÓRIO depois de marcar a reunião como realizada */}
+      {tarefaObrigatoriaLeadId && (
+        <AddActivityDialog
+          open
+          onOpenChange={(o) => {
+            if (o) return;
+            toast.error("Marque o follow-up com data e hora — reunião realizada não fica sem próximo passo");
+          }}
+          leadId={tarefaObrigatoriaLeadId}
+          exigirDataHora
+          tituloDialogo="Follow-up da reunião"
+          aviso="A reunião foi marcada como realizada. Agende agora o próximo contato com data e hora — sem isso o lead sai da sua régua."
+          tipoPadrao="followup"
+          tituloPadrao="Follow-up pós-reunião"
+          onSuccess={() => { setTarefaObrigatoriaLeadId(null); loadLead(); }}
         />
       )}
     </div>

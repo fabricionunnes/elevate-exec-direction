@@ -20,6 +20,12 @@ interface AddActivityDialogProps {
   onOpenChange: (open: boolean) => void;
   leadId: string;
   onSuccess: () => void;
+  /** Tarefa obrigatória: exige data/hora, esconde o Cancelar e explica o porquê. */
+  exigirDataHora?: boolean;
+  tituloDialogo?: string;
+  aviso?: string;
+  tipoPadrao?: string;
+  tituloPadrao?: string;
 }
 
 const ACTIVITY_TYPES = [
@@ -35,11 +41,14 @@ const ACTIVITY_TYPES = [
 // Papéis que podem atribuir a tarefa a outro usuário
 const ASSIGN_ROLES = ["master", "admin", "head_comercial"];
 
-export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: AddActivityDialogProps) => {
+export const AddActivityDialog = ({
+  open, onOpenChange, leadId, onSuccess,
+  exigirDataHora = false, tituloDialogo, aviso, tipoPadrao, tituloPadrao,
+}: AddActivityDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    type: "call",
-    title: "",
+    type: tipoPadrao || "call",
+    title: tituloPadrao || "",
     description: "",
     scheduled_at: "",
   });
@@ -82,6 +91,10 @@ export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: Add
     e.preventDefault();
     if (!formData.title.trim()) {
       toast.error("Título é obrigatório");
+      return;
+    }
+    if (exigirDataHora && !formData.scheduled_at) {
+      toast.error("Coloque a data e a hora do follow-up");
       return;
     }
 
@@ -129,7 +142,7 @@ export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: Add
       toast.success("Atividade criada");
       onSuccess();
       onOpenChange(false);
-      setFormData({ type: "call", title: "", description: "", scheduled_at: "" });
+      setFormData({ type: tipoPadrao || "call", title: tituloPadrao || "", description: "", scheduled_at: "" });
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar atividade");
     } finally {
@@ -141,8 +154,11 @@ export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: Add
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nova Atividade</DialogTitle>
+          <DialogTitle>{tituloDialogo || "Nova Atividade"}</DialogTitle>
         </DialogHeader>
+        {aviso && (
+          <p className="text-sm text-muted-foreground border-l-2 border-primary pl-3">{aviso}</p>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label>Tipo</Label>
@@ -173,15 +189,19 @@ export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: Add
             <Input value={formData.title} onChange={(e) => setFormData(p => ({ ...p, title: e.target.value }))} />
           </div>
           <div>
-            <Label>Data/Hora</Label>
-            <Input type="datetime-local" step={900} value={formData.scheduled_at} onChange={(e) => setFormData(p => ({ ...p, scheduled_at: e.target.value }))} />
+            <Label>Data/Hora{exigirDataHora ? " *" : ""}</Label>
+            <Input type="datetime-local" step={900} required={exigirDataHora}
+              min={exigirDataHora ? new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : undefined}
+              value={formData.scheduled_at} onChange={(e) => setFormData(p => ({ ...p, scheduled_at: e.target.value }))} />
           </div>
           <div>
             <Label>Descrição</Label>
             <Textarea value={formData.description} onChange={(e) => setFormData(p => ({ ...p, description: e.target.value }))} rows={3} />
           </div>
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            {!exigirDataHora && (
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            )}
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Criar
