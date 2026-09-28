@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-28T10:00:54",
+ "gerado_em": "2026-09-28T15:01:00",
  "posts": [
+  {
+   "slug": "fofoca-vendedor-revela-falta-metrica-cobrar",
+   "url": "/blog/fofoca-vendedor-revela-falta-metrica-cobrar/",
+   "titulo": "Fofoca no comercial revela que falta métrica para cobrar",
+   "resumo": "Vendedor que fica de conversa na recepção não tem rotina de cobrança estruturada. Ociosidade aparece porque ninguém sabe o que ele devia estar fazendo naquele momento.",
+   "tags": [
+    "ociosidade",
+    "rotina de cobrança",
+    "estrutura comercial",
+    "meta mensal",
+    "acompanhamento"
+   ],
+   "tipo": "diario",
+   "data": "2026-09-28",
+   "ts": 2129
+  },
   {
    "slug": "evento-nao-estrutura-conversao-comercial",
    "url": "/blog/evento-nao-estrutura-conversao-comercial/",
