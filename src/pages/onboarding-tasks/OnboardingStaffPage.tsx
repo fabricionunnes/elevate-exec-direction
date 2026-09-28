@@ -198,17 +198,28 @@ const OnboardingStaffPage = () => {
 
   const toggleStatus = async (member: Staff) => {
     try {
-      const { error } = await supabase
+      // .select() devolve as linhas alteradas: sem isso, quando a política de
+      // acesso bloqueia (ex.: o seu login é de outro tenant e o membro não tem
+      // tenant), o banco não dá erro, apenas não altera nada — e a tela dizia
+      // "Membro desativado" sem ter desativado. (Fabrício, 28/09/2026)
+      const { data, error } = await supabase
         .from("onboarding_staff")
         .update({ is_active: !member.is_active })
-        .eq("id", member.id);
+        .eq("id", member.id)
+        .select("id, is_active");
 
       if (error) throw error;
+      if (!data || data.length === 0) {
+        toast.error("Não foi possível alterar: seu acesso não permite mexer neste membro. Fale com o suporte.");
+        return;
+      }
       toast.success(member.is_active ? "Membro desativado" : "Membro ativado");
       fetchStaff();
     } catch (error: any) {
       console.error("Error toggling status:", error);
-      toast.error("Erro ao alterar status");
+      // mostrar o motivo: antes só dizia "Erro ao alterar status" e ninguém
+      // conseguia descobrir a causa sem abrir o console
+      toast.error(error?.message ? `Erro ao alterar status: ${error.message}` : "Erro ao alterar status");
     }
   };
 
