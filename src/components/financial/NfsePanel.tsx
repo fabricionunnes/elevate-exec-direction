@@ -436,7 +436,10 @@ export function NfsePanel() {
         a.download = `NFSe-${record.number || record.chave_acesso.slice(-8)}.pdf`;
         a.click();
         if (d.fonte === "espelho") {
-          toast.info("O serviço de PDF do gov está instável — baixei o espelho gerado do XML oficial.");
+          // mostra POR QUE o gov não devolveu: antes só dizia "instável" e
+          // ninguém conseguia distinguir fora do ar de falta de permissão
+          const motivo = Array.isArray(d.motivo_gov) && d.motivo_gov.length ? ` (${d.motivo_gov.join(" · ")})` : "";
+          toast.info(`O PDF oficial do gov não veio${motivo}. Baixei o espelho gerado do XML, que é o documento legal.`, { duration: 12000 });
         }
       } catch (e: any) {
         toast.error(e?.message || "Não consegui baixar o PDF");
