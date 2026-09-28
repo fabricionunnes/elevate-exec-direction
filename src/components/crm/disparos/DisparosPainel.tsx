@@ -14,6 +14,7 @@ import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart,
   ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis,
 } from "recharts";
+import { FunilVendas3D } from "@/components/crm/disparos/FunilVendas3D";
 
 // Paleta validada pro daltonismo (skill dataviz: ΔE mínimo 9,1 entre vizinhas)
 const C = {
@@ -281,28 +282,8 @@ export function DisparosPainel({ from, to, periodoTexto, custoPorMensagem = 0 }:
             <Card>
               <CardContent className="p-4">
                 <p className="text-sm font-medium flex items-center gap-1.5"><TrendingUp className="h-4 w-4" />Do envio à venda</p>
-                <p className="text-xs text-muted-foreground mb-3">Quanto sobra em cada passo</p>
-                <div className="space-y-2">
-                  {funilEtapas.map((e, i) => {
-                    const base = funilEtapas[0].valor || 1;
-                    const largura = Math.max(3, (e.valor / base) * 100);
-                    const anterior = i > 0 ? funilEtapas[i - 1].valor : null;
-                    return (
-                      <div key={e.etapa}>
-                        <div className="flex items-baseline justify-between text-xs mb-0.5">
-                          <span className="font-medium">{e.etapa}</span>
-                          <span className="text-muted-foreground">
-                            {e.valor.toLocaleString("pt-BR")}
-                            {anterior !== null && anterior > 0 && <span className="ml-1.5 text-[10px]">({Math.round(pctNum(e.valor, anterior))}% do passo anterior)</span>}
-                          </span>
-                        </div>
-                        <div className="h-6 rounded-md bg-muted/60 overflow-hidden">
-                          <div className="h-full rounded-md transition-all" style={{ width: `${largura}%`, background: `linear-gradient(90deg, ${e.cor}, ${e.cor}bb)`, boxShadow: `inset 0 -6px 10px -6px rgba(0,0,0,.35)` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <p className="text-xs text-muted-foreground mb-1">Quanto sobra em cada passo</p>
+                <FunilVendas3D etapas={funilEtapas} />
               </CardContent>
             </Card>
           </div>
