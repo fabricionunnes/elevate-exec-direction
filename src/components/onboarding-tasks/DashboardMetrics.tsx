@@ -57,6 +57,7 @@ import {
 import { TasksListDialog } from "./TasksListDialog";
 import { DashboardAgenda } from "./DashboardAgenda";
 import { HealthScoreHistoryDialog } from "./health-score/HealthScoreHistoryDialog";
+import { ehRecorrente } from "@/lib/contrato";
 
 // Meta de churn mensal usada como referência visual no dashboard
 const CHURN_TARGET_PERCENT = 5;
@@ -109,6 +110,7 @@ interface Company {
   status_changed_at?: string | null;
   created_at: string;
   payment_method?: string | null;
+  renewal_plan_type?: string | null;
   consultant_id?: string | null;
   cs_id?: string | null;
   is_simulator?: boolean;
@@ -633,7 +635,7 @@ const DashboardMetrics = ({
     // We use `companies` (not filteredCompanies) because inactive/closed companies are still eligible
     const companiesWithContractEndingInPeriod = companies.filter(c => {
       if (c.is_simulator) return false;
-      if (c.payment_method === "monthly") return false;
+      if (ehRecorrente(c)) return false;
       if (!c.contract_end_date) return false;
       const endDate = new Date(c.contract_end_date);
       return isWithinInterval(endDate, { start, end });
@@ -676,7 +678,7 @@ const DashboardMetrics = ({
 
     const notRenewedCompanies = companies.filter(c => {
       if (c.is_simulator) return false;
-      if (c.payment_method === "monthly") return false;
+      if (ehRecorrente(c)) return false;
 
       const explicitlyNotRenewed = c.renewal_status === "nao_renovado";
       // Auto not-renewed: closed in period, no renewal, AND has at least one project without churn_reason

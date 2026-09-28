@@ -54,6 +54,7 @@ import {
 import RenewalsPanel from "@/components/onboarding-tasks/RenewalsPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import CompaniesReportPDFExport from "@/components/onboarding-tasks/CompaniesReportPDFExport";
+import { ehRecorrente } from "@/lib/contrato";
 
 interface Staff {
   id: string;
@@ -73,6 +74,7 @@ interface CompanyReport {
   consultant_name: string | null;
   contract_start_date: string | null;
   contract_end_date: string | null;
+  renewal_plan_type?: string | null;
   contract_value: number | null;
   payment_method: string | null;
   status: string;
@@ -189,6 +191,7 @@ export default function OnboardingCompaniesReportPage() {
         contract_end_date,
         contract_value,
         payment_method,
+        renewal_plan_type,
         status,
         consultant:consultant_id(name),
         onboarding_projects!inner(
@@ -211,6 +214,7 @@ export default function OnboardingCompaniesReportPage() {
         contract_end_date,
         contract_value,
         payment_method,
+        renewal_plan_type,
         status,
         consultant:consultant_id(name)
       `)
@@ -1052,7 +1056,7 @@ export default function OnboardingCompaniesReportPage() {
                       </TableCell>
                       <TableCell className="text-[10px] sm:text-xs lg:text-sm py-2 md:py-3 hidden sm:table-cell">{company.consultant_name || "—"}</TableCell>
                       <TableCell className="text-[10px] sm:text-xs lg:text-sm py-2 md:py-3">{formatDate(company.contract_start_date)}</TableCell>
-                      <TableCell className="text-[10px] sm:text-xs lg:text-sm py-2 md:py-3">{company.payment_method === "monthly" ? "—" : formatDate(company.contract_end_date)}</TableCell>
+                      <TableCell className="text-[10px] sm:text-xs lg:text-sm py-2 md:py-3">{ehRecorrente(company) ? "Recorrente" : formatDate(company.contract_end_date)}</TableCell>
                       <TableCell className="text-right text-[10px] sm:text-xs lg:text-sm py-2 md:py-3 hidden sm:table-cell">{company.contract_months}</TableCell>
                       {/* Hide financial cells for CS */}
                       {!isCS && (
@@ -1094,7 +1098,7 @@ export default function OnboardingCompaniesReportPage() {
                       <TableCell className="py-2 md:py-3 hidden sm:table-cell">
                         {company.payment_method === "card" ? (
                           <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-[10px]">Cartão</Badge>
-                        ) : company.payment_method === "monthly" ? (
+                        ) : ehRecorrente(company) ? (
                           <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-[10px]">Recorr.</Badge>
                         ) : (
                           <span className="text-muted-foreground">—</span>

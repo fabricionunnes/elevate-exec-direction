@@ -51,6 +51,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { MyTasksPanel } from "@/components/onboarding-tasks/MyTasksPanel";
 import { MeetingsPanel } from "@/components/onboarding-tasks/DashboardMeetingsTab";
 import { UnassignedTasksDialog } from "@/components/onboarding-tasks/UnassignedTasksDialog";
+import { ehRecorrente, proximaRenovacaoMensal } from "@/lib/contrato";
 
 interface Service {
   id: string;
@@ -98,6 +99,7 @@ interface Company {
   contract_end_date: string | null;
   contract_value: number | null;
   payment_method?: string | null;
+  renewal_plan_type?: string | null;
   status_changed_at?: string | null;
   created_at: string;
   projects?: OnboardingProject[];
@@ -328,6 +330,7 @@ const OnboardingTasksPage = () => {
             contract_end_date,
             contract_value,
             payment_method,
+            renewal_plan_type,
             status_changed_at,
             created_at,
             instagram,
@@ -1520,7 +1523,7 @@ const OnboardingTasksPage = () => {
         if (activeMetricFilter.type === "contracts" && activeMetricFilter.value === "ending") {
           // Contratos recorrentes, empresas encerradas e projetos encerrados não aparecem
           const hasClosedProject = company.projects?.some(p => p.status === "closed" || p.status === "completed");
-          if (company.payment_method === "monthly" || company.status === "inactive" || company.status === "closed" || hasClosedProject) {
+          if (ehRecorrente(company) || company.status === "inactive" || company.status === "closed" || hasClosedProject) {
             matchesMetricFilter = false;
           } else if (!company.contract_end_date) {
             matchesMetricFilter = false;
@@ -1532,7 +1535,7 @@ const OnboardingTasksPage = () => {
         } else if (activeMetricFilter.type === "contracts" && activeMetricFilter.value === "expired") {
           // Contratos recorrentes, empresas encerradas e projetos encerrados não aparecem
           const hasClosedProject = company.projects?.some(p => p.status === "closed" || p.status === "completed");
-          if (company.payment_method === "monthly" || company.status === "inactive" || company.status === "closed" || hasClosedProject) {
+          if (ehRecorrente(company) || company.status === "inactive" || company.status === "closed" || hasClosedProject) {
             matchesMetricFilter = false;
           } else if (!company.contract_end_date) {
             matchesMetricFilter = false;
@@ -3192,7 +3195,7 @@ const OnboardingTasksPage = () => {
                             <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-muted">
                               <Calendar className="h-2.5 w-2.5 text-muted-foreground" />
                               <span className="font-medium text-foreground">
-                                {company.payment_method === 'monthly'
+                                {ehRecorrente(company)
                                   ? 'Recorr.'
                                   : company.contract_end_date 
                                     ? format(new Date(company.contract_end_date), "dd/MM/yy")
@@ -3302,12 +3305,18 @@ const OnboardingTasksPage = () => {
                         </div>
                         {/* Contract End Date / Recurring — com contagem de dias até a renovação */}
                         {(() => {
-                          if (company.payment_method === 'monthly' || !company.contract_end_date) {
+                          // Contrato mensal não vence, renova. Mostrar o fim do
+                          // primeiro ciclo aqui deixava 11 clientes ativos em
+                          // vermelho como "vencido" (Fabrício, 28/09/2026).
+                          if (ehRecorrente(company) || !company.contract_end_date) {
+                            const renova = ehRecorrente(company) ? proximaRenovacaoMensal(company.contract_start_date) : null;
                             return (
-                              <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-muted">
+                              <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-muted"
+                                title={renova ? `Contrato mensal · próxima renovação em ${format(renova, "dd/MM/yyyy")}` : 'Contrato mensal (sem data de início cadastrada)'}>
                                 <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                                 <span className="text-sm font-medium text-foreground">
-                                  {company.payment_method === 'monthly' ? 'Recorrente' : '—'}
+                                  {ehRecorrente(company) ? 'Recorrente' : '—'}
+                                  {renova && <span className="text-muted-foreground font-normal"> · renova {format(renova, "dd/MM")}</span>}
                                 </span>
                               </div>
                             );
