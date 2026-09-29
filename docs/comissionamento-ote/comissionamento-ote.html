@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Comissionamento por OTE</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #14181f; --muted: #5b6472; --line: #e3e6eb; --bg: #f6f7f9;
+    --red: #d64545; --red-bg: #fdecec;
+    --yellow: #e0a100; --yellow-bg: #fff6d9;
+    --green: #1f9d5a; --green-bg: #e3f6ec;
+    --blue: #0B2D4A; --brand-red: #E30613;
+  }
+  body { font-family: "Inter", "Helvetica Neue", Arial, sans-serif; color: var(--ink); background: #fff;
+         width: 210mm; padding: 10mm 14mm 0; font-size: 10.5pt; line-height: 1.35; }
+  header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 6px; border-bottom: 3px solid var(--blue); position: relative; }
+  header::after { content: ""; position: absolute; left: 0; bottom: -6px; width: 70mm; height: 3px; background: var(--brand-red); }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 128px; height: 80px; overflow: hidden; position: relative; flex: none; }
+  .logo img { position: absolute; width: 140px; left: -6px; top: -32px; }
+  .eyebrow { font-size: 8.5pt; font-weight: 700; letter-spacing: 1.2px; color: var(--brand-red); text-transform: uppercase; }
+  h1 { white-space: nowrap; font-size: 20pt; letter-spacing: -0.5px; color: var(--blue); }
+  header .sub { color: var(--muted); font-size: 9.5pt; text-align: right; }
+  h2 { font-size: 11.5pt; text-transform: uppercase; letter-spacing: 0.6px; color: var(--blue); margin-bottom: 6px; }
+  h2 span { display: inline-block; background: var(--blue); color: #fff; width: 18px; height: 18px; border-radius: 50%;
+            text-align: center; line-height: 18px; font-size: 9.5pt; margin-right: 6px; }
+  section { margin-top: 10px; }
+
+  section { margin-top: 10px; }
+  .ote { margin-top: 12px !important; display: flex; align-items: center; gap: 10px; background: var(--bg); border-radius: 10px; padding: 9px 12px; margin-top: 10px; }
+  .pill { border-radius: 8px; padding: 6px 12px; font-weight: 700; text-align: center; }
+  .pill small { display: block; font-weight: 400; font-size: 8.5pt; color: var(--muted); }
+  .pill.fixo { background: #fff; border: 1.5px solid var(--line); }
+  .pill.var { background: #fff; border: 1.5px solid var(--green); color: var(--green); }
+  .pill.total { background: var(--blue); color: #fff; }
+  .pill.total small { color: #c9d4f2; }
+  .op { font-size: 16pt; font-weight: 700; color: var(--muted); }
+  .ote p { flex: 1; font-size: 9.5pt; color: var(--muted); margin-left: 6px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 10pt; margin-top: 6px; }
+  th { text-align: left; font-size: 8.5pt; text-transform: uppercase; color: var(--muted); border-bottom: 1.5px solid var(--line); padding: 4px 8px; }
+  td { padding: 3.5px 8px; border-bottom: 1px solid var(--line); }
+  td.num { font-weight: 700; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+
+  .tags { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tag { border-radius: 10px; padding: 8px 10px; border-left: 6px solid; }
+  .tag b { font-size: 12pt; display: block; }
+  .tag .range { font-weight: 700; }
+  .tag p { font-size: 9pt; color: var(--muted); margin-top: 2px; }
+  .tag.r { background: var(--red-bg); border-color: var(--red); } .tag.r b { color: var(--red); }
+  .tag.y { background: var(--yellow-bg); border-color: var(--yellow); } .tag.y b { color: #a67700; }
+  .tag.g { background: var(--green-bg); border-color: var(--green); } .tag.g b { color: var(--green); }
+
+  .rules { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .rule { border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .rule h3 { font-size: 10.5pt; margin-bottom: 5px; }
+  .months { display: flex; gap: 5px; align-items: center; margin: 4px 0 5px; }
+  .m { width: 34px; height: 30px; border-radius: 6px; color: #fff; font-size: 8pt; font-weight: 700;
+       display: flex; align-items: center; justify-content: center; }
+  .m.r { background: var(--red); } .m.y { background: var(--yellow); } .m.g { background: var(--green); }
+  .arrow { font-size: 13pt; color: var(--muted); }
+  .stop { background: var(--ink); color: #fff; border-radius: 6px; font-size: 8pt; font-weight: 700; padding: 6px 7px; }
+  .rule p { font-size: 9pt; color: var(--muted); }
+
+  footer { margin-top: 10px; background: var(--blue); color: #fff; border-radius: 10px; padding: 9px 12px; font-size: 10pt; }
+  footer b { color: #fff; background: var(--brand-red); padding: 0 4px; border-radius: 3px; }
+  .note { font-size: 8pt; color: var(--muted); margin-top: 5px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo"><img src="unv-logo.png" alt="UNV"></div>
+    <div><div class="eyebrow">Política comercial</div><h1>Comissionamento por OTE</h1></div>
+  </div>
+  <div class="sub">Guia rápido<br>para o time comercial</div>
+</header>
+
+<div class="ote">
+  <div class="pill fixo">Fixo<small>todo mês</small></div>
+  <div class="op">+</div>
+  <div class="pill var">Comissão<small>depende da meta</small></div>
+  <div class="op">=</div>
+  <div class="pill total">OTE<small>ganho ao bater 100%</small></div>
+  <p><b style="color:var(--ink)">OTE (On-Target Earnings)</b> é quanto você ganha quando bate 100% da meta. Quanto mais você entrega, mais a comissão sobe, em degraus.</p>
+</div>
+
+<section>
+  <h2><span>1</span>A escada da comissão</h2>
+  <svg viewBox="0 0 720 250" width="100%" height="235" style="display:block">
+    <!-- zone backgrounds -->
+    <rect x="60" y="10" width="140" height="200" fill="#fdecec"/>
+    <rect x="200" y="10" width="200" height="200" fill="#fff6d9"/>
+    <rect x="400" y="10" width="310" height="200" fill="#e3f6ec"/>
+    <!-- gridlines -->
+    <g stroke="#d9dde3" stroke-dasharray="3 3">
+      <line x1="60" y1="170" x2="710" y2="170"/>
+      <line x1="60" y1="130" x2="710" y2="130"/>
+      <line x1="60" y1="90" x2="710" y2="90"/>
+      <line x1="60" y1="50" x2="710" y2="50"/>
+    </g>
+    <g font-size="12" fill="#5b6472" text-anchor="end" font-family="Arial">
+      <text x="52" y="214">0</text>
+      <text x="52" y="174">1x</text>
+      <text x="52" y="134">2x</text>
+      <text x="52" y="94">3x</text>
+      <text x="52" y="54">4x</text>
+    </g>
+    <!-- steps -->
+    <g>
+      <rect x="64" y="206" width="132" height="4" rx="2" fill="#d64545"/>
+      <rect x="204" y="170" width="92" height="40" rx="5" fill="#e0a100"/>
+      <rect x="304" y="150" width="92" height="60" rx="5" fill="#e0a100"/>
+      <rect x="404" y="130" width="92" height="80" rx="5" fill="#1f9d5a"/>
+      <rect x="504" y="90" width="92" height="120" rx="5" fill="#1f9d5a"/>
+      <rect x="604" y="50" width="102" height="160" rx="5" fill="#16804a"/>
+    </g>
+    <g font-family="Arial" font-weight="700" text-anchor="middle">
+      <text x="130" y="190" font-size="15" fill="#d64545">SEM comissão</text>
+      <text x="250" y="163" font-size="15" fill="#14181f">1x</text>
+      <text x="350" y="143" font-size="15" fill="#14181f">1,5x</text>
+      <text x="450" y="123" font-size="15" fill="#14181f">2x</text>
+      <text x="550" y="83" font-size="15" fill="#14181f">3x</text>
+      <text x="655" y="43" font-size="15" fill="#14181f">4x</text>
+    </g>
+    <!-- axis -->
+    <line x1="60" y1="210" x2="710" y2="210" stroke="#14181f" stroke-width="1.5"/>
+    <g font-family="Arial" font-size="12" fill="#14181f" text-anchor="middle" font-weight="700">
+      <text x="60" y="228">0%</text>
+      <text x="200" y="228">70%</text>
+      <text x="300" y="228">85%</text>
+      <text x="400" y="228">100%</text>
+      <text x="500" y="228">120%</text>
+      <text x="600" y="228">150%</text>
+    </g>
+    <text x="385" y="246" font-family="Arial" font-size="11" fill="#5b6472" text-anchor="middle">% da meta atingida no mês</text>
+    <!-- gate marker -->
+    <line x1="200" y1="10" x2="200" y2="210" stroke="#d64545" stroke-width="2.5"/>
+    <text x="206" y="24" font-family="Arial" font-size="11" font-weight="700" fill="#d64545">Portão: 70%</text>
+  </svg>
+</section>
+
+<section>
+  <h2><span>2</span>Na prática (exemplo com X = R$ 1.000)</h2>
+  <table>
+    <tr><th>Atingimento da meta</th><th>Comissão</th><th>Exemplo</th><th>Leitura</th></tr>
+    <tr><td><span class="dot" style="background:var(--red)"></span>Abaixo de 70%</td><td class="num">0</td><td class="num">R$ 0</td><td>Não bateu o mínimo, não tem comissão</td></tr>
+    <tr><td><span class="dot" style="background:var(--yellow)"></span>70% a 84%</td><td class="num">1x</td><td class="num">R$ 1.000</td><td>Entrou no jogo</td></tr>
+    <tr><td><span class="dot" style="background:var(--yellow)"></span>85% a 99%</td><td class="num">1,5x</td><td class="num">R$ 1.500</td><td>Quase lá</td></tr>
+    <tr><td><span class="dot" style="background:var(--green)"></span>100% a 119%</td><td class="num">2x</td><td class="num">R$ 2.000</td><td>Meta batida: dobra o valor de 70%</td></tr>
+    <tr><td><span class="dot" style="background:var(--green)"></span>120% a 149%</td><td class="num">3x</td><td class="num">R$ 3.000</td><td>Superação</td></tr>
+    <tr><td><span class="dot" style="background:#16804a"></span>150% ou mais</td><td class="num">4x</td><td class="num">R$ 4.000</td><td>Alta performance</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2><span>3</span>Tags de desempenho do mês</h2>
+  <div class="tags">
+    <div class="tag r"><b>Vermelha</b><span class="range">Abaixo de 70%</span><p>Sem comissão. Mês em alerta.</p></div>
+    <div class="tag y"><b>Amarela</b><span class="range">De 70% a 99%</span><p>Recebe comissão, mas ainda não bateu a meta.</p></div>
+    <div class="tag g"><b>Verde</b><span class="range">100% ou mais</span><p>Meta batida. É aqui que o time precisa morar.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2><span>4</span>Regras de permanência</h2>
+  <div class="rules">
+    <div class="rule">
+      <h3>Nunca 2 meses seguidos no vermelho</h3>
+      <div class="months">
+        <div class="m r">Mês 1</div><div class="arrow">&rarr;</div><div class="m r">Mês 2</div><div class="arrow">&rarr;</div><div class="stop">LIMITE</div>
+      </div>
+      <p>O 1º vermelho liga o alerta e gera plano de ação. O 2º seguido está fora do padrão do time.</p>
+    </div>
+    <div class="rule">
+      <h3>Nunca 3 meses seguidos no amarelo</h3>
+      <div class="months">
+        <div class="m y">Mês 1</div><div class="m y">Mês 2</div><div class="arrow">&rarr;</div><div class="m y">Mês 3</div><div class="arrow">&rarr;</div><div class="stop">LIMITE</div>
+      </div>
+      <p>Ficar "quase lá" por muito tempo também não é padrão. O objetivo é chegar ao verde.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <b>Resumo:</b> abaixo de 70% não tem comissão. Bateu 100%, ganha o dobro de quem ficou em 70%. Passou de 120% e 150%, ganha ainda mais. Seu lugar é no <b>verde</b>.
+</footer>
+<p class="note">Valores ilustrativos. O valor de X (comissão base) é definido no contrato de cada cargo. &nbsp;|&nbsp; UNV - Universidade Nacional de Vendas &middot; Sistema escala, improviso não.</p>
+
+</body>
+</html>
