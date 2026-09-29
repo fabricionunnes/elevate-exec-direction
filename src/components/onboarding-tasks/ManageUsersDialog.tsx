@@ -32,6 +32,20 @@ import {
 import type { OnboardingUser, OnboardingRole } from "@/types/onboarding";
 import { ROLE_LABELS, ROLE_COLORS, isStaffRole as checkIsStaffRole } from "@/types/onboarding";
 
+// Traduz os erros crus do Supabase Auth pra algo que o staff entende.
+function traduzErroUsuario(msg?: string): string {
+  const m = String(msg || "").toLowerCase();
+  if (!m) return "";
+  if (m.includes("already") && m.includes("regist") || m.includes("email_exists") || m.includes("já cadastr"))
+    return "Este e-mail já tem cadastro. Use outro e-mail, ou peça pra redefinir a senha desse acesso.";
+  if (m.includes("password") && (m.includes("6") || m.includes("short") || m.includes("weak") || m.includes("least")))
+    return "A senha precisa ter pelo menos 6 caracteres.";
+  if (m.includes("invalid") && m.includes("email")) return "E-mail inválido. Confira o endereço.";
+  if (m.includes("non-2xx")) return "Não consegui criar o cliente. Tente de novo; se persistir, o e-mail pode já estar em uso.";
+  return String(msg || "");
+}
+
+
 interface StaffMember {
   id: string;
   name: string;
@@ -293,7 +307,18 @@ export const ManageUsersDialog = ({
           },
         });
 
-        if (error) throw error;
+        // A supabase-js, quando a função responde erro, entrega só
+        // "Edge Function returned a non-2xx status code" e o motivo real fica
+        // no CORPO da resposta (error.context). Sem ler isso, o usuário nunca
+        // sabe por que falhou (Fabrício, 29/09/2026).
+        if (error) {
+          let motivo = (error as any)?.message || "";
+          try {
+            const corpo = await (error as any)?.context?.json?.();
+            if (corpo?.error) motivo = corpo.error;
+          } catch { /* corpo não era json */ }
+          throw new Error(motivo);
+        }
         if (data?.error) throw new Error(data.error);
 
         toast.success("Cliente criado com sucesso!");
@@ -301,7 +326,7 @@ export const ManageUsersDialog = ({
         onUsersChanged();
       } catch (error: any) {
         console.error("Error adding user:", error);
-        toast.error(error.message || "Erro ao criar usuário");
+        toast.error(traduzErroUsuario(error?.message) || "Erro ao criar usuário");
       } finally {
         setLoading(false);
       }
