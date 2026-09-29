@@ -1398,7 +1398,7 @@ export const CRMLeadDetailPage = () => {
               { value: "meetings", label: "Reuniões", icon: Video, color: "text-indigo-500" },
               { value: "contract_data", label: "Dados Contratuais", icon: ScrollText, color: "text-orange-500" },
               { value: "files", label: "Arquivos", icon: FolderOpen, color: "text-teal-500" },
-              { value: "history", label: "Histórico", icon: History, color: "text-rose-500" },
+              { value: "history", label: "Percurso", icon: History, color: "text-rose-500" },
             ].map(tab => (
               <TabsTrigger
                 key={tab.value}
