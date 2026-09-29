@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prazo máximo de atendimento cria ritmo no comercial | UNV</title>
+<meta name="description" content="Tempo limite por cliente força decisão rápida e libera agenda do vendedor. Sem isso, ele fica preso no que não fecha e para de gerar volume novo.">
+<meta name="author" content="Fabrício Nunnes — CEO da UNV Holdings, Universidade Nacional de Vendas">
+<link rel="canonical" href="https://unvholdings.com.br/blog/prazo-maximo-atendimento-cria-ritmo-comercial/">
+<link rel="icon" href="/favicon.ico">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Prazo máximo de atendimento cria ritmo no comercial">
+<meta property="og:description" content="Tempo limite por cliente força decisão rápida e libera agenda do vendedor. Sem isso, ele fica preso no que não fecha e para de gerar volume novo.">
+<meta property="og:url" content="https://unvholdings.com.br/blog/prazo-maximo-atendimento-cria-ritmo-comercial/">
+<meta property="og:image" content="https://unvholdings.com.br/images/unv-logo.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+
+:root{
+  --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#EDEFF3; --surface-3:#E2E6EC;
+  --ink:#0A1F45; --ink-2:#33415C; --muted:#5F6B80; --faint:#8B94A5;
+  --rule:#DCE1E9; --rule-2:#C3CBD7;
+  --navy:#0D2B5E; --red:#CC1B1B;
+  --good:#0F6B52; --good-bg:#E6F2EE;
+  --warn:#8A5B04; --warn-bg:#F7EEDC;
+  --bad:#B02318; --bad-bg:#FAEAE8;
+  --f1:#7A80DC; --f2:#3E5BA9; --f3:#0D2B5E;
+  --f1-bg:#EDEEFB; --f2-bg:#E4EAF6; --f3-bg:#DCE3F0;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --prose:min(100%,62ch);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
+    --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+    --rule:#1E3557; --rule-2:#2C4770;
+    --navy:#7BA4E8; --red:#FF6B62;
+    --good:#43BF9C; --good-bg:#0F2D28;
+    --warn:#D9A03C; --warn-bg:#2E2716;
+    --bad:#FF7A6E; --bad-bg:#33191A;
+    --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
+    --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
+  --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+  --rule:#1E3557; --rule-2:#2C4770;
+  --navy:#7BA4E8; --red:#FF6B62;
+  --good:#43BF9C; --good-bg:#0F2D28;
+  --warn:#D9A03C; --warn-bg:#2E2716;
+  --bad:#FF7A6E; --bad-bg:#33191A;
+  --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
+  --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui);font-size:16.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:0 auto;padding:0 26px 0}
+.prose{width:var(--prose)}
+p{margin:0 0 1em}
+strong{font-weight:680;color:var(--ink)}
+a{color:var(--red)}
+:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+
+.topbar{border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--ground);z-index:10}
+.topbar .in{max-width:1200px;margin:0 auto;padding:12px 26px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.topbar picture{display:block}
+.topbar img{height:38px;width:auto;display:block}
+.topbar .cta{font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#fff;background:var(--red);padding:10px 17px;border-radius:2px;text-decoration:none;font-weight:700;white-space:nowrap}
+
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.eyebrow .tc{color:var(--red);font-weight:600}
+.eyebrow .bar{width:26px;height:1px;background:var(--rule-2);flex:none}
+
+.hero{padding:70px 0 50px}
+.hero h1{font-size:clamp(38px,7vw,80px);line-height:.98;letter-spacing:-.042em;font-weight:820;margin:24px 0 0;text-wrap:balance;max-width:15ch}
+.hero .sub{font-size:clamp(17px,2vw,20px);line-height:1.5;color:var(--ink-2);max-width:60ch;margin:26px 0 0}
+
+.idx{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:42px 0 0}
+.idx a{background:var(--surface);padding:16px 18px;text-decoration:none;display:block}
+.idx a:hover{background:var(--surface-2)}
+.idx .n{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--red);display:block}
+.idx .t{font-size:14.5px;font-weight:640;color:var(--ink);margin-top:5px;display:block;line-height:1.3;letter-spacing:-.01em}
+
+.sec{padding:68px 0;border-top:1px solid var(--rule);scroll-margin-top:70px}
+h2{font-size:clamp(27px,4.2vw,45px);line-height:1.04;letter-spacing:-.032em;font-weight:800;margin:18px 0 24px;text-wrap:balance;max-width:19ch}
+h3{font-size:19px;font-weight:720;letter-spacing:-.012em;margin:40px 0 12px}
+h4{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 14px}
+
+.max{padding:0 0 0 24px;margin:0 0 30px;width:var(--prose);border-left:3px solid var(--red)}
+.max p{font-size:clamp(20px,2.5vw,26px);line-height:1.28;font-weight:700;letter-spacing:-.026em;margin:0 0 .4em;color:var(--ink)}
+.max p:last-child{margin-bottom:0}
+
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:24px 26px;margin:26px 0}
+.panel.nv{border-left:3px solid var(--navy)}
+.panel.rd{border-left:3px solid var(--red)}
+.panel>:last-child{margin-bottom:0}
+
+.tw{overflow-x:auto;margin:24px 0;border:1px solid var(--rule);border-radius:2px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:540px}
+th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+thead th{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface-2);white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.hl td{background:var(--good-bg)}
+
+.crit{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:26px 0}
+.cr{background:var(--surface);padding:22px}
+.cr .t{font-size:20px;font-weight:800;letter-spacing:-.025em;color:var(--red)}
+.cr .d{font-size:14px;color:var(--ink-2);line-height:1.5;margin-top:10px}
+.cr .q{font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:12px;padding-top:12px;border-top:1px solid var(--rule)}
+
+.pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:26px 0}
+.pl{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:22px;position:relative}
+.pl .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+.pl .t{font-size:21px;font-weight:780;letter-spacing:-.025em;margin:8px 0 10px}
+.pl .d{font-size:14px;color:var(--ink-2);line-height:1.5}
+.pl .m{margin-top:14px;padding-top:12px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.6}
+.pl.a{border-top:3px solid var(--f1)} .pl.b{border-top:3px solid var(--f2)} .pl.c{border-top:3px solid var(--f3)}
+
+.funnel{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:26px 0}
+.fl{background:var(--surface);padding:20px 22px;display:grid;grid-template-columns:130px 1fr;gap:20px;align-items:start}
+.fl .lb{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:700}
+.fl.t1 .lb{color:var(--f1)} .fl.t2 .lb{color:var(--f2)} .fl.t3 .lb{color:var(--f3)}
+.fl .lb small{display:block;font-size:10px;letter-spacing:.1em;color:var(--muted);font-weight:600;margin-top:5px}
+.fl dl{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.fl dt{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.fl dd{margin:4px 0 0;font-size:14px;line-height:1.4;color:var(--ink-2)}
+@media(max-width:640px){.fl{grid-template-columns:1fr;gap:12px}}
+
+.calc{background:var(--surface-2);border:1px solid var(--rule-2);border-radius:2px;padding:26px;margin:32px 0}
+.calc h4{color:var(--ink)}
+.calc .hint{font-size:14px;color:var(--muted);margin:0 0 20px;line-height:1.5;max-width:64ch}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px 24px;margin-bottom:22px}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.field input{font-family:var(--mono);font-size:16px;font-variant-numeric:tabular-nums;padding:10px 11px;border:1px solid var(--rule-2);border-radius:2px;background:var(--surface);color:var(--ink);width:100%}
+.field input[type=range]{padding:0;accent-color:var(--red);border:none;background:none}
+.rv{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--red)}
+.out{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px;padding-top:20px;border-top:1px solid var(--rule-2)}
+.o .ov{font-size:clamp(23px,3vw,31px);font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;display:block}
+.o .ol{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:7px;display:block}
+.verdict{margin-top:20px;padding:14px 16px;background:var(--surface);border:1px solid var(--rule);border-radius:2px;font-size:15px;line-height:1.55;color:var(--ink-2)}
+.verdict b{color:var(--red)}
+
+.scorer{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:20px 0}
+.srow{background:var(--surface);padding:14px 18px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+.srow .nm{font-size:15px;font-weight:640}
+.srow .ctrls{display:flex;gap:6px}
+.srow button{font-family:var(--mono);font-size:11.5px;padding:7px 11px;border:1px solid var(--rule-2);background:var(--surface);color:var(--muted);border-radius:2px;cursor:pointer;letter-spacing:.05em}
+.srow button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+:root[data-theme="dark"] .srow button[aria-pressed="true"],
+:root:not([data-theme="light"]) .srow button[aria-pressed="true"]{color:#08152B}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .srow button[aria-pressed="true"]{color:#fff}}
+
+.acts{list-style:none;padding:0;margin:24px 0 0;width:var(--prose)}
+.acts li{position:relative;padding:14px 0 14px 34px;border-top:1px solid var(--rule);font-size:15.5px;line-height:1.5;color:var(--ink-2)}
+.acts li:last-child{border-bottom:1px solid var(--rule)}
+.acts li::before{content:"→";position:absolute;left:0;top:14px;font-family:var(--mono);color:var(--red);font-size:14px}
+.acts li b{color:var(--ink)}
+
+.pull{border-top:3px solid var(--navy);border-bottom:3px solid var(--navy);padding:24px 0;margin:36px 0;width:var(--prose)}
+.pull p{font-size:20px;line-height:1.4;font-weight:640;letter-spacing:-.018em;margin:0;text-wrap:balance}
+.note{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--muted);width:var(--prose)}
+
+.xlinks{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:36px 0 0}
+.xlink{display:block;text-decoration:none;background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:2px;padding:22px}
+.xlink:hover{background:var(--surface-2)}
+.xlink .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--red)}
+.xlink .t{font-size:19px;font-weight:760;letter-spacing:-.022em;color:var(--ink);margin-top:8px;line-height:1.2}
+.xlink .d{font-size:14px;color:var(--ink-2);margin-top:6px;line-height:1.45}
+
+.final{border-top:1px solid var(--rule);background:var(--surface)}
+.final .in{max-width:1200px;margin:0 auto;padding:70px 26px 74px}
+.final h2{margin-top:0;max-width:17ch}
+.final p{color:var(--ink-2);max-width:56ch;font-size:17.5px}
+.btn{display:inline-block;margin-top:14px;background:var(--red);color:#fff;font-weight:750;font-size:16px;padding:15px 28px;border-radius:2px;text-decoration:none;letter-spacing:-.01em}
+.btn:hover{filter:brightness(1.08)}
+.foot{border-top:1px solid var(--rule);background:var(--ground)}
+.foot .in{max-width:1200px;margin:0 auto;padding:34px 26px 50px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.foot picture{display:block;flex:none}
+.foot img{height:44px;width:auto;opacity:.85}
+.foot p{font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--muted);margin:0;max-width:60ch}
+.foot b{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:640px){
+  .wrap,.final .in,.foot .in,.topbar .in{padding-left:18px;padding-right:18px}
+  .hero{padding:48px 0 36px}.sec{padding:50px 0}
+  .topbar img{height:30px}.topbar .cta{font-size:11px;padding:8px 12px}
+}
+
+.tnav{display:flex;align-items:center;gap:14px}
+.tnav .back{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);text-decoration:none;padding:10px 12px;border:1px solid var(--rule-2);border-radius:2px;white-space:nowrap}
+.tnav .back:hover{background:var(--surface-2);color:var(--ink)}
+.midcta{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:2px;padding:26px 28px;margin:40px 0;display:flex;gap:24px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.midcta .tx{max-width:52ch}
+.midcta .tt{font-size:19px;font-weight:760;letter-spacing:-.018em;margin:0 0 6px}
+.midcta .dd{font-size:15px;color:var(--ink-2);margin:0;line-height:1.5}
+.midcta a{display:inline-block;background:var(--red);color:#fff;font-weight:750;font-size:15px;padding:13px 24px;border-radius:2px;text-decoration:none;white-space:nowrap}
+.midcta a:hover{filter:brightness(1.08)}
+.backblog{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);text-decoration:none;padding:12px 16px;border:1px solid var(--rule-2);border-radius:2px;margin-top:26px}
+.backblog:hover{background:var(--surface-2);color:var(--ink)}
+@media(max-width:640px){.tnav .back{padding:8px 9px;font-size:11px}.midcta{flex-direction:column;align-items:flex-start}}
+
+
+.byline{display:flex;gap:14px;align-items:center;margin:26px 0 0;padding:16px 0 0;border-top:1px solid var(--rule);flex-wrap:wrap}
+.byline .av{width:44px;height:44px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;letter-spacing:-.02em;flex:none}
+.byline .tx{font-size:14px;line-height:1.5;color:var(--muted)}
+.byline .tx b{color:var(--ink);font-weight:700}
+.autorbox{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--navy);border-radius:2px;padding:26px 28px;margin:44px 0 0;display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+.autorbox .av{width:64px;height:64px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:21px;letter-spacing:-.02em;flex:none}
+.autorbox .c{flex:1 1 300px}
+.autorbox .n{font-size:19px;font-weight:780;letter-spacing:-.02em;margin:0}
+.autorbox .r{font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--red);margin:5px 0 10px}
+.autorbox .b{font-size:14.5px;line-height:1.55;color:var(--ink-2);margin:0}
+.autorbox .b a{color:var(--red)}
+
+.cmt{border-top:1px solid var(--rule);margin-top:16px;padding-top:44px}
+.cmt h2{font-size:clamp(22px,3vw,30px);margin:0 0 8px}
+.cmt .sb{font-size:15px;color:var(--muted);margin:0 0 26px;max-width:56ch}
+.cmt .lista{display:flex;flex-direction:column;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin-bottom:30px}
+.cmt .c{background:var(--surface);padding:20px 22px}
+.cmt .c .top{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}
+.cmt .c .nm{font-weight:720;letter-spacing:-.01em}
+.cmt .c .mt{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.cmt .c .tx{font-size:15px;line-height:1.55;color:var(--ink-2);white-space:pre-wrap}
+.cmt .c .rp{margin-top:14px;padding:14px 16px;background:var(--surface-2);border-left:3px solid var(--red);border-radius:2px}
+.cmt .c .rp .who{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:6px}
+.cmt .c .rp .tx{font-size:14.5px}
+.cmt form{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:24px;position:relative}
+.cmt .gr2{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:14px}
+.cmt label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:7px}
+.cmt input,.cmt textarea{width:100%;font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--rule-2);border-radius:2px;background:var(--ground);color:var(--ink)}
+.cmt textarea{min-height:120px;resize:vertical;line-height:1.5}
+.cmt .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.cmt .send{margin-top:16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.cmt button{background:var(--red);color:#fff;font:inherit;font-weight:720;font-size:15px;padding:13px 26px;border:none;border-radius:2px;cursor:pointer}
+.cmt button:disabled{opacity:.5;cursor:default}
+.cmt .msg{font-size:14px;line-height:1.45}
+.cmt .msg.ok{color:var(--good)}.cmt .msg.err{color:var(--bad)}
+.cmt .nota{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:14px;line-height:1.6}
+</style>
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "Organization",
+   "@id": "https://unvholdings.com.br/#org",
+   "name": "UNV Holdings",
+   "alternateName": [
+    "Universidade Nacional de Vendas",
+    "UNV"
+   ],
+   "url": "https://unvholdings.com.br/",
+   "logo": {
+    "@type": "ImageObject",
+    "url": "https://unvholdings.com.br/images/unv-logo.png"
+   },
+   "description": "Tempo limite por cliente força decisão rápida e libera agenda do vendedor. Sem isso, ele fica preso no que não fecha e para de gerar volume novo.",
+   "founder": {
+    "@id": "https://unvholdings.com.br/#fabricio"
+   },
+   "areaServed": "BR",
+   "knowsAbout": [
+    "gestão comercial",
+    "direção comercial terceirizada",
+    "estruturação de time de vendas",
+    "previsibilidade de receita",
+    "marketing para PME"
+   ]
+  },
+  {
+   "@type": "Person",
+   "@id": "https://unvholdings.com.br/#fabricio",
+   "name": "Fabrício Nunnes",
+   "alternateName": "Fabrício Nunes",
+   "jobTitle": [
+    "CEO",
+    "Diretor Comercial"
+   ],
+   "description": "CEO e fundador da UNV Holdings (Universidade Nacional de Vendas). Diretor comercial terceirizado para pequenas e médias empresas, com mais de 20 anos em vendas, mais de 10 como diretor comercial, mais de 600 empresas atendidas em 7 países e 3 continentes e mais de R$ 1 bilhão em vendas geradas.",
+   "worksFor": {
+    "@id": "https://unvholdings.com.br/#org"
+   },
+   "url": "https://unvholdings.com.br/",
+   "sameAs": [
+    "https://www.instagram.com/ofabricionunnes/",
+    "https://www.instagram.com/unvholdings/",
+    "https://www.linkedin.com/company/universidade-vendas",
+    "https://www.youtube.com/channel/UCppsePWHbTMG3z6Ne-znDzw",
+    "https://unvholdings.com.br/"
+   ],
+   "knowsAbout": [
+    "gestão comercial",
+    "vendas B2B",
+    "estruturação de time comercial",
+    "posicionamento",
+    "marketing"
+   ]
+  },
+  {
+   "@type": "BlogPosting",
+   "headline": "Prazo máximo de atendimento cria ritmo no comercial",
+   "description": "Por que o dono atende o primeiro contato do lead e some da negociação que decide o mês. A conta do pior vendedor e o que muda quando ele sai da entrada do funil.",
+   "url": "https://unvholdings.com.br/blog/prazo-maximo-atendimento-cria-ritmo-comercial/",
+   "inLanguage": "pt-BR",
+   "author": {
+    "@id": "https://unvholdings.com.br/#fabricio"
+   },
+   "publisher": {
+    "@id": "https://unvholdings.com.br/#org"
+   },
+   "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://unvholdings.com.br/blog/prazo-maximo-atendimento-cria-ritmo-comercial/"
+   },
+   "image": "https://unvholdings.com.br/images/unv-logo.png",
+   "datePublished": "2026-08-12",
+   "dateModified": "2026-08-12"
+  }
+ ]
+}
+</script>
+<style>
+.unv-by{display:flex;align-items:center;gap:12px;margin:0 0 26px;padding:12px 0 18px;border-bottom:1px solid rgba(128,128,128,.22);font-size:14px;line-height:1.5}
+.unv-by .av{flex:0 0 40px;width:40px;height:40px;border-radius:50%;background:#0D2B5E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;letter-spacing:.5px}
+.unv-by .tx{min-width:0}
+.unv-by .nm{font-weight:700}
+.unv-by .rl{opacity:.72}
+@media(prefers-color-scheme:dark){.unv-by .av{background:#C9A84C;color:#0A0A0A}}
+.unv-au{margin:40px 0 0;padding:20px;border:1px solid rgba(128,128,128,.24);border-radius:12px;font-size:14.5px;line-height:1.62}
+.unv-au h3{margin:0 0 8px;font-size:15px}
+.unv-au p{margin:0}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="in">
+    <a href="/"><picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture></a>
+    <nav class="tnav"><a class="back" href="/blog/">&larr; Blog</a><a class="cta" href="/sessao">Sessão estratégica</a></nav>
+  </div>
+</div>
+<div class="wrap">
+<style>
+.bl{margin:26px 0}
+.bl h4{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 14px}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.cmp .hd{background:var(--surface-2);padding:12px 16px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+.cmp .hd.e{color:var(--bad)}.cmp .hd.d{color:var(--good)}
+.cmp .cl{background:var(--surface);padding:13px 16px;font-size:14.5px;line-height:1.45;color:var(--ink-2)}
+.gr{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:22px}
+.gr .row{display:grid;grid-template-columns:minmax(90px,32%) 1fr;gap:14px;align-items:center;padding:7px 0;font-size:14px}
+.gr .tk{background:var(--surface-2);height:18px;border-radius:2px;overflow:hidden}
+.gr .fl{height:100%;border-radius:2px}
+.gr .lg{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:12px;padding-top:12px;border-top:1px solid var(--rule);line-height:1.5}
+.ck{background:var(--surface);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.ck button{width:100%;text-align:left;background:var(--surface);border:none;border-bottom:1px solid var(--rule);padding:14px 18px;font:inherit;font-size:14.5px;color:var(--ink-2);cursor:pointer;display:flex;gap:12px;align-items:center}
+.ck button:last-of-type{border-bottom:none}
+.ck button::before{content:"";width:17px;height:17px;border:1.5px solid var(--rule-2);border-radius:3px;flex:none}
+.ck button[aria-pressed="true"]{color:var(--ink);font-weight:600}
+.ck button[aria-pressed="true"]::before{background:var(--red);border-color:var(--red)}
+.ck .vd{padding:16px 18px;background:var(--surface-2);font-size:14.5px;line-height:1.5;color:var(--ink-2);border-top:1px solid var(--rule)}
+.ps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.ps .p{background:var(--surface);padding:20px}
+.ps .n{font-family:var(--mono);font-size:22px;font-weight:800;color:var(--red);line-height:1}
+.ps .t{font-size:15.5px;font-weight:720;margin:8px 0 6px;letter-spacing:-.015em}
+.ps .x{font-size:14px;color:var(--ink-2);line-height:1.45}
+.pl2{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.pl2 .i{background:var(--surface);padding:22px}
+.pl2 .n{font-size:26px;font-weight:820;letter-spacing:-.03em;color:var(--red);line-height:1}
+.pl2 .r{font-size:14px;color:var(--ink-2);line-height:1.45;margin-top:9px}
+</style>
+<header class="hero">
+  <p class="eyebrow"><span>Diário UNV</span><span class="bar"></span><span class="tc">Método CRESCER</span><span class="bar"></span><span>29/09/2026</span></p>
+  <h1>Prazo máximo de atendimento cria ritmo no comercial</h1>
+  <p class="sub">Tempo limite por cliente força decisão rápida e libera agenda do vendedor. Sem isso, ele fica preso no que não fecha e para de gerar volume novo.</p>
+</header>
+<div class="unv-by">
+  <span class="av">FN</span>
+  <span class="tx">
+    <span class="nm">Fabrício Nunnes</span><br>
+    <span class="rl">CEO e fundador da UNV Holdings — Universidade Nacional de Vendas · Diretor comercial terceirizado</span>
+  </span>
+</div>
+<section class="sec">
+  <p class="eyebrow"><span>C</span><span class="bar"></span><span>Cenário</span></p>
+  <h2>O vendedor fica travado no mesmo cliente</h2>
+  <div class="max"><p>cliente que não decide em 5 minutos já decidiu, só não avisou</p></div>
+  <p class="prose">O vendedor entra na sala. Passa 20 minutos com o cliente. Sai achando que está quase fechando. Volta no dia seguinte. Mais 30 minutos. O cliente pede prazo. O vendedor anota, marca retorno, fica esperando. Passa a semana inteira nisso.</p>
+  <p class="prose">Enquanto isso, a agenda dele não roda. Ele não fala com cliente novo. Não avança em quem já está qualificado. Fica preso no que parece que vai fechar mas nunca fecha.</p>
+  <p class="prose">O dono olha pro mês e vê: o vendedor trabalhou, atendeu gente, fez reunião. Mas a conversão não aconteceu. O funil travou no meio e ninguém percebeu enquanto dava tempo de consertar.</p>
+  <div class="bl"><h4>Como a mesma situação acontece em três tipos de negócio</h4><div class="cmp"><div class="hd e">Sem prazo definido</div><div class="hd d">Com prazo por atendimento</div><div class="cl">Clínica: vendedor passa 40 minutos explicando tratamento, cliente pede orçamento por email e some</div><div class="cl">Clínica: 15 minutos de consulta, decisão na sala ou libera a cadeira pro próximo</div><div class="cl">Varejo: atendente fica meia hora mostrando produto, cliente sai para pensar e não volta</div><div class="cl">Varejo: 10 minutos no balcão, mostra solução, cliente compra ou vendedor parte pro próximo</div><div class="cl">Consultoria: reunião de 1 hora vira diagnóstico grátis, cliente agradece e vai orçar com concorrente</div><div class="cl">Consultoria: 20 minutos para entender demanda, qualifica ou descarta na mesma conversa</div></div></div>
+</section>
+
+<section class="sec">
+  <p class="eyebrow"><span>R</span><span class="bar"></span><span>Resultado</span></p>
+  <h2>Prazo limite força a decisão e gira a agenda</h2>
+  
+  <p class="prose">Quando você coloca um prazo máximo de atendimento, três coisas acontecem.</p>
+  <p class="prose">Primeiro: o vendedor sabe que tem que fechar ali ou partir pro próximo. Ele para de empurrar. Para de ficar esperando o cliente decidir sozinho. Ele conduz. Ou fecha, ou descarta, mas decide.</p>
+  <p class="prose">Segundo: a agenda do vendedor roda. Se ele tem 15 minutos por cliente, ele atende 8 por dia em vez de 3. O volume sobe. A conversão melhora porque ele está falando com mais gente qualificada, não ficando preso em quem não vai comprar.</p>
+  <p class="prose">Terceiro: o cliente percebe que aquilo tem prazo. Ele não vai conseguir enrolar, pedir mais um dia, voltar na semana que vem. Ou ele decide agora, ou perde a vez. E quando você força isso, a maioria decide.</p>
+  
+</section>
+
+<section class="sec">
+  <p class="eyebrow"><span>E</span><span class="bar"></span><span>Estrutura</span></p>
+  <h2>O que muda na rotina do vendedor</h2>
+  
+  <p class="prose">Você não joga o prazo na parede e espera o vendedor entender sozinho. Você treina ele pra isso.</p>
+  <p class="prose">A gente ensina o vendedor a conduzir a conversa dentro do tempo. Mostrar o problema, apresentar a solução, dar o preço e perguntar se faz sentido. Tudo isso em 10, 15 minutos. Depende do ticket e do tipo de venda.</p>
+  <p class="prose">Se o cliente pede prazo, o vendedor tem script pronto. Ele não aceita o talvez. Ele pergunta o que está faltando pra decisão acontecer agora. Se não rolar, ele agradece, libera a vaga e parte pro próximo.</p>
+  <p class="prose">Isso vira rotina. Todo dia, o vendedor sabe quantos atendimentos ele tem que fazer. Ele sabe quanto tempo cada um pode durar. E no fim do dia, a gente olha quantos ele fez, quantos fecharam e quantos foram descartados. É isso que a gente acompanha toda semana.</p>
+  
+</section>
+
+<section class="sec">
+  <p class="eyebrow"><span>S</span><span class="bar"></span><span>Sistema</span></p>
+  <h2>Como o time inteiro passa a rodar no prazo</h2>
+  
+  <p class="prose">Teve empresa que o vendedor passava a tarde inteira com um cliente. Chegava no fim do mês com 12 atendimentos feitos e 2 vendas. A gente colocou prazo de 20 minutos por atendimento. No mês seguinte, ele fez 74 atendimentos e fechou 18.</p>
+  <p class="prose">O que mudou não foi o vendedor. Foi a estrutura. Ele passou a ter clareza do que precisa acontecer em cada conversa. Parou de ficar esperando o cliente pensar. E quando o cliente via que aquilo tinha prazo, ele decidia.</p>
+  <p class="prose">A rotina ficou previsível. A gente sabe quantos atendimentos o vendedor faz por dia. Sabe quanto tempo cada um demora. E sabe quantos precisam fechar pra bater a meta do mês. Sem isso, você fica no achismo. Com isso, você cobra número toda semana.</p>
+  <div class="bl"><h4>Como implementar o prazo na rotina do vendedor</h4><div class="ps"><div class="p"><div class="n">1</div><div class="t">Defina o tempo máximo por atendimento</div><div class="x">Olhe quanto tempo o vendedor gasta hoje e corte pela metade. Se ele leva 40 minutos, prazo vira 20. Se leva 1 hora, vira 30. O tempo certo é o que força ele a conduzir, não arrastar.</div></div><div class="p"><div class="n">2</div><div class="t">Treine o vendedor pra fechar dentro do prazo</div><div class="x">Ensine ele a fazer diagnóstico rápido, dar preço sem enrolar e perguntar se faz sentido. Se o cliente pede prazo, o vendedor pergunta o que falta pra decidir agora. Sem pressão, mas sem aceitar talvez.</div></div><div class="p"><div class="n">3</div><div class="t">Acompanhe quantos atendimentos ele faz por dia</div><div class="x">Todo dia, o vendedor anota quantos atendimentos fez, quantos fecharam e quantos foram descartados. No fim da semana, você olha se o número bateu. Se não bateu, você treina de novo.</div></div></div></div>
+</section>
+
+<section class="sec">
+  <p class="eyebrow"><span>E</span><span class="bar"></span><span>Escala</span></p>
+  <h2>O que separa agenda cheia de conversão real</h2>
+  
+  <p class="prose">Vendedor ocupado não é vendedor que vende. É vendedor que está fazendo alguma coisa. Pode ser atendendo cliente que não vai fechar, pode ser esperando retorno que não vem, pode ser preenchendo planilha que ninguém olha.</p>
+  <p class="prose">Quando você coloca prazo limite por atendimento, a ocupação vira conversão. O vendedor para de ficar preso em quem não decide. Ele parte pro próximo. E quando ele atende mais gente em menos tempo, o volume de fechamento sobe.</p>
+  <p class="prose">Eu falo isso em toda reunião: reunião sem métrica é terapia em grupo. Aqui é a mesma coisa. Atendimento sem prazo limite é conversa sem compromisso. Você acha que está vendendo, mas está só passando o tempo.</p>
+  
+</section>
+
+<section class="sec">
+  <p class="eyebrow"><span>R</span><span class="bar"></span><span>Revisão</span></p>
+  <h2>O que você cobra na rotina semanal</h2>
+  
+  <p class="prose">Toda semana, você olha três números: quantos atendimentos o vendedor fez, quantos fecharam e quanto tempo cada um durou.</p>
+  <p class="prose">Se o vendedor fez poucos atendimentos, você cobra volume. Se ele fez muitos mas não fechou, você treina condução. Se ele está ultrapassando o prazo, você corta e ensina ele a decidir mais rápido.</p>
+  <p class="prose">O que separa quem bate meta de quem não bate é ter alguém cobrando isso toda semana. Sem discurso motivacional, sem esperar o mês virar. Você olha o número, vê onde travou e conserta antes de perder o mês.</p>
+  <p class="prose">A gente não vende mais. A gente faz o time vender todo mês. E isso só acontece quando você coloca prazo, treina o vendedor pra rodar dentro dele e acompanha o número toda semana.</p>
+  <div class="bl"><h4>O vendedor está rodando no prazo?</h4><div class="ck" id="ckny0qhc" data-baixo="Vendedor travado no mesmo cliente toda semana. Falta prazo definido e rotina de cobrança." data-alto="Agenda rodando, conversão acontecendo. O vendedor sabe que tem prazo e usa ele pra fechar ou partir pro próximo."><button type="button" aria-pressed="false">Você sabe quantos atendimentos o vendedor faz por dia</button><button type="button" aria-pressed="false">Existe um prazo máximo definido para cada tipo de atendimento</button><button type="button" aria-pressed="false">O vendedor foi treinado pra conduzir a conversa dentro do prazo</button><button type="button" aria-pressed="false">Ele tem script pronto pra quando o cliente pede mais tempo</button><button type="button" aria-pressed="false">Você acompanha quanto tempo cada atendimento está durando</button><button type="button" aria-pressed="false">O vendedor descarta quem não decide em vez de ficar esperando</button><button type="button" aria-pressed="false">A agenda dele roda todo dia com cliente novo qualificado</button><div class="vd">Marque o que se aplica ao seu comercial.</div></div></div>
+</section>
+<section class="sec">
+  <p class="eyebrow"><span>Execução</span></p>
+  <h2>As decisões desta semana</h2>
+  <ol class="acts"><li>Defina o tempo máximo que cada tipo de atendimento pode durar</li><li>Separe meia hora esta semana pra treinar o vendedor a conduzir dentro do prazo</li><li>Olhe quantos atendimentos ele fez ontem e quanto tempo cada um levou</li><li>Decida o que ele fala quando o cliente pede mais um dia pra pensar</li><li>Marque a reunião de sexta pra cobrar quantos atendimentos aconteceram na semana</li></ol>
+</section>
+<section class="sec">
+  <p class="eyebrow"><span>Continue por aqui</span></p>
+  <a class="xlink" href="/blog/agenda-fixa-acompanhamento-cria-rotina-comercial/">
+    <span class="k">Próximo assunto</span>
+    <span class="t">Agenda fixa de acompanhamento cria a rotina comercial</span>
+    <span class="d">Prazo por atendimento força o vendedor a rodar. Mas se você não tem agenda fixa pra cobrar o número toda semana, ele volta pro ritmo antigo.</span>
+  </a>
+</section><script>
+document.querySelectorAll(".ck").forEach(function(c){
+  var bs=[].slice.call(c.querySelectorAll("button")), vd=c.querySelector(".vd");
+  bs.forEach(function(b){b.addEventListener("click",function(){
+    b.setAttribute("aria-pressed", b.getAttribute("aria-pressed")!=="true");
+    var n=bs.filter(function(x){return x.getAttribute("aria-pressed")==="true";}).length;
+    vd.textContent = n===0 ? "Marque o que se aplica ao seu comercial."
+      : n<=Math.ceil(bs.length/2) ? c.dataset.baixo : c.dataset.alto;
+  });});
+});
+</script>
+
+<div class="unv-au">
+  <h3>Sobre o autor</h3>
+  <p><b>Fabrício Nunnes</b> é CEO e fundador da <b>UNV Holdings</b>, a <b>Universidade Nacional de Vendas</b>.
+  Atua como diretor comercial terceirizado de pequenas e médias empresas: assume a direção comercial,
+  estrutura o time e acompanha os vendedores para bater meta todo mês. São mais de 20 anos em vendas,
+  mais de 10 como diretor comercial e mais de 600 empresas atendidas em 7 países e 3 continentes.
+  Entenda <a href="/diretor-comercial-terceirizado/">como funciona o diretor comercial terceirizado</a>.</p>
+</div>
+
+<section class="cmt" id="unv-coments">
+  <h2>Comentários</h2>
+  <p class="sb">Se isso bate com o que você vive na sua empresa, ou se discorda, escreve aí. Eu leio e respondo.</p>
+  <div class="lista" id="cmt-lista" hidden></div>
+  <form id="cmt-form" autocomplete="on">
+    <div class="gr2">
+      <div><label for="cmt-nome">Seu nome</label><input id="cmt-nome" name="nome" maxlength="80" required></div>
+      <div><label for="cmt-emp">Empresa (opcional)</label><input id="cmt-emp" name="empresa" maxlength="80"></div>
+      <div><label for="cmt-mail">E-mail (opcional, não aparece)</label><input id="cmt-mail" name="email" type="email" maxlength="120"></div>
+    </div>
+    <label for="cmt-txt">Comentário</label>
+    <textarea id="cmt-txt" name="texto" maxlength="2000" required placeholder="O que isso mudaria no seu comercial?"></textarea>
+    <input class="hp" tabindex="-1" autocomplete="off" id="cmt-hp" name="website" aria-hidden="true">
+    <div class="send">
+      <button type="submit" id="cmt-btn">Enviar comentário</button>
+      <span class="msg" id="cmt-msg"></span>
+    </div>
+    <p class="nota">Os comentários passam por aprovação antes de aparecer.</p>
+  </form>
+</section>
+
+</div>
+
+<div class="final">
+  <div class="in">
+    <h2>Treino que faz vendedor rodar no prazo</h2>
+    <p>Seu vendedor fica preso no cliente que não fecha porque ninguém ensinou ele a conduzir dentro do tempo. A gente treina o time, coloca prazo por atendimento e acompanha o número toda semana até a meta ser batida todo mês.</p>
+    <a class="btn" href="/sessao">Estruturar comercial</a>
+  </div>
+</div>
+<div class="foot">
+  <div class="in">
+    <picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture>
+    <p>
+      <b>UNV Holdings — Universidade Nacional de Vendas</b> · <a href="/diretor-comercial-terceirizado/">Direção comercial terceirizada</a> para pequenas e médias empresas.<br>
+      Conteúdo de <b>Fabrício Nunnes</b>, CEO e fundador, a partir das reuniões de diagnóstico que ele conduz com donos de empresa.
+      <a href="/">unvholdings.com.br</a>
+    </p>
+  </div>
+</div>
+
+
+<script>
+(function(){
+  var API="https://xrncvhzxjmddqluxoosu.supabase.co/functions/v1/blog-comments";
+  var KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+  var slug=location.pathname.replace(/\/+$/,"").split("/").pop();
+  var $=function(i){return document.getElementById(i);};
+  if(!$("cmt-form")) return;
+  function api(p){return fetch(API,{method:"POST",headers:{"Authorization":"Bearer "+KEY,"Content-Type":"application/json"},body:JSON.stringify(p)}).then(function(r){return r.json();});}
+  function esc(s){var d=document.createElement("div");d.textContent=s==null?"":s;return d.innerHTML;}
+  function dt(s){try{return new Date(s).toLocaleDateString("pt-BR");}catch(e){return "";}}
+  api({acao:"listar",slug:slug}).then(function(d){
+    var cs=d.comentarios||[]; if(!cs.length) return;
+    $("cmt-lista").hidden=false;
+    $("cmt-lista").innerHTML=cs.map(function(c){
+      return '<div class="c"><div class="top"><span class="nm">'+esc(c.nome)+'</span>'+
+        (c.empresa?'<span class="mt">'+esc(c.empresa)+'</span>':'')+
+        '<span class="mt">'+dt(c.created_at)+'</span></div>'+
+        '<div class="tx">'+esc(c.texto)+'</div>'+
+        (c.resposta?'<div class="rp"><div class="who">Resposta do Fabrício</div><div class="tx">'+esc(c.resposta)+'</div></div>':'')+
+        '</div>';
+    }).join("");
+  }).catch(function(){});
+  $("cmt-form").addEventListener("submit",function(e){
+    e.preventDefault();
+    var b=$("cmt-btn"), m=$("cmt-msg");
+    b.disabled=true; m.className="msg"; m.textContent="Enviando...";
+    api({acao:"enviar",slug:slug,nome:$("cmt-nome").value,empresa:$("cmt-emp").value,
+         email:$("cmt-mail").value,texto:$("cmt-txt").value,website:$("cmt-hp").value})
+      .then(function(d){
+        if(d.erro){m.className="msg err";m.textContent=d.erro;b.disabled=false;return;}
+        m.className="msg ok"; m.textContent=d.aviso||"Comentário enviado.";
+        $("cmt-form").reset();
+        setTimeout(function(){b.disabled=false;m.textContent="";},6000);
+      })
+      .catch(function(){m.className="msg err";m.textContent="Não deu para enviar agora. Tente de novo.";b.disabled=false;});
+  });
+})();
+</script>
+
+</body>
+</html>
