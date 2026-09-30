@@ -32,6 +32,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { createStageActivities } from "@/hooks/useStageActions";
+import { checkStageGate, gateIsBlocked, logGateOverride, type LeadGateResult } from "@/lib/crm/stageGate";
 import { OfficialTemplateSendDialog } from "@/components/crm/OfficialTemplateSendDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 
@@ -64,6 +65,15 @@ interface KanbanBulkActionsProps {
   onSuccess: () => void;
   isMaster: boolean;
   currentPipelineId?: string;
+  /** acesso por funil + permissão granular (lead_delete) */
+  canDelete?: boolean;
+  /** acesso por funil (can_change_owner) */
+  canChangeOwner?: boolean;
+  /** permissão granular lead_move */
+  canMove?: boolean;
+  /** master/admin: "Mover mesmo assim" na trava de etapa */
+  canOverrideGate?: boolean;
+  staffId?: string | null;
 }
 
 export const KanbanBulkActions = ({
@@ -74,6 +84,11 @@ export const KanbanBulkActions = ({
   onSuccess,
   isMaster,
   currentPipelineId,
+  canDelete = true,
+  canChangeOwner = true,
+  canMove = true,
+  canOverrideGate = false,
+  staffId = null,
 }: KanbanBulkActionsProps) => {
   const [loading, setLoading] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -87,6 +102,35 @@ export const KanbanBulkActions = ({
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [tags, setTags] = useState<{ id: string; name: string; color: string | null }[]>([]);
   const [bulkTag, setBulkTag] = useState<string>("");
+  // Trava de etapa em massa: leads com pendência e o que fazer com eles
+  const [gateDialog, setGateDialog] = useState<{
+    results: Map<string, LeadGateResult>;
+    blocked: LeadGateResult[];
+    targetStageName: string;
+    run: (ids: string[]) => Promise<void>;
+  } | null>(null);
+
+  /**
+   * Checa a trava (atividade obrigatória pendente / campo exigido) pra todos os
+   * selecionados. Sem pendência: executa. Com pendência: pergunta se move só os
+   * liberados ou (master/admin) todos, registrando no histórico quem passou por cima.
+   */
+  const runWithGate = async (targetStageId: string, run: (ids: string[]) => Promise<void>) => {
+    let results: Map<string, LeadGateResult>;
+    try {
+      results = await checkStageGate(selectedLeads, targetStageId);
+    } catch (e) {
+      console.error("checkStageGate (massa):", e);
+      results = new Map();
+    }
+    const blocked = selectedLeads.map((id) => results.get(id)).filter((r): r is LeadGateResult => gateIsBlocked(r));
+    if (blocked.length === 0) {
+      await run(selectedLeads);
+      return;
+    }
+    const { data: st } = await supabase.from("crm_stages").select("name").eq("id", targetStageId).maybeSingle();
+    setGateDialog({ results, blocked, targetStageName: st?.name || "nova etapa", run });
+  };
 
   const chunkLeadIds = (leadIds: string[], chunkSize = 100) => {
     const chunks: string[][] = [];
@@ -173,30 +217,32 @@ export const KanbanBulkActions = ({
 
   const handleBulkMove = async () => {
     if (!moveToStage || selectedLeads.length === 0) return;
+    if (!canMove) { toast.error("Você não tem permissão para mover leads entre etapas"); return; }
     // (a garantia de tarefa pra etapa 'agendad' é aplicada após o move — ver ensureNextContactTasks)
-    
     setLoading(true);
     try {
-      for (const leadIds of chunkLeadIds(selectedLeads)) {
-        const { error } = await supabase
-          .from("crm_leads")
-          .update({ stage_id: moveToStage })
-          .in("id", leadIds);
-        if (error) throw error;
-      }
-
-      if (selectedLeads.length <= BULK_AUTOMATION_LIMIT) {
-        for (const leadId of selectedLeads) {
-          await createStageActivities(leadId, moveToStage);
+      await runWithGate(moveToStage, async (ids) => {
+        for (const leadIds of chunkLeadIds(ids)) {
+          const { error } = await supabase
+            .from("crm_leads")
+            .update({ stage_id: moveToStage })
+            .in("id", leadIds);
+          if (error) throw error;
         }
-      }
 
-      await ensureNextContactTasks(selectedLeads, moveToStage);
+        if (ids.length <= BULK_AUTOMATION_LIMIT) {
+          for (const leadId of ids) {
+            await createStageActivities(leadId, moveToStage);
+          }
+        }
 
-      toast.success(`${selectedLeads.length} leads movidos com sucesso`);
-      setMoveToStage("");
-      onClearSelection();
-      onSuccess();
+        await ensureNextContactTasks(ids, moveToStage);
+
+        toast.success(`${ids.length} leads movidos com sucesso`);
+        setMoveToStage("");
+        onClearSelection();
+        onSuccess();
+      });
     } catch (error) {
       console.error("Error moving leads:", error);
       toast.error("Erro ao mover leads");
@@ -217,6 +263,7 @@ export const KanbanBulkActions = ({
 
   const handleBulkChangePipeline = async () => {
     if (!moveToPipeline || selectedLeads.length === 0) return;
+    if (!canMove) { toast.error("Você não tem permissão para mover leads entre etapas"); return; }
     
     setLoading(true);
     try {
@@ -248,29 +295,31 @@ export const KanbanBulkActions = ({
 
       const targetOriginId = targetOrigins?.[0]?.id || null;
 
-      // Move em massa via RPC (uma requisição, pulando os triggers por linha —
-      // cadência/log/sync/notificação — que estouravam com muitos leads).
-      const { error: moveErr } = await supabase.rpc("bulk_change_lead_pipeline", {
-        p_ids: selectedLeads,
-        p_stage: targetStageId,
-        p_origin: targetOriginId,
-      });
-      if (moveErr) throw moveErr;
+      await runWithGate(targetStageId, async (ids) => {
+        // Move em massa via RPC (uma requisição, pulando os triggers por linha —
+        // cadência/log/sync/notificação — que estouravam com muitos leads).
+        const { error: moveErr } = await supabase.rpc("bulk_change_lead_pipeline", {
+          p_ids: ids,
+          p_stage: targetStageId,
+          p_origin: targetOriginId,
+        });
+        if (moveErr) throw moveErr;
 
-      // Automações de etapa só para seleções pequenas (evita spam/timeout em massa)
-      if (selectedLeads.length <= BULK_AUTOMATION_LIMIT) {
-        for (const leadId of selectedLeads) {
-          await createStageActivities(leadId, targetStageId);
+        // Automações de etapa só para seleções pequenas (evita spam/timeout em massa)
+        if (ids.length <= BULK_AUTOMATION_LIMIT) {
+          for (const leadId of ids) {
+            await createStageActivities(leadId, targetStageId);
+          }
         }
-      }
 
-      await ensureNextContactTasks(selectedLeads, targetStageId);
+        await ensureNextContactTasks(ids, targetStageId);
 
-      toast.success(`${selectedLeads.length} leads movidos para outro funil`);
-      setMoveToPipeline("");
-      setMoveToPipelineStage("");
-      onClearSelection();
-      onSuccess();
+        toast.success(`${ids.length} leads movidos para outro funil`);
+        setMoveToPipeline("");
+        setMoveToPipelineStage("");
+        onClearSelection();
+        onSuccess();
+      });
     } catch (error) {
       console.error("Error changing pipeline:", error);
       toast.error("Erro ao mudar funil");
@@ -279,8 +328,31 @@ export const KanbanBulkActions = ({
     }
   };
 
+  const gateMoverLiberados = async () => {
+    const g = gateDialog;
+    if (!g) return;
+    setGateDialog(null);
+    const blockedIds = new Set(g.blocked.map((b) => b.leadId));
+    const livres = selectedLeads.filter((id) => !blockedIds.has(id));
+    if (livres.length === 0) { toast.error("Nenhum lead liberado pra mover"); setLoading(false); return; }
+    setLoading(true);
+    try { await g.run(livres); } catch (e) { console.error(e); toast.error("Erro ao mover leads"); } finally { setLoading(false); }
+  };
+
+  const gateMoverTodos = async () => {
+    const g = gateDialog;
+    if (!g) return;
+    setGateDialog(null);
+    setLoading(true);
+    try {
+      await logGateOverride({ leadIds: selectedLeads, staffId, targetStageName: g.targetStageName, results: g.results });
+      await g.run(selectedLeads);
+    } catch (e) { console.error(e); toast.error("Erro ao mover leads"); } finally { setLoading(false); }
+  };
+
   const handleBulkAssign = async () => {
     if (!assignToOwner || selectedLeads.length === 0) return;
+    if (!canChangeOwner) { toast.error("Você não tem permissão para trocar o responsável neste funil"); return; }
     
     setLoading(true);
     try {
@@ -306,6 +378,7 @@ export const KanbanBulkActions = ({
 
   const handleBulkDelete = async () => {
     if (selectedLeads.length === 0) return;
+    if (!canDelete) { toast.error("Você não tem permissão para excluir leads neste funil"); return; }
     
     setLoading(true);
     try {
@@ -357,10 +430,10 @@ export const KanbanBulkActions = ({
         {/* Move to Stage */}
         <div className="flex items-center gap-2">
           {/* seletores com busca (pedido 13/09/2026) */}
-          <div className="w-[170px]">
+          <div className="w-[170px]" title={canMove ? undefined : "Sem permissão para mover leads entre etapas"}>
             <SearchableSelect value={moveToStage} onValueChange={setMoveToStage}
               options={stages.map((st) => ({ value: st.id, label: st.name }))}
-              placeholder="Mover para..." emptyMessage="Nenhuma etapa." className="h-8 text-xs" />
+              placeholder="Mover para..." emptyMessage="Nenhuma etapa." className="h-8 text-xs" disabled={!canMove} />
           </div>
           {moveToStage && (
             <Button size="sm" onClick={handleBulkMove} disabled={loading}>
@@ -372,10 +445,10 @@ export const KanbanBulkActions = ({
         {/* Change Pipeline */}
         {pipelines.length > 0 && (
           <div className="flex items-center gap-2">
-            <div className="w-[170px]">
+            <div className="w-[170px]" title={canMove ? undefined : "Sem permissão para mover leads entre etapas"}>
               <SearchableSelect value={moveToPipeline} onValueChange={setMoveToPipeline}
                 options={pipelines.map((p) => ({ value: p.id, label: p.name }))}
-                placeholder="Mudar funil..." emptyMessage="Nenhum funil." className="h-8 text-xs" />
+                placeholder="Mudar funil..." emptyMessage="Nenhum funil." className="h-8 text-xs" disabled={!canMove} />
             </div>
             {moveToPipeline && (
               <div className="w-[160px]">
@@ -394,10 +467,10 @@ export const KanbanBulkActions = ({
 
         {/* Assign Owner */}
         <div className="flex items-center gap-2">
-          <div className="w-[170px]">
+          <div className="w-[170px]" title={canChangeOwner ? undefined : "Sem permissão para trocar o responsável neste funil"}>
             <SearchableSelect value={assignToOwner} onValueChange={setAssignToOwner}
               options={owners.map((o) => ({ value: o.id, label: o.name }))}
-              placeholder="Atribuir a..." emptyMessage="Ninguém com esse nome." className="h-8 text-xs" />
+              placeholder="Atribuir a..." emptyMessage="Ninguém com esse nome." className="h-8 text-xs" disabled={!canChangeOwner} />
           </div>
           {assignToOwner && (
             <Button size="sm" onClick={handleBulkAssign} disabled={loading}>
@@ -444,11 +517,12 @@ export const KanbanBulkActions = ({
         </Button>
 
         {/* Delete */}
-        <Button 
-          variant="destructive" 
-          size="sm" 
+        <Button
+          variant="destructive"
+          size="sm"
           onClick={() => setDeleteConfirmOpen(true)}
-          disabled={loading}
+          disabled={loading || !canDelete}
+          title={canDelete ? "Excluir os selecionados" : "Sem permissão para excluir leads neste funil"}
         >
           <Trash2 className="h-3 w-3 mr-1" />
           Excluir
@@ -471,6 +545,47 @@ export const KanbanBulkActions = ({
         leadIds={selectedLeads}
         onSent={onSuccess}
       />
+
+      {/* Trava de etapa em massa */}
+      <AlertDialog open={!!gateDialog} onOpenChange={(o) => { if (!o) { setGateDialog(null); setLoading(false); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {gateDialog?.blocked.length} de {selectedLeads.length} leads com pendências
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>Pra ir para <strong>{gateDialog?.targetStageName}</strong>, estes leads ainda têm atividade obrigatória pendente ou campo exigido em branco. Abra o lead pra resolver, ou mova só os liberados.</p>
+                <ul className="max-h-48 overflow-y-auto space-y-1 rounded border border-border p-2">
+                  {(gateDialog?.blocked || []).slice(0, 30).map((b) => (
+                    <li key={b.leadId} className="text-xs">
+                      <span className="font-medium">{b.leadName}</span>
+                      <span className="text-muted-foreground">
+                        {b.pendingActivities.length > 0 && ` · pendente: ${b.pendingActivities.map((a) => a.title).join(", ")}`}
+                        {b.missingFields.length > 0 && ` · falta: ${b.missingFields.map((m) => m.def.label).join(", ")}`}
+                      </span>
+                    </li>
+                  ))}
+                  {(gateDialog?.blocked.length || 0) > 30 && (
+                    <li className="text-xs text-muted-foreground">e mais {gateDialog!.blocked.length - 30}</li>
+                  )}
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            {canOverrideGate && (
+              <Button variant="ghost" onClick={gateMoverTodos} title="Fica registrado no histórico de cada lead que passou por cima das pendências">
+                Mover mesmo assim
+              </Button>
+            )}
+            <AlertDialogAction onClick={gateMoverLiberados} disabled={(gateDialog?.blocked.length || 0) >= selectedLeads.length}>
+              Mover só os liberados ({selectedLeads.length - (gateDialog?.blocked.length || 0)})
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

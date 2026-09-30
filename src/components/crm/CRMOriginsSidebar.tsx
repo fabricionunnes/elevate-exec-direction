@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCRMContext } from "@/pages/crm/CRMLayout";
+import { useCRMPipelinePermissions } from "@/hooks/useCRMPipelinePermissions";
 import { OriginsManagementDialog } from "./OriginsManagementDialog";
 
 interface OriginGroup {
@@ -65,6 +66,8 @@ export const CRMOriginsSidebar = ({
   onToggleCollapse,
 }: CRMOriginsSidebarProps) => {
   const { selectedOrigin, setSelectedOrigin, selectedPipeline, setSelectedPipeline, isAdmin } = useCRMContext();
+  // Acesso por funil: origem cujo funil o usuário não pode ver some do seletor
+  const pipelinePerms = useCRMPipelinePermissions();
   const navigate = useNavigate();
   const location = useLocation();
   const [groups, setGroups] = useState<OriginGroup[]>([]);
@@ -152,8 +155,10 @@ export const CRMOriginsSidebar = ({
     }
   };
 
-  const filteredOrigins = origins.filter((o) =>
-    o.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredOrigins = origins.filter(
+    (o) =>
+      o.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+      (!o.pipeline_id || pipelinePerms.permFor(o.pipeline_id).can_view),
   );
 
   const getGroupOrigins = (groupId: string) =>
