@@ -421,14 +421,21 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
   });
   const [editScope, setEditScope] = useState<"single" | "future">("single");
   const [saving, setSaving] = useState(false);
-  const [pgAmount, setPgAmount] = useState(0);
-  const [pgDate, setPgDate] = useState("");
-  const [pgBank, setPgBank] = useState("none");
+
+  // Pagamentos realizados desta cobrança (parcelas pagas/parciais)
   const [bankAccounts, setBankAccounts] = useState<{ id: string; name: string }[]>([]);
+  const [pagamentos, setPagamentos] = useState<any[]>([]);
+  const [loadingPg, setLoadingPg] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [edAmount, setEdAmount] = useState(0);
+  const [edDate, setEdDate] = useState("");
+  const [edBank, setEdBank] = useState("none");
+  const [rowSaving, setRowSaving] = useState(false);
 
   const isRecurring = payable?.is_recurring && payable?.total_installments && payable.total_installments > 1;
+  const fmtBRL = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
+  const baseDesc = (d: string) => (d || "").replace(/\s*\(\d+\/\d+\)\s*$/, "").trim();
 
-  // Pre-fill form when dialog opens with payable data
   useEffect(() => {
     if (open && payable) {
       setForm({
@@ -442,13 +449,98 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
         notes: (payable as any).notes || "",
         cost_type: (payable as any).cost_type || "",
       });
-      setPgAmount(Number((payable as any).paid_amount) || 0);
-      setPgDate((payable as any).paid_date || "");
-      setPgBank((payable as any).bank_account_id || "none");
-      supabase.from("financial_bank_accounts").select("id, name").then(({ data }) => setBankAccounts((data as any) || []));
       setEditScope("single");
+      setEditId(null);
+      supabase.from("financial_bank_accounts").select("id, name").then(({ data }) => setBankAccounts((data as any) || []));
+      loadPagamentos();
     }
-  }, [open, payable]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, payable?.id]);
+
+  const loadPagamentos = async () => {
+    if (!payable) return;
+    setLoadingPg(true);
+    let rows: any[] = [];
+    if (payable.total_installments && payable.total_installments > 1) {
+      const base = baseDesc(payable.description);
+      const { data } = await supabase
+        .from("financial_payables")
+        .select("id, description, amount, paid_amount, paid_date, status, bank_account_id, installment_number, total_installments")
+        .eq("supplier_name", payable.supplier_name || "")
+        .ilike("description", `${base} (%`)
+        .in("status", ["paid", "partial"])
+        .order("installment_number", { ascending: true });
+      rows = (data as any) || [];
+    } else if (payable.status === "paid" || payable.status === "partial" || (Number(payable.paid_amount) || 0) > 0) {
+      rows = [{ ...payable, bank_account_id: (payable as any).bank_account_id ?? null }];
+    }
+    setPagamentos(rows);
+    setLoadingPg(false);
+  };
+
+  const adjustBank = async (bankId: string | null, delta: number) => {
+    if (!bankId || bankId === "none" || !delta) return;
+    const { data } = await supabase.from("financial_bank_accounts").select("current_balance").eq("id", bankId).single();
+    if (data) await supabase.from("financial_bank_accounts").update({ current_balance: Number((data as any).current_balance) + delta }).eq("id", bankId);
+  };
+
+  const startEditRow = (p: any) => {
+    setEditId(p.id);
+    setEdAmount(Number(p.paid_amount) || 0);
+    setEdDate(p.paid_date || "");
+    setEdBank(p.bank_account_id || "none");
+  };
+
+  const salvarPagamento = async (p: any) => {
+    setRowSaving(true);
+    try {
+      const oldPaid = Number(p.paid_amount) || 0;
+      const oldBank = p.bank_account_id || null;
+      const newPaid = edAmount || 0;
+      const newBank = edBank === "none" ? null : edBank;
+      if (oldBank === newBank) {
+        await adjustBank(newBank, -(newPaid - oldPaid));
+      } else {
+        await adjustBank(oldBank, oldPaid);
+        await adjustBank(newBank, -newPaid);
+      }
+      const novoStatus = newPaid <= 0 ? "pending" : (newPaid >= Number(p.amount) ? "paid" : "partial");
+      const { error } = await supabase.from("financial_payables").update({
+        paid_amount: newPaid > 0 ? newPaid : null,
+        paid_date: newPaid > 0 ? (edDate || null) : null,
+        bank_account_id: newBank,
+        status: novoStatus,
+      } as any).eq("id", p.id);
+      if (error) throw error;
+      toast.success("Pagamento atualizado!");
+      setEditId(null);
+      await loadPagamentos();
+      onSuccess();
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "erro"));
+    } finally {
+      setRowSaving(false);
+    }
+  };
+
+  const excluirPagamento = async (p: any) => {
+    const label = p.installment_number ? `${p.installment_number}/${p.total_installments}` : "";
+    if (!confirm(`Excluir o pagamento da parcela ${label}? O valor volta pro saldo do banco e a parcela fica em aberto.`)) return;
+    setRowSaving(true);
+    try {
+      await adjustBank(p.bank_account_id || null, Number(p.paid_amount) || 0);
+      const { error } = await supabase.from("financial_payables").update({ paid_amount: null, paid_date: null, bank_account_id: null, status: "pending" } as any).eq("id", p.id);
+      if (error) throw error;
+      toast.success("Pagamento removido, parcela em aberto e saldo ajustado.");
+      setEditId(null);
+      await loadPagamentos();
+      onSuccess();
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "erro"));
+    } finally {
+      setRowSaving(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!payable || !form.supplier_name.trim() || !form.description.trim()) {
@@ -457,11 +549,6 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
     }
     setSaving(true);
     try {
-      const adjustBank = async (bankId: string | null, delta: number) => {
-        if (!bankId || bankId === "none" || !delta) return;
-        const { data } = await supabase.from("financial_bank_accounts").select("current_balance").eq("id", bankId).single();
-        if (data) await supabase.from("financial_bank_accounts").update({ current_balance: Number((data as any).current_balance) + delta }).eq("id", bankId);
-      };
       const payload: any = {
         supplier_name: form.supplier_name.trim(),
         description: form.description.trim(),
@@ -476,38 +563,11 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
       };
 
       if (editScope === "single" || !isRecurring) {
-        // Edit only this entry
         const { error } = await supabase.from("financial_payables").update(payload as any).eq("id", payable.id);
         if (error) throw error;
-        // Ajuste do pagamento (valor/data/banco) quando a conta ja foi paga ou parcial.
-        const jaPago = payable.status === "paid" || payable.status === "partial" || (Number(payable.paid_amount) || 0) > 0;
-        if (jaPago) {
-          const oldPaid = Number(payable.paid_amount) || 0;
-          const oldBank = (payable as any).bank_account_id || null;
-          const newPaid = pgAmount || 0;
-          const newBank = pgBank === "none" ? null : pgBank;
-          if (oldBank === newBank) {
-            await adjustBank(newBank, -(newPaid - oldPaid));
-          } else {
-            await adjustBank(oldBank, oldPaid);
-            await adjustBank(newBank, -newPaid);
-          }
-          const novoStatus = newPaid <= 0 ? "pending" : (newPaid >= form.amount ? "paid" : "partial");
-          await supabase.from("financial_payables").update({
-            paid_amount: newPaid > 0 ? newPaid : null,
-            paid_date: newPaid > 0 ? (pgDate || null) : null,
-            bank_account_id: newBank,
-            status: novoStatus,
-          } as any).eq("id", payable.id);
-        }
         toast.success("Lançamento atualizado!");
       } else {
-        // Edit this and all future entries with same description base and higher installment numbers
-        // We match by: same supplier, same base description (without installment suffix), same recurrence_type, installment_number >= current
         const currentInstallment = payable.installment_number || 1;
-        const baseDesc = payable.description.replace(/\s*\(\d+\/\d+\)$/, "");
-
-        // Get all matching future entries
         const { data: allEntries } = await supabase
           .from("financial_payables")
           .select("id, installment_number, due_date")
@@ -517,15 +577,7 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
           .neq("status", "paid") as any;
 
         if (allEntries && allEntries.length > 0) {
-          // Filter entries that share the same base description
-          const matchingIds = allEntries
-            .filter((e: any) => {
-              const eBase = e.due_date ? true : true; // include all from same supplier with >= installment
-              return true;
-            })
-            .map((e: any) => e.id);
-
-          // Update shared fields (not due_date, not installment-specific)
+          const matchingIds = allEntries.map((e: any) => e.id);
           const sharedPayload: any = {
             supplier_name: form.supplier_name.trim(),
             amount: form.amount,
@@ -534,20 +586,13 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
             notes: payload.notes,
             updated_at: new Date().toISOString(),
           };
-
-          const { error } = await supabase
-            .from("financial_payables")
-            .update(sharedPayload as any)
-            .in("id", matchingIds);
+          const { error } = await supabase.from("financial_payables").update(sharedPayload as any).in("id", matchingIds);
           if (error) throw error;
-
-          // Update this specific entry's description and due_date
           await supabase.from("financial_payables").update({
             description: form.description.trim(),
             due_date: form.due_date,
             reference_month: form.reference_month || null,
           } as any).eq("id", payable.id);
-
           toast.success(`${matchingIds.length} lançamento(s) atualizado(s)!`);
         }
       }
@@ -665,30 +710,58 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
             <Label>Observações</Label>
             <Input value={form.notes} onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Opcional" />
           </div>
-          {(payable.status === "paid" || payable.status === "partial" || (Number(payable.paid_amount) || 0) > 0) && (editScope === "single" || !isRecurring) && (
-            <div className="p-3 bg-muted/40 rounded-lg space-y-3 border">
-              <Label className="text-sm font-medium">Pagamento</Label>
-              <p className="text-xs text-muted-foreground">Editar o valor pago, a data ou o banco ajusta o saldo do banco na diferença. Zerar o valor volta a conta para em aberto.</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Valor pago</Label>
-                  <CurrencyInput value={pgAmount} onChange={setPgAmount} />
-                </div>
-                <div>
-                  <Label className="text-xs">Data do pagamento</Label>
-                  <Input type="date" value={pgDate} onChange={(e) => setPgDate(e.target.value)} />
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs">Banco</Label>
-                <Select value={pgBank} onValueChange={setPgBank}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sem banco (não ajusta saldo)</SelectItem>
-                    {bankAccounts.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+
+          {(loadingPg || pagamentos.length > 0) && (
+            <div className="p-3 bg-muted/40 rounded-lg space-y-2 border">
+              <Label className="text-sm font-medium">Pagamentos realizados</Label>
+              <p className="text-xs text-muted-foreground">Parcelas já pagas desta cobrança. Ajuste o valor, a data ou o banco, ou exclua o pagamento (o valor volta pro saldo do banco e a parcela fica em aberto).</p>
+              {loadingPg ? (
+                <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-primary" /></div>
+              ) : (
+                pagamentos.map((p) => (
+                  <div key={p.id} className="rounded-md border bg-card p-2.5">
+                    {editId === p.id ? (
+                      <div className="space-y-2">
+                        <div className="text-xs font-semibold text-muted-foreground">
+                          {p.installment_number ? `Parcela ${p.installment_number}/${p.total_installments}` : "Pagamento"}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div><Label className="text-xs">Valor pago</Label><CurrencyInput value={edAmount} onChange={setEdAmount} /></div>
+                          <div><Label className="text-xs">Data</Label><Input type="date" value={edDate} onChange={(e) => setEdDate(e.target.value)} /></div>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Banco</Label>
+                          <Select value={edBank} onValueChange={setEdBank}>
+                            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Sem banco (não ajusta saldo)</SelectItem>
+                              {bankAccounts.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => setEditId(null)} disabled={rowSaving}><X className="h-3 w-3 mr-1" />Cancelar</Button>
+                          <Button size="sm" onClick={() => salvarPagamento(p)} disabled={rowSaving}>{rowSaving && <Loader2 className="h-3 w-3 animate-spin mr-1" />}<Save className="h-3 w-3 mr-1" />Salvar</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <div className="text-sm font-semibold">
+                            {p.installment_number ? `Parcela ${p.installment_number}/${p.total_installments} · ` : ""}{fmtBRL(Number(p.paid_amount) || 0)}
+                            {p.status === "partial" && <span className="ml-1 text-[10px] text-orange-600">(parcial de {fmtBRL(Number(p.amount) || 0)})</span>}
+                          </div>
+                          <div className="text-xs text-muted-foreground">{p.paid_date ? `Pago em ${format(new Date(p.paid_date + "T12:00:00"), "dd/MM/yyyy")}` : "Sem data"}</div>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEditRow(p)} disabled={rowSaving} title="Ajustar"><Pencil className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => excluirPagamento(p)} disabled={rowSaving} title="Excluir pagamento"><Trash2 className="h-3.5 w-3.5" /></Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           )}
         </div>
