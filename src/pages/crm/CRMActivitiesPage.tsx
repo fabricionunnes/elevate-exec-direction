@@ -93,6 +93,10 @@ export const CRMActivitiesPage = () => {
   // Pós-conclusão: lead nunca fica sem tarefa pendente — concluir abre a criação
   // da próxima atividade; se o lead não tiver outra pendente, criar é obrigatório.
   const [nextTask, setNextTask] = useState<{ leadId: string; leadName: string; mandatory: boolean } | null>(null);
+  // Contagem real de pendentes (o badge era um "2" fixo). Contada no banco
+  // (head + count), com a mesma visibilidade da lista: admin ve tudo, closer/sdr
+  // so o que a RPC crm_visible_activities devolve.
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
 
   // Filter options
   const [origins, setOrigins] = useState<{ id: string; name: string }[]>([]);
@@ -146,6 +150,20 @@ export const CRMActivitiesPage = () => {
     }
   };
 
+  const loadPendingCount = async () => {
+    try {
+      const base = (!isAdmin && staffId)
+        ? supabase.rpc("crm_visible_activities", { p_staff: staffId }, { count: "exact", head: true })
+        : supabase.from("crm_activities").select("id", { count: "exact", head: true });
+      const { count, error } = await base.eq("status", "pending");
+      if (error) throw error;
+      setPendingCount(count ?? 0);
+    } catch (e) {
+      console.error("Error counting pending activities:", e);
+      setPendingCount(null);
+    }
+  };
+
   const loadFilterOptions = async () => {
     const [originsRes, stagesRes, ownersRes] = await Promise.all([
       supabase.from("crm_origins").select("id, name").eq("is_active", true),
@@ -161,6 +179,7 @@ export const CRMActivitiesPage = () => {
 
   useEffect(() => {
     loadActivities();
+    loadPendingCount();
     loadFilterOptions();
   }, [filterStatus, filterType]);
 
@@ -177,6 +196,7 @@ export const CRMActivitiesPage = () => {
       if (error) throw error;
       toast.success("Atividade concluída");
       loadActivities();
+      loadPendingCount();
       // Lead FECHADO (ganho/perdido) não exige próxima tarefa
       const { data: leadStage } = await supabase
         .from("crm_leads")
@@ -474,11 +494,13 @@ export const CRMActivitiesPage = () => {
         </Popover>
 
         {/* Status Badge */}
-        <Badge variant="secondary" className="h-7">{filterStatus === "pending" ? "2" : "0"}</Badge>
+        <Badge variant="secondary" className="h-7" title="Atividades pendentes">
+          {pendingCount === null ? "..." : `${pendingCount.toLocaleString("pt-BR")} pendente${pendingCount === 1 ? "" : "s"}`}
+        </Badge>
         </div>
 
         {/* Refresh */}
-        <Button variant="ghost" size="icon" className="h-8 sm:h-9 w-8 sm:w-9 ml-auto shrink-0" onClick={loadActivities}>
+        <Button variant="ghost" size="icon" className="h-8 sm:h-9 w-8 sm:w-9 ml-auto shrink-0" onClick={() => { loadActivities(); loadPendingCount(); }}>
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
@@ -684,6 +706,7 @@ export const CRMActivitiesPage = () => {
           onSuccess={() => {
             setNextTask(null);
             loadActivities();
+            loadPendingCount();
           }}
         />
       )}
