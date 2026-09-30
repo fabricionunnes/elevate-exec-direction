@@ -25,6 +25,9 @@ const CLOSER_USER_ID = "a41403b5-32e5-4e44-aa0f-c08ae934f04d"; // conta Google d
 const CLOSER_NAME = "Ricardo Santos";
 const EVENT_LABEL = "Palestra CDL 01/10";
 const DURATION_MIN = 45;
+const AGENT_ID = "7dfa6491-399c-4da8-8a43-c36751b355bc"; // agente Natália - Palestra CDL 01/10
+const WA_INSTANCE_ID = "95278a26-7618-4b19-8f8c-67c925b733e5"; // instância natalia-amador
+const CHASE_AFTER_MIN = 25; // minutos em Triagem sem agendar até a Natália puxar
 const DAY_START = 9; // agenda oferecida ao participante: 09:00
 const DAY_END = 18; // último slot termina até 18:00
 const DAYS_AHEAD = 12; // janela de dias corridos varrida
@@ -55,6 +58,87 @@ function nextBusinessDays(n: number): string[] {
     out.push(d.toISOString().slice(0, 10));
   }
   return out;
+}
+
+
+/** envia texto pela instância da Natália (Evolution ou Stevo Manager V2) */
+async function sendWhatsApp(supabase: any, phone: string, message: string) {
+  const { data: inst } = await supabase.from("whatsapp_instances")
+    .select("id, instance_name, api_url, api_key, provider_type, status").eq("id", WA_INSTANCE_ID).maybeSingle();
+  if (!inst) return { ok: false, error: "instância não encontrada" };
+  const apiUrl = inst.api_url || Deno.env.get("EVOLUTION_API_URL");
+  const apiKey = inst.api_key || Deno.env.get("EVOLUTION_API_KEY");
+  if (!apiUrl || !apiKey) return { ok: false, error: "instância sem api_url/api_key" };
+  const baseUrl = String(apiUrl).replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
+  let isV2 = inst.provider_type === "manager_v2";
+  try { if (!isV2) isV2 = new URL(baseUrl).hostname.toLowerCase().endsWith(".stevo.chat"); } catch { /* noop */ }
+  const sendUrl = isV2 ? `${baseUrl}/send/text` : `${baseUrl}/message/sendText/${inst.instance_name}`;
+  const headers: Record<string, string> = isV2
+    ? { "Content-Type": "application/json", apikey: apiKey }
+    : { "Content-Type": "application/json", apikey: apiKey, Authorization: `Bearer ${apiKey}` };
+  const resp = await fetch(sendUrl, { method: "POST", headers, body: JSON.stringify({ number: phone, text: message, delay: 0 }) });
+  if (!resp.ok) return { ok: false, error: `HTTP ${resp.status}: ${(await resp.text()).slice(0, 140)}` };
+  let remoteId: string | null = null;
+  try { const d = await resp.json(); remoteId = d?.key?.id || d?.data?.key?.id || d?.messageId || d?.id || null; } catch { /* corpo não-JSON */ }
+  return { ok: true, remoteId, isV2 };
+}
+
+/** abre a conversa do lead na instância da Natália, manda a primeira mensagem e liga o agente nela */
+async function abrirConversa(supabase: any, lead: any, texto: string) {
+  const digits = String(lead.phone || "").replace(/\D/g, "");
+  if (digits.length < 10) return { ok: false, error: "telefone inválido" };
+  const full = digits.startsWith("55") ? digits : `55${digits}`;
+
+  // contato
+  let contactId: string | null = null;
+  const { data: ct } = await supabase.from("crm_whatsapp_contacts").select("id").eq("phone", full).maybeSingle();
+  if (ct) {
+    contactId = ct.id;
+    await supabase.from("crm_whatsapp_contacts").update({ name: lead.name, lead_id: lead.id }).eq("id", ct.id);
+  } else {
+    const { data: novo } = await supabase.from("crm_whatsapp_contacts")
+      .insert({ phone: full, name: lead.name, lead_id: lead.id }).select("id").single();
+    contactId = novo?.id ?? null;
+  }
+  if (!contactId) return { ok: false, error: "não consegui criar o contato" };
+
+  // conversa nessa instância
+  let convId: string | null = null;
+  const { data: cv } = await supabase.from("crm_whatsapp_conversations")
+    .select("id").eq("instance_id", WA_INSTANCE_ID).eq("contact_id", contactId).maybeSingle();
+  if (cv) {
+    convId = cv.id;
+    await supabase.from("crm_whatsapp_conversations").update({ lead_id: lead.id, status: "open" }).eq("id", cv.id);
+  } else {
+    const { data: nova } = await supabase.from("crm_whatsapp_conversations")
+      .insert({ instance_id: WA_INSTANCE_ID, contact_id: contactId, lead_id: lead.id, status: "open", unread_count: 0 })
+      .select("id").single();
+    convId = nova?.id ?? null;
+  }
+  if (!convId) return { ok: false, error: "não consegui abrir a conversa" };
+
+  // envia a abertura
+  const sent = await sendWhatsApp(supabase, full, texto);
+  if (sent.ok) {
+    // Evolution não ecoa o que a própria API manda, então gravamos aqui
+    if (!sent.isV2) {
+      await supabase.from("crm_whatsapp_messages").insert({
+        conversation_id: convId, content: texto, type: "text", direction: "outbound",
+        status: "sent", remote_id: sent.remoteId || null, is_ai: true, sent_by: null,
+      });
+    }
+    await supabase.from("crm_whatsapp_conversations").update({
+      last_message: texto.substring(0, 255), last_message_at: new Date().toISOString(),
+      last_message_direction: "outbound",
+    }).eq("id", convId);
+  }
+
+  // liga o agente da palestra nessa conversa para ele seguir o papo
+  await supabase.from("crm_ai_agent_conversation_overrides").upsert({
+    agent_id: AGENT_ID, conversation_id: convId, channel: "whatsapp", enabled: true, reply_mode: "auto",
+  }, { onConflict: "conversation_id,channel" });
+
+  return { ok: sent.ok, error: sent.error, conversation_id: convId };
 }
 
 Deno.serve(async (req) => {
@@ -253,6 +337,15 @@ Deno.serve(async (req) => {
         last_activity_at: new Date().toISOString(),
       }).eq("id", leadId);
 
+      // a Natália abre a conversa no WhatsApp e assume daqui pra frente
+      const [yy0, mm0, dd0] = date.split("-");
+      const primeiro = String(lead.name || "").trim().split(" ")[0];
+      const abertura = `Oi ${primeiro}, aqui é a Natália, do time do Fabrício Nunnes. Vi que você garantiu o seu diagnóstico gratuito lá na palestra da CDL. Ficou pra ${dd0}/${mm0} às ${time}, por videochamada, com um especialista do time.\n\nAntes do dia eu queria entender um pouco${lead.company ? " da " + lead.company : " do seu negócio"} pra ele já chegar com o dever de casa feito. Posso te fazer umas perguntas rápidas?`;
+      try {
+        const r = await abrirConversa(supabase, lead, abertura);
+        if (!r.ok) console.error("abrirConversa (book)", r.error);
+      } catch (e) { console.error("abrirConversa (book) exception", e); }
+
       const [yy, mm, dd] = date.split("-");
       return json({
         success: true,
@@ -261,6 +354,41 @@ Deno.serve(async (req) => {
         when: `${dd}/${mm}/${yy} às ${time}`,
         duration: DURATION_MIN,
       });
+    }
+
+    // ------------------------------------------------------------------ chase (cron)
+    // Quem preencheu o formulário e não escolheu horário fica parado na Triagem.
+    // Passados alguns minutos, a Natália puxa a conversa no WhatsApp.
+    if (action === "chase") {
+      const corte = new Date(Date.now() - CHASE_AFTER_MIN * 60 * 1000).toISOString();
+      const { data: parados } = await supabase
+        .from("crm_leads")
+        .select("id, name, phone, company, created_at")
+        .eq("pipeline_id", PIPELINE_ID)
+        .eq("stage_id", STAGE_TRIAGEM)
+        .eq("origin", EVENT_LABEL)
+        .lt("created_at", corte)
+        .gte("created_at", new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString())
+        .limit(20);
+
+      const feitos: string[] = [];
+      for (const lead of (parados || [])) {
+        // já existe conversa com mensagem nossa? então não chama de novo
+        const digits = String(lead.phone || "").replace(/\D/g, "");
+        const full = digits.startsWith("55") ? digits : `55${digits}`;
+        const { data: ct } = await supabase.from("crm_whatsapp_contacts").select("id").eq("phone", full).maybeSingle();
+        if (ct) {
+          const { data: cv } = await supabase.from("crm_whatsapp_conversations")
+            .select("id, last_message_at").eq("instance_id", WA_INSTANCE_ID).eq("contact_id", ct.id).maybeSingle();
+          if (cv?.last_message_at) continue;
+        }
+        const primeiro = String(lead.name || "").trim().split(" ")[0];
+        const texto = `Oi ${primeiro}, aqui é a Natália, do time do Fabrício Nunnes. Vi que você começou a marcar o seu diagnóstico gratuito lá na palestra da CDL mas não chegou a escolher o horário.\n\nQuer que eu veja os horários com você? Tenho agenda essa semana e a próxima.`;
+        if (body.dry_run) { feitos.push(`${lead.name} (simulado)`); continue; }
+        const r = await abrirConversa(supabase, lead, texto);
+        if (r.ok) feitos.push(lead.name); else console.error("chase", lead.id, r.error);
+      }
+      return json({ ok: true, chamados: feitos.length, leads: feitos });
     }
 
     return json({ error: "Ação inválida" }, 400);
