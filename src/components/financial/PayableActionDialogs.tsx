@@ -499,11 +499,11 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
     setEdDate(diaBR(t.created_at));
   };
 
-  const salvarPagamento = async (t: any) => {
+  const salvarPagamento = async (t: any): Promise<boolean> => {
     setRowSaving(true);
     try {
       const newCents = Math.round((edAmount || 0) * 100);
-      if (newCents <= 0) { toast.error("Informe um valor maior que zero, ou use excluir."); return; }
+      if (newCents <= 0) { toast.error("Informe um valor maior que zero, ou use excluir."); return false; }
       const diff = newCents - Number(t.amount_cents);
       const upd: any = { amount_cents: newCents };
       if (edDate && edDate !== diaBR(t.created_at)) upd.created_at = `${edDate}T12:00:00-03:00`;
@@ -518,8 +518,10 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
       setEditId(null);
       await loadPagamentos();
       onSuccess();
+      return true;
     } catch (err: any) {
       toast.error("Erro: " + (err.message || "erro"));
+      return false;
     } finally {
       setRowSaving(false);
     }
@@ -553,6 +555,12 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
     }
     setSaving(true);
     try {
+      // Pagamento em edição na lista: o Salvar de baixo também aplica (antes era
+      // descartado em silêncio e a conta continuava como paga).
+      if (editId) {
+        const emEdicao = pagamentos.find((t) => t.id === editId);
+        if (emEdicao && !(await salvarPagamento(emEdicao))) return;
+      }
       const payload: any = {
         supplier_name: form.supplier_name.trim(),
         description: form.description.trim(),
