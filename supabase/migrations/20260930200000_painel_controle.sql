@@ -394,7 +394,7 @@ begin
     'runs_followup', (select count(*) from runs where mode = 'followup' and outcome like 'sent%'),
     'runs_opt_out', (select count(*) from runs where outcome = 'opt_out'),
     'por_agente', (select coalesce(jsonb_agg(x order by (x->>'enviadas')::int desc), '[]') from (
-        select jsonb_build_object('nome', a.name, 'ativo', a.is_active, 'runs', count(r.*),
+        select jsonb_build_object('id', a.id, 'nome', a.name, 'ativo', a.is_active, 'runs', count(r.*),
                  'enviadas', count(*) filter (where r.outcome like 'sent%'),
                  'followups', count(*) filter (where r.mode = 'followup' and r.outcome like 'sent%'),
                  'opt_out', count(*) filter (where r.outcome = 'opt_out')) x
