@@ -1,8 +1,9 @@
 // Globo 3D do bloco "Onde estão nossos clientes" (Visão geral). Pedido do Fabrício em
 // 30/09/2026: "um mapa mundi mostrando onde tem mais clientes, focando no Brasil, em 3D".
 // Esfera com os países desenhados numa textura de canvas (topojson world-atlas 110m,
-// embutido em src/assets, ~100 KB), barras por UF no centroide de cada estado (altura e cor
-// pelos leads do período) e anel vermelho onde há clientes ativos. Câmera começa no Brasil,
+// embutido em src/assets, ~100 KB), barras por UF no centroide de cada estado (altura e cor pelos
+// CLIENTES, ou pelos leads do período no toggle) e anel vermelho onde há empresas ativas em
+// carteira. Câmera começa no Brasil,
 // gira devagar sozinha e para quando a pessoa interage. Carregado por lazy no pai.
 import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
@@ -25,7 +26,7 @@ export const UF_CENTRO: Record<string, [number, number]> = {
   RR: [2.0, -61.4], RS: [-30.0, -53.5], SC: [-27.2, -50.4], SE: [-10.6, -37.4], SP: [-22.3, -48.7], TO: [-10.2, -48.3],
 };
 
-export interface PontoUF { uf: string; leads: number; clientes: number; receita: number }
+export interface PontoUF { uf: string; /** métrica que dá altura e cor (clientes ou leads do período) */ valor: number; leads: number; clientes: number; ganhos: number; ativos: number; receita: number }
 
 interface Props {
   pontos: PontoUF[];
@@ -107,11 +108,11 @@ function Barra({ p, max, ativo, onSelect, onHover }: { p: PontoUF; max: number; 
   // cilindro cresce no eixo Y; o torus tem o eixo em Z: cada um ganha o seu quaternion pra ficar "em pé" na esfera
   const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
   const quatAnel = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
-  const intensidade = max > 0 ? Math.log1p(p.leads) / Math.log1p(max) : 0;
-  const altura = p.leads > 0 ? 0.03 + intensidade * 0.28 : 0.012;
-  const cor = p.leads > 0 ? new THREE.Color("#B9C6DA").lerp(new THREE.Color(NAVY), 0.25 + intensidade * 0.75) : new THREE.Color("#C9D2E0");
+  const intensidade = max > 0 ? Math.log1p(p.valor) / Math.log1p(max) : 0;
+  const altura = p.valor > 0 ? 0.03 + intensidade * 0.28 : 0.012;
+  const cor = p.valor > 0 ? new THREE.Color("#B9C6DA").lerp(new THREE.Color(NAVY), 0.25 + intensidade * 0.75) : new THREE.Color("#C9D2E0");
   const pos = base.clone().add(normal.clone().multiplyScalar(altura / 2));
-  const raioAnel = 0.02 + Math.min(0.05, Math.sqrt(p.clientes) * 0.012);
+  const raioAnel = 0.02 + Math.min(0.05, Math.sqrt(p.ativos) * 0.012);
   return (
     <group>
       <mesh position={pos} quaternion={quat}
@@ -121,7 +122,7 @@ function Barra({ p, max, ativo, onSelect, onHover }: { p: PontoUF; max: number; 
         <cylinderGeometry args={[0.013, 0.016, altura, 12]} />
         <meshStandardMaterial color={ativo ? VERMELHO : cor} emissive={ativo ? VERMELHO : "#000"} emissiveIntensity={ativo ? 0.35 : 0} roughness={0.6} />
       </mesh>
-      {p.clientes > 0 && (
+      {p.ativos > 0 && (
         <mesh position={base.clone().add(normal.clone().multiplyScalar(0.004))} quaternion={quatAnel}>
           <torusGeometry args={[raioAnel, 0.005, 8, 32]} />
           <meshStandardMaterial color={VERMELHO} roughness={0.5} />
@@ -137,7 +138,7 @@ function Terra({ pontos, selecionado, onSelect, onHover, foco }: Props) {
   const controls = useRef<any>(null);
   const { camera } = useThree();
   const alvo = useRef<{ pos: THREE.Vector3; t: number } | null>(null);
-  const max = Math.max(0, ...pontos.map((p) => p.leads));
+  const max = Math.max(0, ...pontos.map((p) => p.valor));
 
   // Câmera no Brasil ao abrir e quando clicam em "Brasil"/"Mundo"; a rotação automática volta junto.
   useEffect(() => {
