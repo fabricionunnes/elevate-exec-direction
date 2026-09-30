@@ -116,7 +116,8 @@ function KpiVar({ label, valor, anterior, formato, dica, onClick, inverso }: {
 // ------------------------------------------------------------------ Onde estão nossos clientes
 // Globo 3D (lazy, só quando a aba abre) com fallback pro cartograma quando não há WebGL.
 const ClientesGlobo3D = lazy(() => import("./ClientesGlobo3D"));
-type PontoUF = { uf: string; leads: number; clientes: number; receita: number };
+type PontoUF = { uf: string; valor: number; leads: number; clientes: number; ganhos: number; ativos: number; receita: number };
+type MetricaMapa = "clientes" | "leads";
 
 function temWebGL(): boolean {
   try {
@@ -130,10 +131,10 @@ function Cartograma({ pontos, max }: { pontos: Map<string, PontoUF>; max: number
     <div className="grid gap-[3px]" style={{ gridTemplateColumns: "repeat(8, 1fr)", gridTemplateRows: "repeat(9, 1fr)" }}>
       {CARTOGRAMA.map((c) => {
         const e = pontos.get(c.uf);
-        const v = n(e?.leads);
+        const v = n(e?.valor);
         const a = max ? v / max : 0;
         return (
-          <div key={c.uf} title={`${c.uf}: ${inteiro(v)} leads, ${inteiro(n(e?.clientes))} clientes${n(e?.receita) ? `, ${moeda(e?.receita)}` : ""}`}
+          <div key={c.uf} title={`${c.uf}: ${inteiro(n(e?.clientes))} clientes, ${inteiro(n(e?.leads))} leads no período${n(e?.receita) ? `, ${moeda(e?.receita)}` : ""}`}
             className="aspect-square rounded-[3px] flex flex-col items-center justify-center text-[9px] leading-none"
             style={{ gridColumn: c.c + 1, gridRow: c.r + 1, background: v ? `rgba(13, 43, 94, ${0.15 + a * 0.85})` : "hsl(var(--muted))", color: a > 0.45 ? "#fff" : "hsl(var(--foreground))" }}>
             <span className="font-semibold">{c.uf}</span>
@@ -145,47 +146,52 @@ function Cartograma({ pontos, max }: { pontos: Map<string, PontoUF>; max: number
   );
 }
 
-function MapaClientes({ estados, estadosComUf, leadsComUf, sudeste }: { estados: any[]; estadosComUf: any[]; leadsComUf: number; sudeste: number }) {
-  const [clientesUf, setClientesUf] = useState<Map<string, number>>(new Map());
+/** Onde estão nossos clientes: clientes do CRM Comercial (ganho no histórico todo + carteira ativa) por UF.
+ *  Leads do período são informação secundária (toggle). Tudo vem do bloco 'estados' da RPC. */
+function MapaClientes({ estados }: { estados: any[] }) {
+  const [metrica, setMetrica] = useState<MetricaMapa>("clientes");
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [hover, setHover] = useState<PontoUF | null>(null);
   const [foco, setFoco] = useState<{ modo: "brasil" | "mundo"; tick: number }>({ modo: "brasil", tick: 0 });
   const webgl = useMemo(() => temWebGL(), []);
 
-  // Clientes ativos (onboarding_companies) por UF: é o que o anel vermelho mostra
-  useEffect(() => {
-    (supabase as any).from("onboarding_companies").select("address_state").eq("status", "active").is("tenant_id", null)
-      .then(({ data }: any) => {
-        const m = new Map<string, number>();
-        (data || []).forEach((c: any) => { const uf = String(c.address_state || "").trim().toUpperCase(); if (uf.length === 2) m.set(uf, (m.get(uf) || 0) + 1); });
-        setClientesUf(m);
-      });
-  }, []);
-
   const pontos = useMemo(() => {
     const m = new Map<string, PontoUF>();
-    estadosComUf.forEach((e) => m.set(e.uf, { uf: e.uf, leads: n(e.leads), clientes: 0, receita: n(e.receita) }));
-    clientesUf.forEach((c, uf) => { const p = m.get(uf) || { uf, leads: 0, clientes: 0, receita: 0 }; p.clientes = c; m.set(uf, p); });
+    estados.filter((e) => UF_VALIDAS.has(e.uf)).forEach((e) => m.set(e.uf, {
+      uf: e.uf, valor: n(metrica === "clientes" ? e.clientes : e.leads), leads: n(e.leads), clientes: n(e.clientes), ganhos: n(e.ganhos), ativos: n(e.ativos), receita: n(e.receita),
+    }));
     return m;
-  }, [estadosComUf, clientesUf]);
-  const lista = [...pontos.values()].filter((p) => UF_VALIDAS.has(p.uf)).sort((a, b) => b.leads - a.leads || b.clientes - a.clientes);
-  const max = Math.max(0, ...lista.map((p) => p.leads));
-  const totalClientes = [...clientesUf.values()].reduce((s, v) => s + v, 0);
-  const semUf = n(estados.find((e) => e.uf === "Sem UF")?.leads);
+  }, [estados, metrica]);
+  const lista = [...pontos.values()].filter((p) => p.clientes > 0 || p.leads > 0 || p.ativos > 0)
+    .sort((a, b) => b.valor - a.valor || b.clientes - a.clientes || b.leads - a.leads);
+  const max = Math.max(0, ...lista.map((p) => p.valor));
+  const semUf = estados.find((e) => e.uf === "Sem UF");
+  const clientesComUf = lista.reduce((s, p) => s + p.clientes, 0);
+  const sudesteClientes = lista.filter((p) => SUDESTE.has(p.uf)).reduce((s, p) => s + p.clientes, 0);
+  const receitaTotal = lista.reduce((s, p) => s + p.receita, 0);
+  const leadsComUf = lista.reduce((s, p) => s + p.leads, 0);
   const tabela = selecionado ? lista.filter((p) => p.uf === selecionado) : lista;
   const info = hover || (selecionado ? pontos.get(selecionado) || null : null);
 
   return (
     <Bloco titulo="Onde estão nossos clientes"
-      sub={`${leadsComUf ? `${pct(sudeste, leadsComUf)} dos leads no Sudeste. ` : ""}${inteiro(semUf)} leads sem UF. ${inteiro(totalClientes)} clientes ativos com UF. Todos no Brasil`}
-      dica="Barras = leads do período por UF (altura e cor pela quantidade). Anel vermelho = clientes ativos (onboarding_companies). Arraste pra girar, role pra aproximar, clique numa barra pra filtrar a tabela"
-      acao={webgl ? (
+      sub={`${inteiro(clientesComUf)} clientes com UF. ${pct(sudesteClientes, clientesComUf)} no Sudeste. ${inteiro(n(semUf?.clientes))} clientes sem UF.`}
+      dica="Clientes = leads com ganho no CRM Comercial no histórico todo (etapa de ganho ou venda registrada, fora de funis de evento) + empresas ativas em carteira não ligadas a um lead ganho. UF do lead ou, se faltar, da empresa vinculada. Barras = clientes (ou leads do período, no toggle). Anel vermelho = empresas ativas em carteira. Arraste pra girar, role pra aproximar, clique numa barra pra filtrar a tabela"
+      acao={(
         <div className="flex items-center gap-1">
-          <Button variant={foco.modo === "brasil" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => setFoco({ modo: "brasil", tick: Date.now() })}>Brasil</Button>
-          <Button variant={foco.modo === "mundo" ? "default" : "outline"} size="sm" className="h-7 text-xs gap-1" onClick={() => setFoco({ modo: "mundo", tick: Date.now() })}><Globe2 className="h-3 w-3" /> Mundo</Button>
+          <div className="flex rounded-md border border-border/60 overflow-hidden mr-1 text-xs" title="O que dá altura e cor às barras">
+            <button type="button" className={`px-2 py-1 ${metrica === "clientes" ? "text-white" : "text-muted-foreground"}`} style={metrica === "clientes" ? { background: NAVY } : undefined} onClick={() => setMetrica("clientes")}>Clientes</button>
+            <button type="button" className={`px-2 py-1 ${metrica === "leads" ? "text-white" : "text-muted-foreground"}`} style={metrica === "leads" ? { background: NAVY } : undefined} onClick={() => setMetrica("leads")}>Leads do período</button>
+          </div>
+          {webgl && (
+            <>
+              <Button variant={foco.modo === "brasil" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => setFoco({ modo: "brasil", tick: Date.now() })}>Brasil</Button>
+              <Button variant={foco.modo === "mundo" ? "default" : "outline"} size="sm" className="h-7 text-xs gap-1" onClick={() => setFoco({ modo: "mundo", tick: Date.now() })}><Globe2 className="h-3 w-3" /> Mundo</Button>
+            </>
+          )}
         </div>
-      ) : undefined}>
-      {lista.length === 0 ? <SemDados motivo="Nenhum lead do período nem cliente ativo tem UF preenchida" /> : (
+      )}>
+      {lista.length === 0 ? <SemDados motivo="Nenhum cliente nem lead com UF preenchida" /> : (
         <div className="grid grid-cols-5 gap-3">
           <div className="col-span-3 relative rounded-lg border border-border/60 overflow-hidden" style={{ height: 300, background: "linear-gradient(180deg, #F7F9FC, #EEF2F8)" }}>
             {webgl ? (
@@ -198,7 +204,8 @@ function MapaClientes({ estados, estadosComUf, leadsComUf, sudeste }: { estados:
             {info && (
               <div className="absolute left-2 top-2 rounded-md border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm pointer-events-none">
                 <p className="font-semibold" style={{ color: NAVY }}>{info.uf}</p>
-                <p className="tabular-nums">{inteiro(info.leads)} leads · {inteiro(info.clientes)} clientes{info.receita ? ` · ${moeda(info.receita)}` : ""}</p>
+                <p className="tabular-nums">{inteiro(info.clientes)} clientes ({inteiro(info.ganhos)} ganhos no CRM, {inteiro(info.ativos)} em carteira)</p>
+                <p className="tabular-nums text-muted-foreground">{inteiro(info.leads)} leads no período{info.receita ? ` · receita ganha ${moeda(info.receita)}` : ""}</p>
               </div>
             )}
             {selecionado && (
@@ -207,18 +214,27 @@ function MapaClientes({ estados, estadosComUf, leadsComUf, sudeste }: { estados:
           </div>
           <div className="col-span-2 overflow-auto max-h-[300px]">
             <table className="w-full text-xs">
-              <thead className="text-muted-foreground sticky top-0 bg-card"><tr className="border-b"><th className="text-left font-medium py-1">UF</th><th className="text-right font-medium">Leads</th><th className="text-right font-medium">%</th><th className="text-right font-medium" title="Clientes ativos (onboarding_companies)">Clientes</th></tr></thead>
+              <thead className="text-muted-foreground sticky top-0 bg-card"><tr className="border-b">
+                <th className="text-left font-medium py-1">UF</th>
+                <th className="text-right font-medium" title="Ganhos no CRM + carteira ativa">Clientes</th>
+                <th className="text-right font-medium">%</th>
+                <th className="text-right font-medium" title="Receita ganha (crm_sales) dos clientes da UF">Receita</th>
+                <th className="text-right font-medium" title="Leads criados no período">Leads</th>
+              </tr></thead>
               <tbody>
                 {tabela.map((p) => (
-                  <tr key={p.uf} className={`border-b last:border-0 cursor-pointer hover:bg-muted/40 ${selecionado === p.uf ? "bg-muted/60" : ""}`} onClick={() => setSelecionado(selecionado === p.uf ? null : p.uf)}>
-                    <td className="py-1 font-medium">{p.uf}</td>
-                    <td className="text-right tabular-nums">{inteiro(p.leads)}</td>
-                    <td className="text-right tabular-nums text-muted-foreground">{pct(p.leads, leadsComUf)}</td>
-                    <td className="text-right tabular-nums" style={{ color: p.clientes ? VERMELHO : undefined }}>{inteiro(p.clientes)}</td>
+                  <tr key={p.uf} className={`border-b last:border-0 cursor-pointer hover:bg-muted/40 ${selecionado === p.uf ? "bg-muted/60" : ""}`} onClick={() => setSelecionado(selecionado === p.uf ? null : p.uf)}
+                    title={`${p.uf}: ${inteiro(p.ganhos)} ganhos no CRM, ${inteiro(p.ativos)} em carteira`}>
+                    <td className="py-1 font-medium">{p.uf}{p.ativos > 0 && <span className="inline-block h-1.5 w-1.5 rounded-full ml-1 align-middle" style={{ background: VERMELHO }} title="tem empresa ativa em carteira" />}</td>
+                    <td className="text-right tabular-nums font-semibold" style={{ color: p.clientes ? NAVY : undefined }}>{inteiro(p.clientes)}</td>
+                    <td className="text-right tabular-nums text-muted-foreground">{pct(p.clientes, clientesComUf)}</td>
+                    <td className="text-right tabular-nums">{p.receita ? moeda(p.receita) : "-"}</td>
+                    <td className="text-right tabular-nums text-muted-foreground">{inteiro(p.leads)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            <p className="text-[10px] text-muted-foreground mt-1.5">Leads do período: {inteiro(leadsComUf)} com UF, {inteiro(n(semUf?.leads))} sem UF. Receita ganha dos clientes com UF: {moeda(receitaTotal)}.</p>
           </div>
         </div>
       )}
@@ -333,9 +349,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
   const origensLista: any[] = dados?.origens || [];
   const pagos = n(A.leads_pagos), leadsTot = n(A.leads);
   const estados: any[] = dados?.estados || [];
-  const estadosComUf = estados.filter((e) => e.uf !== "Sem UF");
-  const leadsComUf = estadosComUf.reduce((s, e) => s + n(e.leads), 0);
-  const sudeste = estadosComUf.filter((e) => SUDESTE.has(e.uf)).reduce((s, e) => s + n(e.leads), 0);
+  const clientesComUf = estados.filter((e) => e.uf !== "Sem UF").reduce((s, e) => s + n(e.clientes), 0);
 
   const mapa = useMemo(() => {
     const m = new Map<string, number>(); let max = 0, pico = { dow: 0, hora: 0, v: 0 };
@@ -389,7 +403,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
       { chave: "receita", rotulo: "Receita e meta", linhas: receitaSerie.map((r) => ({ Dia: r.dia, "Receita acumulada": r.receita ?? "", "Meta acumulada": r.meta ?? "" })) },
       { chave: "funil", rotulo: "Funil", linhas: etapasFunil.map((e, i) => ({ Etapa: e.label, Quantidade: e.v, "Conversao da etapa anterior": i > 0 && etapasFunil[i - 1].v > 0 ? Number(((e.v / etapasFunil[i - 1].v) * 100).toFixed(1)) : "" })) },
       { chave: "origens", rotulo: "Origem dos leads", linhas: origensLista.map((o) => ({ Origem: o.nome, Grupo: o.grupo || "", "Midia paga": o.pago ? "sim" : "nao", Leads: n(o.leads), "%": leadsTot ? Number(((n(o.leads) / leadsTot) * 100).toFixed(1)) : "", Vendas: n(o.vendas), Receita: n(o.receita) })) },
-      { chave: "estados", rotulo: "Por estado", linhas: estados.map((e) => ({ UF: e.uf, Leads: n(e.leads), "%": leadsComUf ? Number(((n(e.leads) / leadsComUf) * 100).toFixed(1)) : "", Clientes: n(e.clientes), Receita: n(e.receita) })) },
+      { chave: "estados", rotulo: "Clientes por estado", linhas: estados.map((e) => ({ UF: e.uf, Clientes: n(e.clientes), "%": clientesComUf ? Number(((n(e.clientes) / clientesComUf) * 100).toFixed(1)) : "", "Ganhos no CRM": n(e.ganhos), "Em carteira (ativos)": n(e.ativos), "Receita ganha": n(e.receita), "Leads no periodo": n(e.leads) })) },
       { chave: "calor", rotulo: "Mapa de calor", linhas: (atend?.mapa_calor || []).map((x: any) => ({ "Dia da semana": DOW[n(x.dow)], Hora: `${String(x.hora).padStart(2, "0")}h`, "Mensagens recebidas": n(x.n) })) },
       { chave: "atendimento", rotulo: "Atendimento", linhas: atend ? [{ Interacoes: interacoes, WhatsApp: n(A.msgs_wa), Instagram: n(A.msgs_ig), Telefone: n(A.ligacoes), "1a resposta (media)": duracao(ak.inicio_medio_s), "SLA ate 5 min": slaPct != null ? Number((slaPct * 100).toFixed(1)) : "", Pendentes: n(ak.aguardando), "Sem resposta": n(ak.sem_resposta) }] : [] },
       { chave: "campanhas", rotulo: "Trafego e campanhas", linhas: campanhas.map((c) => ({ Campanha: c.nome, Midia: c.gasto, Leads: c.leads, CPL: c.cpl ?? "", Vendas: c.vendas, Receita: c.receita, ROAS: c.roas != null ? Number(c.roas.toFixed(2)) : "" })) },
@@ -399,7 +413,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
       { chave: "pipeline", rotulo: "Pipeline em aberto", linhas: pipelineEtapas.map((e) => ({ Funil: e.funil, Etapa: e.etapa, Oportunidades: n(e.qtd), "Com valor": n(e.com_valor), Valor: n(e.valor) })) },
       { chave: "atencao", rotulo: "Pontos de atencao", linhas: atencao.map((a) => ({ Ponto: a.texto, Detalhe: a.detalhe, Nivel: a.nivel })) },
     ];
-  }, [dados, kpis, texto, receitaSerie, etapasFunil, origensLista, leadsTot, estados, leadsComUf, atend, interacoes, A, ak, slaPct, campanhas, leadsSemana, sdrs, closers, pipelineEtapas, atencao]);
+  }, [dados, kpis, texto, receitaSerie, etapasFunil, origensLista, leadsTot, estados, clientesComUf, atend, interacoes, A, ak, slaPct, campanhas, leadsSemana, sdrs, closers, pipelineEtapas, atencao]);
 
   const campanhasOpcoes = [{ value: "all", label: "Todas as campanhas" }, ...campanhas.map((c) => ({ value: c.id, label: c.nome }))];
   const vazio = !dados || (!n(A.leads) && !n(A.vendas) && !n(A.receita));
@@ -537,7 +551,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
                 </div>
               )}
             </Bloco>
-            <MapaClientes estados={estados} estadosComUf={estadosComUf} leadsComUf={leadsComUf} sudeste={sudeste} />
+            <MapaClientes estados={estados} />
           </div>
 
           {/* 6. Mapa de calor + 7. Atendimento e velocidade */}
