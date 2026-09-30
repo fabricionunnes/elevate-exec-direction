@@ -12,6 +12,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
 import { ArrowLeft, Check, ChevronDown, ChevronRight, ClipboardCheck, ExternalLink, Loader2, RefreshCw, Send, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 type Item = {
   key: string; bloco: string; company_id: string | null; staff_id: string | null; project_id: string | null;
@@ -21,7 +22,12 @@ type Item = {
 };
 type Bloco = { key: string; titulo: string; descricao: string; feito: boolean; feito_em: string | null; nota: string | null; pendencias: number; tratadas: number; itens: Item[] };
 type Dados = { dia: string; grupos_ok: boolean; blocos: Bloco[] };
-type DiaHist = { dia: string; feitos: number; total: number; pendencias: number; tratadas: number; quem: string[] };
+type HistItem = { bloco: string; empresa: string | null; consultor: string | null; titulo: string; nota: string | null; por: string | null; em: string; tarefa_id: string | null };
+type HistBloco = { bloco: string; por: string | null; em: string; nota: string | null; pendencias: number; tratadas: number };
+type DiaHist = { dia: string; feitos: number; total: number; pendencias: number; tratadas: number; quem: string[]; blocos: HistBloco[]; itens: HistItem[] };
+const CORES = ["#2a78d6", "#1baf7a", "#4a3aa7", "#eda100", "#eb6834", "#d4321c", "#0f9aa8", "#8a6d1f", "#6d7787", "#c2185b"];
+const isoDia = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const horaBR = (iso: string) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
 const GRAV = {
   alta: { rotulo: "Grave", cls: "bg-rose-500/10 text-rose-600 border-rose-500/20", ponto: "bg-rose-500" },
@@ -50,7 +56,12 @@ export default function ProdutoCheckupPage() {
   const [hist, setHist] = useState<DiaHist[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
-  const [aba, setAba] = useState<"hoje" | "historico">("hoje");
+  const [aba, setAba] = useState<"hoje" | "historico" | "dashboard">("hoje");
+  const [histDe, setHistDe] = useState(() => isoDia(new Date(Date.now() - 13 * 86400000)));
+  const [histAte, setHistAte] = useState(() => isoDia(new Date()));
+  const [histConsultor, setHistConsultor] = useState("todos");
+  const [histConsultores, setHistConsultores] = useState<{ id: string; nome: string }[]>([]);
+  const [histCarregando, setHistCarregando] = useState(false);
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
   const [consultor, setConsultor] = useState("todos");
   const [soAbertas, setSoAbertas] = useState(true);
@@ -62,18 +73,50 @@ export default function ProdutoCheckupPage() {
   const buscar = useCallback(async (silencioso = false) => {
     if (!silencioso) setCarregando(true);
     try {
-      const [d, h] = await Promise.all([chamar({ action: "get" }), chamar({ action: "historico" })]);
+      const [d, h] = await Promise.all([chamar({ action: "get" }), chamar({ action: "historico", de: histDe, ate: histAte, consultor: histConsultor })]);
       setDados(d as Dados);
       setHist((h?.dias || []) as DiaHist[]);
+      setHistConsultores((h?.consultores || []) as { id: string; nome: string }[]);
       setErro(null);
     } catch (e: any) {
       setErro(e.message || "Erro ao carregar o checkup.");
     } finally {
       setCarregando(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { buscar(); }, [buscar]);
+
+  // histórico e dashboard: recarrega só a parte deles quando os filtros mudam
+  const buscarHist = useCallback(async () => {
+    setHistCarregando(true);
+    try {
+      const h = await chamar({ action: "historico", de: histDe, ate: histAte, consultor: histConsultor });
+      setHist((h?.dias || []) as DiaHist[]);
+      if (histConsultor === "todos") setHistConsultores((h?.consultores || []) as { id: string; nome: string }[]);
+    } catch (e: any) { toast.error(e.message); } finally { setHistCarregando(false); }
+  }, [histDe, histAte, histConsultor]);
+  useEffect(() => { if (dados) buscarHist(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [histDe, histAte, histConsultor]);
+
+  const resumoHist = useMemo(() => {
+    const itens = hist.flatMap((d) => d.itens.map((i) => ({ ...i, dia: d.dia })));
+    const porBloco = new Map<string, number>(); const porCons = new Map<string, number>(); const cobrancasCons = new Map<string, number>(); const porQuem = new Map<string, number>();
+    for (const i of itens) {
+      porBloco.set(i.bloco, (porBloco.get(i.bloco) || 0) + 1);
+      const c = i.consultor || "Sem consultor"; porCons.set(c, (porCons.get(c) || 0) + 1);
+      if (i.tarefa_id) cobrancasCons.set(c, (cobrancasCons.get(c) || 0) + 1);
+      const q = i.por || "Sistema"; porQuem.set(q, (porQuem.get(q) || 0) + 1);
+    }
+    const diasUteis = hist.filter((d) => d.feitos > 0 || d.itens.length > 0);
+    const aderencia = hist.length ? Math.round((hist.reduce((a, d) => a + d.feitos, 0) / (hist.length * 10)) * 100) : 0;
+    const porDia = [...hist].sort((a, b) => (a.dia < b.dia ? -1 : 1)).map((d) => ({ dia: diaCurto(d.dia).replace(/^\w+\.,?\s*/, ""), feitos: d.feitos, tratadas: d.itens.length, cobrancas: d.itens.filter((i) => i.tarefa_id).length }));
+    const top = (m: Map<string, number>) => [...m.entries()].sort((a, b) => b[1] - a[1]);
+    return { total: itens.length, tarefas: itens.filter((i) => i.tarefa_id).length, aderencia, dias: diasUteis.length,
+      porBloco: top(porBloco).map(([nome, n]) => ({ nome, n })), porCons: top(porCons).map(([nome, n]) => ({ nome, n, cobrancas: cobrancasCons.get(nome) || 0 })),
+      porQuem: top(porQuem).map(([nome, n]) => ({ nome, n })), porDia };
+  }, [hist]);
 
   const consultores = useMemo(() => {
     const m = new Map<string, string>();
@@ -199,9 +242,9 @@ export default function ProdutoCheckupPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap border-b border-border">
-          {(["hoje", "historico"] as const).map((a) => (
+          {(["hoje", "historico", "dashboard"] as const).map((a) => (
             <button key={a} onClick={() => setAba(a)} className={cn("px-3 py-2 text-sm border-b-2 -mb-px", aba === a ? "border-primary font-medium" : "border-transparent text-muted-foreground")}>
-              {a === "hoje" ? "Hoje" : "Histórico"}
+              {a === "hoje" ? "Hoje" : a === "historico" ? "Histórico" : "Dashboard"}
             </button>
           ))}
         </div>
@@ -398,26 +441,174 @@ export default function ProdutoCheckupPage() {
           </>
         )}
 
+        {aba !== "hoje" && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1">
+              <Input type="date" value={histDe} onChange={(e) => setHistDe(e.target.value)} className="h-9 w-[150px]" />
+              <span className="text-xs text-muted-foreground">até</span>
+              <Input type="date" value={histAte} onChange={(e) => setHistAte(e.target.value)} className="h-9 w-[150px]" />
+            </div>
+            <div className="w-[240px]">
+              <SearchableSelect
+                value={histConsultor}
+                onValueChange={(v) => setHistConsultor(v || "todos")}
+                options={[{ value: "todos", label: "Todos os consultores" }, ...histConsultores.map((c) => ({ value: c.id, label: c.nome }))]}
+                placeholder="Digite pra buscar…"
+                emptyMessage="Nenhum consultor no período"
+              />
+            </div>
+            {[7, 14, 30].map((n) => (
+              <Button key={n} variant="outline" size="sm" onClick={() => { setHistAte(isoDia(new Date())); setHistDe(isoDia(new Date(Date.now() - (n - 1) * 86400000))); }}>{n} dias</Button>
+            ))}
+            {histCarregando && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+          </div>
+        )}
+
         {aba === "historico" && (
-          <Card><CardContent className="p-0">
+          <div className="space-y-3">
             {hist.length === 0 ? (
-              <p className="p-6 text-sm text-muted-foreground">Ainda não há dias registrados. O histórico começa quando o primeiro bloco for marcado como feito.</p>
-            ) : (
-              <div className="divide-y divide-border">
-                {hist.map((h) => (
-                  <div key={h.dia} className="p-4 flex items-center gap-4 flex-wrap">
-                    <span className="w-28 text-sm font-medium capitalize">{diaCurto(h.dia)}</span>
-                    <div className="flex-1 min-w-[160px]">
+              <Card><CardContent className="p-6 text-sm text-muted-foreground">Nada registrado nesse período{histConsultor !== "todos" ? " para esse consultor" : ""}. O histórico começa quando um bloco é marcado como feito ou uma pendência é tratada.</CardContent></Card>
+            ) : hist.map((h) => (
+              <Card key={h.dia}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <span className="text-sm font-medium capitalize">{diaCurto(h.dia)}</span>
+                    <div className="flex-1 min-w-[140px]">
                       <div className="h-1.5 rounded-full bg-muted overflow-hidden"><div className={cn("h-full", h.feitos >= h.total ? "bg-emerald-500" : "bg-amber-500")} style={{ width: `${(h.feitos / Math.max(1, h.total)) * 100}%` }} /></div>
                     </div>
                     <span className="text-sm tabular-nums">{h.feitos} de {h.total} blocos</span>
-                    <span className="text-xs text-muted-foreground tabular-nums">{h.tratadas} tratadas de {h.pendencias}</span>
+                    <span className="text-xs text-muted-foreground tabular-nums">{h.itens.length} tratadas · {h.itens.filter((i) => i.tarefa_id).length} cobranças</span>
                     <span className="text-xs text-muted-foreground">{h.quem.join(", ")}</span>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent></Card>
+                  {h.blocos.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {h.blocos.map((b, k) => (
+                        <Badge key={k} variant="outline" className="text-[10px] gap-1" title={b.nota || undefined}><Check className="h-3 w-3 text-emerald-600" />{b.bloco}{b.por ? ` · ${b.por.split(" ")[0]}` : ""} {horaBR(b.em)}</Badge>
+                      ))}
+                    </div>
+                  )}
+                  {h.itens.length > 0 && (
+                    <div className="divide-y divide-border rounded-md border">
+                      {h.itens.map((i, k) => (
+                        <div key={k} className="px-3 py-2 text-sm flex items-start gap-3">
+                          <span className="text-[11px] text-muted-foreground tabular-nums w-11 flex-shrink-0 mt-0.5">{horaBR(i.em)}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="outline" className="text-[10px]">{i.bloco}</Badge>
+                              {i.empresa && <span className="font-medium">{i.empresa}</span>}
+                              {i.consultor && <span className="text-[11px] text-muted-foreground">{i.consultor}</span>}
+                              {i.tarefa_id && <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-500/30 gap-1"><Send className="h-3 w-3" />tarefa criada</Badge>}
+                            </div>
+                            <p className="text-xs mt-0.5">{i.titulo}</p>
+                            {i.nota && <p className="text-xs text-muted-foreground mt-0.5">"{i.nota}"</p>}
+                          </div>
+                          <span className="text-[11px] text-muted-foreground flex-shrink-0">{i.por || "sistema"}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {aba === "dashboard" && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {[
+                { rot: "Pendências tratadas", v: resumoHist.total, sub: "no período" },
+                { rot: "Cobranças ao consultor", v: resumoHist.tarefas, sub: "tarefas criadas" },
+                { rot: "Aderência da rotina", v: `${resumoHist.aderencia}%`, sub: "blocos feitos sobre 10 por dia" },
+                { rot: "Dias com atividade", v: resumoHist.dias, sub: "no período" },
+              ].map((c) => (
+                <Card key={c.rot}><CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground">{c.rot}</p>
+                  <p className="text-2xl font-semibold">{c.v}</p>
+                  <p className="text-[11px] text-muted-foreground">{c.sub}</p>
+                </CardContent></Card>
+              ))}
+            </div>
+
+            <Card><CardContent className="p-4">
+              <p className="font-medium mb-1">Execução por dia</p>
+              <p className="text-xs text-muted-foreground mb-3">Blocos feitos (de 10), pendências tratadas e cobranças criadas em cada dia.</p>
+              {resumoHist.porDia.length === 0 ? <p className="text-sm text-muted-foreground py-6 text-center">Sem registros no período.</p> : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={resumoHist.porDia}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="dia" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+                    <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="feitos" name="Blocos feitos" fill={CORES[0]} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="tratadas" name="Tratadas" fill={CORES[1]} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="cobrancas" name="Cobranças" fill={CORES[3]} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent></Card>
+
+            <div className="grid lg:grid-cols-2 gap-4">
+              <Card><CardContent className="p-4">
+                <p className="font-medium mb-1">Tratadas por bloco</p>
+                <p className="text-xs text-muted-foreground mb-3">Onde o esforço do checkup está indo.</p>
+                {resumoHist.porBloco.length === 0 ? <p className="text-sm text-muted-foreground py-6 text-center">Sem registros.</p> : (
+                  <div className="flex items-center gap-3">
+                    <ResponsiveContainer width="45%" height={220}>
+                      <PieChart>
+                        <Pie data={resumoHist.porBloco} dataKey="n" nameKey="nome" innerRadius={50} outerRadius={90} paddingAngle={2} stroke="hsl(var(--background))" strokeWidth={2}>
+                          {resumoHist.porBloco.map((_, k) => <Cell key={k} fill={CORES[k % CORES.length]} />)}
+                        </Pie>
+                        <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="flex-1 space-y-1.5">
+                      {resumoHist.porBloco.map((b, k) => (
+                        <div key={b.nome} className="flex items-center justify-between text-sm gap-2">
+                          <span className="flex items-center gap-2 min-w-0"><span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ background: CORES[k % CORES.length] }} /><span className="truncate">{b.nome}</span></span>
+                          <span className="font-semibold tabular-nums">{b.n} <span className="text-[11px] font-normal text-muted-foreground">{Math.round((b.n / Math.max(1, resumoHist.total)) * 100)}%</span></span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent></Card>
+
+              <Card><CardContent className="p-4">
+                <p className="font-medium mb-1">Por consultor</p>
+                <p className="text-xs text-muted-foreground mb-3">Pendências tratadas na carteira de cada um e cobranças enviadas.</p>
+                {resumoHist.porCons.length === 0 ? <p className="text-sm text-muted-foreground py-6 text-center">Sem registros.</p> : (
+                  <ResponsiveContainer width="100%" height={Math.max(160, 36 * resumoHist.porCons.length)}>
+                    <BarChart data={resumoHist.porCons} layout="vertical" margin={{ left: 8, right: 16 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" allowDecimals={false} />
+                      <YAxis type="category" dataKey="nome" width={120} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                      <Tooltip contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Bar dataKey="n" name="Tratadas" fill={CORES[1]} radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="cobrancas" name="Cobranças" fill={CORES[3]} radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent></Card>
+            </div>
+
+            <Card><CardContent className="p-4">
+              <p className="font-medium mb-1">Quem executou</p>
+              <p className="text-xs text-muted-foreground mb-3">Pendências tratadas por pessoa que fez o checkup.</p>
+              {resumoHist.porQuem.length === 0 ? <p className="text-sm text-muted-foreground py-4 text-center">Sem registros.</p> : (
+                <div className="space-y-2">
+                  {resumoHist.porQuem.map((q, k) => (
+                    <div key={q.nome} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm"><span>{q.nome}</span><span className="font-semibold tabular-nums">{q.n}</span></div>
+                      <div className="h-1.5 rounded bg-muted overflow-hidden"><div className="h-full rounded" style={{ width: `${Math.max(2, (q.n / Math.max(1, resumoHist.porQuem[0].n)) * 100)}%`, background: CORES[k % CORES.length] }} /></div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent></Card>
+          </div>
         )}
       </div>
     </div>

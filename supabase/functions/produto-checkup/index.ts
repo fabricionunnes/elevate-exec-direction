@@ -284,18 +284,41 @@ Deno.serve(async (req) => {
     if (action === "resumo" && !viaCron && eu?.role !== "master") return json({ ok: false, erro: "Só o master dispara o resumo." }, 403);
 
     if (action === "historico") {
-      const desde = new Date(Date.now() - 35 * 86400000).toISOString().slice(0, 10);
-      const { data } = await supabase.from("produto_checkup_blocos").select("dia, bloco, feito_por, feito_em, pendencias, tratadas").gte("dia", desde).order("dia", { ascending: false });
+      // filtros: período (de/ate, padrão 14 dias) e consultor (staff_id gravado na pendência)
+      const hojeBR = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+      const ate = /^\d{4}-\d{2}-\d{2}$/.test(String(body.ate || "")) ? String(body.ate) : hojeBR;
+      const de = /^\d{4}-\d{2}-\d{2}$/.test(String(body.de || "")) ? String(body.de) : new Date(Date.parse(ate) - 13 * 86400000).toISOString().slice(0, 10);
+      const consultorF = body.consultor && body.consultor !== "todos" ? String(body.consultor) : null;
+      const { data } = await supabase.from("produto_checkup_blocos").select("dia, bloco, feito_por, feito_em, nota, pendencias, tratadas").gte("dia", de).lte("dia", ate).order("dia", { ascending: false });
+      let q = supabase.from("produto_checkup_itens").select("dia, item_key, bloco, company_id, staff_id, titulo, tratado_por, tratado_em, nota, tarefa_id").gte("dia", de).lte("dia", ate).order("tratado_em", { ascending: false }).limit(2000);
+      if (consultorF) q = q.eq("staff_id", consultorF);
+      const { data: itensH } = await q;
       const { data: st } = await supabase.from("onboarding_staff").select("id, name");
       const nomes = new Map((st || []).map((s: any) => [s.id, s.name]));
+      const cids = [...new Set((itensH || []).map((i: any) => i.company_id).filter(Boolean))];
+      const empresas = new Map<string, string>();
+      for (let k = 0; k < cids.length; k += 200) {
+        const { data: cs } = await supabase.from("onboarding_companies").select("id, name").in("id", cids.slice(k, k + 200));
+        for (const c of cs || []) empresas.set(c.id, c.name);
+      }
+      const tituloBloco = (k: string) => BLOCOS.find((b) => b.key === k)?.titulo || k;
       const porDia = new Map<string, any>();
       for (const r of data || []) {
-        const d = porDia.get(r.dia) || { dia: r.dia, feitos: 0, total: BLOCOS.length, pendencias: 0, tratadas: 0, quem: new Set<string>() };
+        const d = porDia.get(r.dia) || { dia: r.dia, feitos: 0, total: BLOCOS.length, pendencias: 0, tratadas: 0, quem: new Set<string>(), blocos: [], itens: [] };
         d.feitos++; d.pendencias += r.pendencias || 0; d.tratadas += r.tratadas || 0;
         if (r.feito_por) d.quem.add(nomes.get(r.feito_por) || "");
+        d.blocos.push({ bloco: tituloBloco(r.bloco), por: nomes.get(r.feito_por) || null, em: r.feito_em, nota: r.nota || null, pendencias: r.pendencias, tratadas: r.tratadas });
         porDia.set(r.dia, d);
       }
-      return json({ ok: true, total_blocos: BLOCOS.length, dias: [...porDia.values()].map((d) => ({ ...d, quem: [...d.quem].filter(Boolean) })) });
+      for (const i of itensH || []) {
+        const d = porDia.get(i.dia) || { dia: i.dia, feitos: 0, total: BLOCOS.length, pendencias: 0, tratadas: 0, quem: new Set<string>(), blocos: [], itens: [] };
+        d.itens.push({ bloco: tituloBloco(i.bloco), empresa: i.company_id ? empresas.get(i.company_id) || null : null, consultor: i.staff_id ? nomes.get(i.staff_id) || null : null,
+          titulo: i.titulo, nota: i.nota || null, por: nomes.get(i.tratado_por) || null, em: i.tratado_em, tarefa_id: i.tarefa_id || null });
+        porDia.set(i.dia, d);
+      }
+      const dias = [...porDia.values()].sort((a, b) => (a.dia < b.dia ? 1 : -1)).map((d) => ({ ...d, quem: [...d.quem].filter(Boolean) }));
+      const consultores = (st || []).filter((x: any) => (itensH || []).some((i: any) => i.staff_id === x.id)).map((x: any) => ({ id: x.id, nome: x.name }));
+      return json({ ok: true, total_blocos: BLOCOS.length, de, ate, dias, consultores });
     }
 
     const { hoje, itens, gruposOk } = await montar(supabase);
