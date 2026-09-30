@@ -48,6 +48,10 @@ export interface ConversationFiltersData {
   assignedTo: string;
   sectorId: string;
   aiAgentId: string; // "" = todos | "any" = qualquer agente de IA | id do agente
+  // Data da última mensagem (de / até) e ordenação da lista (30/09/2026)
+  lastMessageFrom: Date | undefined;
+  lastMessageTo: Date | undefined;
+  sortBy: "recent" | "oldest" | "waiting_longest";
   // Negócios
   dealCreatedAt: Date | undefined;
   hasDeal: string; // "all" | "with" | "without"
@@ -147,11 +151,12 @@ export function ConversationFilters({
       .from("crm_ai_agents").select("id, name, is_active").order("is_active", { ascending: false }).order("name");
     if (agentsData) setAiAgents(agentsData);
 
-    // Fetch sectors
-    const { data: sectorsData } = await supabase
-      .from("company_sectors")
+    // Setores do Atendimento (crm_service_sectors, que é pra onde sector_id da conversa aponta)
+    const { data: sectorsData } = await (supabase as any)
+      .from("crm_service_sectors")
       .select("id, name")
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .order("sort_order");
     
     if (sectorsData) {
       setSectors(sectorsData as Sector[]);
@@ -243,6 +248,9 @@ export function ConversationFilters({
       assignedTo: "",
       sectorId: "",
       aiAgentId: "",
+      lastMessageFrom: undefined,
+      lastMessageTo: undefined,
+      sortBy: "recent",
       dealCreatedAt: undefined,
       hasDeal: "",
       dealStatus: "",
@@ -257,6 +265,7 @@ export function ConversationFilters({
   };
 
   const activeFiltersCount = Object.entries(filters).filter(([key, value]) => {
+    if (key === "sortBy") return value !== "recent";
     if (typeof value === "boolean") return value;
     if (typeof value === "string") return value !== "";
     if (Array.isArray(value)) return value.length > 0;
@@ -358,6 +367,30 @@ export function ConversationFilters({
                   value={filters.createdAt}
                   onChange={(v) => updateFilter("createdAt", v)}
                 />
+              </div>
+
+              {/* Data da última mensagem */}
+              <div className="space-y-1">
+                <Label className="text-sm text-muted-foreground">Última mensagem entre</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <DatePickerFilter value={filters.lastMessageFrom} onChange={(v) => updateFilter("lastMessageFrom", v)} />
+                  <DatePickerFilter value={filters.lastMessageTo} onChange={(v) => updateFilter("lastMessageTo", v)} />
+                </div>
+              </div>
+
+              {/* Ordenação */}
+              <div className="space-y-1">
+                <Label className="text-sm text-muted-foreground">Ordenar por</Label>
+                <Select value={filters.sortBy || "recent"} onValueChange={(v) => updateFilter("sortBy", v as ConversationFiltersData["sortBy"])}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recent">Mais recente</SelectItem>
+                    <SelectItem value="oldest">Mais antiga</SelectItem>
+                    <SelectItem value="waiting_longest">Mais tempo sem resposta</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Status */}
@@ -771,6 +804,9 @@ export const defaultFilters: ConversationFiltersData = {
   assignedTo: "",
   sectorId: "",
   aiAgentId: "",
+  lastMessageFrom: undefined,
+  lastMessageTo: undefined,
+  sortBy: "recent",
   dealCreatedAt: undefined,
   hasDeal: "",
   dealStatus: "",

@@ -32,7 +32,12 @@ import {
   Bot,
   Link2,
   PhoneCall,
+  Unlink,
+  Merge,
+  Building2,
 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { MergeConversationDialog } from "./MergeConversationDialog";
 import { Switch } from "@/components/ui/switch";
 import { WhatsAppConversation } from "@/hooks/useWhatsAppConversations";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,6 +65,8 @@ interface ConversationSidebarProps {
   onLeadCreated?: (leadId: string) => void;
   onContactUpdated?: () => void;
   onAssignmentChanged?: () => void;
+  onLeadUnlinked?: () => void;
+  onMerged?: (primaryId: string, secondaryId: string) => void;
 }
 
 export function ConversationSidebar({ 
@@ -67,9 +74,42 @@ export function ConversationSidebar({
   projectId,
   onLeadCreated,
   onContactUpdated,
-  onAssignmentChanged
+  onAssignmentChanged,
+  onLeadUnlinked,
+  onMerged,
 }: ConversationSidebarProps) {
   const { staffId } = useCRMContext();
+  // Desvincular lead / mesclar conversas / setor (30/09/2026)
+  const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
+  const [sectors, setSectors] = useState<{ value: string; label: string }[]>([]);
+  useEffect(() => {
+    (supabase as any).from("crm_service_sectors").select("id, name").eq("is_active", true).order("sort_order")
+      .then(({ data }: any) => setSectors(((data || []) as any[]).map((x) => ({ value: x.id, label: x.name }))));
+  }, []);
+  const handleChangeSector = async (value: string) => {
+    const novo = value === "none" ? null : value;
+    setLoading(true);
+    const { error } = await supabase.from("crm_whatsapp_conversations").update({ sector_id: novo } as any).eq("id", conversation.id);
+    setLoading(false);
+    if (error) { toast.error("Erro ao transferir o setor"); return; }
+    toast.success(novo ? "Conversa transferida de setor" : "Setor removido da conversa");
+    onAssignmentChanged?.();
+  };
+  const handleUnlink = async () => {
+    setUnlinking(true);
+    const { data, error } = await (supabase as any).rpc("crm_unlink_conversation_lead", {
+      p_conversation_id: conversation.id,
+      p_channel: (conversation as any).channel === "instagram" ? "instagram" : "whatsapp",
+    });
+    setUnlinking(false);
+    if (error) { toast.error(error.message || "Não consegui desvincular o lead"); return; }
+    setShowUnlinkDialog(false);
+    toast.success(`Lead ${(data as any)?.lead_name || ""} desvinculado desta conversa`);
+    onLeadUnlinked?.();
+    refetchLinkedLeads();
+  };
 
   // Agente de IA vinculado à instância desta conversa + override liga/desliga
   const [convAgent, setConvAgent] = useState<{ id: string; name: string } | null>(null);
@@ -319,6 +359,8 @@ export function ConversationSidebar({
 
           if (error) throw error;
           inheritedLeadId = inheritedConversation?.lead_id || identityMatchedLead?.id || null;
+          // lead desvinculado à mão nesta conversa não volta sozinho
+          if (inheritedLeadId && inheritedLeadId === (conversation as any).unlinked_lead_id) inheritedLeadId = null;
         }
 
         const resolvedLead = linkedLeads.find((lead) => lead.id === (conversation.lead_id || inheritedLeadId)) || identityMatchedLead;
@@ -1039,6 +1081,19 @@ export function ConversationSidebar({
                 ))}
               </SelectContent>
             </Select>
+            {!isInstagram && (
+              <div className="pt-1">
+                <p className="text-[11px] text-muted-foreground mb-1 flex items-center gap-1"><Building2 className="h-3 w-3" /> Setor</p>
+                <SearchableSelect
+                  value={conversation.sector_id || "none"}
+                  onValueChange={handleChangeSector}
+                  options={[{ value: "none", label: "Sem setor" }, ...sectors]}
+                  placeholder="Transferir setor"
+                  emptyMessage="Nenhum setor. Cadastre em Configurações → Setores."
+                  disabled={loading}
+                />
+              </div>
+            )}
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -1148,6 +1203,32 @@ export function ConversationSidebar({
           </span>
           <ChevronRight className="h-4 w-4" />
         </Button>
+        {!!conversation.lead_id && (
+          <Button
+            variant="ghost"
+            className="w-full justify-between text-muted-foreground"
+            onClick={() => setShowUnlinkDialog(true)}
+          >
+            <span className="flex items-center gap-2">
+              <Unlink className="h-4 w-4" />
+              Desvincular lead
+            </span>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        )}
+        {!isInstagram && (
+          <Button
+            variant="ghost"
+            className="w-full justify-between text-muted-foreground"
+            onClick={() => setShowMergeDialog(true)}
+          >
+            <span className="flex items-center gap-2">
+              <Merge className="h-4 w-4" />
+              Mesclar com outra conversa
+            </span>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Contact Section */}
@@ -1365,6 +1446,33 @@ export function ConversationSidebar({
           refetchLinkedLeads();
         }}
       />
+
+      {/* Desvincular lead: limpa lead_id e registra no histórico do lead */}
+      <AlertDialog open={showUnlinkDialog} onOpenChange={setShowUnlinkDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desvincular o lead desta conversa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A conversa fica sem negócio e o lead continua existindo no CRM. Fica registrado no histórico do lead. Dá pra vincular de novo depois.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={unlinking}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); handleUnlink(); }} disabled={unlinking}>
+              {unlinking ? "Desvinculando..." : "Desvincular"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {!isInstagram && (
+        <MergeConversationDialog
+          open={showMergeDialog}
+          onOpenChange={setShowMergeDialog}
+          conversation={conversation as any}
+          onMerged={(primaryId, secondaryId) => onMerged?.(primaryId, secondaryId)}
+        />
+      )}
 
       {/* Edit Contact Dialog */}
       <Dialog open={showEditContactDialog} onOpenChange={setShowEditContactDialog}>

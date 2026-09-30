@@ -66,6 +66,11 @@ import {
   Hourglass,
   PenLine,
   User as UserIcon,
+  Zap,
+  CalendarClock,
+  RotateCcw,
+  ListChecks,
+  Eye,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -87,6 +92,9 @@ import { AudioRecorder } from "@/components/crm/inbox/AudioRecorder";
 import { ReceiptAnalysisButton } from "@/components/crm/inbox/ReceiptAnalysisButton";
 import { useCompanyIdentification } from "@/hooks/useCompanyIdentification";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { QuickResponsesPicker, QuickResponsesPickerHandle, quickVariablesFor } from "@/components/crm/inbox/QuickResponsesPicker";
+import { ScheduleMessageDialog } from "@/components/crm/inbox/ScheduleMessageDialog";
+import { BulkActionsBar, BulkAction } from "@/components/crm/inbox/BulkActionsBar";
 
 // Cor estável por remetente (estilo WhatsApp em grupos) — mesmo nome, mesma cor.
 // Nome sem nenhuma letra/número (".", "~", emoji solto) não identifica ninguém: usa o telefone.
@@ -170,6 +178,11 @@ export const CRMInboxPage = () => {
   };
   const comAssinatura = (texto: string) => (selectedConversation && signatureOnFor(selectedConversation) ? `${mySignature.text.trim()}\n${texto}` : texto);
   const [officialTemplateOpen, setOfficialTemplateOpen] = useState(false);
+  // Respostas rápidas no composer: "/" no início abre o painel; o raio também.
+  const [quickOpen, setQuickOpen] = useState(false);
+  const quickRef = useRef<QuickResponsesPickerHandle>(null);
+  const quickQuery = newMessage.startsWith("/") ? newMessage.slice(1) : "";
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram">("all");
@@ -229,7 +242,32 @@ export const CRMInboxPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   // Redesenho 19/09/2026 (opção 2 + fila da 3): atalhos de filtro, fila por prioridade,
   // negócio no topo da conversa e painel lateral recolhível.
-  const [quick, setQuick] = useState<"all" | "unread" | "waiting" | "mine">("all");
+  const [quick, setQuick] = useState<"all" | "unread" | "waiting" | "mine" | "automation" | "failed" | "hidden">("all");
+  // Seleção múltipla e ações em massa (item 8 do benchmark Datacrazy, 30/09/2026)
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const toggleSelected = (id: string) => setSelectedIds((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  // "Em automação" e "Falhas" vêm do banco (crm_inbox_automation_ids / crm_inbox_failed_ids)
+  const [automationIds, setAutomationIds] = useState<Set<string>>(new Set());
+  const [failedIds, setFailedIds] = useState<Set<string>>(new Set());
+  const loadQuickSets = async () => {
+    const [{ data: a }, { data: f }] = await Promise.all([
+      (supabase as any).rpc("crm_inbox_automation_ids"),
+      (supabase as any).rpc("crm_inbox_failed_ids"),
+    ]);
+    setAutomationIds(new Set(((a || []) as any[]).map((r) => String(r.conversation_id))));
+    setFailedIds(new Set(((f || []) as any[]).map((r) => String(r.conversation_id))));
+  };
+  useEffect(() => { loadQuickSets(); }, []);
+  useEffect(() => { if (quick === "automation" || quick === "failed") loadQuickSets(); }, [quick]);
+  const reexibirConversa = async (conv: any) => {
+    const phone = String(conv?.contact?.phone || "");
+    if (!phone) return;
+    const { error } = await (supabase as any).from("crm_whatsapp_ignored_chats").delete().eq("phone", phone);
+    if (error) { toast.error("Não consegui reexibir: " + error.message); return; }
+    setIgnoredPhones((prev) => { const n = new Set(prev); n.delete(phone); return n; });
+    toast.success("Conversa voltou pro Atendimento");
+  };
   const [showDetails, setShowDetails] = useState<boolean>(() => { try { return localStorage.getItem("crm_inbox_details") === "1"; } catch { return false; } });
   const toggleDetails = () => setShowDetails((v) => { try { localStorage.setItem("crm_inbox_details", v ? "0" : "1"); } catch { /* ok */ } return !v; });
   const [stageMap, setStageMap] = useState<Record<string, { stage: string; pipeline: string; pipelineId?: string }>>({});
@@ -312,7 +350,9 @@ export const CRMInboxPage = () => {
   const conversations = allConversations.filter((conv) => {
     // Channel filter
     if (channelFilter !== "all" && conv.channel !== channelFilter) return false;
-    if (conv.channel !== "instagram" && ignoredPhones.has(String((conv as any).contact?.phone || ""))) return false;
+    if ((conv as any).merged_into) return false; // absorvida por outra conversa (mesclagem)
+    const oculta = conv.channel !== "instagram" && ignoredPhones.has(String((conv as any).contact?.phone || ""));
+    if (quick === "hidden" ? !oculta : oculta) return false;
 
     // Filtro por número/conta
     if (instanceFilter !== "all") {
@@ -817,6 +857,8 @@ export const CRMInboxPage = () => {
     if (quick === "unread" && !(conv.unread_count > 0)) return false;
     if (quick === "waiting" && !(esperando(conv) && !(stageMap[String((conv.lead as any)?.stage_id || "")] as any)?.lost)) return false;
     if (quick === "mine" && conv.assigned_to !== staffId) return false;
+    if (quick === "automation" && !automationIds.has(String(conv.id))) return false;
+    if (quick === "failed" && !failedIds.has(String(conv.id))) return false;
 
     // Conversation filters
     if (filters.assignedToMe && conv.assigned_to !== staffId) return false;
@@ -853,6 +895,13 @@ export const CRMInboxPage = () => {
       const filterDate = new Date(filters.createdAt);
       if (convDate.toDateString() !== filterDate.toDateString()) return false;
     }
+    // Data da última mensagem (de / até, dia inteiro)
+    if (filters.lastMessageFrom || filters.lastMessageTo) {
+      if (!conv.last_message_at) return false;
+      const t = new Date(conv.last_message_at).getTime();
+      if (filters.lastMessageFrom) { const d = new Date(filters.lastMessageFrom); d.setHours(0, 0, 0, 0); if (t < d.getTime()) return false; }
+      if (filters.lastMessageTo) { const d = new Date(filters.lastMessageTo); d.setHours(23, 59, 59, 999); if (t > d.getTime()) return false; }
+    }
 
     return true;
   });
@@ -862,11 +911,58 @@ export const CRMInboxPage = () => {
   const contagens = useMemo(() => ({
     unread: conversations.filter((c: any) => (c.unread_count || 0) > 0).length,
     waiting: conversations.filter((c: any) => aguardando(c)).length,
-  }), [conversations, stageMap]);
+    automation: conversations.filter((c: any) => automationIds.has(String(c.id))).length,
+    failed: conversations.filter((c: any) => failedIds.has(String(c.id))).length,
+    hidden: quick === "hidden" ? conversations.length : allConversations.filter((c: any) => c.channel !== "instagram" && ignoredPhones.has(String(c.contact?.phone || ""))).length,
+  }), [conversations, stageMap, automationIds, failedIds, ignoredPhones, quick]);
   // Fila: quem está esperando resposta sobe, e dentro de cada grupo vale o mais recente.
+  // Ordenação (Filtros → Ordenar por): mais recente (padrão), mais antiga, mais tempo sem resposta.
+  const tempoUltima = (c: any) => new Date(c.last_message_at || c.created_at || 0).getTime();
   const filaEsperando = filteredConversations.filter((c: any) => aguardando(c));
   const filaAndamento = filteredConversations.filter((c: any) => !aguardando(c));
-  const listaOrdenada = [...filaEsperando, ...filaAndamento];
+  const listaOrdenada = filters.sortBy === "oldest"
+    ? [...filteredConversations].sort((a, b) => tempoUltima(a) - tempoUltima(b))
+    : filters.sortBy === "waiting_longest"
+      ? [
+          ...[...filaEsperando].sort((a: any, b: any) => new Date(a.last_inbound_at || a.last_message_at || 0).getTime() - new Date(b.last_inbound_at || b.last_message_at || 0).getTime()),
+          ...[...filaAndamento].sort((a, b) => tempoUltima(a) - tempoUltima(b)),
+        ]
+      : [...filaEsperando, ...filaAndamento];
+  // Filtro atual no formato do banco (crm_inbox_bulk): "sem seleção = todas do filtro"
+  const bulkFilter = useMemo(() => {
+    const dia = (d?: Date) => (d ? format(new Date(d), "yyyy-MM-dd") : "");
+    const inst2 = filters.instanceId ? (filters.instanceId.startsWith("official:") ? `off:${filters.instanceId.replace("official:", "")}` : `evo:${filters.instanceId}`) : "";
+    return {
+      quick,
+      search: searchTerm,
+      channel: channelFilter,
+      status: filterStatus !== "all" ? filterStatus : filters.status || "",
+      instance: instanceFilter !== "all" ? instanceFilter : "",
+      instance2: inst2,
+      assigned_to_me: filters.assignedToMe,
+      unassigned: filters.unassigned,
+      read: filters.read,
+      unread: filters.unread,
+      assigned_to: filters.assignedTo || "",
+      sector_id: filters.sectorId || "",
+      ai_agent: filters.aiAgentId || "",
+      has_deal: filters.hasDeal || "",
+      pipelines: filters.dealPipeline ?? [],
+      stages: filters.dealStage ?? [],
+      created_at: dia(filters.createdAt),
+      last_from: dia(filters.lastMessageFrom),
+      last_to: dia(filters.lastMessageTo),
+    };
+  }, [quick, searchTerm, channelFilter, filterStatus, instanceFilter, filters]);
+  const onBulkDone = (action: BulkAction) => {
+    setSelectedIds(new Set());
+    refetchConversations();
+    loadQuickSets();
+    if (action === "hide" || action === "unhide") {
+      (supabase as any).from("crm_whatsapp_ignored_chats").select("phone").then(({ data }: any) => setIgnoredPhones(new Set(((data || []) as any[]).map((r) => r.phone))));
+    }
+    if (action === "close" || action === "reopen" || action === "assign" || action === "sector" || action === "link_pipeline") setSelectedConversation(null);
+  };
 
   const getStatusIcon = (status: string, errorText?: string | null) => {
     switch (status) {
@@ -895,8 +991,23 @@ export const CRMInboxPage = () => {
   };
 
   const handleLeadCreated = (leadId: string) => {
-    setSelectedConversation((prev) => (prev ? { ...prev, lead_id: leadId } : prev));
+    setSelectedConversation((prev) => (prev ? { ...prev, lead_id: leadId, unlinked_lead_id: null } as any : prev));
     refetchConversations();
+  };
+  const handleLeadUnlinked = () => {
+    setSelectedConversation((prev) => (prev ? { ...prev, lead_id: null, lead: undefined, unlinked_lead_id: prev.lead_id } as any : prev));
+    refetchConversations();
+  };
+  // Depois de mesclar: a lista recarrega e a tela vai pra conversa principal
+  const handleMerged = async (primaryId: string) => {
+    await refetchConversations();
+    loadQuickSets();
+    const { data } = await supabase
+      .from("crm_whatsapp_conversations")
+      .select(`*, contact:crm_whatsapp_contacts(*), lead:crm_leads(id, name, company, origin_id, stage_id), assigned_staff:onboarding_staff(id, name, avatar_url), instance:whatsapp_instances(id, instance_name, display_name), official_instance:whatsapp_official_instances(id, display_name, phone_number)`)
+      .eq("id", primaryId).maybeSingle();
+    if (data) setSelectedConversation({ ...(data as any), channel: "whatsapp" });
+    else setSelectedConversation(null);
   };
 
   return (
@@ -918,6 +1029,15 @@ export const CRMInboxPage = () => {
                 className="pl-9 h-9"
               />
             </div>
+            <Button
+              variant={selectMode ? "secondary" : "ghost"}
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              onClick={() => { setSelectMode((v) => !v); setSelectedIds(new Set()); }}
+              title={selectMode ? "Sair da seleção" : "Selecionar conversas (ações em massa)"}
+            >
+              <ListChecks className="h-4 w-4" />
+            </Button>
             {isAdmin && (
               <Button 
                 variant="ghost" 
@@ -931,6 +1051,16 @@ export const CRMInboxPage = () => {
             )}
           </div>
         </div>
+        {selectMode && (
+          <BulkActionsBar
+            selectedIds={Array.from(selectedIds)}
+            filter={bulkFilter}
+            quick={quick}
+            onClearSelection={() => setSelectedIds(new Set())}
+            onExit={() => { setSelectMode(false); setSelectedIds(new Set()); }}
+            onDone={onBulkDone}
+          />
+        )}
 
         {/* Atalhos + filtros compactos */}
         <div className="px-2 sm:px-3 py-2 border-b border-border space-y-2">
@@ -940,6 +1070,9 @@ export const CRMInboxPage = () => {
               ["unread", "Não lidas", contagens.unread],
               ["waiting", "Esperando", contagens.waiting],
               ["mine", "Minhas", 0],
+              ["automation", "Em automação", contagens.automation],
+              ["failed", "Falhas", contagens.failed],
+              ["hidden", "Ocultas", contagens.hidden],
             ] as const).map(([k, label, n]) => (
               <button
                 key={k}
@@ -1082,6 +1215,11 @@ export const CRMInboxPage = () => {
               )}
               <button
                 onClick={() => {
+                  if (selectMode) {
+                    if (conv.channel === "instagram") { toast.info("Ações em massa valem só pro WhatsApp por enquanto."); return; }
+                    toggleSelected(conv.id);
+                    return;
+                  }
                   setSelectedConversation(conv);
                   // Mark as read immediately on click (e tira da fila "Esperando resposta")
                   if (conv.unread_count > 0) {
@@ -1091,10 +1229,17 @@ export const CRMInboxPage = () => {
                 className={cn(
                   "relative w-full flex items-start gap-3 px-3 py-3.5 hover:bg-muted/50 transition-colors text-left border-b border-border/60 overflow-hidden",
                   conv.unread_count > 0 && "bg-primary/5",
-                  selectedConversation?.id === conv.id && "bg-muted shadow-[inset_3px_0_0_hsl(var(--primary))]"
+                  selectedConversation?.id === conv.id && "bg-muted shadow-[inset_3px_0_0_hsl(var(--primary))]",
+                  selectMode && selectedIds.has(conv.id) && "bg-primary/10"
                 )}
               >
                 {conv.unread_count > 0 && <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
+                {selectMode && conv.channel !== "instagram" && (
+                  // caixa visual (a linha inteira já é um botão; botão dentro de botão não pode)
+                  <span aria-hidden className={cn("mt-2.5 h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center", selectedIds.has(conv.id) ? "bg-primary border-primary text-primary-foreground" : "border-primary/60 bg-background")}>
+                    {selectedIds.has(conv.id) && <CheckCheck className="h-3 w-3" />}
+                  </span>
+                )}
                 <Avatar className="h-10 w-10 shrink-0">
                   <AvatarImage src={conv.contact?.profile_picture_url || undefined} />
                   <AvatarFallback className="text-xs font-semibold text-white" style={{ backgroundColor: senderColor(titleName || "?") }}>
@@ -1148,6 +1293,14 @@ export const CRMInboxPage = () => {
                       <Badge className="h-5 min-w-5 shrink-0 rounded-full px-1.5 flex items-center justify-center text-[10px]" title={`${conv.unread_count} não lidas`}>
                         {conv.unread_count > 99 ? "99+" : conv.unread_count}
                       </Badge>
+                    )}
+                    {quick === "hidden" && !selectMode && (
+                      <span role="button" tabIndex={0} title="Voltar a mostrar esta conversa"
+                        onClick={(e) => { e.stopPropagation(); reexibirConversa(conv); }}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); reexibirConversa(conv); } }}
+                        className="shrink-0 inline-flex items-center gap-1 h-5 px-1.5 rounded-full border border-border text-[10px] hover:bg-muted">
+                        <Eye className="h-3 w-3" /> Reexibir
+                      </span>
                     )}
                   </div>
                 </div>
@@ -1260,10 +1413,29 @@ export const CRMInboxPage = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => closeConversation(selectedConversation.id)}>
-                    <X className="h-4 w-4 mr-2" />
-                    Fechar conversa
-                  </DropdownMenuItem>
+                  {selectedConversation.status === "closed" ? (
+                    <DropdownMenuItem onClick={async () => {
+                      try {
+                        await reopenConversation(selectedConversation.id);
+                        setSelectedConversation((p) => (p ? { ...p, status: "open" } : p));
+                        toast.success("Conversa reaberta");
+                      } catch { toast.error("Não consegui reabrir a conversa"); }
+                    }}>
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Reabrir conversa
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onClick={async () => {
+                      try {
+                        await closeConversation(selectedConversation.id);
+                        setSelectedConversation((p) => (p ? { ...p, status: "closed" } : p));
+                        toast.success("Conversa fechada");
+                      } catch { toast.error("Não consegui fechar a conversa"); }
+                    }}>
+                      <X className="h-4 w-4 mr-2" />
+                      Fechar conversa
+                    </DropdownMenuItem>
+                  )}
                   {(staffRole === "master" || staffRole === "admin") && selectedConversation.channel !== "instagram" && (
                     <DropdownMenuItem onClick={() => ocultarConversa(selectedConversation)}>
                       <EyeOff className="h-4 w-4 mr-2" />
@@ -1514,9 +1686,26 @@ export const CRMInboxPage = () => {
 
           {/* Message Input */}
           <div className="border-t border-border p-2 sm:p-3 bg-card">
-            <div className="flex items-center gap-1 sm:gap-2 max-w-3xl mx-auto">
+            <div className="relative flex items-center gap-1 sm:gap-2 max-w-3xl mx-auto">
+              <QuickResponsesPicker
+                ref={quickRef}
+                open={quickOpen}
+                query={quickQuery}
+                variables={quickVariablesFor(selectedConversation)}
+                onPick={(texto) => { setNewMessage(texto); setQuickOpen(false); }}
+                onClose={() => setQuickOpen(false)}
+              />
               <Button variant="ghost" size="icon" className="h-9 w-9 hidden sm:flex">
                 <Smile className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn("h-9 w-9", quickOpen ? "text-primary bg-primary/10" : "text-muted-foreground")}
+                title="Respostas rápidas (ou digite / no início da mensagem)"
+                onClick={() => setQuickOpen((v) => !v)}
+              >
+                <Zap className="h-5 w-5" />
               </Button>
               <MediaUploadButton
                 onUpload={handleSendMedia}
@@ -1543,10 +1732,18 @@ export const CRMInboxPage = () => {
                 </Button>
               )}
               <Input
-                placeholder="Mensagem"
+                placeholder="Mensagem (/ abre as respostas rápidas)"
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setNewMessage(v);
+                  if (v.startsWith("/")) setQuickOpen(true);
+                  else if (quickOpen && !v) setQuickOpen(false);
+                }}
+                onKeyDown={(e) => {
+                  if (quickRef.current?.handleKey(e)) return;
+                  if (e.key === "Enter" && !e.shiftKey) handleSendMessage();
+                }}
                 className="flex-1"
                 disabled={sending}
               />
@@ -1571,6 +1768,18 @@ export const CRMInboxPage = () => {
                 }}
                 disabled={sending}
               />
+              {!isInstagramConversation && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  title="Agendar esta mensagem pra sair depois"
+                  onClick={() => setScheduleOpen(true)}
+                  disabled={sending}
+                >
+                  <CalendarClock className="h-4 w-4" />
+                </Button>
+              )}
               <Button 
                 onClick={handleSendMessage} 
                 size={isMobile ? "icon" : "default"}
@@ -1582,6 +1791,16 @@ export const CRMInboxPage = () => {
               </Button>
             </div>
           </div>
+          {!isInstagramConversation && (
+            <ScheduleMessageDialog
+              open={scheduleOpen}
+              onOpenChange={setScheduleOpen}
+              conversation={selectedConversation as any}
+              initialText={newMessage.startsWith("/") ? "" : newMessage}
+              staffId={staffId}
+              onSaved={() => setNewMessage("")}
+            />
+          )}
         </div>
       ) : (
         <div className={cn(
@@ -1603,6 +1822,8 @@ export const CRMInboxPage = () => {
           onLeadCreated={handleLeadCreated}
           onContactUpdated={() => refetchConversations()}
           onAssignmentChanged={() => refetchConversations()}
+          onLeadUnlinked={handleLeadUnlinked}
+          onMerged={handleMerged}
         />
       )}
 
@@ -1616,6 +1837,8 @@ export const CRMInboxPage = () => {
               onLeadCreated={handleLeadCreated}
               onContactUpdated={() => refetchConversations()}
               onAssignmentChanged={() => refetchConversations()}
+              onLeadUnlinked={handleLeadUnlinked}
+              onMerged={handleMerged}
             />
           </SheetContent>
         </Sheet>
