@@ -513,6 +513,19 @@ Deno.serve(async (req) => {
             }
           }
         } else if (newStatus === "pending") {
+          // Evento "pendente" só reabre a fatura se ela foi paga por ESTE pagamento do
+          // Asaas. Fatura baixada manualmente (ou por outro pagamento) não é reaberta:
+          // evento antigo reenviado pela fila do Asaas desfazia baixa manual (30/09/2026).
+          const { data: atual } = await supabase
+            .from("company_invoices")
+            .select("status, pagarme_charge_id")
+            .eq("id", invoice.id)
+            .maybeSingle();
+          const jaPaga = atual?.status === "paid" || atual?.status === "partial";
+          if (jaPaga && atual?.pagarme_charge_id !== paymentId) {
+            console.log(`[Asaas Webhook] Invoice ${invoice.id} já paga por outro caminho; ignorando evento pendente de ${paymentId}`);
+            matched = true;
+          } else {
           const due = new Date(dueDate + "T12:00:00");
           const revertStatus = due < new Date() ? "overdue" : "pending";
           await supabase
@@ -520,6 +533,7 @@ Deno.serve(async (req) => {
             .update({ status: revertStatus, paid_at: null, paid_amount_cents: null, pagarme_charge_id: null })
             .eq("id", invoice.id);
           matched = true;
+          }
         } else if (invoice.status === "paid" || invoice.status === "partial") {
           // NUNCA sobrescrever uma fatura já paga com overdue/pending vindo do Asaas.
           // Senão o cliente aparece como inadimplente e a régua cobra algo já pago.
