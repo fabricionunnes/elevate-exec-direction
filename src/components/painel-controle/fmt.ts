@@ -92,3 +92,6 @@ export const papelLabel = (k: string | null | undefined): string => (k ? PAPEL[k
 
 const PROJ: Record<string, string> = { active: "Ativo", notice_period: "Em aviso", cancellation_signaled: "Sinal de cancelamento", closed: "Encerrado", completed: "Concluído", pending: "Pendente" };
 export const projetoLabel = (k: string | null | undefined): string => (k ? PROJ[k] ?? k : "-");
+
+const TEND: Record<string, string> = { stable: "estável", falling: "caindo", rising: "subindo", improving: "melhorando", declining: "piorando", up: "subindo", down: "caindo" };
+export const tendLabel = (k: string | null | undefined): string => (k ? TEND[k] ?? k : "-");

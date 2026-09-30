@@ -36,8 +36,8 @@
 .pc .p { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
 .pc .p.main { background: #1C1214; border-color: #6a2a2a; }
 .pc .lbl { font-size: 10.5px; text-transform: uppercase; letter-spacing: .09em; color: var(--mute); }
-.pc .val { font-size: 30px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; margin: 6px 0 4px; }
-.pc .p.main .val { font-size: 36px; }
+.pc .val { font-size: clamp(20px, 2.1vw, 30px); font-weight: 700; letter-spacing: -.02em; line-height: 1.1; margin: 6px 0 4px; white-space: nowrap; }
+.pc .p.main .val { font-size: clamp(24px, 2.6vw, 36px); }
 .pc .sub { font-size: 11.5px; color: var(--ink2); }
 .pc .nd { color: var(--mute); }
 .pc .val.nd { font-weight: 500; }
@@ -45,7 +45,7 @@
 .pc .h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; }
 .pc .h b { font-size: 12.5px; text-transform: uppercase; letter-spacing: .09em; }
 .pc .h span { font-size: 11px; color: var(--mute); text-align: right; }
-.pc .fr { display: grid; grid-template-columns: 150px 1fr 56px 118px; gap: 10px; align-items: center; margin-bottom: 7px; }
+.pc .fr { display: grid; grid-template-columns: 150px 1fr 74px 118px; gap: 10px; align-items: center; margin-bottom: 7px; }
 .pc .fr .n { color: var(--ink2); }
 .pc .tr { height: 15px; background: var(--panel2); border-radius: 3px; overflow: hidden; }
 .pc .tr i { display: block; height: 100%; background: var(--bar); border-radius: 0 4px 4px 0; min-width: 3px; }
@@ -91,12 +91,13 @@
 .pc .bc i { display: block; background: var(--bar); border-radius: 4px 4px 0 0; min-height: 2px; }
 .pc .bc.on i { background: var(--hi); }
 .pc .bc i.neg { background: var(--bad); opacity: .7; }
-.pc .bc small { font-size: 10px; color: var(--mute); margin-top: 5px; line-height: 1.3; }
+.pc .bc small { font-size: 10px; color: var(--mute); margin-top: 5px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pc .bc small b { display: block; color: var(--ink); font-size: 10.5px; }
 .pc [data-tip] { position: relative; }
 .pc [data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%); background: #000; border: 1px solid var(--line); color: var(--ink); font-size: 11px; padding: 5px 8px; border-radius: 4px; white-space: nowrap; z-index: 5; pointer-events: none; }
 .pc .foot { font-size: 11px; color: var(--mute); text-align: center; margin-top: 4px; }
-.pc .p.go { cursor: pointer; text-align: left; font: inherit; color: inherit; display: block; width: 100%; transition: border-color .15s; }
+.pc .p.go { cursor: pointer; text-align: left; font: inherit; color: inherit; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; width: 100%; transition: border-color .15s; }
+.pc .p.go > * { width: 100%; }
 .pc .p.go:hover { border-color: var(--acc); }
 .pc .p.go:focus-visible, .pc .back:focus-visible, .pc .cbb:focus-visible, .pc .cbp input:focus-visible, .pc .cbp li:focus-visible, .pc .lk:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 .pc .more { display: block; margin-top: 10px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--acc); font-weight: 600; }
@@ -122,10 +123,10 @@
 .pc .cbp li { padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pc .cbp li:hover, .pc .cbp li.sel { background: var(--panel2); }
 .pc .kg { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-.pc .kg .val { font-size: 26px; }
+.pc .kg .val { font-size: clamp(20px, 1.9vw, 26px); }
 .pc .tw { overflow-x: auto; }
-.pc .tw table { min-width: 560px; }
-.pc .r4 .tw table { min-width: 0; }
+.pc .tw table { min-width: 0; }
+.pc .wide .tw table { min-width: 720px; }
 .pc .lk { background: none; border: 0; padding: 0; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-decoration-color: var(--mute); text-underline-offset: 3px; text-align: left; }
 .pc .lk:hover { text-decoration-color: var(--acc); }
 .pc .lk.ext::after { content: " \2197"; font-size: 10px; color: var(--mute); }

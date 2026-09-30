@@ -2,7 +2,7 @@
 // tarefas atrasadas, checkup e o time de consultores.
 import type { Ctx } from "./ctx";
 import { Barras, BarH, Combo, Lk, Nd, Panel, St, Tabela, Tile } from "./ui";
-import { brl, dataBR, fp, nivelLabel, num, pct, plural } from "./fmt";
+import { brl, dataBR, fp, nivelLabel, num, pct, plural, tendLabel } from "./fmt";
 
 export function filtrosClientes(c: Ctx) {
   return <Combo k="consultor" label="Consultor" value={String(c.f.consultor ?? "")} todos="Todos" opts={c.d.clientes.por_consultor.map((p) => ({ value: p.staff_id, label: p.nome }))} onChange={(v) => c.setF({ ...c.f, consultor: v })} />;
@@ -40,7 +40,7 @@ export function Clientes({ c }: { c: Ctx }) {
         </Panel>
         <Panel titulo="Clientes em risco" sub={`${cli.health_baixo.length} com score crítico ou em risco`}>
           <Tabela cols={[{ h: "Empresa", tl: true }, "Score", "Nível", "Tendência", "Consultor"]} rows={cli.health_baixo.slice(0, 12).map((x) => [
-            <Lk onClick={() => c.det("clientes", { tipo: "ativos", ...fc }, `Clientes ativos`)}>{x.empresa}</Lk>, num(x.score, 0), <St ok={false} warn={x.nivel === "at_risk"} tg="" tw="em risco" tb="crítico" />, x.tendencia ?? <Nd />, x.consultor ?? <Nd />,
+            <Lk onClick={() => c.det("clientes", { tipo: "ativos", ...fc }, `Clientes ativos`)}>{x.empresa}</Lk>, num(x.score, 0), <St ok={false} warn={x.nivel === "at_risk"} tg="" tw="em risco" tb="crítico" />, x.tendencia ? tendLabel(x.tendencia) : <Nd />, x.consultor ?? <Nd />,
           ])} vazio="Nenhum cliente em risco." />
           {cli.health_baixo.length > 12 && <Lk onClick={() => c.det("clientes", { tipo: "health_baixo", ...fc })}>Ver todos os {cli.health_baixo.length}</Lk>}
         </Panel>

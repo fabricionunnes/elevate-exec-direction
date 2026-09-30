@@ -28,7 +28,7 @@ export function VisaoGeral({ c }: { c: Ctx }) {
 
       <div className="grid r2">
         <Panel titulo="Funil único · mês" sub="tráfego + comercial no mesmo número">
-          {fr("Investimento em mídia", tra.tem_dados ? tra.spend : null, tra.tem_dados ? brl(tra.spend) : "sem fonte", () => c.go({ view: "trafego" }))}
+          <HRow nome="Investimento em mídia" p={null} v={tra.tem_dados ? brl(tra.spend) : "-"} c={tra.tem_dados ? `Meta Ads · CPL ${brl(tra.cpl)}` : "sem linhas da Meta no mês"} onClick={() => c.go({ view: "trafego" })} />
           {fr("Leads (funis que contam)", com.leads_inflow, `${num(com.leads, 0)} no total`, () => c.det("leads"))}
           {fr("Leads pagos no CRM", com.leads_inflow ? tra.leads_pagos_crm : null, `${fp(pct(tra.leads_pagos_crm, com.leads_inflow))} dos que contam`, () => c.det("leads", { pago: true }, "Leads de origem paga"))}
           {fr("Reuniões agendadas", com.agendadas, "eventos do CRM", () => c.det("reunioes", { tipo: "scheduled" }, "Reuniões agendadas"))}

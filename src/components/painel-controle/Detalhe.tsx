@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Combo, Lk, Nd, St, Tabela, Tile } from "./ui";
-import { brl, brlFull, dataBR, dataHoraBR, eventoLabel, fp, mesLabel, nivelLabel, num, papelLabel, projetoLabel, usd } from "./fmt";
+import { brl, brlFull, dataBR, dataHoraBR, eventoLabel, fp, mesLabel, nivelLabel, num, papelLabel, projetoLabel, tendLabel, usd } from "./fmt";
 import { LINK, esc, soma } from "./util";
 import type { Detalhe as DetalheT, Filtro } from "./tipos";
 
-type Tipo = "brl" | "brlfull" | "usd" | "num" | "int" | "data" | "datahora" | "pct" | "txt" | "nivel" | "evento" | "papel" | "proj" | "bool" | "dias" | "horas";
+type Tipo = "brl" | "brlfull" | "usd" | "num" | "int" | "data" | "datahora" | "pct" | "txt" | "nivel" | "evento" | "papel" | "proj" | "bool" | "dias" | "horas" | "tend";
 type ColSpec = { h: string; k: string; t?: Tipo; link?: "lead" | "empresa" | "conversa"; tl?: boolean; idk?: string };
 type Spec = { titulo: string; sub: string; cols: ColSpec[]; resumo?: (d: DetalheT) => { label: string; valor: string; sub?: string }[]; nexus?: string };
 
@@ -54,7 +54,7 @@ const SPECS: Record<string, Spec> = {
   ], { resumo: (d) => [{ label: "Linhas", valor: num(d.total, 0) }, { label: "Gasto", valor: brl(d.soma) }, { label: "Leads", valor: num(soma(d.linhas, (l) => l.leads), 0) }], nexus: LINK.trafego }),
   clientes: S("Clientes", "Empresas com consultor, mensalidade, contrato, health score e NPS.", [
     { h: "Empresa", k: "empresa", link: "empresa", idk: "company_id", tl: true }, { h: "Consultor", k: "consultor" }, { h: "Mensalidade", k: "mensalidade", t: "brlfull" }, { h: "Produto", k: "produto", tl: true }, { h: "Projeto", k: "projeto_status", t: "proj" }, { h: "Início", k: "inicio", t: "data" }, { h: "Fim", k: "fim", t: "data" }, { h: "Plano", k: "plano" },
-    { h: "Health", k: "score", t: "num" }, { h: "Nível", k: "nivel", t: "nivel" }, { h: "NPS", k: "nps", t: "int" }, { h: "Tarefas atrasadas", k: "tarefas_atrasadas", t: "int" }, { h: "Vencido", k: "vencido", t: "brl" }, { h: "Churn em", k: "churn_em", t: "data" }, { h: "Motivo", k: "churn_motivo", tl: true },
+    { h: "Health", k: "score", t: "num" }, { h: "Nível", k: "nivel", t: "nivel" }, { h: "Tendência", k: "tendencia", t: "tend" }, { h: "NPS", k: "nps", t: "int" }, { h: "Tarefas atrasadas", k: "tarefas_atrasadas", t: "int" }, { h: "Vencido", k: "vencido", t: "brl" }, { h: "Churn em", k: "churn_em", t: "data" }, { h: "Motivo", k: "churn_motivo", tl: true },
   ], { resumo: (d) => [{ label: "Empresas", valor: num(d.total, 0) }, { label: "Mensalidades", valor: brl(d.soma) }, { label: "Health médio", valor: num(d.linhas.length ? soma(d.linhas, (l) => l.score) / d.linhas.filter((l) => l.score != null).length : null) }, { label: "Com vencido", valor: num(d.linhas.filter((l) => l.vencido > 0).length, 0) }], nexus: LINK.empresas }),
   tarefas_atrasadas: S("Tarefas atrasadas", "Tarefas pendentes ou em andamento com prazo vencido, em clientes ativos.", [
     { h: "Tarefa", k: "titulo", tl: true }, { h: "Empresa", k: "empresa", link: "empresa", idk: "company_id", tl: true }, { h: "Responsável", k: "responsavel" }, { h: "Vencimento", k: "vencimento", t: "data" }, { h: "Atraso", k: "dias", t: "dias" }, { h: "Prioridade", k: "prioridade" }, { h: "Situação", k: "status" },
@@ -118,6 +118,7 @@ function cel(v: any, t?: Tipo): ReactNode {
     case "evento": return eventoLabel(String(v));
     case "papel": return papelLabel(String(v));
     case "proj": return String(v).split(", ").map(projetoLabel).join(", ");
+    case "tend": return tendLabel(String(v));
     case "bool": return v ? "sim" : <Nd>não</Nd>;
     case "dias": return `${num(Number(v), 0)} ${Number(v) === 1 ? "dia" : "dias"}`;
     case "horas": { const h = Number(v); return h >= 48 ? `${Math.round(h / 24)} dias` : `${num(h, 0)} h`; }
@@ -174,7 +175,7 @@ export function Detalhe({ mes, bloco, filtro, titulo, sub }: { mes: string; bloc
   return (
     <>
       <div className="bar2">
-        <h2 className="pt" style={{ fontSize: 16 }}>{titulo ?? spec.titulo}<small>{sub ?? spec.sub}{" "}{mesLabel(mes)}.</small></h2>
+        <div className="sub" style={{ maxWidth: 640 }}>{sub ?? spec.sub} {mesLabel(mes)}.</div>
         <div className="fs">
           <div className="cb" style={{ minWidth: 220 }}>
             <label>Buscar nos registros</label>
@@ -189,7 +190,7 @@ export function Detalhe({ mes, bloco, filtro, titulo, sub }: { mes: string; bloc
       {d && (
         <>
           {spec.resumo && <div className="kg">{spec.resumo(d).map((t, i) => <Tile key={i} label={t.label} valor={t.valor} sub={t.sub} />)}</div>}
-          <div className="p">
+          <div className="p wide">
             <div className="h"><b>Registros</b><span>{linhas.length === d.total ? `${d.total} linhas` : `${linhas.length} de ${d.total} linhas`}{d.total > d.limite ? `. Limite de ${d.limite} por tela` : ""}. Clique no nome pra abrir no Nexus.</span></div>
             <Tabela
               cols={spec.cols.map((c) => ({ h: c.h, tl: c.tl }))}

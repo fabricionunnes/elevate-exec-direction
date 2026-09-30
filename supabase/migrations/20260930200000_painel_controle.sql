@@ -270,8 +270,9 @@ begin
      where p.status in ('active','notice_period','cancellation_signaled')
   ),
   saude as (
-    select distinct on (h.project_id) pr.cid, h.total_score, h.risk_level, h.trend_direction
-      from client_health_scores h join proj pr on pr.id = h.project_id order by h.project_id, h.updated_at desc
+    -- um score por empresa: empresa com dois projetos ativos pega o mais recente
+    select distinct on (pr.cid) pr.cid, h.total_score, h.risk_level, h.trend_direction
+      from client_health_scores h join proj pr on pr.id = h.project_id order by pr.cid, h.updated_at desc
   ),
   tarefas as (
     select t.responsible_staff_id, pr.cid, count(*) n
