@@ -421,6 +421,10 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
   });
   const [editScope, setEditScope] = useState<"single" | "future">("single");
   const [saving, setSaving] = useState(false);
+  const [pgAmount, setPgAmount] = useState(0);
+  const [pgDate, setPgDate] = useState("");
+  const [pgBank, setPgBank] = useState("none");
+  const [bankAccounts, setBankAccounts] = useState<{ id: string; name: string }[]>([]);
 
   const isRecurring = payable?.is_recurring && payable?.total_installments && payable.total_installments > 1;
 
@@ -438,6 +442,10 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
         notes: (payable as any).notes || "",
         cost_type: (payable as any).cost_type || "",
       });
+      setPgAmount(Number((payable as any).paid_amount) || 0);
+      setPgDate((payable as any).paid_date || "");
+      setPgBank((payable as any).bank_account_id || "none");
+      supabase.from("financial_bank_accounts").select("id, name").then(({ data }) => setBankAccounts((data as any) || []));
       setEditScope("single");
     }
   }, [open, payable]);
@@ -449,6 +457,11 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
     }
     setSaving(true);
     try {
+      const adjustBank = async (bankId: string | null, delta: number) => {
+        if (!bankId || bankId === "none" || !delta) return;
+        const { data } = await supabase.from("financial_bank_accounts").select("current_balance").eq("id", bankId).single();
+        if (data) await supabase.from("financial_bank_accounts").update({ current_balance: Number((data as any).current_balance) + delta }).eq("id", bankId);
+      };
       const payload: any = {
         supplier_name: form.supplier_name.trim(),
         description: form.description.trim(),
@@ -466,6 +479,27 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
         // Edit only this entry
         const { error } = await supabase.from("financial_payables").update(payload as any).eq("id", payable.id);
         if (error) throw error;
+        // Ajuste do pagamento (valor/data/banco) quando a conta ja foi paga ou parcial.
+        const jaPago = payable.status === "paid" || payable.status === "partial" || (Number(payable.paid_amount) || 0) > 0;
+        if (jaPago) {
+          const oldPaid = Number(payable.paid_amount) || 0;
+          const oldBank = (payable as any).bank_account_id || null;
+          const newPaid = pgAmount || 0;
+          const newBank = pgBank === "none" ? null : pgBank;
+          if (oldBank === newBank) {
+            await adjustBank(newBank, -(newPaid - oldPaid));
+          } else {
+            await adjustBank(oldBank, oldPaid);
+            await adjustBank(newBank, -newPaid);
+          }
+          const novoStatus = newPaid <= 0 ? "pending" : (newPaid >= form.amount ? "paid" : "partial");
+          await supabase.from("financial_payables").update({
+            paid_amount: newPaid > 0 ? newPaid : null,
+            paid_date: newPaid > 0 ? (pgDate || null) : null,
+            bank_account_id: newBank,
+            status: novoStatus,
+          } as any).eq("id", payable.id);
+        }
         toast.success("Lançamento atualizado!");
       } else {
         // Edit this and all future entries with same description base and higher installment numbers
@@ -631,6 +665,32 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
             <Label>Observações</Label>
             <Input value={form.notes} onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Opcional" />
           </div>
+          {(payable.status === "paid" || payable.status === "partial" || (Number(payable.paid_amount) || 0) > 0) && (editScope === "single" || !isRecurring) && (
+            <div className="p-3 bg-muted/40 rounded-lg space-y-3 border">
+              <Label className="text-sm font-medium">Pagamento</Label>
+              <p className="text-xs text-muted-foreground">Editar o valor pago, a data ou o banco ajusta o saldo do banco na diferença. Zerar o valor volta a conta para em aberto.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Valor pago</Label>
+                  <CurrencyInput value={pgAmount} onChange={setPgAmount} />
+                </div>
+                <div>
+                  <Label className="text-xs">Data do pagamento</Label>
+                  <Input type="date" value={pgDate} onChange={(e) => setPgDate(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Banco</Label>
+                <Select value={pgBank} onValueChange={setPgBank}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem banco (não ajusta saldo)</SelectItem>
+                    {bankAccounts.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>

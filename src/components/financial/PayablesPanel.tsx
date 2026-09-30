@@ -442,7 +442,23 @@ export function PayablesPanel() {
   const handleDeletePayable = async () => {
     if (!deleteTarget) return;
     try {
+      const estornarBanco = async (bankId: string | null, valor: number) => {
+        if (!bankId || !valor) return;
+        const { data } = await supabase
+          .from("financial_bank_accounts")
+          .select("current_balance")
+          .eq("id", bankId)
+          .single();
+        if (data) {
+          await supabase
+            .from("financial_bank_accounts")
+            .update({ current_balance: Number((data as any).current_balance) + Number(valor) })
+            .eq("id", bankId);
+        }
+      };
       if (deleteScope === "single") {
+        // devolve o valor pago pro saldo do banco antes de apagar a conta quitada/parcial
+        await estornarBanco((deleteTarget as any).bank_account_id || null, Number(deleteTarget.paid_amount) || 0);
         const { error } = await supabase
           .from("financial_payables")
           .delete()
@@ -451,6 +467,15 @@ export function PayablesPanel() {
         toast.success("Conta excluída com sucesso!");
       } else {
         // Delete this and all future unpaid with same supplier
+        const { data: aExcluir } = await supabase
+          .from("financial_payables")
+          .select("id, paid_amount, bank_account_id")
+          .eq("supplier_name", deleteTarget.supplier_name)
+          .gte("installment_number", deleteTarget.installment_number || 0)
+          .in("status", ["pending", "overdue", "partial", "cancelled"]);
+        for (const p of ((aExcluir as any) || [])) {
+          await estornarBanco(p.bank_account_id || null, Number(p.paid_amount) || 0);
+        }
         const { error } = await supabase
           .from("financial_payables")
           .delete()
