@@ -66,6 +66,9 @@ import {
   Hourglass,
   PenLine,
   User as UserIcon,
+  Zap,
+  CalendarClock,
+  RotateCcw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -87,6 +90,8 @@ import { AudioRecorder } from "@/components/crm/inbox/AudioRecorder";
 import { ReceiptAnalysisButton } from "@/components/crm/inbox/ReceiptAnalysisButton";
 import { useCompanyIdentification } from "@/hooks/useCompanyIdentification";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { QuickResponsesPicker, QuickResponsesPickerHandle, quickVariablesFor } from "@/components/crm/inbox/QuickResponsesPicker";
+import { ScheduleMessageDialog } from "@/components/crm/inbox/ScheduleMessageDialog";
 
 // Cor estável por remetente (estilo WhatsApp em grupos) — mesmo nome, mesma cor.
 // Nome sem nenhuma letra/número (".", "~", emoji solto) não identifica ninguém: usa o telefone.
@@ -170,6 +175,11 @@ export const CRMInboxPage = () => {
   };
   const comAssinatura = (texto: string) => (selectedConversation && signatureOnFor(selectedConversation) ? `${mySignature.text.trim()}\n${texto}` : texto);
   const [officialTemplateOpen, setOfficialTemplateOpen] = useState(false);
+  // Respostas rápidas no composer: "/" no início abre o painel; o raio também.
+  const [quickOpen, setQuickOpen] = useState(false);
+  const quickRef = useRef<QuickResponsesPickerHandle>(null);
+  const quickQuery = newMessage.startsWith("/") ? newMessage.slice(1) : "";
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram">("all");
@@ -1260,10 +1270,29 @@ export const CRMInboxPage = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => closeConversation(selectedConversation.id)}>
-                    <X className="h-4 w-4 mr-2" />
-                    Fechar conversa
-                  </DropdownMenuItem>
+                  {selectedConversation.status === "closed" ? (
+                    <DropdownMenuItem onClick={async () => {
+                      try {
+                        await reopenConversation(selectedConversation.id);
+                        setSelectedConversation((p) => (p ? { ...p, status: "open" } : p));
+                        toast.success("Conversa reaberta");
+                      } catch { toast.error("Não consegui reabrir a conversa"); }
+                    }}>
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Reabrir conversa
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onClick={async () => {
+                      try {
+                        await closeConversation(selectedConversation.id);
+                        setSelectedConversation((p) => (p ? { ...p, status: "closed" } : p));
+                        toast.success("Conversa fechada");
+                      } catch { toast.error("Não consegui fechar a conversa"); }
+                    }}>
+                      <X className="h-4 w-4 mr-2" />
+                      Fechar conversa
+                    </DropdownMenuItem>
+                  )}
                   {(staffRole === "master" || staffRole === "admin") && selectedConversation.channel !== "instagram" && (
                     <DropdownMenuItem onClick={() => ocultarConversa(selectedConversation)}>
                       <EyeOff className="h-4 w-4 mr-2" />
@@ -1514,9 +1543,26 @@ export const CRMInboxPage = () => {
 
           {/* Message Input */}
           <div className="border-t border-border p-2 sm:p-3 bg-card">
-            <div className="flex items-center gap-1 sm:gap-2 max-w-3xl mx-auto">
+            <div className="relative flex items-center gap-1 sm:gap-2 max-w-3xl mx-auto">
+              <QuickResponsesPicker
+                ref={quickRef}
+                open={quickOpen}
+                query={quickQuery}
+                variables={quickVariablesFor(selectedConversation)}
+                onPick={(texto) => { setNewMessage(texto); setQuickOpen(false); }}
+                onClose={() => setQuickOpen(false)}
+              />
               <Button variant="ghost" size="icon" className="h-9 w-9 hidden sm:flex">
                 <Smile className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn("h-9 w-9", quickOpen ? "text-primary bg-primary/10" : "text-muted-foreground")}
+                title="Respostas rápidas (ou digite / no início da mensagem)"
+                onClick={() => setQuickOpen((v) => !v)}
+              >
+                <Zap className="h-5 w-5" />
               </Button>
               <MediaUploadButton
                 onUpload={handleSendMedia}
@@ -1543,10 +1589,18 @@ export const CRMInboxPage = () => {
                 </Button>
               )}
               <Input
-                placeholder="Mensagem"
+                placeholder="Mensagem (/ abre as respostas rápidas)"
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setNewMessage(v);
+                  if (v.startsWith("/")) setQuickOpen(true);
+                  else if (quickOpen && !v) setQuickOpen(false);
+                }}
+                onKeyDown={(e) => {
+                  if (quickRef.current?.handleKey(e)) return;
+                  if (e.key === "Enter" && !e.shiftKey) handleSendMessage();
+                }}
                 className="flex-1"
                 disabled={sending}
               />
@@ -1571,6 +1625,18 @@ export const CRMInboxPage = () => {
                 }}
                 disabled={sending}
               />
+              {!isInstagramConversation && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  title="Agendar esta mensagem pra sair depois"
+                  onClick={() => setScheduleOpen(true)}
+                  disabled={sending}
+                >
+                  <CalendarClock className="h-4 w-4" />
+                </Button>
+              )}
               <Button 
                 onClick={handleSendMessage} 
                 size={isMobile ? "icon" : "default"}
@@ -1582,6 +1648,16 @@ export const CRMInboxPage = () => {
               </Button>
             </div>
           </div>
+          {!isInstagramConversation && (
+            <ScheduleMessageDialog
+              open={scheduleOpen}
+              onOpenChange={setScheduleOpen}
+              conversation={selectedConversation as any}
+              initialText={newMessage.startsWith("/") ? "" : newMessage}
+              staffId={staffId}
+              onSaved={() => setNewMessage("")}
+            />
+          )}
         </div>
       ) : (
         <div className={cn(
