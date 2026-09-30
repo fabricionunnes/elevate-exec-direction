@@ -103,6 +103,49 @@ async function jaLancadoManual(supabase, bankId, tipo, valorCents, dia) {
   const { data } = await supabase.from("financial_bank_transactions").select("id").eq("bank_id", bankId).eq("type", tipo).eq("amount_cents", valorCents).neq("reference_type", "statement_entry").gte("created_at", ini).lte("created_at", fim).limit(1);
   return !!(data && data.length);
 }
+// Pix de saída pra um fornecedor que JÁ tem pagamento manual perto da data, mas com
+// OUTRO valor (o time digitou 3.000 e o Pix real foi 1.700). O jaLancadoManual só
+// reconhece valor igual, então isso virava um segundo débito e um resíduo pra fechar
+// a conta. Decisão do Fabrício (30/09/2026): o extrato é a verdade — a conciliação
+// corrige o pagamento registrado pro valor real, recalcula a conta e avisa.
+// Só age com UM candidato cujo fornecedor bate com o favorecido do Pix.
+const tokensNome = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter((t) => t.length > 2);
+function nomeBate(favorecido, fornecedor) {
+  const a = tokensNome(favorecido), b = tokensNome(fornecedor);
+  if (!a.length || !b.length || a[0] !== b[0]) return false;
+  return a.filter((t) => b.includes(t)).length >= 2;
+}
+async function pagamentoManualDivergente(supabase, e, usados) {
+  const m = String(e.description || "").match(/\bpara\s+(.+)$/i);
+  if (!m) return { candidatos: 0 };
+  const valor = Math.abs(e.amount_cents);
+  const ini = new Date(new Date(e.entry_date + "T12:00:00Z").getTime() - 3 * 86400000).toISOString();
+  const fim = new Date(new Date(e.entry_date + "T12:00:00Z").getTime() + 4 * 86400000).toISOString();
+  const { data: txs } = await supabase.from("financial_bank_transactions").select("id, amount_cents, reference_id").eq("bank_id", e.bank_id).eq("type", "debit").eq("reference_type", "payable").neq("amount_cents", valor).gte("created_at", ini).lte("created_at", fim);
+  const cand = (txs || []).filter((t) => t.reference_id && !usados.has(t.id));
+  if (!cand.length) return { candidatos: 0 };
+  const { data: pays } = await supabase.from("financial_payables").select("id, supplier_name, description, amount").in("id", [...new Set(cand.map((t) => t.reference_id))]);
+  const porId = new Map((pays || []).map((p) => [p.id, p]));
+  const bons = cand.filter((t) => nomeBate(m[1], porId.get(t.reference_id)?.supplier_name));
+  if (bons.length !== 1) return { candidatos: bons.length, favorecido: m[1] };
+  return { candidatos: 1, tx: bons[0], payable: porId.get(bons[0].reference_id), valor };
+}
+async function aplicarCorrecaoPagamento(supabase, e, achado) {
+  const { tx, payable, valor } = achado;
+  const antigo = Number(tx.amount_cents);
+  const { error } = await supabase.from("financial_bank_transactions").update({ amount_cents: valor }).eq("id", tx.id);
+  if (error) throw new Error(`corrigir pagamento manual: ${error.message}`);
+  // débito menor devolve a diferença ao banco; maior tira mais
+  await supabase.rpc("increment_bank_balance", { p_bank_id: e.bank_id, p_amount: antigo - valor });
+  const { data: rest } = await supabase.from("financial_bank_transactions").select("amount_cents, created_at").eq("reference_type", "payable").eq("reference_id", payable.id).eq("type", "debit");
+  const total = (rest || []).reduce((a, t) => a + Number(t.amount_cents), 0) / 100;
+  const ultima = (rest || []).map((t) => t.created_at).sort().pop();
+  await supabase.from("financial_payables").update({
+    paid_amount: total > 0 ? total : null,
+    paid_date: total > 0 && ultima ? new Date(new Date(ultima).getTime() - 3 * 3600000).toISOString().slice(0, 10) : null,
+    status: total <= 0 ? "pending" : total >= Number(payable.amount) ? "paid" : "partial"
+  }).eq("id", payable.id);
+}
 async function lancarNoRazao(supabase, e, tipo, descricao, refType, refId, dryRun) {
   if (e.ledger_posted || dryRun) return false;
   if (refId && refType !== "statement_entry") {
@@ -229,6 +272,9 @@ Deno.serve(async (req)=>{
       ascending: false
     }).limit(500);
     let autoMatched = 0, needsReview = 0, feeCount = 0, transferCount = 0, invoiceCount = 0, semTitulo = 0;
+    const correcoes = [];       // pagamentos manuais ajustados pro valor real do Pix
+    const ambiguos = [];        // Pix com mais de um pagamento manual candidato: lançado avulso, avisa
+    const txCorrigidas = new Set();
     const revisar = [];
     const conciliados = [];
     for (const e of pendentes || []){
@@ -285,10 +331,30 @@ Deno.serve(async (req)=>{
       if (!patch && TRANSFER_TYPES.has(String(e.entry_type))) {
         const tipo = e.kind === "credit" ? "credit" : "debit";
         const manual = await jaLancadoManual(supabase, e.bank_id, tipo, Math.abs(e.amount_cents), e.entry_date);
-        if (!manual) {
+        let corr = null;
+        if (!manual && tipo === "debit" && !e.ledger_posted) {
+          const achado = await pagamentoManualDivergente(supabase, e, txCorrigidas);
+          if (achado.candidatos === 1) {
+            if (!dryRun) await aplicarCorrecaoPagamento(supabase, e, achado);
+            txCorrigidas.add(achado.tx.id);
+            corr = { payable_id: achado.payable.id, fornecedor: achado.payable.supplier_name, conta: achado.payable.description, de_cents: Number(achado.tx.amount_cents), para_cents: achado.valor };
+            correcoes.push(corr);
+          } else if (achado.candidatos > 1) {
+            ambiguos.push({ favorecido: achado.favorecido, valor_cents: Math.abs(e.amount_cents), candidatos: achado.candidatos });
+          }
+        }
+        if (!manual && !corr) {
           await lancarNoRazao(supabase, e, tipo, `Transferência Asaas: ${e.description || e.entry_type}`, "statement_entry", e.id, dryRun);
         }
-        patch = {
+        patch = corr ? {
+          status: "matched",
+          match_kind: "payable",
+          match_id: corr.payable_id,
+          match_confidence: "exact",
+          match_reason: `Pix de ${brl(corr.para_cents)} para o fornecedor: pagamento manual de ${brl(corr.de_cents)} corrigido para o valor real (sem novo débito no razão)`,
+          auto_settled: false,
+          ledger_posted: true
+        } : {
           status: "matched",
           match_kind: "transfer",
           match_confidence: "exact",
@@ -580,7 +646,7 @@ Deno.serve(async (req)=>{
     };
     if (!dryRun) {
       const semSecret = contas.filter((c)=>c.erro);
-      const houveNovidade = imported > 0 || autoMatched > 0 || needsReview > 0 || filaQuitada > 0 || residuo != null || semSecret.length > 0;
+      const houveNovidade = imported > 0 || autoMatched > 0 || needsReview > 0 || filaQuitada > 0 || residuo != null || semSecret.length > 0 || correcoes.length > 0 || ambiguos.length > 0;
       if (houveNovidade) {
         const linhas = [
           "🏦 *Conciliação bancária — Asaas*",
@@ -590,6 +656,8 @@ Deno.serve(async (req)=>{
           feeCount ? `🧾 Taxas do Asaas identificadas: ${feeCount}` : "",
           transferCount ? `🔁 Transferências/antecipações: ${transferCount}` : "",
           semTitulo ? `💰 Lançados no razão sem título casado: ${semTitulo}` : "",
+          ...correcoes.map((c)=>`✏️ Pagamento corrigido pelo Pix real: ${c.fornecedor}, ${c.conta}. Estava ${brl(c.de_cents)}, o Pix foi ${brl(c.para_cents)}. Confira se a conta ficou com o restante pendente.`),
+          ...ambiguos.map((a)=>`⚠️ Pix de ${brl(a.valor_cents)} para ${a.favorecido}: ${a.candidatos} pagamentos manuais possíveis com outro valor. Lancei o Pix avulso, confira se não duplicou.`),
           filaQuitada ? `🧹 Pendências antigas que entraram no razão agora: ${filaQuitada} (${brl(filaQuitadaCents)})` : "",
           "",
           "*Saldo por conta*",
@@ -634,6 +702,8 @@ Deno.serve(async (req)=>{
       transferencias: transferCount,
       faturas: invoiceCount,
       sem_titulo_lancados: semTitulo,
+      pagamentos_corrigidos: correcoes,
+      pix_ambiguos: ambiguos,
       fila_antiga_quitada: filaQuitada,
       fila_antiga_cents: filaQuitadaCents,
       saldo_asaas: providerBalance,
