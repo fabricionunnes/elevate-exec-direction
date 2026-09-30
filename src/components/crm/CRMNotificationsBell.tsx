@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { playNotificationSound } from "@/lib/notificationSound";
+import { isWithinNotifyWindow, prefKeyForNotificationType, useCrmNotificationPrefs } from "@/hooks/useCrmNotificationPrefs";
 
 interface Notification {
   id: string;
@@ -48,6 +49,11 @@ interface CRMNotificationsBellProps {
 export const CRMNotificationsBell = ({ staffId }: CRMNotificationsBellProps) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
+  // Preferências do Atendimento (crm_service_notifications): governam toast e
+  // som. A notificação sempre entra na lista do sino; o que muda é o aviso.
+  const prefs = useCrmNotificationPrefs(staffId);
+  const prefsRef = useRef(prefs);
+  useEffect(() => { prefsRef.current = prefs; }, [prefs]);
 
   useEffect(() => {
     if (!staffId) return;
@@ -79,11 +85,15 @@ export const CRMNotificationsBell = ({ staffId }: CRMNotificationsBellProps) => 
         (payload) => {
           const n = payload.new as Notification;
           setNotifications((prev) => [n, ...prev]);
+          const p = prefsRef.current;
+          const key = prefKeyForNotificationType(n.type);
+          if (key && !p[key]) return; // tipo desligado nas preferências
+          if (!isWithinNotifyWindow(p)) return; // fora da janela de horário
           toast.info(n.title, {
             description: n.message,
             duration: 8000,
           });
-          playNotificationSound();
+          if (p.notify_sound) playNotificationSound();
         }
       )
       .subscribe();

@@ -50,6 +50,7 @@ import {
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
 import { CRMNotificationsBell } from "@/components/crm/CRMNotificationsBell";
+import { CRMInboundMessageNotifier } from "@/components/crm/CRMInboundMessageNotifier";
 import { ThemeToggle } from "@/components/settings/ThemeToggle";
 import { CallDockProvider } from "@/components/crm/call/CallDockProvider";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -464,6 +465,7 @@ export const CRMLayout = () => {
             <div className="flex items-center gap-1.5 ml-auto">
               <ThemeToggle />
               <CRMNotificationsBell staffId={staffId} />
+              {!dialerOnly && <CRMInboundMessageNotifier staffId={staffId} isAdmin={isAdmin} />}
 
               {/* Profile Dropdown */}
               <DropdownMenu>
