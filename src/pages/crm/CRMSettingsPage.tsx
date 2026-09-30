@@ -34,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
+import { CreditCard, 
   Settings,
   Plus,
   Trash2,
@@ -71,6 +71,7 @@ import { CRMDistributionTab } from "@/components/crm/settings/CRMDistributionTab
 import { CRMMetaLeadFormsCard } from "@/components/crm/settings/CRMMetaLeadFormsCard";
 import { CRMAutomationsTab } from "@/components/crm/settings/CRMAutomationsTab";
 import { CRMMessageRulesTab } from "@/components/crm/settings/CRMMessageRulesTab";
+import { CRMPaymentMethodsTab } from "@/components/crm/settings/CRMPaymentMethodsTab";
 import { toast } from "sonner";
 
 interface Pipeline {
@@ -1149,6 +1150,11 @@ export const CRMSettingsPage = () => {
             <Tag className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             Tags
           </TabsTrigger>
+          <TabsTrigger value="pagamento" className="gap-1.5 text-xs sm:text-sm">
+            <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Formas de Pagamento</span>
+            <span className="sm:hidden">Pagto.</span>
+          </TabsTrigger>
           {fullSettings && (
             <>
               <TabsTrigger value="access" className="gap-1.5 text-xs sm:text-sm">
@@ -1190,6 +1196,11 @@ export const CRMSettingsPage = () => {
             </>
           )}
         </TabsList>
+
+        {/* Formas de pagamento e bancos (aba Negócio da ficha do lead) */}
+        <TabsContent value="pagamento" className="mt-6">
+          <CRMPaymentMethodsTab />
+        </TabsContent>
 
         {/* Pipelines Tab */}
         <TabsContent value="pipelines" className="mt-6 space-y-6">
