@@ -471,7 +471,7 @@ export const CRMLayout = () => {
             <div className="flex items-center gap-1.5 ml-auto">
               <ThemeToggle />
               <CRMNotificationsBell staffId={staffId} />
-              {!dialerOnly && <CRMInboundMessageNotifier staffId={staffId} isAdmin={isAdmin} />}
+              {!dialerOnly && <CRMInboundMessageNotifier staffId={staffId} isAdmin={isAdmin} isMaster={isMaster} />}
 
               {/* Profile Dropdown */}
               <DropdownMenu>

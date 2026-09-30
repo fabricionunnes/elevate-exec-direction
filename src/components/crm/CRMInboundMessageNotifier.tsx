@@ -14,9 +14,10 @@ import { isWithinNotifyWindow, useCrmNotificationPrefs } from "@/hooks/useCrmNot
 interface Props {
   staffId: string | null;
   isAdmin: boolean;
+  isMaster?: boolean;
 }
 
-export const CRMInboundMessageNotifier = ({ staffId, isAdmin }: Props) => {
+export const CRMInboundMessageNotifier = ({ staffId, isAdmin, isMaster = false }: Props) => {
   const prefs = useCrmNotificationPrefs(staffId);
   const prefsRef = useRef(prefs);
   useEffect(() => { prefsRef.current = prefs; }, [prefs]);
@@ -56,10 +57,23 @@ export const CRMInboundMessageNotifier = ({ staffId, isAdmin }: Props) => {
 
           const { data: conv } = await supabase
             .from("crm_whatsapp_conversations")
-            .select("id, assigned_to, contact:crm_whatsapp_contacts(name, phone)")
+            .select("id, assigned_to, instance_id, official_instance_id, contact:crm_whatsapp_contacts(name, phone), instance:whatsapp_instances(show_in_inbox), official:whatsapp_official_instances(show_in_inbox)")
             .eq("id", msg.conversation_id)
             .maybeSingle();
           if (!conv) return;
+          // Mesma regra de visibilidade do Atendimento: número com "Visível no
+          // Atendimento" desligado não avisa ninguém (nem master), e quem não é
+          // master só recebe das instâncias a que tem acesso.
+          const c: any = conv;
+          const oficial = !!c.official_instance_id && !c.instance_id;
+          const visivel = oficial ? c.official?.show_in_inbox : c.instance_id ? c.instance?.show_in_inbox : isAdmin;
+          if (!visivel) return;
+          if (!isMaster && (c.instance_id || c.official_instance_id)) {
+            const tabela = oficial ? "whatsapp_official_instance_access" : "whatsapp_instance_access";
+            const instId = oficial ? c.official_instance_id : c.instance_id;
+            const { data: acesso } = await (supabase as any).from(tabela).select("id").eq("staff_id", staffId).eq("instance_id", instId).eq("can_view", true).limit(1);
+            if (!acesso?.length) return;
+          }
           const minha = conv.assigned_to === staffId;
           const semDono = !conv.assigned_to;
           if (!minha && !(semDono && isAdmin)) return;
@@ -81,7 +95,7 @@ export const CRMInboundMessageNotifier = ({ staffId, isAdmin }: Props) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [staffId, isAdmin, navigate]);
+  }, [staffId, isAdmin, isMaster, navigate]);
 
   return null;
 };

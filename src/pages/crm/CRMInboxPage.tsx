@@ -148,8 +148,11 @@ function senderColor(name: string): string {
 }
 
 export const CRMInboxPage = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const conversationIdFromUrl = searchParams.get("conversation");
+  // O parâmetro da URL vale UMA vez: depois de aplicado, sai da URL. Antes ele era
+  // reaplicado a cada atualização da lista e o clique em outra conversa "voltava".
+  const urlConvAplicada = useRef<string | null>(null);
   const { staffId, staffName, isAdmin, staffRole } = useCRMContext();
   const [selectedConversation, setSelectedConversation] = useState<WhatsAppConversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
@@ -587,16 +590,24 @@ export const CRMInboxPage = () => {
   }, [conversations]);
 
   // Auto-select conversation from URL parameter
+  const limparConvDaUrl = () => {
+    urlConvAplicada.current = conversationIdFromUrl;
+    const next = new URLSearchParams(searchParams);
+    next.delete("conversation");
+    setSearchParams(next, { replace: true });
+  };
   useEffect(() => {
     if (!conversationIdFromUrl) return;
+    if (urlConvAplicada.current === conversationIdFromUrl) return;
     
     // If already selected the correct conversation, skip
-    if (selectedConversation?.id === conversationIdFromUrl) return;
+    if (selectedConversation?.id === conversationIdFromUrl) { limparConvDaUrl(); return; }
     
     // Try to find in loaded conversations first
     const conv = conversations.find(c => c.id === conversationIdFromUrl);
     if (conv) {
       setSelectedConversation(conv);
+      limparConvDaUrl();
       return;
     }
     
@@ -618,6 +629,7 @@ export const CRMInboxPage = () => {
           if (data && !error) {
             setSelectedConversation(data);
           }
+          limparConvDaUrl();
         } catch (err) {
           console.error('Error fetching conversation by ID:', err);
         }
