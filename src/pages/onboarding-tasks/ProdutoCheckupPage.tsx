@@ -54,6 +54,7 @@ export default function ProdutoCheckupPage() {
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
   const [consultor, setConsultor] = useState("todos");
   const [soAbertas, setSoAbertas] = useState(true);
+  const [grav, setGrav] = useState<"todas" | "alta" | "alta_media">("todas");
   const [editando, setEditando] = useState<{ key: string; modo: "tratar" | "cobrar" } | null>(null);
   const [nota, setNota] = useState("");
   const [ocupado, setOcupado] = useState<string | null>(null);
@@ -80,7 +81,25 @@ export default function ProdutoCheckupPage() {
     return [...m.entries()].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
   }, [dados]);
 
-  const filtra = useCallback((i: Item) => (consultor === "todos" || i.consultant_id === consultor) && (!soAbertas || !i.tratado), [consultor, soAbertas]);
+  const filtra = useCallback((i: Item) =>
+    (consultor === "todos" || i.consultant_id === consultor || (i.bloco === "consultores" && i.staff_id === consultor))
+    && (!soAbertas || !i.tratado)
+    && (grav === "todas" || i.gravidade === "alta" || (grav === "alta_media" && i.gravidade === "media")),
+  [consultor, soAbertas, grav]);
+
+  // filtro ativo: abre os blocos que têm resultado, pra mudança aparecer na hora
+  const filtroAtivo = consultor !== "todos" || grav !== "todas";
+  useEffect(() => {
+    if (!dados || !filtroAtivo) return;
+    setAbertos(new Set(dados.blocos.filter((b) => b.itens.some(filtra)).map((b) => b.key)));
+  }, [dados, filtroAtivo, filtra]);
+
+  // prioridades: o que é grave, em todos os blocos, respeitando o filtro de consultor
+  const prioridades = useMemo(() => {
+    if (!dados) return [] as (Item & { blocoTitulo: string })[];
+    return dados.blocos.flatMap((b) => b.itens.filter((i) => i.gravidade === "alta" && (consultor === "todos" || i.consultant_id === consultor || (i.bloco === "consultores" && i.staff_id === consultor)) && (!soAbertas || !i.tratado)).map((i) => ({ ...i, blocoTitulo: b.titulo })));
+  }, [dados, consultor, soAbertas]);
+  const [verTodasPrio, setVerTodasPrio] = useState(false);
 
   const feitos = dados?.blocos.filter((b) => b.feito).length || 0;
   const totalBlocos = dados?.blocos.length || 0;
@@ -199,17 +218,90 @@ export default function ProdutoCheckupPage() {
                   emptyMessage="Nenhum consultor encontrado"
                 />
               </div>
+              <div className="w-[210px]">
+                <SearchableSelect
+                  value={grav}
+                  onValueChange={(v) => setGrav((v as any) || "todas")}
+                  options={[{ value: "todas", label: "Todas as gravidades" }, { value: "alta", label: "Só graves" }, { value: "alta_media", label: "Graves e atenção" }]}
+                  placeholder="Gravidade"
+                  emptyMessage="Sem opção"
+                />
+              </div>
               <Button variant={soAbertas ? "default" : "outline"} size="sm" onClick={() => setSoAbertas((v) => !v)}>
                 {soAbertas ? "Só abertas" : "Abertas e tratadas"}
               </Button>
               {!dados.grupos_ok && <Badge variant="outline" className="text-amber-600 border-amber-500/30">Não consegui ler os grupos agora</Badge>}
             </div>
 
+            <Card className="border-rose-500/30">
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <p className="font-medium">Prioridades de hoje <span className="text-xs text-muted-foreground font-normal">o que é grave, em todos os blocos</span></p>
+                  <Badge variant="outline" className={prioridades.length ? "text-rose-600 border-rose-500/30" : "text-emerald-600 border-emerald-500/30"}>{prioridades.length} graves</Badge>
+                </div>
+                {prioridades.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nada grave em aberto{consultor !== "todos" ? " para esse consultor" : ""}.</p>
+                ) : (
+                  <div className="divide-y divide-border rounded-md border">
+                    {(verTodasPrio ? prioridades : prioridades.slice(0, 8)).map((i) => {
+                      const emEdicao = editando?.key === i.key;
+                      return (
+                        <div key={`prio-${i.key}`} className="p-3 space-y-2">
+                          <div className="flex items-start gap-3">
+                            <span className="mt-1.5 h-2 w-2 rounded-full bg-rose-500 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Badge variant="outline" className="text-[10px]">{i.blocoTitulo}</Badge>
+                                {i.empresa && (i.project_id
+                                  ? <button className="font-medium text-sm hover:underline inline-flex items-center gap-1" onClick={() => navigate(`/onboarding-tasks/${i.project_id}`)}>{i.empresa}<ExternalLink className="h-3 w-3 text-muted-foreground" /></button>
+                                  : <span className="font-medium text-sm">{i.empresa}</span>)}
+                                {i.consultor && i.bloco !== "consultores" && <span className="text-[11px] text-muted-foreground">{i.consultor}</span>}
+                              </div>
+                              <p className="text-sm mt-0.5">{i.titulo}</p>
+                              {i.detalhe && <p className="text-xs text-muted-foreground mt-0.5 break-words">{i.detalhe}</p>}
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {i.tratado ? (
+                                <Button variant="ghost" size="sm" onClick={() => desfazerItem(i)} disabled={ocupado === i.key}><Undo2 className="h-3.5 w-3.5 mr-1" />Desfazer</Button>
+                              ) : (
+                                <>
+                                  <Button variant="outline" size="sm" onClick={() => { setEditando({ key: i.key, modo: "tratar" }); setNota(""); }}><Check className="h-3.5 w-3.5 mr-1" />Tratado</Button>
+                                  {i.project_id && (i.staff_id || i.consultant_id) && (
+                                    <Button variant="ghost" size="sm" onClick={() => { setEditando({ key: i.key, modo: "cobrar" }); setNota(""); }}><Send className="h-3.5 w-3.5 mr-1" />Cobrar</Button>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          {emEdicao && (
+                            <div className="flex items-center gap-2 pl-5">
+                              <Input autoFocus value={nota} onChange={(e) => setNota(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") confirmarItem(i, editando!.modo); if (e.key === "Escape") setEditando(null); }}
+                                placeholder={editando!.modo === "cobrar" ? `O que ${i.consultor || "o consultor"} precisa fazer (opcional)` : "O que foi feito (opcional)"} />
+                              <Button size="sm" onClick={() => confirmarItem(i, editando!.modo)} disabled={ocupado === i.key}>
+                                {ocupado === i.key && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
+                                {editando!.modo === "cobrar" ? "Criar tarefa" : "Confirmar"}
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => setEditando(null)}>Cancelar</Button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {prioridades.length > 8 && (
+                  <Button variant="ghost" size="sm" onClick={() => setVerTodasPrio((v) => !v)}>{verTodasPrio ? "Mostrar menos" : `Ver todas as ${prioridades.length}`}</Button>
+                )}
+              </CardContent>
+            </Card>
+
             <div className="space-y-3">
               {dados.blocos.map((b) => {
                 const visiveis = b.itens.filter(filtra);
                 const aberto = abertos.has(b.key);
-                const abertas = b.pendencias - b.tratadas;
+                const abertas = filtroAtivo ? visiveis.filter((i) => !i.tratado).length : b.pendencias - b.tratadas;
+                const totalMostrado = filtroAtivo ? visiveis.length : b.pendencias;
                 return (
                   <Card key={b.key} className={cn(b.feito && "border-emerald-500/40")}>
                     <CardContent className="p-0">
@@ -226,9 +318,9 @@ export default function ProdutoCheckupPage() {
                         <button className="flex-1 min-w-0 text-left" onClick={() => alternar(b.key)}>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={cn("font-medium", b.feito && "text-muted-foreground")}>{b.titulo}</span>
-                            {b.pendencias === 0
-                              ? <Badge variant="outline" className="text-emerald-600 border-emerald-500/30">nada hoje</Badge>
-                              : <Badge variant="outline" className={abertas > 0 ? "" : "text-emerald-600 border-emerald-500/30"}>{abertas} abertas de {b.pendencias}</Badge>}
+                            {totalMostrado === 0
+                              ? <Badge variant="outline" className="text-emerald-600 border-emerald-500/30">{filtroAtivo ? "nada com esse filtro" : "nada hoje"}</Badge>
+                              : <Badge variant="outline" className={abertas > 0 ? "" : "text-emerald-600 border-emerald-500/30"}>{abertas} abertas de {totalMostrado}{filtroAtivo ? " no filtro" : ""}</Badge>}
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">{b.descricao}</p>
                         </button>
