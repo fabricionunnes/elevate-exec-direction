@@ -10,8 +10,9 @@ import { LeadRevenueTab } from "@/components/crm/indicators/LeadRevenueTab";
 import { AtendimentoDashboardTab } from "@/components/crm/indicators/AtendimentoDashboardTab";
 import { AtividadesDashboardTab } from "@/components/crm/indicators/AtividadesDashboardTab";
 import { NegociosDashboardTab } from "@/components/crm/indicators/NegociosDashboardTab";
+import { VisaoGeralTab } from "@/components/crm/indicators/VisaoGeralTab";
 import { CRMCommissionCard, CommissionSummary } from "@/components/crm/CRMCommissionCard";
-import { DollarSign, ChevronDown, TrendingUp, Wallet, Megaphone, Filter, Banknote, MessageSquare, ListChecks, Briefcase } from "lucide-react";
+import { DollarSign, ChevronDown, TrendingUp, Wallet, Megaphone, Filter, Banknote, MessageSquare, ListChecks, Briefcase, LayoutDashboard } from "lucide-react";
 
 export const CRMIndicatorsPage = () => {
   const { staffRole, staffId } = useOutletContext<{ staffRole: string; isAdmin: boolean; staffId: string | null }>();
@@ -25,7 +26,8 @@ export const CRMIndicatorsPage = () => {
   // Negócios, Atendimento e Atividades (benchmark Datacrazy): todo mundo vê; fora da gestão
   // o painel fica travado no próprio usuário (dono / atendente / responsável).
   const lockedStaffId = isAdmin ? null : staffId;
-  const [activeTab, setActiveTab] = useState(isSdrUser ? "presales" : "sales");
+  // Visão geral (do digital) é a aba principal do CRM Comercial (Fabrício, 30/09/2026)
+  const [activeTab, setActiveTab] = useState("visao");
   const [commissionOpen, setCommissionOpen] = useState(false);
   const [summary, setSummary] = useState<CommissionSummary | null>(null);
 
@@ -77,6 +79,12 @@ export const CRMIndicatorsPage = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
         <div className="border-b border-border bg-card px-4">
           <TabsList className="h-12 bg-transparent">
+            <TabsTrigger
+              value="visao"
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-6 gap-1.5"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5" /> Visão geral
+            </TabsTrigger>
             {showSales && (
               <TabsTrigger
                 value="sales"
@@ -142,6 +150,13 @@ export const CRMIndicatorsPage = () => {
         </div>
 
         <div className="flex-1 overflow-auto">
+          <TabsContent value="visao" className="m-0 h-full">
+            <VisaoGeralTab staffId={staffId} lockedStaffId={lockedStaffId} onNavigate={(tab) => {
+              // só abre abas que o papel do usuário enxerga
+              const ok = tab === "sales" ? showSales : tab === "presales" ? showPresales : ["funnels", "traffic", "leadrevenue"].includes(tab) ? isAdmin : true;
+              setActiveTab(ok ? tab : "negocios");
+            }} />
+          </TabsContent>
           {showSales && (
             <TabsContent value="sales" className="m-0 h-full">
               <SalesIndicatorsTab staffId={staffId} staffRole={staffRole} />
