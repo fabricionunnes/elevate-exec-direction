@@ -242,6 +242,175 @@ function layout(root: MMNode, kind: LayoutKind = "radial", theme = "unv") {
   return { nodes, edges };
 }
 
+// ─────────────────────────── PDF vetorial ───────────────────────────
+// As fontes padrão do PDF (Helvetica) só conhecem Latin-1: acento e cedilha
+// entram, mas seta, emoji e travessão viram lixo. Troca o que dá e tira o resto.
+function limparTexto(s: string): string {
+  return (s || "")
+    .replace(/[→➡➔]/g, "->").replace(/[←]/g, "<-")
+    .replace(/[–—−]/g, "-").replace(/[‘’‚]/g, "'")
+    .replace(/[“”„]/g, '"').replace(/[•●▪‣]/g, "-")
+    .replace(/[✓✔✅]/g, "v").replace(/[✖❌]/g, "x")
+    .replace(/…/g, "...").replace(/ /g, " ")
+    .replace(/[^\u0000-ÿ]/g, "");
+}
+
+/** clone do mapa com todos os ramos abertos: o PDF é o mapa inteiro */
+function expandirTudo(n: MMNode): MMNode {
+  return { ...n, collapsed: false, children: n.children.map(expandirTudo) };
+}
+
+const PDF_MAX_PAGE = 14000; // limite do formato PDF é 14400pt por lado
+
+function montarPdf(data: MMData, titulo: string): jsPDF {
+  const root = expandirTudo(data.root);
+  const kind = data.layout || "radial";
+  const themeKey = data.theme || "unv";
+  const { nodes, edges } = layout(root, kind, themeKey);
+  const porId = new Map(nodes.map((n) => [n.id, n]));
+
+  // limites do mapa
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const n of nodes) {
+    const d = n.data as any;
+    minX = Math.min(minX, n.position.x); minY = Math.min(minY, n.position.y);
+    maxX = Math.max(maxX, n.position.x + d.w); maxY = Math.max(maxY, n.position.y + d.h);
+  }
+  const M = 40, HEADER = 44;
+  const mapaW = maxX - minX, mapaH = maxY - minY;
+  // mapa gigante: encolhe pra caber no limite do PDF (continua vetorial, o zoom
+  // não perde nada)
+  const s = Math.min(1, (PDF_MAX_PAGE - 2 * M) / mapaW, (PDF_MAX_PAGE - 2 * M - HEADER) / mapaH);
+  const pageW = Math.max(595, mapaW * s + 2 * M);
+  const pageH = Math.max(420, mapaH * s + 2 * M + HEADER);
+  const ox = M + (pageW - 2 * M - mapaW * s) / 2 - minX * s;
+  const oy = M + HEADER + (pageH - 2 * M - HEADER - mapaH * s) / 2 - minY * s;
+  const X = (x: number) => ox + x * s, Y = (y: number) => oy + y * s;
+
+  const pdf = new jsPDF({ orientation: pageW >= pageH ? "landscape" : "portrait", unit: "pt", format: [pageW, pageH], compress: true });
+  const dataStr = new Date().toLocaleDateString("pt-BR");
+
+  // cabeçalho da página do mapa
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(16); pdf.setTextColor(13, 43, 94);
+  pdf.text(limparTexto(titulo), M, M + 6);
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.setTextColor(120);
+  pdf.text(`UNV Nexus  ·  ${dataStr}  ·  mapa completo (dê zoom); descritivo nas páginas seguintes`, M, M + 20);
+
+  // linhas primeiro, caixas por cima
+  for (const e of edges) {
+    const a = porId.get(e.source), b = porId.get(e.target);
+    if (!a || !b) continue;
+    const da = a.data as any, db = b.data as any;
+    const st = (e.style || {}) as any;
+    pdf.setDrawColor(st.stroke || "#94A3B8");
+    pdf.setLineWidth(Math.max(0.8, (st.strokeWidth || 2) * s));
+    let x1: number, y1: number, x2: number, y2: number;
+    if (kind === "tree") {
+      x1 = X(a.position.x + da.w / 2); y1 = Y(a.position.y + da.h);
+      x2 = X(b.position.x + db.w / 2); y2 = Y(b.position.y);
+      const my = (y1 + y2) / 2;
+      pdf.moveTo(x1, y1); pdf.curveTo(x1, my, x2, my, x2, y2); pdf.stroke();
+    } else {
+      const paraDireita = b.position.x >= a.position.x + da.w / 2;
+      x1 = X(paraDireita ? a.position.x + da.w : a.position.x); y1 = Y(a.position.y + da.h / 2);
+      x2 = X(paraDireita ? b.position.x : b.position.x + db.w); y2 = Y(b.position.y + db.h / 2);
+      const mx = (x1 + x2) / 2;
+      pdf.moveTo(x1, y1); pdf.curveTo(mx, y1, mx, y2, x2, y2); pdf.stroke();
+    }
+  }
+
+  for (const n of nodes) {
+    const d = n.data as any;
+    const mm: MMNode = d.node;
+    const cor: string = d.isRoot ? (d.rootColor || "#0D2B5E") : (d.color || "#0D2B5E");
+    const x = X(n.position.x), y = Y(n.position.y), w = d.w * s, h = d.h * s;
+    pdf.setDrawColor(cor); pdf.setLineWidth(2 * s);
+    if (d.isRoot) { pdf.setFillColor(cor); pdf.roundedRect(x, y, w, h, 10 * s, 10 * s, "FD"); }
+    else { pdf.setFillColor(255, 255, 255); pdf.roundedRect(x, y, w, h, 10 * s, 10 * s, "FD"); }
+
+    // texto: quebra em palavras dentro da caixa; se a Helvetica precisar de mais
+    // linhas que a caixa tem (fonte da tela é outra), reduz um pouco a fonte
+    const texto = limparTexto(mm.text || "vazio");
+    const larguraUtil = (d.w - PAD_X + 6) * s;
+    let fs = (d.isRoot ? 15 : 13) * s;
+    let lineH = (d.isRoot ? ROOT_LINE_H : LINE_H) * s;
+    pdf.setFont("helvetica", d.isRoot ? "bold" : "normal");
+    let linhas: string[] = [];
+    for (let tent = 0; tent < 6; tent++) {
+      pdf.setFontSize(fs);
+      linhas = texto.split("\n").flatMap((p) => (pdf.splitTextToSize(p || " ", larguraUtil) as string[]));
+      if (linhas.length * lineH <= h - 4 * s || fs <= 7 * s) break;
+      fs *= 0.9; lineH *= 0.9;
+    }
+    pdf.setTextColor(d.isRoot ? "#FFFFFF" : "#111827");
+    const total = linhas.length * lineH;
+    let ty = y + (h - total) / 2 + lineH * 0.72;
+    const tx = x + (PAD_X / 2 - 2) * s;
+    for (const l of linhas) { pdf.text(l, tx, ty); ty += lineH; }
+  }
+
+  // ── descritivo por escrito (A4) ──
+  pdf.addPage("a4", "portrait");
+  const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
+  const m = 48, mBottom = 56;
+  let y = m;
+  const cabecalho = () => {
+    pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.setTextColor(13, 43, 94);
+    pdf.text(limparTexto(titulo), m, m - 18);
+    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(140);
+    pdf.text("Descritivo", pw - m, m - 18, { align: "right" });
+    pdf.setDrawColor("#E5E7EB"); pdf.setLineWidth(0.6); pdf.line(m, m - 12, pw - m, m - 12);
+    y = m;
+  };
+  const garantir = (alt: number) => { if (y + alt > ph - mBottom) { pdf.addPage("a4", "portrait"); cabecalho(); } };
+  cabecalho();
+
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(20); pdf.setTextColor(13, 43, 94);
+  const tit = pdf.splitTextToSize(limparTexto(titulo), pw - 2 * m) as string[];
+  pdf.text(tit, m, y + 16); y += 16 + tit.length * 24;
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(10); pdf.setTextColor(100);
+  const contar = (n: MMNode): number => 1 + n.children.reduce((sum, c) => sum + contar(c), 0);
+  pdf.text(`${root.children.length} ramos principais  ·  ${contar(root) - 1} itens no total  ·  gerado em ${dataStr}`, m, y); y += 26;
+
+  const pal = (THEMES[themeKey] || THEMES.unv).palette;
+  const escrever = (n: MMNode, numero: string, depth: number, cor: string) => {
+    const indent = m + Math.min(depth - 1, 5) * 18;
+    const largura = pw - m - indent - 30;
+    const fs = depth === 1 ? 13 : depth === 2 ? 11 : 10;
+    const lh = fs * 1.35;
+    pdf.setFont("helvetica", depth <= 2 ? "bold" : "normal"); pdf.setFontSize(fs);
+    const linhas = limparTexto(n.text || "vazio").split("\n").flatMap((p) => pdf.splitTextToSize(p || " ", largura) as string[]);
+    const nota = n.note ? limparTexto(n.note).split("\n").flatMap((p) => pdf.splitTextToSize(p || " ", largura - 10) as string[]) : [];
+    const alt = (depth === 1 ? 14 : 4) + linhas.length * lh + (nota.length ? nota.length * 12 + 6 : 0);
+    garantir(alt);
+    if (depth === 1) {
+      y += 10;
+      pdf.setFillColor(cor); pdf.rect(m - 10, y - fs + 2, 4, linhas.length * lh, "F");
+    }
+    pdf.setTextColor(depth === 1 ? cor : "#111827");
+    pdf.text(numero, indent, y);
+    const numW = pdf.getTextWidth(numero) + 6;
+    pdf.text(linhas, indent + numW, y);
+    y += linhas.length * lh;
+    if (nota.length) {
+      pdf.setFont("helvetica", "italic"); pdf.setFontSize(9); pdf.setTextColor(90);
+      pdf.text(nota, indent + numW + 4, y); y += nota.length * 12 + 6;
+    }
+    y += depth === 1 ? 4 : 2;
+    n.children.forEach((c, i) => escrever(c, `${numero}${i + 1}.`, depth + 1, cor));
+  };
+  root.children.forEach((c, i) => escrever(c, `${i + 1}.`, 1, c.color || pal[i % pal.length]));
+
+  // numeração das páginas do descritivo
+  const total = pdf.internal.getNumberOfPages();
+  for (let p = 2; p <= total; p++) {
+    pdf.setPage(p);
+    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(150);
+    pdf.text(`UNV Nexus  ·  página ${p - 1} de ${total - 1}`, pw / 2, ph - 28, { align: "center" });
+  }
+  return pdf;
+}
+
 // ─────────────────────────── nó visual ───────────────────────────
 function MMNodeView({ id, data, selected }: NodeProps) {
   const d = data as any;
@@ -487,15 +656,26 @@ function Editor() {
   const setLayoutKind = (kind: LayoutKind) => { if (!canEdit) return; push({ ...clone(data), layout: kind }); setTimeout(() => rf.fitView({ padding: 0.3, duration: 300 }), 30); };
   const setTheme = (theme: string) => { if (!canEdit) return; push({ ...clone(data), theme }); };
 
-  // exportação: renderiza só o viewport do canvas em PNG e (opcional) embrulha em PDF
+  // ─────────────────────────── exportação ───────────────────────────
+  // PDF vetorial: o mapa é desenhado direto no PDF a partir do layout (caixas,
+  // linhas e texto), numa página do tamanho do mapa inteiro. Fotografar a tela
+  // cortava o que estava fora do viewport e virava imagem borrada no zoom.
+  // Depois do mapa vêm páginas A4 com o descritivo por escrito (hierarquia +
+  // anotações de cada nó). O PNG continua sendo foto da tela.
   const canvasRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
   const exportImage = async (format: "png" | "pdf") => {
-    const el = canvasRef.current?.querySelector(".react-flow__viewport") as HTMLElement | null;
     const wrap = canvasRef.current;
-    if (!el || !wrap) return;
     setExporting(true);
     try {
+      const fname = (title || "mapa").replace(/[^\w\-]+/g, "_");
+      if (format === "pdf") {
+        const pdf = montarPdf(data, title || "Mapa mental");
+        pdf.save(`${fname}.pdf`);
+        return;
+      }
+      const el = wrap?.querySelector(".react-flow__viewport") as HTMLElement | null;
+      if (!el || !wrap) return;
       // enquadra tudo antes de fotografar
       await rf.fitView({ padding: 0.15, duration: 0 });
       await new Promise((r) => setTimeout(r, 120));
@@ -504,24 +684,7 @@ function Editor() {
         filter: (n) => !(n as HTMLElement).classList?.contains("react-flow__minimap")
                     && !(n as HTMLElement).classList?.contains("react-flow__controls"),
       });
-      const fname = (title || "mapa").replace(/[^\w\-]+/g, "_");
-      if (format === "png") {
-        const a = document.createElement("a"); a.href = dataUrl; a.download = `${fname}.png`; a.click();
-      } else {
-        const img = new Image(); img.src = dataUrl; await img.decode();
-        const landscape = img.width >= img.height;
-        const pdf = new jsPDF({ orientation: landscape ? "landscape" : "portrait", unit: "pt", format: "a4" });
-        const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
-        const m = 28;
-        const scale = Math.min((pw - 2 * m) / img.width, (ph - 2 * m - 30) / img.height);
-        const w = img.width * scale, h = img.height * scale;
-        pdf.setFont("helvetica", "bold"); pdf.setFontSize(14); pdf.setTextColor(13, 43, 94);
-        pdf.text(title || "Mapa mental", m, m + 4);
-        pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(120);
-        pdf.text(`UNV Nexus · ${new Date().toLocaleDateString("pt-BR")}`, pw - m, m + 4, { align: "right" });
-        pdf.addImage(dataUrl, "PNG", (pw - w) / 2, m + 22, w, h);
-        pdf.save(`${fname}.pdf`);
-      }
+      const a = document.createElement("a"); a.href = dataUrl; a.download = `${fname}.png`; a.click();
     } catch (e: any) {
       toast.error("Não consegui exportar: " + (e?.message || e));
     } finally {
@@ -674,7 +837,7 @@ function Editor() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => exportImage("pdf")}>Baixar PDF</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportImage("pdf")}>Baixar PDF (mapa completo + descritivo)</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => exportImage("png")}>Baixar imagem (PNG)</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
