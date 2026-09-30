@@ -364,7 +364,7 @@ const OnboardingCompanyDetailPage = () => {
       toast.error("Informe a data de início do contrato (data de início do cliente)");
       return;
     }
-    if (["trimestral", "semestral", "anual"].includes(data.contract_term) && !data.contract_end_date) {
+    if (["trimestral", "quadrimestral", "semestral", "anual"].includes(data.contract_term) && !data.contract_end_date) {
       toast.error(`Contrato ${data.contract_term} precisa da data de fim`);
       return;
     }
@@ -1298,7 +1298,7 @@ const OnboardingCompanyDetailPage = () => {
                                 if (v === "mensal") patch.contract_end_date = "";
                                 if (c.contract_start_date && v !== "mensal") {
                                   const d = new Date(c.contract_start_date + "T12:00:00");
-                                  d.setMonth(d.getMonth() + (v === "trimestral" ? 3 : v === "semestral" ? 6 : 12));
+                                  d.setMonth(d.getMonth() + (v === "trimestral" ? 3 : v === "quadrimestral" ? 4 : v === "semestral" ? 6 : 12));
                                   patch.contract_end_date = d.toISOString().slice(0, 10);
                                 }
                                 setC(patch);
@@ -1307,6 +1307,7 @@ const OnboardingCompanyDetailPage = () => {
                               <SelectContent>
                                 <SelectItem value="mensal">Mensal (sem data de fim)</SelectItem>
                                 <SelectItem value="trimestral">Trimestral</SelectItem>
+                                <SelectItem value="quadrimestral">Quadrimestral</SelectItem>
                                 <SelectItem value="semestral">Semestral</SelectItem>
                                 <SelectItem value="anual">Anual</SelectItem>
                               </SelectContent>
@@ -1320,7 +1321,7 @@ const OnboardingCompanyDetailPage = () => {
                                   const patch: any = { contract_start_date: e.target.value };
                                   if (e.target.value && c.contract_term && c.contract_term !== "mensal" && !c.contract_end_date) {
                                     const d = new Date(e.target.value + "T12:00:00");
-                                    d.setMonth(d.getMonth() + (c.contract_term === "trimestral" ? 3 : c.contract_term === "semestral" ? 6 : 12));
+                                    d.setMonth(d.getMonth() + (c.contract_term === "trimestral" ? 3 : c.contract_term === "quadrimestral" ? 4 : c.contract_term === "semestral" ? 6 : 12));
                                     patch.contract_end_date = d.toISOString().slice(0, 10);
                                   }
                                   setC(patch);
