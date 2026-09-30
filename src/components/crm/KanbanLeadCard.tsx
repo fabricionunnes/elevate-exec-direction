@@ -58,6 +58,7 @@ interface KanbanLeadCardProps {
   onDragStart: (e: React.DragEvent, lead: Lead) => void;
   onOpenChat: (e: React.MouseEvent, lead: Lead) => void;
   onRefresh: () => void;
+  canChangeOwner?: boolean;
 }
 
 export const KanbanLeadCard = ({
@@ -71,6 +72,7 @@ export const KanbanLeadCard = ({
   onDragStart,
   onOpenChat,
   onRefresh,
+  canChangeOwner = true,
 }: KanbanLeadCardProps) => {
   const adNames = useMetaAdNames();
   // Resolve o ID guardado no lead para o nome legível (fallback = o próprio valor).
@@ -217,6 +219,7 @@ export const KanbanLeadCard = ({
           currentOwnerName={lead.owner?.name}
           currentOwnerAvatarUrl={lead.owner?.avatar_url}
           onOwnerChange={onRefresh}
+          disabled={!canChangeOwner}
         />
         {/* Closer do lead, quando é outra pessoa que não o dono */}
         {lead.closer && lead.closer_staff_id && lead.closer_staff_id !== lead.owner_staff_id && (

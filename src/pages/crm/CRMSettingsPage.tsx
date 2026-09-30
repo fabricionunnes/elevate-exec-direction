@@ -61,6 +61,7 @@ import { CreditCard,
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
 import { StageChecklistDialog } from "@/components/crm/StageChecklistDialog";
+import { PipelineAccessDialog } from "@/components/crm/PipelineAccessDialog";
 import { CRMPermissionsManager } from "@/components/crm/CRMPermissionsManager";
 import { CRMGoalsTab } from "@/components/crm/settings/CRMGoalsTab";
 import { WonNotificationSettings } from "@/components/crm/settings/WonNotificationSettings";
@@ -162,6 +163,8 @@ export const CRMSettingsPage = () => {
   
   // Edit dialogs
   const [editPipelineOpen, setEditPipelineOpen] = useState(false);
+  // Acessos do funil (crm_pipeline_permissions) — só master/admin
+  const [accessPipeline, setAccessPipeline] = useState<{ id: string; name: string } | null>(null);
   const [editStageOpen, setEditStageOpen] = useState(false);
   const [editOriginGroupOpen, setEditOriginGroupOpen] = useState(false);
   const [editOriginOpen, setEditOriginOpen] = useState(false);
@@ -1445,6 +1448,20 @@ export const CRMSettingsPage = () => {
                             >
                               <Copy className="h-4 w-4" />
                             </Button>
+                            {fullSettings && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setAccessPipeline({ id: pipeline.id, name: pipeline.name });
+                                }}
+                                title="Acessos do funil (quem vê, cria, exclui e troca responsável)"
+                              >
+                                <ShieldCheck className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
@@ -2387,6 +2404,16 @@ export const CRMSettingsPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Acessos do funil */}
+      {accessPipeline && (
+        <PipelineAccessDialog
+          open
+          onOpenChange={(open) => { if (!open) setAccessPipeline(null); }}
+          pipelineId={accessPipeline.id}
+          pipelineName={accessPipeline.name}
+        />
+      )}
 
       {/* Stage Actions Dialog */}
       {actionsStage && (

@@ -35,6 +35,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { X, ShieldCheck } from "lucide-react";
+import { LEAD_FIELD_CATALOG, loadCustomFieldDefs, isCustomKey, customIdOf } from "@/lib/crm/stageGate";
 
 interface StageAction {
   id: string;
@@ -113,12 +116,53 @@ export function StageActionsDialog({
   const [newMeetingDuration, setNewMeetingDuration] = useState(60);
   const [showNewForm, setShowNewForm] = useState(false);
 
+  // Campos exigidos pra ENTRAR na etapa (crm_stages.required_fields)
+  const [requiredFields, setRequiredFields] = useState<string[]>([]);
+  const [fieldChoices, setFieldChoices] = useState<{ value: string; label: string; hint?: string }[]>([]);
+  const [newRequiredField, setNewRequiredField] = useState("");
+
   useEffect(() => {
     if (open && stageId) {
       loadActions();
       loadStaffMembers();
+      loadRequiredFields();
     }
   }, [open, stageId]);
+
+  const loadRequiredFields = async () => {
+    try {
+      const [{ data: st }, customs] = await Promise.all([
+        supabase.from("crm_stages").select("required_fields").eq("id", stageId).maybeSingle(),
+        loadCustomFieldDefs(),
+      ]);
+      setRequiredFields(((st as any)?.required_fields as string[] | null) || []);
+      setFieldChoices([
+        ...LEAD_FIELD_CATALOG.map((f) => ({ value: f.key, label: f.label })),
+        ...customs.map((c) => ({ value: `custom:${c.id}`, label: c.label, hint: "adicional" })),
+      ]);
+    } catch (e) {
+      console.error("loadRequiredFields:", e);
+    }
+  };
+
+  const saveRequiredFields = async (keys: string[]) => {
+    const before = requiredFields;
+    setRequiredFields(keys);
+    const { error } = await supabase.from("crm_stages").update({ required_fields: keys }).eq("id", stageId);
+    if (error) {
+      setRequiredFields(before);
+      toast.error(error.message || "Erro ao salvar campos obrigatórios");
+      return;
+    }
+    toast.success("Campos obrigatórios da etapa salvos");
+  };
+
+  const fieldLabelOf = (key: string) => {
+    const c = fieldChoices.find((f) => f.value === key);
+    if (c) return c.label;
+    if (isCustomKey(key)) return `campo adicional ${customIdOf(key).slice(0, 8)}`;
+    return key;
+  };
 
   // Update activity type based on action mode
   useEffect(() => {
@@ -292,8 +336,63 @@ export function StageActionsDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Condições pra ENTRAR na etapa */}
+          <div className="rounded-lg border border-border p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              <p className="text-sm font-medium">Campos obrigatórios pra entrar nesta etapa</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Ao mover um lead pra cá, esses campos precisam estar preenchidos. Se faltar algum, quem move
+              preenche na hora no diálogo de pendências. Master e admin podem passar por cima (fica no histórico).
+            </p>
+            {requiredFields.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {requiredFields.map((key) => (
+                  <Badge key={key} variant="secondary" className="gap-1 pr-1 text-xs font-normal">
+                    {fieldLabelOf(key)}
+                    <button
+                      type="button"
+                      onClick={() => saveRequiredFields(requiredFields.filter((k) => k !== key))}
+                      className="rounded hover:bg-muted p-0.5"
+                      title="Deixar de exigir"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <SearchableSelect
+                  value={newRequiredField}
+                  onValueChange={setNewRequiredField}
+                  options={fieldChoices.filter((c) => !requiredFields.includes(c.value))}
+                  placeholder="Adicionar campo exigido..."
+                  emptyMessage="Nenhum campo com esse nome."
+                  className="h-8 text-xs"
+                />
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8"
+                disabled={!newRequiredField}
+                onClick={() => {
+                  if (!newRequiredField) return;
+                  saveRequiredFields([...requiredFields, newRequiredField]);
+                  setNewRequiredField("");
+                }}
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" /> Exigir
+              </Button>
+            </div>
+          </div>
+
           <p className="text-sm text-muted-foreground">
             Configure as atividades que devem ser criadas automaticamente quando um lead entra nesta etapa.
+            As marcadas como <strong>obrigatórias</strong> travam a saída da etapa enquanto estiverem pendentes.
           </p>
 
           {loading ? (

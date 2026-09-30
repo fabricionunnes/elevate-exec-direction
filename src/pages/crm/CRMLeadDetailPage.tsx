@@ -72,6 +72,9 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { useCRMContext } from "./CRMLayout";
+import { useCRMPipelinePermissions } from "@/hooks/useCRMPipelinePermissions";
+import { StageGateDialog } from "@/components/crm/StageGateDialog";
+import { checkStageGate, gateIsBlocked, logGateOverride, type LeadGateResult } from "@/lib/crm/stageGate";
 import { createStageActivities } from "@/hooks/useStageActions";
 import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
 import { trackMeetingEventOnStageChange, isRealizedStage } from "@/hooks/useMeetingEventTracker";
@@ -175,6 +178,9 @@ export const CRMLeadDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isAdmin, isMaster, staffId } = useCRMContext();
+  // Acesso por funil + permissões granulares (lead_move / lead_delete)
+  const pipelinePerms = useCRMPipelinePermissions();
+  const [stageGate, setStageGate] = useState<{ result: LeadGateResult; targetStageId: string; targetStageName: string } | null>(null);
   
   const { startCall } = useCallDock();
   const [lead, setLead] = useState<Lead | null>(null);
@@ -485,8 +491,26 @@ export const CRMLeadDetailPage = () => {
     }
   };
 
-  const handleStageChange = async (stageId: string) => {
+  const handleStageChange = async (stageId: string, opts?: { skipGate?: boolean }) => {
     if (!lead) return;
+    if (!pipelinePerms.has("lead_move")) {
+      toast.error("Você não tem permissão para mover leads entre etapas");
+      return;
+    }
+
+    // Trava de etapa: atividade obrigatória pendente / campo exigido pela etapa destino
+    if (!opts?.skipGate) {
+      try {
+        const res = await checkStageGate([lead.id], stageId);
+        const r = res.get(lead.id);
+        if (gateIsBlocked(r)) {
+          setStageGate({ result: r!, targetStageId: stageId, targetStageName: stages.find((s) => s.id === stageId)?.name || "nova etapa" });
+          return;
+        }
+      } catch (e) {
+        console.error("checkStageGate:", e);
+      }
+    }
 
     try {
       const { error } = await supabase
@@ -1145,7 +1169,7 @@ export const CRMLeadDetailPage = () => {
                   <Building2 className="h-4 w-4 mr-2 text-emerald-500" />
                   Converter em Empresa
                 </DropdownMenuItem>
-                {isAdmin && (
+                {isAdmin && pipelinePerms.has("lead_delete") && pipelinePerms.permFor(lead.pipeline_id).can_delete && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
@@ -1610,7 +1634,28 @@ export const CRMLeadDetailPage = () => {
       {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
-          <AlertDialogHeader>
+          {/* Pendências da trava de etapa */}
+      <StageGateDialog
+        open={!!stageGate}
+        gate={stageGate?.result || null}
+        targetStageName={stageGate?.targetStageName || ""}
+        canOverride={isMaster || isAdmin}
+        onCancel={() => setStageGate(null)}
+        onResolved={() => {
+          const g = stageGate;
+          setStageGate(null);
+          if (g) handleStageChange(g.targetStageId);
+        }}
+        onOverride={async () => {
+          const g = stageGate;
+          setStageGate(null);
+          if (!g) return;
+          await logGateOverride({ leadIds: [g.result.leadId], staffId, targetStageName: g.targetStageName, results: new Map([[g.result.leadId, g.result]]) });
+          handleStageChange(g.targetStageId, { skipGate: true });
+        }}
+      />
+
+      <AlertDialogHeader>
             <AlertDialogTitle>Excluir Lead</AlertDialogTitle>
             <AlertDialogDescription>
               Tem certeza que deseja excluir o lead "{lead.name}"? Esta ação não pode ser desfeita e todas as atividades, arquivos e histórico serão removidos.

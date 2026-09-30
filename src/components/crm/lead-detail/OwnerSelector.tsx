@@ -25,6 +25,8 @@ interface OwnerSelectorProps {
   currentOwnerName?: string | null;
   currentOwnerAvatarUrl?: string | null;
   onOwnerChange?: () => void;
+  /** sem permissão de trocar o responsável neste funil: só mostra o avatar */
+  disabled?: boolean;
 }
 
 export function OwnerSelector({
@@ -33,6 +35,7 @@ export function OwnerSelector({
   currentOwnerName,
   currentOwnerAvatarUrl,
   onOwnerChange,
+  disabled = false,
 }: OwnerSelectorProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -111,9 +114,12 @@ export function OwnerSelector({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open && !disabled} onOpenChange={(o) => { if (!disabled) setOpen(o); }}>
       <PopoverTrigger asChild>
-        <button className="flex items-center gap-2 hover:bg-muted/50 rounded-full p-1 transition-colors cursor-pointer">
+        <button
+          className={cn("flex items-center gap-2 rounded-full p-1 transition-colors", disabled ? "cursor-default" : "hover:bg-muted/50 cursor-pointer")}
+          title={disabled ? "Sem permissão para trocar o responsável neste funil" : currentOwnerName || "Sem responsável"}
+        >
           <Avatar className="h-7 w-7">
             {currentOwnerAvatarUrl && <AvatarImage src={currentOwnerAvatarUrl} alt={currentOwnerName || ""} />}
             <AvatarFallback className="text-xs bg-primary/10 text-primary">

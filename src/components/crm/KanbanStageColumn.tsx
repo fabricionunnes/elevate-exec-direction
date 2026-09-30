@@ -57,6 +57,10 @@ interface KanbanStageColumnProps {
   onOpenChat: (e: React.MouseEvent, lead: Lead) => void;
   onRefresh: () => void;
   onAddLead: (stageId: string) => void;
+  /** acesso por funil / permissão granular: esconde o "+" da coluna */
+  canAddLead?: boolean;
+  /** acesso por funil: trava o seletor de responsável nos cards */
+  canChangeOwner?: boolean;
 }
 
 const LEADS_PER_PAGE = 10;
@@ -78,6 +82,8 @@ export const KanbanStageColumn = ({
   onOpenChat,
   onRefresh,
   onAddLead,
+  canAddLead = true,
+  canChangeOwner = true,
 }: KanbanStageColumnProps) => {
   const [visibleCount, setVisibleCount] = useState(LEADS_PER_PAGE);
   const [pickOpen, setPickOpen] = useState(false);
@@ -186,15 +192,17 @@ export const KanbanStageColumn = ({
             {leads.length}
           </span>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
-            onClick={() => onAddLead(stage.id)}
-            title="Adicionar negócio nesta etapa"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
+          {canAddLead && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
+              onClick={() => onAddLead(stage.id)}
+              title="Adicionar negócio nesta etapa"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
 
         {stageTotal > 0 && (
@@ -223,6 +231,7 @@ export const KanbanStageColumn = ({
               onDragStart={onDragStart}
               onOpenChat={onOpenChat}
               onRefresh={onRefresh}
+              canChangeOwner={canChangeOwner}
             />
           ))}
 
