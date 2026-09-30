@@ -21,7 +21,7 @@ import { Bar, BarChart, CartesianGrid, Legend, Tooltip as RTooltip, XAxis, YAxis
 import { toast } from "sonner";
 import {
   C, tipStyle, n, pct, moeda, dataHora,
-  Kpi, Grafico, ExportarDialog, PeriodoFiltro, intervalo, useStaffOptions, ThOrdenavel, type Periodo,
+  Kpi, Grafico, ExportarDialog, PeriodoFiltro, intervalo, useStaffOptions, ThOrdenavel, RodapeEscopo, type Periodo,
 } from "./dashboardShared";
 
 interface Props {
@@ -159,7 +159,7 @@ export function NegociosDashboardTab({ staffId, lockedStaffId }: Props) {
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <PeriodoFiltro value={periodo} onChange={setPeriodo} />
           <div className="w-[190px]"><SearchableSelect value={funil} onChange={setFunil} options={[{ value: "all", label: "Todos os funis" }, ...pipelines.map((p) => ({ value: p.id, label: p.name }))]} /></div>
-          {!lockedStaffId && <div className="w-[180px]"><SearchableSelect value={dono} onChange={setDono} options={[{ value: "all", label: "Todos os donos" }, ...staff.map((s) => ({ value: s.id, label: s.name }))]} /></div>}
+          {!lockedStaffId && dados?.escopo?.mostrando !== "proprio" && <div className="w-[180px]"><SearchableSelect value={dono} onChange={setDono} options={[{ value: "all", label: "Todos os donos" }, ...staff.map((s) => ({ value: s.id, label: s.name }))]} /></div>}
           <Button variant="outline" size="sm" className="gap-1.5" onClick={carregar} disabled={carregando}><RefreshCw className={`h-3.5 w-3.5 ${carregando ? "animate-spin" : ""}`} /> Atualizar</Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setExportOpen(true)} disabled={!dados}><Download className="h-3.5 w-3.5" /> Exportar</Button>
         </div>
@@ -346,6 +346,7 @@ export function NegociosDashboardTab({ staffId, lockedStaffId }: Props) {
               )}
             </CardContent>
           </Card>
+          <RodapeEscopo escopo={dados?.escopo} />
         </>
       )}
     </div>

@@ -14,7 +14,7 @@ import { Loader2, RefreshCw, Download, ArrowUpRight, ArrowDownRight, Minus, Aler
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis } from "recharts";
 import { duracao } from "@/lib/exportXlsx";
 import { toast } from "sonner";
-import { n, pct, DOW, moeda, ExportarDialog, PeriodoFiltro, intervalo, useStaffOptions, type Periodo } from "./dashboardShared";
+import { n, pct, DOW, moeda, ExportarDialog, PeriodoFiltro, intervalo, useStaffOptions, RodapeEscopo, type Periodo } from "./dashboardShared";
 
 // Paleta sóbria: uma cor de destaque e tons acinzentados
 const NAVY = "#0D2B5E";
@@ -245,7 +245,10 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
   const [exportOpen, setExportOpen] = useState(false);
   const [lista, setLista] = useState<{ titulo: string; sub?: string; itens: any[] } | null>(null);
   const staff = useStaffOptions();
-  const staffFiltrado = equipe !== "all";
+  // Rateio do investimento por pessoa: quando a equipe está filtrada OU quando o banco já recortou
+  // (closer/sdr veem só o próprio, head só a equipe; a RPC devolve isso em escopo.mostrando).
+  const escopo = dados?.escopo || invest?.escopo || null;
+  const staffFiltrado = equipe !== "all" || (!!escopo && escopo.mostrando !== "tudo");
 
   useEffect(() => {
     supabase.from("crm_origins").select("id, name").eq("is_active", true).order("name").then(({ data }) => setOrigens((data || []) as any));
@@ -412,7 +415,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
           <div className="w-[180px]"><SearchableSelect value={origem} onChange={setOrigem} options={[{ value: "all", label: "Todas as origens" }, ...origens.map((o) => ({ value: o.id, label: o.name }))]} /></div>
           <div className="w-[200px]"><SearchableSelect value={campanha} onChange={setCampanha} options={campanhasOpcoes} /></div>
           <div className="w-[170px]"><SearchableSelect value={produto} onChange={setProduto} options={[{ value: "all", label: "Todos os produtos" }, ...produtos.map((p) => ({ value: p.name, label: p.name }))]} /></div>
-          {!lockedStaffId && <div className="w-[180px]"><SearchableSelect value={equipe} onChange={setEquipe} options={[{ value: "all", label: "Toda a equipe" }, ...staff.map((s) => ({ value: s.id, label: s.name }))]} /></div>}
+          {!lockedStaffId && escopo?.mostrando !== "proprio" && <div className="w-[180px]"><SearchableSelect value={equipe} onChange={setEquipe} options={[{ value: "all", label: escopo?.mostrando === "equipe" ? "Toda a minha equipe" : "Toda a equipe" }, ...staff.map((s) => ({ value: s.id, label: s.name }))]} /></div>}
           <PeriodoFiltro value={periodo} onChange={setPeriodo} />
           <Button variant="outline" size="sm" className="gap-1.5" onClick={carregar} disabled={carregando}><RefreshCw className={`h-3.5 w-3.5 ${carregando ? "animate-spin" : ""}`} /> Atualizar</Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setExportOpen(true)} disabled={!dados}><Download className="h-3.5 w-3.5" /> Exportar</Button>
@@ -732,6 +735,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
               {atencao.length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">Nada pra sinalizar.</p>}
             </div>
           </Bloco>
+          <RodapeEscopo escopo={escopo} />
         </>
       )}
     </div>

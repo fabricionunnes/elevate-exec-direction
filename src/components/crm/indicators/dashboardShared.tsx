@@ -165,6 +165,16 @@ export function useStaffOptions() {
   return staff;
 }
 
+/** Rodapé do recorte por papel que as RPCs devolvem em `escopo` (closer/sdr: só o próprio; head: a equipe). */
+export function RodapeEscopo({ escopo }: { escopo?: { mostrando?: string; nome?: string } | null }) {
+  if (!escopo || escopo.mostrando === "tudo" || !escopo.mostrando) return null;
+  return (
+    <p className="text-[11px] text-muted-foreground border-t pt-2">
+      {escopo.mostrando === "equipe" ? "Mostrando a sua equipe." : "Mostrando só os seus dados."} O recorte é feito no banco pelo seu papel.
+    </p>
+  );
+}
+
 /** Cabeçalho de coluna ordenável das tabelas dos dashboards. */
 export function ThOrdenavel({ label, chave, sort, onSort, alinhar = "left" }: {
   label: string; chave: string; sort: { key: string; dir: "asc" | "desc" }; onSort: (k: string) => void; alinhar?: "left" | "right";
