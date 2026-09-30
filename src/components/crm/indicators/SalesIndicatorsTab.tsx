@@ -35,11 +35,13 @@ import {
 } from "recharts";
 import { format, subDays, startOfDay, endOfDay, startOfMonth, endOfMonth, getDaysInMonth, getDate, startOfWeek, endOfWeek, startOfQuarter, endOfQuarter } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Trophy, Target, Phone, TrendingUp, DollarSign, Percent, Users, CalendarDays } from "lucide-react";
+import { Trophy, Target, Phone, TrendingUp, DollarSign, Percent, Users, CalendarDays, Download, Wallet, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getRemainingBusinessDaysInMonth } from "@/lib/businessDays";
 import { ImportSalesDialog } from "@/components/crm/ImportSalesDialog";
 import { TermVisionChart } from "@/components/crm/reports/TermVisionChart";
+import { ExportarDialog } from "@/components/crm/indicators/dashboardShared";
+import { CRMMarketingCostsDialog } from "@/components/crm/indicators/CRMMarketingCostsDialog";
 
 interface CloserMetrics {
   id: string;
@@ -136,6 +138,12 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   // Reuniões/vendas atribuídas AO DISCADOR (não o CRM todo) — pra CAC e custos por reunião
   const [dialerOutcomes, setDialerOutcomes] = useState({ scheduled: 0, realized: 0, sales: 0 });
   const [callsByCloser, setCallsByCloser] = useState<Record<string, { total: number; atendidas: number }>>({});
+  // Investimento total (tráfego Meta + discador + outros custos) pra CAC e custo por reunião/lead.
+  // Vem de crm_investment_summary; o gasto do discador é o dialerCostBrl acima.
+  const [invest, setInvest] = useState<any>(null);
+  const [investTick, setInvestTick] = useState(0);
+  const [costsDialogOpen, setCostsDialogOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   // Get date range based on filter
   const getDateRange = () => {
@@ -241,6 +249,22 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateFilter, customDateFrom, customDateTo, selectedCloser]);
+
+  // Investimento (Meta + custos manuais + leads pro rateio) no período/closer
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { start, end } = getDateRange();
+      const { data, error } = await (supabase as any).rpc("crm_investment_summary", {
+        p_from: start.toISOString(), p_to: end.toISOString(), p_closer: selectedCloser !== "all" ? selectedCloser : null,
+      });
+      if (!active) return;
+      if (error) console.error("[SalesIndicators] crm_investment_summary:", error.message);
+      setInvest(data || null);
+    })();
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFilter, customDateFrom, customDateTo, selectedCloser, investTick]);
 
   useEffect(() => {
     loadData();
@@ -883,6 +907,77 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     return { weekday: [...wd.slice(1), wd[0]], monthday: md, weeks: wk };
   }, [rawSalesData, rawMeetingEvents]);
 
+  // Investimento e CAC. Sem closer filtrado: tudo. Com closer: investimento RATEADO pelos
+  // leads do closer. Campanha ligada a funil (crm_meta_campaign_pipelines) rateia pela fração
+  // de leads daquele funil que são do closer; campanha sem funil, discador e outros custos
+  // rateiam pela fração de leads do closer no total do período.
+  const investimento = useMemo(() => {
+    const closerFiltrado = selectedCloser !== "all";
+    const leadsTotal = Number(invest?.leads_total) || 0;
+    const leadsCloser = Number(invest?.leads_closer) || 0;
+    const fracaoGeral = closerFiltrado ? (leadsTotal > 0 ? leadsCloser / leadsTotal : 0) : 1;
+    const porFunil = new Map<string, { total: number; closer: number }>();
+    (invest?.leads_by_pipeline || []).forEach((r: any) => porFunil.set(String(r.pipeline_id), { total: Number(r.total) || 0, closer: Number(r.closer) || 0 }));
+    let meta = 0;
+    (invest?.meta_spend_by_pipeline || []).forEach((r: any) => {
+      const spend = Number(r.spend) || 0;
+      if (!closerFiltrado) { meta += spend; return; }
+      if (!r.pipeline_id) { meta += spend * fracaoGeral; return; }
+      const f = porFunil.get(String(r.pipeline_id));
+      meta += spend * (f && f.total > 0 ? f.closer / f.total : 0);
+    });
+    const discador = dialerCostBrl * fracaoGeral;
+    const outros = (Number(invest?.manual_costs_total) || 0) * fracaoGeral;
+    const total = meta + discador + outros;
+    const leads = closerFiltrado ? leadsCloser : leadsTotal;
+    const div = (n: number) => (total > 0 && n > 0 ? total / n : 0);
+    const syncAt = invest?.meta_last_sync ? new Date(invest.meta_last_sync) : null;
+    const syncVelho = syncAt ? (Date.now() - syncAt.getTime()) / 86400000 > 2 : false;
+    return {
+      closerFiltrado, meta, discador, outros, total, leads, fracaoGeral,
+      custoAgendada: div(callsMetrics.agendadas), custoRealizada: div(callsMetrics.realizadas),
+      cac: div(metrics.vendas), custoLead: div(leads),
+      syncAt, syncVelho, ultimoDia: invest?.meta_last_day as string | undefined,
+    };
+  }, [invest, dialerCostBrl, selectedCloser, callsMetrics, metrics.vendas]);
+
+  // Exportação pra Excel: junta o que já está calculado na tela, sem refazer consultas.
+  const blocosExport = useMemo(() => {
+    const { start, end } = getDateRange();
+    const periodo = `${format(start, "dd/MM/yyyy")} a ${format(end, "dd/MM/yyyy")}`;
+    const closerNome = selectedCloser === "all" ? "Todos" : (closers.find(c => c.id === selectedCloser)?.name || selectedCloser);
+    return [
+      { chave: "resumo", rotulo: "Resumo", linhas: [{
+        Periodo: periodo, Closer: closerNome, Produto: selectedProduct === "all" ? "Todos" : selectedProduct,
+        Receita: metrics.receita, "Meta do mes": metrics.metaReceita, "Falta pra meta": metrics.faltaReceita, "Super meta": metrics.superMeta, "Hiper meta": metrics.hiperMeta,
+        Vendas: metrics.vendas, "Ticket medio": metrics.ticketMedio, "Conversao %": Number(metrics.conversao.toFixed(1)), Forecast: metrics.forecast, "Em negociacao": metrics.emNegociacao,
+        Projecao: metrics.projecaoReceita, "Projecao %": Number(metrics.projecaoPercent.toFixed(0)),
+        "Reunioes agendadas": callsMetrics.agendadas, "Reunioes realizadas": callsMetrics.realizadas, "No-show %": Number(callsMetrics.noShowPercent.toFixed(1)),
+        "Ligacoes total": callStats.total, "Ligacoes discador": callStats.discador, "Ligacoes avulsas": callStats.avulsa, "Ligacoes atendidas": callStats.atendidas,
+        "Meta diaria": dailyGoal.dailyTarget, "Dias uteis restantes": dailyGoal.businessDaysLeft,
+      }] },
+      { chave: "investimento", rotulo: "Investimento e CAC", linhas: [{
+        Periodo: periodo, Closer: closerNome, "Investimento total": investimento.total, "Trafego Meta": investimento.meta, Discador: investimento.discador, "Outros custos": investimento.outros,
+        "Rateado por leads do closer": investimento.closerFiltrado ? "sim" : "nao", "Leads no periodo": investimento.leads,
+        "Reunioes agendadas": callsMetrics.agendadas, "Reunioes realizadas": callsMetrics.realizadas, Vendas: metrics.vendas,
+        "Custo por reuniao agendada": investimento.custoAgendada, "Custo por reuniao realizada": investimento.custoRealizada, CAC: investimento.cac, "Custo por lead": investimento.custoLead,
+        "Ultimo sync do Meta": investimento.syncAt ? investimento.syncAt.toLocaleString("pt-BR") : "",
+      }] },
+      { chave: "meta_campanhas", rotulo: "Campanhas Meta", linhas: (invest?.meta_campaigns || []).map((c: any) => ({ Campanha: c.nome, "ID": c.campaign_id, Gasto: Number(c.spend) || 0 })) },
+      { chave: "outros_custos", rotulo: "Outros custos", linhas: (invest?.manual_costs || []).map((c: any) => ({ Mes: c.month, Descricao: c.label, "Valor do mes": Number(c.valor_mes) || 0, "Valor rateado no periodo": Number(c.valor_rateado) || 0 })) },
+      { chave: "closers", rotulo: "Closers", linhas: closers.map(c => ({ Closer: c.name, "Reunioes agendadas": c.callsScheduled, "Reunioes realizadas": c.callsCompleted, "No-show": c.noShow, Vendas: c.salesQty, Receita: c.revenue, "% Meta": Number(c.metaPercent.toFixed(1)), "Conversao %": Number(c.conversion.toFixed(1)), "Ticket medio": c.ticketMedio, Ligacoes: callsByCloser[c.id]?.total || 0, "Ligacoes atendidas": callsByCloser[c.id]?.atendidas || 0 })) },
+      { chave: "vendas", rotulo: "Vendas", linhas: sales.map(s => ({ Dia: s.saleDate, Funil: s.pipeline, Closer: s.closer, SDR: s.sdr, Empresa: s.company, Produto: s.product, Receita: s.revenue })) },
+      { chave: "forecast", rotulo: "Forecast", linhas: forecasts.map(f => ({ Closer: f.closer, Cliente: f.client, Produto: f.product, Valor: f.value })) },
+      { chave: "funis", rotulo: "Entradas por funil", linhas: funnelTable.map(f => ({ Funil: f.name, Entradas: f.entradas, Agendadas: f.agendadas, Realizadas: f.realizadas, Vendas: f.vendas, Faturamento: f.faturamento, "Ticket medio": f.ticket, "Lead time (dias)": f.leadtime >= 0 ? Number(f.leadtime.toFixed(1)) : "" })) },
+      { chave: "evolucao", rotulo: "Evolucao da receita", linhas: revenueEvolution.map(r => ({ Dia: r.day, Meta: r.meta, Receita: r.receita ?? "", "Super meta": r.super, "Hiper meta": r.hiper })) },
+      { chave: "produtos", rotulo: "Produtos", linhas: productDistribution.map(p => ({ Produto: p.name, Receita: p.value })) },
+      { chave: "dia_semana", rotulo: "Por dia da semana", linhas: timingCharts.weekday.map(d => ({ Dia: d.dia, Vendas: d.vendas, "Reunioes realizadas": d.reunioes })) },
+      { chave: "dia_mes", rotulo: "Por dia do mes", linhas: timingCharts.monthday.map(d => ({ Dia: d.dia, Vendas: d.vendas, "Reunioes realizadas": d.reunioes })) },
+      { chave: "semanas", rotulo: "Por semana do mes", linhas: timingCharts.weeks.map(d => ({ Semana: d.dia, Vendas: d.vendas, "Reunioes realizadas": d.reunioes })) },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metrics, callsMetrics, dailyGoal, closers, sales, forecasts, funnelTable, revenueEvolution, productDistribution, timingCharts, investimento, invest, callStats, callsByCloser, selectedCloser, selectedProduct, dateFilter, customDateFrom, customDateTo]);
+
   if (loading) {
     return (
       <div className="p-4 md:p-6 space-y-6">
@@ -1006,6 +1101,10 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
             <Upload className="h-3.5 w-3.5 mr-1.5" />
             Importar
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setExportOpen(true)} className="h-9 text-xs rounded-xl border-border bg-card/80">
+            <Download className="h-3.5 w-3.5 mr-1.5" />
+            Exportar
+          </Button>
         </div>
       </div>
 
@@ -1057,6 +1156,40 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         <Metric tone={TONE.violet} label="Projeção" value={formatCurrency(metrics.projecaoReceita)} />
         <Metric tone={TONE.violet} label="% Projetado" value={`${metrics.projecaoPercent.toFixed(0)}%`} />
       </Section>
+
+      {/* ── Investimento e CAC (âmbar): tráfego Meta + discador + outros custos sobre o resultado do CRM ── */}
+      <div className="rounded-xl border p-4" style={{ borderColor: `${TONE.amber}2e`, background: `${TONE.amber}0d` }}>
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <span className="h-2 w-2 rounded-full" style={{ background: TONE.amber }} />
+          <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: TONE.amber }}>Investimento e CAC</span>
+          <span className="text-[11px] text-muted-foreground">
+            {investimento.closerFiltrado ? "investimento rateado por leads do closer" : "tráfego Meta + discador + outros custos"}
+          </span>
+          {investimento.syncVelho && investimento.syncAt && (
+            <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-3 w-3" /> Meta sincronizado pela última vez em {format(investimento.syncAt, "dd/MM HH:mm")}{investimento.ultimoDia ? `, dados até ${format(new Date(`${investimento.ultimoDia}T12:00:00`), "dd/MM")}` : ""}
+            </span>
+          )}
+          <Button variant="outline" size="sm" className="ml-auto h-7 text-xs gap-1" onClick={() => setCostsDialogOpen(true)}>
+            <Wallet className="h-3 w-3" /> Outros custos
+          </Button>
+        </div>
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
+          <div className="rounded-lg border bg-card p-4" style={{ borderColor: `${TONE.amber}26` }}
+            title={`Meta: ${formatCurrency(investimento.meta)}\nDiscador: ${formatCurrency(investimento.discador)}\nOutros: ${formatCurrency(investimento.outros)}`}>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Investimento total</p>
+            <p className="text-lg font-semibold mt-1.5 tabular-nums" style={{ color: TONE.amber }}>{formatCurrency(investimento.total)}</p>
+            <p className="text-[10px] text-muted-foreground mt-1 tabular-nums">Meta {formatCurrency(investimento.meta)} · Disc. {formatCurrency(investimento.discador)} · Outros {formatCurrency(investimento.outros)}</p>
+          </div>
+          <Metric tone={TONE.amber} label="Reuniões agendadas" value={callsMetrics.agendadas} color={TONE.blue} />
+          <Metric tone={TONE.amber} label="Reuniões realizadas" value={callsMetrics.realizadas} color="#34d399" />
+          <Metric tone={TONE.amber} label="Vendas" value={metrics.vendas} />
+          <Metric tone={TONE.amber} label="Custo / Reunião Agendada" value={investimento.custoAgendada > 0 ? formatCurrency(investimento.custoAgendada) : "-"} />
+          <Metric tone={TONE.amber} label="Custo / Reunião Realizada" value={investimento.custoRealizada > 0 ? formatCurrency(investimento.custoRealizada) : "-"} />
+          <Metric tone={TONE.amber} label="CAC" value={investimento.cac > 0 ? formatCurrency(investimento.cac) : "-"} color="#f87171" />
+          <Metric tone={TONE.amber} label={`Custo / Lead (${investimento.leads})`} value={investimento.custoLead > 0 ? formatCurrency(investimento.custoLead) : "-"} />
+        </div>
+      </div>
 
       {/* ── Discador — reuniões e custos (âmbar) — SÓ do discador, não o total ── */}
       <Section tone={TONE.amber} label="Discador — Reuniões e Custos (só via discador)" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
@@ -1601,6 +1734,9 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         window.location.reload();
       }}
     />
+    <ExportarDialog open={exportOpen} onOpenChange={setExportOpen} blocos={blocosExport} nomeArquivo={`vendas-${format(getDateRange().start, "yyyy-MM-dd")}`} />
+    <CRMMarketingCostsDialog open={costsDialogOpen} onOpenChange={setCostsDialogOpen} mesInicial={getDateRange().start}
+      podeEditar={staffRole === "master" || staffRole === "admin"} onChanged={() => setInvestTick(t => t + 1)} />
     </>
   );
 };
