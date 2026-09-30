@@ -56,7 +56,7 @@ export default function ProdutoCheckupPage() {
   const [hist, setHist] = useState<DiaHist[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
-  const [aba, setAba] = useState<"hoje" | "historico" | "dashboard">("hoje");
+  const [aba, setAba] = useState<"hoje" | "historico" | "dashboard">("dashboard");
   const [histDe, setHistDe] = useState(() => isoDia(new Date(Date.now() - 13 * 86400000)));
   const [histAte, setHistAte] = useState(() => isoDia(new Date()));
   const [histConsultor, setHistConsultor] = useState("todos");
@@ -242,7 +242,7 @@ export default function ProdutoCheckupPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap border-b border-border">
-          {(["hoje", "historico", "dashboard"] as const).map((a) => (
+          {(["dashboard", "hoje", "historico"] as const).map((a) => (
             <button key={a} onClick={() => setAba(a)} className={cn("px-3 py-2 text-sm border-b-2 -mb-px", aba === a ? "border-primary font-medium" : "border-transparent text-muted-foreground")}>
               {a === "hoje" ? "Hoje" : a === "historico" ? "Histórico" : "Dashboard"}
             </button>
