@@ -22,7 +22,6 @@ import {
   Handshake,
   LayoutGrid,
   List,
-  ArrowUpDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AddLeadDialog } from "@/components/crm/AddLeadDialog";
@@ -1198,7 +1197,7 @@ export const CRMPipelinePage = () => {
             </div>
             {/* Ordenação dos cards (por etapa) */}
             {viewMode === "kanban" && (
-              <div className="w-[200px] hidden sm:block" title="Ordem dos cards em cada etapa">
+              <div className="w-[150px] sm:w-[200px]" title="Ordem dos cards em cada etapa">
                 <SearchableSelect
                   value={sortMode}
                   onValueChange={(v) => changeSort(v as SortMode)}
@@ -1206,9 +1205,6 @@ export const CRMPipelinePage = () => {
                   className="h-8 text-xs"
                 />
               </div>
-            )}
-            {viewMode === "kanban" && (
-              <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground sm:hidden" />
             )}
             <Button
               variant="outline"
