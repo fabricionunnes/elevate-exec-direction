@@ -18,6 +18,8 @@ interface StageAction {
   meeting_duration_minutes: number | null;
 }
 
+const ACTIVITY_TYPE_MAP: Record<string, string> = { task: "other", video_call: "meeting" };
+
 export async function createStageActivities(
   leadId: string, 
   stageId: string,
@@ -97,8 +99,13 @@ export async function createStageActivities(
 
       return {
         lead_id: leadId,
-        type: action.activity_type,
+        // crm_activities.type só aceita call/whatsapp/email/meeting/followup/proposal/other/note.
+        // "task" e "video_call" (tipos da ação) estouravam o CHECK e a atividade nunca nascia
+        // (0 atividades "Conferir se lead entrou no grupo" até 30/09/2026).
+        type: ACTIVITY_TYPE_MAP[action.activity_type] || action.activity_type,
         title: action.activity_title,
+        // vínculo com a ação: é assim que a trava de saída da etapa sabe qual obrigatória está pendente
+        stage_action_id: action.id,
         description: action.activity_description,
         scheduled_at: scheduledAt,
         status: "pending",
