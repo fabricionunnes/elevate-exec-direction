@@ -13918,6 +13918,93 @@ export type Database = {
           },
         ]
       }
+      crm_activity_types: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          is_active: boolean
+          is_system: boolean
+          name: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      crm_business_hours: {
+        Row: {
+          close_time: string
+          created_at: string
+          id: string
+          is_open: boolean
+          open_time: string
+          updated_at: string
+          weekday: number
+        }
+        Insert: {
+          close_time?: string
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          open_time?: string
+          updated_at?: string
+          weekday: number
+        }
+        Update: {
+          close_time?: string
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          open_time?: string
+          updated_at?: string
+          weekday?: number
+        }
+        Relationships: []
+      }
+      crm_holidays: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       crm_bank_options: {
         Row: {
           created_at: string
@@ -17032,6 +17119,9 @@ export type Database = {
           notify_new_lead: boolean | null
           notify_new_message: boolean | null
           notify_sound: boolean | null
+          group_minutes: number
+          notify_from: string | null
+          notify_until: string | null
           staff_id: string
           updated_at: string
         }
@@ -17042,6 +17132,9 @@ export type Database = {
           notify_new_lead?: boolean | null
           notify_new_message?: boolean | null
           notify_sound?: boolean | null
+          group_minutes?: number
+          notify_from?: string | null
+          notify_until?: string | null
           staff_id: string
           updated_at?: string
         }
@@ -17052,6 +17145,9 @@ export type Database = {
           notify_new_lead?: boolean | null
           notify_new_message?: boolean | null
           notify_sound?: boolean | null
+          group_minutes?: number
+          notify_from?: string | null
+          notify_until?: string | null
           staff_id?: string
           updated_at?: string
         }
@@ -39140,6 +39236,10 @@ export type Database = {
       }
     }
     Functions: {
+      crm_business_seconds_between: {
+        Args: { a: string; b: string }
+        Returns: number
+      }
       bulk_change_lead_pipeline: {
         Args: { p_ids: string[]; p_origin: string; p_stage: string }
         Returns: number
