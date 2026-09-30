@@ -3,18 +3,18 @@
 // (crm_visao_geral, crm_atendimento_dashboard, crm_investment_summary + gasto do discador) e
 // compara com o período anterior de mesmo tamanho. Visual sóbrio: navy como cor única de
 // destaque, tons de azul acinzentado pras séries, verde/vermelho só em variação e alerta.
-import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SearchableSelect } from "@/components/crm/traffic/SearchableSelect";
-import { Loader2, RefreshCw, Download, ArrowUpRight, ArrowDownRight, Minus, AlertTriangle, ChevronRight, Info } from "lucide-react";
+import { Loader2, RefreshCw, Download, ArrowUpRight, ArrowDownRight, Minus, AlertTriangle, ChevronRight, Info, Globe2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis } from "recharts";
 import { duracao } from "@/lib/exportXlsx";
 import { toast } from "sonner";
-import { n, pct, DOW, moeda, ExportarDialog, PeriodoFiltro, intervalo, useStaffOptions, type Periodo } from "./dashboardShared";
+import { n, pct, DOW, moeda, ExportarDialog, PeriodoFiltro, intervalo, useStaffOptions, RodapeEscopo, type Periodo } from "./dashboardShared";
 
 // Paleta sóbria: uma cor de destaque e tons acinzentados
 const NAVY = "#0D2B5E";
@@ -113,6 +113,121 @@ function KpiVar({ label, valor, anterior, formato, dica, onClick, inverso }: {
   );
 }
 
+// ------------------------------------------------------------------ Onde estão nossos clientes
+// Globo 3D (lazy, só quando a aba abre) com fallback pro cartograma quando não há WebGL.
+const ClientesGlobo3D = lazy(() => import("./ClientesGlobo3D"));
+type PontoUF = { uf: string; leads: number; clientes: number; receita: number };
+
+function temWebGL(): boolean {
+  try {
+    const c = document.createElement("canvas");
+    return !!(window.WebGLRenderingContext && (c.getContext("webgl2") || c.getContext("webgl")));
+  } catch { return false; }
+}
+
+function Cartograma({ pontos, max }: { pontos: Map<string, PontoUF>; max: number }) {
+  return (
+    <div className="grid gap-[3px]" style={{ gridTemplateColumns: "repeat(8, 1fr)", gridTemplateRows: "repeat(9, 1fr)" }}>
+      {CARTOGRAMA.map((c) => {
+        const e = pontos.get(c.uf);
+        const v = n(e?.leads);
+        const a = max ? v / max : 0;
+        return (
+          <div key={c.uf} title={`${c.uf}: ${inteiro(v)} leads, ${inteiro(n(e?.clientes))} clientes${n(e?.receita) ? `, ${moeda(e?.receita)}` : ""}`}
+            className="aspect-square rounded-[3px] flex flex-col items-center justify-center text-[9px] leading-none"
+            style={{ gridColumn: c.c + 1, gridRow: c.r + 1, background: v ? `rgba(13, 43, 94, ${0.15 + a * 0.85})` : "hsl(var(--muted))", color: a > 0.45 ? "#fff" : "hsl(var(--foreground))" }}>
+            <span className="font-semibold">{c.uf}</span>
+            {v > 0 && <span className="tabular-nums opacity-90">{v}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MapaClientes({ estados, estadosComUf, leadsComUf, sudeste }: { estados: any[]; estadosComUf: any[]; leadsComUf: number; sudeste: number }) {
+  const [clientesUf, setClientesUf] = useState<Map<string, number>>(new Map());
+  const [selecionado, setSelecionado] = useState<string | null>(null);
+  const [hover, setHover] = useState<PontoUF | null>(null);
+  const [foco, setFoco] = useState<{ modo: "brasil" | "mundo"; tick: number }>({ modo: "brasil", tick: 0 });
+  const webgl = useMemo(() => temWebGL(), []);
+
+  // Clientes ativos (onboarding_companies) por UF: é o que o anel vermelho mostra
+  useEffect(() => {
+    (supabase as any).from("onboarding_companies").select("address_state").eq("status", "active").is("tenant_id", null)
+      .then(({ data }: any) => {
+        const m = new Map<string, number>();
+        (data || []).forEach((c: any) => { const uf = String(c.address_state || "").trim().toUpperCase(); if (uf.length === 2) m.set(uf, (m.get(uf) || 0) + 1); });
+        setClientesUf(m);
+      });
+  }, []);
+
+  const pontos = useMemo(() => {
+    const m = new Map<string, PontoUF>();
+    estadosComUf.forEach((e) => m.set(e.uf, { uf: e.uf, leads: n(e.leads), clientes: 0, receita: n(e.receita) }));
+    clientesUf.forEach((c, uf) => { const p = m.get(uf) || { uf, leads: 0, clientes: 0, receita: 0 }; p.clientes = c; m.set(uf, p); });
+    return m;
+  }, [estadosComUf, clientesUf]);
+  const lista = [...pontos.values()].filter((p) => UF_VALIDAS.has(p.uf)).sort((a, b) => b.leads - a.leads || b.clientes - a.clientes);
+  const max = Math.max(0, ...lista.map((p) => p.leads));
+  const totalClientes = [...clientesUf.values()].reduce((s, v) => s + v, 0);
+  const semUf = n(estados.find((e) => e.uf === "Sem UF")?.leads);
+  const tabela = selecionado ? lista.filter((p) => p.uf === selecionado) : lista;
+  const info = hover || (selecionado ? pontos.get(selecionado) || null : null);
+
+  return (
+    <Bloco titulo="Onde estão nossos clientes"
+      sub={`${leadsComUf ? `${pct(sudeste, leadsComUf)} dos leads no Sudeste. ` : ""}${inteiro(semUf)} leads sem UF. ${inteiro(totalClientes)} clientes ativos com UF. Todos no Brasil`}
+      dica="Barras = leads do período por UF (altura e cor pela quantidade). Anel vermelho = clientes ativos (onboarding_companies). Arraste pra girar, role pra aproximar, clique numa barra pra filtrar a tabela"
+      acao={webgl ? (
+        <div className="flex items-center gap-1">
+          <Button variant={foco.modo === "brasil" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => setFoco({ modo: "brasil", tick: Date.now() })}>Brasil</Button>
+          <Button variant={foco.modo === "mundo" ? "default" : "outline"} size="sm" className="h-7 text-xs gap-1" onClick={() => setFoco({ modo: "mundo", tick: Date.now() })}><Globe2 className="h-3 w-3" /> Mundo</Button>
+        </div>
+      ) : undefined}>
+      {lista.length === 0 ? <SemDados motivo="Nenhum lead do período nem cliente ativo tem UF preenchida" /> : (
+        <div className="grid grid-cols-5 gap-3">
+          <div className="col-span-3 relative rounded-lg border border-border/60 overflow-hidden" style={{ height: 300, background: "linear-gradient(180deg, #F7F9FC, #EEF2F8)" }}>
+            {webgl ? (
+              <Suspense fallback={<div className="h-full flex items-center justify-center text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin mr-2" />Montando o globo...</div>}>
+                <ClientesGlobo3D pontos={lista} selecionado={selecionado} onSelect={setSelecionado} onHover={setHover} foco={foco} />
+              </Suspense>
+            ) : (
+              <div className="p-3"><Cartograma pontos={pontos} max={max} /></div>
+            )}
+            {info && (
+              <div className="absolute left-2 top-2 rounded-md border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm pointer-events-none">
+                <p className="font-semibold" style={{ color: NAVY }}>{info.uf}</p>
+                <p className="tabular-nums">{inteiro(info.leads)} leads · {inteiro(info.clientes)} clientes{info.receita ? ` · ${moeda(info.receita)}` : ""}</p>
+              </div>
+            )}
+            {selecionado && (
+              <button type="button" className="absolute right-2 bottom-2 text-[11px] text-primary underline bg-card/90 rounded px-1.5 py-0.5" onClick={() => setSelecionado(null)}>limpar filtro ({selecionado})</button>
+            )}
+          </div>
+          <div className="col-span-2 overflow-auto max-h-[300px]">
+            <table className="w-full text-xs">
+              <thead className="text-muted-foreground sticky top-0 bg-card"><tr className="border-b"><th className="text-left font-medium py-1">UF</th><th className="text-right font-medium">Leads</th><th className="text-right font-medium">%</th><th className="text-right font-medium" title="Clientes ativos (onboarding_companies)">Clientes</th></tr></thead>
+              <tbody>
+                {tabela.map((p) => (
+                  <tr key={p.uf} className={`border-b last:border-0 cursor-pointer hover:bg-muted/40 ${selecionado === p.uf ? "bg-muted/60" : ""}`} onClick={() => setSelecionado(selecionado === p.uf ? null : p.uf)}>
+                    <td className="py-1 font-medium">{p.uf}</td>
+                    <td className="text-right tabular-nums">{inteiro(p.leads)}</td>
+                    <td className="text-right tabular-nums text-muted-foreground">{pct(p.leads, leadsComUf)}</td>
+                    <td className="text-right tabular-nums" style={{ color: p.clientes ? VERMELHO : undefined }}>{inteiro(p.clientes)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </Bloco>
+  );
+}
+
+const UF_VALIDAS = new Set(CARTOGRAMA.map((c) => c.uf));
+
 export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
   const [periodo, setPeriodo] = useState<Periodo>({ key: "mes" });
   const [origem, setOrigem] = useState("all");
@@ -130,7 +245,10 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
   const [exportOpen, setExportOpen] = useState(false);
   const [lista, setLista] = useState<{ titulo: string; sub?: string; itens: any[] } | null>(null);
   const staff = useStaffOptions();
-  const staffFiltrado = equipe !== "all";
+  // Rateio do investimento por pessoa: quando a equipe está filtrada OU quando o banco já recortou
+  // (closer/sdr veem só o próprio, head só a equipe; a RPC devolve isso em escopo.mostrando).
+  const escopo = dados?.escopo || invest?.escopo || null;
+  const staffFiltrado = equipe !== "all" || (!!escopo && escopo.mostrando !== "tudo");
 
   useEffect(() => {
     supabase.from("crm_origins").select("id, name").eq("is_active", true).order("name").then(({ data }) => setOrigens((data || []) as any));
@@ -218,8 +336,6 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
   const estadosComUf = estados.filter((e) => e.uf !== "Sem UF");
   const leadsComUf = estadosComUf.reduce((s, e) => s + n(e.leads), 0);
   const sudeste = estadosComUf.filter((e) => SUDESTE.has(e.uf)).reduce((s, e) => s + n(e.leads), 0);
-  const ufMap = new Map<string, any>(estadosComUf.map((e) => [e.uf, e]));
-  const maxUf = Math.max(0, ...estadosComUf.map((e) => n(e.leads)));
 
   const mapa = useMemo(() => {
     const m = new Map<string, number>(); let max = 0, pico = { dow: 0, hora: 0, v: 0 };
@@ -299,7 +415,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
           <div className="w-[180px]"><SearchableSelect value={origem} onChange={setOrigem} options={[{ value: "all", label: "Todas as origens" }, ...origens.map((o) => ({ value: o.id, label: o.name }))]} /></div>
           <div className="w-[200px]"><SearchableSelect value={campanha} onChange={setCampanha} options={campanhasOpcoes} /></div>
           <div className="w-[170px]"><SearchableSelect value={produto} onChange={setProduto} options={[{ value: "all", label: "Todos os produtos" }, ...produtos.map((p) => ({ value: p.name, label: p.name }))]} /></div>
-          {!lockedStaffId && <div className="w-[180px]"><SearchableSelect value={equipe} onChange={setEquipe} options={[{ value: "all", label: "Toda a equipe" }, ...staff.map((s) => ({ value: s.id, label: s.name }))]} /></div>}
+          {!lockedStaffId && escopo?.mostrando !== "proprio" && <div className="w-[180px]"><SearchableSelect value={equipe} onChange={setEquipe} options={[{ value: "all", label: escopo?.mostrando === "equipe" ? "Toda a minha equipe" : "Toda a equipe" }, ...staff.map((s) => ({ value: s.id, label: s.name }))]} /></div>}
           <PeriodoFiltro value={periodo} onChange={setPeriodo} />
           <Button variant="outline" size="sm" className="gap-1.5" onClick={carregar} disabled={carregando}><RefreshCw className={`h-3.5 w-3.5 ${carregando ? "animate-spin" : ""}`} /> Atualizar</Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setExportOpen(true)} disabled={!dados}><Download className="h-3.5 w-3.5" /> Exportar</Button>
@@ -421,39 +537,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
                 </div>
               )}
             </Bloco>
-            <Bloco titulo="Onde estão nossos clientes" sub={leadsComUf ? `${pct(sudeste, leadsComUf)} no Sudeste. ${inteiro(n(estados.find((e) => e.uf === "Sem UF")?.leads))} leads sem UF` : undefined} dica="Cartograma: um quadrado por estado, escala de azul pela quantidade de leads do período. Clientes = vendas do período por UF do lead">
-              {leadsComUf === 0 ? <SemDados motivo="Nenhum lead do período tem UF preenchida" /> : (
-                <div className="grid grid-cols-5 gap-3">
-                  <div className="col-span-3">
-                    <div className="grid gap-[3px]" style={{ gridTemplateColumns: "repeat(8, 1fr)", gridTemplateRows: "repeat(9, 1fr)" }}>
-                      {CARTOGRAMA.map((c) => {
-                        const e = ufMap.get(c.uf);
-                        const v = n(e?.leads);
-                        const a = maxUf ? v / maxUf : 0;
-                        return (
-                          <div key={c.uf} title={`${c.uf}: ${inteiro(v)} leads, ${inteiro(n(e?.clientes))} clientes${n(e?.receita) ? `, ${moeda(e.receita)}` : ""}`}
-                            className="aspect-square rounded-[3px] flex flex-col items-center justify-center text-[9px] leading-none"
-                            style={{ gridColumn: c.c + 1, gridRow: c.r + 1, background: v ? `rgba(13, 43, 94, ${0.15 + a * 0.85})` : "hsl(var(--muted))", color: a > 0.45 ? "#fff" : "hsl(var(--foreground))" }}>
-                            <span className="font-semibold">{c.uf}</span>
-                            {v > 0 && <span className="tabular-nums opacity-90">{v}</span>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="col-span-2 overflow-auto max-h-[250px]">
-                    <table className="w-full text-xs">
-                      <thead className="text-muted-foreground"><tr className="border-b"><th className="text-left font-medium py-1">UF</th><th className="text-right font-medium">Leads</th><th className="text-right font-medium">%</th><th className="text-right font-medium">Clientes</th></tr></thead>
-                      <tbody>
-                        {estadosComUf.map((e) => (
-                          <tr key={e.uf} className="border-b last:border-0"><td className="py-1">{e.uf}</td><td className="text-right tabular-nums">{inteiro(e.leads)}</td><td className="text-right tabular-nums text-muted-foreground">{pct(n(e.leads), leadsComUf)}</td><td className="text-right tabular-nums">{inteiro(e.clientes)}</td></tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </Bloco>
+            <MapaClientes estados={estados} estadosComUf={estadosComUf} leadsComUf={leadsComUf} sudeste={sudeste} />
           </div>
 
           {/* 6. Mapa de calor + 7. Atendimento e velocidade */}
@@ -651,6 +735,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
               {atencao.length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">Nada pra sinalizar.</p>}
             </div>
           </Bloco>
+          <RodapeEscopo escopo={escopo} />
         </>
       )}
     </div>

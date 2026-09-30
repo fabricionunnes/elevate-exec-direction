@@ -912,7 +912,8 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   // de leads daquele funil que são do closer; campanha sem funil, discador e outros custos
   // rateiam pela fração de leads do closer no total do período.
   const investimento = useMemo(() => {
-    const closerFiltrado = selectedCloser !== "all";
+    // closer filtrado na tela OU recorte feito pelo banco (closer/sdr só o próprio, head a equipe)
+    const closerFiltrado = selectedCloser !== "all" || (!!invest?.escopo && invest.escopo.mostrando !== "tudo");
     const leadsTotal = Number(invest?.leads_total) || 0;
     const leadsCloser = Number(invest?.leads_closer) || 0;
     const fracaoGeral = closerFiltrado ? (leadsTotal > 0 ? leadsCloser / leadsTotal : 0) : 1;
@@ -1163,7 +1164,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           <span className="h-2 w-2 rounded-full" style={{ background: TONE.amber }} />
           <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: TONE.amber }}>Investimento e CAC</span>
           <span className="text-[11px] text-muted-foreground">
-            {investimento.closerFiltrado ? "investimento rateado por leads do closer" : "tráfego Meta + discador + outros custos"}
+            {investimento.closerFiltrado ? (invest?.escopo?.mostrando === "equipe" ? "investimento rateado por leads da equipe" : "investimento rateado por leads do closer") : "tráfego Meta + discador + outros custos"}
           </span>
           {investimento.syncVelho && investimento.syncAt && (
             <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">

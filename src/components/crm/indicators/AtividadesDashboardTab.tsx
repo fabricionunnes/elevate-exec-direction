@@ -16,7 +16,7 @@ import { duracao } from "@/lib/exportXlsx";
 import { toast } from "sonner";
 import {
   C, SERIES, tipStyle, n, pct, diaCurto, moeda, dataHora,
-  Kpi, Grafico, ExportarDialog, PeriodoFiltro, intervalo, useStaffOptions, type Periodo,
+  Kpi, Grafico, ExportarDialog, PeriodoFiltro, intervalo, useStaffOptions, RodapeEscopo, type Periodo,
 } from "./dashboardShared";
 
 const TIPO: Record<string, string> = { call: "Ligação", meeting: "Reunião", email: "E-mail", whatsapp: "WhatsApp", proposal: "Proposta", followup: "Follow-up", follow_up: "Follow-up", note: "Nota", task: "Tarefa", visit: "Visita", other: "Outro" };
@@ -103,7 +103,7 @@ export function AtividadesDashboardTab({ lockedStaffId }: Props) {
         <span className="text-xs text-muted-foreground">{texto}</span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <PeriodoFiltro value={periodo} onChange={setPeriodo} />
-          {!lockedStaffId && <div className="w-[190px]"><SearchableSelect value={dono} onChange={setDono} options={[{ value: "all", label: "Todos os responsáveis" }, ...staff.map((s) => ({ value: s.id, label: s.name }))]} /></div>}
+          {!lockedStaffId && dados?.escopo?.mostrando !== "proprio" && <div className="w-[190px]"><SearchableSelect value={dono} onChange={setDono} options={[{ value: "all", label: "Todos os responsáveis" }, ...staff.map((s) => ({ value: s.id, label: s.name }))]} /></div>}
           <Button variant="outline" size="sm" className="gap-1.5" onClick={carregar} disabled={carregando}><RefreshCw className={`h-3.5 w-3.5 ${carregando ? "animate-spin" : ""}`} /> Atualizar</Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setExportOpen(true)} disabled={!dados}><Download className="h-3.5 w-3.5" /> Exportar</Button>
         </div>
@@ -255,6 +255,7 @@ export function AtividadesDashboardTab({ lockedStaffId }: Props) {
               </CardContent>
             </Card>
           </div>
+          <RodapeEscopo escopo={dados?.escopo} />
         </>
       )}
     </div>

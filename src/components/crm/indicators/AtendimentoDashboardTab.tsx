@@ -14,7 +14,7 @@ import { duracao } from "@/lib/exportXlsx";
 import { toast } from "sonner";
 import {
   C, SERIES, tipStyle, n, pct, diaCurto, DOW, dataHora,
-  Kpi, Grafico, ExportarDialog, PeriodoFiltro, intervalo, useStaffOptions, type Periodo,
+  Kpi, Grafico, ExportarDialog, PeriodoFiltro, intervalo, useStaffOptions, RodapeEscopo, type Periodo,
 } from "./dashboardShared";
 
 interface Props {
@@ -96,7 +96,7 @@ export function AtendimentoDashboardTab({ lockedStaffId }: Props) {
         <span className="text-xs text-muted-foreground">{texto}, WhatsApp e Instagram</span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <PeriodoFiltro value={periodo} onChange={setPeriodo} />
-          {!lockedStaffId && <div className="w-[190px]"><SearchableSelect value={atendente} onChange={setAtendente} options={opcoesStaff} /></div>}
+          {!lockedStaffId && dados?.escopo?.mostrando !== "proprio" && <div className="w-[190px]"><SearchableSelect value={atendente} onChange={setAtendente} options={opcoesStaff} /></div>}
           {temSetores && <div className="w-[170px]"><SearchableSelect value={setor} onChange={setSetor} options={[{ value: "all", label: "Todos os setores" }, ...setores.map((s) => ({ value: s.id, label: s.name }))]} /></div>}
           <Button variant="outline" size="sm" className="gap-1.5" onClick={carregar} disabled={carregando}><RefreshCw className={`h-3.5 w-3.5 ${carregando ? "animate-spin" : ""}`} /> Atualizar</Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setExportOpen(true)} disabled={!dados}><Download className="h-3.5 w-3.5" /> Exportar</Button>
@@ -291,6 +291,7 @@ export function AtendimentoDashboardTab({ lockedStaffId }: Props) {
               </div>
             </CardContent>
           </Card>
+          <RodapeEscopo escopo={dados?.escopo} />
         </>
       )}
     </div>
