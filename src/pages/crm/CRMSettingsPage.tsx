@@ -56,7 +56,8 @@ import { CreditCard,
   Link2,
   FileText,
   Shuffle,
-  ShieldCheck
+  ShieldCheck,
+  Clock
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
 import { StageChecklistDialog } from "@/components/crm/StageChecklistDialog";
@@ -72,6 +73,8 @@ import { CRMMetaLeadFormsCard } from "@/components/crm/settings/CRMMetaLeadForms
 import { CRMAutomationsTab } from "@/components/crm/settings/CRMAutomationsTab";
 import { CRMMessageRulesTab } from "@/components/crm/settings/CRMMessageRulesTab";
 import { CRMPaymentMethodsTab } from "@/components/crm/settings/CRMPaymentMethodsTab";
+import { CRMActivityTypesTab } from "@/components/crm/settings/CRMActivityTypesTab";
+import { CRMBusinessHoursTab } from "@/components/crm/settings/CRMBusinessHoursTab";
 import { toast } from "sonner";
 
 interface Pipeline {
@@ -1193,9 +1196,33 @@ export const CRMSettingsPage = () => {
                 <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 Automações
               </TabsTrigger>
+              <TabsTrigger value="tipos-atividade" className="gap-1.5 text-xs sm:text-sm">
+                <ListChecks className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Tipos de Atividade</span>
+                <span className="sm:hidden">Tipos</span>
+              </TabsTrigger>
+              <TabsTrigger value="horario" className="gap-1.5 text-xs sm:text-sm">
+                <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Horário de Trabalho</span>
+                <span className="sm:hidden">Horário</span>
+              </TabsTrigger>
             </>
           )}
         </TabsList>
+
+        {/* Horário de trabalho + feriados (crm_business_hours / crm_holidays) */}
+        {fullSettings && (
+          <TabsContent value="horario" className="mt-6">
+            <CRMBusinessHoursTab />
+          </TabsContent>
+        )}
+
+        {/* Tipos de atividade (crm_activity_types): Add/EditActivityDialog e filtro de Atividades */}
+        {fullSettings && (
+          <TabsContent value="tipos-atividade" className="mt-6">
+            <CRMActivityTypesTab />
+          </TabsContent>
+        )}
 
         {/* Formas de pagamento e bancos (aba Negócio da ficha do lead) */}
         <TabsContent value="pagamento" className="mt-6">

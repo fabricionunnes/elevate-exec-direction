@@ -11,6 +11,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -50,11 +53,15 @@ import {
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
 import { CRMNotificationsBell } from "@/components/crm/CRMNotificationsBell";
+import { CRMInboundMessageNotifier } from "@/components/crm/CRMInboundMessageNotifier";
 import { ThemeToggle } from "@/components/settings/ThemeToggle";
 import { CallDockProvider } from "@/components/crm/call/CallDockProvider";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const CRM_ROLES = ["master", "admin", "head_comercial", "closer", "sdr", "social_setter", "bdr"];
+// Suporte da UNV (menu Ajuda). Não há número de suporte no código; o contato do site
+// é o canal oficial e leva pro WhatsApp da equipe.
+const SUPORTE_URL = "https://unvholdings.com.br/contato";
 
 export interface CRMContextType {
   staffRole: string | null;
@@ -464,6 +471,7 @@ export const CRMLayout = () => {
             <div className="flex items-center gap-1.5 ml-auto">
               <ThemeToggle />
               <CRMNotificationsBell staffId={staffId} />
+              {!dialerOnly && <CRMInboundMessageNotifier staffId={staffId} isAdmin={isAdmin} />}
 
               {/* Profile Dropdown */}
               <DropdownMenu>
@@ -501,10 +509,27 @@ export const CRMLayout = () => {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem className="flex items-center gap-2">
-                    <HelpCircle className="h-4 w-4" />
-                    Ajuda
-                  </DropdownMenuItem>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="flex items-center gap-2">
+                      <HelpCircle className="h-4 w-4" />
+                      Ajuda
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-56">
+                      <DropdownMenuItem asChild>
+                        <Link to="/crm/api" className="flex items-center gap-2">
+                          <BookOpen className="h-4 w-4 text-muted-foreground" />
+                          Documentação da API
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="flex items-center gap-2"
+                        onSelect={() => window.open(SUPORTE_URL, "_blank", "noopener,noreferrer")}
+                      >
+                        <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                        Falar com o suporte
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link to="/onboarding-tasks" className="flex items-center gap-2">

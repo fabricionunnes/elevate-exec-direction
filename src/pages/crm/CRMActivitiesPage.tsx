@@ -38,11 +38,6 @@ import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 import {
   Search,
   Calendar as CalendarIcon,
-  Phone,
-  Mail,
-  MessageSquare,
-  Video,
-  FileText,
   CheckCircle,
   ChevronDown,
   Plus,
@@ -54,6 +49,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useCRMContext } from "./CRMLayout";
 import { DateRange } from "react-day-picker";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { useActivityTypes } from "@/hooks/useActivityTypes";
+import { activityIcon } from "@/lib/crm/activityTypes";
 
 interface Activity {
   id: string;
@@ -80,6 +78,8 @@ interface Activity {
 
 export const CRMActivitiesPage = () => {
   const { isAdmin, staffId } = useCRMContext();
+  // Tipos configuráveis (crm_activity_types) pro filtro, rótulo e ícone.
+  const { types: configuredTypes, labelOf: typeLabelOf, iconOf: typeIconOf } = useActivityTypes({ includeInactive: true });
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -93,6 +93,10 @@ export const CRMActivitiesPage = () => {
   // Pós-conclusão: lead nunca fica sem tarefa pendente — concluir abre a criação
   // da próxima atividade; se o lead não tiver outra pendente, criar é obrigatório.
   const [nextTask, setNextTask] = useState<{ leadId: string; leadName: string; mandatory: boolean } | null>(null);
+  // Contagem real de pendentes (o badge era um "2" fixo). Contada no banco
+  // (head + count), com a mesma visibilidade da lista: admin ve tudo, closer/sdr
+  // so o que a RPC crm_visible_activities devolve.
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
 
   // Filter options
   const [origins, setOrigins] = useState<{ id: string; name: string }[]>([]);
@@ -146,6 +150,20 @@ export const CRMActivitiesPage = () => {
     }
   };
 
+  const loadPendingCount = async () => {
+    try {
+      const base = (!isAdmin && staffId)
+        ? supabase.rpc("crm_visible_activities", { p_staff: staffId }, { count: "exact", head: true })
+        : supabase.from("crm_activities").select("id", { count: "exact", head: true });
+      const { count, error } = await base.eq("status", "pending");
+      if (error) throw error;
+      setPendingCount(count ?? 0);
+    } catch (e) {
+      console.error("Error counting pending activities:", e);
+      setPendingCount(null);
+    }
+  };
+
   const loadFilterOptions = async () => {
     const [originsRes, stagesRes, ownersRes] = await Promise.all([
       supabase.from("crm_origins").select("id, name").eq("is_active", true),
@@ -161,6 +179,7 @@ export const CRMActivitiesPage = () => {
 
   useEffect(() => {
     loadActivities();
+    loadPendingCount();
     loadFilterOptions();
   }, [filterStatus, filterType]);
 
@@ -177,6 +196,7 @@ export const CRMActivitiesPage = () => {
       if (error) throw error;
       toast.success("Atividade concluída");
       loadActivities();
+      loadPendingCount();
       // Lead FECHADO (ganho/perdido) não exige próxima tarefa
       const { data: leadStage } = await supabase
         .from("crm_leads")
@@ -203,34 +223,11 @@ export const CRMActivitiesPage = () => {
   };
 
   const getActivityIcon = (type: string) => {
-    switch (type) {
-      case "call":
-        return <Phone className="h-4 w-4" />;
-      case "meeting":
-        return <Video className="h-4 w-4" />;
-      case "email":
-        return <Mail className="h-4 w-4" />;
-      case "whatsapp":
-        return <MessageSquare className="h-4 w-4" />;
-      case "proposal":
-        return <FileText className="h-4 w-4" />;
-      default:
-        return <CalendarIcon className="h-4 w-4" />;
-    }
+    const Icon = activityIcon(typeIconOf(type));
+    return <Icon className="h-4 w-4" />;
   };
 
-  const getActivityTypeName = (type: string) => {
-    const types: Record<string, string> = {
-      call: "Ligação",
-      meeting: "Reunião",
-      email: "E-mail",
-      whatsapp: "WhatsApp",
-      proposal: "Proposta",
-      followup: "Follow-up",
-      other: "Outro",
-    };
-    return types[type] || type;
-  };
+  const getActivityTypeName = (type: string) => typeLabelOf(type) || type;
 
   const getStatusBadge = (activity: Activity) => {
     if (activity.status === "completed") {
@@ -297,12 +294,7 @@ export const CRMActivitiesPage = () => {
 
   const activityTypes = [
     { id: "all", name: "Todos Tipos" },
-    { id: "call", name: "Ligação" },
-    { id: "meeting", name: "Reunião" },
-    { id: "email", name: "E-mail" },
-    { id: "whatsapp", name: "WhatsApp" },
-    { id: "proposal", name: "Proposta" },
-    { id: "followup", name: "Follow-up" },
+    ...configuredTypes.filter((t) => t.isActive !== false || t.value === filterType).map((t) => ({ id: t.value, name: t.label })),
   ];
 
   if (loading) {
@@ -362,18 +354,16 @@ export const CRMActivitiesPage = () => {
         </Popover>
 
         {/* Activity Type Filter */}
-        <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-[100px] sm:w-[140px] h-8 sm:h-9 text-xs sm:text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {activityTypes.map((type) => (
-              <SelectItem key={type.id} value={type.id}>
-                {type.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="w-[120px] sm:w-[160px]">
+          <SearchableSelect
+            value={filterType}
+            onValueChange={(v) => setFilterType(v || "all")}
+            options={activityTypes.map((type) => ({ value: type.id, label: type.name }))}
+            placeholder="Tipo"
+            emptyMessage="Nenhum tipo com esse nome."
+            className="h-8 sm:h-9 text-xs sm:text-sm"
+          />
+        </div>
 
         {/* Status Filter */}
         <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -474,11 +464,13 @@ export const CRMActivitiesPage = () => {
         </Popover>
 
         {/* Status Badge */}
-        <Badge variant="secondary" className="h-7">{filterStatus === "pending" ? "2" : "0"}</Badge>
+        <Badge variant="secondary" className="h-7" title="Atividades pendentes">
+          {pendingCount === null ? "..." : `${pendingCount.toLocaleString("pt-BR")} pendente${pendingCount === 1 ? "" : "s"}`}
+        </Badge>
         </div>
 
         {/* Refresh */}
-        <Button variant="ghost" size="icon" className="h-8 sm:h-9 w-8 sm:w-9 ml-auto shrink-0" onClick={loadActivities}>
+        <Button variant="ghost" size="icon" className="h-8 sm:h-9 w-8 sm:w-9 ml-auto shrink-0" onClick={() => { loadActivities(); loadPendingCount(); }}>
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
@@ -684,6 +676,7 @@ export const CRMActivitiesPage = () => {
           onSuccess={() => {
             setNextTask(null);
             loadActivities();
+            loadPendingCount();
           }}
         />
       )}

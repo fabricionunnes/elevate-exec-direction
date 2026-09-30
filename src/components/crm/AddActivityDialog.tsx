@@ -14,6 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { useActivityTypes } from "@/hooks/useActivityTypes";
 
 interface AddActivityDialogProps {
   open: boolean;
@@ -28,15 +30,6 @@ interface AddActivityDialogProps {
   tituloPadrao?: string;
 }
 
-const ACTIVITY_TYPES = [
-  { value: "call", label: "Ligação" },
-  { value: "whatsapp", label: "WhatsApp" },
-  { value: "email", label: "E-mail" },
-  { value: "meeting", label: "Reunião" },
-  { value: "followup", label: "Follow-up" },
-  { value: "proposal", label: "Proposta" },
-  { value: "other", label: "Outro" },
-];
 
 // Papéis que podem atribuir a tarefa a outro usuário
 const ASSIGN_ROLES = ["master", "admin", "head_comercial"];
@@ -46,6 +39,8 @@ export const AddActivityDialog = ({
   exigirDataHora = false, tituloDialogo, aviso, tipoPadrao, tituloPadrao,
 }: AddActivityDialogProps) => {
   const [loading, setLoading] = useState(false);
+  // Tipos configuráveis (crm_activity_types), com a lista fixa de reserva.
+  const { types: activityTypes } = useActivityTypes();
   const [formData, setFormData] = useState({
     type: tipoPadrao || "call",
     title: tituloPadrao || "",
@@ -162,12 +157,14 @@ export const AddActivityDialog = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label>Tipo</Label>
-            <Select value={formData.type} onValueChange={(v) => setFormData(p => ({ ...p, type: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {ACTIVITY_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={formData.type}
+              onValueChange={(v) => setFormData(p => ({ ...p, type: v }))}
+              options={(activityTypes.some(t => t.value === formData.type) ? activityTypes : [...activityTypes, { value: formData.type, label: formData.type }])
+                .map(t => ({ value: t.value, label: t.label }))}
+              placeholder="Tipo da atividade"
+              emptyMessage="Nenhum tipo com esse nome."
+            />
           </div>
           {canAssign && (
             <div>
