@@ -42,6 +42,7 @@ const UNVStartClientsPage = lazy(() => import("./pages/onboarding-tasks/UNVStart
 const ProcessosPage = lazy(() => import("./pages/onboarding-tasks/ProcessosPage"));
 const CustoIAPage = lazy(() => import("./pages/onboarding-tasks/CustoIAPage"));
 const ProdutoCheckupPage = lazy(() => import("./pages/onboarding-tasks/ProdutoCheckupPage"));
+const PainelControlePage = lazy(() => import("./pages/PainelControlePage"));
 const AgendaFabricioPage = lazy(() => import("./pages/onboarding-tasks/AgendaFabricioPage"));
 const CertificateVerifyPage = lazy(() => import("./pages/CertificateVerifyPage"));
 const GlobalGraphPage = lazy(() => import("./pages/onboarding-tasks/GlobalGraphPage"));
@@ -556,6 +557,7 @@ const AppShell = () => {
               <Route path="/processos" element={<ProcessosPage />} />
               <Route path="/onboarding-tasks/custo-ia" element={<CustoIAPage />} />
               <Route path="/onboarding-tasks/checkup" element={<ProdutoCheckupPage />} />
+              <Route path="/painel-de-controle" element={<PainelControlePage />} />
               <Route path="/onboarding-tasks/processos" element={<ProcessosPage />} />
               <Route path="/onboarding-tasks/agenda-fabricio" element={<AgendaFabricioPage />} />
               <Route path="/onboarding-tasks/automations" element={<AutomationsPage />} />
