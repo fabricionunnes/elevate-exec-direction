@@ -7,8 +7,11 @@ import { PreSalesIndicatorsTab } from "@/components/crm/indicators/PreSalesIndic
 import { FunnelsOverviewTab } from "@/components/crm/indicators/FunnelsOverviewTab";
 import { CRMTrafficTab } from "@/components/crm/traffic/CRMTrafficTab";
 import { LeadRevenueTab } from "@/components/crm/indicators/LeadRevenueTab";
+import { AtendimentoDashboardTab } from "@/components/crm/indicators/AtendimentoDashboardTab";
+import { AtividadesDashboardTab } from "@/components/crm/indicators/AtividadesDashboardTab";
+import { NegociosDashboardTab } from "@/components/crm/indicators/NegociosDashboardTab";
 import { CRMCommissionCard, CommissionSummary } from "@/components/crm/CRMCommissionCard";
-import { DollarSign, ChevronDown, TrendingUp, Wallet, Megaphone, Filter, Banknote } from "lucide-react";
+import { DollarSign, ChevronDown, TrendingUp, Wallet, Megaphone, Filter, Banknote, MessageSquare, ListChecks, Briefcase } from "lucide-react";
 
 export const CRMIndicatorsPage = () => {
   const { staffRole, staffId } = useOutletContext<{ staffRole: string; isAdmin: boolean; staffId: string | null }>();
@@ -19,6 +22,9 @@ export const CRMIndicatorsPage = () => {
   const isSdrUser = staffRole === "sdr" || staffRole === "social_setter" || staffRole === "bdr";
   const showSales = !isSdrUser;      // comercial: todos menos SDR
   const showPresales = !isCloserUser; // pré-vendas: todos menos closer
+  // Negócios, Atendimento e Atividades (benchmark Datacrazy): todo mundo vê; fora da gestão
+  // o painel fica travado no próprio usuário (dono / atendente / responsável).
+  const lockedStaffId = isAdmin ? null : staffId;
   const [activeTab, setActiveTab] = useState(isSdrUser ? "presales" : "sales");
   const [commissionOpen, setCommissionOpen] = useState(false);
   const [summary, setSummary] = useState<CommissionSummary | null>(null);
@@ -87,6 +93,24 @@ export const CRMIndicatorsPage = () => {
                 Pré vendas
               </TabsTrigger>
             )}
+            <TabsTrigger
+              value="negocios"
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-6 gap-1.5"
+            >
+              <Briefcase className="h-3.5 w-3.5" /> Negócios
+            </TabsTrigger>
+            <TabsTrigger
+              value="atendimento"
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-6 gap-1.5"
+            >
+              <MessageSquare className="h-3.5 w-3.5" /> Atendimento
+            </TabsTrigger>
+            <TabsTrigger
+              value="atividades"
+              className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-6 gap-1.5"
+            >
+              <ListChecks className="h-3.5 w-3.5" /> Atividades
+            </TabsTrigger>
             {/* Funis: visão geral de todos os funis por etapa — só gestão */}
             {isAdmin && (
               <TabsTrigger
@@ -128,6 +152,15 @@ export const CRMIndicatorsPage = () => {
               <PreSalesIndicatorsTab staffId={staffId} staffRole={staffRole} />
             </TabsContent>
           )}
+          <TabsContent value="negocios" className="m-0 h-full">
+            <NegociosDashboardTab staffId={staffId} lockedStaffId={lockedStaffId} />
+          </TabsContent>
+          <TabsContent value="atendimento" className="m-0 h-full">
+            <AtendimentoDashboardTab lockedStaffId={lockedStaffId} />
+          </TabsContent>
+          <TabsContent value="atividades" className="m-0 h-full">
+            <AtividadesDashboardTab lockedStaffId={lockedStaffId} />
+          </TabsContent>
           {isAdmin && (
             <TabsContent value="funnels" className="m-0 h-full">
               <FunnelsOverviewTab />

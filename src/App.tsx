@@ -322,12 +322,11 @@ const AcademySettingsPage = lazy(() => import("./pages/academy/AcademySettingsPa
 
 // CRM
 const CRMLayout = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMLayout })));
-const CRMDashboardPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMDashboardPage })));
 const CRMPipelinePage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMPipelinePage })));
 const CRMLeadsPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMLeadsPage })));
 const CRMLeadDetailPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMLeadDetailPage })));
 const CRMActivitiesPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMActivitiesPage })));
-const CRMReportsPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMReportsPage })));
+const CRMIndicatorsPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMIndicatorsPage })));
 const CRMSettingsPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMSettingsPage })));
 const CRMInboxPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMInboxPage })));
 const CRMTranscriptionsPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMTranscriptionsPage })));
@@ -660,7 +659,7 @@ const AppShell = () => {
             
             {/* CRM Comercial */}
             <Route path="/crm" element={<CRMLayout />}>
-              <Route index element={<CRMReportsPage />} />
+              <Route index element={<CRMIndicatorsPage />} />
               <Route path="pipeline" element={<CRMPipelinePage />} />
               <Route path="leads" element={<CRMLeadsPage />} />
               <Route path="leads/:id" element={<CRMLeadDetailPage />} />
@@ -668,7 +667,7 @@ const AppShell = () => {
               <Route path="dialer" element={<CRMDialerPage />} />
               <Route path="inbox" element={<CRMInboxPage />} />
               <Route path="transcriptions" element={<CRMTranscriptionsPage />} />
-              <Route path="reports" element={<CRMReportsPage />} />
+              <Route path="reports" element={<CRMIndicatorsPage />} />
               <Route path="settings" element={<CRMSettingsPage />} />
               <Route path="meetings" element={<CRMMeetingsPage />} />
               <Route path="office" element={<CRMOfficePage />} />

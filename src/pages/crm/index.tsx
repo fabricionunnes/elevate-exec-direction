@@ -1,5 +1,4 @@
 import { CRMLayout, useCRMContext } from "./CRMLayout";
-import { CRMDashboardPage } from "./CRMDashboardPage";
 import { CRMPipelinePage } from "./CRMPipelinePage";
 import { CRMLeadsPage } from "./CRMLeadsPage";
 import { CRMLeadDetailPage } from "./CRMLeadDetailPage";
@@ -12,13 +11,9 @@ import { CRMOfficePage } from "./CRMOfficePage";
 import CRMHeadComercialPage from "./CRMHeadComercialPage";
 import CRMCallSummaryPage from "./CRMCallSummaryPage";
 
-// Keep old name for backward compatibility
-export const CRMReportsPage = CRMIndicatorsPage;
-
 export {
   CRMLayout,
   useCRMContext,
-  CRMDashboardPage,
   CRMPipelinePage,
   CRMLeadsPage,
   CRMLeadDetailPage,
