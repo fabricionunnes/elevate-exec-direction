@@ -161,6 +161,7 @@ const OfficePage = lazy(() => import("./pages/office/OfficePage"));
 const CACFormPage = lazy(() => import("./pages/onboarding-tasks/CACFormPage"));
 const RescheduleTasks = lazy(() => import("./pages/onboarding-tasks/RescheduleTasks"));
 const KickoffFormPage = lazy(() => import("./pages/onboarding-tasks/KickoffFormPage"));
+const PublicProjectDashboardPage = lazy(() => import("./pages/PublicProjectDashboardPage"));
 const OnboardingRenewalsPage = lazy(() => import("./pages/onboarding-tasks/OnboardingRenewalsPage"));
 const OnboardingCancellationsPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCancellationsPage"));
 const CancellationsRetentionModulePage = lazy(() => import("./pages/onboarding-tasks/CancellationsRetentionModulePage"));
@@ -612,6 +613,7 @@ const AppShell = () => {
             <Route path="/disparador/:projectId" element={<ClientDisparadorPage />} />
             <Route path="/cac-form/:projectId" element={<CACFormPage />} />
             <Route path="/kickoff/:companyId" element={<KickoffFormPage />} />
+            <Route path="/painel/:token" element={<PublicProjectDashboardPage />} />
             <Route path="/nps" element={<NPSSurveyPage />} />
             <Route path="/csat" element={<CSATSurveyPage />} />
             <Route path="/kpi-entry/:companyId" element={<KPIEntryPage />} />
