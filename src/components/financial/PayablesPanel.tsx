@@ -456,7 +456,25 @@ export function PayablesPanel() {
             .eq("id", bankId);
         }
       };
+      // Pagamentos registrados como transação (financial_bank_transactions): devolve
+      // cada um ao banco e apaga, pra não sobrar transação órfã nem saldo a menos.
+      const estornarTransacoes = async (ids: string[]) => {
+        if (!ids.length) return;
+        const { data: txs } = await supabase
+          .from("financial_bank_transactions")
+          .select("id, amount_cents, bank_id")
+          .eq("reference_type", "payable")
+          .eq("type", "debit")
+          .in("reference_id", ids);
+        for (const t of ((txs as any) || [])) {
+          if (t.bank_id) {
+            await supabase.rpc("increment_bank_balance" as any, { p_bank_id: t.bank_id, p_amount: Number(t.amount_cents) });
+          }
+          await supabase.from("financial_bank_transactions").delete().eq("id", t.id);
+        }
+      };
       if (deleteScope === "single") {
+        await estornarTransacoes([deleteTarget.id]);
         // devolve o valor pago pro saldo do banco antes de apagar a conta quitada/parcial
         await estornarBanco((deleteTarget as any).bank_account_id || null, Number(deleteTarget.paid_amount) || 0);
         const { error } = await supabase
@@ -473,6 +491,7 @@ export function PayablesPanel() {
           .eq("supplier_name", deleteTarget.supplier_name)
           .gte("installment_number", deleteTarget.installment_number || 0)
           .in("status", ["pending", "overdue", "partial", "cancelled"]);
+        await estornarTransacoes(((aExcluir as any) || []).map((x: any) => x.id));
         for (const p of ((aExcluir as any) || [])) {
           await estornarBanco(p.bank_account_id || null, Number(p.paid_amount) || 0);
         }

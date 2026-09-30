@@ -451,67 +451,69 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
       });
       setEditScope("single");
       setEditId(null);
-      supabase.from("financial_bank_accounts").select("id, name").then(({ data }) => setBankAccounts((data as any) || []));
+      supabase.from("financial_banks").select("id, name").then(({ data }) => setBankAccounts((data as any) || []));
       loadPagamentos();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, payable?.id]);
 
+  // Pagamentos (parciais) DESTA conta: cada um é uma transação de débito em
+  // financial_bank_transactions (reference_type "payable"). A soma deles é o paid_amount.
   const loadPagamentos = async () => {
     if (!payable) return;
     setLoadingPg(true);
-    let rows: any[] = [];
-    if (payable.total_installments && payable.total_installments > 1) {
-      const base = baseDesc(payable.description);
-      const { data } = await supabase
-        .from("financial_payables")
-        .select("id, description, amount, paid_amount, paid_date, status, bank_account_id, installment_number, total_installments")
-        .eq("supplier_name", payable.supplier_name || "")
-        .ilike("description", `${base} (%`)
-        .in("status", ["paid", "partial"])
-        .order("installment_number", { ascending: true });
-      rows = (data as any) || [];
-    } else if (payable.status === "paid" || payable.status === "partial" || (Number(payable.paid_amount) || 0) > 0) {
-      rows = [{ ...payable, bank_account_id: (payable as any).bank_account_id ?? null }];
-    }
-    setPagamentos(rows);
+    const { data } = await supabase
+      .from("financial_bank_transactions")
+      .select("id, amount_cents, bank_id, created_at, description")
+      .eq("reference_type", "payable")
+      .eq("reference_id", payable.id)
+      .eq("type", "debit")
+      .order("created_at", { ascending: true });
+    setPagamentos((data as any) || []);
     setLoadingPg(false);
   };
 
-  const adjustBank = async (bankId: string | null, delta: number) => {
-    if (!bankId || bankId === "none" || !delta) return;
-    const { data } = await supabase.from("financial_bank_accounts").select("current_balance").eq("id", bankId).single();
-    if (data) await supabase.from("financial_bank_accounts").update({ current_balance: Number((data as any).current_balance) + delta }).eq("id", bankId);
+  const diaBR = (iso: string) => new Date(new Date(iso).getTime() - 3 * 3600e3).toISOString().slice(0, 10);
+
+  const recalcTotais = async () => {
+    if (!payable) return;
+    const { data: rest } = await supabase
+      .from("financial_bank_transactions")
+      .select("amount_cents, created_at")
+      .eq("reference_type", "payable")
+      .eq("reference_id", payable.id)
+      .eq("type", "debit");
+    const rows: any[] = (rest as any) || [];
+    const totalPaid = rows.reduce((s, t) => s + Number(t.amount_cents), 0) / 100;
+    const ultima = rows.map((t) => t.created_at).sort().pop();
+    await supabase.from("financial_payables").update({
+      paid_amount: totalPaid > 0 ? totalPaid : null,
+      paid_date: totalPaid > 0 && ultima ? diaBR(ultima) : null,
+      status: totalPaid <= 0 ? "pending" : totalPaid >= Number(payable.amount) ? "paid" : "partial",
+    } as any).eq("id", payable.id);
   };
 
-  const startEditRow = (p: any) => {
-    setEditId(p.id);
-    setEdAmount(Number(p.paid_amount) || 0);
-    setEdDate(p.paid_date || "");
-    setEdBank(p.bank_account_id || "none");
+  const startEditRow = (t: any) => {
+    setEditId(t.id);
+    setEdAmount(Number(t.amount_cents) / 100);
+    setEdDate(diaBR(t.created_at));
   };
 
-  const salvarPagamento = async (p: any) => {
+  const salvarPagamento = async (t: any) => {
     setRowSaving(true);
     try {
-      const oldPaid = Number(p.paid_amount) || 0;
-      const oldBank = p.bank_account_id || null;
-      const newPaid = edAmount || 0;
-      const newBank = edBank === "none" ? null : edBank;
-      if (oldBank === newBank) {
-        await adjustBank(newBank, -(newPaid - oldPaid));
-      } else {
-        await adjustBank(oldBank, oldPaid);
-        await adjustBank(newBank, -newPaid);
-      }
-      const novoStatus = newPaid <= 0 ? "pending" : (newPaid >= Number(p.amount) ? "paid" : "partial");
-      const { error } = await supabase.from("financial_payables").update({
-        paid_amount: newPaid > 0 ? newPaid : null,
-        paid_date: newPaid > 0 ? (edDate || null) : null,
-        bank_account_id: newBank,
-        status: novoStatus,
-      } as any).eq("id", p.id);
+      const newCents = Math.round((edAmount || 0) * 100);
+      if (newCents <= 0) { toast.error("Informe um valor maior que zero, ou use excluir."); return; }
+      const diff = newCents - Number(t.amount_cents);
+      const upd: any = { amount_cents: newCents };
+      if (edDate && edDate !== diaBR(t.created_at)) upd.created_at = `${edDate}T12:00:00-03:00`;
+      const { error } = await supabase.from("financial_bank_transactions").update(upd).eq("id", t.id);
       if (error) throw error;
+      if (diff !== 0 && t.bank_id) {
+        // débito maior tira mais do banco; menor devolve a diferença
+        await supabase.rpc("increment_bank_balance" as any, { p_bank_id: t.bank_id, p_amount: -diff });
+      }
+      await recalcTotais();
       toast.success("Pagamento atualizado!");
       setEditId(null);
       await loadPagamentos();
@@ -523,15 +525,17 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
     }
   };
 
-  const excluirPagamento = async (p: any) => {
-    const label = p.installment_number ? `${p.installment_number}/${p.total_installments}` : "";
-    if (!confirm(`Excluir o pagamento da parcela ${label}? O valor volta pro saldo do banco e a parcela fica em aberto.`)) return;
+  const excluirPagamento = async (t: any) => {
+    if (!confirm(`Excluir o pagamento de ${fmtBRL(Number(t.amount_cents) / 100)}? O valor volta pro saldo do banco.`)) return;
     setRowSaving(true);
     try {
-      await adjustBank(p.bank_account_id || null, Number(p.paid_amount) || 0);
-      const { error } = await supabase.from("financial_payables").update({ paid_amount: null, paid_date: null, bank_account_id: null, status: "pending" } as any).eq("id", p.id);
+      const { error } = await supabase.from("financial_bank_transactions").delete().eq("id", t.id);
       if (error) throw error;
-      toast.success("Pagamento removido, parcela em aberto e saldo ajustado.");
+      if (t.bank_id) {
+        await supabase.rpc("increment_bank_balance" as any, { p_bank_id: t.bank_id, p_amount: Number(t.amount_cents) });
+      }
+      await recalcTotais();
+      toast.success("Pagamento removido e saldo ajustado.");
       setEditId(null);
       await loadPagamentos();
       onSuccess();
@@ -713,49 +717,40 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
 
           {(loadingPg || pagamentos.length > 0) && (
             <div className="p-3 bg-muted/40 rounded-lg space-y-2 border">
-              <Label className="text-sm font-medium">Pagamentos realizados</Label>
-              <p className="text-xs text-muted-foreground">Parcelas já pagas desta cobrança. Ajuste o valor, a data ou o banco, ou exclua o pagamento (o valor volta pro saldo do banco e a parcela fica em aberto).</p>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Pagamentos realizados</Label>
+                <span className="text-xs text-muted-foreground">
+                  {fmtBRL(pagamentos.reduce((s, t) => s + Number(t.amount_cents), 0) / 100)} de {fmtBRL(Number(payable.amount) || 0)}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">Cada pagamento feito nesta conta. Ajustar ou excluir corrige o saldo do banco e o status da conta.</p>
               {loadingPg ? (
                 <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-primary" /></div>
               ) : (
-                pagamentos.map((p) => (
-                  <div key={p.id} className="rounded-md border bg-card p-2.5">
-                    {editId === p.id ? (
+                pagamentos.map((t) => (
+                  <div key={t.id} className="rounded-md border bg-card p-2.5">
+                    {editId === t.id ? (
                       <div className="space-y-2">
-                        <div className="text-xs font-semibold text-muted-foreground">
-                          {p.installment_number ? `Parcela ${p.installment_number}/${p.total_installments}` : "Pagamento"}
-                        </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div><Label className="text-xs">Valor pago</Label><CurrencyInput value={edAmount} onChange={setEdAmount} /></div>
                           <div><Label className="text-xs">Data</Label><Input type="date" value={edDate} onChange={(e) => setEdDate(e.target.value)} /></div>
                         </div>
-                        <div>
-                          <Label className="text-xs">Banco</Label>
-                          <Select value={edBank} onValueChange={setEdBank}>
-                            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Sem banco (não ajusta saldo)</SelectItem>
-                              {bankAccounts.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
                         <div className="flex justify-end gap-2">
                           <Button variant="ghost" size="sm" onClick={() => setEditId(null)} disabled={rowSaving}><X className="h-3 w-3 mr-1" />Cancelar</Button>
-                          <Button size="sm" onClick={() => salvarPagamento(p)} disabled={rowSaving}>{rowSaving && <Loader2 className="h-3 w-3 animate-spin mr-1" />}<Save className="h-3 w-3 mr-1" />Salvar</Button>
+                          <Button size="sm" onClick={() => salvarPagamento(t)} disabled={rowSaving}>{rowSaving && <Loader2 className="h-3 w-3 animate-spin mr-1" />}<Save className="h-3 w-3 mr-1" />Salvar</Button>
                         </div>
                       </div>
                     ) : (
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
-                          <div className="text-sm font-semibold">
-                            {p.installment_number ? `Parcela ${p.installment_number}/${p.total_installments} · ` : ""}{fmtBRL(Number(p.paid_amount) || 0)}
-                            {p.status === "partial" && <span className="ml-1 text-[10px] text-orange-600">(parcial de {fmtBRL(Number(p.amount) || 0)})</span>}
+                          <div className="text-sm font-semibold">{fmtBRL(Number(t.amount_cents) / 100)}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {format(new Date(diaBR(t.created_at) + "T12:00:00"), "dd/MM/yyyy")} · {bankAccounts.find((b) => b.id === t.bank_id)?.name || "Banco"}
                           </div>
-                          <div className="text-xs text-muted-foreground">{p.paid_date ? `Pago em ${format(new Date(p.paid_date + "T12:00:00"), "dd/MM/yyyy")}` : "Sem data"}</div>
                         </div>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEditRow(p)} disabled={rowSaving} title="Ajustar"><Pencil className="h-3.5 w-3.5" /></Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => excluirPagamento(p)} disabled={rowSaving} title="Excluir pagamento"><Trash2 className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEditRow(t)} disabled={rowSaving} title="Ajustar"><Pencil className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => excluirPagamento(t)} disabled={rowSaving} title="Excluir pagamento"><Trash2 className="h-3.5 w-3.5" /></Button>
                         </div>
                       </div>
                     )}
