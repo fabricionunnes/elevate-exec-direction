@@ -38,11 +38,6 @@ import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 import {
   Search,
   Calendar as CalendarIcon,
-  Phone,
-  Mail,
-  MessageSquare,
-  Video,
-  FileText,
   CheckCircle,
   ChevronDown,
   Plus,
@@ -54,6 +49,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useCRMContext } from "./CRMLayout";
 import { DateRange } from "react-day-picker";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { useActivityTypes } from "@/hooks/useActivityTypes";
+import { activityIcon } from "@/lib/crm/activityTypes";
 
 interface Activity {
   id: string;
@@ -80,6 +78,8 @@ interface Activity {
 
 export const CRMActivitiesPage = () => {
   const { isAdmin, staffId } = useCRMContext();
+  // Tipos configuráveis (crm_activity_types) pro filtro, rótulo e ícone.
+  const { types: configuredTypes, labelOf: typeLabelOf, iconOf: typeIconOf } = useActivityTypes({ includeInactive: true });
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -223,34 +223,11 @@ export const CRMActivitiesPage = () => {
   };
 
   const getActivityIcon = (type: string) => {
-    switch (type) {
-      case "call":
-        return <Phone className="h-4 w-4" />;
-      case "meeting":
-        return <Video className="h-4 w-4" />;
-      case "email":
-        return <Mail className="h-4 w-4" />;
-      case "whatsapp":
-        return <MessageSquare className="h-4 w-4" />;
-      case "proposal":
-        return <FileText className="h-4 w-4" />;
-      default:
-        return <CalendarIcon className="h-4 w-4" />;
-    }
+    const Icon = activityIcon(typeIconOf(type));
+    return <Icon className="h-4 w-4" />;
   };
 
-  const getActivityTypeName = (type: string) => {
-    const types: Record<string, string> = {
-      call: "Ligação",
-      meeting: "Reunião",
-      email: "E-mail",
-      whatsapp: "WhatsApp",
-      proposal: "Proposta",
-      followup: "Follow-up",
-      other: "Outro",
-    };
-    return types[type] || type;
-  };
+  const getActivityTypeName = (type: string) => typeLabelOf(type) || type;
 
   const getStatusBadge = (activity: Activity) => {
     if (activity.status === "completed") {
@@ -317,12 +294,7 @@ export const CRMActivitiesPage = () => {
 
   const activityTypes = [
     { id: "all", name: "Todos Tipos" },
-    { id: "call", name: "Ligação" },
-    { id: "meeting", name: "Reunião" },
-    { id: "email", name: "E-mail" },
-    { id: "whatsapp", name: "WhatsApp" },
-    { id: "proposal", name: "Proposta" },
-    { id: "followup", name: "Follow-up" },
+    ...configuredTypes.filter((t) => t.isActive !== false || t.value === filterType).map((t) => ({ id: t.value, name: t.label })),
   ];
 
   if (loading) {
@@ -382,18 +354,16 @@ export const CRMActivitiesPage = () => {
         </Popover>
 
         {/* Activity Type Filter */}
-        <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-[100px] sm:w-[140px] h-8 sm:h-9 text-xs sm:text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {activityTypes.map((type) => (
-              <SelectItem key={type.id} value={type.id}>
-                {type.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="w-[120px] sm:w-[160px]">
+          <SearchableSelect
+            value={filterType}
+            onValueChange={(v) => setFilterType(v || "all")}
+            options={activityTypes.map((type) => ({ value: type.id, label: type.name }))}
+            placeholder="Tipo"
+            emptyMessage="Nenhum tipo com esse nome."
+            className="h-8 sm:h-9 text-xs sm:text-sm"
+          />
+        </div>
 
         {/* Status Filter */}
         <Select value={filterStatus} onValueChange={setFilterStatus}>
