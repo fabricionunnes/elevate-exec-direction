@@ -2386,11 +2386,6 @@ const OnboardingTasksPage = () => {
                 <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/transcricoes")}>
                   <AudioLines className="h-4 w-4 mr-2" /> Transcrições
                 </DropdownMenuItem>
-                {(isAdmin || isCS) && (
-                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/checkup")}>
-                    <ClipboardCheck className="h-4 w-4 mr-2" /> Checkup do Produto
-                  </DropdownMenuItem>
-                )}
                 {isMaster && (
                   <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/custo-ia")}>
                     <DollarSign className="h-4 w-4 mr-2" /> Custo de IA
@@ -2561,6 +2556,11 @@ const OnboardingTasksPage = () => {
                     <Brain className="h-4 w-4 mr-2" />
                     Cérebro da Carteira
                   </DropdownMenuItem>
+                  {(isAdmin || isCS) && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/checkup")}>
+                      <ClipboardCheck className="h-4 w-4 mr-2" /> Checkup do Produto
+                    </DropdownMenuItem>
+                  )}
                   {isAdmin && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations-retention")}>
                       <AlertTriangle className="h-4 w-4 mr-2" />
