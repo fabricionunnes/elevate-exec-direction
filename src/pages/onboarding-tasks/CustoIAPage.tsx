@@ -22,6 +22,9 @@ type Dados = {
   precos: { familia: string; preco_entrada: number; preco_saida: number; observacao: string | null }[];
 };
 
+type WaNumero = { id: string; nome: string; telefone: string; status: string; preco_brl: number; hoje: number; ontem: number; mes: number; mes_ia: number; conversas_mes: number; periodo: number; por_dia: { dia: string; msgs: number }[] };
+type WaDados = { teto_mes: number; preco_config: number | null; dias_mes: number; dia_mes: number; numeros: WaNumero[] };
+
 const CORES = ["#2a78d6", "#1baf7a", "#4a3aa7", "#eda100", "#eb6834", "#d4321c"];
 const usd = (n: number) => `US$ ${(Number(n) || 0).toFixed(2)}`;
 const brl = (n: number) => `R$ ${(Number(n) || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -36,6 +39,8 @@ export default function CustoIAPage() {
   const [teto, setTeto] = useState("");
   const [cotacao, setCotacao] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const [wa, setWa] = useState<WaDados | null>(null);
+  const [waTeto, setWaTeto] = useState("");
 
   const buscar = useCallback(async () => {
     setCarregando(true);
@@ -45,6 +50,9 @@ export default function CustoIAPage() {
     const { data, error } = await (supabase as any).rpc("ai_custos", { p_de: iso(de), p_ate: iso(ate) });
     if (error) { toast.error("Não consegui carregar o custo de IA"); setCarregando(false); return; }
     setDados(data as Dados);
+    // WhatsApp API oficial: a Meta cobra por mensagem enviada (a partir de 01/10/2026)
+    const { data: waD } = await (supabase as any).rpc("wa_oficial_custos", { p_de: iso(de), p_ate: iso(ate) });
+    if (waD) { setWa(waD as WaDados); setWaTeto(String((waD as WaDados).teto_mes ?? "")); }
     setTeto(String((data as Dados)?.config?.teto_usd ?? ""));
     setCotacao(String((data as Dados)?.config?.dolar ?? ""));
     setCarregando(false);
@@ -78,7 +86,7 @@ export default function CustoIAPage() {
     if (!c || c <= 0) { toast.error("Põe uma cotação maior que zero"); return; }
     setSalvando(true);
     const { error } = await (supabase as any).from("ai_usage_config")
-      .update({ teto_usd: v, dolar: c, dolar_em: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", true);
+      .update({ teto_usd: v, dolar: c, dolar_em: new Date().toISOString(), wa_teto_mes: Math.max(0, parseInt(String(waTeto).replace(/\D/g, ""), 10) || 0), updated_at: new Date().toISOString() }).eq("id", true);
     setSalvando(false);
     if (error) { toast.error("Não consegui salvar"); return; }
     toast.success(`Teto em ${usd(v)} por dia, dólar a ${brl(c)}`);
@@ -228,6 +236,61 @@ export default function CustoIAPage() {
         </div>
 
         <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">WhatsApp API oficial (Meta)</CardTitle>
+            <p className="text-xs text-muted-foreground">A partir de 01/10/2026 a Meta cobra cada mensagem que a empresa envia, mesmo dentro da janela de 24h. Mensagem do cliente continua grátis. Custo estimado na tarifa de utilidade do número.</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {(wa?.numeros || []).length === 0 && <p className="text-sm text-muted-foreground">Nenhum número da API oficial conectado.</p>}
+            {(wa?.numeros || []).map((n) => {
+              const custoMes = n.mes * Number(n.preco_brl || 0);
+              const proj = wa && wa.dia_mes > 0 ? Math.round((n.mes / wa.dia_mes) * wa.dias_mes) : n.mes;
+              const teto = Number(wa?.teto_mes || 0);
+              const pct = teto > 0 ? Math.min(100, (n.mes / teto) * 100) : 0;
+              return (
+                <div key={n.id} className="space-y-2 border-b border-border/40 last:border-0 pb-4 last:pb-0">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-medium">{n.nome} <span className="text-xs text-muted-foreground font-normal">{n.telefone} · {n.status === "connected" ? "conectado" : n.status}</span></span>
+                    <span className="text-xs text-muted-foreground">R$ {Number(n.preco_brl || 0).toFixed(3)} por mensagem</span>
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                    {[
+                      { rot: "Hoje", v: num(n.hoje) },
+                      { rot: "Ontem", v: num(n.ontem) },
+                      { rot: "Mês", v: num(n.mes), sub: `${num(n.mes_ia)} pelo agente de IA · ${num(n.conversas_mes)} conversas` },
+                      { rot: "Custo no mês", v: brl(custoMes), sub: `projeção ${brl(proj * Number(n.preco_brl || 0))}` },
+                      { rot: "Projeção de mensagens", v: num(proj), sub: teto > 0 ? `teto ${num(teto)}` : "sem teto" },
+                    ].map((c) => (
+                      <div key={c.rot} className="rounded-lg border border-border/60 p-3">
+                        <p className="text-xs text-muted-foreground">{c.rot}</p>
+                        <p className={`text-lg font-bold ${c.rot === "Mês" && teto > 0 && n.mes >= teto ? "text-destructive" : ""}`}>{c.v}</p>
+                        {c.sub && <p className="text-[11px] text-muted-foreground">{c.sub}</p>}
+                      </div>
+                    ))}
+                  </div>
+                  {teto > 0 && (
+                    <div className="h-1.5 rounded bg-muted overflow-hidden"><div className={`h-full ${pct >= 100 ? "bg-destructive" : pct >= 80 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${Math.max(1, pct)}%` }} /></div>
+                  )}
+                  {n.por_dia.length > 0 && (
+                    <ResponsiveContainer width="100%" height={140}>
+                      <BarChart data={n.por_dia.map((d) => ({ ...d, label: diaBR(d.dia) }))}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                        <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                        <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                        <Tooltip formatter={(v: any) => [`${num(Number(v))} mensagens · ${brl(Number(v) * Number(n.preco_brl || 0))}`, "Enviadas"]} labelFormatter={(l) => `Dia ${l}`}
+                          contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                        <Bar dataKey="msgs" fill="#1baf7a" radius={[3, 3, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              );
+            })}
+            <p className="text-[11px] text-muted-foreground">Passou do teto do mês, chega aviso no WhatsApp uma vez por dia. Todo dia 1º vai o fechamento do mês anterior. A tarifa vem do cadastro do número (utilidade); dá pra fixar outra no banco em wa_preco_servico_brl.</p>
+          </CardContent>
+        </Card>
+
+        <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base">Teto e alerta</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-wrap items-end gap-3">
@@ -238,6 +301,10 @@ export default function CustoIAPage() {
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Dólar hoje, em real</p>
                 <Input value={cotacao} onChange={(e) => setCotacao(e.target.value)} className="w-28" inputMode="decimal" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Teto de mensagens da API oficial, por mês</p>
+                <Input value={waTeto} onChange={(e) => setWaTeto(e.target.value)} className="w-32" inputMode="numeric" />
               </div>
               <Button size="sm" onClick={salvarConfig} disabled={salvando}>
                 <Save className="h-4 w-4 mr-1" /> Salvar
