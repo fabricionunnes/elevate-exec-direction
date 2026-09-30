@@ -35,6 +35,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { MultiSearchableSelect } from "@/components/crm/traffic/MultiSearchableSelect";
 
 export interface CRMFilters {
   search: string;
@@ -57,7 +59,43 @@ export interface CRMFilters {
   campaigns?: string[];
   adsets?: string[];
   ads?: string[];
+  /** produto do lead (crm_leads.product_id) */
+  products?: string[];
+  /** última mudança de etapa (crm_leads.stage_entered_at) */
+  movedRange?: DateRange;
+  /** data de ganho (closed_at, só em etapa de ganho) */
+  wonRange?: DateRange;
+  lossReasons?: string[];
+  /** condições em campos do lead: coluna ou campo adicional, "contém / igual / vazio / preenchido" */
+  fieldConditions?: FieldCondition[];
+  /** sem atividade há N dias (ou nunca teve) */
+  inactiveDays?: number | null;
+  noOwner?: boolean;
 }
+
+export type FieldConditionOp = "contains" | "equals" | "empty" | "not_empty";
+export interface FieldCondition {
+  fieldId: string;
+  op: FieldConditionOp;
+  value: string;
+}
+
+/** campo de crm_custom_fields (sistema = coluna do lead; senão = crm_custom_field_values) */
+export interface LeadFieldOption {
+  id: string;
+  name: string;
+  is_system: boolean;
+  field_name: string;
+  field_type: string;
+  context: string;
+}
+
+const FIELD_OPS: { value: FieldConditionOp; label: string }[] = [
+  { value: "contains", label: "contém" },
+  { value: "equals", label: "é igual a" },
+  { value: "empty", label: "está vazio" },
+  { value: "not_empty", label: "está preenchido" },
+];
 
 interface FilterOption {
   id: string;
@@ -80,6 +118,9 @@ interface CRMFiltersBarProps {
   /** Exportar leads — só master/admin (a base de leads é dado sensível) */
   canExport?: boolean;
   onExport?: () => void;
+  productOptions?: FilterOption[];
+  lossReasonOptions?: FilterOption[];
+  fieldOptions?: LeadFieldOption[];
 }
 
 export const CRMFiltersBar = ({
@@ -96,8 +137,17 @@ export const CRMFiltersBar = ({
   adOptions = [],
   canExport = false,
   onExport,
+  productOptions = [],
+  lossReasonOptions = [],
+  fieldOptions = [],
 }: CRMFiltersBarProps) => {
   const [dateOpen, setDateOpen] = useState(false);
+  const [movedOpen, setMovedOpen] = useState(false);
+  const [wonOpen, setWonOpen] = useState(false);
+  // condição nova do filtro "Campos"
+  const [newCondField, setNewCondField] = useState("");
+  const [newCondOp, setNewCondOp] = useState<FieldConditionOp>("contains");
+  const [newCondValue, setNewCondValue] = useState("");
   const [tagSearch, setTagSearch] = useState("");
   const [adSearch, setAdSearch] = useState("");
 
@@ -160,8 +210,38 @@ export const CRMFiltersBar = ({
       campaigns: [],
       adsets: [],
       ads: [],
+      products: [],
+      movedRange: undefined,
+      wonRange: undefined,
+      lossReasons: [],
+      fieldConditions: [],
+      inactiveDays: null,
+      noOwner: false,
     });
   };
+
+  const conditions = filters.fieldConditions || [];
+  const addCondition = () => {
+    if (!newCondField) return;
+    if ((newCondOp === "contains" || newCondOp === "equals") && !newCondValue.trim()) return;
+    updateFilter("fieldConditions", [...conditions, { fieldId: newCondField, op: newCondOp, value: newCondValue.trim() }]);
+    setNewCondField("");
+    setNewCondOp("contains");
+    setNewCondValue("");
+  };
+  const removeCondition = (idx: number) => updateFilter("fieldConditions", conditions.filter((_, i) => i !== idx));
+  const fieldLabel = (id: string) => fieldOptions.find((f) => f.id === id)?.name || "campo";
+  const opLabel = (op: FieldConditionOp) => FIELD_OPS.find((o) => o.value === op)?.label || op;
+
+  const moreFilterCount =
+    filters.stages.length +
+    (filters.products?.length || 0) +
+    (filters.lossReasons?.length || 0) +
+    (filters.movedRange?.from ? 1 : 0) +
+    (filters.wonRange?.from ? 1 : 0) +
+    (filters.inactiveDays ? 1 : 0) +
+    (filters.noOwner ? 1 : 0);
+  const camposCount = filters.fields.length + conditions.length;
 
   const activeFilterCount = [
     filters.dateRange ? 1 : 0,
@@ -178,6 +258,13 @@ export const CRMFiltersBar = ({
     (filters.campaigns?.length || 0),
     (filters.adsets?.length || 0),
     (filters.ads?.length || 0),
+    (filters.products?.length || 0),
+    (filters.lossReasons?.length || 0),
+    filters.movedRange?.from ? 1 : 0,
+    filters.wonRange?.from ? 1 : 0,
+    filters.inactiveDays ? 1 : 0,
+    filters.noOwner ? 1 : 0,
+    (filters.fieldConditions?.length || 0),
   ].reduce((a, b) => a + b, 0);
 
   const statusOptions = [
@@ -186,7 +273,8 @@ export const CRMFiltersBar = ({
     { id: "lost", name: "Perdido" },
   ];
 
-  const fieldOptions = [
+  // escopo da busca livre (filters.fields): contato, negócio ou empresa
+  const fieldScopeOptions = [
     { id: "contact", name: "Contato" },
     { id: "deal", name: "Negócio" },
     { id: "company", name: "Empresa" },
@@ -248,7 +336,7 @@ export const CRMFiltersBar = ({
           </PopoverContent>
         </Popover>
 
-        {/* Fields Filter */}
+        {/* Campos: onde a busca procura + condições em campos do lead */}
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -256,33 +344,95 @@ export const CRMFiltersBar = ({
               size="sm"
               className={cn(
                 "h-8 gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground",
-                filters.fields.length > 0 && "bg-primary/10 text-foreground font-medium"
+                camposCount > 0 && "bg-primary/10 text-foreground font-medium"
               )}
             >
               Campos
-              {filters.fields.length > 0 && (
+              {camposCount > 0 && (
                 <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                  {filters.fields.length}
+                  {camposCount}
                 </Badge>
               )}
               <ChevronDown className="h-3 w-3" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-56" align="start">
-            <div className="space-y-1">
-              <Input placeholder="Buscar por..." className="h-8 text-sm mb-2" />
-              {fieldOptions.map((field) => (
-                <div key={field.id} className="flex items-center gap-2 py-1">
-                  <Checkbox
-                    id={`field-${field.id}`}
-                    checked={filters.fields.includes(field.id)}
-                    onCheckedChange={() => toggleArrayFilter("fields", field.id)}
-                  />
-                  <Label htmlFor={`field-${field.id}`} className="text-sm cursor-pointer">
-                    {field.name}
-                  </Label>
+          <PopoverContent className="w-80" align="start">
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs text-muted-foreground uppercase">Buscar em</Label>
+                <p className="text-[11px] text-muted-foreground mt-0.5 mb-1">
+                  Limita onde o texto do "Buscar" procura. Nada marcado = nome, empresa, e-mail e telefone.
+                </p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {fieldOptions.length === 0 && (
+                    <span className="text-[11px] text-muted-foreground">Sem campos cadastrados.</span>
+                  )}
+                  {fieldScopeOptions.map((field) => (
+                    <div key={field.id} className="flex items-center gap-2 py-1">
+                      <Checkbox
+                        id={`field-${field.id}`}
+                        checked={filters.fields.includes(field.id)}
+                        onCheckedChange={() => toggleArrayFilter("fields", field.id)}
+                      />
+                      <Label htmlFor={`field-${field.id}`} className="text-sm cursor-pointer">
+                        {field.name}
+                      </Label>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              <div>
+                <Label className="text-xs text-muted-foreground uppercase">Condições</Label>
+                {conditions.length > 0 && (
+                  <div className="space-y-1 mt-1.5">
+                    {conditions.map((c, idx) => (
+                      <div key={idx} className="flex items-center gap-2 rounded bg-muted/60 px-2 py-1 text-xs">
+                        <span className="flex-1 min-w-0 truncate">
+                          <strong>{fieldLabel(c.fieldId)}</strong> {opLabel(c.op)}
+                          {(c.op === "contains" || c.op === "equals") && <> "{c.value}"</>}
+                        </span>
+                        <button type="button" onClick={() => removeCondition(idx)} className="text-muted-foreground hover:text-destructive" title="Remover condição">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="space-y-2 mt-2">
+                  <SearchableSelect
+                    value={newCondField}
+                    onValueChange={setNewCondField}
+                    options={fieldOptions.map((f) => ({ value: f.id, label: f.name, hint: f.is_system ? undefined : "adicional" }))}
+                    placeholder="Campo..."
+                    emptyMessage="Nenhum campo com esse nome."
+                    className="h-8 text-xs"
+                  />
+                  <div className="flex gap-2">
+                    <div className="w-[130px] shrink-0">
+                      <SearchableSelect
+                        value={newCondOp}
+                        onValueChange={(v) => setNewCondOp(v as FieldConditionOp)}
+                        options={FIELD_OPS}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    {(newCondOp === "contains" || newCondOp === "equals") && (
+                      <Input
+                        value={newCondValue}
+                        onChange={(e) => setNewCondValue(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") addCondition(); }}
+                        placeholder="Valor"
+                        className="h-8 text-xs"
+                      />
+                    )}
+                  </div>
+                  <Button size="sm" variant="outline" className="h-7 text-xs w-full" onClick={addCondition}
+                    disabled={!newCondField || ((newCondOp === "contains" || newCondOp === "equals") && !newCondValue.trim())}>
+                    Adicionar condição
+                  </Button>
+                </div>
+              </div>
             </div>
           </PopoverContent>
         </Popover>
@@ -608,15 +758,108 @@ export const CRMFiltersBar = ({
             <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground">
               <Filter className="h-3.5 w-3.5" />
               Mais filtros
-              {filters.stages.length > 0 && (
+              {moreFilterCount > 0 && (
                 <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                  +
+                  {moreFilterCount}
                 </Badge>
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-72" align="start">
+          <PopoverContent className="w-80 max-h-[70vh] overflow-y-auto" align="start">
             <div className="space-y-4">
+              {/* Produto */}
+              <div>
+                <Label className="text-xs text-muted-foreground uppercase">Produto</Label>
+                <div className="mt-1.5">
+                  <MultiSearchableSelect
+                    values={filters.products || []}
+                    onChange={(vals) => updateFilter("products", vals)}
+                    options={productOptions.map((p) => ({ value: p.id, label: p.name }))}
+                    placeholder="Qualquer produto"
+                    allLabel="Qualquer produto"
+                    emptyText="Nenhum produto."
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Motivo de perda */}
+              <div>
+                <Label className="text-xs text-muted-foreground uppercase">Motivo de perda</Label>
+                <div className="mt-1.5">
+                  <MultiSearchableSelect
+                    values={filters.lossReasons || []}
+                    onChange={(vals) => updateFilter("lossReasons", vals)}
+                    options={lossReasonOptions.map((p) => ({ value: p.id, label: p.name }))}
+                    placeholder="Qualquer motivo"
+                    allLabel="Qualquer motivo"
+                    emptyText="Nenhum motivo."
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Datas: movimentação e ganho */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs text-muted-foreground uppercase">Movimentação</Label>
+                  <Popover open={movedOpen} onOpenChange={setMovedOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className={cn("h-8 w-full justify-start text-xs font-normal mt-1.5", filters.movedRange?.from && "font-medium")}>
+                        <CalendarIcon className="h-3.5 w-3.5 mr-1.5" />
+                        {filters.movedRange?.from
+                          ? `${format(filters.movedRange.from, "dd/MM", { locale: ptBR })}${filters.movedRange.to ? ` - ${format(filters.movedRange.to, "dd/MM", { locale: ptBR })}` : ""}`
+                          : "Qualquer data"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="range" selected={filters.movedRange} onSelect={(r) => updateFilter("movedRange", r)} locale={ptBR} numberOfMonths={1} className="pointer-events-auto" />
+                      {filters.movedRange?.from && (
+                        <button type="button" className="w-full text-[11px] text-muted-foreground hover:text-foreground py-1.5 border-t" onClick={() => updateFilter("movedRange", undefined)}>Limpar</button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                  <p className="text-[10px] text-muted-foreground mt-1">Última mudança de etapa.</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground uppercase">Ganho em</Label>
+                  <Popover open={wonOpen} onOpenChange={setWonOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className={cn("h-8 w-full justify-start text-xs font-normal mt-1.5", filters.wonRange?.from && "font-medium")}>
+                        <CalendarIcon className="h-3.5 w-3.5 mr-1.5" />
+                        {filters.wonRange?.from
+                          ? `${format(filters.wonRange.from, "dd/MM", { locale: ptBR })}${filters.wonRange.to ? ` - ${format(filters.wonRange.to, "dd/MM", { locale: ptBR })}` : ""}`
+                          : "Qualquer data"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="range" selected={filters.wonRange} onSelect={(r) => updateFilter("wonRange", r)} locale={ptBR} numberOfMonths={1} className="pointer-events-auto" />
+                      {filters.wonRange?.from && (
+                        <button type="button" className="w-full text-[11px] text-muted-foreground hover:text-foreground py-1.5 border-t" onClick={() => updateFilter("wonRange", undefined)}>Limpar</button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                  <p className="text-[10px] text-muted-foreground mt-1">Só leads na etapa de ganho.</p>
+                </div>
+              </div>
+
+              {/* Sem atividade / sem responsável */}
+              <div className="grid grid-cols-2 gap-2 items-end">
+                <div>
+                  <Label className="text-xs text-muted-foreground uppercase">Sem atividade há</Label>
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <Input type="number" min={1} placeholder="N" className="h-8 text-xs"
+                      value={filters.inactiveDays ?? ""}
+                      onChange={(e) => updateFilter("inactiveDays", e.target.value ? Math.max(1, Number(e.target.value)) : null)} />
+                    <span className="text-xs text-muted-foreground">dias</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pb-2">
+                  <Checkbox id="no-owner" checked={!!filters.noOwner} onCheckedChange={(c) => updateFilter("noOwner", !!c)} />
+                  <Label htmlFor="no-owner" className="text-sm cursor-pointer">Sem responsável</Label>
+                </div>
+              </div>
+
               {/* Stage Filter */}
               <div>
                 <Label className="text-xs text-muted-foreground uppercase">Etapa</Label>

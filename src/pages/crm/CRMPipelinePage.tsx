@@ -14,16 +14,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { 
-  Plus, 
+import {
+  Plus,
   Loader2,
-  MoreHorizontal,
   Upload,
-  CheckSquare,
   TrendingUp,
   Handshake,
+  LayoutGrid,
+  List,
+  ArrowUpDown,
 } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { AddLeadDialog } from "@/components/crm/AddLeadDialog";
 import { ImportLeadsDialog } from "@/components/crm/ImportLeadsDialog";
@@ -31,12 +31,54 @@ import { createStageActivities } from "@/hooks/useStageActions";
 import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
 import { trackMeetingEventOnStageChange, isRealizedStage } from "@/hooks/useMeetingEventTracker";
-import { CRMFiltersBar, CRMFilters } from "@/components/crm/CRMFiltersBar";
+import { CRMFiltersBar, CRMFilters, LeadFieldOption } from "@/components/crm/CRMFiltersBar";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { KanbanTableView } from "@/components/crm/KanbanTableView";
+import { StageGateDialog } from "@/components/crm/StageGateDialog";
+import { useCRMPipelinePermissions } from "@/hooks/useCRMPipelinePermissions";
+import { checkStageGate, gateIsBlocked, logGateOverride, type LeadGateResult } from "@/lib/crm/stageGate";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { useCRMContext } from "./CRMLayout";
 import { KanbanLeadCard } from "@/components/crm/KanbanLeadCard";
 import { KanbanStageColumn } from "@/components/crm/KanbanStageColumn";
 import { KanbanBulkActions } from "@/components/crm/KanbanBulkActions";
 import { useDragScroll } from "@/hooks/useDragScroll";
+
+/** Colunas que o kanban carrega (kanban, tabela e busca no banco usam a mesma lista). */
+const LEAD_SELECT = `
+  id, name, company, phone, email, document, stage_id, origin_id, owner_staff_id, closer_staff_id,
+  opportunity_value, estimated_revenue, probability, last_activity_at, next_activity_at, urgency, notes, created_at, stage_entered_at,
+  closed_at, product_id, loss_reason_id, city, state, segment, employee_count, instagram, cpf, role,
+  utm_source, utm_campaign, utm_content, utm_term, meta_campaign_id, meta_adset_id, meta_ad_id,
+  campaign_name, adset_name, ad_name,
+  origin:crm_origins(name),
+  owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name, avatar_url),
+  closer:onboarding_staff!crm_leads_closer_staff_id_fkey(name, avatar_url),
+  tags:crm_lead_tags(tag:crm_tags(id, name, color)),
+  meeting_events:crm_meeting_events(event_type)
+`;
+
+/** Ordenação dos cards dentro de cada etapa (lembrada por funil no navegador). */
+type SortMode = "recent" | "oldest" | "stale_most" | "stale_least" | "value_desc" | "value_asc" | "last_activity";
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+  { value: "recent", label: "Mais recentes" },
+  { value: "oldest", label: "Mais antigos" },
+  { value: "stale_most", label: "Mais tempo parado na etapa" },
+  { value: "stale_least", label: "Menos tempo parado" },
+  { value: "value_desc", label: "Maior valor" },
+  { value: "value_asc", label: "Menor valor" },
+  { value: "last_activity", label: "Última atividade" },
+];
+const sortKey = (pipelineId: string) => `crm-kanban-sort-${pipelineId}`;
+
+/** Campo de sistema (crm_custom_fields.is_system) -> coluna do lead que o kanban já carrega. */
+const SYSTEM_FIELD_COLUMN: Record<string, string> = {
+  name: "name", company: "company", company_name: "company", email: "email", phone: "phone",
+  opportunity_value: "opportunity_value", notes: "notes", product_id: "product_id", closer_staff_id: "closer_staff_id",
+  sdr_staff_id: "sdr_staff_id", origin_name: "origin", created_at: "created_at", city: "city", state: "state",
+  segment: "segment", employee_count: "employee_count", instagram: "instagram", cpf: "cpf", document: "document",
+};
+const VIEW_KEY = "crm-kanban-view";
 
 interface Stage {
   id: string;
@@ -66,6 +108,17 @@ interface Lead {
   urgency: string | null;
   notes: string | null;
   created_at: string;
+  stage_entered_at?: string | null;
+  closed_at?: string | null;
+  product_id?: string | null;
+  loss_reason_id?: string | null;
+  city?: string | null;
+  state?: string | null;
+  segment?: string | null;
+  employee_count?: string | null;
+  instagram?: string | null;
+  cpf?: string | null;
+  role?: string | null;
   origin?: { name: string } | null;
   owner?: { name: string; avatar_url?: string | null } | null;
   closer_staff_id?: string | null;
@@ -95,6 +148,8 @@ function lerFaturamento(txt?: string | null): number | null {
   const mn = Math.min(...achados), mx = Math.max(...achados);
   return mx <= mn * 5 ? (mn + mx) / 2 : mx;
 }
+
+const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
 
 const defaultFilters: CRMFilters = {
   search: "",
@@ -136,6 +191,43 @@ export const CRMPipelinePage = () => {
   const [tagOptions, setTagOptions] = useState<{ id: string; name: string; color: string }[]>([]);
   const [ownerOptions, setOwnerOptions] = useState<{ id: string; name: string }[]>([]);
   const [originOptions, setOriginOptions] = useState<{ id: string; name: string }[]>([]);
+  const [productOptions, setProductOptions] = useState<{ id: string; name: string }[]>([]);
+  const [lossReasonOptions, setLossReasonOptions] = useState<{ id: string; name: string }[]>([]);
+  const [fieldOptions, setFieldOptions] = useState<LeadFieldOption[]>([]);
+  // valores dos campos adicionais usados nas condições do filtro "Campos" (lead -> campo -> valor)
+  const [customValues, setCustomValues] = useState<Record<string, Record<string, string | null>>>({});
+
+  // Acesso por funil + permissões granulares (master/admin ignoram)
+  const perms = useCRMPipelinePermissions();
+  const pipePerm = perms.permFor(selectedPipeline);
+  const canCreateLead = pipePerm.can_create && perms.has("lead_create");
+  const canDeleteLead = pipePerm.can_delete && perms.has("lead_delete");
+  const canMoveLead = perms.has("lead_move");
+  const canChangeOwner = pipePerm.can_change_owner;
+
+  // Ordenação dos cards e modo de visualização (kanban / tabela)
+  const [sortMode, setSortMode] = useState<SortMode>("recent");
+  const [viewMode, setViewMode] = useState<"kanban" | "table">(() => {
+    try { return localStorage.getItem(VIEW_KEY) === "table" ? "table" : "kanban"; } catch { return "kanban"; }
+  });
+  useEffect(() => {
+    if (!selectedPipeline) return;
+    try {
+      const saved = localStorage.getItem(sortKey(selectedPipeline)) as SortMode | null;
+      setSortMode(saved && SORT_OPTIONS.some((o) => o.value === saved) ? saved : "recent");
+    } catch { setSortMode("recent"); }
+  }, [selectedPipeline]);
+  const changeSort = (m: SortMode) => {
+    setSortMode(m);
+    if (selectedPipeline) { try { localStorage.setItem(sortKey(selectedPipeline), m); } catch { /* sem storage */ } }
+  };
+  const changeView = (v: "kanban" | "table") => {
+    setViewMode(v);
+    try { localStorage.setItem(VIEW_KEY, v); } catch { /* sem storage */ }
+  };
+
+  // Trava de etapa (atividade obrigatória pendente / campo exigido): diálogo de pendências
+  const [gate, setGate] = useState<{ result: LeadGateResult; targetStageName: string } | null>(null);
   
   // Summary cards state
   const [forecastTotal, setForecastTotal] = useState(0);
@@ -176,17 +268,57 @@ export const CRMPipelinePage = () => {
   };
 
   const loadFilterOptions = async () => {
-    const [tagsRes, ownersRes, originsRes] = await Promise.all([
+    const [tagsRes, ownersRes, originsRes, productsRes, reasonsRes, fieldsRes] = await Promise.all([
       supabase.from("crm_tags").select("id, name, color").eq("is_active", true),
       supabase.from("onboarding_staff").select("id, name").eq("is_active", true)
         .in("role", ["master", "admin", "head_comercial", "closer", "sdr"]),
       supabase.from("crm_origins").select("id, name").eq("is_active", true),
+      supabase.from("onboarding_services").select("id, name").eq("is_active", true).order("name"),
+      supabase.from("crm_loss_reasons").select("id, name").eq("is_active", true).order("sort_order"),
+      supabase.from("crm_custom_fields").select("id, field_name, field_label, field_type, context, is_system").eq("is_active", true).order("sort_order"),
     ]);
 
     setTagOptions(tagsRes.data || []);
     setOwnerOptions(ownersRes.data || []);
     setOriginOptions(originsRes.data || []);
+    setProductOptions(productsRes.data || []);
+    setLossReasonOptions(reasonsRes.data || []);
+    setFieldOptions(
+      ((fieldsRes.data || []) as any[])
+        // só entra no filtro campo de sistema que o kanban carrega como coluna do lead
+        .filter((f) => !f.is_system || SYSTEM_FIELD_COLUMN[f.field_name])
+        .map((f) => ({ id: f.id, name: f.field_label || f.field_name, is_system: !!f.is_system, field_name: f.field_name, field_type: f.field_type, context: f.context })),
+    );
   };
+
+  // Campos adicionais (não sistema) das condições ativas: busca os valores no banco,
+  // paginando de 1000 em 1000 (PostgREST corta em 1000).
+  const customFieldIdsInUse = useMemo(() => {
+    const ids = (filters.fieldConditions || [])
+      .map((c) => fieldOptions.find((f) => f.id === c.fieldId))
+      .filter((f) => f && !f.is_system)
+      .map((f) => f!.id);
+    return [...new Set(ids)].sort().join(",");
+  }, [filters.fieldConditions, fieldOptions]);
+  useEffect(() => {
+    if (!customFieldIdsInUse) { setCustomValues({}); return; }
+    let vivo = true;
+    (async () => {
+      try {
+        const ids = customFieldIdsInUse.split(",");
+        const rows = await fetchAllRows<{ lead_id: string; field_id: string; value: string | null }>((from, to) =>
+          supabase.from("crm_custom_field_values").select("lead_id, field_id, value").in("field_id", ids).range(from, to),
+        );
+        if (!vivo) return;
+        const map: Record<string, Record<string, string | null>> = {};
+        for (const r of rows) (map[r.lead_id] ||= {})[r.field_id] = r.value;
+        setCustomValues(map);
+      } catch (e) {
+        console.error("customValues:", e);
+      }
+    })();
+    return () => { vivo = false; };
+  }, [customFieldIdsInUse]);
 
   const loadSummaryCards = useCallback(async () => {
     try {
@@ -274,17 +406,7 @@ export const CRMPipelinePage = () => {
       const buildLeadQuery = (origin: string | null, from: number, size: number) => {
         let query = supabase
           .from("crm_leads")
-          .select(`
-            id, name, company, phone, email, document, stage_id, origin_id, owner_staff_id, closer_staff_id,
-            opportunity_value, estimated_revenue, probability, last_activity_at, next_activity_at, urgency, notes, created_at, stage_entered_at,
-            utm_source, utm_campaign, utm_content, utm_term, meta_campaign_id, meta_adset_id, meta_ad_id,
-            campaign_name, adset_name, ad_name,
-            origin:crm_origins(name),
-            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name, avatar_url),
-            closer:onboarding_staff!crm_leads_closer_staff_id_fkey(name, avatar_url),
-            tags:crm_lead_tags(tag:crm_tags(id, name, color)),
-            meeting_events:crm_meeting_events(event_type)
-          `)
+          .select(LEAD_SELECT)
           .eq("pipeline_id", selectedPipeline)
           .order("created_at", { ascending: false })
           .range(from, from + size - 1);
@@ -414,6 +536,20 @@ export const CRMPipelinePage = () => {
     loadSummaryCards();
   }, [loadSummaryCards]);
 
+  // Funil sem visão pra este usuário: some da lista e, se estava selecionado, troca pro
+  // primeiro liberado (o banco já esconde o funil e os leads; aqui é só a tela acompanhar).
+  const visiblePipelines = useMemo(
+    () => pipelines.filter((p) => perms.permFor(p.id).can_view),
+    [pipelines, perms],
+  );
+  useEffect(() => {
+    if (perms.loading || !selectedPipeline || pipelines.length === 0) return;
+    if (!perms.permFor(selectedPipeline).can_view) {
+      toast.error("Você não tem acesso a este funil");
+      setSelectedPipeline(visiblePipelines[0]?.id || null);
+    }
+  }, [perms, selectedPipeline, pipelines.length, visiblePipelines, setSelectedPipeline]);
+
   useEffect(() => {
     loadStagesAndLeads();
   }, [loadStagesAndLeads]);
@@ -508,17 +644,7 @@ export const CRMPipelinePage = () => {
       const like = `%${termo.replace(/[%,]/g, " ")}%`;
       let q = supabase
         .from("crm_leads")
-        .select(`
-          id, name, company, phone, email, document, stage_id, origin_id, owner_staff_id, closer_staff_id,
-          opportunity_value, estimated_revenue, probability, last_activity_at, next_activity_at, urgency, notes, created_at, stage_entered_at,
-          utm_source, utm_campaign, utm_content, utm_term, meta_campaign_id, meta_adset_id, meta_ad_id,
-          campaign_name, adset_name, ad_name,
-          origin:crm_origins(name),
-          owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name, avatar_url),
-          closer:onboarding_staff!crm_leads_closer_staff_id_fkey(name, avatar_url),
-          tags:crm_lead_tags(tag:crm_tags(id, name, color)),
-          meeting_events:crm_meeting_events(event_type)
-        `)
+        .select(LEAD_SELECT)
         .eq("pipeline_id", selectedPipeline)
         .or(`name.ilike.${like},company.ilike.${like},email.ilike.${like},phone.ilike.${like}`)
         .limit(300);
@@ -534,15 +660,64 @@ export const CRMPipelinePage = () => {
     for (const l of leads) porId.set(l.id, l);
     for (const l of leadsBusca) if (!porId.has(l.id)) porId.set(l.id, l);
     return [...porId.values()].filter(lead => {
-      // Search filter
+      // Só os meus (acesso por funil) — o banco também esconde, aqui é pra tela reagir na hora
+      if (pipePerm.only_own_leads && lead.owner_staff_id !== staffId) return false;
+
+      // Search filter: o "Campos" (Contato / Negócio / Empresa) limita onde o texto procura
       if (filters.search) {
         const search = filters.search.toLowerCase();
-        const matchesSearch = 
-          lead.name.toLowerCase().includes(search) ||
-          lead.company?.toLowerCase().includes(search) ||
-          lead.email?.toLowerCase().includes(search) ||
-          lead.phone?.includes(search);
+        const scope = filters.fields || [];
+        const campos: (string | null | undefined)[] = [];
+        if (scope.length === 0) campos.push(lead.name, lead.company, lead.email, lead.phone);
+        if (scope.includes("contact")) campos.push(lead.name, lead.email, lead.phone, lead.instagram, lead.role);
+        if (scope.includes("company")) campos.push(lead.company, lead.document, lead.segment, lead.city, lead.state);
+        if (scope.includes("deal")) campos.push(lead.notes, lead.estimated_revenue, lead.opportunity_value != null ? String(lead.opportunity_value) : null, productOptions.find((p) => p.id === lead.product_id)?.name);
+        const matchesSearch = campos.some((c) => (c || "").toLowerCase().includes(search));
         if (!matchesSearch) return false;
+      }
+
+      // Produto / motivo de perda
+      if (filters.products?.length && (!lead.product_id || !filters.products.includes(lead.product_id))) return false;
+      if (filters.lossReasons?.length && (!lead.loss_reason_id || !filters.lossReasons.includes(lead.loss_reason_id))) return false;
+
+      // Data da última mudança de etapa
+      if (filters.movedRange?.from) {
+        if (!lead.stage_entered_at) return false;
+        const d = new Date(lead.stage_entered_at);
+        if (d < filters.movedRange.from) return false;
+        if (filters.movedRange.to && d > endOfDay(filters.movedRange.to)) return false;
+      }
+      // Data de ganho: closed_at, e só quem está numa etapa de ganho
+      if (filters.wonRange?.from) {
+        const ft = stages.find((st) => st.id === lead.stage_id)?.final_type;
+        if (ft !== "won" || !lead.closed_at) return false;
+        const d = new Date(lead.closed_at);
+        if (d < filters.wonRange.from) return false;
+        if (filters.wonRange.to && d > endOfDay(filters.wonRange.to)) return false;
+      }
+
+      // Sem atividade há N dias (ou nunca) / sem responsável
+      if (filters.inactiveDays) {
+        const limite = Date.now() - filters.inactiveDays * 86400000;
+        if (lead.last_activity_at && new Date(lead.last_activity_at).getTime() > limite) return false;
+      }
+      if (filters.noOwner && lead.owner_staff_id) return false;
+
+      // Condições em campos (coluna do lead ou campo adicional)
+      for (const cond of filters.fieldConditions || []) {
+        const def = fieldOptions.find((f) => f.id === cond.fieldId);
+        if (!def) continue;
+        let raw: unknown = def.is_system
+          ? (SYSTEM_FIELD_COLUMN[def.field_name] === "origin" ? lead.origin?.name : (lead as any)[SYSTEM_FIELD_COLUMN[def.field_name]])
+          : customValues[lead.id]?.[def.id];
+        if (def.is_system && def.field_name === "product_id") raw = productOptions.find((p) => p.id === raw)?.name || raw;
+        if (def.is_system && (def.field_name === "closer_staff_id" || def.field_name === "sdr_staff_id")) raw = ownerOptions.find((o) => o.id === raw)?.name || raw;
+        const val = raw == null ? "" : String(raw).trim();
+        const alvo = cond.value.toLowerCase();
+        if (cond.op === "empty" && val !== "") return false;
+        if (cond.op === "not_empty" && val === "") return false;
+        if (cond.op === "contains" && !val.toLowerCase().includes(alvo)) return false;
+        if (cond.op === "equals" && val.toLowerCase() !== alvo) return false;
       }
 
       // Tags filter
@@ -614,7 +789,31 @@ export const CRMPipelinePage = () => {
 
       return true;
     });
-  }, [leads, leadsBusca, filters, stages]);
+  }, [leads, leadsBusca, filters, stages, pipePerm.only_own_leads, staffId, productOptions, ownerOptions, fieldOptions, customValues]);
+
+  // Leads por etapa já na ordem escolhida (um sort por etapa, só quando muda algo)
+  const leadsByStage = useMemo(() => {
+    const map = new Map<string, Lead[]>();
+    for (const l of filteredLeads) {
+      const arr = map.get(l.stage_id);
+      if (arr) arr.push(l); else map.set(l.stage_id, [l]);
+    }
+    const ts = (v: string | null | undefined) => (v ? new Date(v).getTime() : null);
+    // tempo na etapa: o mesmo campo que o card mostra (stage_entered_at), caindo em created_at
+    const entrou = (l: Lead) => ts(l.stage_entered_at) ?? ts(l.created_at) ?? 0;
+    const cmp: Record<SortMode, (a: Lead, b: Lead) => number> = {
+      recent: (a, b) => (ts(b.created_at) || 0) - (ts(a.created_at) || 0),
+      oldest: (a, b) => (ts(a.created_at) || 0) - (ts(b.created_at) || 0),
+      stale_most: (a, b) => entrou(a) - entrou(b),
+      stale_least: (a, b) => entrou(b) - entrou(a),
+      value_desc: (a, b) => (b.opportunity_value || 0) - (a.opportunity_value || 0),
+      value_asc: (a, b) => (a.opportunity_value || 0) - (b.opportunity_value || 0),
+      // sem atividade vai pro fim
+      last_activity: (a, b) => (ts(b.last_activity_at) ?? -1) - (ts(a.last_activity_at) ?? -1),
+    };
+    if (sortMode !== "recent") for (const arr of map.values()) arr.sort(cmp[sortMode]);
+    return map;
+  }, [filteredLeads, sortMode]);
 
   const handleDragStart = (e: React.DragEvent, lead: Lead) => {
     setDraggedLead(lead);
@@ -630,6 +829,12 @@ export const CRMPipelinePage = () => {
     e.preventDefault();
     
     if (!draggedLead || draggedLead.stage_id === stageId) {
+      setDraggedLead(null);
+      return;
+    }
+
+    if (!canMoveLead) {
+      toast.error("Você não tem permissão para mover leads entre etapas");
       setDraggedLead(null);
       return;
     }
@@ -665,17 +870,24 @@ export const CRMPipelinePage = () => {
     setDraggedLead(null);
   };
 
-  const confirmStageMove = async () => {
+  const confirmStageMove = async (opts?: { skipGate?: boolean }) => {
     if (!stageMoveDialog.leadId || !stageMoveDialog.targetStageId) return;
 
-    // Ganho exige valor: sem valor a venda entra zerada nas métricas e no ROAS do Meta.
-    // (o banco também bloqueia via trigger enforce_won_value_upd — aqui é só o aviso amigável)
-    const movingToStage = stages.find(s => s.id === stageMoveDialog.targetStageId);
-    if (movingToStage?.final_type === "won") {
-      const movingLead = leads.find(l => l.id === stageMoveDialog.leadId);
-      if ((movingLead?.opportunity_value || 0) <= 0) {
-        toast.error("Preencha o valor da oportunidade antes de marcar o lead como Ganho.");
-        return;
+    // Trava de etapa: atividade obrigatória da etapa atual pendente ou campo exigido pela
+    // etapa destino em branco (ganho sempre exige valor; o banco também bloqueia via
+    // trigger enforce_won_value_upd). Abre o diálogo de pendências em vez de mover.
+    if (!opts?.skipGate) {
+      setMovingLead(true);
+      try {
+        const res = await checkStageGate([stageMoveDialog.leadId], stageMoveDialog.targetStageId);
+        const r = res.get(stageMoveDialog.leadId);
+        if (gateIsBlocked(r)) {
+          setGate({ result: r!, targetStageName: stageMoveDialog.targetStageName });
+          setMovingLead(false);
+          return;
+        }
+      } catch (e) {
+        console.error("checkStageGate:", e);
       }
     }
 
@@ -792,7 +1004,7 @@ export const CRMPipelinePage = () => {
               lead_email: movedLead.email || "",
               company_name: movedLead.company || "",
               pipeline_id: selectedPipeline,
-              pipeline_name: pipelines.find(p => p.id === selectedPipeline)?.name || "",
+              pipeline_name: visiblePipelines.find(p => p.id === selectedPipeline)?.name || "",
               stage_id: stageMoveDialog.targetStageId,
               stage_name: stageMoveDialog.targetStageName,
             },
@@ -812,9 +1024,7 @@ export const CRMPipelinePage = () => {
     }
   };
 
-  const getLeadsByStage = (stageId: string) => {
-    return filteredLeads.filter(lead => lead.stage_id === stageId);
-  };
+  const getLeadsByStage = (stageId: string) => leadsByStage.get(stageId) || [];
 
   const formatCurrency = (value: number | null) => {
     if (!value) return null;
@@ -967,11 +1177,46 @@ export const CRMPipelinePage = () => {
             {selectedOriginName || "Funil"}
           </h1>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setImportLeadsOpen(true)} 
-              className="gap-2 shrink-0" 
+            {/* Kanban / Tabela */}
+            <div className="flex items-center rounded-md border border-border/60 overflow-hidden shrink-0">
+              <button
+                type="button"
+                onClick={() => changeView("kanban")}
+                title="Ver em kanban"
+                className={`h-8 px-2 flex items-center gap-1 text-xs ${viewMode === "kanban" ? "bg-primary/10 text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" /><span className="hidden md:inline">Kanban</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => changeView("table")}
+                title="Ver em tabela"
+                className={`h-8 px-2 flex items-center gap-1 text-xs border-l border-border/60 ${viewMode === "table" ? "bg-primary/10 text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+              >
+                <List className="h-3.5 w-3.5" /><span className="hidden md:inline">Tabela</span>
+              </button>
+            </div>
+            {/* Ordenação dos cards (por etapa) */}
+            {viewMode === "kanban" && (
+              <div className="w-[200px] hidden sm:block" title="Ordem dos cards em cada etapa">
+                <SearchableSelect
+                  value={sortMode}
+                  onValueChange={(v) => changeSort(v as SortMode)}
+                  options={SORT_OPTIONS}
+                  className="h-8 text-xs"
+                />
+              </div>
+            )}
+            {viewMode === "kanban" && (
+              <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground sm:hidden" />
+            )}
+            <Button
+              variant="outline"
+              onClick={() => setImportLeadsOpen(true)}
+              className="gap-2 shrink-0"
               size="sm"
+              disabled={!canCreateLead}
+              title={canCreateLead ? "Importar leads" : "Sem permissão para criar leads neste funil"}
             >
               <Upload className="h-4 w-4" />
               <span className="hidden sm:inline">Importar</span>
@@ -979,7 +1224,10 @@ export const CRMPipelinePage = () => {
             <Button onClick={() => {
               setAddLeadStageId(undefined);
               setAddLeadOpen(true);
-            }} className="gap-2 shrink-0" size="sm">
+            }} className="gap-2 shrink-0" size="sm"
+              disabled={!canCreateLead}
+              title={canCreateLead ? "Novo negócio" : "Sem permissão para criar leads neste funil"}
+            >
               <span className="hidden sm:inline">Negócio</span> <Plus className="h-4 w-4" />
             </Button>
           </div>
@@ -1002,6 +1250,9 @@ export const CRMPipelinePage = () => {
           adOptions={[...new Set(leads.map((l: any) => l.ad_name || l.utm_content).filter(Boolean))].sort() as string[]}
           canExport={isMaster || isAdmin}
           onExport={exportLeadsCsv}
+          productOptions={productOptions}
+          lossReasonOptions={lossReasonOptions}
+          fieldOptions={fieldOptions}
         />
       </div>
 
@@ -1031,7 +1282,24 @@ export const CRMPipelinePage = () => {
         </div>
       </div>
 
+      {/* Tabela (mesmos dados e filtros do kanban) */}
+      {viewMode === "table" && (
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <KanbanTableView
+            leads={filteredLeads}
+            stages={stages}
+            selectedLeads={selectedLeads}
+            isMaster={isMaster || isAdmin}
+            onSelectLead={handleLeadSelect}
+            onSelectMany={(ids, selected) =>
+              setSelectedLeads((prev) => (selected ? [...new Set([...prev, ...ids])] : prev.filter((id) => !ids.includes(id))))
+            }
+          />
+        </div>
+      )}
+
       {/* Kanban Board */}
+      {viewMode === "kanban" && (
       <div className="flex-1 min-h-0 overflow-hidden">
         <div
           ref={dragScrollRef}
@@ -1062,6 +1330,8 @@ export const CRMPipelinePage = () => {
                     onDragStart={handleDragStart}
                     onOpenChat={handleOpenChat}
                     onRefresh={loadStagesAndLeads}
+                    canAddLead={canCreateLead}
+                    canChangeOwner={canChangeOwner}
                     onAddLead={(stageId) => {
                       setAddLeadStageId(stageId);
                       setAddLeadOpen(true);
@@ -1073,6 +1343,7 @@ export const CRMPipelinePage = () => {
           </div>
         </div>
       </div>
+      )}
 
       {/* Bulk Actions Bar (Master only) */}
       <KanbanBulkActions
@@ -1083,6 +1354,11 @@ export const CRMPipelinePage = () => {
         onSuccess={loadStagesAndLeads}
         isMaster={isMaster || isAdmin}
         currentPipelineId={selectedPipeline || undefined}
+        canDelete={canDeleteLead}
+        canChangeOwner={canChangeOwner}
+        canMove={canMoveLead}
+        canOverrideGate={isMaster || isAdmin}
+        staffId={staffId}
       />
 
       <AddLeadDialog
@@ -1133,13 +1409,40 @@ export const CRMPipelinePage = () => {
             >
               Cancelar
             </Button>
-            <Button onClick={confirmStageMove} disabled={movingLead}>
+            <Button onClick={() => confirmStageMove()} disabled={movingLead}>
               {movingLead && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Confirmar
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Pendências da trava de etapa */}
+      <StageGateDialog
+        open={!!gate}
+        gate={gate?.result || null}
+        targetStageName={gate?.targetStageName || stageMoveDialog.targetStageName}
+        canOverride={isMaster || isAdmin}
+        onCancel={() => setGate(null)}
+        onResolved={() => {
+          setGate(null);
+          // refaz a movimentação: checa de novo (pode ter sobrado algo) e move
+          confirmStageMove();
+        }}
+        onOverride={async () => {
+          const g = gate;
+          setGate(null);
+          if (g) {
+            await logGateOverride({
+              leadIds: [g.result.leadId],
+              staffId,
+              targetStageName: g.targetStageName,
+              results: new Map([[g.result.leadId, g.result]]),
+            });
+          }
+          confirmStageMove({ skipGate: true });
+        }}
+      />
 
       {/* Import Leads Dialog */}
       <ImportLeadsDialog
