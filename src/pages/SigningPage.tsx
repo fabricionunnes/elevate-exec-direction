@@ -26,6 +26,7 @@ export default function SigningPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [allSigned, setAllSigned] = useState(false);
+  const [jaAssinado, setJaAssinado] = useState<{ title: string; status: string | null; completed_at: string | null; signer_name: string; signed_at: string | null; final_pdf_url: string | null; all_signers: { name: string; status: string }[] } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const padRef = useRef<SignaturePad | null>(null);
 
@@ -37,6 +38,7 @@ export default function SigningPage() {
       .then(r => r.json())
       .then(data => {
         if (!data.success) setError(data.error ?? "Erro ao carregar documento");
+        else if (data.data?.already_signed) setJaAssinado({ title: data.data.envelope?.title ?? "", status: data.data.envelope?.status ?? null, completed_at: data.data.envelope?.completed_at ?? null, signer_name: data.data.signer?.name ?? "", signed_at: data.data.signer?.signed_at ?? null, final_pdf_url: data.data.final_pdf_url ?? null, all_signers: data.data.all_signers ?? [] });
         else setPageData(data.data as SigningPageData);
       })
       .catch(() => setError("Erro de conexão"))
@@ -155,6 +157,45 @@ export default function SigningPage() {
               <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-700">
                 Aguardando assinaturas dos demais signatários.
               </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (jaAssinado) {
+    const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : null);
+    const concluido = jaAssinado.status === "completed";
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-8 pb-8 text-center">
+            <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold mb-1 text-green-700">Documento já assinado</h2>
+            {jaAssinado.title && <p className="text-sm font-medium mb-2">{jaAssinado.title}</p>}
+            <p className="text-muted-foreground text-sm mb-4">
+              {jaAssinado.signer_name ? `${jaAssinado.signer_name} assinou` : "Sua assinatura foi registrada"}{fmt(jaAssinado.signed_at) ? ` em ${fmt(jaAssinado.signed_at)}` : ""}. Este link era de uso único e não precisa ser aberto de novo.
+            </p>
+            {jaAssinado.all_signers.length > 0 && (
+              <div className="text-left text-sm space-y-1 mb-4">
+                {jaAssinado.all_signers.map((s, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className={`h-2 w-2 rounded-full ${s.status === "signed" ? "bg-green-500" : "bg-gray-300"}`} />
+                    <span className="flex-1 truncate">{s.name}</span>
+                    <span className="text-xs text-muted-foreground">{s.status === "signed" ? "assinou" : "pendente"}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {concluido && jaAssinado.final_pdf_url ? (
+              <a href={jaAssinado.final_pdf_url} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                Baixar a via final assinada
+              </a>
+            ) : concluido ? (
+              <div className="bg-green-50 rounded-lg p-3 text-sm text-green-700">Todos assinaram. A via final foi enviada por e-mail.</div>
+            ) : (
+              <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-700">Aguardando assinaturas dos demais signatários. A via final chega por e-mail quando todos assinarem.</div>
             )}
           </CardContent>
         </Card>
