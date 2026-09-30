@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ProjectCustomDashboard } from "@/components/onboarding-tasks/ProjectCustomDashboard";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -250,9 +251,18 @@ const OnboardingProjectPage = () => {
       .then(({ count }) => setTemCfin((count ?? 0) > 0));
   }, [projectId]);
 
+  // Projetos com painel próprio (project_custom_dashboards) ganham a aba "Painel de controle"
+  const [temPainel, setTemPainel] = useState(false);
+  useEffect(() => {
+    if (!projectId) return;
+    (supabase as any).from("project_custom_dashboards").select("project_id", { count: "exact", head: true })
+      .eq("project_id", projectId)
+      .then(({ count }: { count: number | null }) => setTemPainel((count ?? 0) > 0));
+  }, [projectId]);
+
   // Two-level navigation: group → sub-tabs
   const tabGroupMap: Record<string, string> = {
-    indicadores: "principal", kpis: "principal", gestao_vista: "principal", ligacoes: "principal", briefing: "principal", diagnostic: "principal", tasks: "principal", "ai-coach": "principal",
+    painel_controle: "principal", indicadores: "principal", kpis: "principal", gestao_vista: "principal", ligacoes: "principal", briefing: "principal", diagnostic: "principal", tasks: "principal", "ai-coach": "principal",
     nps: "relacionamento", csat: "relacionamento", assessments: "relacionamento", meetings: "relacionamento", support: "relacionamento", whatsapp: "relacionamento",
     health: "gestao", hr: "gestao", board: "gestao", financial: "gestao", history: "gestao",
     cfin_sistema: "sistema",
@@ -1597,6 +1607,7 @@ const OnboardingProjectPage = () => {
                   // ordem definida pelo Fabrício: começa pelo caminho do cliente
                   // (Onboarding → Briefing → Diagnóstico → Grade → Jornada) e só
                   // depois os números e as ferramentas internas.
+                  ...(temPainel && currentUserRole !== "client" ? [<TabsTrigger key="painel_controle" value="painel_controle"><MonitorPlay className="h-3.5 w-3.5 shrink-0" />Painel de controle</TabsTrigger>] : []),
                   <TabsTrigger key="onboarding_plan" value="onboarding_plan"><Rocket className="h-3.5 w-3.5 shrink-0" />Onboarding</TabsTrigger>,
                   <TabsTrigger key="briefing" value="briefing"><Building2 className="h-3.5 w-3.5 shrink-0" />Briefing</TabsTrigger>,
                   <TabsTrigger key="diagnostic" value="diagnostic"><Sparkles className="h-3.5 w-3.5 shrink-0" />Diagnóstico</TabsTrigger>,
@@ -1897,6 +1908,12 @@ const OnboardingProjectPage = () => {
             )}
           </TabsContent>
 
+
+          {temPainel && currentUserRole !== "client" && (
+            <TabsContent value="painel_controle">
+              <ProjectCustomDashboard projectId={projectId!} />
+            </TabsContent>
+          )}
 
           <TabsContent value="briefing">
             <CompanyBriefingPanel 
