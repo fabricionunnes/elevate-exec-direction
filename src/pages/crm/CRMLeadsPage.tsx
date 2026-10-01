@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -15,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Plus, Search, Phone, Mail, ExternalLink, UserPlus, Tag, XCircle, Upload,
-  Copy, Loader2, AlertTriangle, Merge, ListChecks
+  Copy, Loader2, AlertTriangle, Merge, ListChecks, ListPlus, ListMinus
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -25,16 +26,29 @@ import { ImportLeadsDialog } from "@/components/crm/ImportLeadsDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { SavedViews } from "@/components/crm/views/SavedViews";
 import { LeadListsDialog } from "@/components/crm/lists/LeadListsDialog";
-import { LeadListBulkButtons } from "@/components/crm/lists/LeadListBulkButtons";
+import { AddToListDialog } from "@/components/crm/lists/AddToListDialog";
+import { LeadList, fetchLeadLists } from "@/components/crm/lists/leadLists";
 
-// Ação em massa da barra de seleção (Atribuir, Etiqueta, Marcar perdido).
-type BulkKind = "assign" | "tag" | "lost";
-const BULK_CHUNK = 100;
-const chunk = <T,>(arr: T[], size = BULK_CHUNK): T[][] => {
-  const out: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
-};
+// Ações em massa de Contatos. Com leads marcados, valem pros marcados; sem nenhum marcado,
+// valem pra TODOS os leads do filtro atual. Quem conta e aplica é o banco (RPC
+// crm_leads_bulk): o PostgREST só devolve 1000 linhas e a base passa de 100 mil leads.
+type BulkKind = "assign" | "tag" | "lost" | "remove_from_list" | "merge_dups";
+/** ações que pedem uma escolha (responsável, etiqueta, motivo) antes de aplicar */
+const BULK_NEEDS_VALUE: BulkKind[] = ["assign", "tag", "lost"];
+
+interface BulkResult {
+  count: number;
+  pending?: number;
+  affected?: number;
+  remaining?: number;
+  groups?: number;
+  skipped_permission?: number;
+  skipped_won?: number;
+  skipped_no_stage?: number;
+  skipped_large?: number;
+}
+
+const nf = (n: number | undefined | null) => Number(n || 0).toLocaleString("pt-BR");
 
 interface Lead {
   id: string;
@@ -78,8 +92,9 @@ export const CRMLeadsPage = () => {
   const [filterPipeline, setFilterPipeline] = useState("all");
   const [filterStage, setFilterStage] = useState("all");
   const [filterOwner, setFilterOwner] = useState("all");
-  const [filterOrigin, setFilterOrigin] = useState("all");
   const [filterUrgency, setFilterUrgency] = useState("all");
+  const [filterList, setFilterList] = useState("all");
+  const [leadLists, setLeadLists] = useState<LeadList[]>([]);
   const [filterDuplicates, setFilterDuplicates] = useState("all"); // "all" | "phone" | "email"
 
   // Merge state
@@ -87,12 +102,16 @@ export const CRMLeadsPage = () => {
   const [primaryLeadId, setPrimaryLeadId] = useState<string | null>(null);
   const [merging, setMerging] = useState(false);
 
-  // Ações em massa (Atribuir / Etiqueta / Marcar perdido). Antes os botões existiam
-  // sem onClick; a lógica segue a do KanbanBulkActions (chunks de 100 ids).
+  // Ações em massa (ver BulkKind). Tudo passa pela RPC crm_leads_bulk.
   const [bulkKind, setBulkKind] = useState<BulkKind | null>(null);
   const [bulkValue, setBulkValue] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkPreview, setBulkPreview] = useState<BulkResult | null>(null);
+  const [bulkPreviewLoading, setBulkPreviewLoading] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
   const [lossReasons, setLossReasons] = useState<{ id: string; name: string }[]>([]);
+  const [addToListOpen, setAddToListOpen] = useState(false);
+  const [addToListCount, setAddToListCount] = useState<number | null>(null);
 
   // Paginação e filtros NO SERVIDOR (RPC crm_leads_page). Antes a tela baixava até
   // 50 mil leads (50 requisições em sequência, com joins) antes de mostrar a 1ª linha
@@ -140,6 +159,24 @@ export const CRMLeadsPage = () => {
   }, [loadData]);
 
   // Contagem de duplicados (em paralelo — não segura a tabela)
+  const loadLists = useCallback(async () => {
+    try { setLeadLists(await fetchLeadLists()); } catch (e) { console.error("listas de leads:", e); }
+  }, []);
+  useEffect(() => { loadLists(); }, [loadLists]);
+
+  // Filtro atual no formato do banco (crm_leads_page_v2 e crm_leads_bulk leem o mesmo JSON)
+  const rpcFilters = useMemo(() => {
+    const f: Record<string, string> = {};
+    if (debouncedSearch) f.search = debouncedSearch;
+    if (filterPipeline !== "all") f.pipeline = filterPipeline;
+    if (filterStage !== "all") f.stage = filterStage;
+    if (filterOwner !== "all") f.owner = filterOwner;
+    if (filterUrgency !== "all") f.urgency = filterUrgency;
+    if (filterDuplicates !== "all") f.dups = filterDuplicates;
+    if (filterList !== "all") f.list = filterList;
+    return f;
+  }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList]);
+
   const loadDupCounts = useCallback(async () => {
     const { data } = await supabase.rpc("crm_leads_dup_counts");
     const r: any = Array.isArray(data) ? data[0] : data;
@@ -151,14 +188,8 @@ export const CRMLeadsPage = () => {
   const loadPage = useCallback(async () => {
     setPageLoading(true);
     try {
-      const { data: page, error } = await supabase.rpc("crm_leads_page", {
-        p_search: debouncedSearch || null,
-        p_pipeline: filterPipeline !== "all" ? filterPipeline : null,
-        p_stage: filterStage !== "all" ? filterStage : null,
-        p_owner: filterOwner !== "all" ? filterOwner : null,
-        p_origin: filterOrigin !== "all" ? filterOrigin : null,
-        p_urgency: filterUrgency !== "all" ? filterUrgency : null,
-        p_dups: filterDuplicates !== "all" ? filterDuplicates : null,
+      const { data: page, error } = await (supabase as any).rpc("crm_leads_page_v2", {
+        p_filters: rpcFilters,
         p_limit: pageSize,
         p_offset: (currentPage - 1) * pageSize,
       });
@@ -189,13 +220,13 @@ export const CRMLeadsPage = () => {
     } finally {
       setPageLoading(false);
     }
-  }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterOrigin, filterUrgency, filterDuplicates, pageSize, currentPage]);
+  }, [rpcFilters, pageSize, currentPage]);
 
   useEffect(() => { loadPage(); }, [loadPage]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterOrigin, filterUrgency, filterDuplicates, pageSize]);
+  }, [rpcFilters, pageSize]);
 
   // Visões salvas: o conjunto de filtros desta tela
   const viewPayload = useMemo(() => ({
@@ -205,8 +236,9 @@ export const CRMLeadsPage = () => {
     owner: filterOwner,
     urgency: filterUrgency,
     dups: filterDuplicates,
+    list: filterList,
     pageSize,
-  }), [searchTerm, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, pageSize]);
+  }), [searchTerm, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, pageSize]);
   const applySavedView = (v: Record<string, any>) => {
     const txt = (x: unknown, d = "all") => (typeof x === "string" && x ? x : d);
     setSearchTerm(typeof v.search === "string" ? v.search : "");
@@ -215,6 +247,7 @@ export const CRMLeadsPage = () => {
     setFilterOwner(isAdmin ? txt(v.owner) : "all");
     setFilterUrgency(txt(v.urgency));
     setFilterDuplicates(txt(v.dups));
+    setFilterList(txt(v.list));
     if ([10, 50, 100].includes(Number(v.pageSize))) setPageSize(Number(v.pageSize));
     setSelectedLeads([]);
   };
@@ -258,33 +291,33 @@ export const CRMLeadsPage = () => {
     setMergeDialogOpen(true);
   };
 
+  // Mesclar os selecionados no principal. Vai pela crm_leads_bulk (ação "merge"), que leva
+  // junto atividades, histórico, conversas e vendas. A merge_crm_leads antiga parava com erro
+  // (referencia tabelas que não existem) e, quando rodava, o histórico ia embora no cascade.
   const handleMerge = async () => {
     if (!primaryLeadId || selectedLeads.length < 2) return;
-
-    const secondaryIds = selectedLeads.filter(id => id !== primaryLeadId);
     setMerging(true);
     try {
-      const { data, error } = await supabase.rpc("merge_crm_leads", {
-        p_primary_lead_id: primaryLeadId,
-        p_secondary_lead_ids: secondaryIds,
+      const { data, error } = await (supabase as any).rpc("crm_leads_bulk", {
+        p_action: "merge",
+        p_payload: { primary_id: primaryLeadId },
+        p_filters: {},
+        p_ids: selectedLeads,
+        p_dry_run: false,
       });
-
       if (error) throw error;
-
-      const result = data as any;
-      if (result?.error) {
-        toast.error(result.error);
-      } else {
-        toast.success(`${result?.merged_count || secondaryIds.length} lead(s) mesclado(s) com sucesso`);
-        setMergeDialogOpen(false);
-        setSelectedLeads([]);
-        setPrimaryLeadId(null);
-        loadPage();
-        loadDupCounts();
-      }
+      const res = (data || {}) as BulkResult;
+      toast.success(`${nf(res.affected)} lead(s) mesclado(s) no principal`);
+      if (res.skipped_permission) toast.error(`${nf(res.skipped_permission)} lead(s) ficaram de fora: sem permissão de excluir no funil`);
+      setMergeDialogOpen(false);
+      setSelectedLeads([]);
+      setPrimaryLeadId(null);
+      loadPage();
+      loadDupCounts();
+      loadLists();
     } catch (error: any) {
       console.error("Merge error:", error);
-      toast.error("Erro ao mesclar leads: " + error.message);
+      toast.error("Erro ao mesclar leads: " + (error?.message || "tente de novo"));
     } finally {
       setMerging(false);
     }
@@ -294,8 +327,50 @@ export const CRMLeadsPage = () => {
     return selectedLeads.map(id => knownLeads[id]).filter(Boolean) as Lead[];
   }, [selectedLeads, knownLeads]);
 
+  // ----------------------------------------------------------------- ações em massa
+  // Sem seleção, o alvo é o filtro inteiro.
+  const bulkOnFilter = selectedLeads.length === 0;
+  const bulkTarget = useCallback(() => ({
+    p_filters: bulkOnFilter ? rpcFilters : {},
+    p_ids: bulkOnFilter ? null : selectedLeads,
+  }), [bulkOnFilter, rpcFilters, selectedLeads]);
+
+  const bulkPayload = useCallback((kind: BulkKind, value: string): Record<string, string> => {
+    if (kind === "assign") return { staff_id: value };
+    if (kind === "tag") return { tag_id: value };
+    if (kind === "lost") return { loss_reason_id: value };
+    if (kind === "remove_from_list") return { list_id: filterList };
+    return { key: filterDuplicates };
+  }, [filterList, filterDuplicates]);
+
+  const callBulk = useCallback(async (action: string, payload: Record<string, string>, dryRun: boolean): Promise<BulkResult> => {
+    const { data, error } = await (supabase as any).rpc("crm_leads_bulk", {
+      p_action: action, p_payload: payload, ...bulkTarget(), p_dry_run: dryRun,
+    });
+    if (error) throw error;
+    return (data || { count: 0 }) as BulkResult;
+  }, [bulkTarget]);
+
+  /** Aplica em lotes até o banco dizer que não sobrou nada (cada chamada tem limite de tempo). */
+  const runBulkLoop = useCallback(async (action: string, payload: Record<string, string>): Promise<{ done: number; last: BulkResult }> => {
+    let done = 0;
+    let last: BulkResult = { count: 0 };
+    let total = 0;
+    for (let i = 0; i < 600; i++) {
+      last = await callBulk(action, payload, false);
+      const affected = Number(last.affected || 0);
+      done += affected;
+      if (i === 0) total = Number(last.pending || 0);
+      setBulkProgress({ done, total: Math.max(total, done) });
+      if (!Number(last.remaining || 0) || affected === 0) break;
+    }
+    return { done, last };
+  }, [callBulk]);
+
   const openBulk = async (kind: BulkKind) => {
     setBulkValue("");
+    setBulkPreview(null);
+    setBulkProgress(null);
     setBulkKind(kind);
     if (kind === "lost" && lossReasons.length === 0) {
       const { data } = await supabase
@@ -304,6 +379,23 @@ export const CRMLeadsPage = () => {
     }
   };
 
+  // Prévia vinda do banco: quantos leads estão no alvo e quantos vão mudar de fato.
+  useEffect(() => {
+    if (!bulkKind || bulkLoading) return;
+    const needsValue = BULK_NEEDS_VALUE.includes(bulkKind);
+    let vivo = true;
+    setBulkPreviewLoading(true);
+    const req = needsValue && !bulkValue
+      ? callBulk("count", {}, true)
+      : callBulk(bulkKind, bulkPayload(bulkKind, bulkValue), true);
+    req
+      .then((res) => { if (vivo) setBulkPreview(res); })
+      .catch((e) => { console.error("bulk preview:", e); if (vivo) { setBulkPreview(null); toast.error(e?.message || "Não consegui contar os leads"); } })
+      .finally(() => { if (vivo) setBulkPreviewLoading(false); });
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bulkKind, bulkValue]);
+
   const bulkOptions = useMemo(() => {
     if (bulkKind === "assign") return staff.map((s) => ({ value: s.id, label: s.name }));
     if (bulkKind === "tag") return tags.map((t) => ({ value: t.id, label: t.name }));
@@ -311,93 +403,76 @@ export const CRMLeadsPage = () => {
     return [];
   }, [bulkKind, staff, tags, lossReasons]);
 
-  const bulkAssign = async (ids: string[]) => {
-    for (const part of chunk(ids)) {
-      const { error } = await supabase.from("crm_leads").update({ owner_staff_id: bulkValue }).in("id", part);
-      if (error) throw error;
-    }
-    const nome = staff.find((s) => s.id === bulkValue)?.name || "responsável";
-    const rows = ids.map((lead_id) => ({
-      lead_id, action: "owner_change", field_changed: "owner_staff_id",
-      old_value: (knownLeads[lead_id] as any)?.owner_staff_id ?? null, new_value: bulkValue,
-      notes: `Responsável alterado para ${nome} em massa (tela de Contatos)`, staff_id: staffId,
-    }));
-    for (const part of chunk(rows)) {
-      const { error } = await supabase.from("crm_lead_history").insert(part);
-      if (error) console.error("bulk assign history:", error);
-    }
-    toast.success(`${ids.length} lead(s) atribuído(s) a ${nome}`);
-  };
-
-  const bulkTag = async (ids: string[]) => {
-    for (const part of chunk(ids)) {
-      const { error } = await supabase.from("crm_lead_tags")
-        .upsert(part.map((lead_id) => ({ lead_id, tag_id: bulkValue })), { onConflict: "lead_id,tag_id", ignoreDuplicates: true });
-      if (error) throw error;
-    }
-    const nome = tags.find((t) => t.id === bulkValue)?.name || "etiqueta";
-    toast.success(`Etiqueta "${nome}" aplicada em ${ids.length} lead(s)`);
-  };
-
-  // Cada funil tem a própria etapa "Perdido" (final_type = lost): agrupa os leads
-  // pela etapa de destino. A mudança de etapa entra no histórico pelo trigger
-  // log_lead_stage_change; aqui gravamos também a nota com o motivo, no mesmo
-  // formato que o kanban usa ao mover com observação (note_added / stage_change_note).
-  const bulkLost = async (ids: string[]) => {
-    const reasonName = lossReasons.find((r) => r.id === bulkValue)?.name || "motivo";
-    const byStage = new Map<string, { stageName: string; ids: string[] }>();
-    let semEtapa = 0;
-    for (const id of ids) {
-      const lead = knownLeads[id];
-      const lost = stages.find((s) => s.pipeline_id === lead?.pipeline_id && s.final_type === "lost");
-      if (!lost) { semEtapa++; continue; }
-      const g = byStage.get(lost.id) || { stageName: lost.name, ids: [] };
-      g.ids.push(id);
-      byStage.set(lost.id, g);
-    }
-    const closedAt = new Date().toISOString();
-    let ok = 0;
-    for (const [stageId, g] of byStage) {
-      for (const part of chunk(g.ids)) {
-        const { error } = await supabase.from("crm_leads")
-          .update({ stage_id: stageId, loss_reason_id: bulkValue, closed_at: closedAt }).in("id", part);
-        if (error) throw error;
-        const { error: hErr } = await supabase.from("crm_lead_history").insert(part.map((lead_id) => ({
-          lead_id, action: "note_added", field_changed: "stage_change_note", new_value: g.stageName,
-          notes: `Marcado como perdido em massa. Motivo: ${reasonName}`, staff_id: staffId,
-        })));
-        if (hErr) console.error("bulk lost history:", hErr);
-        ok += part.length;
-      }
-    }
-    if (ok) toast.success(`${ok} lead(s) marcado(s) como perdido(s) (${reasonName})`);
-    if (semEtapa) toast.error(`${semEtapa} lead(s) ignorado(s): o funil não tem etapa de perdido`);
+  const afterBulk = () => {
+    setSelectedLeads([]);
+    loadPage();
+    loadDupCounts();
+    loadLists();
   };
 
   const runBulk = async () => {
-    if (!bulkKind || !bulkValue || selectedLeads.length === 0) return;
+    if (!bulkKind) return;
+    const needsValue = BULK_NEEDS_VALUE.includes(bulkKind);
+    if (needsValue && !bulkValue) return;
+    const kind = bulkKind;
     setBulkLoading(true);
+    setBulkProgress({ done: 0, total: Number(bulkPreview?.pending || 0) });
     try {
-      const ids = [...selectedLeads];
-      if (bulkKind === "assign") await bulkAssign(ids);
-      else if (bulkKind === "tag") await bulkTag(ids);
-      else await bulkLost(ids);
+      const { done, last } = await runBulkLoop(kind, bulkPayload(kind, bulkValue));
+      const nome = bulkOptions.find((o) => o.value === bulkValue)?.label || "";
+      if (kind === "assign") toast.success(`${nf(done)} lead(s) atribuído(s) a ${nome}`);
+      else if (kind === "tag") toast.success(`Etiqueta "${nome}" aplicada em ${nf(done)} lead(s)`);
+      else if (kind === "lost") toast.success(`${nf(done)} lead(s) marcado(s) como perdido(s) (${nome})`);
+      else if (kind === "remove_from_list") toast.success(`${nf(done)} lead(s) tirado(s) da lista`);
+      else toast.success(`${nf(done)} lead(s) duplicado(s) mesclado(s)`);
+      if (last.skipped_won && kind === "lost") toast.info(`${nf(last.skipped_won)} lead(s) ganho(s) ficaram de fora. Ganho se reabre um por um.`);
+      if (last.skipped_no_stage) toast.error(`${nf(last.skipped_no_stage)} lead(s) ignorado(s): o funil não tem etapa de perdido`);
+      if (last.skipped_permission) toast.error(`${nf(last.skipped_permission)} lead(s) ficaram de fora: sem permissão neste funil`);
+      if (Number(last.remaining || 0) > 0) toast.error(`Sobraram ${nf(last.remaining)} lead(s). Rode de novo pra terminar.`);
       setBulkKind(null);
-      setSelectedLeads([]);
-      loadPage();
+      afterBulk();
     } catch (e: any) {
       console.error("bulk action:", e);
       toast.error(e?.message || "Erro na ação em massa");
+      loadPage();
     } finally {
       setBulkLoading(false);
+      setBulkProgress(null);
     }
+  };
+
+  // Adicionar à lista: o diálogo escolhe (ou cria) a lista e a RPC inclui, em lotes.
+  const openAddToList = async () => {
+    setAddToListCount(null);
+    setAddToListOpen(true);
+    if (!bulkOnFilter) return;
+    try {
+      const res = await callBulk("count", {}, true);
+      setAddToListCount(Number(res.count || 0));
+    } catch (e) {
+      console.error("bulk count:", e);
+    }
+  };
+  const addToListPicked = async (list: { id: string; name: string }) => {
+    const { done, last } = await runBulkLoop("add_to_list", { list_id: list.id });
+    setBulkProgress(null);
+    const jaEstavam = Number(last.count || 0) - done;
+    toast.success(`${nf(done)} lead(s) adicionado(s) à lista "${list.name}"` + (jaEstavam > 0 ? `. ${nf(jaEstavam)} já estava(m) nela.` : ""));
+    afterBulk();
   };
 
   const bulkTitles: Record<BulkKind, { title: string; label: string; placeholder: string; empty: string; cta: string }> = {
     assign: { title: "Atribuir responsável", label: "Responsável", placeholder: "Escolha quem assume...", empty: "Ninguém com esse nome.", cta: "Atribuir" },
     tag: { title: "Adicionar etiqueta", label: "Etiqueta", placeholder: "Escolha a etiqueta...", empty: "Nenhuma etiqueta com esse nome.", cta: "Aplicar" },
     lost: { title: "Marcar como perdido", label: "Motivo da perda", placeholder: "Escolha o motivo...", empty: "Nenhum motivo cadastrado.", cta: "Marcar perdido" },
+    remove_from_list: { title: "Tirar da lista", label: "", placeholder: "", empty: "", cta: "Tirar da lista" },
+    merge_dups: { title: "Mesclar duplicados do filtro", label: "", placeholder: "", empty: "", cta: "Mesclar" },
   };
+  const activeList = leadLists.find((l) => l.id === filterList) || null;
+  const bulkNeedsValue = !!bulkKind && BULK_NEEDS_VALUE.includes(bulkKind);
+  const bulkPending = Number(bulkPreview?.pending ?? 0);
+  const bulkReady = !!bulkPreview && !bulkPreviewLoading && (!bulkNeedsValue || !!bulkValue);
+  const lostIsIcp = bulkKind === "lost" && (lossReasons.find((r) => r.id === bulkValue)?.name || "").trim().toLowerCase() === "fora do icp";
 
   if (loading) {
     return (
@@ -476,7 +551,7 @@ export const CRMLeadsPage = () => {
       {/* Filters */}
       <Card>
         <CardContent className="p-3 sm:p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 sm:gap-3">
             <div className="col-span-2 sm:col-span-1 lg:col-span-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -489,55 +564,69 @@ export const CRMLeadsPage = () => {
               </div>
             </div>
 
-            <Select value={filterPipeline} onValueChange={setFilterPipeline}>
-              <SelectTrigger className="h-9 text-xs sm:text-sm">
-                <SelectValue placeholder="Pipeline" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos Pipelines</SelectItem>
-                {pipelines.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={filterPipeline}
+              onValueChange={(v) => { setFilterPipeline(v); setFilterStage("all"); }}
+              options={[{ value: "all", label: "Todos os funis" }, ...pipelines.map((p) => ({ value: p.id, label: p.name }))]}
+              placeholder="Funil"
+              emptyMessage="Nenhum funil com esse nome."
+              className="h-9 text-xs sm:text-sm"
+            />
 
-            <Select value={filterStage} onValueChange={setFilterStage}>
-              <SelectTrigger className="h-9 text-xs sm:text-sm">
-                <SelectValue placeholder="Etapa" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas Etapas</SelectItem>
-                {stages.map(s => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={filterStage}
+              onValueChange={setFilterStage}
+              options={[
+                { value: "all", label: "Todas as etapas" },
+                ...stages
+                  .filter((st) => filterPipeline === "all" || st.pipeline_id === filterPipeline)
+                  .map((st) => ({
+                    value: st.id,
+                    label: st.name,
+                    hint: filterPipeline === "all" ? pipelines.find((p) => p.id === st.pipeline_id)?.name : undefined,
+                  })),
+              ]}
+              placeholder="Etapa"
+              emptyMessage="Nenhuma etapa com esse nome."
+              className="h-9 text-xs sm:text-sm"
+            />
 
             {isAdmin && (
-              <Select value={filterOwner} onValueChange={setFilterOwner}>
-                <SelectTrigger className="h-9 text-xs sm:text-sm">
-                  <SelectValue placeholder="Responsável" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {staff.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={filterOwner}
+                onValueChange={setFilterOwner}
+                options={[{ value: "all", label: "Todos os responsáveis" }, ...staff.map((st) => ({ value: st.id, label: st.name }))]}
+                placeholder="Responsável"
+                emptyMessage="Ninguém com esse nome."
+                className="h-9 text-xs sm:text-sm"
+              />
             )}
 
-            <Select value={filterUrgency} onValueChange={setFilterUrgency}>
-              <SelectTrigger className="h-9 text-xs sm:text-sm">
-                <SelectValue placeholder="Urgência" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                <SelectItem value="low">Baixa</SelectItem>
-                <SelectItem value="medium">Média</SelectItem>
-                <SelectItem value="high">Alta</SelectItem>
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={filterUrgency}
+              onValueChange={setFilterUrgency}
+              options={[
+                { value: "all", label: "Qualquer urgência" },
+                { value: "low", label: "Urgência baixa" },
+                { value: "medium", label: "Urgência média" },
+                { value: "high", label: "Urgência alta" },
+              ]}
+              placeholder="Urgência"
+              emptyMessage="Nenhuma opção."
+              className="h-9 text-xs sm:text-sm"
+            />
+
+            <SearchableSelect
+              value={filterList}
+              onValueChange={setFilterList}
+              options={[
+                { value: "all", label: "Qualquer lista" },
+                ...leadLists.map((l) => ({ value: l.id, label: l.name, hint: `${nf(l.lead_count)} leads` })),
+              ]}
+              placeholder="Lista"
+              emptyMessage="Nenhuma lista com esse nome."
+              className="h-9 text-xs sm:text-sm"
+            />
           </div>
           <SavedViews
             className="mt-3"
@@ -550,12 +639,26 @@ export const CRMLeadsPage = () => {
         </CardContent>
       </Card>
 
-      {/* Bulk Actions */}
-      {selectedLeads.length > 0 && (
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="p-4 flex flex-wrap items-center gap-3">
+      {/* Ações em massa: nos marcados ou, sem nenhum marcado, em todos os leads do filtro */}
+      {(selectedLeads.length > 0 || total > 0) && (
+        <Card className={bulkOnFilter ? "border-dashed" : "bg-primary/5 border-primary/20"}>
+          <CardContent className="p-3 sm:p-4 flex flex-wrap items-center gap-2 sm:gap-3">
             <span className="text-sm font-medium">
-              {selectedLeads.length} selecionado(s)
+              {bulkOnFilter ? (
+                <>
+                  Nenhum selecionado
+                  <span className="font-normal text-muted-foreground">
+                    , as ações valem para {pageLoading ? "os" : `os ${nf(total)}`} leads do filtro
+                  </span>
+                </>
+              ) : (
+                <>
+                  {nf(selectedLeads.length)} selecionado(s)
+                  <button type="button" className="ml-2 text-xs font-normal text-muted-foreground underline" onClick={() => setSelectedLeads([])}>
+                    limpar
+                  </button>
+                </>
+              )}
             </span>
             {isAdmin && (
               <Button variant="outline" size="sm" onClick={() => openBulk("assign")} disabled={bulkLoading}>
@@ -567,17 +670,37 @@ export const CRMLeadsPage = () => {
               <Tag className="h-4 w-4 mr-2" />
               Adicionar Tag
             </Button>
-            {selectedLeads.length >= 2 && (
-              <Button variant="outline" size="sm" onClick={handleOpenMerge} className="text-amber-600 border-amber-300 hover:bg-amber-50">
+            <Button variant="outline" size="sm" onClick={openAddToList} disabled={bulkLoading}>
+              <ListPlus className="h-4 w-4 mr-2" />
+              Adicionar à lista
+            </Button>
+            {activeList && (
+              <Button variant="outline" size="sm" onClick={() => openBulk("remove_from_list")} disabled={bulkLoading} title={`Tirar da lista "${activeList.name}"`}>
+                <ListMinus className="h-4 w-4 mr-2" />
+                Tirar da lista
+              </Button>
+            )}
+            {isAdmin && selectedLeads.length >= 2 && (
+              <Button variant="outline" size="sm" onClick={handleOpenMerge} className="text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30">
                 <Merge className="h-4 w-4 mr-2" />
                 Mesclar ({selectedLeads.length})
               </Button>
             )}
-            <LeadListBulkButtons
-              leadIds={selectedLeads}
-              disabled={bulkLoading}
-              onDone={() => { setSelectedLeads([]); loadPage(); }}
-            />
+            {isAdmin && bulkOnFilter && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openBulk("merge_dups")}
+                disabled={bulkLoading || filterDuplicates === "all"}
+                className="text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                title={filterDuplicates === "all"
+                  ? "Ligue o filtro de duplicados (cartões de telefone ou e-mail duplicado) pra mesclar em massa"
+                  : "Junta os duplicados exatos do filtro, cada grupo num lead só"}
+              >
+                <Merge className="h-4 w-4 mr-2" />
+                Mesclar duplicados
+              </Button>
+            )}
             <Button variant="outline" size="sm" className="text-destructive" onClick={() => openBulk("lost")} disabled={bulkLoading}>
               <XCircle className="h-4 w-4 mr-2" />
               Marcar Perdido
@@ -868,7 +991,7 @@ export const CRMLeadsPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Ação em massa: atribuir / etiqueta / marcar perdido */}
+      {/* Ação em massa: confirma com a contagem que vem do banco */}
       <Dialog open={!!bulkKind} onOpenChange={(o) => { if (!o && !bulkLoading) setBulkKind(null); }}>
         <DialogContent className="max-w-md">
           {bulkKind && (
@@ -876,25 +999,100 @@ export const CRMLeadsPage = () => {
               <DialogHeader>
                 <DialogTitle>{bulkTitles[bulkKind].title}</DialogTitle>
                 <DialogDescription>
-                  {selectedLeads.length} lead(s) selecionado(s).
+                  {bulkOnFilter
+                    ? <>Nada selecionado: vale para <strong className="text-foreground">todos os {bulkPreview ? nf(bulkPreview.count) : "..."} leads do filtro atual</strong>.</>
+                    : <>{nf(selectedLeads.length)} lead(s) selecionado(s).</>}
                   {bulkKind === "lost" && " Cada lead vai para a etapa de perdido do próprio funil, com o motivo escolhido."}
+                  {bulkKind === "remove_from_list" && activeList && ` Saem da lista "${activeList.name}". Os leads continuam no CRM.`}
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-2">
-                <p className="text-sm font-medium">{bulkTitles[bulkKind].label}</p>
-                <SearchableSelect
-                  value={bulkValue}
-                  onValueChange={setBulkValue}
-                  options={bulkOptions}
-                  placeholder={bulkTitles[bulkKind].placeholder}
-                  emptyMessage={bulkTitles[bulkKind].empty}
-                />
+
+              {bulkKind === "merge_dups" && (
+                <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-3 text-xs text-amber-700 dark:text-amber-400 space-y-1">
+                  <p>
+                    <AlertTriangle className="h-3.5 w-3.5 inline mr-1" />
+                    Só entra duplicado exato: mesmo funil, mesmo {filterDuplicates === "email" ? "e-mail" : "telefone (com DDD)"} e mesmo nome.
+                    Cada grupo vira um lead só, o que teve atividade mais recente.
+                  </p>
+                  <p>Atividades, histórico, conversas e etiquetas vão junto pro lead que fica. Lead ganho ou com venda nunca é apagado. Não dá pra desfazer.</p>
+                </div>
+              )}
+
+              {bulkNeedsValue && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">{bulkTitles[bulkKind].label}</p>
+                  <SearchableSelect
+                    value={bulkValue}
+                    onValueChange={setBulkValue}
+                    options={bulkOptions}
+                    placeholder={bulkTitles[bulkKind].placeholder}
+                    emptyMessage={bulkTitles[bulkKind].empty}
+                    disabled={bulkLoading}
+                  />
+                </div>
+              )}
+
+              {/* Prévia: o que vai mudar de fato */}
+              <div className="rounded-md bg-muted/50 px-3 py-2 text-sm min-h-[40px]">
+                {bulkProgress ? (
+                  <div className="space-y-1.5">
+                    <p>Aplicando: {nf(bulkProgress.done)} de {nf(bulkProgress.total)}</p>
+                    <Progress value={bulkProgress.total ? Math.min(100, (bulkProgress.done / bulkProgress.total) * 100) : 0} className="h-1.5" />
+                    <p className="text-xs text-muted-foreground">Não feche esta janela até terminar.</p>
+                  </div>
+                ) : bulkPreviewLoading ? (
+                  <span className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Contando no banco...</span>
+                ) : !bulkPreview ? (
+                  <span className="text-muted-foreground">Não consegui contar os leads.</span>
+                ) : bulkNeedsValue && !bulkValue ? (
+                  <span className="text-muted-foreground">{nf(bulkPreview.count)} lead(s) no alvo. Escolha {bulkKind === "assign" ? "o responsável" : bulkKind === "tag" ? "a etiqueta" : "o motivo"} pra ver quantos mudam.</span>
+                ) : (
+                  <div className="space-y-0.5">
+                    <p>
+                      <strong>{nf(bulkPending)}</strong> lead(s) {bulkKind === "merge_dups" ? `serão mesclados e apagados, em ${nf(bulkPreview.groups)} grupo(s)` : "vão mudar"}
+                      {bulkKind !== "merge_dups" && bulkPreview.count !== bulkPending && <span className="text-muted-foreground"> de {nf(bulkPreview.count)}</span>}.
+                    </p>
+                    {bulkKind === "assign" && bulkPreview.count - bulkPending - Number(bulkPreview.skipped_permission || 0) > 0 && (
+                      <p className="text-xs text-muted-foreground">{nf(bulkPreview.count - bulkPending - Number(bulkPreview.skipped_permission || 0))} já são desta pessoa.</p>
+                    )}
+                    {bulkKind === "tag" && bulkPreview.count - bulkPending > 0 && (
+                      <p className="text-xs text-muted-foreground">{nf(bulkPreview.count - bulkPending)} já têm esta etiqueta.</p>
+                    )}
+                    {bulkKind === "remove_from_list" && bulkPreview.count - bulkPending > 0 && (
+                      <p className="text-xs text-muted-foreground">{nf(bulkPreview.count - bulkPending)} não estão nesta lista.</p>
+                    )}
+                    {!!bulkPreview.skipped_won && (
+                      <p className="text-xs text-muted-foreground">
+                        {bulkKind === "merge_dups"
+                          ? `${nf(bulkPreview.skipped_won)} duplicado(s) ganho(s) ou com venda ficam como estão.`
+                          : `${nf(bulkPreview.skipped_won)} lead(s) ganho(s) ficam de fora (ganho se reabre um por um).`}
+                      </p>
+                    )}
+                    {!!bulkPreview.skipped_large && (
+                      <p className="text-xs text-muted-foreground">{nf(bulkPreview.skipped_large)} lead(s) em grupos com mais de 10 iguais ficam de fora (costuma ser contato coringa). Mescle esses à mão.</p>
+                    )}
+                    {!!bulkPreview.skipped_no_stage && (
+                      <p className="text-xs text-muted-foreground">{nf(bulkPreview.skipped_no_stage)} lead(s) em funil sem etapa de perdido ficam de fora.</p>
+                    )}
+                    {!!bulkPreview.skipped_permission && (
+                      <p className="text-xs text-muted-foreground">{nf(bulkPreview.skipped_permission)} lead(s) ficam de fora: sem permissão neste funil.</p>
+                    )}
+                    {lostIsIcp && bulkPending > 10 && (
+                      <p className="text-xs text-amber-600">O motivo "Fora do ICP" dispara um alerta automático por lead. São {nf(bulkPending)} alertas.</p>
+                    )}
+                  </div>
+                )}
               </div>
+
               <DialogFooter>
                 <Button variant="outline" onClick={() => setBulkKind(null)} disabled={bulkLoading}>Cancelar</Button>
-                <Button onClick={runBulk} disabled={bulkLoading || !bulkValue} variant={bulkKind === "lost" ? "destructive" : "default"}>
+                <Button
+                  onClick={runBulk}
+                  disabled={bulkLoading || !bulkReady || bulkPending === 0}
+                  variant={bulkKind === "lost" || bulkKind === "merge_dups" ? "destructive" : "default"}
+                >
                   {bulkLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  {bulkTitles[bulkKind].cta} ({selectedLeads.length})
+                  {bulkTitles[bulkKind].cta}{bulkReady ? ` (${nf(bulkPending)})` : ""}
                 </Button>
               </DialogFooter>
             </>
@@ -902,12 +1100,24 @@ export const CRMLeadsPage = () => {
         </DialogContent>
       </Dialog>
 
+      <AddToListDialog
+        open={addToListOpen}
+        onOpenChange={setAddToListOpen}
+        leadIds={selectedLeads}
+        onPick={addToListPicked}
+        countLabel={bulkOnFilter
+          ? `Nada selecionado: entram todos os ${addToListCount === null ? "..." : nf(addToListCount)} leads do filtro atual`
+          : undefined}
+      />
+
       <LeadListsDialog
         open={listsOpen}
         onOpenChange={setListsOpen}
         staffId={staffId}
         canManageAll={staffRole === "master" || staffRole === "admin"}
         canExport={isAdmin}
+        onOpenList={(l) => { setFilterList(l.id); setSelectedLeads([]); }}
+        onChanged={loadLists}
       />
 
       <AddLeadDialog
