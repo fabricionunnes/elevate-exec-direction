@@ -267,8 +267,8 @@ export function PainelBloco({ node, listas, meta, readOnly, onMeta, onData, onDe
       {node.type === "create_task" && (<>
         <Campo label="Título"><TextoComVariaveis value={d.title || ""} onChange={(v) => onData({ title: v })} rows={2} placeholder="Ligar pra {primeiro_nome}" vars={vars} /></Campo>
         <Campo label="Descrição"><Textarea rows={2} value={d.description || ""} onChange={(e) => onData({ description: e.target.value })} /></Campo>
-        <div className="grid grid-cols-3 gap-2">
-          <Campo label="Tipo"><SearchableSelect value={d.activity_type || "followup"} onChange={(v) => onData({ activity_type: v })} options={ACTIVITY_TYPES} /></Campo>
+        <Campo label="Tipo"><SearchableSelect value={d.activity_type || "followup"} onChange={(v) => onData({ activity_type: v })} options={ACTIVITY_TYPES} /></Campo>
+        <div className="grid grid-cols-2 gap-2">
           <Campo label="Em dias"><Input inputMode="numeric" value={d.days ?? 0} onChange={(e) => onData({ days: num(e.target.value) })} /></Campo>
           <Campo label="Mais horas"><Input inputMode="numeric" value={d.hours ?? 0} onChange={(e) => onData({ hours: num(e.target.value) })} /></Campo>
         </div>

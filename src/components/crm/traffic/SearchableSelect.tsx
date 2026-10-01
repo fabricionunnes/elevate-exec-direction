@@ -39,7 +39,7 @@ export const SearchableSelect = ({
           <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+      <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[220px] max-w-[92vw] p-0" align="start">
         <Command>
           <CommandInput placeholder="Digite para buscar…" className="h-9" />
           <CommandList>

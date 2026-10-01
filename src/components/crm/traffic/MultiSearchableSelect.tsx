@@ -70,7 +70,7 @@ export const MultiSearchableSelect = ({
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+      <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[220px] max-w-[92vw] p-0" align="start">
         <Command>
           <CommandInput placeholder="Digite para buscar…" className="h-9" />
           <CommandList>

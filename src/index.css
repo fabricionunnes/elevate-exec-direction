@@ -89,7 +89,11 @@
   .crm-app,
   .crm-app :where(h1, h2, h3, h4, h5, h6),
   .font-crm,
-  .font-crm :where(h1, h2, h3, h4, h5, h6) {
+  .font-crm :where(h1, h2, h3, h4, h5, h6),
+  /* Listas, menus e dicas do Radix abrem num portal fora de .crm-app e herdavam
+     a fonte serifada do body. Com o CRM montado, seguem a fonte do CRM. */
+  body:has(.crm-app) [data-radix-popper-content-wrapper],
+  body:has(.crm-app) [data-radix-popper-content-wrapper] :where(h1, h2, h3, h4, h5, h6) {
     font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
     letter-spacing: -0.01em;
   }
