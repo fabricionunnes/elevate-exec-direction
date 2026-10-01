@@ -2237,12 +2237,10 @@ Deno.serve(async (req)=>{
     // Debug/admin: testa a transcrição de um áudio (exige service role em body.secret)
     if (body0.action === "transcribe_test") {
       // autoriza pelo JWT do header (role service_role) ou pelo secret no body
+      // Só a chave de serviço INTEIRA autoriza. Antes bastava um JWT qualquer cujo
+      // payload dissesse role=service_role (a assinatura não era conferida).
       const authz = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-      let roleClaim = "";
-      try {
-        roleClaim = String(JSON.parse(atob(authz.split(".")[1] || "")).role || "");
-      } catch  {}
-      if (body0.secret !== SERVICE_ROLE && roleClaim !== "service_role") return j({
+      if (body0.secret !== SERVICE_ROLE && authz !== SERVICE_ROLE) return j({
         ok: false,
         error: "não autorizado"
       }, 401);
@@ -2258,12 +2256,11 @@ Deno.serve(async (req)=>{
     if (body0.action === "test_tool") {
       // só quem tem a chave de serviço pode rodar ferramenta direto (antes estava aberto, 19/09/2026)
       {
+        // Idem: a chave de serviço inteira, no header ou em body.secret. Payload de
+        // JWT sem assinatura conferida não vale (dava pra forjar e rodar agendar,
+        // marcar perdido e mover etapa conhecendo um agent_id e um lead_id).
         const authz = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-        let roleClaim = "";
-        try {
-          roleClaim = String(JSON.parse(atob(authz.split(".")[1] || "")).role || "");
-        } catch  {}
-        if (body0.secret !== SERVICE_ROLE && authz !== SERVICE_ROLE && roleClaim !== "service_role") return j({
+        if (body0.secret !== SERVICE_ROLE && authz !== SERVICE_ROLE) return j({
           ok: false,
           error: "não autorizado"
         }, 401);
