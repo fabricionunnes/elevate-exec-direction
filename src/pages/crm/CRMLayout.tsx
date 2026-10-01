@@ -11,9 +11,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -57,11 +54,9 @@ import { CRMInboundMessageNotifier } from "@/components/crm/CRMInboundMessageNot
 import { ThemeToggle } from "@/components/settings/ThemeToggle";
 import { CallDockProvider } from "@/components/crm/call/CallDockProvider";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { CRMSupportWidget } from "@/components/crm/support/CRMSupportWidget";
 
 const CRM_ROLES = ["master", "admin", "head_comercial", "closer", "sdr", "social_setter", "bdr"];
-// Suporte da UNV (menu Ajuda). Não há número de suporte no código; o contato do site
-// é o canal oficial e leva pro WhatsApp da equipe.
-const SUPORTE_URL = "https://unvholdings.com.br/contato";
 
 export interface CRMContextType {
   staffRole: string | null;
@@ -149,6 +144,8 @@ export const CRMLayout = () => {
   const [staffAvatarUrl, setStaffAvatarUrl] = useState<string | null>(null);
   // "Conta" no menu do usuário: foto e senha (mesma folha "Meu Perfil" do Nexus)
   const [accountOpen, setAccountOpen] = useState(false);
+  // Widget de ajuda e suporte (botão flutuante + item "Ajuda e suporte" do menu)
+  const [supportOpen, setSupportOpen] = useState(false);
   const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
   const [selectedPipeline, setSelectedPipeline] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -509,27 +506,10 @@ export const CRMLayout = () => {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger className="flex items-center gap-2">
-                      <HelpCircle className="h-4 w-4" />
-                      Ajuda
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="w-56">
-                      <DropdownMenuItem asChild>
-                        <Link to="/crm/api" className="flex items-center gap-2">
-                          <BookOpen className="h-4 w-4 text-muted-foreground" />
-                          Documentação da API
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="flex items-center gap-2"
-                        onSelect={() => window.open(SUPORTE_URL, "_blank", "noopener,noreferrer")}
-                      >
-                        <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                        Falar com o suporte
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
+                  <DropdownMenuItem className="flex items-center gap-2" onSelect={() => setSupportOpen(true)}>
+                    <HelpCircle className="h-4 w-4" />
+                    Ajuda e suporte
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link to="/onboarding-tasks" className="flex items-center gap-2">
@@ -608,6 +588,19 @@ export const CRMLayout = () => {
           </main>
         </div>
       </div>
+      {/* Ajuda e suporte: em Atendimento o canto inferior direito é do botão de enviar,
+          então lá o painel abre só pelo menu do usuário */}
+      <CRMSupportWidget
+        open={supportOpen}
+        onOpenChange={setSupportOpen}
+        staffId={staffId}
+        isUnvStaff={tenantId === null}
+        isMaster={isMaster}
+        isAdmin={staffRole === "master" || staffRole === "admin"}
+        canSettings={canSettings}
+        isSupportTeam={tenantId === null && (staffRole === "master" || staffRole === "admin")}
+        hideLauncher={isInboxRoute}
+      />
       <StaffSettingsSheet
         open={accountOpen}
         onOpenChange={async (v) => {

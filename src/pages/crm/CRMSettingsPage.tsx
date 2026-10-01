@@ -59,7 +59,8 @@ import { CreditCard,
   ShieldCheck,
   Clock,
   Package,
-  KeyRound
+  KeyRound,
+  LifeBuoy
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
 import { StageChecklistDialog } from "@/components/crm/StageChecklistDialog";
@@ -81,6 +82,7 @@ import { CRMBusinessHoursTab } from "@/components/crm/settings/CRMBusinessHoursT
 import { CRMProductsTab } from "@/components/crm/settings/CRMProductsTab";
 import { CRMTrashTab } from "@/components/crm/settings/CRMTrashTab";
 import { CRMApiWebhooksTab } from "@/components/crm/settings/CRMApiWebhooksTab";
+import { CRMSupportTicketsTab } from "@/components/crm/settings/CRMSupportTicketsTab";
 import { useCRMContext } from "./CRMLayout";
 import { toast } from "sonner";
 
@@ -1240,6 +1242,12 @@ export const CRMSettingsPage = () => {
                   <span className="sm:hidden">API</span>
                 </TabsTrigger>
               )}
+              {unvAdmin && (
+                <TabsTrigger value="suporte" className="gap-1.5 text-xs sm:text-sm">
+                  <LifeBuoy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Suporte
+                </TabsTrigger>
+              )}
               <TabsTrigger value="lixeira" className="gap-1.5 text-xs sm:text-sm">
                 <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span>Lixeira</span>
@@ -1273,6 +1281,13 @@ export const CRMSettingsPage = () => {
         {unvAdmin && (
           <TabsContent value="api" className="mt-6">
             <CRMApiWebhooksTab pipelines={pipelines} isMaster={staffRole === "master"} />
+          </TabsContent>
+        )}
+
+        {/* Chamados abertos pelo widget de ajuda do CRM */}
+        {unvAdmin && (
+          <TabsContent value="suporte" className="mt-6">
+            <CRMSupportTicketsTab />
           </TabsContent>
         )}
 
