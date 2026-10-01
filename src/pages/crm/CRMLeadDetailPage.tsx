@@ -1658,7 +1658,7 @@ export const CRMLeadDetailPage = () => {
       <AlertDialogHeader>
             <AlertDialogTitle>Excluir Lead</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o lead "{lead.name}"? Esta ação não pode ser desfeita e todas as atividades, arquivos e histórico serão removidos.
+              Tem certeza que deseja excluir o lead "{lead.name}"? Ele vai pra Lixeira com as atividades, arquivos e histórico, e pode ser restaurado por um administrador em até 7 dias (Configurações, aba Lixeira). Depois disso a exclusão é definitiva.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
