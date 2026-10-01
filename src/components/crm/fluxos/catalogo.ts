@@ -234,14 +234,21 @@ export function resumoBloco(type: NodeType, d: Record<string, any>, L: Listas, t
 }
 
 // Pendências que impedem ativar o fluxo
-export function validarFluxo(nodes: any[], edges: any[], trigger: string): string[] {
-  const erros: string[] = [];
+export interface Pendencia { texto: string; nodeId: string | null }
+
+// Cada pendência sabe em qual bloco está, pra tela levar a pessoa direto nele.
+export function validarFluxoDetalhe(nodes: any[], edges: any[], trigger: string): Pendencia[] {
+  const lista: Pendencia[] = [];
+  let atual: string | null = null;
+  const erros = { push: (texto: string) => { lista.push({ texto, nodeId: atual }); } };
   const triggers = nodes.filter((n) => n.type === "trigger");
   if (triggers.length !== 1) erros.push("O fluxo precisa de exatamente um bloco de Gatilho");
   const t = triggers[0];
+  atual = t?.id ?? null;
   if (t && !edges.some((e) => e.source === t.id)) erros.push("O Gatilho precisa estar ligado a um bloco");
   if (!trigger) erros.push("Escolha o gatilho");
   for (const n of nodes) {
+    atual = n.id;
     const d = n.data || {};
     const def = CATALOGO[n.type as NodeType];
     if (!def) { erros.push(`Bloco desconhecido: ${n.type}`); continue; }
@@ -264,7 +271,11 @@ export function validarFluxo(nodes: any[], edges: any[], trigger: string): strin
       if (!r.field || r.field === "ctx." || semValor) { erros.push(`${nome}: há regra incompleta`); break; }
     }
   }
-  return erros;
+  return lista;
+}
+
+export function validarFluxo(nodes: any[], edges: any[], trigger: string): string[] {
+  return validarFluxoDetalhe(nodes, edges, trigger).map((p) => p.texto);
 }
 
 export const uid = () => "n" + Math.random().toString(36).slice(2, 9);

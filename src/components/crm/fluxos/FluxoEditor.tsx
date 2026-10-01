@@ -20,7 +20,7 @@ import { ArrowLeft, Save, Loader2, Play, Copy, Download, Search, AlertTriangle, 
 import { FluxoNode } from "./FluxoNode";
 import { PainelBloco, type FluxoMeta } from "./PainelBloco";
 import { FluxoExecucoes } from "./FluxoExecucoes";
-import { CATALOGO, GRUPOS, LISTAS_VAZIAS, uid, validarFluxo, triggerLabel, type NodeType, type Listas, type BlocoDef } from "./catalogo";
+import { CATALOGO, GRUPOS, LISTAS_VAZIAS, uid, validarFluxoDetalhe, triggerLabel, type NodeType, type Listas, type BlocoDef } from "./catalogo";
 
 const nodeTypes = Object.fromEntries(Object.keys(CATALOGO).map((k) => [k, FluxoNode]));
 const limpar = (n: Node) => ({ id: n.id, type: n.type, position: n.position, data: Object.fromEntries(Object.entries(n.data || {}).filter(([k]) => !k.startsWith("_"))) });
@@ -233,7 +233,8 @@ function Editor({ id, canEdit }: { id: string; canEdit: boolean }) {
     return true;
   };
 
-  const erros = useMemo(() => validarFluxo(nodes.map(limpar), edges, meta.trigger_type), [nodes, edges, meta.trigger_type]);
+  const pendencias = useMemo(() => validarFluxoDetalhe(nodes.map(limpar), edges, meta.trigger_type), [nodes, edges, meta.trigger_type]);
+  const erros = useMemo(() => pendencias.map((p) => p.texto), [pendencias]);
   const mandaWhats = nodes.some((n) => n.type === "send_whatsapp");
   const aplicarAtivo = async (v: boolean) => {
     if (dirty || v) { const ok = await salvar(true); if (!ok) return; }
@@ -342,8 +343,11 @@ function Editor({ id, canEdit }: { id: string; canEdit: boolean }) {
       {erros.length > 0 && tab === "editor" && (
         <div className="px-3 py-1.5 border-b border-border bg-amber-500/10 text-[11px] text-foreground flex flex-wrap gap-x-4 gap-y-0.5">
           <span className="font-medium">Pra ativar, falta:</span>
-          {erros.slice(0, 4).map((e, i) => <span key={i}>{e}</span>)}
-          {erros.length > 4 && <span className="text-muted-foreground">e mais {erros.length - 4}</span>}
+          {/* cada pendência leva ao bloco: seleciona, centraliza e abre o painel dele à direita */}
+          {pendencias.slice(0, 6).map((p, i) => p.nodeId
+            ? <button key={i} type="button" className="underline underline-offset-2 decoration-amber-500 hover:text-primary" title="Clique pra abrir o bloco e resolver" onClick={() => verBloco(p.nodeId!)}>{p.texto}</button>
+            : <span key={i}>{p.texto}</span>)}
+          {pendencias.length > 6 && <span className="text-muted-foreground">e mais {pendencias.length - 6}</span>}
         </div>
       )}
 
