@@ -435,10 +435,11 @@ begin
     if _i.status in ('done', 'cancelled') then raise exception 'Impulso já encerrado'; end if;
     update crm_impulsos set status = 'running', started_at = coalesce(started_at, now()), next_batch_at = now(),
            pause_reason = null, updated_at = now() where id = p_id;
-    -- o disparo oficial tinha sido pausado pela Meta: volta a valer a partir de agora
+    -- o disparo oficial tinha sido pausado pela Meta (pagamento, spam): volta a valer a
+    -- partir de agora (resumed_at zera a contagem de recusas do official-campaign-dispatch)
     if _i.campaign_id is not null then
-      update whatsapp_official_campaigns set status = 'sending', notes = null, resumed_at = now()
-       where id = _i.campaign_id and status = 'paused';
+      update whatsapp_official_campaigns set status = 'sending', notes = 'Impulso: ' || _i.name, resumed_at = now(), finished_at = null
+       where id = _i.campaign_id and (status = 'paused' or (status = 'done' and notes like 'Encerrado com falhas%'));
     end if;
   elsif p_status = 'paused' then
     if _i.status <> 'running' then raise exception 'Só dá pra pausar um impulso rodando'; end if;
@@ -548,7 +549,9 @@ begin
     -- a Meta pausou o disparo (pagamento ou spam): o impulso pausa junto, com o motivo
     if i.campaign_id is not null then
       select c.status, c.notes into _camp from whatsapp_official_campaigns c where c.id = i.campaign_id;
-      if _camp.status = 'paused' then
+      -- "Encerrado com falhas" = o dispatch quis pausar mas o lote já tinha acabado: mesmo caso
+      if _camp.status = 'paused' or (_camp.status = 'done' and _camp.notes like 'Encerrado com falhas%') then
+        perform public.crm_impulso_sync_official(i.id);
         update crm_impulsos set status = 'paused', pause_reason = coalesce(_camp.notes, 'O disparo foi pausado'), updated_at = now() where id = i.id;
         perform public.crm_impulso_recontar(i.id);
         return jsonb_build_object('impulso_id', i.id, 'info', 'pausado: ' || coalesce(_camp.notes, 'disparo pausado'));
@@ -624,7 +627,10 @@ begin
         tag_name, extra_tag_ids, total, status, notes)
       values (_sender, i.config->>'template_name', coalesce(nullif(i.config->>'template_language', ''), 'pt_BR'),
         nullif(i.config->>'template_category', ''), i.config->>'body_preview', i.config->>'template_body',
-        coalesce(i.config->'variables', '[]'::jsonb), i.created_by, i.created_by_name, 'impulso',
+        -- created_by_staff_id fica nulo de propósito: o aviso flutuante de disparo (OfficialDispatchProgress)
+        -- filtra por ele, e um disparo de impulso abre e fecha a cada lote (viraria um aviso por minuto).
+        -- O andamento do impulso fica na aba Impulsos. created_by_name segue valendo pro {sdr}.
+        coalesce(i.config->'variables', '[]'::jsonb), null, i.created_by_name, 'impulso',
         coalesce(nullif(i.config->>'move_mode', ''), 'none'), null, 'Template enviado',
         coalesce((select array_agg(v::uuid) from jsonb_array_elements_text(coalesce(i.config->'extra_tag_ids', '[]'::jsonb)) v), '{}'::uuid[]),
         i.total, 'sending', 'Impulso: ' || i.name)

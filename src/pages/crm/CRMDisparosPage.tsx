@@ -4,8 +4,10 @@
 // Dados: whatsapp_official_campaigns + _recipients (RPCs official_campaigns_list,
 // official_campaign_recipients, official_campaign_errors). O status de entrega
 // vem do whatsapp-official-webhook.
+// Abas Impulsos (execução em massa por lotes) e Execuções (central de trabalhos em
+// segundo plano) moram aqui também: /crm/disparos?aba=impulsos e ?aba=execucoes.
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,7 +16,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DisparosPainel } from "@/components/crm/disparos/DisparosPainel";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ImpulsosTab } from "@/components/crm/disparos/ImpulsosTab";
+import { ExecucoesTab } from "@/components/crm/disparos/ExecucoesTab";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { OfficialTemplatesTab } from "@/components/crm/settings/OfficialTemplatesTab";
 import { cancelarDisparo, retomarDisparo, pausadoPorPagamento, linkPagamentoMeta } from "@/components/crm/OfficialDispatchProgress";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -297,6 +301,12 @@ export default function CRMDisparosPage() {
 // ───────────────────────── Lista ─────────────────────────
 function DisparosLista() {
   const navigate = useNavigate();
+  // aba na URL (?aba=impulsos): o kanban e os avisos mandam direto pra aba certa
+  const [searchParams, setSearchParams] = useSearchParams();
+  const aba = searchParams.get("aba") || "painel";
+  const setAba = (v: string) => setSearchParams(v === "painel" ? {} : { aba: v }, { replace: true });
+  const [abrirImpulso, setAbrirImpulso] = useState<string | null>(null);
+  const semPeriodo = aba === "impulsos" || aba === "execucoes";
   const { instances, rateFor, reload: reloadInstances } = useInstances();
   const [rows, setRows] = useState<CampaignRow[]>([]);
   const [errors, setErrors] = useState<ErrorRow[]>([]);
@@ -386,19 +396,16 @@ function DisparosLista() {
     <div className="p-4 md:p-6 space-y-5 max-w-7xl">
       <div className="flex flex-wrap items-center gap-2">
         <ShieldCheck className="h-5 w-5 text-emerald-600" />
-        <h1 className="text-xl font-bold">Disparos API oficial</h1>
-        <span className="text-xs text-muted-foreground">{periodoTexto}</span>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+        <h1 className="text-xl font-bold">Disparos</h1>
+        {!semPeriodo && <span className="text-xs text-muted-foreground">{periodoTexto}</span>}
+        {/* período e Atualizar valem pras abas de disparo; Impulsos e Execuções têm os próprios controles */}
+        <div className={`ml-auto flex flex-wrap items-center gap-2 ${semPeriodo ? "hidden" : ""}`}>
           <div className="flex items-center gap-1.5">
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
-            <Select value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)}>
-              <SelectTrigger className="h-8 w-[170px] text-sm"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.keys(PERIODO_LABEL) as Periodo[]).map((k) => (
-                  <SelectItem key={k} value={k}>{PERIODO_LABEL[k]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="w-[180px]">
+              <SearchableSelect value={periodo} onValueChange={(v) => setPeriodo(v as Periodo)} className="h-8 text-sm"
+                options={(Object.keys(PERIODO_LABEL) as Periodo[]).map((k) => ({ value: k, label: PERIODO_LABEL[k] }))} />
+            </div>
           </div>
           {periodo === "custom" && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -413,8 +420,8 @@ function DisparosLista() {
         </div>
       </div>
 
-      <Tabs defaultValue="painel">
-        <TabsList>
+      <Tabs value={aba} onValueChange={setAba}>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="painel">Painel</TabsTrigger>
           <TabsTrigger value="resumo">Números e limite</TabsTrigger>
           <TabsTrigger value="disparos">Disparos</TabsTrigger>
@@ -422,7 +429,19 @@ function DisparosLista() {
           <TabsTrigger value="erros" className="gap-1.5">
             Histórico de erros {errors.length > 0 && <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">{errors.length}</Badge>}
           </TabsTrigger>
+          <TabsTrigger value="impulsos">Impulsos</TabsTrigger>
+          <TabsTrigger value="execucoes">Execuções</TabsTrigger>
         </TabsList>
+
+        {/* Impulsos: execução em massa por lotes, com ritmo e status por item */}
+        <TabsContent value="impulsos" className="mt-4">
+          <ImpulsosTab abrirId={abrirImpulso} onAbriu={() => setAbrirImpulso(null)} />
+        </TabsContent>
+
+        {/* Central de Execuções: importações, exportações e impulsos em segundo plano */}
+        <TabsContent value="execucoes" className="mt-4">
+          <ExecucoesTab onAbrirImpulso={(id) => { setAbrirImpulso(id); setAba("impulsos"); }} />
+        </TabsContent>
 
         <TabsContent value="resumo" className="mt-4 space-y-5">
           <LimiteDiarioCard instanceId={instances[0]?.id || null} refreshKey={refreshKey} />

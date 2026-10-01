@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { concluirExecucao, iniciarExecucao, progressoExecucao, subirCsvExecucao } from "@/lib/crm/execucoes";
 
 interface ImportLeadsDialogProps {
   open: boolean;
@@ -440,6 +441,15 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
     setImportResults({ success: 0, errors: 0, skipped: 0 });
     setErrorSamples([]);
 
+    // Central de Execuções (Disparos > Execuções): a importação segue rodando aqui no
+    // navegador, mas o progresso fica gravado e dá pra cancelar por lá.
+    let exec: { id: string; staffId: string } | null = null;
+    let success = 0;
+    let errors = 0;
+    let skipped = 0;
+    let semNome = 0;
+    const errRows: (string | null)[][] = [];
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Não autenticado");
@@ -452,6 +462,14 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
         .single();
 
       if (!staff) throw new Error("Staff não encontrado");
+
+      exec = await iniciarExecucao({
+        kind: "lead_import",
+        title: `Importação de leads: ${file?.name || "planilha"}`,
+        total: csvData.length,
+        params: { arquivo: file?.name || null, pipeline_id: selectedPipeline },
+      });
+      let cancelada = false;
 
       const stageNameMapping = columnMappings.find(m => m.crmField === "stage_name");
       const pipelineNameMapping = columnMappings.find(m => m.crmField === "pipeline_name");
@@ -502,9 +520,6 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
         return false;
       };
 
-      let success = 0;
-      let errors = 0;
-      let skipped = 0;
       const errSamples: string[] = [];
       const batchSize = 50;
       
@@ -563,6 +578,7 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
 
           return lead;
         }).filter(lead => lead.name && lead.name.trim() !== '');
+        semNome += batch.length - leadsToInsert.length;
 
         const toInsert = skipDuplicates
           ? leadsToInsert.filter((l: any) => { if (isDuplicate(l)) { skipped++; return false; } return true; })
@@ -576,6 +592,7 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
               const { error: e1 } = await supabase.from("crm_leads").insert(one);
               if (e1) {
                 errors++;
+                errRows.push([one.name || "", one.phone || "", one.email || "", one.company || "", e1.message || "Erro ao gravar"]);
                 if (e1.message && errSamples.length < 5 && !errSamples.includes(e1.message)) errSamples.push(e1.message);
               } else {
                 success++;
@@ -589,6 +606,24 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
 
         setImportProgress(Math.round(((i + batch.length) / csvData.length) * 100));
         setImportResults({ success, errors, skipped });
+
+        // progresso na Central; se cancelaram por lá, para aqui (o que entrou fica)
+        if (exec && !(await progressoExecucao(exec.id, { done: success, failed: errors, skipped: skipped + semNome }))) {
+          cancelada = true;
+          break;
+        }
+      }
+
+      if (exec && !cancelada) {
+        const errorsPath = errRows.length
+          ? await subirCsvExecucao(exec.staffId, exec.id, "erros-importacao.csv", [["Nome", "Telefone", "Email", "Empresa", "Motivo"], ...errRows])
+          : null;
+        await concluirExecucao(exec.id, { status: "done", done: success, failed: errors, skipped: skipped + semNome, errorsPath });
+      }
+      if (cancelada) {
+        toast.info(`Importação cancelada pela Central de Execuções. ${success} lead(s) já tinham entrado.`);
+        if (success > 0) onSuccess();
+        return;
       }
 
       if (success > 0) {
@@ -604,6 +639,12 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
     } catch (error: any) {
       console.error("Import error:", error);
       toast.error(error.message || "Erro na importação");
+      if (exec) {
+        await concluirExecucao(exec.id, {
+          status: "failed", done: success, failed: errors, skipped: skipped + semNome,
+          error: String(error?.message || "Erro na importação").slice(0, 300),
+        });
+      }
     } finally {
       setImporting(false);
     }
@@ -1093,6 +1134,9 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {importing ? "Não feche esta janela" : "Leads importados com sucesso"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  O andamento fica registrado em Disparos, aba Execuções.
                 </p>
               </div>
 
