@@ -5,6 +5,61 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
 };
 
+// Autenticação por x-api-key (01/10/2026): vale a chave antiga do env
+// EXTERNAL_LEAD_API_KEY (compatibilidade com quem já integra) OU uma chave ativa
+// gerada em Configurações do CRM > API e Webhooks (tabela crm_api_keys, onde só o
+// sha256 fica guardado). Chave revogada ou desconhecida = 401; chave sem a
+// permissão da operação = 403. Grava last_used_at no máximo uma vez por minuto.
+const REQUIRED_SCOPE = 'leads:status';
+
+async function sha256Hex(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// comparação sem atalho no primeiro caractere diferente
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+type ApiAuth =
+  | { ok: true; legacy: boolean; keyId: string | null; pipelineId: string | null }
+  | { ok: false; status: number; error: string };
+
+async function authenticate(req: Request, supabase: any, scope: string): Promise<ApiAuth> {
+  const apiKey = (req.headers.get('x-api-key') || '').trim();
+  if (!apiKey) return { ok: false, status: 401, error: 'Unauthorized' };
+
+  const legacyKey = Deno.env.get('EXTERNAL_LEAD_API_KEY');
+  if (legacyKey && safeEqual(apiKey, legacyKey)) {
+    return { ok: true, legacy: true, keyId: null, pipelineId: null };
+  }
+
+  const { data: row, error } = await supabase
+    .from('crm_api_keys')
+    .select('id, scopes, pipeline_id, last_used_at, revoked_at')
+    .eq('key_hash', await sha256Hex(apiKey))
+    .maybeSingle();
+  if (error) console.error('[api-key] lookup error:', error.message);
+  if (!row || row.revoked_at) return { ok: false, status: 401, error: 'Unauthorized' };
+  if (!(row.scopes || []).includes(scope)) {
+    return { ok: false, status: 403, error: `Chave sem permissão para esta operação (${scope})` };
+  }
+
+  const last = row.last_used_at ? new Date(row.last_used_at).getTime() : 0;
+  if (Date.now() - last > 60_000) {
+    const { error: upErr } = await supabase
+      .from('crm_api_keys')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('id', row.id);
+    if (upErr) console.error('[api-key] last_used_at error:', upErr.message);
+  }
+  return { ok: true, legacy: false, keyId: row.id, pipelineId: row.pipeline_id || null };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -18,12 +73,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const apiKey = req.headers.get('x-api-key');
-    const expectedKey = Deno.env.get('EXTERNAL_LEAD_API_KEY');
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
 
-    if (!expectedKey || apiKey !== expectedKey) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
+    const auth = await authenticate(req, supabase, REQUIRED_SCOPE);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), {
+        status: auth.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -42,6 +100,8 @@ Deno.serve(async (req) => {
       payment_method,
       description,
       company_id,
+      // dry_run: valida chave, lead e etapa de destino e responde sem alterar nada
+      dry_run,
     } = body;
 
     if (!lead_id) {
@@ -57,11 +117,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
 
     // 1. Verify lead exists and get its pipeline + data
     const { data: lead, error: leadError } = await supabase
@@ -92,6 +147,18 @@ Deno.serve(async (req) => {
         error: `Etapa "${finalType}" não encontrada no pipeline do lead` 
       }), {
         status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (dry_run === true) {
+      return new Response(JSON.stringify({
+        success: true,
+        dry_run: true,
+        lead_id: lead_id,
+        status: status,
+        stage: targetStage.name,
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
