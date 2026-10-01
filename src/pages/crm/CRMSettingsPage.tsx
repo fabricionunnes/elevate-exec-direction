@@ -58,7 +58,8 @@ import { CreditCard,
   Shuffle,
   ShieldCheck,
   Clock,
-  Package
+  Package,
+  KeyRound
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
 import { StageChecklistDialog } from "@/components/crm/StageChecklistDialog";
@@ -79,6 +80,8 @@ import { CRMActivityTypesTab } from "@/components/crm/settings/CRMActivityTypesT
 import { CRMBusinessHoursTab } from "@/components/crm/settings/CRMBusinessHoursTab";
 import { CRMProductsTab } from "@/components/crm/settings/CRMProductsTab";
 import { CRMTrashTab } from "@/components/crm/settings/CRMTrashTab";
+import { CRMApiWebhooksTab } from "@/components/crm/settings/CRMApiWebhooksTab";
+import { useCRMContext } from "./CRMLayout";
 import { toast } from "sonner";
 
 interface Pipeline {
@@ -149,6 +152,10 @@ export const CRMSettingsPage = () => {
   // Metas/Notificações/Acessos/Régua/Integrações/Formulários/Distribuição
   // são exclusivas de master/admin.
   const fullSettings = staffRole === "master" || staffRole === "admin";
+  // API, webhooks e suporte: só staff da UNV (tenant nulo). As functions da API gravam
+  // no CRM da UNV, então cliente white-label não gerencia chave nem webhook.
+  const { tenantId } = useCRMContext();
+  const unvAdmin = fullSettings && tenantId === null;
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [lossReasons, setLossReasons] = useState<LossReason[]>([]);
@@ -1226,6 +1233,13 @@ export const CRMSettingsPage = () => {
                 <span className="hidden sm:inline">Horário de Trabalho</span>
                 <span className="sm:hidden">Horário</span>
               </TabsTrigger>
+              {unvAdmin && (
+                <TabsTrigger value="api" className="gap-1.5 text-xs sm:text-sm">
+                  <KeyRound className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">API e Webhooks</span>
+                  <span className="sm:hidden">API</span>
+                </TabsTrigger>
+              )}
               <TabsTrigger value="lixeira" className="gap-1.5 text-xs sm:text-sm">
                 <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span>Lixeira</span>
@@ -1252,6 +1266,13 @@ export const CRMSettingsPage = () => {
         {fullSettings && (
           <TabsContent value="tipos-atividade" className="mt-6">
             <CRMActivityTypesTab />
+          </TabsContent>
+        )}
+
+        {/* Chaves de API e webhooks de saída */}
+        {unvAdmin && (
+          <TabsContent value="api" className="mt-6">
+            <CRMApiWebhooksTab pipelines={pipelines} isMaster={staffRole === "master"} />
           </TabsContent>
         )}
 

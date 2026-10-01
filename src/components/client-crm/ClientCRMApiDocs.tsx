@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Copy, Check, Code2, Send, Key, FileJson, AlertTriangle, Trophy } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 const API_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/receive-external-lead`;
 const UPDATE_STATUS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-lead-status`;
@@ -206,9 +207,19 @@ export const ClientCRMApiDocs = () => {
             <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-amber-700 dark:text-amber-400">
               <strong>Importante:</strong> Mantenha sua API Key em segurança. Nunca exponha em código frontend ou repositórios públicos.
-              Solicite sua chave com o administrador do sistema.
             </p>
           </div>
+          <p className="text-sm text-muted-foreground">
+            Gere uma chave por integração em{" "}
+            <Link to="/crm/settings?tab=api" className="text-primary underline">Configurações do CRM, aba API e Webhooks</Link>.
+            O valor aparece uma única vez, na criação. Cada chave tem suas permissões (criar leads, marcar ganho ou perda),
+            pode ter um funil padrão e pode ser revogada sem afetar as outras.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Para testar a integração sem gravar nada, envie{" "}
+            <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">"dry_run": true</code> no corpo:
+            a API valida a chave e os campos e responde o que faria, sem criar lead, sem alterar status e sem avisar ninguém.
+          </p>
         </CardContent>
       </Card>
 
