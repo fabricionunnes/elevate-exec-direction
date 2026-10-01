@@ -1132,7 +1132,7 @@ export const CRMLeadDetailPage = () => {
               <DropdownMenuContent align="end" className="bg-popover">
                 <DropdownMenuItem 
                   onClick={async () => {
-                    const { data: prods } = await supabase.from("onboarding_services").select("id, name").eq("is_active", true).order("name");
+                    const { data: prods } = await supabase.from("onboarding_services").select("id, name").eq("is_active", true).order("sort_order" as any).order("name");
                     setWonProducts(prods || []);
                     setWonProductId((lead as any)?.product_id || "");
                     setWonDialogOpen(true);

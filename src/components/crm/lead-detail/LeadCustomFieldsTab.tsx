@@ -508,6 +508,8 @@ export const LeadCustomFieldsTab = ({
       .from("onboarding_services")
       .select("id, name")
       .eq("is_active", true)
+      // ordem definida em Configurações do CRM, aba Produtos (empate por nome)
+      .order("sort_order" as any)
       .order("name");
     
     setProducts(productsData || []);

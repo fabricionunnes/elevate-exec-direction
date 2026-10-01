@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useOutletContext, useNavigate } from "react-router-dom";
+import { useOutletContext, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -57,7 +57,8 @@ import { CreditCard,
   FileText,
   Shuffle,
   ShieldCheck,
-  Clock
+  Clock,
+  Package
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
 import { StageChecklistDialog } from "@/components/crm/StageChecklistDialog";
@@ -76,6 +77,7 @@ import { CRMMessageRulesTab } from "@/components/crm/settings/CRMMessageRulesTab
 import { CRMPaymentMethodsTab } from "@/components/crm/settings/CRMPaymentMethodsTab";
 import { CRMActivityTypesTab } from "@/components/crm/settings/CRMActivityTypesTab";
 import { CRMBusinessHoursTab } from "@/components/crm/settings/CRMBusinessHoursTab";
+import { CRMProductsTab } from "@/components/crm/settings/CRMProductsTab";
 import { toast } from "sonner";
 
 interface Pipeline {
@@ -133,6 +135,15 @@ interface Origin {
 export const CRMSettingsPage = () => {
   const { canSettings, staffRole } = useOutletContext<{ staffRole: string; isAdmin: boolean; canSettings: boolean }>();
   const navigate = useNavigate();
+  // Aba aberta vem de ?tab= na rota (o app usa HashRouter: a query fica dentro do hash,
+  // então window.location.search vem vazio e não serve). Trocar de aba atualiza a URL.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "pipelines";
+  const changeTab = (tab: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", tab);
+    setSearchParams(next, { replace: true });
+  };
   // Head comercial: só Pipelines, Origens, Motivos de Perda e Tags.
   // Metas/Notificações/Acessos/Régua/Integrações/Formulários/Distribuição
   // são exclusivas de master/admin.
@@ -1137,7 +1148,7 @@ export const CRMSettingsPage = () => {
       </div>
 
       {/* ?tab=horario (etc.) abre direto na aba: os dashboards linkam pra cá */}
-      <Tabs defaultValue={new URLSearchParams(window.location.search).get("tab") || "pipelines"} className="w-full">
+      <Tabs value={activeTab} onValueChange={changeTab} className="w-full">
         <TabsList className="flex flex-wrap h-auto gap-1 p-1 w-full justify-start overflow-x-auto">
           <TabsTrigger value="pipelines" className="gap-1.5 text-xs sm:text-sm">
             <Kanban className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -1164,6 +1175,10 @@ export const CRMSettingsPage = () => {
           </TabsTrigger>
           {fullSettings && (
             <>
+              <TabsTrigger value="produtos" className="gap-1.5 text-xs sm:text-sm">
+                <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                Produtos
+              </TabsTrigger>
               <TabsTrigger value="access" className="gap-1.5 text-xs sm:text-sm">
                 <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 Acessos
@@ -1225,6 +1240,13 @@ export const CRMSettingsPage = () => {
         {fullSettings && (
           <TabsContent value="tipos-atividade" className="mt-6">
             <CRMActivityTypesTab />
+          </TabsContent>
+        )}
+
+        {/* Produtos (onboarding_services) e planos (crm_plans) do negócio */}
+        {fullSettings && (
+          <TabsContent value="produtos" className="mt-6">
+            <CRMProductsTab />
           </TabsContent>
         )}
 
