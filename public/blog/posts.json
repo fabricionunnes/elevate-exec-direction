@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-09-30T21:00:58",
+ "gerado_em": "2026-10-01T10:01:03",
  "posts": [
+  {
+   "slug": "pergunta-maior-desafio-revela-falta-prioridade",
+   "url": "/blog/pergunta-maior-desafio-revela-falta-prioridade/",
+   "titulo": "Pergunta sobre maior desafio revela falta de prioridade",
+   "resumo": "Quando o dono não sabe qual é o maior desafio, a empresa cresce sem direção comercial. O diagnóstico começa antes da venda começar.",
+   "tags": [
+    "diagnóstico",
+    "prioridade",
+    "estrutura comercial",
+    "decisão",
+    "crescimento"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-01",
+   "ts": 2137
+  },
   {
    "slug": "desafio-maior-revela-falta-estrutura-comercial",
    "url": "/blog/desafio-maior-revela-falta-estrutura-comercial/",
