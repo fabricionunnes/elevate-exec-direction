@@ -14,7 +14,7 @@ import { duracao } from "@/lib/exportXlsx";
 import { toast } from "sonner";
 import {
   C, SERIES, tipStyle, n, pct, diaCurto, DOW, dataHora,
-  Kpi, Grafico, ExportarDialog, PeriodoFiltro, intervalo, useStaffOptions, RodapeEscopo, type Periodo,
+  Kpi, Grafico, ExportarDialog, PeriodoFiltro, intervalo, useStaffOptions, RodapeEscopo, expedienteTexto, DICA_TEMPO_UTIL, type Periodo,
 } from "./dashboardShared";
 
 interface Props {
@@ -75,15 +75,22 @@ export function AtendimentoDashboardTab({ lockedStaffId }: Props) {
   const blocosExport = useMemo(() => [
     { chave: "kpis", rotulo: "Resumo", linhas: dados ? [{
       Periodo: texto, Iniciadas: n(k.iniciadas), "Recebidas (cliente escreveu)": n(k.recebidas), Finalizadas: n(k.finalizadas), Abertas: n(k.abertas), "Aguardando resposta": n(k.aguardando),
-      "Sem nenhuma resposta": n(k.sem_resposta), "1a resposta (media)": duracao(k.inicio_medio_s), "1a resposta (mediana)": duracao(k.inicio_mediana_s),
-      "1a resposta humana (media)": duracao(k.resposta_media_s), "Respondidas em 5 min": n(k.respondidas_5min),
+      "Sem nenhuma resposta": n(k.sem_resposta),
+      "1a resposta util (media)": duracao(k.inicio_util_medio_s), "1a resposta util (mediana)": duracao(k.inicio_util_mediana_s),
+      "1a resposta corrida (media)": duracao(k.inicio_medio_s), "1a resposta corrida (mediana)": duracao(k.inicio_mediana_s),
+      "1a resposta humana util (media)": duracao(k.resposta_util_media_s), "1a resposta humana util (mediana)": duracao(k.resposta_util_mediana_s),
+      "1a resposta humana corrida (media)": duracao(k.resposta_media_s), "1a resposta humana corrida (mediana)": duracao(k.resposta_mediana_s),
+      "Respondidas em 5 min (util)": n(k.respondidas_5min_util), "Respondidas em 5 min (corrido)": n(k.respondidas_5min),
+      "Fora do expediente": n(k.fora_expediente), "Fora do expediente sem resposta": n(k.fora_expediente_sem_resposta),
+      "Espera corrida media fora do expediente": duracao(k.fora_expediente_espera_media_s), "Espera corrida media dentro do expediente": duracao(k.dentro_expediente_espera_media_s),
+      "Horario de trabalho": expedienteTexto(dados.expediente),
     }] : [] },
-    { chave: "por_dia", rotulo: "Dia a dia", linhas: (dados?.por_dia || []).map((d: any) => ({ Dia: d.dia, Iniciadas: n(d.iniciadas), Finalizadas: n(d.finalizadas), WhatsApp: n(d.whatsapp), Instagram: n(d.instagram), "Sem resposta": n(d.sem_resposta) })) },
-    { chave: "por_atendente", rotulo: "Por atendente", linhas: porAtendente.map((a: any) => ({ Atendente: a.nome, Conversas: a.total, Finalizadas: a.finalizadas, Abertas: a.abertas, "Aguardando resposta": a.aguardando, "Sem resposta": a.sem_resposta, "1a resposta (media)": duracao(a.resposta_media_s), "1a resposta humana (media)": duracao(a.humana_media_s) })) },
-    { chave: "por_setor", rotulo: "Por setor", linhas: porSetor.map((a: any) => ({ Setor: a.nome, Conversas: a.total, Finalizadas: a.finalizadas, Abertas: n(a.abertas), "1a resposta (media)": duracao(a.resposta_media_s) })) },
+    { chave: "por_dia", rotulo: "Dia a dia", linhas: (dados?.por_dia || []).map((d: any) => ({ Dia: d.dia, Iniciadas: n(d.iniciadas), Finalizadas: n(d.finalizadas), WhatsApp: n(d.whatsapp), Instagram: n(d.instagram), "Sem resposta": n(d.sem_resposta), "1a resposta util (media)": duracao(d.inicio_util_medio_s), "1a resposta corrida (media)": duracao(d.inicio_medio_s), "Fora do expediente": n(d.fora_expediente) })) },
+    { chave: "por_atendente", rotulo: "Por atendente", linhas: porAtendente.map((a: any) => ({ Atendente: a.nome, Conversas: a.total, Finalizadas: a.finalizadas, Abertas: a.abertas, "Aguardando resposta": a.aguardando, "Sem resposta": a.sem_resposta, "1a resposta util (media)": duracao(a.resposta_util_media_s), "1a resposta corrida (media)": duracao(a.resposta_media_s), "1a humana util (media)": duracao(a.humana_util_media_s), "1a humana corrida (media)": duracao(a.humana_media_s), "Respondidas em 5 min (util)": n(a.respondidas_5min_util), "Respondidas em 5 min (corrido)": n(a.respondidas_5min), "Fora do expediente": n(a.fora_expediente) })) },
+    { chave: "por_setor", rotulo: "Por setor", linhas: porSetor.map((a: any) => ({ Setor: a.nome, Conversas: a.total, Finalizadas: a.finalizadas, Abertas: n(a.abertas), "1a resposta util (media)": duracao(a.resposta_util_media_s), "1a resposta corrida (media)": duracao(a.resposta_media_s) })) },
     { chave: "por_canal", rotulo: "Por canal", linhas: porCanal.map((a: any) => ({ Canal: a.nome, Plataforma: a.plataforma, Conversas: a.total, Finalizadas: n(a.finalizadas), "Sem resposta": n(a.sem_resposta) })) },
     { chave: "mapa", rotulo: "Mapa de calor", linhas: (dados?.mapa_calor || []).map((x: any) => ({ "Dia da semana": DOW[n(x.dow)], Hora: `${String(x.hora).padStart(2, "0")}h`, "Mensagens recebidas": n(x.n) })) },
-    { chave: "lista", rotulo: "Conversas", linhas: (dados?.lista || []).map((c: any) => ({ Contato: c.contato, Plataforma: c.plataforma, Canal: c.canal, Atendente: c.atendente || "", Setor: c.setor || "", Status: c.status === "closed" ? "Finalizada" : c.aguardando ? "Aguardando resposta" : "Em aberto", "Aberta em": new Date(c.created_at).toLocaleString("pt-BR"), "Ultima mensagem": c.last_message_at ? new Date(c.last_message_at).toLocaleString("pt-BR") : "", "Tempo ate a 1a resposta": c.recebeu ? (c.inicio_s == null ? "sem resposta" : duracao(c.inicio_s)) : "cliente nao escreveu", "Tempo ate a 1a resposta humana": duracao(c.resposta_s) })) },
+    { chave: "lista", rotulo: "Conversas", linhas: (dados?.lista || []).map((c: any) => ({ Contato: c.contato, Plataforma: c.plataforma, Canal: c.canal, Atendente: c.atendente || "", Setor: c.setor || "", Status: c.status === "closed" ? "Finalizada" : c.aguardando ? "Aguardando resposta" : "Em aberto", "Aberta em": new Date(c.created_at).toLocaleString("pt-BR"), "Ultima mensagem": c.last_message_at ? new Date(c.last_message_at).toLocaleString("pt-BR") : "", "Espera util ate a 1a resposta": c.recebeu ? (c.inicio_s == null ? "sem resposta" : duracao(c.inicio_util_s)) : "cliente nao escreveu", "Espera corrida ate a 1a resposta": c.recebeu && c.inicio_s != null ? duracao(c.inicio_s) : "", "1a resposta humana util": duracao(c.resposta_util_s), "1a resposta humana corrida": duracao(c.resposta_s), "Fora do expediente": c.fora_expediente ? "sim" : "nao" })) },
   ], [dados, k, texto, porAtendente, porSetor, porCanal]);
 
   const opcoesStaff = [{ value: "all", label: "Todos os atendentes" }, ...staff.map((s) => ({ value: s.id, label: s.name }))];
@@ -118,10 +125,16 @@ export function AtendimentoDashboardTab({ lockedStaffId }: Props) {
             <Kpi label="Aguardando resposta" valor={n(k.aguardando).toLocaleString("pt-BR")} sub="cliente falou por último" cor={C.amarelo} destaque />
             <Kpi label="Sem nenhuma resposta" valor={n(k.sem_resposta).toLocaleString("pt-BR")} sub="cliente escreveu, ninguém respondeu" cor={C.vermelho} />
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <Kpi label="1ª resposta (média)" valor={duracao(k.inicio_medio_s)} sub={`mediana ${duracao(k.inicio_mediana_s)}, pessoa ou IA`} cor={C.azul} destaque />
-            <Kpi label="1ª resposta humana (média)" valor={duracao(k.resposta_media_s)} sub="só mensagens de atendente" cor={C.verde} />
-            <Kpi label="Respondidas em até 5 min" valor={n(k.respondidas_5min).toLocaleString("pt-BR")} sub={`${pct(n(k.respondidas_5min), n(k.recebidas))} das que o cliente escreveu`} cor={C.verde} />
+          {/* Tempo de resposta nos 2 lados: útil (dentro do expediente) como principal, corrido embaixo */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+            <Kpi label="1ª resposta (tempo útil)" valor={duracao(k.inicio_util_medio_s)} sub={`mediana ${duracao(k.inicio_util_mediana_s)}. Corrido: ${duracao(k.inicio_medio_s)} (mediana ${duracao(k.inicio_mediana_s)})`} cor={C.azul} destaque
+              dica={`Pessoa ou IA. ${DICA_TEMPO_UTIL}`} />
+            <Kpi label="1ª resposta humana (tempo útil)" valor={duracao(k.resposta_util_media_s)} sub={`mediana ${duracao(k.resposta_util_mediana_s)}. Corrido: ${duracao(k.resposta_media_s)} (mediana ${duracao(k.resposta_mediana_s)})`} cor={C.verde}
+              dica={`Só mensagens de atendente. ${DICA_TEMPO_UTIL}`} />
+            <Kpi label="Respondidas em até 5 min (útil)" valor={pct(n(k.respondidas_5min_util), n(k.recebidas))} sub={`${n(k.respondidas_5min_util).toLocaleString("pt-BR")} de ${n(k.recebidas).toLocaleString("pt-BR")}. Corrido: ${pct(n(k.respondidas_5min), n(k.recebidas))}`} cor={C.verde}
+              dica={`SLA de 5 minutos sobre as conversas em que o cliente escreveu. ${DICA_TEMPO_UTIL}`} />
+            <Kpi label="Fora do expediente" valor={n(k.fora_expediente).toLocaleString("pt-BR")} sub={`${pct(n(k.fora_expediente), n(k.recebidas))} das conversas. Espera corrida média ${duracao(k.fora_expediente_espera_media_s)}`} cor={C.laranja}
+              dica={`Conversas em que a 1ª mensagem do cliente chegou fora do horário de trabalho. A espera corrida delas é o custo de não ter atendimento à noite e no fim de semana (dentro do expediente a espera média é ${duracao(k.dentro_expediente_espera_media_s)}). ${n(k.fora_expediente_sem_resposta)} ainda sem resposta.`} />
             <Kpi label="Atendentes ativos" valor={String(porAtendente.filter((a: any) => a.id).length)} cor={C.violeta} />
           </div>
 
@@ -220,13 +233,16 @@ export function AtendimentoDashboardTab({ lockedStaffId }: Props) {
 
           <Card>
             <CardContent className="p-4">
-              <p className="text-sm font-medium flex items-center gap-1.5 mb-3"><Clock className="h-4 w-4" /> Tempo de resposta por atendente</p>
+              <p className="text-sm font-medium flex items-center gap-1.5 mb-3" title={DICA_TEMPO_UTIL}><Clock className="h-4 w-4" /> Tempo de resposta por atendente <span className="text-xs font-normal text-muted-foreground">tempo útil e corrido</span></p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="text-xs text-muted-foreground"><tr className="border-b">
                     <th className="text-left font-medium py-1.5">Atendente</th><th className="text-right font-medium">Conversas</th><th className="text-right font-medium">Finalizadas</th>
                     <th className="text-right font-medium">Abertas</th><th className="text-right font-medium">Aguardando</th><th className="text-right font-medium">Sem resposta</th>
-                    <th className="text-right font-medium">1ª resposta (média)</th><th className="text-right font-medium">1ª humana (média)</th>
+                    <th className="text-right font-medium" title={DICA_TEMPO_UTIL}>1ª resposta útil</th><th className="text-right font-medium">corrido</th>
+                    <th className="text-right font-medium" title={DICA_TEMPO_UTIL}>1ª humana útil</th><th className="text-right font-medium">corrido</th>
+                    <th className="text-right font-medium" title="Respondidas em até 5 min de tempo útil, sobre as conversas em que o cliente escreveu">5 min (útil)</th>
+                    <th className="text-right font-medium" title="Conversas em que a 1ª mensagem chegou fora do horário de trabalho">Fora do exp.</th>
                   </tr></thead>
                   <tbody>
                     {porAtendente.map((a: any) => (
@@ -237,8 +253,12 @@ export function AtendimentoDashboardTab({ lockedStaffId }: Props) {
                         <td className="text-right tabular-nums">{a.abertas}</td>
                         <td className="text-right tabular-nums" style={{ color: a.aguardando ? C.amarelo : undefined }}>{a.aguardando}</td>
                         <td className="text-right tabular-nums" style={{ color: a.sem_resposta ? C.vermelho : undefined }}>{a.sem_resposta}</td>
-                        <td className="text-right tabular-nums">{duracao(a.resposta_media_s)}</td>
-                        <td className="text-right tabular-nums">{duracao(a.humana_media_s)}</td>
+                        <td className="text-right tabular-nums font-medium">{duracao(a.resposta_util_media_s)}</td>
+                        <td className="text-right tabular-nums text-xs text-muted-foreground">{duracao(a.resposta_media_s)}</td>
+                        <td className="text-right tabular-nums font-medium">{duracao(a.humana_util_media_s)}</td>
+                        <td className="text-right tabular-nums text-xs text-muted-foreground">{duracao(a.humana_media_s)}</td>
+                        <td className="text-right tabular-nums">{pct(n(a.respondidas_5min_util), n(a.recebidas))}</td>
+                        <td className="text-right tabular-nums">{n(a.fora_expediente)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -263,7 +283,7 @@ export function AtendimentoDashboardTab({ lockedStaffId }: Props) {
                     <th className="text-left font-medium py-1.5">Contato</th><th className="text-left font-medium">Canal</th><th className="text-left font-medium">Atendente</th>
                     {temSetores && <th className="text-left font-medium">Setor</th>}
                     <th className="text-left font-medium">Status</th><th className="text-left font-medium">Aberta em</th><th className="text-left font-medium">Última msg</th>
-                    <th className="text-right font-medium">Espera até a 1ª resposta</th><th className="text-right font-medium">Humana</th><th></th>
+                    <th className="text-right font-medium" title={DICA_TEMPO_UTIL}>Espera útil</th><th className="text-right font-medium">Corrido</th><th className="text-right font-medium" title="1ª resposta de atendente: tempo útil (corrido)">Humana</th><th></th>
                   </tr></thead>
                   <tbody>
                     {lista.map((c: any) => (
@@ -275,10 +295,14 @@ export function AtendimentoDashboardTab({ lockedStaffId }: Props) {
                         <td>{c.status === "closed" ? <Badge variant="secondary">Finalizada</Badge> : c.aguardando ? <Badge className="bg-amber-500 hover:bg-amber-500">Aguardando</Badge> : <Badge variant="outline">Em aberto</Badge>}</td>
                         <td className="text-xs whitespace-nowrap">{dataHora(c.created_at)}</td>
                         <td className="text-xs whitespace-nowrap">{dataHora(c.last_message_at)}</td>
-                        <td className="text-right tabular-nums" style={{ color: !c.recebeu ? undefined : c.inicio_s == null ? C.vermelho : c.inicio_s > 3600 ? C.amarelo : undefined }}>
-                          {!c.recebeu ? <span className="text-muted-foreground text-xs">cliente não escreveu</span> : c.inicio_s == null ? "sem resposta" : duracao(c.inicio_s)}
+                        <td className="text-right tabular-nums" style={{ color: !c.recebeu ? undefined : c.inicio_s == null ? C.vermelho : n(c.inicio_util_s) > 3600 ? C.amarelo : undefined }}>
+                          {!c.recebeu ? <span className="text-muted-foreground text-xs">cliente não escreveu</span> : c.inicio_s == null ? "sem resposta" : duracao(c.inicio_util_s)}
                         </td>
-                        <td className="text-right tabular-nums text-xs">{c.recebeu ? duracao(c.resposta_s) : "-"}</td>
+                        <td className="text-right tabular-nums text-xs text-muted-foreground whitespace-nowrap">
+                          {c.recebeu && c.inicio_s != null ? duracao(c.inicio_s) : "-"}
+                          {c.fora_expediente && <span className="ml-1 text-[10px]" style={{ color: C.laranja }} title="A 1ª mensagem do cliente chegou fora do horário de trabalho">fora do exp.</span>}
+                        </td>
+                        <td className="text-right tabular-nums text-xs whitespace-nowrap">{c.recebeu && c.resposta_s != null ? <>{duracao(c.resposta_util_s)} <span className="text-muted-foreground">({duracao(c.resposta_s)})</span></> : "-"}</td>
                         <td className="text-right">
                           <Link to={`/crm/inbox?conversation=${c.id}`} className="inline-flex items-center gap-1 text-xs text-primary hover:underline whitespace-nowrap" title="Abrir no Atendimento">
                             <ExternalLink className="h-3 w-3" /> Abrir
@@ -291,6 +315,10 @@ export function AtendimentoDashboardTab({ lockedStaffId }: Props) {
               </div>
             </CardContent>
           </Card>
+          <p className="text-[11px] text-muted-foreground">
+            Horário de trabalho usado no tempo útil: {expedienteTexto(dados?.expediente)}{n(dados?.feriados_periodo) ? `, ${n(dados?.feriados_periodo)} feriado(s) no período` : ""}.{" "}
+            <Link to="/crm/settings?tab=horario" className="text-primary underline">Ajustar em Configurações do CRM, aba Horário de Trabalho</Link>
+          </p>
           <RodapeEscopo escopo={dados?.escopo} />
         </>
       )}

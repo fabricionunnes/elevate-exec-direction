@@ -1136,7 +1136,8 @@ export const CRMSettingsPage = () => {
         </p>
       </div>
 
-      <Tabs defaultValue="pipelines" className="w-full">
+      {/* ?tab=horario (etc.) abre direto na aba: os dashboards linkam pra cá */}
+      <Tabs defaultValue={new URLSearchParams(window.location.search).get("tab") || "pipelines"} className="w-full">
         <TabsList className="flex flex-wrap h-auto gap-1 p-1 w-full justify-start overflow-x-auto">
           <TabsTrigger value="pipelines" className="gap-1.5 text-xs sm:text-sm">
             <Kanban className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
