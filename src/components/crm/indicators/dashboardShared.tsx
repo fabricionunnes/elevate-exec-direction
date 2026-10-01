@@ -82,9 +82,9 @@ export function PeriodoFiltro({ value, onChange }: { value: Periodo; onChange: (
 }
 
 // ------------------------------------------------------------------ visual
-export function Kpi({ label, valor, sub, cor, destaque }: { label: string; valor: string; sub?: string; cor: string; destaque?: boolean }) {
+export function Kpi({ label, valor, sub, cor, destaque, dica }: { label: string; valor: string; sub?: string; cor: string; destaque?: boolean; dica?: string }) {
   return (
-    <Card className="overflow-hidden relative">
+    <Card className="overflow-hidden relative" title={dica}>
       <div className="absolute inset-x-0 top-0 h-1" style={{ background: `linear-gradient(90deg, ${cor}, ${cor}55)` }} />
       <CardContent className="p-3 pt-4">
         <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -164,6 +164,26 @@ export function useStaffOptions() {
   }, []);
   return staff;
 }
+
+const DIAS_SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+
+/** Texto do expediente que a RPC devolve em `expediente` (null = padrão da função no banco). */
+export function expedienteTexto(expediente?: { weekday: number; is_open: boolean; open: string; close: string }[] | null): string {
+  if (!expediente || !expediente.length) return "padrão seg a sex, 08h às 18h";
+  const abertos = expediente.filter((d) => d.is_open && d.open < d.close);
+  if (!abertos.length) return "nenhum dia aberto cadastrado";
+  // agrupa dias seguidos com o mesmo horário: "seg a sex 08:00 às 18:00, sáb 08:00 às 12:00"
+  const grupos: { de: number; ate: number; h: string }[] = [];
+  abertos.sort((a, b) => a.weekday - b.weekday).forEach((d) => {
+    const h = `${d.open} às ${d.close}`;
+    const g = grupos[grupos.length - 1];
+    if (g && g.h === h && g.ate === d.weekday - 1) g.ate = d.weekday; else grupos.push({ de: d.weekday, ate: d.weekday, h });
+  });
+  return grupos.map((g) => `${g.de === g.ate ? DIAS_SEMANA[g.de] : `${DIAS_SEMANA[g.de]} a ${DIAS_SEMANA[g.ate]}`} ${g.h}`).join(", ");
+}
+
+/** Explicação padrão da diferença entre tempo útil e corrido (tooltips). */
+export const DICA_TEMPO_UTIL = "Tempo útil conta só os segundos dentro do horário de trabalho (mensagem que chega às 22h e é respondida às 08:03 do dia útil seguinte = 3 min). Tempo corrido conta o relógio inteiro, noite e fim de semana incluídos.";
 
 /** Rodapé do recorte por papel que as RPCs devolvem em `escopo` (closer/sdr: só o próprio; head: a equipe). */
 export function RodapeEscopo({ escopo }: { escopo?: { mostrando?: string; nome?: string } | null }) {

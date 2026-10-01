@@ -14,7 +14,7 @@ import { Loader2, RefreshCw, Download, ArrowUpRight, ArrowDownRight, Minus, Aler
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis } from "recharts";
 import { duracao } from "@/lib/exportXlsx";
 import { toast } from "sonner";
-import { n, pct, DOW, moeda, ExportarDialog, PeriodoFiltro, intervalo, useStaffOptions, RodapeEscopo, type Periodo } from "./dashboardShared";
+import { n, pct, DOW, moeda, ExportarDialog, PeriodoFiltro, intervalo, useStaffOptions, RodapeEscopo, expedienteTexto, DICA_TEMPO_UTIL, type Periodo } from "./dashboardShared";
 
 // Paleta sóbria: uma cor de destaque e tons acinzentados
 // As cores de destaque vêm de variáveis CSS: no tema escuro o navy fixo sumia
@@ -366,7 +366,9 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
   }, [atend]);
   const ak = atend?.kpis || {};
   const interacoes = n(A.msgs_wa) + n(A.msgs_ig) + n(A.ligacoes);
-  const slaPct = n(ak.recebidas) > 0 ? n(ak.respondidas_5min) / n(ak.recebidas) : null;
+  // SLA de 5 min: principal em tempo útil (dentro do expediente), corrido ao lado
+  const slaPct = n(ak.recebidas) > 0 ? n(ak.respondidas_5min_util ?? ak.respondidas_5min) / n(ak.recebidas) : null;
+  const slaCorridoPct = n(ak.recebidas) > 0 ? n(ak.respondidas_5min) / n(ak.recebidas) : null;
   const SLA_META = 0.8;
 
   const campanhas = useMemo(() => {
@@ -413,7 +415,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
       { chave: "origens", rotulo: "Origem dos leads", linhas: origensLista.map((o) => ({ Origem: o.nome, Grupo: o.grupo || "", "Midia paga": o.pago ? "sim" : "nao", Leads: n(o.leads), "%": leadsTot ? Number(((n(o.leads) / leadsTot) * 100).toFixed(1)) : "", Vendas: n(o.vendas), Receita: n(o.receita) })) },
       { chave: "estados", rotulo: "Clientes por estado", linhas: estados.map((e) => ({ UF: e.uf, Clientes: n(e.clientes), "%": clientesComUf ? Number(((n(e.clientes) / clientesComUf) * 100).toFixed(1)) : "", "Ganhos no CRM": n(e.ganhos), "Em carteira (ativos)": n(e.ativos), "Receita ganha": n(e.receita), "Leads no periodo": n(e.leads) })) },
       { chave: "calor", rotulo: "Mapa de calor", linhas: (atend?.mapa_calor || []).map((x: any) => ({ "Dia da semana": DOW[n(x.dow)], Hora: `${String(x.hora).padStart(2, "0")}h`, "Mensagens recebidas": n(x.n) })) },
-      { chave: "atendimento", rotulo: "Atendimento", linhas: atend ? [{ Interacoes: interacoes, WhatsApp: n(A.msgs_wa), Instagram: n(A.msgs_ig), Telefone: n(A.ligacoes), "1a resposta (media)": duracao(ak.inicio_medio_s), "SLA ate 5 min": slaPct != null ? Number((slaPct * 100).toFixed(1)) : "", Pendentes: n(ak.aguardando), "Sem resposta": n(ak.sem_resposta) }] : [] },
+      { chave: "atendimento", rotulo: "Atendimento", linhas: atend ? [{ Interacoes: interacoes, WhatsApp: n(A.msgs_wa), Instagram: n(A.msgs_ig), Telefone: n(A.ligacoes), "1a resposta util (media)": duracao(ak.inicio_util_medio_s), "1a resposta corrida (media)": duracao(ak.inicio_medio_s), "SLA ate 5 min util %": slaPct != null ? Number((slaPct * 100).toFixed(1)) : "", "SLA ate 5 min corrido %": slaCorridoPct != null ? Number((slaCorridoPct * 100).toFixed(1)) : "", "Fora do expediente": n(ak.fora_expediente), "Horario de trabalho": expedienteTexto(atend?.expediente), Pendentes: n(ak.aguardando), "Sem resposta": n(ak.sem_resposta) }] : [] },
       { chave: "campanhas", rotulo: "Trafego e campanhas", linhas: campanhas.map((c) => ({ Campanha: c.nome, Midia: c.gasto, Leads: c.leads, CPL: c.cpl ?? "", Vendas: c.vendas, Receita: c.receita, ROAS: c.roas != null ? Number(c.roas.toFixed(2)) : "" })) },
       { chave: "semanas", rotulo: "Leads por semana", linhas: leadsSemana.map((s: any) => ({ Semana: s.semana, Pagos: s.pagos, Organicos: s.organicos })) },
       { chave: "sdrs", rotulo: "Pre-vendas", linhas: sdrs.map((s) => ({ SDR: s.nome, Leads: n(s.leads), Agendados: n(s.agendados), Realizados: n(s.realizados), "No-show": n(s.no_show) })) },
@@ -421,7 +423,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
       { chave: "pipeline", rotulo: "Pipeline em aberto", linhas: pipelineEtapas.map((e) => ({ Funil: e.funil, Etapa: e.etapa, Oportunidades: n(e.qtd), "Com valor": n(e.com_valor), Valor: n(e.valor) })) },
       { chave: "atencao", rotulo: "Pontos de atencao", linhas: atencao.map((a) => ({ Ponto: a.texto, Detalhe: a.detalhe, Nivel: a.nivel })) },
     ];
-  }, [dados, kpis, texto, receitaSerie, etapasFunil, origensLista, leadsTot, estados, clientesComUf, atend, interacoes, A, ak, slaPct, campanhas, leadsSemana, sdrs, closers, pipelineEtapas, atencao]);
+  }, [dados, kpis, texto, receitaSerie, etapasFunil, origensLista, leadsTot, estados, clientesComUf, atend, interacoes, A, ak, slaPct, slaCorridoPct, campanhas, leadsSemana, sdrs, closers, pipelineEtapas, atencao]);
 
   const campanhasOpcoes = [{ value: "all", label: "Todas as campanhas" }, ...campanhas.map((c) => ({ value: c.id, label: c.nome }))];
   const vazio = !dados || (!n(A.leads) && !n(A.vendas) && !n(A.receita));
@@ -591,13 +593,14 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {[
                       { l: "Interações", v: inteiro(interacoes), t: "mensagens recebidas + ligações" },
-                      { l: "1ª resposta média", v: n(ak.recebidas) ? duracao(ak.inicio_medio_s) : "sem dados", t: `mediana ${duracao(ak.inicio_mediana_s)}, pessoa ou IA` },
-                      { l: "SLA até 5 min", v: slaPct == null ? "sem dados" : `${Math.round(slaPct * 100)}%`, t: `${inteiro(ak.respondidas_5min)} de ${inteiro(ak.recebidas)} conversas em que o cliente escreveu` },
-                      { l: "Pendentes", v: inteiro(ak.aguardando), t: "conversas em que o cliente falou por último" },
-                    ].map((x) => (
+                      { l: "1ª resposta (útil)", v: n(ak.recebidas) ? duracao(ak.inicio_util_medio_s) : "sem dados", s: n(ak.recebidas) ? `corrido: ${duracao(ak.inicio_medio_s)}` : "", t: `Tempo útil: mediana ${duracao(ak.inicio_util_mediana_s)}. Corrido: média ${duracao(ak.inicio_medio_s)}, mediana ${duracao(ak.inicio_mediana_s)}. Pessoa ou IA. ${DICA_TEMPO_UTIL}` },
+                      { l: "SLA até 5 min (útil)", v: slaPct == null ? "sem dados" : `${Math.round(slaPct * 100)}%`, s: slaCorridoPct == null ? "" : `corrido: ${Math.round(slaCorridoPct * 100)}%`, t: `${inteiro(ak.respondidas_5min_util)} de ${inteiro(ak.recebidas)} conversas em que o cliente escreveu, em tempo útil (${inteiro(ak.respondidas_5min)} em tempo corrido). ${DICA_TEMPO_UTIL}` },
+                      { l: "Pendentes", v: inteiro(ak.aguardando), s: `${inteiro(ak.fora_expediente)} chegaram fora do expediente`, t: `Conversas em que o cliente falou por último. ${inteiro(ak.fora_expediente)} conversas do período começaram fora do horário de trabalho (${pct(n(ak.fora_expediente), n(ak.recebidas))}), espera corrida média ${duracao(ak.fora_expediente_espera_media_s)}` },
+                    ].map((x: { l: string; v: string; t: string; s?: string }) => (
                       <div key={x.l} className="rounded-lg border border-border/60 p-2.5" title={x.t}>
                         <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{x.l}</p>
                         <p className="text-base font-semibold tabular-nums" style={{ color: x.l === "Pendentes" && n(ak.aguardando) > 0 ? VERMELHO : NAVY }}>{x.v}</p>
+                        {x.s && <p className="text-[10px] text-muted-foreground tabular-nums">{x.s}</p>}
                       </div>
                     ))}
                   </div>
@@ -611,8 +614,8 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
                     ))}
                     <p className="text-[10px] text-muted-foreground">E-mail: sem dados, o CRM não registra e-mails recebidos.</p>
                   </div>
-                  <div title={`Meta de SLA: ${Math.round(SLA_META * 100)}% das conversas respondidas em até 5 minutos`}>
-                    <div className="flex items-center justify-between text-xs mb-1"><span>Meta de SLA (5 min)</span><span className="tabular-nums">{slaPct == null ? "-" : `${Math.round(slaPct * 100)}%`} de {Math.round(SLA_META * 100)}%</span></div>
+                  <div title={`Meta de SLA: ${Math.round(SLA_META * 100)}% das conversas respondidas em até 5 minutos de tempo útil. Horário de trabalho: ${expedienteTexto(atend?.expediente)}`}>
+                    <div className="flex items-center justify-between text-xs mb-1"><span>Meta de SLA (5 min, tempo útil)</span><span className="tabular-nums">{slaPct == null ? "-" : `${Math.round(slaPct * 100)}%`} de {Math.round(SLA_META * 100)}%{slaCorridoPct != null && <span className="text-muted-foreground"> · corrido {Math.round(slaCorridoPct * 100)}%</span>}</span></div>
                     <div className="h-2.5 rounded-full bg-muted overflow-hidden relative">
                       <div className="h-full rounded-full" style={{ width: `${Math.min(100, (slaPct || 0) * 100)}%`, background: slaPct != null && slaPct >= SLA_META ? VERDE : NAVY }} />
                       <div className="absolute top-0 h-full w-[2px]" style={{ left: `${SLA_META * 100}%`, background: CINZA }} />
