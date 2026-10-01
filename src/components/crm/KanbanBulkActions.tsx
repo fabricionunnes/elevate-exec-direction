@@ -593,7 +593,7 @@ export const KanbanBulkActions = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir {selectedLeads.length} leads?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Todos os leads selecionados e seus históricos serão permanentemente excluídos.
+              Os leads selecionados vão pra Lixeira com atividades, arquivos e histórico, e podem ser restaurados por um administrador em até 7 dias (Configurações, aba Lixeira). Depois disso a exclusão é definitiva.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
