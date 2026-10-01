@@ -17,8 +17,16 @@ import { toast } from "sonner";
 import { n, pct, DOW, moeda, ExportarDialog, PeriodoFiltro, intervalo, useStaffOptions, RodapeEscopo, type Periodo } from "./dashboardShared";
 
 // Paleta sóbria: uma cor de destaque e tons acinzentados
-const NAVY = "#0D2B5E";
-const AZ = ["#0D2B5E", "#3B5B8C", "#7C93B8", "#B9C6DA"];
+// As cores de destaque vêm de variáveis CSS: no tema escuro o navy fixo sumia
+// no fundo (números e títulos ficavam invisíveis). Claro = navy da UNV; escuro
+// = a mesma família de azul, clareada.
+const NAVY = "var(--vg-navy)";
+const NAVY_BG = "var(--vg-navy-bg)"; // fundo com texto branco em cima
+const AZ = ["var(--vg-navy)", "var(--vg-az2)", "var(--vg-az3)", "var(--vg-az4)"];
+const VG_CSS = `
+:root{--vg-navy:#0D2B5E;--vg-navy-bg:#0D2B5E;--vg-navy-rgb:13,43,94;--vg-az2:#3B5B8C;--vg-az3:#7C93B8;--vg-az4:#B9C6DA;--vg-mapa-a:#F7F9FC;--vg-mapa-b:#EEF2F8}
+.dark{--vg-navy:#A9C3F2;--vg-navy-bg:#2F5296;--vg-navy-rgb:122,160,232;--vg-az2:#86A5DC;--vg-az3:#6384BD;--vg-az4:#46649A;--vg-mapa-a:#162033;--vg-mapa-b:#101827}
+`;
 const CINZA = "#9CA3AF";
 const VERDE = "#16a34a";
 const VERMELHO = "#dc2626";
@@ -136,7 +144,7 @@ function Cartograma({ pontos, max }: { pontos: Map<string, PontoUF>; max: number
         return (
           <div key={c.uf} title={`${c.uf}: ${inteiro(n(e?.clientes))} clientes, ${inteiro(n(e?.leads))} leads no período${n(e?.receita) ? `, ${moeda(e?.receita)}` : ""}`}
             className="aspect-square rounded-[3px] flex flex-col items-center justify-center text-[9px] leading-none"
-            style={{ gridColumn: c.c + 1, gridRow: c.r + 1, background: v ? `rgba(13, 43, 94, ${0.15 + a * 0.85})` : "hsl(var(--muted))", color: a > 0.45 ? "#fff" : "hsl(var(--foreground))" }}>
+            style={{ gridColumn: c.c + 1, gridRow: c.r + 1, background: v ? `rgba(var(--vg-navy-rgb), ${0.15 + a * 0.85})` : "hsl(var(--muted))", color: a > 0.45 ? "#fff" : "hsl(var(--foreground))" }}>
             <span className="font-semibold">{c.uf}</span>
             {v > 0 && <span className="tabular-nums opacity-90">{v}</span>}
           </div>
@@ -180,8 +188,8 @@ function MapaClientes({ estados }: { estados: any[] }) {
       acao={(
         <div className="flex items-center gap-1">
           <div className="flex rounded-md border border-border/60 overflow-hidden mr-1 text-xs" title="O que dá altura e cor às barras">
-            <button type="button" className={`px-2 py-1 ${metrica === "clientes" ? "text-white" : "text-muted-foreground"}`} style={metrica === "clientes" ? { background: NAVY } : undefined} onClick={() => setMetrica("clientes")}>Clientes</button>
-            <button type="button" className={`px-2 py-1 ${metrica === "leads" ? "text-white" : "text-muted-foreground"}`} style={metrica === "leads" ? { background: NAVY } : undefined} onClick={() => setMetrica("leads")}>Leads do período</button>
+            <button type="button" className={`px-2 py-1 ${metrica === "clientes" ? "text-white" : "text-muted-foreground"}`} style={metrica === "clientes" ? { background: NAVY_BG } : undefined} onClick={() => setMetrica("clientes")}>Clientes</button>
+            <button type="button" className={`px-2 py-1 ${metrica === "leads" ? "text-white" : "text-muted-foreground"}`} style={metrica === "leads" ? { background: NAVY_BG } : undefined} onClick={() => setMetrica("leads")}>Leads do período</button>
           </div>
           {webgl && (
             <>
@@ -193,7 +201,7 @@ function MapaClientes({ estados }: { estados: any[] }) {
       )}>
       {lista.length === 0 ? <SemDados motivo="Nenhum cliente nem lead com UF preenchida" /> : (
         <div className="grid grid-cols-5 gap-3">
-          <div className="col-span-3 relative rounded-lg border border-border/60 overflow-hidden" style={{ height: 300, background: "linear-gradient(180deg, #F7F9FC, #EEF2F8)" }}>
+          <div className="col-span-3 relative rounded-lg border border-border/60 overflow-hidden" style={{ height: 300, background: "linear-gradient(180deg, var(--vg-mapa-a), var(--vg-mapa-b))" }}>
             {webgl ? (
               <Suspense fallback={<div className="h-full flex items-center justify-center text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin mr-2" />Montando o globo...</div>}>
                 <ClientesGlobo3D pontos={lista} selecionado={selecionado} onSelect={setSelecionado} onHover={setHover} foco={foco} />
@@ -420,6 +428,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-7xl">
+      <style>{VG_CSS}</style>
       <div className="flex flex-wrap items-start gap-2">
         <div>
           <h2 className="text-lg font-bold" style={{ color: NAVY }}>Visão geral</h2>
@@ -484,8 +493,8 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={receitaSerie} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.25} />
-                        <XAxis dataKey="dia" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                        <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={64} tickFormatter={(v) => moeda(v)} />
+                        <XAxis dataKey="dia" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                        <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={64} tickFormatter={(v) => moeda(v)} />
                         <RTooltip contentStyle={tip} formatter={(v: any) => moeda(v)} />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
                         <Line type="monotone" dataKey="receita" name="Receita" stroke={NAVY} strokeWidth={2.5} dot={false} connectNulls={false} />
@@ -568,7 +577,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
                       {Array.from({ length: 24 }, (_, h) => {
                         const v = mapa.m.get(`${d}-${h}`) || 0;
                         const a = mapa.max ? v / mapa.max : 0;
-                        return <div key={`${d}-${h}`} title={`${DOW[d]} ${h}h: ${v}`} className="h-[16px] rounded-[2px]" style={{ background: v ? `rgba(13, 43, 94, ${0.12 + a * 0.88})` : "hsl(var(--muted))" }} />;
+                        return <div key={`${d}-${h}`} title={`${DOW[d]} ${h}h: ${v}`} className="h-[16px] rounded-[2px]" style={{ background: v ? `rgba(var(--vg-navy-rgb), ${0.12 + a * 0.88})` : "hsl(var(--muted))" }} />;
                       })}
                     </Fragment>
                   ))}
@@ -644,8 +653,8 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={leadsSemana} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.25} />
-                        <XAxis dataKey="semana" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                        <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                        <XAxis dataKey="semana" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
                         <RTooltip contentStyle={tip} />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
                         <Bar dataKey="pagos" name="Pagos" stackId="a" fill={NAVY} />
@@ -686,10 +695,10 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={closers.map((c) => ({ ...c, receita: n(c.receita), vendas: n(c.vendas) }))} layout="vertical" margin={{ top: 4, right: 60, left: 8, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.25} />
-                      <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => moeda(v)} />
-                      <YAxis type="category" dataKey="nome" width={110} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                      <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={(v) => moeda(v)} />
+                      <YAxis type="category" dataKey="nome" width={110} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
                       <RTooltip contentStyle={tip} formatter={(v: any, name: any, p: any) => [name === "Receita" ? `${moeda(v)} (${inteiro(p.payload.vendas)} vendas, ${inteiro(p.payload.realizados)} reuniões)` : v, name]} />
-                      <Bar dataKey="receita" name="Receita" fill={NAVY} radius={[0, 4, 4, 0]} barSize={16} label={{ position: "right", fontSize: 11, formatter: (v: any) => moeda(v) }} />
+                      <Bar dataKey="receita" name="Receita" fill={NAVY} radius={[0, 4, 4, 0]} barSize={16} label={{ position: "right", fontSize: 11, fill: "hsl(var(--foreground))", formatter: (v: any) => moeda(v) }} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -706,10 +715,10 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={pipelineEtapas.map((e) => ({ ...e, valor: n(e.valor), qtd: n(e.qtd), nome: `${e.etapa} (${e.funil})` }))} layout="vertical" margin={{ top: 4, right: 60, left: 8, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.25} />
-                      <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => moeda(v)} />
-                      <YAxis type="category" dataKey="nome" width={150} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                      <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={(v) => moeda(v)} />
+                      <YAxis type="category" dataKey="nome" width={150} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
                       <RTooltip contentStyle={tip} formatter={(v: any, _n: any, p: any) => [`${moeda(v)}, ${inteiro(p.payload.qtd)} oportunidades`, "Valor"]} />
-                      <Bar dataKey="valor" name="Valor" fill={AZ[1]} radius={[0, 4, 4, 0]} barSize={12} label={{ position: "right", fontSize: 10, formatter: (v: any) => moeda(v) }} />
+                      <Bar dataKey="valor" name="Valor" fill={AZ[1]} radius={[0, 4, 4, 0]} barSize={12} label={{ position: "right", fontSize: 10, fill: "hsl(var(--foreground))", formatter: (v: any) => moeda(v) }} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -722,10 +731,10 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={receitaCanal.map((o) => ({ nome: o.nome, receita: n(o.receita), vendas: n(o.vendas) }))} layout="vertical" margin={{ top: 4, right: 60, left: 8, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.25} />
-                      <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => moeda(v)} />
-                      <YAxis type="category" dataKey="nome" width={130} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                      <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={(v) => moeda(v)} />
+                      <YAxis type="category" dataKey="nome" width={130} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
                       <RTooltip contentStyle={tip} formatter={(v: any, _n: any, p: any) => [`${moeda(v)}, ${inteiro(p.payload.vendas)} vendas`, "Receita"]} />
-                      <Bar dataKey="receita" name="Receita" fill={NAVY} radius={[0, 4, 4, 0]} barSize={14} label={{ position: "right", fontSize: 11, formatter: (v: any) => moeda(v) }} />
+                      <Bar dataKey="receita" name="Receita" fill={NAVY} radius={[0, 4, 4, 0]} barSize={14} label={{ position: "right", fontSize: 11, fill: "hsl(var(--foreground))", formatter: (v: any) => moeda(v) }} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
