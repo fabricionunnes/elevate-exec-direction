@@ -78,6 +78,7 @@ import { CRMPaymentMethodsTab } from "@/components/crm/settings/CRMPaymentMethod
 import { CRMActivityTypesTab } from "@/components/crm/settings/CRMActivityTypesTab";
 import { CRMBusinessHoursTab } from "@/components/crm/settings/CRMBusinessHoursTab";
 import { CRMProductsTab } from "@/components/crm/settings/CRMProductsTab";
+import { CRMTrashTab } from "@/components/crm/settings/CRMTrashTab";
 import { toast } from "sonner";
 
 interface Pipeline {
@@ -1225,9 +1226,20 @@ export const CRMSettingsPage = () => {
                 <span className="hidden sm:inline">Horário de Trabalho</span>
                 <span className="sm:hidden">Horário</span>
               </TabsTrigger>
+              <TabsTrigger value="lixeira" className="gap-1.5 text-xs sm:text-sm">
+                <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span>Lixeira</span>
+              </TabsTrigger>
             </>
           )}
         </TabsList>
+
+        {/* Lixeira: lead, funil e etapa excluídos, restauráveis por 7 dias (crm_trash) */}
+        {fullSettings && (
+          <TabsContent value="lixeira" className="mt-6">
+            <CRMTrashTab />
+          </TabsContent>
+        )}
 
         {/* Horário de trabalho + feriados (crm_business_hours / crm_holidays) */}
         {fullSettings && (
