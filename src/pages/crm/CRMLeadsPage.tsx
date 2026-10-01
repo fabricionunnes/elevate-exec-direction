@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Plus, Search, Phone, Mail, ExternalLink, UserPlus, Tag, XCircle, Upload,
-  Copy, Loader2, AlertTriangle, Merge
+  Copy, Loader2, AlertTriangle, Merge, ListChecks
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -24,6 +24,8 @@ import { AddLeadDialog } from "@/components/crm/AddLeadDialog";
 import { ImportLeadsDialog } from "@/components/crm/ImportLeadsDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { SavedViews } from "@/components/crm/views/SavedViews";
+import { LeadListsDialog } from "@/components/crm/lists/LeadListsDialog";
+import { LeadListBulkButtons } from "@/components/crm/lists/LeadListBulkButtons";
 
 // Ação em massa da barra de seleção (Atribuir, Etiqueta, Marcar perdido).
 type BulkKind = "assign" | "tag" | "lost";
@@ -66,6 +68,7 @@ export const CRMLeadsPage = () => {
   const [loading, setLoading] = useState(true);
   const [addLeadOpen, setAddLeadOpen] = useState(false);
   const [importLeadsOpen, setImportLeadsOpen] = useState(false);
+  const [listsOpen, setListsOpen] = useState(false);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -421,6 +424,10 @@ export const CRMLeadsPage = () => {
         </div>
 
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setListsOpen(true)} title="Listas de leads: criar, editar, exportar">
+            <ListChecks className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Listas</span>
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setImportLeadsOpen(true)}>
             <Upload className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">Importar</span>
@@ -566,6 +573,11 @@ export const CRMLeadsPage = () => {
                 Mesclar ({selectedLeads.length})
               </Button>
             )}
+            <LeadListBulkButtons
+              leadIds={selectedLeads}
+              disabled={bulkLoading}
+              onDone={() => { setSelectedLeads([]); loadPage(); }}
+            />
             <Button variant="outline" size="sm" className="text-destructive" onClick={() => openBulk("lost")} disabled={bulkLoading}>
               <XCircle className="h-4 w-4 mr-2" />
               Marcar Perdido
@@ -889,6 +901,14 @@ export const CRMLeadsPage = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <LeadListsDialog
+        open={listsOpen}
+        onOpenChange={setListsOpen}
+        staffId={staffId}
+        canManageAll={staffRole === "master" || staffRole === "admin"}
+        canExport={isAdmin}
+      />
 
       <AddLeadDialog
         open={addLeadOpen}

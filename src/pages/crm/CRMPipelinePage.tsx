@@ -32,6 +32,7 @@ import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
 import { trackMeetingEventOnStageChange, isRealizedStage } from "@/hooks/useMeetingEventTracker";
 import { CRMFiltersBar, CRMFilters, LeadFieldOption, crmFiltersToJson, crmFiltersFromJson } from "@/components/crm/CRMFiltersBar";
 import { SavedViews } from "@/components/crm/views/SavedViews";
+import { fetchLeadLists, fetchListLeadIds } from "@/components/crm/lists/leadLists";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { KanbanTableView } from "@/components/crm/KanbanTableView";
 import { StageGateDialog } from "@/components/crm/StageGateDialog";
@@ -194,6 +195,9 @@ export const CRMPipelinePage = () => {
   const [productOptions, setProductOptions] = useState<{ id: string; name: string }[]>([]);
   const [lossReasonOptions, setLossReasonOptions] = useState<{ id: string; name: string }[]>([]);
   const [fieldOptions, setFieldOptions] = useState<LeadFieldOption[]>([]);
+  const [listOptions, setListOptions] = useState<{ id: string; name: string; color?: string }[]>([]);
+  // leads das listas marcadas no filtro "Lista" (null = filtro desligado ou ainda carregando)
+  const [listLeadIds, setListLeadIds] = useState<Set<string> | null>(null);
   // valores dos campos adicionais usados nas condições do filtro "Campos" (lead -> campo -> valor)
   const [customValues, setCustomValues] = useState<Record<string, Record<string, string | null>>>({});
 
@@ -294,6 +298,9 @@ export const CRMPipelinePage = () => {
     setOriginOptions(originsRes.data || []);
     setProductOptions(productsRes.data || []);
     setLossReasonOptions(reasonsRes.data || []);
+    fetchLeadLists()
+      .then((ls) => setListOptions(ls.map((l) => ({ id: l.id, name: l.name, color: l.color || undefined }))))
+      .catch((e) => console.error("listas de leads:", e));
     setFieldOptions(
       ((fieldsRes.data || []) as any[])
         // só entra no filtro campo de sistema que o kanban carrega como coluna do lead
@@ -330,6 +337,17 @@ export const CRMPipelinePage = () => {
     })();
     return () => { vivo = false; };
   }, [customFieldIdsInUse]);
+
+  // Filtro "Lista": busca no banco os ids dos leads das listas marcadas (paginado).
+  const listsInUse = (filters.lists || []).slice().sort().join(",");
+  useEffect(() => {
+    if (!listsInUse) { setListLeadIds(null); return; }
+    let vivo = true;
+    fetchListLeadIds(listsInUse.split(","))
+      .then((ids) => { if (vivo) setListLeadIds(ids); })
+      .catch((e) => { console.error("itens das listas:", e); if (vivo) setListLeadIds(new Set()); });
+    return () => { vivo = false; };
+  }, [listsInUse]);
 
   const loadSummaryCards = useCallback(async () => {
     try {
@@ -687,6 +705,9 @@ export const CRMPipelinePage = () => {
         if (!matchesSearch) return false;
       }
 
+      // Lista de leads: só quem está em alguma das listas marcadas
+      if (filters.lists?.length && !(listLeadIds?.has(lead.id))) return false;
+
       // Produto / motivo de perda
       if (filters.products?.length && (!lead.product_id || !filters.products.includes(lead.product_id))) return false;
       if (filters.lossReasons?.length && (!lead.loss_reason_id || !filters.lossReasons.includes(lead.loss_reason_id))) return false;
@@ -800,7 +821,7 @@ export const CRMPipelinePage = () => {
 
       return true;
     });
-  }, [leads, leadsBusca, filters, stages, pipePerm.only_own_leads, staffId, productOptions, ownerOptions, fieldOptions, customValues]);
+  }, [leads, leadsBusca, filters, stages, pipePerm.only_own_leads, staffId, productOptions, ownerOptions, fieldOptions, customValues, listLeadIds]);
 
   // Leads por etapa já na ordem escolhida (um sort por etapa, só quando muda algo)
   const leadsByStage = useMemo(() => {
@@ -1261,6 +1282,7 @@ export const CRMPipelinePage = () => {
           productOptions={productOptions}
           lossReasonOptions={lossReasonOptions}
           fieldOptions={fieldOptions}
+          listOptions={listOptions}
           viewsSlot={
             <SavedViews
               scope="pipeline"

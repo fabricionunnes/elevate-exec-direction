@@ -72,6 +72,8 @@ export interface CRMFilters {
   /** sem atividade há N dias (ou nunca teve) */
   inactiveDays?: number | null;
   noOwner?: boolean;
+  /** listas de leads (crm_lead_lists): mostra quem está em qualquer uma das marcadas */
+  lists?: string[];
 }
 
 export type FieldConditionOp = "contains" | "equals" | "empty" | "not_empty";
@@ -133,6 +135,7 @@ export const crmFiltersFromJson = (j: Record<string, any> | null | undefined, ba
       : [],
     inactiveDays: num(v.inactiveDays),
     noOwner: !!v.noOwner,
+    lists: arr(v.lists),
   };
 };
 
@@ -167,6 +170,8 @@ interface CRMFiltersBarProps {
   productOptions?: FilterOption[];
   lossReasonOptions?: FilterOption[];
   fieldOptions?: LeadFieldOption[];
+  /** listas de leads que a pessoa enxerga (filtro "Lista") */
+  listOptions?: FilterOption[];
   /** Visões salvas (botão + atalhos), na linha logo acima da lista */
   viewsSlot?: ReactNode;
 }
@@ -188,6 +193,7 @@ export const CRMFiltersBar = ({
   productOptions = [],
   lossReasonOptions = [],
   fieldOptions = [],
+  listOptions = [],
   viewsSlot,
 }: CRMFiltersBarProps) => {
   const [dateOpen, setDateOpen] = useState(false);
@@ -266,6 +272,7 @@ export const CRMFiltersBar = ({
       fieldConditions: [],
       inactiveDays: null,
       noOwner: false,
+      lists: [],
     });
   };
 
@@ -289,7 +296,8 @@ export const CRMFiltersBar = ({
     (filters.movedRange?.from ? 1 : 0) +
     (filters.wonRange?.from ? 1 : 0) +
     (filters.inactiveDays ? 1 : 0) +
-    (filters.noOwner ? 1 : 0);
+    (filters.noOwner ? 1 : 0) +
+    (filters.lists?.length || 0);
   const camposCount = filters.fields.length + conditions.length;
 
   const activeFilterCount = [
@@ -314,6 +322,7 @@ export const CRMFiltersBar = ({
     filters.inactiveDays ? 1 : 0,
     filters.noOwner ? 1 : 0,
     (filters.fieldConditions?.length || 0),
+    (filters.lists?.length || 0),
   ].reduce((a, b) => a + b, 0);
 
   const statusOptions = [
@@ -816,6 +825,22 @@ export const CRMFiltersBar = ({
           </PopoverTrigger>
           <PopoverContent className="w-80 max-h-[70vh] overflow-y-auto" align="start">
             <div className="space-y-4">
+              {/* Lista de leads */}
+              <div>
+                <Label className="text-xs text-muted-foreground uppercase">Lista</Label>
+                <div className="mt-1.5">
+                  <MultiSearchableSelect
+                    values={filters.lists || []}
+                    onChange={(vals) => updateFilter("lists", vals)}
+                    options={listOptions.map((p) => ({ value: p.id, label: p.name }))}
+                    placeholder="Qualquer lista"
+                    allLabel="Qualquer lista"
+                    emptyText="Nenhuma lista."
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+
               {/* Produto */}
               <div>
                 <Label className="text-xs text-muted-foreground uppercase">Produto</Label>
