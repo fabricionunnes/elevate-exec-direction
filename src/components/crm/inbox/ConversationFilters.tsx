@@ -30,7 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { dateFromJson, dateToJson } from "@/components/crm/views/savedViews";
+import { dateFromJson, dateToJson } from "@/components/crm/views/viewUtils";
 
 export interface ConversationFiltersData {
   // Conversas

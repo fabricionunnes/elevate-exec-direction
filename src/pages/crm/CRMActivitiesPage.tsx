@@ -602,7 +602,7 @@ export const CRMActivitiesPage = () => {
       {/* Calendário: mês, semana ou dia */}
       {viewMode === "calendar" && (
         <div className="flex-1 min-h-0">
-          <ActivitiesCalendar
+          <ActivitiesCalendar<Activity>
             activities={filteredCalActivities}
             mode={calMode}
             onModeChange={setCalMode}

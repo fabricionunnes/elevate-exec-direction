@@ -37,7 +37,7 @@ import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { MultiSearchableSelect } from "@/components/crm/traffic/MultiSearchableSelect";
-import { rangeFromJson, rangeToJson } from "@/components/crm/views/savedViews";
+import { rangeFromJson, rangeToJson } from "@/components/crm/views/viewUtils";
 
 export interface CRMFilters {
   search: string;
