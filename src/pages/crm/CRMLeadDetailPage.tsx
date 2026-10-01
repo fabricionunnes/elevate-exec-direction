@@ -1132,7 +1132,7 @@ export const CRMLeadDetailPage = () => {
               <DropdownMenuContent align="end" className="bg-popover">
                 <DropdownMenuItem 
                   onClick={async () => {
-                    const { data: prods } = await supabase.from("onboarding_services").select("id, name").eq("is_active", true).order("name");
+                    const { data: prods } = await supabase.from("onboarding_services").select("id, name").eq("is_active", true).order("sort_order" as any).order("name");
                     setWonProducts(prods || []);
                     setWonProductId((lead as any)?.product_id || "");
                     setWonDialogOpen(true);
@@ -1658,7 +1658,7 @@ export const CRMLeadDetailPage = () => {
       <AlertDialogHeader>
             <AlertDialogTitle>Excluir Lead</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o lead "{lead.name}"? Esta ação não pode ser desfeita e todas as atividades, arquivos e histórico serão removidos.
+              Tem certeza que deseja excluir o lead "{lead.name}"? Ele vai pra Lixeira com as atividades, arquivos e histórico, e pode ser restaurado por um administrador em até 7 dias (Configurações, aba Lixeira). Depois disso a exclusão é definitiva.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

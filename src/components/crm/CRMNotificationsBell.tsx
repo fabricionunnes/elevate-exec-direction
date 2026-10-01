@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,8 @@ const typeLabels: Record<string, string> = {
   service_request: "Serviço",
   referral: "Indicação",
   contract: "Contrato",
+  crm_support_ticket: "Suporte",
+  crm_support_reply: "Suporte",
 };
 
 interface CRMNotificationsBellProps {
@@ -49,6 +52,7 @@ interface CRMNotificationsBellProps {
 export const CRMNotificationsBell = ({ staffId }: CRMNotificationsBellProps) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
   // Preferências do Atendimento (crm_service_notifications): governam toast e
   // som. A notificação sempre entra na lista do sino; o que muda é o aviso.
   const prefs = useCrmNotificationPrefs(staffId);
@@ -111,6 +115,20 @@ export const CRMNotificationsBell = ({ staffId }: CRMNotificationsBellProps) => 
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
+  // Chamado de suporte: clicar leva pra conversa (os outros tipos só marcam como lida).
+  // Resposta do suporte abre o widget de ajuda; chamado novo abre a aba Suporte.
+  const openNotification = (n: Notification) => {
+    markAsRead(n.id);
+    if (!n.reference_id) return;
+    if (n.type === "crm_support_reply") {
+      window.dispatchEvent(new CustomEvent("crm-support-open", { detail: { ticketId: n.reference_id } }));
+      setOpen(false);
+    } else if (n.type === "crm_support_ticket") {
+      navigate(`/crm/settings?tab=suporte&chamado=${n.reference_id}`);
+      setOpen(false);
+    }
+  };
+
   const markAllAsRead = async () => {
     if (notifications.length === 0) return;
     const ids = notifications.map((n) => n.id);
@@ -164,7 +182,7 @@ export const CRMNotificationsBell = ({ staffId }: CRMNotificationsBellProps) => 
                 <div
                   key={n.id}
                   className="px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer group"
-                  onClick={() => markAsRead(n.id)}
+                  onClick={() => openNotification(n)}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
