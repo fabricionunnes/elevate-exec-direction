@@ -1485,7 +1485,12 @@ begin
   if public.get_current_staff_id() is null then raise exception 'Sem permissão'; end if;
   select jobid, active into _job from cron.job where jobname = 'crm-flow-tick';
   if found then
-    select d.end_time, d.status into _last, _st from cron.job_run_details d where d.jobid = _job.jobid order by d.start_time desc limit 1;
+    -- cron.job_run_details tem centenas de milhares de linhas e só o índice da chave: procurar pelo
+    -- runid mais recente (0,2 ms) em vez de ordenar por start_time (3,7 s). Olha só as últimas
+    -- 3.000 execuções de qualquer job: se o tick não está ali, o motor está parado mesmo.
+    select d.end_time, d.status into _last, _st from cron.job_run_details d
+     where d.jobid = _job.jobid and d.runid > (select max(runid) from cron.job_run_details) - 3000
+     order by d.runid desc limit 1;
   end if;
   return jsonb_build_object(
     'cron_active', coalesce(_job.active, false), 'last_tick_at', _last, 'last_tick_status', _st,

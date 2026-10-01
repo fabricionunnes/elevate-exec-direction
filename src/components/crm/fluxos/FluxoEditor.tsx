@@ -126,12 +126,13 @@ function Editor({ id, canEdit }: { id: string; canEdit: boolean }) {
     setNodes((ns) => ns.map((n) => ({ ...n, data: { ...n.data, _trigger: meta.trigger_type, _listas: listas } })));
   }, [meta.trigger_type, listas, loading, setNodes]);
 
+  // o canvas é remontado ao voltar da aba Execuções: devolve o enquadramento em que estava
   useEffect(() => {
     if (loading || tab !== "editor") return;
     const t = setTimeout(() => { if (viewportRef.current) rf.setViewport(viewportRef.current); else rf.fitView({ padding: 0.3, maxZoom: 1 }); }, 60);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading]);
+  }, [loading, tab]);
 
   // ---------- contadores (calculados no banco)
   const loadStats = useCallback(async () => {
@@ -374,6 +375,7 @@ function Editor({ id, canEdit }: { id: string; canEdit: boolean }) {
               onNodesChange={(ch) => { onNodesChange(ch); if (canEdit && ch.some((c) => (c.type === "position" && c.dragging) || c.type === "remove")) marcar(); }}
               onEdgesChange={(ch) => { onEdgesChange(ch); if (canEdit && ch.some((c) => c.type === "remove")) marcar(); }}
               onConnect={onConnect} isValidConnection={isValidConnection}
+              onMoveEnd={(_, vp) => { viewportRef.current = vp; }}
               onSelectionChange={({ nodes: sel }) => setSelId(sel[0]?.id || null)}
               onNodeDoubleClick={(_, n) => { if (stats?.nodes?.[n.id]) verExecucoesDoBloco(n.id); }}
               onBeforeDelete={async ({ nodes: del }) => canEdit && !del.some((n) => n.type === "trigger")}
