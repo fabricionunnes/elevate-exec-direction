@@ -60,6 +60,25 @@ async function authenticate(req: Request, supabase: any, scope: string): Promise
   return { ok: true, legacy: false, keyId: row.id, pipelineId: row.pipeline_id || null };
 }
 
+// Acha o funil ativo pelo nome: primeiro o nome EXATO (sem diferenciar maiúsculas),
+// depois o que contém o texto, preferindo o nome mais curto. Antes era só "contém"
+// com limit 1: "Funil SE" podia cair no "Funil SE Antigo".
+// deno-lint-ignore no-explicit-any
+async function acharFunilPorNome(supabase: any, nome: string): Promise<string | null> {
+  const alvo = nome.trim();
+  if (!alvo) return null;
+  const escapado = alvo.replace(/[\\%_]/g, (c) => `\\${c}`);
+  const { data: exato } = await supabase
+    .from('crm_pipelines').select('id').eq('is_active', true)
+    .ilike('name', escapado).limit(1).maybeSingle();
+  if (exato?.id) return exato.id;
+  const { data: parecidos } = await supabase
+    .from('crm_pipelines').select('id, name').eq('is_active', true)
+    .ilike('name', `%${escapado}%`).limit(20);
+  const ordenados = (parecidos || []).sort((a: { name: string }, b: { name: string }) => a.name.length - b.name.length);
+  return ordenados[0]?.id || null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -117,14 +136,7 @@ Deno.serve(async (req) => {
     }
 
     if (!resolvedPipelineId && pipeline_name) {
-      const { data: p } = await supabase
-        .from('crm_pipelines')
-        .select('id')
-        .eq('is_active', true)
-        .ilike('name', `%${pipeline_name}%`)
-        .limit(1)
-        .maybeSingle();
-      resolvedPipelineId = p?.id || null;
+      resolvedPipelineId = await acharFunilPorNome(supabase, String(pipeline_name));
     }
 
     // Chave gerada pela tela pode ter um funil padrão: vale quando o corpo não escolhe um
@@ -139,14 +151,7 @@ Deno.serve(async (req) => {
     }
 
     if (!resolvedPipelineId) {
-      const { data: p } = await supabase
-        .from('crm_pipelines')
-        .select('id')
-        .eq('is_active', true)
-        .ilike('name', '%Funil SE%')
-        .limit(1)
-        .maybeSingle();
-      resolvedPipelineId = p?.id || null;
+      resolvedPipelineId = await acharFunilPorNome(supabase, 'Funil SE');
     }
 
     if (!resolvedPipelineId) {
