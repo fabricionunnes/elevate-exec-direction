@@ -30,6 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { dateFromJson, dateToJson } from "@/components/crm/views/savedViews";
 
 export interface ConversationFiltersData {
   // Conversas
@@ -817,4 +818,50 @@ export const defaultFilters: ConversationFiltersData = {
   dealStage: [],
   tags: [],
   instanceId: "",
+};
+
+// Visões salvas: os filtros do painel em JSON (datas viram texto) e de volta.
+export const conversationFiltersToJson = (f: ConversationFiltersData): Record<string, any> => ({
+  ...f,
+  createdAt: dateToJson(f.createdAt),
+  lastMessageFrom: dateToJson(f.lastMessageFrom),
+  lastMessageTo: dateToJson(f.lastMessageTo),
+  dealCreatedAt: dateToJson(f.dealCreatedAt),
+});
+
+export const conversationFiltersFromJson = (j: Record<string, any> | null | undefined): ConversationFiltersData => {
+  const v = j || {};
+  const txt = (x: unknown) => (typeof x === "string" ? x : "");
+  const arr = (x: unknown): string[] => (Array.isArray(x) ? x.filter((i) => typeof i === "string") : []);
+  return {
+    ...defaultFilters,
+    assignedToMe: !!v.assignedToMe,
+    unassigned: !!v.unassigned,
+    noAttendantResponse: !!v.noAttendantResponse,
+    waitingContactResponse: !!v.waitingContactResponse,
+    inTransfer: !!v.inTransfer,
+    read: !!v.read,
+    unread: !!v.unread,
+    insideWindow: !!v.insideWindow,
+    outsideWindow: !!v.outsideWindow,
+    suspended: !!v.suspended,
+    createdAt: dateFromJson(v.createdAt),
+    status: txt(v.status),
+    assignedTo: txt(v.assignedTo),
+    sectorId: txt(v.sectorId),
+    aiAgentId: txt(v.aiAgentId),
+    lastMessageFrom: dateFromJson(v.lastMessageFrom),
+    lastMessageTo: dateFromJson(v.lastMessageTo),
+    sortBy: v.sortBy === "oldest" || v.sortBy === "waiting_longest" ? v.sortBy : "recent",
+    dealCreatedAt: dateFromJson(v.dealCreatedAt),
+    hasDeal: txt(v.hasDeal),
+    dealStatus: txt(v.dealStatus),
+    dealOwner: txt(v.dealOwner),
+    dealGroup: txt(v.dealGroup),
+    dealOrigin: arr(v.dealOrigin),
+    dealPipeline: arr(v.dealPipeline),
+    dealStage: arr(v.dealStage),
+    tags: arr(v.tags),
+    instanceId: txt(v.instanceId),
+  };
 };

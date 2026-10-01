@@ -85,6 +85,7 @@ import { useInstagramMessages } from "@/hooks/useInstagramMessages";
 import { ConversationSidebar } from "@/components/crm/inbox/ConversationSidebar";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ConversationFilters, ConversationFiltersData, defaultFilters } from "@/components/crm/inbox/ConversationFilters";
+import { InboxSavedViews } from "@/components/crm/inbox/InboxSavedViews";
 import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
 import { MediaUploadButton } from "@/components/crm/inbox/MediaUploadButton";
 import { OfficialTemplateSendDialog } from "@/components/crm/OfficialTemplateSendDialog";
@@ -1143,6 +1144,17 @@ export const CRMInboxPage = () => {
               ...((filters.dealPipeline ?? []).length > 1 ? [{ value: "varios", label: `${filters.dealPipeline.length} funis (ver Filtros)` }] : []),
               ...pipelines.map((p) => ({ value: p.id, label: p.name })),
             ]}
+          />
+          {/* Visões salvas: guarda atalho, número, canal, status, busca e o painel de filtros */}
+          <InboxSavedViews
+            staffId={staffId}
+            staffRole={staffRole}
+            quick={quick} setQuick={setQuick}
+            instanceFilter={instanceFilter} setInstanceFilter={setInstanceFilter}
+            channelFilter={channelFilter} setChannelFilter={setChannelFilter}
+            filterStatus={filterStatus} setFilterStatus={setFilterStatus}
+            searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+            filters={filters} setFilters={setFilters}
           />
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5" title={hasConnectedDevice ? "WhatsApp conectado" : "Nenhum dispositivo conectado"}>

@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { AddLeadDialog } from "@/components/crm/AddLeadDialog";
 import { ImportLeadsDialog } from "@/components/crm/ImportLeadsDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { SavedViews } from "@/components/crm/views/SavedViews";
 
 // Ação em massa da barra de seleção (Atribuir, Etiqueta, Marcar perdido).
 type BulkKind = "assign" | "tag" | "lost";
@@ -56,7 +57,7 @@ interface Lead {
 }
 
 export const CRMLeadsPage = () => {
-  const { isAdmin, staffId } = useOutletContext<{ staffRole: string; isAdmin: boolean; staffId: string | null }>();
+  const { isAdmin, staffId, staffRole } = useOutletContext<{ staffRole: string; isAdmin: boolean; staffId: string | null }>();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [pipelines, setPipelines] = useState<any[]>([]);
   const [stages, setStages] = useState<any[]>([]);
@@ -192,6 +193,28 @@ export const CRMLeadsPage = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterOrigin, filterUrgency, filterDuplicates, pageSize]);
+
+  // Visões salvas: o conjunto de filtros desta tela
+  const viewPayload = useMemo(() => ({
+    search: searchTerm.trim(),
+    pipeline: filterPipeline,
+    stage: filterStage,
+    owner: filterOwner,
+    urgency: filterUrgency,
+    dups: filterDuplicates,
+    pageSize,
+  }), [searchTerm, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, pageSize]);
+  const applySavedView = (v: Record<string, any>) => {
+    const txt = (x: unknown, d = "all") => (typeof x === "string" && x ? x : d);
+    setSearchTerm(typeof v.search === "string" ? v.search : "");
+    setFilterPipeline(txt(v.pipeline));
+    setFilterStage(txt(v.stage));
+    setFilterOwner(isAdmin ? txt(v.owner) : "all");
+    setFilterUrgency(txt(v.urgency));
+    setFilterDuplicates(txt(v.dups));
+    if ([10, 50, 100].includes(Number(v.pageSize))) setPageSize(Number(v.pageSize));
+    setSelectedLeads([]);
+  };
 
   const duplicatePhoneCount = dupCounts.phone;
   const duplicateEmailCount = dupCounts.email;
@@ -509,6 +532,14 @@ export const CRMLeadsPage = () => {
               </SelectContent>
             </Select>
           </div>
+          <SavedViews
+            className="mt-3"
+            scope="contatos"
+            staffId={staffId}
+            canManageShared={staffRole === "master" || staffRole === "admin"}
+            current={viewPayload}
+            onApply={applySavedView}
+          />
         </CardContent>
       </Card>
 

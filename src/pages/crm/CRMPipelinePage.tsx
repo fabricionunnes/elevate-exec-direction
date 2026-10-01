@@ -30,7 +30,8 @@ import { createStageActivities } from "@/hooks/useStageActions";
 import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
 import { trackMeetingEventOnStageChange, isRealizedStage } from "@/hooks/useMeetingEventTracker";
-import { CRMFiltersBar, CRMFilters, LeadFieldOption } from "@/components/crm/CRMFiltersBar";
+import { CRMFiltersBar, CRMFilters, LeadFieldOption, crmFiltersToJson, crmFiltersFromJson } from "@/components/crm/CRMFiltersBar";
+import { SavedViews } from "@/components/crm/views/SavedViews";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { KanbanTableView } from "@/components/crm/KanbanTableView";
 import { StageGateDialog } from "@/components/crm/StageGateDialog";
@@ -169,7 +170,7 @@ const defaultFilters: CRMFilters = {
 
 export const CRMPipelinePage = () => {
   const navigate = useNavigate();
-  const { selectedOrigin, selectedPipeline, setSelectedPipeline, isAdmin, isMaster, staffId } = useCRMContext();
+  const { selectedOrigin, selectedPipeline, setSelectedPipeline, isAdmin, isMaster, staffId, staffRole } = useCRMContext();
   const [pipelines, setPipelines] = useState<any[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -223,6 +224,17 @@ export const CRMPipelinePage = () => {
   const changeView = (v: "kanban" | "table") => {
     setViewMode(v);
     try { localStorage.setItem(VIEW_KEY, v); } catch { /* sem storage */ }
+  };
+
+  // Visões salvas: filtros + ordenação + kanban/tabela. O conteúdo vai em JSON (datas como texto).
+  const viewPayload = useMemo(
+    () => ({ filters: crmFiltersToJson(filters), sortMode, viewMode }),
+    [filters, sortMode, viewMode],
+  );
+  const applySavedView = (payload: Record<string, any>) => {
+    setFilters(crmFiltersFromJson(payload.filters, defaultFilters));
+    if (SORT_OPTIONS.some((o) => o.value === payload.sortMode)) changeSort(payload.sortMode as SortMode);
+    if (payload.viewMode === "kanban" || payload.viewMode === "table") changeView(payload.viewMode);
   };
 
   // Trava de etapa (atividade obrigatória pendente / campo exigido): diálogo de pendências
@@ -1249,6 +1261,16 @@ export const CRMPipelinePage = () => {
           productOptions={productOptions}
           lossReasonOptions={lossReasonOptions}
           fieldOptions={fieldOptions}
+          viewsSlot={
+            <SavedViews
+              scope="pipeline"
+              staffId={staffId}
+              canManageShared={isMaster || staffRole === "admin"}
+              pipelineId={selectedPipeline}
+              current={viewPayload}
+              onApply={applySavedView}
+            />
+          }
         />
       </div>
 
