@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { MultiSearchableSelect } from "@/components/crm/traffic/MultiSearchableSelect";
+import { rangeFromJson, rangeToJson } from "@/components/crm/views/viewUtils";
 
 export interface CRMFilters {
   search: string;
@@ -71,6 +72,8 @@ export interface CRMFilters {
   /** sem atividade há N dias (ou nunca teve) */
   inactiveDays?: number | null;
   noOwner?: boolean;
+  /** listas de leads (crm_lead_lists): mostra quem está em qualquer uma das marcadas */
+  lists?: string[];
 }
 
 export type FieldConditionOp = "contains" | "equals" | "empty" | "not_empty";
@@ -89,6 +92,52 @@ export interface LeadFieldOption {
   field_type: string;
   context: string;
 }
+
+/** Filtros do funil em formato JSON (datas viram texto), pra guardar numa visão salva. */
+export const crmFiltersToJson = (f: CRMFilters): Record<string, any> => ({
+  ...f,
+  dateRange: rangeToJson(f.dateRange),
+  movedRange: rangeToJson(f.movedRange),
+  wonRange: rangeToJson(f.wonRange),
+});
+
+/** Volta do JSON da visão pro estado da tela; o que a visão não tem fica no padrão. */
+export const crmFiltersFromJson = (j: Record<string, any> | null | undefined, base: CRMFilters): CRMFilters => {
+  const v = j || {};
+  const arr = (x: unknown): string[] => (Array.isArray(x) ? x.filter((i) => typeof i === "string") : []);
+  const num = (x: unknown): number | null => (typeof x === "number" && isFinite(x) ? x : null);
+  return {
+    ...base,
+    search: typeof v.search === "string" ? v.search : "",
+    dateRange: rangeFromJson(v.dateRange),
+    fields: arr(v.fields),
+    tags: arr(v.tags),
+    tagsExclude: arr(v.tagsExclude),
+    owners: arr(v.owners),
+    status: arr(v.status),
+    stages: arr(v.stages),
+    origins: arr(v.origins),
+    valueMin: num(v.valueMin),
+    valueMax: num(v.valueMax),
+    revenueMin: num(v.revenueMin),
+    revenueMax: num(v.revenueMax),
+    phoneFilter: v.phoneFilter === "with_phone" || v.phoneFilter === "without_phone" ? v.phoneFilter : "all",
+    campaigns: arr(v.campaigns),
+    adsets: arr(v.adsets),
+    ads: arr(v.ads),
+    products: arr(v.products),
+    movedRange: rangeFromJson(v.movedRange),
+    wonRange: rangeFromJson(v.wonRange),
+    lossReasons: arr(v.lossReasons),
+    fieldConditions: Array.isArray(v.fieldConditions)
+      ? v.fieldConditions.filter((c: any) => c && typeof c.fieldId === "string" && typeof c.op === "string")
+          .map((c: any) => ({ fieldId: c.fieldId, op: c.op as FieldConditionOp, value: String(c.value ?? "") }))
+      : [],
+    inactiveDays: num(v.inactiveDays),
+    noOwner: !!v.noOwner,
+    lists: arr(v.lists),
+  };
+};
 
 const FIELD_OPS: { value: FieldConditionOp; label: string }[] = [
   { value: "contains", label: "contém" },
@@ -121,6 +170,10 @@ interface CRMFiltersBarProps {
   productOptions?: FilterOption[];
   lossReasonOptions?: FilterOption[];
   fieldOptions?: LeadFieldOption[];
+  /** listas de leads que a pessoa enxerga (filtro "Lista") */
+  listOptions?: FilterOption[];
+  /** Visões salvas (botão + atalhos), na linha logo acima da lista */
+  viewsSlot?: ReactNode;
 }
 
 export const CRMFiltersBar = ({
@@ -140,6 +193,8 @@ export const CRMFiltersBar = ({
   productOptions = [],
   lossReasonOptions = [],
   fieldOptions = [],
+  listOptions = [],
+  viewsSlot,
 }: CRMFiltersBarProps) => {
   const [dateOpen, setDateOpen] = useState(false);
   const [movedOpen, setMovedOpen] = useState(false);
@@ -217,6 +272,7 @@ export const CRMFiltersBar = ({
       fieldConditions: [],
       inactiveDays: null,
       noOwner: false,
+      lists: [],
     });
   };
 
@@ -240,7 +296,8 @@ export const CRMFiltersBar = ({
     (filters.movedRange?.from ? 1 : 0) +
     (filters.wonRange?.from ? 1 : 0) +
     (filters.inactiveDays ? 1 : 0) +
-    (filters.noOwner ? 1 : 0);
+    (filters.noOwner ? 1 : 0) +
+    (filters.lists?.length || 0);
   const camposCount = filters.fields.length + conditions.length;
 
   const activeFilterCount = [
@@ -265,6 +322,7 @@ export const CRMFiltersBar = ({
     filters.inactiveDays ? 1 : 0,
     filters.noOwner ? 1 : 0,
     (filters.fieldConditions?.length || 0),
+    (filters.lists?.length || 0),
   ].reduce((a, b) => a + b, 0);
 
   const statusOptions = [
@@ -767,6 +825,22 @@ export const CRMFiltersBar = ({
           </PopoverTrigger>
           <PopoverContent className="w-80 max-h-[70vh] overflow-y-auto" align="start">
             <div className="space-y-4">
+              {/* Lista de leads */}
+              <div>
+                <Label className="text-xs text-muted-foreground uppercase">Lista</Label>
+                <div className="mt-1.5">
+                  <MultiSearchableSelect
+                    values={filters.lists || []}
+                    onChange={(vals) => updateFilter("lists", vals)}
+                    options={listOptions.map((p) => ({ value: p.id, label: p.name }))}
+                    placeholder="Qualquer lista"
+                    allLabel="Qualquer lista"
+                    emptyText="Nenhuma lista."
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+
               {/* Produto */}
               <div>
                 <Label className="text-xs text-muted-foreground uppercase">Produto</Label>
@@ -924,9 +998,10 @@ export const CRMFiltersBar = ({
         </div>
       </div>
 
-      {/* Results Count */}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span>
+      {/* Visões salvas + contagem */}
+      <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+        {viewsSlot}
+        <span className={cn(viewsSlot && "ml-auto")}>
           {totalCount} oportunidades de <strong className="text-foreground font-semibold">{entityName}</strong>
         </span>
       </div>

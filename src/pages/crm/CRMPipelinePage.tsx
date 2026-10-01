@@ -30,7 +30,10 @@ import { createStageActivities } from "@/hooks/useStageActions";
 import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
 import { trackMeetingEventOnStageChange, isRealizedStage } from "@/hooks/useMeetingEventTracker";
-import { CRMFiltersBar, CRMFilters, LeadFieldOption } from "@/components/crm/CRMFiltersBar";
+import { CRMFiltersBar, CRMFilters, LeadFieldOption, crmFiltersToJson, crmFiltersFromJson } from "@/components/crm/CRMFiltersBar";
+import { SavedViews } from "@/components/crm/views/SavedViews";
+import { fetchLeadLists, fetchListLeadIds } from "@/components/crm/lists/leadLists";
+import { exportarLeadsEmSegundoPlano, LIMITE_EXPORT_DIRETO } from "@/lib/crm/execucoes";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { KanbanTableView } from "@/components/crm/KanbanTableView";
 import { StageGateDialog } from "@/components/crm/StageGateDialog";
@@ -169,7 +172,7 @@ const defaultFilters: CRMFilters = {
 
 export const CRMPipelinePage = () => {
   const navigate = useNavigate();
-  const { selectedOrigin, selectedPipeline, setSelectedPipeline, isAdmin, isMaster, staffId } = useCRMContext();
+  const { selectedOrigin, selectedPipeline, setSelectedPipeline, isAdmin, isMaster, staffId, staffRole } = useCRMContext();
   const [pipelines, setPipelines] = useState<any[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -193,6 +196,11 @@ export const CRMPipelinePage = () => {
   const [productOptions, setProductOptions] = useState<{ id: string; name: string }[]>([]);
   const [lossReasonOptions, setLossReasonOptions] = useState<{ id: string; name: string }[]>([]);
   const [fieldOptions, setFieldOptions] = useState<LeadFieldOption[]>([]);
+  const [listOptions, setListOptions] = useState<{ id: string; name: string; color?: string }[]>([]);
+  // leads das listas marcadas no filtro "Lista" (null = filtro desligado ou ainda carregando)
+  const [listLeadIds, setListLeadIds] = useState<Set<string> | null>(null);
+  // sobe a cada ação em massa: tirar lead da lista tem que refletir no filtro "Lista"
+  const [listsVersion, setListsVersion] = useState(0);
   // valores dos campos adicionais usados nas condições do filtro "Campos" (lead -> campo -> valor)
   const [customValues, setCustomValues] = useState<Record<string, Record<string, string | null>>>({});
 
@@ -223,6 +231,17 @@ export const CRMPipelinePage = () => {
   const changeView = (v: "kanban" | "table") => {
     setViewMode(v);
     try { localStorage.setItem(VIEW_KEY, v); } catch { /* sem storage */ }
+  };
+
+  // Visões salvas: filtros + ordenação + kanban/tabela. O conteúdo vai em JSON (datas como texto).
+  const viewPayload = useMemo(
+    () => ({ filters: crmFiltersToJson(filters), sortMode, viewMode }),
+    [filters, sortMode, viewMode],
+  );
+  const applySavedView = (payload: Record<string, any>) => {
+    setFilters(crmFiltersFromJson(payload.filters, defaultFilters));
+    if (SORT_OPTIONS.some((o) => o.value === payload.sortMode)) changeSort(payload.sortMode as SortMode);
+    if (payload.viewMode === "kanban" || payload.viewMode === "table") changeView(payload.viewMode);
   };
 
   // Trava de etapa (atividade obrigatória pendente / campo exigido): diálogo de pendências
@@ -282,6 +301,9 @@ export const CRMPipelinePage = () => {
     setOriginOptions(originsRes.data || []);
     setProductOptions(productsRes.data || []);
     setLossReasonOptions(reasonsRes.data || []);
+    fetchLeadLists()
+      .then((ls) => setListOptions(ls.map((l) => ({ id: l.id, name: l.name, color: l.color || undefined }))))
+      .catch((e) => console.error("listas de leads:", e));
     setFieldOptions(
       ((fieldsRes.data || []) as any[])
         // só entra no filtro campo de sistema que o kanban carrega como coluna do lead
@@ -318,6 +340,17 @@ export const CRMPipelinePage = () => {
     })();
     return () => { vivo = false; };
   }, [customFieldIdsInUse]);
+
+  // Filtro "Lista": busca no banco os ids dos leads das listas marcadas (paginado).
+  const listsInUse = (filters.lists || []).slice().sort().join(",");
+  useEffect(() => {
+    if (!listsInUse) { setListLeadIds(null); return; }
+    let vivo = true;
+    fetchListLeadIds(listsInUse.split(","))
+      .then((ids) => { if (vivo) setListLeadIds(ids); })
+      .catch((e) => { console.error("itens das listas:", e); if (vivo) setListLeadIds(new Set()); });
+    return () => { vivo = false; };
+  }, [listsInUse, listsVersion]);
 
   const loadSummaryCards = useCallback(async () => {
     try {
@@ -596,6 +629,14 @@ export const CRMPipelinePage = () => {
     if (!(isMaster || isAdmin)) { toast.error("Sem permissão para exportar"); return; }
     const linhas = filteredLeads;
     if (!linhas.length) { toast.error("Nada para exportar com os filtros atuais"); return; }
+    // acima de 2.000 leads: gera no servidor e avisa na Central de Execuções
+    if (linhas.length > LIMITE_EXPORT_DIRETO) {
+      void exportarLeadsEmSegundoPlano(linhas.map((l: any) => l.id), {
+        title: `Exportação de leads: ${selectedOriginName || "CRM"} (${linhas.length.toLocaleString("pt-BR")})`,
+        filename: `leads-${selectedOriginName || "crm"}`,
+      });
+      return;
+    }
     const stageName = (id: string) => stages.find((st: any) => st.id === id)?.name || "";
     const cols: { h: string; get: (l: any) => string }[] = [
       { h: "Nome", get: (l) => l.name || "" },
@@ -674,6 +715,9 @@ export const CRMPipelinePage = () => {
         const matchesSearch = campos.some((c) => (c || "").toLowerCase().includes(search));
         if (!matchesSearch) return false;
       }
+
+      // Lista de leads: só quem está em alguma das listas marcadas
+      if (filters.lists?.length && !(listLeadIds?.has(lead.id))) return false;
 
       // Produto / motivo de perda
       if (filters.products?.length && (!lead.product_id || !filters.products.includes(lead.product_id))) return false;
@@ -788,7 +832,7 @@ export const CRMPipelinePage = () => {
 
       return true;
     });
-  }, [leads, leadsBusca, filters, stages, pipePerm.only_own_leads, staffId, productOptions, ownerOptions, fieldOptions, customValues]);
+  }, [leads, leadsBusca, filters, stages, pipePerm.only_own_leads, staffId, productOptions, ownerOptions, fieldOptions, customValues, listLeadIds]);
 
   // Leads por etapa já na ordem escolhida (um sort por etapa, só quando muda algo)
   const leadsByStage = useMemo(() => {
@@ -1249,6 +1293,17 @@ export const CRMPipelinePage = () => {
           productOptions={productOptions}
           lossReasonOptions={lossReasonOptions}
           fieldOptions={fieldOptions}
+          listOptions={listOptions}
+          viewsSlot={
+            <SavedViews
+              scope="pipeline"
+              staffId={staffId}
+              canManageShared={isMaster || staffRole === "admin"}
+              pipelineId={selectedPipeline}
+              current={viewPayload}
+              onApply={applySavedView}
+            />
+          }
         />
       </div>
 
@@ -1347,7 +1402,7 @@ export const CRMPipelinePage = () => {
         onClearSelection={handleClearSelection}
         stages={stageOptions}
         owners={ownerOptions}
-        onSuccess={loadStagesAndLeads}
+        onSuccess={() => { loadStagesAndLeads(); setListsVersion((v) => v + 1); }}
         isMaster={isMaster || isAdmin}
         currentPipelineId={selectedPipeline || undefined}
         canDelete={canDeleteLead}
@@ -1355,6 +1410,12 @@ export const CRMPipelinePage = () => {
         canMove={canMoveLead}
         canOverrideGate={isMaster || isAdmin}
         staffId={staffId}
+        filteredLeadIds={filteredLeads.map((l) => l.id)}
+        removeFromList={
+          filters.lists?.length === 1
+            ? { id: filters.lists[0], name: listOptions.find((l) => l.id === filters.lists![0])?.name || "lista" }
+            : null
+        }
       />
 
       <AddLeadDialog
