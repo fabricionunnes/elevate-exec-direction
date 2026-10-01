@@ -91,6 +91,14 @@ Deno.serve(async (req) => {
   const onlyId = typeof body?.id === "string" ? body.id : null;
   const nowIso = new Date().toISOString();
 
+  // Linha presa em 'sending' há mais de 10 min = execução que morreu no meio. Vira
+  // falha (não reenvia sozinho: pode ter saído, e mandar em dobro é pior).
+  if (!dry) {
+    await supabase.from("crm_scheduled_messages")
+      .update({ status: "failed", error_message: "Envio interrompido. Confira na conversa se a mensagem saiu antes de reagendar.", updated_at: nowIso })
+      .eq("status", "sending").lt("updated_at", new Date(Date.now() - 10 * 60_000).toISOString());
+  }
+
   // Reserva as pendentes vencidas (status 'sending') pra duas execuções não mandarem em dobro.
   let rows: any[] = [];
   if (dry) {
