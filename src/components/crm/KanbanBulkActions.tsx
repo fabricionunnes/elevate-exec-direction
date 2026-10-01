@@ -27,7 +27,8 @@ import {
   CheckSquare,
   FolderInput,
   ShieldCheck,
-  Tag
+  Tag,
+  Zap
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -35,6 +36,7 @@ import { createStageActivities } from "@/hooks/useStageActions";
 import { checkStageGate, gateIsBlocked, logGateOverride, type LeadGateResult } from "@/lib/crm/stageGate";
 import { OfficialTemplateSendDialog } from "@/components/crm/OfficialTemplateSendDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { CreateImpulsoDialog } from "@/components/crm/disparos/CreateImpulsoDialog";
 
 interface Stage {
   id: string;
@@ -74,6 +76,8 @@ interface KanbanBulkActionsProps {
   /** master/admin: "Mover mesmo assim" na trava de etapa */
   canOverrideGate?: boolean;
   staffId?: string | null;
+  /** ids de todos os leads do filtro atual do kanban: libera "todos do filtro" no impulso */
+  filteredLeadIds?: string[];
 }
 
 export const KanbanBulkActions = ({
@@ -89,10 +93,12 @@ export const KanbanBulkActions = ({
   canMove = true,
   canOverrideGate = false,
   staffId = null,
+  filteredLeadIds,
 }: KanbanBulkActionsProps) => {
   const [loading, setLoading] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
+  const [impulsoOpen, setImpulsoOpen] = useState(false);
   const [moveToStage, setMoveToStage] = useState<string>("");
   const [assignToOwner, setAssignToOwner] = useState<string>("");
   const [moveToPipeline, setMoveToPipeline] = useState<string>("");
@@ -516,6 +522,18 @@ export const KanbanBulkActions = ({
           Template oficial
         </Button>
 
+        {/* Impulso: uma ação em lotes, com ritmo, pros selecionados (ou todos do filtro) */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setImpulsoOpen(true)}
+          disabled={loading}
+          title="Mensagem, template, etapa, etiqueta, responsável ou cadência em lotes, com ritmo e status por lead"
+        >
+          <Zap className="h-3 w-3 mr-1" />
+          Criar impulso
+        </Button>
+
         {/* Delete */}
         <Button
           variant="destructive"
@@ -544,6 +562,14 @@ export const KanbanBulkActions = ({
         onOpenChange={setTemplateOpen}
         leadIds={selectedLeads}
         onSent={onSuccess}
+      />
+
+      <CreateImpulsoDialog
+        open={impulsoOpen}
+        onOpenChange={setImpulsoOpen}
+        leadIds={selectedLeads}
+        filteredLeadIds={filteredLeadIds}
+        onCreated={onClearSelection}
       />
 
       {/* Trava de etapa em massa */}
@@ -593,7 +619,7 @@ export const KanbanBulkActions = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir {selectedLeads.length} leads?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Todos os leads selecionados e seus históricos serão permanentemente excluídos.
+              Os leads selecionados vão pra Lixeira com atividades, arquivos e histórico, e podem ser restaurados por um administrador em até 7 dias (Configurações, aba Lixeira). Depois disso a exclusão é definitiva.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
