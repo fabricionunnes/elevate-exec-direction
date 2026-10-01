@@ -14,6 +14,8 @@ import { Loader2, RefreshCw, Download, ArrowUpRight, ArrowDownRight, Minus, Aler
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip as RTooltip, XAxis, YAxis } from "recharts";
 import { duracao } from "@/lib/exportXlsx";
 import { toast } from "sonner";
+import { carregarMalha, centroUF, corCalor, fundoEscuro, paleta, projetar, useTemaEscuro, type MalhaUF, type PontoUF } from "./mapaCalor";
+import { ClientesUfDialog, type FiltrosUf, type TipoListaUf } from "./ClientesUfDialog";
 import { n, pct, DOW, moeda, ExportarDialog, PeriodoFiltro, intervalo, useStaffOptions, RodapeEscopo, expedienteTexto, DICA_TEMPO_UTIL, type Periodo } from "./dashboardShared";
 
 // Paleta sóbria: uma cor de destaque e tons acinzentados
@@ -35,17 +37,6 @@ const moedaCheia = (v: unknown) => n(v).toLocaleString("pt-BR", { style: "curren
 const inteiro = (v: unknown) => n(v).toLocaleString("pt-BR");
 const diaCurto = (s: string) => { const [, m, d] = String(s).split("-"); return `${d}/${m}`; };
 const SUDESTE = new Set(["SP", "RJ", "MG", "ES"]);
-
-// Cartograma do Brasil: um quadrado por UF numa grade 8 x 9 (leve, sem GeoJSON)
-const CARTOGRAMA: { uf: string; c: number; r: number }[] = [
-  { uf: "RR", c: 2, r: 0 }, { uf: "AP", c: 4, r: 0 },
-  { uf: "AM", c: 1, r: 1 }, { uf: "PA", c: 3, r: 1 }, { uf: "MA", c: 4, r: 1 }, { uf: "CE", c: 5, r: 1 }, { uf: "RN", c: 6, r: 1 },
-  { uf: "AC", c: 0, r: 2 }, { uf: "RO", c: 1, r: 2 }, { uf: "TO", c: 3, r: 2 }, { uf: "PI", c: 4, r: 2 }, { uf: "PB", c: 6, r: 2 },
-  { uf: "MT", c: 2, r: 3 }, { uf: "DF", c: 4, r: 3 }, { uf: "BA", c: 5, r: 3 }, { uf: "PE", c: 6, r: 3 }, { uf: "AL", c: 7, r: 3 },
-  { uf: "MS", c: 2, r: 4 }, { uf: "GO", c: 3, r: 4 }, { uf: "MG", c: 4, r: 4 }, { uf: "ES", c: 5, r: 4 }, { uf: "SE", c: 6, r: 4 },
-  { uf: "SP", c: 3, r: 5 }, { uf: "RJ", c: 5, r: 5 },
-  { uf: "PR", c: 3, r: 6 }, { uf: "SC", c: 3, r: 7 }, { uf: "RS", c: 3, r: 8 },
-];
 
 interface Props {
   staffId?: string | null;
@@ -122,10 +113,12 @@ function KpiVar({ label, valor, anterior, formato, dica, onClick, inverso }: {
 }
 
 // ------------------------------------------------------------------ Onde estão nossos clientes
-// Globo 3D (lazy, só quando a aba abre) com fallback pro cartograma quando não há WebGL.
+// Mapa de calor por UF em 3D (Brasil extrudado, padrão) ou no globo (Mundo); sem WebGL cai num
+// SVG 2D com a mesma malha e a mesma escala. O 3D e a malha do IBGE entram por import dinâmico.
+const BrasilMapa3D = lazy(() => import("./BrasilMapa3D"));
 const ClientesGlobo3D = lazy(() => import("./ClientesGlobo3D"));
-type PontoUF = { uf: string; valor: number; leads: number; clientes: number; ganhos: number; ativos: number; receita: number };
 type MetricaMapa = "clientes" | "leads";
+const UFS = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
 
 function temWebGL(): boolean {
   try {
@@ -134,123 +127,154 @@ function temWebGL(): boolean {
   } catch { return false; }
 }
 
-function Cartograma({ pontos, max }: { pontos: Map<string, PontoUF>; max: number }) {
+/** Fallback sem WebGL: os mesmos estados em SVG 2D, com a mesma escala de calor. */
+function BrasilMapa2D({ malha, pontos, max, escuro, selecionado, onSelect, onHover }: {
+  malha: MalhaUF; pontos: Map<string, PontoUF>; max: number; escuro: boolean; selecionado: string | null; onSelect: (uf: string) => void; onHover: (uf: string | null) => void;
+}) {
+  const p = paleta(escuro);
+  const caminho = (pols: [number, number][][][]) => pols.map((pol) => pol.map((anel) =>
+    anel.map(([lng, lat], i) => { const [x, y] = projetar(lng, lat); return `${i ? "L" : "M"}${(x * 100).toFixed(1)},${(-y * 100).toFixed(1)}`; }).join("") + "Z").join("")).join("");
   return (
-    <div className="grid gap-[3px]" style={{ gridTemplateColumns: "repeat(8, 1fr)", gridTemplateRows: "repeat(9, 1fr)" }}>
-      {CARTOGRAMA.map((c) => {
-        const e = pontos.get(c.uf);
-        const v = n(e?.valor);
-        const a = max ? v / max : 0;
+    <svg viewBox="-112 -112 224 214" className="h-full w-full">
+      {Object.keys(malha).map((uf) => {
+        const v = pontos.get(uf)?.valor || 0;
+        const cor = selecionado === uf ? p.destaque : corCalor(v, max, escuro);
+        const c = centroUF(malha[uf]); const [cx, cy] = projetar(c.lng, c.lat);
         return (
-          <div key={c.uf} title={`${c.uf}: ${inteiro(n(e?.clientes))} clientes, ${inteiro(n(e?.leads))} leads no período${n(e?.receita) ? `, ${moeda(e?.receita)}` : ""}`}
-            className="aspect-square rounded-[3px] flex flex-col items-center justify-center text-[9px] leading-none"
-            style={{ gridColumn: c.c + 1, gridRow: c.r + 1, background: v ? `rgba(var(--vg-navy-rgb), ${0.15 + a * 0.85})` : "hsl(var(--muted))", color: a > 0.45 ? "#fff" : "hsl(var(--foreground))" }}>
-            <span className="font-semibold">{c.uf}</span>
-            {v > 0 && <span className="tabular-nums opacity-90">{v}</span>}
-          </div>
+          <g key={uf} style={{ cursor: "pointer" }} onMouseEnter={() => onHover(uf)} onMouseLeave={() => onHover(null)} onClick={() => onSelect(uf)}>
+            <path d={caminho(malha[uf])} fill={cor} stroke={p.borda} strokeWidth={0.6} fillRule="evenodd" />
+            {v > 0 && c.area > 9 && <text x={cx * 100} y={-cy * 100} textAnchor="middle" dominantBaseline="middle" fontSize={5.5} fontWeight={700} fill={fundoEscuro(cor) ? "#fff" : "#0D2B5E"} style={{ pointerEvents: "none" }}>{uf} {v}</text>}
+          </g>
         );
       })}
-    </div>
+    </svg>
   );
 }
 
-/** Onde estão nossos clientes: clientes do CRM Comercial (ganho no histórico todo + carteira ativa) por UF.
- *  Leads do período são informação secundária (toggle). Tudo vem do bloco 'estados' da RPC. */
-function MapaClientes({ estados }: { estados: any[] }) {
+/** Onde estão nossos clientes: mapa de calor por UF. Métrica do toggle: clientes (ganho no CRM no histórico
+ *  todo + carteira ativa) ou leads do período. Clique no estado ou na linha abre a lista real da UF. */
+function MapaClientes({ estados, filtros, periodoTexto }: { estados: any[]; filtros: FiltrosUf; periodoTexto: string }) {
   const [metrica, setMetrica] = useState<MetricaMapa>("clientes");
-  const [selecionado, setSelecionado] = useState<string | null>(null);
-  const [hover, setHover] = useState<PontoUF | null>(null);
-  const [foco, setFoco] = useState<{ modo: "brasil" | "mundo"; tick: number }>({ modo: "brasil", tick: 0 });
+  const [modo, setModo] = useState<"brasil" | "mundo">("brasil");
+  const [resetTick, setResetTick] = useState(0);
+  const [hoverUf, setHoverUf] = useState<string | null>(null);
+  const [aberta, setAberta] = useState<{ uf: string; tipo: TipoListaUf } | null>(null);
+  const [malha, setMalha] = useState<MalhaUF | null>(null);
+  const escuro = useTemaEscuro();
   const webgl = useMemo(() => temWebGL(), []);
+  useEffect(() => { let vivo = true; carregarMalha().then((m) => { if (vivo) setMalha(m); }).catch(() => undefined); return () => { vivo = false; }; }, []);
 
   const pontos = useMemo(() => {
     const m = new Map<string, PontoUF>();
-    estados.filter((e) => UF_VALIDAS.has(e.uf)).forEach((e) => m.set(e.uf, {
+    UFS.forEach((uf) => m.set(uf, { uf, valor: 0, leads: 0, clientes: 0, ganhos: 0, ativos: 0, receita: 0 }));
+    estados.filter((e) => m.has(e.uf)).forEach((e) => m.set(e.uf, {
       uf: e.uf, valor: n(metrica === "clientes" ? e.clientes : e.leads), leads: n(e.leads), clientes: n(e.clientes), ganhos: n(e.ganhos), ativos: n(e.ativos), receita: n(e.receita),
     }));
     return m;
   }, [estados, metrica]);
-  const lista = [...pontos.values()].filter((p) => p.clientes > 0 || p.leads > 0 || p.ativos > 0)
+  const lista = [...pontos.values()].filter((p) => p.clientes > 0 || p.leads > 0)
     .sort((a, b) => b.valor - a.valor || b.clientes - a.clientes || b.leads - a.leads);
   const max = Math.max(0, ...lista.map((p) => p.valor));
+  const min = lista.filter((p) => p.valor > 0).reduce((m, p) => Math.min(m, p.valor), max);
   const semUf = estados.find((e) => e.uf === "Sem UF");
   const clientesComUf = lista.reduce((s, p) => s + p.clientes, 0);
+  const leadsComUf = lista.reduce((s, p) => s + p.leads, 0);
   const sudesteClientes = lista.filter((p) => SUDESTE.has(p.uf)).reduce((s, p) => s + p.clientes, 0);
   const receitaTotal = lista.reduce((s, p) => s + p.receita, 0);
-  const leadsComUf = lista.reduce((s, p) => s + p.leads, 0);
-  const tabela = selecionado ? lista.filter((p) => p.uf === selecionado) : lista;
-  const info = hover || (selecionado ? pontos.get(selecionado) || null : null);
+  const info = hoverUf ? pontos.get(hoverUf) || null : null;
+  const pal = paleta(escuro);
+  const abrir = (uf: string) => setAberta({ uf, tipo: metrica });
+  const ufAtiva = aberta?.uf ?? null;
+  const carregando3d = <div className="h-full flex items-center justify-center text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin mr-2" />Montando o mapa...</div>;
 
   return (
     <Bloco titulo="Onde estão nossos clientes"
       sub={`${inteiro(clientesComUf)} clientes com UF. ${pct(sudesteClientes, clientesComUf)} no Sudeste. ${inteiro(n(semUf?.clientes))} clientes sem UF.`}
-      dica="Clientes = leads com ganho no CRM Comercial no histórico todo (etapa de ganho ou venda registrada, fora de funis de evento) + empresas ativas em carteira não ligadas a um lead ganho. UF do lead ou, se faltar, da empresa vinculada. Barras = clientes (ou leads do período, no toggle). Anel vermelho = empresas ativas em carteira. Arraste pra girar, role pra aproximar, clique numa barra pra filtrar a tabela"
+      dica="Mapa de calor por estado. Clientes = leads com ganho no CRM Comercial no histórico todo (etapa de ganho ou venda registrada, fora de funis de evento) + empresas ativas em carteira não ligadas a um lead ganho. Leads = criados no período. Arraste pra girar, role pra aproximar, clique no estado pra ver a lista"
       acao={(
         <div className="flex items-center gap-1">
-          <div className="flex rounded-md border border-border/60 overflow-hidden mr-1 text-xs" title="O que dá altura e cor às barras">
+          <div className="flex rounded-md border border-border/60 overflow-hidden mr-1 text-xs" title="O que pinta o mapa">
             <button type="button" className={`px-2 py-1 ${metrica === "clientes" ? "text-white" : "text-muted-foreground"}`} style={metrica === "clientes" ? { background: NAVY_BG } : undefined} onClick={() => setMetrica("clientes")}>Clientes</button>
             <button type="button" className={`px-2 py-1 ${metrica === "leads" ? "text-white" : "text-muted-foreground"}`} style={metrica === "leads" ? { background: NAVY_BG } : undefined} onClick={() => setMetrica("leads")}>Leads do período</button>
           </div>
           {webgl && (
             <>
-              <Button variant={foco.modo === "brasil" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => setFoco({ modo: "brasil", tick: Date.now() })}>Brasil</Button>
-              <Button variant={foco.modo === "mundo" ? "default" : "outline"} size="sm" className="h-7 text-xs gap-1" onClick={() => setFoco({ modo: "mundo", tick: Date.now() })}><Globe2 className="h-3 w-3" /> Mundo</Button>
+              <Button variant={modo === "brasil" ? "default" : "outline"} size="sm" className="h-7 text-xs" onClick={() => { setModo("brasil"); setResetTick((t) => t + 1); }} title="Mapa 3D dos estados">Brasil</Button>
+              <Button variant={modo === "mundo" ? "default" : "outline"} size="sm" className="h-7 text-xs gap-1" onClick={() => setModo("mundo")} title="Globo, com os estados do Brasil pintados na mesma escala"><Globe2 className="h-3 w-3" /> Mundo</Button>
             </>
           )}
         </div>
       )}>
-      {lista.length === 0 ? <SemDados motivo="Nenhum cliente nem lead com UF preenchida" /> : (
-        <div className="grid grid-cols-5 gap-3">
-          <div className="col-span-3 relative rounded-lg border border-border/60 overflow-hidden" style={{ height: 300, background: "linear-gradient(180deg, var(--vg-mapa-a), var(--vg-mapa-b))" }}>
-            {webgl ? (
-              <Suspense fallback={<div className="h-full flex items-center justify-center text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin mr-2" />Montando o globo...</div>}>
-                <ClientesGlobo3D pontos={lista} selecionado={selecionado} onSelect={setSelecionado} onHover={setHover} foco={foco} />
+      <div className="grid grid-cols-5 gap-3">
+        <div className="col-span-3">
+          <div className="relative rounded-lg border border-border/60 overflow-hidden" style={{ height: 320, background: "linear-gradient(180deg, var(--vg-mapa-a), var(--vg-mapa-b))" }}>
+            {!malha ? carregando3d : webgl ? (
+              <Suspense fallback={carregando3d}>
+                {modo === "brasil"
+                  ? <BrasilMapa3D malha={malha} pontos={pontos} max={max} escuro={escuro} selecionado={ufAtiva} onSelect={abrir} onHover={setHoverUf} resetTick={resetTick} />
+                  : <ClientesGlobo3D malha={malha} pontos={pontos} max={max} escuro={escuro} selecionado={ufAtiva} onSelect={abrir} onHover={setHoverUf} />}
               </Suspense>
             ) : (
-              <div className="p-3"><Cartograma pontos={pontos} max={max} /></div>
+              <BrasilMapa2D malha={malha} pontos={pontos} max={max} escuro={escuro} selecionado={ufAtiva} onSelect={abrir} onHover={setHoverUf} />
             )}
             {info && (
               <div className="absolute left-2 top-2 rounded-md border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm pointer-events-none">
                 <p className="font-semibold" style={{ color: NAVY }}>{info.uf}</p>
                 <p className="tabular-nums">{inteiro(info.clientes)} clientes ({inteiro(info.ganhos)} ganhos no CRM, {inteiro(info.ativos)} em carteira)</p>
                 <p className="tabular-nums text-muted-foreground">{inteiro(info.leads)} leads no período{info.receita ? ` · receita ganha ${moeda(info.receita)}` : ""}</p>
+                <p className="text-[10px] text-muted-foreground">clique pra ver a lista</p>
               </div>
             )}
-            {selecionado && (
-              <button type="button" className="absolute right-2 bottom-2 text-[11px] text-primary underline bg-card/90 rounded px-1.5 py-0.5" onClick={() => setSelecionado(null)}>limpar filtro ({selecionado})</button>
-            )}
           </div>
-          <div className="col-span-2 overflow-auto max-h-[300px]">
-            <table className="w-full text-xs">
-              <thead className="text-muted-foreground sticky top-0 bg-card"><tr className="border-b">
-                <th className="text-left font-medium py-1">UF</th>
-                <th className="text-right font-medium" title="Ganhos no CRM + carteira ativa">Clientes</th>
-                <th className="text-right font-medium">%</th>
-                <th className="text-right font-medium" title="Receita ganha (crm_sales) dos clientes da UF">Receita</th>
-                <th className="text-right font-medium" title="Leads criados no período">Leads</th>
-              </tr></thead>
-              <tbody>
-                {tabela.map((p) => (
-                  <tr key={p.uf} className={`border-b last:border-0 cursor-pointer hover:bg-muted/40 ${selecionado === p.uf ? "bg-muted/60" : ""}`} onClick={() => setSelecionado(selecionado === p.uf ? null : p.uf)}
-                    title={`${p.uf}: ${inteiro(p.ganhos)} ganhos no CRM, ${inteiro(p.ativos)} em carteira`}>
-                    <td className="py-1 font-medium">{p.uf}{p.ativos > 0 && <span className="inline-block h-1.5 w-1.5 rounded-full ml-1 align-middle" style={{ background: VERMELHO }} title="tem empresa ativa em carteira" />}</td>
-                    <td className="text-right tabular-nums font-semibold" style={{ color: p.clientes ? NAVY : undefined }}>{inteiro(p.clientes)}</td>
-                    <td className="text-right tabular-nums text-muted-foreground">{pct(p.clientes, clientesComUf)}</td>
-                    <td className="text-right tabular-nums">{p.receita ? moeda(p.receita) : "-"}</td>
-                    <td className="text-right tabular-nums text-muted-foreground">{inteiro(p.leads)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="text-[10px] text-muted-foreground mt-1.5">Leads do período: {inteiro(leadsComUf)} com UF, {inteiro(n(semUf?.leads))} sem UF. Receita ganha dos clientes com UF: {moeda(receitaTotal)}.</p>
+          {/* legenda da escala */}
+          <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground tabular-nums" title="Escala de calor: quanto mais forte, mais do que está selecionado no toggle">
+            <span>{metrica === "clientes" ? "Clientes" : "Leads do período"}:</span>
+            <span>{max > 0 ? inteiro(min) : 0}</span>
+            <span className="h-2 flex-1 max-w-[180px] rounded-full" style={{ background: `linear-gradient(90deg, ${pal.min}, ${pal.max})` }} />
+            <span>{inteiro(max)}</span>
+            <span className="inline-flex items-center gap-1 ml-2"><span className="h-2 w-3 rounded-sm" style={{ background: pal.vazio }} /> sem dado</span>
           </div>
         </div>
-      )}
+        <div className="col-span-2 overflow-auto max-h-[345px]">
+          <table className="w-full text-xs">
+            <thead className="text-muted-foreground sticky top-0 bg-card"><tr className="border-b">
+              <th className="text-left font-medium py-1">UF</th>
+              <th className="text-right font-medium" title="Ganhos no CRM + carteira ativa">Clientes</th>
+              <th className="text-right font-medium">%</th>
+              <th className="text-right font-medium" title="Receita ganha (crm_sales) dos clientes da UF">Receita</th>
+              <th className="text-right font-medium" title="Leads criados no período">Leads</th>
+            </tr></thead>
+            <tbody>
+              {lista.map((p) => (
+                <tr key={p.uf} className={`border-b cursor-pointer hover:bg-muted/40 ${ufAtiva === p.uf || hoverUf === p.uf ? "bg-muted/60" : ""}`} onClick={() => abrir(p.uf)}
+                  onMouseEnter={() => setHoverUf(p.uf)} onMouseLeave={() => setHoverUf(null)}
+                  title={`${p.uf}: ${inteiro(p.ganhos)} ganhos no CRM, ${inteiro(p.ativos)} em carteira. Clique pra ver a lista`}>
+                  <td className="py-1 font-medium"><span className="inline-block h-2 w-2 rounded-sm mr-1.5 align-middle" style={{ background: corCalor(p.valor, max, escuro) }} />{p.uf}</td>
+                  <td className="text-right tabular-nums font-semibold" style={{ color: p.clientes ? NAVY : undefined }}>{inteiro(p.clientes)}</td>
+                  <td className="text-right tabular-nums text-muted-foreground">{pct(p.clientes, clientesComUf)}</td>
+                  <td className="text-right tabular-nums">{p.receita ? moeda(p.receita) : "-"}</td>
+                  <td className="text-right tabular-nums text-muted-foreground">{inteiro(p.leads)}</td>
+                </tr>
+              ))}
+              {semUf && (n(semUf.clientes) > 0 || n(semUf.leads) > 0) && (
+                <tr className={`cursor-pointer hover:bg-muted/40 ${ufAtiva === "Sem UF" ? "bg-muted/60" : ""}`} onClick={() => abrir("Sem UF")} title="Cadastros sem estado. Clique pra ver quem são e corrigir">
+                  <td className="py-1 font-medium text-muted-foreground">Sem UF</td>
+                  <td className="text-right tabular-nums">{inteiro(semUf.clientes)}</td>
+                  <td className="text-right text-muted-foreground">-</td>
+                  <td className="text-right tabular-nums">{n(semUf.receita) ? moeda(semUf.receita) : "-"}</td>
+                  <td className="text-right tabular-nums text-muted-foreground">{inteiro(semUf.leads)}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          <p className="text-[10px] text-muted-foreground mt-1.5">Leads do período: {inteiro(leadsComUf)} com UF, {inteiro(n(semUf?.leads))} sem UF. Receita ganha dos clientes com UF: {moeda(receitaTotal)}.</p>
+        </div>
+      </div>
+      <ClientesUfDialog uf={aberta?.uf ?? null} tipo={aberta?.tipo ?? metrica} onTipo={(t) => setAberta((a) => (a ? { ...a, tipo: t } : a))} onClose={() => setAberta(null)} filtros={filtros} periodoTexto={periodoTexto} />
     </Bloco>
   );
 }
 
-const UF_VALIDAS = new Set(CARTOGRAMA.map((c) => c.uf));
 
 export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
   const [periodo, setPeriodo] = useState<Periodo>({ key: "mes" });
@@ -284,8 +308,8 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
     setCarregando(true);
     const { from, to } = intervalo(periodo);
     const prevFrom = new Date(from.getTime() - (to.getTime() - from.getTime()));
-    const filtros = { p_origin: origem === "all" ? null : origem, p_campaign: campanha === "all" ? null : campanha, p_product: produto === "all" ? null : produto, p_staff: staffFiltrado ? equipe : null };
-    const closer = staffFiltrado ? equipe : null;
+    const filtros = { p_origin: origem === "all" ? null : origem, p_campaign: campanha === "all" ? null : campanha, p_product: produto === "all" ? null : produto, p_staff: equipe !== "all" ? equipe : null };
+    const closer = equipe !== "all" ? equipe : null;
     const [vg, at, inv, invPrev] = await Promise.all([
       (supabase as any).rpc("crm_visao_geral", { p_from: from.toISOString(), p_to: to.toISOString(), ...filtros }),
       (supabase as any).rpc("crm_atendimento_dashboard", { p_from: from.toISOString(), p_to: to.toISOString(), p_atendente: closer, p_setor: null }),
@@ -313,6 +337,11 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
   useEffect(() => { carregar(); }, [carregar]);
 
   const { texto } = intervalo(periodo);
+  // filtros da tela, pro diálogo de lista por UF do mapa (mesmos parâmetros da RPC principal)
+  const filtrosUf = useMemo<FiltrosUf>(() => {
+    const { from, to } = intervalo(periodo);
+    return { from: from.toISOString(), to: to.toISOString(), origin: origem === "all" ? null : origem, campaign: campanha === "all" ? null : campanha, product: produto === "all" ? null : produto, staff: equipe !== "all" ? equipe : null };
+  }, [periodo, origem, campanha, produto, equipe]);
   const A = dados?.atual || {}, B = dados?.anterior || {};
   const invA = useMemo(() => calcInvest(invest, dialer.atual, staffFiltrado), [invest, dialer.atual, staffFiltrado]);
   const invB = useMemo(() => calcInvest(investPrev, dialer.anterior, staffFiltrado), [investPrev, dialer.anterior, staffFiltrado]);
@@ -562,7 +591,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
                 </div>
               )}
             </Bloco>
-            <MapaClientes estados={estados} />
+            <MapaClientes estados={estados} filtros={filtrosUf} periodoTexto={texto} />
           </div>
 
           {/* 6. Mapa de calor + 7. Atendimento e velocidade */}
