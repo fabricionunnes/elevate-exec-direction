@@ -43,14 +43,18 @@ export function VisaoGeral({ c }: { c: Ctx }) {
           </div>
         </Panel>
 
-        <Panel titulo="Exige sua decisão" sub={`${d.alertas.length} ${d.alertas.length === 1 ? "item" : "itens"}`}>
-          {d.alertas.length === 0 && <div className="empty">Nada fora do padrão neste mês.</div>}
-          {d.alertas.map((a, i) => (
-            <button type="button" key={i} className={`ai ${a.gravidade}`} onClick={() => alertaAbre(c, a.titulo, a.view)}>
-              <div><b>{a.titulo}</b><em>{a.detalhe}</em></div>
-              <span className="chip">Atuar</span>
-            </button>
-          ))}
+        {/* O card acompanha a altura do funil ao lado e rola por dentro: com 10
+            alertas ele esticava a linha inteira e o funil ficava com meio card vazio. */}
+        <Panel cls="alertas" titulo="Exige sua decisão" sub={`${d.alertas.length} ${d.alertas.length === 1 ? "item" : "itens"}`}>
+          <div className="alertas-lista">
+            {d.alertas.length === 0 && <div className="empty">Nada fora do padrão neste mês.</div>}
+            {d.alertas.map((a, i) => (
+              <button type="button" key={i} className={`ai ${a.gravidade}`} onClick={() => alertaAbre(c, a.titulo, a.view)}>
+                <div><b>{a.titulo}</b><em>{a.detalhe}</em></div>
+                <span className="chip">Atuar</span>
+              </button>
+            ))}
+          </div>
           <div className="note">Alertas calculados no banco a partir do estado de hoje. Clique pra ver os registros e resolver no Nexus.</div>
         </Panel>
       </div>

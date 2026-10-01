@@ -56,6 +56,14 @@
 .pc .ft { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
 .pc .ft small, .pc .mini small { display: block; font-size: 9.5px; color: var(--mute); text-transform: uppercase; letter-spacing: .07em; }
 .pc .ft b { font-size: 15px; }
+/* "Exige sua decisão": não dita a altura da linha (height 0 + min-height 100%
+   faz o card esticar até a altura do funil sem empurrar), e a lista rola. */
+.pc .p.alertas { display: flex; flex-direction: column; height: 0; min-height: 100%; overflow: hidden; }
+.pc .p.alertas .alertas-lista { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 6px; margin-right: -6px; scrollbar-width: thin; scrollbar-color: #4a4a4a transparent; }
+.pc .p.alertas .alertas-lista::-webkit-scrollbar { width: 8px; }
+.pc .p.alertas .alertas-lista::-webkit-scrollbar-thumb { background: #4a4a4a; border-radius: 4px; }
+.pc .p.alertas .alertas-lista::-webkit-scrollbar-track { background: transparent; }
+.pc .p.alertas .note { flex: none; }
 .pc .ai { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--panel2); border-left: 3px solid var(--acc); border-radius: 5px; padding: 9px 11px; margin-bottom: 7px; width: 100%; border-top: 0; border-right: 0; border-bottom: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .pc .ai.media { border-left-color: var(--warn); } .pc .ai.baixa { border-left-color: var(--mute); }
 .pc .ai b { display: block; font-size: 12.5px; }
@@ -142,6 +150,7 @@
 @media (max-width: 980px) {
   .pc .k5 { grid-template-columns: 1fr 1fr; } .pc .k5 .main { grid-column: 1 / -1; }
   .pc .r2, .pc .r3, .pc .fin, .pc .g2 { grid-template-columns: 1fr; } .pc .r4 { grid-template-columns: 1fr 1fr; }
+  .pc .p.alertas { height: auto; min-height: 0; } .pc .p.alertas .alertas-lista { max-height: 340px; }
 }
 @media (max-width: 560px) {
   .pc .r4, .pc .k5 { grid-template-columns: 1fr; }
