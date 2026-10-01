@@ -113,7 +113,7 @@ export const CRMLeadsPage = () => {
   const [addToListOpen, setAddToListOpen] = useState(false);
   const [addToListCount, setAddToListCount] = useState<number | null>(null);
 
-  // Paginação e filtros NO SERVIDOR (RPC crm_leads_page). Antes a tela baixava até
+  // Paginação e filtros NO SERVIDOR (RPC crm_leads_page_v2). Antes a tela baixava até
   // 50 mil leads (50 requisições em sequência, com joins) antes de mostrar a 1ª linha
   // — com 118 mil leads na base, levava dezenas de segundos (pedido do Fabrício 10/09/2026: ≤1s).
   const [total, setTotal] = useState(0);
@@ -158,7 +158,7 @@ export const CRMLeadsPage = () => {
     loadData();
   }, [loadData]);
 
-  // Contagem de duplicados (em paralelo — não segura a tabela)
+  // Listas de leads (filtro "Lista" e gestão)
   const loadLists = useCallback(async () => {
     try { setLeadLists(await fetchLeadLists()); } catch (e) { console.error("listas de leads:", e); }
   }, []);
@@ -177,6 +177,7 @@ export const CRMLeadsPage = () => {
     return f;
   }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList]);
 
+  // Contagem de duplicados (em paralelo, não segura a tabela)
   const loadDupCounts = useCallback(async () => {
     const { data } = await supabase.rpc("crm_leads_dup_counts");
     const r: any = Array.isArray(data) ? data[0] : data;
@@ -214,9 +215,15 @@ export const CRMLeadsPage = () => {
       const ordered = ids.map((id) => byId.get(id)).filter(Boolean) as Lead[];
       setLeads(ordered);
       setKnownLeads((prev) => { const n = { ...prev }; ordered.forEach((l) => { n[l.id] = l; }); return n; });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading leads:", error);
-      toast.error("Erro ao carregar leads");
+      // visão salva apontando pra uma lista que foi apagada ou deixou de ser compartilhada
+      if (String(error?.message || "").includes("Lista não encontrada")) {
+        toast.error("A lista deste filtro não existe mais ou não está compartilhada com você");
+        setFilterList("all");
+      } else {
+        toast.error("Erro ao carregar leads");
+      }
     } finally {
       setPageLoading(false);
     }
