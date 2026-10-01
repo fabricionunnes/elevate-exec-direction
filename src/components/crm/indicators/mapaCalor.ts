@@ -4,7 +4,8 @@
 // carregada por import dinâmico) e detecção do tema.
 import { useEffect, useState } from "react";
 
-export interface PontoUF { uf: string; /** métrica do toggle (clientes ou leads do período) */ valor: number; leads: number; clientes: number; ganhos: number; ativos: number; receita: number }
+/** clientes = ambos (ganho no CRM e em carteira, o mesmo cliente) + soCrm + soCarteira, sem contar duas vezes */
+export interface PontoUF { uf: string; /** métrica do toggle (clientes ou leads do período) */ valor: number; leads: number; clientes: number; ambos: number; soCrm: number; soCarteira: number; receita: number }
 
 /** UF → polígonos → anéis → [lng, lat] (o 1º anel de cada polígono é o contorno, os demais são furos) */
 export type MalhaUF = Record<string, [number, number][][][]>;

@@ -166,9 +166,9 @@ function MapaClientes({ estados, filtros, periodoTexto }: { estados: any[]; filt
 
   const pontos = useMemo(() => {
     const m = new Map<string, PontoUF>();
-    UFS.forEach((uf) => m.set(uf, { uf, valor: 0, leads: 0, clientes: 0, ganhos: 0, ativos: 0, receita: 0 }));
+    UFS.forEach((uf) => m.set(uf, { uf, valor: 0, leads: 0, clientes: 0, ambos: 0, soCrm: 0, soCarteira: 0, receita: 0 }));
     estados.filter((e) => m.has(e.uf)).forEach((e) => m.set(e.uf, {
-      uf: e.uf, valor: n(metrica === "clientes" ? e.clientes : e.leads), leads: n(e.leads), clientes: n(e.clientes), ganhos: n(e.ganhos), ativos: n(e.ativos), receita: n(e.receita),
+      uf: e.uf, valor: n(metrica === "clientes" ? e.clientes : e.leads), leads: n(e.leads), clientes: n(e.clientes), ambos: n(e.ambos), soCrm: n(e.so_crm), soCarteira: n(e.so_carteira), receita: n(e.receita),
     }));
     return m;
   }, [estados, metrica]);
@@ -182,6 +182,9 @@ function MapaClientes({ estados, filtros, periodoTexto }: { estados: any[]; filt
   const sudesteClientes = lista.filter((p) => SUDESTE.has(p.uf)).reduce((s, p) => s + p.clientes, 0);
   const receitaTotal = lista.reduce((s, p) => s + p.receita, 0);
   const info = hoverUf ? pontos.get(hoverUf) || null : null;
+  // composição sem dupla contagem: o lead ganho e a empresa em carteira que são o mesmo cliente contam uma vez
+  const composicao = (p: { ambos: number; soCrm: number; soCarteira: number }) => `${inteiro(p.ambos)} no CRM e em carteira, ${inteiro(p.soCrm)} só no CRM, ${inteiro(p.soCarteira)} só em carteira`;
+  const totais = lista.reduce((t, p) => ({ ambos: t.ambos + p.ambos, soCrm: t.soCrm + p.soCrm, soCarteira: t.soCarteira + p.soCarteira }), { ambos: n(semUf?.ambos), soCrm: n(semUf?.so_crm), soCarteira: n(semUf?.so_carteira) });
   const pal = paleta(escuro);
   const abrir = (uf: string) => setAberta({ uf, tipo: metrica });
   const ufAtiva = aberta?.uf ?? null;
@@ -189,8 +192,8 @@ function MapaClientes({ estados, filtros, periodoTexto }: { estados: any[]; filt
 
   return (
     <Bloco titulo="Onde estão nossos clientes"
-      sub={`${inteiro(clientesComUf)} clientes com UF. ${pct(sudesteClientes, clientesComUf)} no Sudeste. ${inteiro(n(semUf?.clientes))} clientes sem UF.`}
-      dica="Mapa de calor por estado. Clientes = leads com ganho no CRM Comercial no histórico todo (etapa de ganho ou venda registrada, fora de funis de evento) + empresas ativas em carteira não ligadas a um lead ganho. Leads = criados no período. Arraste pra girar, role pra aproximar, clique no estado pra ver a lista"
+      sub={`${inteiro(clientesComUf + n(semUf?.clientes))} clientes: ${inteiro(clientesComUf)} com UF, ${pct(sudesteClientes, clientesComUf)} no Sudeste. ${inteiro(n(semUf?.clientes))} sem UF.`}
+      dica={`Mapa de calor por estado. Cliente = lead com ganho no CRM Comercial no histórico todo (etapa de ganho ou venda registrada, fora de funis de evento) ou empresa ativa em carteira. Quando o lead ganho e a empresa são o mesmo cliente (vínculo por projeto, telefone ou e-mail), conta uma vez só. Hoje: ${composicao(totais)}. Leads = criados no período. Arraste pra girar, role pra aproximar, clique no estado pra ver a lista`}
       acao={(
         <div className="flex items-center gap-1">
           <div className="flex rounded-md border border-border/60 overflow-hidden mr-1 text-xs" title="O que pinta o mapa">
@@ -220,7 +223,8 @@ function MapaClientes({ estados, filtros, periodoTexto }: { estados: any[]; filt
             {info && (
               <div className="absolute left-2 top-2 rounded-md border bg-card/95 px-2.5 py-1.5 text-xs shadow-sm pointer-events-none">
                 <p className="font-semibold" style={{ color: NAVY }}>{info.uf}</p>
-                <p className="tabular-nums">{inteiro(info.clientes)} clientes ({inteiro(info.ganhos)} ganhos no CRM, {inteiro(info.ativos)} em carteira)</p>
+                <p className="tabular-nums">{inteiro(info.clientes)} clientes</p>
+                {info.clientes > 0 && <p className="tabular-nums text-muted-foreground">{composicao(info)}</p>}
                 <p className="tabular-nums text-muted-foreground">{inteiro(info.leads)} leads no período{info.receita ? ` · receita ganha ${moeda(info.receita)}` : ""}</p>
                 <p className="text-[10px] text-muted-foreground">clique pra ver a lista</p>
               </div>
@@ -239,7 +243,7 @@ function MapaClientes({ estados, filtros, periodoTexto }: { estados: any[]; filt
           <table className="w-full text-xs">
             <thead className="text-muted-foreground sticky top-0 bg-card"><tr className="border-b">
               <th className="text-left font-medium py-1">UF</th>
-              <th className="text-right font-medium" title="Ganhos no CRM + carteira ativa">Clientes</th>
+              <th className="text-right font-medium" title="Ganhos no CRM e empresas em carteira, sem contar duas vezes o mesmo cliente">Clientes</th>
               <th className="text-right font-medium">%</th>
               <th className="text-right font-medium" title="Receita ganha (crm_sales) dos clientes da UF">Receita</th>
               <th className="text-right font-medium" title="Leads criados no período">Leads</th>
@@ -248,7 +252,7 @@ function MapaClientes({ estados, filtros, periodoTexto }: { estados: any[]; filt
               {lista.map((p) => (
                 <tr key={p.uf} className={`border-b cursor-pointer hover:bg-muted/40 ${ufAtiva === p.uf || hoverUf === p.uf ? "bg-muted/60" : ""}`} onClick={() => abrir(p.uf)}
                   onMouseEnter={() => setHoverUf(p.uf)} onMouseLeave={() => setHoverUf(null)}
-                  title={`${p.uf}: ${inteiro(p.ganhos)} ganhos no CRM, ${inteiro(p.ativos)} em carteira. Clique pra ver a lista`}>
+                  title={`${p.uf}: ${composicao(p)}. Clique pra ver a lista`}>
                   <td className="py-1 font-medium"><span className="inline-block h-2 w-2 rounded-sm mr-1.5 align-middle" style={{ background: corCalor(p.valor, max, escuro) }} />{p.uf}</td>
                   <td className="text-right tabular-nums font-semibold" style={{ color: p.clientes ? NAVY : undefined }}>{inteiro(p.clientes)}</td>
                   <td className="text-right tabular-nums text-muted-foreground">{pct(p.clientes, clientesComUf)}</td>
@@ -267,7 +271,8 @@ function MapaClientes({ estados, filtros, periodoTexto }: { estados: any[]; filt
               )}
             </tbody>
           </table>
-          <p className="text-[10px] text-muted-foreground mt-1.5">Leads do período: {inteiro(leadsComUf)} com UF, {inteiro(n(semUf?.leads))} sem UF. Receita ganha dos clientes com UF: {moeda(receitaTotal)}.</p>
+          <p className="text-[10px] text-muted-foreground mt-1.5">Clientes: {composicao(totais)}.</p>
+          <p className="text-[10px] text-muted-foreground">Leads do período: {inteiro(leadsComUf)} com UF, {inteiro(n(semUf?.leads))} sem UF. Receita ganha dos clientes com UF: {moeda(receitaTotal)}.</p>
         </div>
       </div>
       <ClientesUfDialog uf={aberta?.uf ?? null} tipo={aberta?.tipo ?? metrica} onTipo={(t) => setAberta((a) => (a ? { ...a, tipo: t } : a))} onClose={() => setAberta(null)} filtros={filtros} periodoTexto={periodoTexto} />
@@ -442,7 +447,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
       { chave: "receita", rotulo: "Receita e meta", linhas: receitaSerie.map((r) => ({ Dia: r.dia, "Receita acumulada": r.receita ?? "", "Meta acumulada": r.meta ?? "" })) },
       { chave: "funil", rotulo: "Funil", linhas: etapasFunil.map((e, i) => ({ Etapa: e.label, Quantidade: e.v, "Conversao da etapa anterior": i > 0 && etapasFunil[i - 1].v > 0 ? Number(((e.v / etapasFunil[i - 1].v) * 100).toFixed(1)) : "" })) },
       { chave: "origens", rotulo: "Origem dos leads", linhas: origensLista.map((o) => ({ Origem: o.nome, Grupo: o.grupo || "", "Midia paga": o.pago ? "sim" : "nao", Leads: n(o.leads), "%": leadsTot ? Number(((n(o.leads) / leadsTot) * 100).toFixed(1)) : "", Vendas: n(o.vendas), Receita: n(o.receita) })) },
-      { chave: "estados", rotulo: "Clientes por estado", linhas: estados.map((e) => ({ UF: e.uf, Clientes: n(e.clientes), "%": clientesComUf ? Number(((n(e.clientes) / clientesComUf) * 100).toFixed(1)) : "", "Ganhos no CRM": n(e.ganhos), "Em carteira (ativos)": n(e.ativos), "Receita ganha": n(e.receita), "Leads no periodo": n(e.leads) })) },
+      { chave: "estados", rotulo: "Clientes por estado", linhas: estados.map((e) => ({ UF: e.uf, Clientes: n(e.clientes), "%": clientesComUf ? Number(((n(e.clientes) / clientesComUf) * 100).toFixed(1)) : "", "No CRM e em carteira": n(e.ambos), "So ganho no CRM": n(e.so_crm), "So em carteira": n(e.so_carteira), "Receita ganha": n(e.receita), "Leads no periodo": n(e.leads) })) },
       { chave: "calor", rotulo: "Mapa de calor", linhas: (atend?.mapa_calor || []).map((x: any) => ({ "Dia da semana": DOW[n(x.dow)], Hora: `${String(x.hora).padStart(2, "0")}h`, "Mensagens recebidas": n(x.n) })) },
       { chave: "atendimento", rotulo: "Atendimento", linhas: atend ? [{ Interacoes: interacoes, WhatsApp: n(A.msgs_wa), Instagram: n(A.msgs_ig), Telefone: n(A.ligacoes), "1a resposta util (media)": duracao(ak.inicio_util_medio_s), "1a resposta corrida (media)": duracao(ak.inicio_medio_s), "SLA ate 5 min util %": slaPct != null ? Number((slaPct * 100).toFixed(1)) : "", "SLA ate 5 min corrido %": slaCorridoPct != null ? Number((slaCorridoPct * 100).toFixed(1)) : "", "Fora do expediente": n(ak.fora_expediente), "Horario de trabalho": expedienteTexto(atend?.expediente), Pendentes: n(ak.aguardando), "Sem resposta": n(ak.sem_resposta) }] : [] },
       { chave: "campanhas", rotulo: "Trafego e campanhas", linhas: campanhas.map((c) => ({ Campanha: c.nome, Midia: c.gasto, Leads: c.leads, CPL: c.cpl ?? "", Vendas: c.vendas, Receita: c.receita, ROAS: c.roas != null ? Number(c.roas.toFixed(2)) : "" })) },
