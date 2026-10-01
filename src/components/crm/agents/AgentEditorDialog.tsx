@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Loader2, Radio, MessageSquare, Instagram } from "lucide-react";
 import { AgentKnowledgeManager } from "./AgentKnowledgeManager";
+import { AgentToolsTab } from "./AgentToolsTab";
 
 interface Props {
   open: boolean;
@@ -268,18 +269,19 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>{agent ? "Editar agente" : "Novo agente"}</DialogTitle>
           <DialogDescription>Configure o cérebro do agente e onde ele atua.</DialogDescription>
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={setTab} className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="grid grid-cols-5 shrink-0">
+          <TabsList className="grid grid-cols-3 sm:grid-cols-6 h-auto shrink-0 [&>button]:px-2 [&>button]:text-xs sm:[&>button]:text-sm">
             <TabsTrigger value="config">Configuração</TabsTrigger>
             <TabsTrigger value="channels">Canais</TabsTrigger>
             <TabsTrigger value="pipelines">Funis</TabsTrigger>
             <TabsTrigger value="agenda">Agenda</TabsTrigger>
+            <TabsTrigger value="tools">Ferramentas</TabsTrigger>
             <TabsTrigger value="knowledge">Conhecimento</TabsTrigger>
           </TabsList>
 
@@ -707,6 +709,22 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
                   Salvar agenda
                 </Button>
               </div>
+            </TabsContent>
+
+            {/* FERRAMENTAS (internas + servidores MCP) */}
+            <TabsContent value="tools" className="mt-0">
+              {needsSave ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">Salve a configuração primeiro para escolher as ferramentas.</p>
+              ) : (
+                <AgentToolsTab
+                  agentId={agentId!}
+                  staffId={staffId}
+                  tenantId={tenantId}
+                  schedulingEnabled={form.scheduling_enabled && form.scheduling_staff_ids.length > 0}
+                  canMoveStage={form.can_move_stage}
+                  onSaved={onSaved}
+                />
+              )}
             </TabsContent>
 
             {/* KNOWLEDGE */}
