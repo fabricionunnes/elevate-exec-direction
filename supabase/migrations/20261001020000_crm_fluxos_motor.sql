@@ -57,6 +57,7 @@ create table if not exists public.crm_flows (
   viewport jsonb,
   activated_at timestamptz,
   last_scan_at timestamptz,
+  scan_state jsonb not null default '{}'::jsonb,   -- cursor da varredura do passado (gatilho lead parado)
   created_by uuid references public.onboarding_staff(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -65,6 +66,7 @@ create table if not exists public.crm_flows (
     'meeting_scheduled', 'meeting_realized', 'meeting_no_show', 'lead_won', 'lead_lost',
     'lead_idle', 'activity_overdue', 'no_reply', 'lead_no_reply'))
 );
+alter table public.crm_flows add column if not exists scan_state jsonb not null default '{}'::jsonb;
 create index if not exists crm_flows_updated_idx on public.crm_flows (updated_at desc);
 create index if not exists crm_flows_active_idx on public.crm_flows (trigger_type) where is_active;
 
@@ -207,6 +209,7 @@ begin
     new.is_active := false;
     new.activated_at := null;
     new.last_scan_at := null;
+    new.scan_state := '{}'::jsonb;
     new.updated_at := now();
     return new;
   end if;
@@ -223,6 +226,7 @@ begin
        or new.trigger_config is distinct from old.trigger_config) then
     new.activated_at := now();
     new.last_scan_at := null;
+    new.scan_state := '{}'::jsonb;
   end if;
   return new;
 end $$;
@@ -292,6 +296,14 @@ returns timestamptz language sql stable security definer set search_path = publi
     join crm_whatsapp_messages m on m.conversation_id = c.id
    where c.lead_id = _lead and m.direction = 'inbound'
      and m.created_at > coalesce(_since, now() - interval '365 days')
+$$;
+
+-- Último movimento do lead: entrada na etapa, atividade concluída ou mensagem na conversa
+create or replace function public.crm_flow_lead_touch(_lead uuid)
+returns timestamptz language sql stable security definer set search_path = public as $$
+  select greatest(l.stage_entered_at, l.last_activity_at,
+                  (select max(c.last_message_at) from crm_whatsapp_conversations c where c.lead_id = l.id))
+    from crm_leads l where l.id = _lead
 $$;
 
 create or replace function public.crm_flow_node(_flow public.crm_flows, _node_id text)
@@ -1029,6 +1041,7 @@ returns int language plpgsql volatile security definer set search_path = public 
 declare
   f public.crm_flows; x record; _n int := 0; _k int; _cfg jsonb; _only_new boolean; _since timestamptz;
   _days int; _hours int; _mins int; _lento boolean;
+  _w0 timestamptz; _w1 timestamptz; _cur_ts timestamptz; _cur_id uuid; _touch timestamptz; _seen int; _cheio boolean;
 begin
   for f in select * from crm_flows where is_active and trigger_type in ('lead_idle', 'activity_overdue', 'no_reply', 'lead_no_reply') loop
     -- gatilhos medidos em dias varrem a cada 5 min; os de minutos/horas, todo ciclo
@@ -1040,34 +1053,80 @@ begin
     _k := 0;
     begin
       if f.trigger_type = 'lead_idle' then
-        -- parado = entrou na etapa há N dias e, nesse período, não teve atividade concluída nem mensagem.
-        -- Dispara uma vez por passagem na etapa.
+        -- parado = N dias sem movimento (entrada na etapa, atividade concluída ou mensagem).
+        -- Dispara uma vez por "parada": se alguém mexer e o lead parar de novo, conta outra vez.
+        -- A busca parte de quem cruzou a marca dos N dias nos últimos 3 dias (três índices pequenos),
+        -- nunca dos 118 mil leads.
         _days := greatest(coalesce(nullif(_cfg->>'days', '')::int, 3), 1);
+        _w1 := now() - make_interval(days => _days);
+        _w0 := greatest(_since - make_interval(days => _days), _w1 - interval '3 days');
         for x in
-          select l.id, l.stage_entered_at
-            from crm_leads l
+          with cand as (
+            select l.id from crm_leads l where l.stage_entered_at >= _w0 and l.stage_entered_at <= _w1
+            union
+            select a.lead_id from crm_activities a where a.completed_at >= _w0 and a.completed_at <= _w1
+            union
+            select c.lead_id from crm_whatsapp_conversations c
+             where c.lead_id is not null and c.last_message_at >= _w0 and c.last_message_at <= _w1
+          )
+          select l.id, t.touch
+            from cand
+            join crm_leads l on l.id = cand.id
             join crm_stages s on s.id = l.stage_id and not coalesce(s.is_final, false)
+            cross join lateral (select crm_flow_lead_touch(l.id) as touch) t
            where l.tenant_id is not distinct from f.tenant_id
-             and l.stage_entered_at <= now() - make_interval(days => _days)
-             and (not _only_new or l.stage_entered_at >= _since - make_interval(days => _days))
              and (nullif(_cfg->>'stage_id', '') is null or l.stage_id = (_cfg->>'stage_id')::uuid)
-             and (nullif(f.filters->>'pipeline_id', '') is null or l.pipeline_id = (f.filters->>'pipeline_id')::uuid)
-             and (nullif(f.filters->>'stage_id', '') is null or l.stage_id = (f.filters->>'stage_id')::uuid)
-             and coalesce(l.last_activity_at, '-infinity'::timestamptz) < now() - make_interval(days => _days)
-             and not exists (select 1 from crm_whatsapp_conversations c
-                              where c.lead_id = l.id and c.last_message_at >= now() - make_interval(days => _days))
+             and t.touch >= _w0 and t.touch <= _w1
              and not exists (select 1 from crm_flow_runs r
-                              where r.dedupe_key = 'idle:' || f.id || ':' || l.id || ':' || extract(epoch from l.stage_entered_at)::bigint)
-           order by l.stage_entered_at desc
+                              where r.dedupe_key = 'idle:' || f.id || ':' || l.id || ':' || extract(epoch from t.touch)::bigint)
+           order by t.touch desc
            limit 200
         loop
           continue when not crm_flow_filters_match(f.filters, x.id);
-          if crm_flow_start(f.id, x.id, 'idle:' || f.id || ':' || x.id || ':' || extract(epoch from x.stage_entered_at)::bigint, 'lead_idle',
-               jsonb_build_object('vars', jsonb_build_object('parado_desde', to_char(x.stage_entered_at at time zone 'America/Sao_Paulo', 'DD/MM/YYYY'), 'dias_parado', _days::text))) is not null then
+          if crm_flow_start(f.id, x.id, 'idle:' || f.id || ':' || x.id || ':' || extract(epoch from x.touch)::bigint, 'lead_idle',
+               jsonb_build_object('vars', jsonb_build_object('parado_desde', to_char(x.touch at time zone 'America/Sao_Paulo', 'DD/MM/YYYY'), 'dias_parado', _days::text))) is not null then
             _k := _k + 1;
           end if;
           exit when _k >= 50;
         end loop;
+
+        -- "Pegar também quem já estava parado": drena o passado aos poucos, do mais recente pro
+        -- mais antigo, com um cursor guardado no fluxo (50 disparos por varredura, no máximo).
+        if not _only_new and _k < 50 and not coalesce((f.scan_state->>'backlog_done')::boolean, false) then
+          _cur_ts := coalesce((f.scan_state->>'cursor_ts')::timestamptz, _since - make_interval(days => _days));
+          _cur_id := coalesce((f.scan_state->>'cursor_id')::uuid, 'ffffffff-ffff-ffff-ffff-ffffffffffff'::uuid);
+          _seen := 0; _cheio := false;
+          -- a subconsulta só anda no índice de stage_entered_at (3.000 por vez); os filtros vêm depois,
+          -- pra que o cursor avance mesmo quando o lote inteiro é de outro funil
+          for x in
+            select l.id, l.stage_entered_at,
+                   (s.id is not null and not coalesce(s.is_final, false)
+                    and l.tenant_id is not distinct from f.tenant_id
+                    and (nullif(_cfg->>'stage_id', '') is null or l.stage_id = (_cfg->>'stage_id')::uuid)
+                    and (nullif(f.filters->>'pipeline_id', '') is null or l.pipeline_id = (f.filters->>'pipeline_id')::uuid)
+                    and (nullif(f.filters->>'stage_id', '') is null or l.stage_id = (f.filters->>'stage_id')::uuid)) as serve
+              from (select l0.id, l0.stage_entered_at, l0.stage_id, l0.pipeline_id, l0.tenant_id
+                      from crm_leads l0
+                     where l0.stage_entered_at <= _cur_ts and (l0.stage_entered_at < _cur_ts or l0.id < _cur_id)
+                     order by l0.stage_entered_at desc, l0.id desc
+                     limit 3000) l
+              left join crm_stages s on s.id = l.stage_id
+             order by l.stage_entered_at desc, l.id desc
+          loop
+            _seen := _seen + 1; _cur_ts := x.stage_entered_at; _cur_id := x.id;
+            continue when not x.serve;
+            _touch := crm_flow_lead_touch(x.id);
+            continue when _touch is null or _touch > _w1;
+            continue when not crm_flow_filters_match(f.filters, x.id);
+            if crm_flow_start(f.id, x.id, 'idle:' || f.id || ':' || x.id || ':' || extract(epoch from _touch)::bigint, 'lead_idle',
+                 jsonb_build_object('vars', jsonb_build_object('parado_desde', to_char(_touch at time zone 'America/Sao_Paulo', 'DD/MM/YYYY'), 'dias_parado', _days::text))) is not null then
+              _k := _k + 1;
+            end if;
+            if _k >= 50 then _cheio := true; exit; end if;
+          end loop;
+          update crm_flows set scan_state = jsonb_build_object('cursor_ts', _cur_ts, 'cursor_id', _cur_id,
+                 'backlog_done', (not _cheio and _seen < 3000)) where id = f.id;
+        end if;
 
       elsif f.trigger_type = 'activity_overdue' then
         _hours := greatest(coalesce(nullif(_cfg->>'hours', '')::int, 1), 0);
@@ -1449,7 +1508,8 @@ revoke all on function
   public.crm_flow_cadence_enroll(uuid, uuid),
   public.crm_flow_render(text, uuid, jsonb, boolean), public.crm_flow_field(uuid, text, jsonb),
   public.crm_flow_rule_ok(uuid, jsonb, jsonb), public.crm_flow_condition_ok(uuid, jsonb, jsonb),
-  public.crm_flow_filters_match(jsonb, uuid), public.crm_flow_last_inbound(uuid, timestamptz)
+  public.crm_flow_filters_match(jsonb, uuid), public.crm_flow_last_inbound(uuid, timestamptz),
+  public.crm_flow_lead_touch(uuid)
 from public, anon, authenticated;
 grant execute on function
   public.crm_flow_outbox_claim(int), public.crm_flow_outbox_result(uuid, text, text, jsonb, int),
