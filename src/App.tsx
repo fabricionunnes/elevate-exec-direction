@@ -346,6 +346,7 @@ const CRMApplicationsPage = lazy(() => import("./pages/crm/CRMApplicationsPage")
 const CRMAutomationsPage = lazy(() => import("./pages/crm/CRMAutomationsPage"));
 const CRMDisparosPage = lazy(() => import("./pages/crm/CRMDisparosPage"));
 const CRMProspectPage = lazy(() => import("./pages/crm/CRMProspectPage"));
+const CRMFluxosPage = lazy(() => import("./pages/crm/CRMFluxosPage"));
 
 // Social Pipeline
 const SocialLayoutPage = lazy(() => import("./pages/social").then(m => ({ default: m.SocialLayout })));
@@ -687,6 +688,8 @@ const AppShell = () => {
               <Route path="disparos" element={<CRMDisparosPage />} />
               <Route path="disparos/:id" element={<CRMDisparosPage />} />
               <Route path="prospeccao" element={<CRMProspectPage />} />
+              <Route path="fluxos" element={<CRMFluxosPage />} />
+              <Route path="fluxos/:id" element={<CRMFluxosPage />} />
             </Route>
             
             {/* UNV Social - Content Pipeline */}

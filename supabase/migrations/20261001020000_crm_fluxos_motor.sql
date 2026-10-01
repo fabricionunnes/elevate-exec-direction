@@ -102,10 +102,11 @@ create table if not exists public.crm_flow_runs (
   steps int not null default 0,
   error text,
   started_by uuid,
-  started_at timestamptz not null default now(),
+  started_at timestamptz not null default clock_timestamp(),   -- vários runs no mesmo ciclo: mantém a ordem
   finished_at timestamptz,
   updated_at timestamptz not null default now()
 );
+alter table public.crm_flow_runs alter column started_at set default clock_timestamp();
 create unique index if not exists crm_flow_runs_dedupe_idx on public.crm_flow_runs (dedupe_key) where dedupe_key is not null;
 create index if not exists crm_flow_runs_flow_idx on public.crm_flow_runs (flow_id, started_at desc);
 create index if not exists crm_flow_runs_lead_idx on public.crm_flow_runs (lead_id, started_at desc);
@@ -1384,7 +1385,8 @@ begin
      set status = case when _status = 'retry' then 'failed' else _status end,
          error = left(_error, 500), sent_at = case when _status = 'sent' then now() end, updated_at = now()
    where id = _id;
-  if o.run_id is not null then
+  -- webhook que espera resposta já escreveu o próprio passo (crm_flow_webhook_result)
+  if o.run_id is not null and not (o.kind = 'webhook' and coalesce((o.payload->>'wait_response')::boolean, false)) then
     insert into crm_flow_run_steps (run_id, node_id, node_type, status, detail)
     values (o.run_id, o.node_id, case o.kind when 'webhook' then 'webhook' when 'staff_whatsapp' then 'notify' else 'send_whatsapp' end,
             case when _status = 'sent' then 'ok' when _status = 'cancelled' then 'skip' else 'error' end,
