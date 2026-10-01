@@ -454,7 +454,7 @@ export function CreateImpulsoDialog({ open, onOpenChange, leadIds, filteredLeadI
                           options={[{ value: "none", label: "Não mover o lead" }, { value: "next", label: "Mover pra próxima etapa do funil" }]} />
                       </div>
                       <p className="text-[11px] text-muted-foreground">
-                        Cada lote entra como um disparo da API oficial (aparece na aba Disparos, com entregue, lido e resposta). A Meta cobra por template entregue.
+                        O impulso vira um disparo da API oficial, alimentado lote a lote (aparece na aba Disparos, com entregue, lido e resposta). A Meta cobra por template entregue.
                       </p>
                     </>
                   )}

@@ -125,14 +125,14 @@ async function registrarNoAtendimento(a: {
 async function loteTexto(imp: any, items: any[], inicio: number) {
   const out = { enviados: 0, falhas: 0, devolvidos: 0 };
   const { data: inst } = await supabase.from("whatsapp_instances")
-    .select("id, instance_name, api_url, api_key, provider_type, status").eq("id", imp.config?.instance_id).maybeSingle();
+    .select("id, instance_name, display_name, api_url, api_key, provider_type, status").eq("id", imp.config?.instance_id).maybeSingle();
   // número fora do ar: devolve o lote e pausa, em vez de queimar a lista inteira com falha
   if (!inst || inst.status !== "connected") {
     await supabase.from("crm_impulso_items").update({ status: "pending", claimed_at: null, batch_no: null, sender_id: null })
       .in("id", items.map((i) => i.id)).eq("status", "sending");
     await supabase.from("crm_impulsos").update({
       status: "paused", updated_at: new Date().toISOString(),
-      pause_reason: inst ? `O número ${inst.instance_name} está desconectado. Reconecte e clique em Retomar.` : "O número escolhido não existe mais.",
+      pause_reason: inst ? `O número ${inst.display_name || inst.instance_name} está desconectado. Reconecte e clique em Retomar.` : "O número escolhido não existe mais.",
     }).eq("id", imp.id).eq("status", "running");
     out.devolvidos = items.length;
     return out;
