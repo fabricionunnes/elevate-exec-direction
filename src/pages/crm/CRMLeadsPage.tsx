@@ -981,8 +981,8 @@ export const CRMLeadsPage = () => {
             <p className="text-xs text-amber-700 dark:text-amber-400">
               <AlertTriangle className="h-3.5 w-3.5 inline mr-1" />
               Os dados faltantes no lead principal serão preenchidos com os dados dos leads secundários. 
-              Tags e atividades serão movidas para o lead principal. 
-              Os {selectedLeads.length - 1} lead(s) secundário(s) serão excluídos permanentemente.
+              Tags, atividades, histórico e conversas vão para o lead principal.
+              Os {selectedLeads.length - 1} lead(s) secundário(s) saem da base e o cadastro deles fica 7 dias na Lixeira (Configurações do CRM).
             </p>
           </div>
 
@@ -1021,7 +1021,7 @@ export const CRMLeadsPage = () => {
                     Só entra duplicado exato: mesmo funil, mesmo {filterDuplicates === "email" ? "e-mail" : "telefone (com DDD)"} e mesmo nome.
                     Cada grupo vira um lead só, o que teve atividade mais recente.
                   </p>
-                  <p>Atividades, histórico, conversas e etiquetas vão junto pro lead que fica. Lead ganho ou com venda nunca é apagado. Não dá pra desfazer.</p>
+                  <p>Atividades, histórico, conversas e etiquetas vão junto pro lead que fica. Lead ganho ou com venda nunca é apagado. O cadastro dos duplicados apagados fica 7 dias na Lixeira (Configurações do CRM).</p>
                 </div>
               )}
 

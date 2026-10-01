@@ -33,6 +33,7 @@ import { trackMeetingEventOnStageChange, isRealizedStage } from "@/hooks/useMeet
 import { CRMFiltersBar, CRMFilters, LeadFieldOption, crmFiltersToJson, crmFiltersFromJson } from "@/components/crm/CRMFiltersBar";
 import { SavedViews } from "@/components/crm/views/SavedViews";
 import { fetchLeadLists, fetchListLeadIds } from "@/components/crm/lists/leadLists";
+import { exportarLeadsEmSegundoPlano, LIMITE_EXPORT_DIRETO } from "@/lib/crm/execucoes";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { KanbanTableView } from "@/components/crm/KanbanTableView";
 import { StageGateDialog } from "@/components/crm/StageGateDialog";
@@ -198,6 +199,8 @@ export const CRMPipelinePage = () => {
   const [listOptions, setListOptions] = useState<{ id: string; name: string; color?: string }[]>([]);
   // leads das listas marcadas no filtro "Lista" (null = filtro desligado ou ainda carregando)
   const [listLeadIds, setListLeadIds] = useState<Set<string> | null>(null);
+  // sobe a cada ação em massa: tirar lead da lista tem que refletir no filtro "Lista"
+  const [listsVersion, setListsVersion] = useState(0);
   // valores dos campos adicionais usados nas condições do filtro "Campos" (lead -> campo -> valor)
   const [customValues, setCustomValues] = useState<Record<string, Record<string, string | null>>>({});
 
@@ -347,7 +350,7 @@ export const CRMPipelinePage = () => {
       .then((ids) => { if (vivo) setListLeadIds(ids); })
       .catch((e) => { console.error("itens das listas:", e); if (vivo) setListLeadIds(new Set()); });
     return () => { vivo = false; };
-  }, [listsInUse]);
+  }, [listsInUse, listsVersion]);
 
   const loadSummaryCards = useCallback(async () => {
     try {
@@ -626,6 +629,14 @@ export const CRMPipelinePage = () => {
     if (!(isMaster || isAdmin)) { toast.error("Sem permissão para exportar"); return; }
     const linhas = filteredLeads;
     if (!linhas.length) { toast.error("Nada para exportar com os filtros atuais"); return; }
+    // acima de 2.000 leads: gera no servidor e avisa na Central de Execuções
+    if (linhas.length > LIMITE_EXPORT_DIRETO) {
+      void exportarLeadsEmSegundoPlano(linhas.map((l: any) => l.id), {
+        title: `Exportação de leads: ${selectedOriginName || "CRM"} (${linhas.length.toLocaleString("pt-BR")})`,
+        filename: `leads-${selectedOriginName || "crm"}`,
+      });
+      return;
+    }
     const stageName = (id: string) => stages.find((st: any) => st.id === id)?.name || "";
     const cols: { h: string; get: (l: any) => string }[] = [
       { h: "Nome", get: (l) => l.name || "" },
@@ -1391,7 +1402,7 @@ export const CRMPipelinePage = () => {
         onClearSelection={handleClearSelection}
         stages={stageOptions}
         owners={ownerOptions}
-        onSuccess={loadStagesAndLeads}
+        onSuccess={() => { loadStagesAndLeads(); setListsVersion((v) => v + 1); }}
         isMaster={isMaster || isAdmin}
         currentPipelineId={selectedPipeline || undefined}
         canDelete={canDeleteLead}
@@ -1399,6 +1410,12 @@ export const CRMPipelinePage = () => {
         canMove={canMoveLead}
         canOverrideGate={isMaster || isAdmin}
         staffId={staffId}
+        filteredLeadIds={filteredLeads.map((l) => l.id)}
+        removeFromList={
+          filters.lists?.length === 1
+            ? { id: filters.lists[0], name: listOptions.find((l) => l.id === filters.lists![0])?.name || "lista" }
+            : null
+        }
       />
 
       <AddLeadDialog

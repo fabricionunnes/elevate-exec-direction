@@ -37,6 +37,7 @@ import { checkStageGate, gateIsBlocked, logGateOverride, type LeadGateResult } f
 import { OfficialTemplateSendDialog } from "@/components/crm/OfficialTemplateSendDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { CreateImpulsoDialog } from "@/components/crm/disparos/CreateImpulsoDialog";
+import { LeadListBulkButtons } from "@/components/crm/lists/LeadListBulkButtons";
 
 interface Stage {
   id: string;
@@ -78,6 +79,8 @@ interface KanbanBulkActionsProps {
   staffId?: string | null;
   /** ids de todos os leads do filtro atual do kanban: libera "todos do filtro" no impulso */
   filteredLeadIds?: string[];
+  /** o funil está filtrado por UMA lista de leads: aparece também o "Tirar da lista" */
+  removeFromList?: { id: string; name: string } | null;
 }
 
 export const KanbanBulkActions = ({
@@ -94,6 +97,7 @@ export const KanbanBulkActions = ({
   canOverrideGate = false,
   staffId = null,
   filteredLeadIds,
+  removeFromList = null,
 }: KanbanBulkActionsProps) => {
   const [loading, setLoading] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -509,6 +513,15 @@ export const KanbanBulkActions = ({
             </>
           )}
         </div>
+
+        {/* Listas de leads: põe os selecionados numa lista (e tira, se o funil está filtrado por uma) */}
+        <LeadListBulkButtons
+          compact
+          leadIds={selectedLeads}
+          removeFrom={removeFromList}
+          disabled={loading}
+          onDone={() => { onClearSelection(); onSuccess(); }}
+        />
 
         {/* Template pela API oficial (disparo em massa) */}
         <Button
