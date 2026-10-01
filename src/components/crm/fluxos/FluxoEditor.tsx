@@ -289,8 +289,35 @@ function Editor({ id, canEdit }: { id: string; canEdit: boolean }) {
         : "Esse lead já está no meio deste fluxo. Cancele a execução dele em Execuções ou escolha outro.");
       return;
     }
-    toast.success(dry ? "Simulação pronta: nada foi enviado nem alterado. Veja o caminho em Execuções." : "Fluxo iniciado. Acompanhe em Execuções.");
     setTeste(false); setTab("execucoes"); setFiltroRun("all"); setFiltroNode(null); setRefreshRuns((n) => n + 1);
+    // Diz o que aconteceu, em vez de só "iniciado": quem testa com um lead que cai
+    // num ramo sem ação via o fluxo "não fazer nada" sem saber por quê.
+    const runId = (data.run_ids || [])[0];
+    let resumo = "";
+    if (runId) {
+      await new Promise((ok) => setTimeout(ok, 700));
+      const [{ data: run }, { data: passos }] = await Promise.all([
+        (supabase as any).from("crm_flow_runs").select("status, wait_kind, error").eq("id", runId).maybeSingle(),
+        (supabase as any).from("crm_flow_run_steps").select("node_id, node_type, status, detail").eq("run_id", runId).order("created_at"),
+      ]);
+      const lista: any[] = passos || [];
+      const caminho = lista.map((p) => {
+        const nomeB = nomeBloco(p.node_id);
+        const r = p.detail?.resultado;
+        return p.node_type === "condition" && r ? `${nomeB} (${String(r).toUpperCase()})` : nomeB;
+      }).join(" → ");
+      const SEM_EFEITO = ["trigger", "condition", "end", "wait", "wait_reply", "ab", "note", "formula"];
+      const acoes = lista.filter((p) => !SEM_EFEITO.includes(p.node_type)).length;
+      const estado = run?.status === "waiting" ? " O fluxo parou num bloco de espera e continua sozinho depois."
+        : run?.status === "error" ? ` Deu erro: ${run?.error || "veja em Execuções"}.` : "";
+      resumo = caminho
+        ? `Caminho: ${caminho}.${acoes === 0 ? " Nenhum bloco de ação nesse caminho, por isso nada foi feito com o lead." : ` ${acoes} ${acoes === 1 ? "ação" : "ações"} ${dry ? "seriam executadas" : "executadas"}.`}${estado}`
+        : "";
+    }
+    (resumo && !dry && / Nenhum bloco de ação /.test(resumo) ? toast.warning : toast.success)(
+      dry ? "Simulação pronta: nada foi enviado nem alterado." : "Fluxo executado.",
+      { description: resumo || "Veja o caminho em Execuções.", duration: 12000 },
+    );
   };
 
   const nomeBloco = useCallback((nid: string | null) => {
