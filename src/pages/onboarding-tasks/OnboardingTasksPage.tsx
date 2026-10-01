@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { PainelControleAtalho } from "@/components/painel-controle/PainelControleAtalho";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { isHoliday } from "@/lib/businessDays";
 import { useNavigate } from "react-router-dom";
@@ -2253,6 +2254,8 @@ const OnboardingTasksPage = () => {
 
       {/* Main content below sticky header */}
       <div className="container mx-auto px-2 sm:px-4 pb-4 sm:pb-8">
+        {/* Painel de Controle: atalho exclusivo do master, no topo da tela inicial do sistema */}
+        <div className="pt-3"><PainelControleAtalho /></div>
         <div className="flex flex-col gap-3 mb-4 sm:mb-6">
 
           {/* Desktop Navigation — clean grouped nav */}
