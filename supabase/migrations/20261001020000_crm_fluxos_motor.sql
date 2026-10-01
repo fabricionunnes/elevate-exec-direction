@@ -177,15 +177,17 @@ create policy crm_flows_write on public.crm_flows for all to authenticated
   using (public.crm_flow_can_edit() and public.tenant_matches(tenant_id))
   with check (public.crm_flow_can_edit() and public.tenant_matches(tenant_id));
 
+-- Execuções: quem edita fluxo vê todas; vendedor só as dos leads dele (o CRM já esconde lead de outro dono)
 drop policy if exists crm_flow_runs_read on public.crm_flow_runs;
 create policy crm_flow_runs_read on public.crm_flow_runs for select to authenticated
-  using (public.get_current_staff_id() is not null and public.tenant_matches(tenant_id));
+  using (public.tenant_matches(tenant_id) and (public.crm_flow_can_edit()
+         or exists (select 1 from public.crm_leads l where l.id = lead_id and l.owner_staff_id = public.get_current_staff_id())));
 drop policy if exists crm_flow_run_steps_read on public.crm_flow_run_steps;
 create policy crm_flow_run_steps_read on public.crm_flow_run_steps for select to authenticated
   using (exists (select 1 from public.crm_flow_runs r where r.id = run_id));
 drop policy if exists crm_flow_outbox_read on public.crm_flow_outbox;
 create policy crm_flow_outbox_read on public.crm_flow_outbox for select to authenticated
-  using (public.get_current_staff_id() is not null and public.tenant_matches(tenant_id));
+  using (public.crm_flow_can_edit() and public.tenant_matches(tenant_id));
 drop policy if exists crm_flow_events_read on public.crm_flow_events;
 create policy crm_flow_events_read on public.crm_flow_events for select to authenticated
   using (public.crm_flow_can_edit() and public.tenant_matches(tenant_id));
@@ -949,6 +951,10 @@ begin
   if coalesce(array_length(p_lead_ids, 1), 0) = 0 then raise exception 'Nenhum lead selecionado'; end if;
   if array_length(p_lead_ids, 1) > 200 then raise exception 'No máximo 200 leads por vez'; end if;
   foreach _l in array p_lead_ids loop
+    -- quem não edita fluxo só simula em lead que é dele
+    if not public.crm_flow_can_edit() and not exists (select 1 from crm_leads where id = _l and owner_staff_id = _me) then
+      _skip := _skip + 1; continue;
+    end if;
     _r := crm_flow_start(p_flow_id, _l, null, 'manual', jsonb_build_object('manual', true), 1, coalesce(p_dry, false), _me);
     if _r is not null then _n := _n + 1; _runs := _runs || _r; else _skip := _skip + 1; end if;
   end loop;
@@ -1443,11 +1449,13 @@ create or replace function public.crm_flow_runs_search(
   p_search text default null, p_limit int default 50, p_offset int default 0)
 returns jsonb language plpgsql stable security definer set search_path = public as $$
 declare _total bigint; _rows jsonb; _q text := nullif(btrim(coalesce(p_search, '')), '');
+        _me uuid := public.get_current_staff_id(); _tudo boolean := public.crm_flow_can_edit();
 begin
-  if public.get_current_staff_id() is null then raise exception 'Sem permissão'; end if;
+  if _me is null then raise exception 'Sem permissão'; end if;
   select count(*) into _total
     from crm_flow_runs r left join crm_leads l on l.id = r.lead_id
    where public.tenant_matches(r.tenant_id)
+     and (_tudo or l.owner_staff_id = _me)
      and (p_flow_id is null or r.flow_id = p_flow_id)
      and (p_lead_id is null or r.lead_id = p_lead_id)
      and (nullif(p_status, '') is null or p_status = 'all' or r.status = p_status)
@@ -1467,6 +1475,7 @@ begin
       join crm_flows f on f.id = r.flow_id
       left join crm_leads l on l.id = r.lead_id
      where public.tenant_matches(r.tenant_id)
+       and (_tudo or l.owner_staff_id = _me)
        and (p_flow_id is null or r.flow_id = p_flow_id)
        and (p_lead_id is null or r.lead_id = p_lead_id)
        and (nullif(p_status, '') is null or p_status = 'all' or r.status = p_status)

@@ -282,7 +282,12 @@ function Editor({ id, canEdit }: { id: string; canEdit: boolean }) {
     const { data, error } = await (supabase as any).rpc("crm_flow_start_manual", { p_flow_id: id, p_lead_ids: [leadId], p_dry: dry });
     setTestando(false);
     if (error) { toast.error(error.message); return; }
-    if (!data?.started) { toast.error("Esse lead já está no meio deste fluxo. Cancele a execução dele em Execuções ou escolha outro."); return; }
+    if (!data?.started) {
+      toast.error(dry
+        ? (canEdit ? "Não consegui simular com esse lead (ele é de outra empresa ou o fluxo está sem gatilho)." : "Você só simula com lead que é seu.")
+        : "Esse lead já está no meio deste fluxo. Cancele a execução dele em Execuções ou escolha outro.");
+      return;
+    }
     toast.success(dry ? "Simulação pronta: nada foi enviado nem alterado. Veja o caminho em Execuções." : "Fluxo iniciado. Acompanhe em Execuções.");
     setTeste(false); setTab("execucoes"); setFiltroRun("all"); setFiltroNode(null); setRefreshRuns((n) => n + 1);
   };
