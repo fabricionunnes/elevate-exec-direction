@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-01T10:01:03",
+ "gerado_em": "2026-10-01T21:01:50",
  "posts": [
+  {
+   "slug": "dono-preso-operacao-trava-crescimento-empresa",
+   "url": "/blog/dono-preso-operacao-trava-crescimento-empresa/",
+   "titulo": "Dono preso na operação trava o crescimento da empresa",
+   "resumo": "Quando a empresa depende do dono para funcionar, ela não cresce. E o que deveria ser liberdade vira prisão.",
+   "tags": [
+    "dependência operacional",
+    "delegação",
+    "estrutura comercial",
+    "solidão do dono",
+    "crescimento"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-01",
+   "ts": 2138
+  },
   {
    "slug": "pergunta-maior-desafio-revela-falta-prioridade",
    "url": "/blog/pergunta-maior-desafio-revela-falta-prioridade/",
