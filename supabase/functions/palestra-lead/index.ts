@@ -249,6 +249,22 @@ Deno.serve(async (req) => {
     // ------------------------------------------------------------------ slots
     if (action === "slots") {
       const dates = nextBusinessDays(DAYS_AHEAD);
+      // O freebusy do Google demora alguns segundos pra enxergar um evento recém-criado.
+      // Então a fonte da verdade imediata é a nossa própria agenda no CRM.
+      const { data: marcadas } = await supabase
+        .from("crm_activities")
+        .select("scheduled_at")
+        .eq("type", "meeting")
+        .eq("responsible_staff_id", CLOSER_STAFF_ID)
+        .not("status", "in", "(cancelled,canceled,no_show)")
+        .gte("scheduled_at", new Date().toISOString())
+        .lte("scheduled_at", new Date(Date.now() + (DAYS_AHEAD + 2) * 24 * 3600 * 1000).toISOString());
+      const ocupados = (marcadas || []).map((m: any) => new Date(m.scheduled_at).getTime());
+      const colide = (date: string, hhmm: string) => {
+        const ini = new Date(`${date}T${hhmm}:00-03:00`).getTime();
+        const fim = ini + DURATION_MIN * 60000;
+        return ocupados.some((o) => ini < o + DURATION_MIN * 60000 && fim > o);
+      };
       const results = await Promise.all(dates.map(async (date) => {
         const { ok, data } = await calendar("freebusy", {
           target_user_id: CLOSER_USER_ID,
@@ -260,7 +276,8 @@ Deno.serve(async (req) => {
         const slots = all.filter((t: string) => {
           const [h, m] = t.split(":").map(Number);
           const endMin = h * 60 + m + DURATION_MIN;
-          return h >= DAY_START && endMin <= DAY_END * 60;
+          if (h < DAY_START || endMin > DAY_END * 60) return false;
+          return !colide(date, t);
         }).slice(0, MAX_SLOTS_PER_DAY);
         return { date, slots };
       }));
@@ -297,6 +314,57 @@ Deno.serve(async (req) => {
         lead.email ? `E-mail: ${lead.email}` : null,
       ].filter(Boolean).join("\n");
 
+      const inicioMs = new Date(startDateTime).getTime();
+      const fimMs = inicioMs + DURATION_MIN * 60000;
+      const janelaIni = new Date(inicioMs - DURATION_MIN * 60000).toISOString();
+      const janelaFim = new Date(fimMs + DURATION_MIN * 60000).toISOString();
+
+      const conflita = (lista: any[], ignorarId?: string) => lista.some((m: any) => {
+        if (ignorarId && m.id === ignorarId) return false;
+        const o = new Date(m.scheduled_at).getTime();
+        return inicioMs < o + DURATION_MIN * 60000 && fimMs > o;
+      });
+
+      // 1) alguém já tem esse horário com o mesmo closer?
+      const { data: jaMarcadas } = await supabase
+        .from("crm_activities").select("id, lead_id, scheduled_at")
+        .eq("type", "meeting").eq("responsible_staff_id", CLOSER_STAFF_ID)
+        .not("status", "in", "(cancelled,canceled,no_show)")
+        .gte("scheduled_at", janelaIni).lte("scheduled_at", janelaFim);
+      if (conflita(jaMarcadas || [], undefined)) {
+        const meu = (jaMarcadas || []).find((m: any) => m.lead_id === leadId
+          && new Date(m.scheduled_at).getTime() === inicioMs);
+        if (!meu) return json({ error: "Esse horário acabou de ser ocupado. Escolhe outro, por favor." }, 409);
+      }
+
+      // 2) reserva primeiro no banco, depois confere quem chegou antes.
+      // Duas pessoas escolhendo o mesmo horário no mesmo segundo: quem reservou
+      // primeiro fica, a outra recebe 409 e escolhe de novo.
+      const { data: reserva, error: errReserva } = await supabase.from("crm_activities").insert({
+        lead_id: leadId, type: "meeting", title, description,
+        scheduled_at: new Date(inicioMs).toISOString(), status: "pending",
+        responsible_staff_id: CLOSER_STAFF_ID, google_calendar_user_id: CLOSER_USER_ID,
+      }).select("id, created_at").single();
+      if (errReserva || !reserva) {
+        console.error("reserva", errReserva);
+        return json({ error: "Não consegui reservar esse horário. Tenta de novo." }, 500);
+      }
+
+      const { data: concorrentes } = await supabase
+        .from("crm_activities").select("id, scheduled_at, created_at")
+        .eq("type", "meeting").eq("responsible_staff_id", CLOSER_STAFF_ID)
+        .not("status", "in", "(cancelled,canceled,no_show)")
+        .gte("scheduled_at", janelaIni).lte("scheduled_at", janelaFim);
+      const perdeuACorrida = (concorrentes || []).some((m: any) =>
+        m.id !== reserva.id
+        && new Date(m.scheduled_at).getTime() < fimMs
+        && new Date(m.scheduled_at).getTime() + DURATION_MIN * 60000 > inicioMs
+        && m.created_at <= reserva.created_at);
+      if (perdeuACorrida) {
+        await supabase.from("crm_activities").delete().eq("id", reserva.id);
+        return json({ error: "Esse horário acabou de ser ocupado. Escolhe outro, por favor." }, 409);
+      }
+
       const { ok, data } = await calendar("create-event", {
         title,
         description,
@@ -308,6 +376,7 @@ Deno.serve(async (req) => {
 
       if (!ok || !data?.success) {
         console.error("create-event falhou", data);
+        await supabase.from("crm_activities").delete().eq("id", reserva.id);
         return json({ error: "Não consegui reservar esse horário. Escolhe outro, por favor." }, 409);
       }
 
@@ -315,18 +384,10 @@ Deno.serve(async (req) => {
       const meetingLink = data.event?.meetingLink || null;
       const scheduledAt = new Date(startDateTime).toISOString();
 
-      await supabase.from("crm_activities").insert({
-        lead_id: leadId,
-        type: "meeting",
-        title,
-        description,
-        scheduled_at: scheduledAt,
-        status: "pending",
-        responsible_staff_id: CLOSER_STAFF_ID,
+      await supabase.from("crm_activities").update({
         meeting_link: meetingLink,
         google_calendar_event_id: eventId,
-        google_calendar_user_id: CLOSER_USER_ID,
-      });
+      }).eq("id", reserva.id);
 
       await supabase.from("crm_leads").update({
         stage_id: STAGE_AGENDADO,
