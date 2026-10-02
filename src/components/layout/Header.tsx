@@ -58,6 +58,7 @@ const productCategories: ProductCategory[] = [
       { name: "UNV Finance", href: "/finance", comingSoon: true },
       { name: "UNV People", href: "/people" },
       { name: "UNV Safe", href: "/safe" },
+      { name: "UNV AI Sprint", href: "/ai-sprint", highlight: true },
     ],
   },
   {

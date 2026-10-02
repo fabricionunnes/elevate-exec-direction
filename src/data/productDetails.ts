@@ -16,7 +16,8 @@ import {
   Scale,
   Bot,
   Target,
-  Handshake
+  Handshake,
+  Sparkles
 } from "lucide-react";
 
 export interface ProductProblemSolution {
@@ -1160,6 +1161,66 @@ export const productDetails: Record<string, ProductDetail> = {
       "Negócios sem liderança interna",
       "Donos que não aceitam interferência",
       "Empresas sem margem para crescimento rápido"
+    ]
+  },
+  "ai-sprint": {
+    id: "ai-sprint",
+    name: "UNV AI Sprint",
+    tagline: "IA aplicada lado a lado com o Fabrício",
+    icon: Sparkles,
+    color: "bg-violet-600",
+    price: "R$ 4.997",
+    priceType: "pagamento único",
+    description: "Duas reuniões individuais de 1h com o Fabrício, quinzenais, para colocar a IA (Claude, ChatGPT e outras) para trabalhar na gestão, no comercial e no marketing da empresa. Você executa com a tela compartilhada, ele conduz. Entre as reuniões, suporte no grupo de WhatsApp.",
+    deliverables: [
+      "Diagnóstico de IA da empresa (rotinas, gargalos e ferramentas)",
+      "Reunião 1 (1h, individual): mapa de IA + primeiras implementações ao vivo",
+      "Reunião 2 (1h, individual, 15 dias depois): ajuste, escala e novos casos de uso",
+      "Implementação guiada com tela compartilhada: você clica, o Fabrício conduz",
+      "Suporte no grupo de WhatsApp durante todo o sprint",
+      "Biblioteca de prompts e plano de 30 dias para o time seguir sem depender de ninguém"
+    ],
+    bestFor: "Donos e gestores de PMEs que sabem que a IA pode economizar horas da operação mas ainda não colocaram nada para rodar",
+    whyRecommended: "Você já ouviu falar de IA, talvez até assine o ChatGPT, mas nada mudou na operação. O AI Sprint implementa com você, dentro das suas ferramentas, em 30 dias.",
+    problemsSolved: [
+      {
+        problem: "Gestão consome o dia do dono: relatórios, atas, cobrança de time e análise de número na mão",
+        solution: "Rotinas de gestão com IA: resumo de reunião, análise de indicadores, cobrança e acompanhamento padronizados",
+        result: "Horas por semana devolvidas ao dono para decisão e estratégia"
+      },
+      {
+        problem: "Comercial sem padrão: follow-up esquecido, proposta demorada, roteiro na cabeça do vendedor",
+        solution: "IA aplicada ao comercial: scripts, follow-ups, propostas, análise de conversa e qualificação de lead",
+        result: "Time mais rápido e consistente, com menos dependência do vendedor estrela"
+      },
+      {
+        problem: "Marketing travado por falta de tempo e de gente para produzir conteúdo",
+        solution: "Produção de conteúdo, copy de anúncio, roteiros e calendário com IA, no tom da empresa",
+        result: "Constância de conteúdo sem contratar mais uma pessoa"
+      },
+      {
+        problem: "Já tentou usar IA sozinho e travou na primeira dificuldade",
+        solution: "Implementação guiada ao vivo + suporte no WhatsApp entre as reuniões",
+        result: "IA rodando de verdade na operação, não em teste"
+      }
+    ],
+    keyBenefits: [
+      "Implementação ao vivo com o Fabrício, não curso gravado",
+      "Você aprende fazendo, na sua própria operação",
+      "Suporte no WhatsApp para não travar entre as reuniões",
+      "Funciona com Claude, ChatGPT ou a ferramenta que fizer mais sentido"
+    ],
+    timeToResults: "Primeira rotina com IA rodando na Reunião 1, operação ajustada em 30 dias",
+    idealProfile: [
+      "Faturamento acima de R$ 50k/mês",
+      "Dono ou gestor que participa da implementação",
+      "Empresa com rotinas de gestão, comercial ou marketing repetitivas",
+      "Disposição para aplicar entre as reuniões"
+    ],
+    notFor: [
+      "Quem quer que alguém faça tudo por ele (não é serviço feito-para-você)",
+      "Quem não vai separar tempo para aplicar entre as reuniões",
+      "Projetos de desenvolvimento de software sob medida"
     ]
   }
 };
