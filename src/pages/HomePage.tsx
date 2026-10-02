@@ -12,7 +12,6 @@ import {
 import heroBoardroom from "@/assets/hero-boardroom.jpg";
 import salesTeam from "@/assets/sales-team.jpg";
 import fabricioNunnes from "@/assets/fabricio-nunnes.png";
-import { PainelControleAtalho } from "@/components/painel-controle/PainelControleAtalho";
 
 const problems = [
   "Time comercial improvisando ao invés de seguir um processo comprovado",
@@ -197,7 +196,6 @@ export default function HomePage() {
 
         <div className="container-premium relative z-10 py-20 sm:py-28 md:py-32">
           <div className="max-w-4xl">
-            <PainelControleAtalho />
             <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary/10 border border-primary/30 rounded-full text-primary text-xs sm:text-sm font-medium mb-6 sm:mb-8 opacity-0 animate-fade-up">
               <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
               Direção Comercial como Serviço
