@@ -223,6 +223,15 @@ const strategicProducts: Product[] = [
     href: "/safe",
     investment: "R$ 3.000/mês",
   },
+  {
+    name: "UNV AI Advisor",
+    tagline: "IA aplicada",
+    description:
+      "Um ano implementando IA em gestão, comercial e marketing com o Fabrício: 2 reuniões individuais por mês e suporte no WhatsApp.",
+    icp: "Empresas R$ 50k+/mês • Dono participando",
+    href: "/ai-advisor",
+    investment: "R$ 36.000/ano",
+  },
 ];
 
 // External
@@ -321,9 +330,9 @@ export default function ProductsPage() {
           <div className="flex items-center gap-3 mb-8">
             <div className="w-3 h-3 rounded-full bg-rose-500" />
             <h2 className="text-xl font-bold text-foreground">Estratégia & Estrutura</h2>
-            <span className="text-sm text-muted-foreground">Finance • People • Safe</span>
+            <span className="text-sm text-muted-foreground">Finance • People • Safe • AI Advisor</span>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {strategicProducts.map((product, i) => (
               <ProductCard key={product.href} product={product} index={i} compact />
             ))}

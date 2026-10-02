@@ -67,6 +67,7 @@ const LeDesirPage = lazy(() => import("./pages/LeDesirPage"));
 const FinancePage = lazy(() => import("./pages/FinancePage"));
 const PeoplePage = lazy(() => import("./pages/PeoplePage"));
 const SafePage = lazy(() => import("./pages/SafePage"));
+const AIAdvisorPage = lazy(() => import("./pages/AIAdvisorPage"));
 const ForClosersPage = lazy(() => import("./pages/ForClosersPage"));
 const ClientDiagnosticPage = lazy(() => import("./pages/ClientDiagnosticPage"));
 const ApplyPage = lazy(() => import("./pages/ApplyPage"));
@@ -434,6 +435,7 @@ const AppShell = () => {
             <Route path="/finance" element={<FinancePage />} />
             <Route path="/people" element={<PeoplePage />} />
             <Route path="/safe" element={<SafePage />} />
+            <Route path="/ai-advisor" element={<AIAdvisorPage />} />
             <Route path="/for-closers" element={<ForClosersPage />} />
             <Route path="/diagnostico" element={<ClientDiagnosticPage />} />
             <Route path="/apply" element={<ClientDiagnosticPage />} />
