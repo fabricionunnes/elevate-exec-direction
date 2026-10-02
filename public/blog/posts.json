@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-01T22:30:58",
+ "gerado_em": "2026-10-02T10:01:08",
  "posts": [
+  {
+   "slug": "conta-faturamento-revela-quanto-dinheiro-fica-mesa",
+   "url": "/blog/conta-faturamento-revela-quanto-dinheiro-fica-mesa/",
+   "titulo": "Conta de faturamento revela quanto dinheiro fica na mesa",
+   "resumo": "A pergunta sobre faturamento médio existe para mostrar o que a empresa deixa de ganhar com a estrutura atual. O dono que não sabe essa conta não consegue tomar decisão comercial.",
+   "tags": [
+    "faturamento",
+    "diagnóstico",
+    "decisão",
+    "estrutura comercial",
+    "meta mensal"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-02",
+   "ts": 2140
+  },
   {
    "slug": "continuar-do-jeito-que-ta-custa-mais-que-mudar",
    "url": "/blog/continuar-do-jeito-que-ta-custa-mais-que-mudar/",
