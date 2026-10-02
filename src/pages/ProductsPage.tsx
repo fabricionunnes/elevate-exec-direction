@@ -224,13 +224,13 @@ const strategicProducts: Product[] = [
     investment: "R$ 3.000/mês",
   },
   {
-    name: "UNV AI Sprint",
+    name: "UNV AI Advisor",
     tagline: "IA aplicada",
     description:
-      "Duas reuniões individuais com o Fabrício para implementar IA em gestão, comercial e marketing, com suporte no WhatsApp entre as reuniões.",
+      "Um ano implementando IA em gestão, comercial e marketing com o Fabrício: 2 reuniões individuais por mês e suporte no WhatsApp.",
     icp: "Empresas R$ 50k+/mês • Dono participando",
-    href: "/ai-sprint",
-    investment: "R$ 4.997",
+    href: "/ai-advisor",
+    investment: "R$ 36.000/ano",
   },
 ];
 
@@ -330,7 +330,7 @@ export default function ProductsPage() {
           <div className="flex items-center gap-3 mb-8">
             <div className="w-3 h-3 rounded-full bg-rose-500" />
             <h2 className="text-xl font-bold text-foreground">Estratégia & Estrutura</h2>
-            <span className="text-sm text-muted-foreground">Finance • People • Safe • AI Sprint</span>
+            <span className="text-sm text-muted-foreground">Finance • People • Safe • AI Advisor</span>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {strategicProducts.map((product, i) => (

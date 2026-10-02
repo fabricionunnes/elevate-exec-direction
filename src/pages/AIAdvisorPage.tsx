@@ -69,32 +69,32 @@ const steps = [
   {
     icon: Wrench,
     title: "Preparação",
-    description: "Diagnóstico de IA da empresa, contas criadas nas ferramentas e os 3 casos de uso prioritários escolhidos antes da primeira reunião."
+    description: "Diagnóstico de IA da empresa, contas criadas nas ferramentas e os casos de uso prioritários escolhidos antes da primeira reunião."
   },
   {
     icon: Video,
-    title: "Reunião 1 — 1h individual",
-    description: "Mapa de IA da sua empresa e primeiras implementações ao vivo. Você compartilha a tela e clica, o Fabrício conduz cada passo."
+    title: "Reunião quinzenal — 1h individual",
+    description: "A cada 15 dias, uma implementação nova ao vivo. Você compartilha a tela e clica, o Fabrício conduz cada passo."
   },
   {
     icon: MessageCircle,
-    title: "15 dias de suporte no WhatsApp",
+    title: "Suporte no WhatsApp entre as reuniões",
     description: "Travou em alguma coisa? Manda no grupo. O Fabrício ajuda a destravar e ajustar enquanto você coloca em uso no dia a dia."
   },
   {
-    icon: Video,
-    title: "Reunião 2 — 1h individual",
-    description: "Revisão do que foi implementado, ajuste do que não pegou, novos casos de uso e padronização para o time usar."
+    icon: BarChart3,
+    title: "Revisão trimestral de ganhos",
+    description: "A cada 3 meses, o que já está rodando, quantas horas foram economizadas e quais são os próximos gargalos a atacar."
   }
 ];
 
 const deliverables = [
-  "2 reuniões individuais de 1h com o Fabrício (quinzenais)",
+  "24 reuniões individuais de 1h com o Fabrício no ano (2 por mês)",
   "Diagnóstico de IA da empresa",
   "Implementação guiada com tela compartilhada",
-  "Suporte no grupo de WhatsApp durante o sprint",
-  "Biblioteca de prompts da sua operação",
-  "Plano de 30 dias para o time seguir sozinho"
+  "Suporte no grupo de WhatsApp durante os 12 meses",
+  "Biblioteca de prompts da sua operação, atualizada no ano",
+  "Revisão trimestral de ganhos com IA"
 ];
 
 const idealFor = [
@@ -110,7 +110,7 @@ const notFor = [
   "Projetos de desenvolvimento de software sob medida"
 ];
 
-export default function AISprintPage() {
+export default function AIAdvisorPage() {
   return (
     <Layout>
       {/* Hero */}
@@ -122,9 +122,9 @@ export default function AISprintPage() {
               <Sparkles className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium text-primary">IA aplicada lado a lado com o Fabrício</span>
             </div>
-            <h1 className="heading-display text-foreground mb-6">UNV AI Sprint</h1>
+            <h1 className="heading-display text-foreground mb-6">UNV AI Advisor</h1>
             <p className="text-xl md:text-2xl text-muted-foreground mb-4 max-w-3xl mx-auto">
-              Duas reuniões individuais com o Fabrício Nunes para colocar a inteligência artificial para trabalhar na gestão, no comercial e no marketing da sua empresa.
+              Um ano com o Fabrício Nunes ao seu lado, em 2 reuniões individuais por mês, para colocar a inteligência artificial para trabalhar na gestão, no comercial e no marketing da sua empresa.
             </p>
             <p className="text-lg text-primary font-medium mb-8">
               Não é curso. Não é feito para você.<br />
@@ -149,27 +149,27 @@ export default function AISprintPage() {
       <ProductTrailSummary
         color="purple"
         productNumber={17}
-        productName="UNV AI SPRINT"
+        productName="UNV AI ADVISOR"
         tagline="IA aplicada à operação"
-        whatItDoes="Implementação guiada de IA (Claude, ChatGPT e outras ferramentas) em gestão, comercial e marketing, em 2 reuniões individuais com o Fabrício e suporte no WhatsApp."
+        whatItDoes="Implementação guiada de IA (Claude, ChatGPT e outras ferramentas) em gestão, comercial e marketing, com 2 reuniões individuais por mês com o Fabrício e suporte no WhatsApp durante 12 meses."
         keyPoints={[
-          "2 reuniões individuais de 1h",
+          "2 reuniões individuais de 1h por mês",
           "Quinzenais, com tela compartilhada",
           "Suporte no WhatsApp entre as reuniões",
           "Gestão, comercial e marketing"
         ]}
-        arrow="IA rodando na operação em 30 dias."
+        arrow="IA nova rodando na operação a cada 15 dias."
         targetAudience={{
           revenue: "R$ 50k+/mês",
           team: "Dono ou gestor participando"
         }}
         schedule={[
-          { period: "Antes", description: "Diagnóstico e escolha dos casos de uso" },
-          { period: "Dia 7", description: "Reunião 1: mapa de IA + implementação" },
-          { period: "Dias 8–20", description: "Aplicação com suporte no WhatsApp" },
-          { period: "Dia 21", description: "Reunião 2: ajuste, escala e plano de 30 dias" }
+          { period: "Quinzenal", description: "Reunião individual de 1h com implementação ao vivo" },
+          { period: "Contínuo", description: "Suporte no grupo de WhatsApp" },
+          { period: "Trimestral", description: "Revisão de ganhos e próximos casos de uso" },
+          { period: "Anual", description: "12 meses, 24 reuniões" }
         ]}
-        scheduleType="days"
+        scheduleType="recurring"
       />
 
       {/* O problema real */}
@@ -177,7 +177,7 @@ export default function AISprintPage() {
         <div className="container-premium">
           <div className="max-w-4xl mx-auto">
             <h2 className="heading-section text-foreground text-center mb-12">
-              O Problema Real que o AI Sprint Resolve
+              O Problema Real que o AI Advisor Resolve
             </h2>
             <div className="bg-card border border-border rounded-2xl p-8 md:p-12">
               <p className="text-lg text-muted-foreground mb-8 text-center">
@@ -215,7 +215,7 @@ export default function AISprintPage() {
             Como Funciona
           </h2>
           <p className="text-lg text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
-            Um sprint de 30 dias. O Fabrício não faz por você: ele faz com você, na sua tela, dentro das suas ferramentas.
+            Um ano de implementação contínua. O Fabrício não faz por você: ele faz com você, na sua tela, dentro das suas ferramentas.
           </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {steps.map((step, index) => (
@@ -344,10 +344,10 @@ export default function AISprintPage() {
         <div className="container-premium text-center relative">
           <h2 className="heading-section text-foreground mb-8">Investimento</h2>
           <div className="bg-card border border-border rounded-2xl p-8 md:p-12 max-w-lg mx-auto">
-            <p className="text-4xl font-bold text-foreground mb-2">R$ 4.997</p>
-            <p className="text-muted-foreground mb-2">pagamento único</p>
+            <p className="text-4xl font-bold text-foreground mb-2">R$ 36.000</p>
+            <p className="text-muted-foreground mb-2">/ano, em até 12x de R$ 3.000 no cartão</p>
             <p className="text-sm text-muted-foreground/70 mb-8">
-              2 reuniões individuais + suporte no WhatsApp durante o sprint
+              24 reuniões individuais + suporte no WhatsApp durante 12 meses
             </p>
             <Button size="lg" className="bg-primary hover:bg-primary/90" asChild>
               <Link to="/diagnostico">
@@ -370,7 +370,7 @@ export default function AISprintPage() {
               Pronto para Colocar a IA para Trabalhar?
             </h2>
             <p className="text-muted-foreground mb-8 text-lg">
-              Em 30 dias, sua empresa sai do "a gente deveria usar IA" para rotinas rodando em gestão, comercial e marketing.
+              A cada 15 dias, uma rotina nova com IA rodando em gestão, comercial ou marketing. Em um ano, a operação inteira trabalha diferente.
             </p>
             <Button size="lg" className="bg-primary hover:bg-primary/90" asChild>
               <Link to="/diagnostico">
