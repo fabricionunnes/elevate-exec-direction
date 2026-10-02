@@ -79,7 +79,8 @@ Deno.serve(async (req: Request) => {
     const ns = [...new Set([...Object.keys(antigos), ...Object.keys(vendas), ...Object.keys(agendas), ...Object.keys(funis)].map(Number))].sort((a, b) => a - b);
     const meses = ns.map((n) => L.montarMes(n, vendas[n] || null, agendas[n] || null, funis[n] || null, antigos[n] || null));
     const agora = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).replace(",", "");
-    const dados = { gerado_em: agora, fonte: "Painel de controle GMC 2026", ano: L.ANO, meses };
+    // a foto do Sistema GMC (dados.sistema) é gravada à parte e precisa sobreviver ao recálculo
+    const dados = { gerado_em: agora, fonte: "Painel de controle GMC 2026", ano: L.ANO, meses, ...(row.dados?.sistema ? { sistema: row.dados.sistema } : {}) };
     const html = String(row.template).replace("/*DADOS*/", JSON.stringify(dados).replace(/<\//g, "<\\/"));
 
     // 3. KPIs
