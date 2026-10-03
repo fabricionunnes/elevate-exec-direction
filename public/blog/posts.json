@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-02T22:31:14",
+ "gerado_em": "2026-10-03T00:00:56",
  "posts": [
+  {
+   "slug": "custo-aquisicao-cliente-decide-investimento-comercial",
+   "url": "/blog/custo-aquisicao-cliente-decide-investimento-comercial/",
+   "titulo": "Custo de aquisição do cliente decide o investimento comercial",
+   "resumo": "O número que define quanto você pode gastar para crescer. Empresa que não sabe quanto custa trazer cliente novo fica travada na mesma operação.",
+   "tags": [
+    "custo de aquisição",
+    "decisão comercial",
+    "estrutura comercial",
+    "investimento",
+    "crescimento"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-03",
+   "ts": 2142
+  },
   {
    "slug": "custo-aquisicao-cliente-define-quanto-pode-crescer",
    "url": "/blog/custo-aquisicao-cliente-define-quanto-pode-crescer/",
