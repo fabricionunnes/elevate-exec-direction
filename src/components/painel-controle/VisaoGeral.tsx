@@ -196,6 +196,8 @@ function alertaAbre(c: Ctx, titulo: string, view: string) {
   const t = titulo.toLowerCase();
   // Meta Ads (sem conta, sync parado, sem investimento): a tela de Tráfego tem o botão de atualizar e o gasto por dia
   if (t.includes("meta")) return c.go({ view: "trafego" });
+  if (view === "caixa" && t.includes("vencidas há mais de 30 dias")) return c.det("caixa_movimentos", { tipo: "saida", classe: "vencida_antiga" }, "Contas a pagar vencidas há mais de 30 dias");
+  if (view === "antecedentes" && t.includes("sem dono")) return c.det("leads_atencao", { tipo: "sem_dono" }, "Leads sem dono");
   if (view === "caixa" || view === "fundador" || view === "antecedentes") return c.go({ view });
   if (t.includes("fatura")) return c.det("faturas_vencidas");
   if (t.includes("saldo")) return c.det("contas_a_pagar", {}, "Contas a pagar dos próximos dias");

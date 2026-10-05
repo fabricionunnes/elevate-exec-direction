@@ -127,6 +127,14 @@ export function Caixa({ c }: { c: Ctx }) {
         </div>
       </div>
 
+      {f.pagar_antigas.n > 0 && (
+        <button type="button" className="ai media" onClick={() => c.det("caixa_movimentos", { tipo: "saida", classe: "vencida_antiga" }, "Contas a pagar vencidas há mais de 30 dias")}>
+          <div><b>{plural(f.pagar_antigas.n, "conta vencida", "contas vencidas")} há mais de 30 dias, {brl(f.pagar_antigas.valor)}, fora da projeção</b>
+            <em>Não entram na linha por padrão porque muita coisa antiga já não é devida. O que for dívida de verdade piora o saldo nesse valor: ligue a chave acima pra ver.</em></div>
+          <span className="chip">Ver a lista</span>
+        </button>
+      )}
+
       <div className="kg">
         <Tile label="Caixa em 30 dias" valor={brl(R.em30)} cls={R.em30 < 0 ? "neg" : ""} sub={`realista. Contratado: ${brl(C.em30)}`} onClick={() => abrirSemana(5)} />
         <Tile label="Caixa em 60 dias" valor={brl(R.em60)} cls={R.em60 < 0 ? "neg" : ""} sub={`realista. Contratado: ${brl(C.em60)}`} onClick={() => abrirSemana(9)} />
