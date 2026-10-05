@@ -41,7 +41,7 @@ export function Financeiro({ c }: { c: Ctx }) {
           <Tabela cols={[{ h: "Categoria", tl: true }, "Contas", "Valor", "% do mês"]} rows={fin.pago_por_categoria.map((x) => [
             <Lk onClick={() => c.det("contas_pagas", { categoria: x.categoria }, `Contas pagas · ${x.categoria}`)}>{x.categoria}</Lk>, num(x.n, 0), brl(x.valor), fp(pct(x.valor, fin.pago)),
           ])} />
-          {fin.pago_por_categoria.length === 1 && fin.pago_por_categoria[0].categoria === "Sem categoria" && <div className="note">Todas as contas pagas estão sem categoria. Classificar no Financeiro deixa o DRE legível.</div>}
+          {(() => { const sc = fin.pago_por_categoria.find((x) => x.categoria === "Sem categoria"); return sc && sc.valor > 0.2 * fin.pago ? <div className="note">{brl(sc.valor)} pagos no mês estão sem categoria. Classificar no Contas a Pagar deixa a leitura por natureza de gasto confiável.</div> : null; })()}
         </Panel>
       </div>
 

@@ -58,7 +58,8 @@ export function Fontes({ c }: { c: Ctx }) {
           [<Lk onClick={() => c.det("wa_templates")}>Disparos</Lk>, "whatsapp_official_campaigns", "campanhas com status done criadas no mês; total = envios.", ok],
           [<Lk onClick={() => c.det("lembretes")}>Lembretes de reunião</Lk>, "crm_meeting_reminder_runs", "envios no mês, sem erro. Zero até agora.", parcial],
           [<Lk onClick={() => c.det("equipe")}>Equipe</Lk>, "onboarding_staff", "ativos da UNV por papel.", ok],
-          ["Margem de contribuição, DRE por competência, retirada do dono", "financial_*", "não estruturado por categoria: quase todas as contas pagas estão sem categoria.", sem],
+          [<Lk onClick={() => c.go({ view: "financeiro" })}>Pago por categoria</Lk>, "financial_payables + staff_financial_categories", "categoria da conta no plano de contas do Financeiro (salários, software, eventos). As contas lançadas de junho/2026 pra cá estão categorizadas; o legado importado não. Até 06/10 o painel lia a tabela errada e mostrava tudo como sem categoria.", ok],
+          ["Margem de contribuição, DRE por competência, retirada do dono", "financial_*", "o painel é caixa (recebido menos pago), não DRE por competência. A categoria diz a natureza do gasto, não o produto: custo por produto só existe onde há centro de custo com o nome do produto.", sem],
         ]} />
       </Panel>
       <Panel titulo="Regras fixas" sub="pra não confundir">
