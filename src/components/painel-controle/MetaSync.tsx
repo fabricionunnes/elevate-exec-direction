@@ -36,9 +36,11 @@ export function saldoSub(meta: Meta | undefined, agora = Date.now()): string {
   if (meta.saldo_erro) return `não consegui conferir: ${meta.saldo_erro}`;
   if (meta.saldo == null) return "saldo ainda não conferido";
   if (meta.pre_paga === false) return "conta pós-paga: a Meta cobra no cartão, não tem saldo pra acabar";
+  const conferido = `conferido ${haQuanto(meta.saldo_conferido_em, agora) ?? "-"}`;
+  if (meta.nivel_saldo === "zerado") return `zerado: campanha ativa não entrega${meta.media_dia ? `. Vinha gastando ${brl(meta.media_dia)}/dia` : ""} · ${conferido}`;
   const ritmo = meta.media_dia ? `no ritmo de ${brl(meta.media_dia)}/dia` : "sem média de gasto recente";
-  const dias = meta.nivel_saldo === "zerado" ? "zerado, campanha ativa não entrega" : meta.dias_de_saldo != null ? `dá pra ${num(meta.dias_de_saldo)} ${meta.dias_de_saldo === 1 ? "dia" : "dias"}` : "";
-  return `${[dias, ritmo].filter(Boolean).join(" ")} · conferido ${haQuanto(meta.saldo_conferido_em, agora) ?? "-"}`;
+  const dias = meta.dias_de_saldo != null ? `dá pra ${num(meta.dias_de_saldo)} ${meta.dias_de_saldo === 1 ? "dia" : "dias"}` : "";
+  return `${[dias, ritmo].filter(Boolean).join(" ")} · ${conferido}`;
 }
 
 /** "Conta Ativa · pré-paga · Saldo disponível (R$0,00 BRL)" */

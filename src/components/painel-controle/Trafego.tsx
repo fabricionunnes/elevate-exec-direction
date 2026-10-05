@@ -21,7 +21,7 @@ export function Trafego({ c }: { c: Ctx }) {
   const dias: ItemBarra[] = Array.from({ length: nDias }, (_, i) => {
     const k = `${mes.slice(0, 8)}${String(i + 1).padStart(2, "0")}`;
     const x = porDia.get(k);
-    return { k, rot: String(i + 1), v: x ? Number(x.spend) : null, tip: x ? `${dataBR(k)}: ${brlFull(x.spend)} · ${x.leads} leads · ${x.campanhas} campanhas com gasto` : `${dataBR(k)}: sem linha da Meta` };
+    return { k, rot: String(i + 1), v: x ? Number(x.spend) : null, tip: x ? `${dataBR(k)}: ${brlFull(x.spend)} · ${x.leads} ${x.leads === 1 ? "lead" : "leads"} · ${x.campanhas} ${x.campanhas === 1 ? "campanha" : "campanhas"} com gasto` : `${dataBR(k)}: sem linha da Meta` };
   });
   const melhorDia = [...(tra.por_dia ?? [])].sort((a, b) => b.spend - a.spend)[0];
 

@@ -1,19 +1,33 @@
 // Visão geral: faixa de KPIs, funil único do mês, decisões, quatro áreas,
 // financeiro mês a mês e "roda sozinho". Tudo clicável.
 import type { Ctx } from "./ctx";
-import { Barras, HRow, Panel, Rank, Tabela, Tile, Lk, Nd } from "./ui";
+import { Barras, Panel, Rank, Tabela, Tile, Lk, Nd } from "./ui";
 import { brl, fp, kfmt, num, pct, plural, usd } from "./fmt";
 import { MetaSaldoTxt, MetaStatusTxt, contaTxt } from "./MetaSync";
+import { FunilMes } from "./funil/FunilMes";
+import type { EtapaFunil } from "./funil/geo";
 
 export function VisaoGeral({ c }: { c: Ctx }) {
   const { d, mes } = c;
   const fin = d.financeiro, com = d.comercial, tra = d.trafego, cli = d.clientes, ate = d.atendimento, ia = d.ia, roda = d.roda_sozinho;
   const prev = d.serie[d.serie.findIndex((m) => m.mes === mes) - 1];
   const dv = prev && prev.recebido ? (fin.recebido - prev.recebido) / prev.recebido : null;
-  const base = Math.max(com.leads_inflow, com.agendadas, 1);
-  const fr = (nome: string, v: number | null, cc: string, onClick: () => void, hi?: boolean) => (
-    <HRow nome={nome} p={v == null ? null : v / base} v={num(v, 0)} c={cc} tip={v == null ? undefined : `${nome}: ${num(v, 0)}`} onClick={onClick} hi={hi} />
-  );
+  // Etapas do funil do mês. Investimento não é etapa: vira o selo no topo.
+  const etapasFunil: EtapaFunil[] = [
+    { k: "leads", nome: "Leads (funis que contam)", v: com.leads_inflow, conv: `${num(com.leads, 0)} no total do CRM`, onClick: () => c.det("leads") },
+    { k: "pagos", nome: "Leads pagos no CRM", v: tra.leads_pagos_crm, conv: com.leads_inflow ? `${fp(pct(tra.leads_pagos_crm, com.leads_inflow))} dos leads` : "origem Meta ou utm paga",
+      onClick: () => c.det("leads", { pago: true }, "Leads de origem paga") },
+    { k: "agendadas", nome: "Reuniões agendadas", v: com.agendadas, conv: com.leads_inflow ? `${fp(pct(com.agendadas, com.leads_inflow))} dos leads` : "eventos do CRM",
+      onClick: () => c.det("reunioes", { tipo: "scheduled" }, "Reuniões agendadas") },
+    { k: "realizadas", nome: "Compareceram", v: com.realizadas,
+      conv: com.presenca == null ? "sem reunião com desfecho" : `${fp(com.presenca)} de presença · ${com.no_show} no-show`,
+      dica: com.realizadas > com.agendadas ? "Compareceram mais do que foram agendadas no mês: entra reunião marcada no mês anterior e realizada neste." : undefined,
+      onClick: () => c.det("reunioes", { tipo: "realizadas" }, "Reuniões realizadas") },
+    { k: "vendas", nome: "Vendas", v: com.vendas, conv: com.conv_reuniao_venda == null ? "sem reunião realizada no mês" : `${fp(com.conv_reuniao_venda)} das realizadas`, onClick: () => c.det("vendas") },
+  ];
+  const selo = !tra.tem_dados ? "Sem investimento registrado no mês"
+    : tra.spend > 0 ? `${brl(tra.spend)} investidos${tra.cpl != null ? ` · CPL ${brl(tra.cpl)}` : ""}`
+    : `R$ 0 investidos no mês${tra.meta?.nivel_saldo === "zerado" ? " · saldo do Meta zerado" : ""}`;
   const lucroCls = fin.lucro < 0 ? "neg" : "";
 
   return (
@@ -28,13 +42,8 @@ export function VisaoGeral({ c }: { c: Ctx }) {
       </div>
 
       <div className="grid r2">
-        <Panel titulo="Funil único · mês" sub="tráfego + comercial no mesmo número">
-          <HRow nome="Investimento em mídia" p={null} v={tra.tem_dados ? brl(tra.spend) : "-"} c={tra.tem_dados ? `Meta Ads · CPL ${brl(tra.cpl)}` : "sem linhas da Meta no mês"} onClick={() => c.go({ view: "trafego" })} />
-          {fr("Leads (funis que contam)", com.leads_inflow, `${num(com.leads, 0)} no total`, () => c.det("leads"))}
-          {fr("Leads pagos no CRM", com.leads_inflow ? tra.leads_pagos_crm : null, `${fp(pct(tra.leads_pagos_crm, com.leads_inflow))} dos que contam`, () => c.det("leads", { pago: true }, "Leads de origem paga"))}
-          {fr("Reuniões agendadas", com.agendadas, "eventos do CRM", () => c.det("reunioes", { tipo: "scheduled" }, "Reuniões agendadas"))}
-          {fr("Compareceram", com.realizadas, `${fp(com.presenca)} de presença · ${com.no_show} no-show`, () => c.det("reunioes", { tipo: "realizadas" }, "Reuniões realizadas"), true)}
-          {fr("Vendas", com.vendas, fp(com.conv_reuniao_venda) + " das realizadas", () => c.det("vendas"), true)}
+        <Panel titulo="Funil único · mês" sub="tráfego + comercial no mesmo número. Arraste pra girar, clique numa etapa pra ver os registros.">
+          <FunilMes etapas={etapasFunil} selo={selo} onSelo={() => c.go({ view: "trafego" })} />
           <div className="ft">
             <div onClick={() => c.det("vendas")}><small>Receita vendida</small><b>{brl(com.receita)}</b></div>
             <div onClick={() => c.det("vendas")}><small>Ticket médio</small><b>{brl(com.ticket)}</b></div>

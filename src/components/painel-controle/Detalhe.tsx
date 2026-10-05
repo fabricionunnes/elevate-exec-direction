@@ -215,7 +215,7 @@ export function Detalhe({ mes, bloco, filtro, titulo, sub, det }: {
         <>
           {spec.resumo && <div className="kg">{spec.resumo(d).map((t, i) => <Tile key={i} label={t.label} valor={t.valor} sub={t.sub} />)}</div>}
           <div className="p wide">
-            <div className="h"><b>Registros</b><span>{linhas.length === d.total ? `${d.total} linhas` : `${linhas.length} de ${d.total} linhas`}{d.total > d.limite ? `. Limite de ${d.limite} por tela` : ""}. {spec.drill && det ? `Clique na linha pra abrir ${spec.drillTxt ?? "o detalhe"}.` : "Clique no nome pra abrir no Nexus."}</span></div>
+            <div className="h"><b>Registros</b><span>{linhas.length === d.total ? `${d.total} ${d.total === 1 ? "linha" : "linhas"}` : `${linhas.length} de ${d.total} linhas`}{d.total > d.limite ? `. Limite de ${d.limite} por tela` : ""}. {spec.drill && det ? `Clique na linha pra abrir ${spec.drillTxt ?? "o detalhe"}.` : "Clique no nome pra abrir no Nexus."}</span></div>
             <Tabela
               onRow={spec.drill && det ? (i) => { const x = spec.drill!(linhas[i], filtro ?? {}); if (x) det(x.bloco, x.filtro, x.titulo); } : undefined}
               cols={spec.cols.map((c) => ({ h: c.h, tl: c.tl }))}

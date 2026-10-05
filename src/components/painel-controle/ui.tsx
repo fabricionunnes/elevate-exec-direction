@@ -29,7 +29,11 @@ export function Panel({ titulo, sub, children, onClick, more, cls }: {
       {more && <span className="more">{more}</span>}
     </>
   );
-  if (onClick) return <button type="button" className={`p go ${cls ?? ""}`} onClick={onClick}>{inner}</button>;
+  // div com papel de botão, não <button>: o card tem links e nomes clicáveis dentro, e botão dentro de botão é HTML inválido
+  if (onClick) return (
+    <div role="button" tabIndex={0} className={`p go ${cls ?? ""}`} onClick={onClick}
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onClick(); } }}>{inner}</div>
+  );
   return <div className={`p ${cls ?? ""}`}>{inner}</div>;
 }
 
