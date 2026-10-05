@@ -164,11 +164,26 @@ export type Painel = {
   frente?: Frente;
 };
 
+/** Bloco sob demanda: saúde da receita recorrente (painel_bloco 'receita'). */
+export type ReceitaBloco = {
+  mes: string; hoje: string;
+  mrr: { cadastrado: number; cadastrado_n: number; que_fatura: number; que_fatura_n: number; clientes: number; fora_valor: number; fora_n: number; fora_empresa_inativa: number; fora_sem_fatura: number; em_aviso: number };
+  ponte: {
+    mes: string; tem_dado: boolean; primeiro: boolean; inicial: number; novo: number; reativacao: number; expansao: number; contracao: number; churn: number; final: number;
+    clientes_inicial: number; clientes_final: number; clientes_churn: number; clientes_novos: number; churn_receita_pct: number | null; churn_clientes_pct: number | null;
+  }[];
+  ltv: { tempo_medio_meses: number | null; empresas_tempo: number; ticket_medio_mensal: number | null; empresas_ticket: number; empresas_fora_ticket: number; empresas_base: number; ltv: number | null };
+  renovacoes: {
+    em30: { n: number; valor: number }; em60: { n: number; valor: number }; em90: { n: number; valor: number }; mensais_n: number; mensais_valor: number;
+    lista: { company_id: string; empresa: string; consultor: string | null; grupo: "risco" | "mensal"; origem: string; plano: string | null; inicio: string | null; fim: string; dias: number; valor: number | null; mensalidade: number | null; projeto_status: string | null }[];
+  };
+};
+
 export type Filtro = Record<string, string | boolean | undefined>;
 
 /** Uma tela na pilha de navegação. */
 export type Nav = {
-  view: "visao" | "financeiro" | "comercial" | "trafego" | "clientes" | "atendimento" | "ia" | "automacoes" | "fontes" | "detalhe" | "caixa" | "fundador" | "antecedentes" | "meta";
+  view: "visao" | "financeiro" | "comercial" | "trafego" | "clientes" | "atendimento" | "ia" | "automacoes" | "fontes" | "detalhe" | "caixa" | "fundador" | "antecedentes" | "meta" | "receita";
   titulo?: string;
   /** filtros da tela de área (funil, closer, sdr, consultor) */
   f?: Filtro;
