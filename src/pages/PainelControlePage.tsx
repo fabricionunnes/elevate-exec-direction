@@ -20,8 +20,12 @@ import { Atendimento } from "@/components/painel-controle/Atendimento";
 import { IA } from "@/components/painel-controle/IA";
 import { Automacoes } from "@/components/painel-controle/Automacoes";
 import { Fontes } from "@/components/painel-controle/Fontes";
+import { Caixa } from "@/components/painel-controle/Caixa";
 import { Detalhe, DETALHE_TITULO } from "@/components/painel-controle/Detalhe";
 import { MetaSync } from "@/components/painel-controle/MetaSync";
+
+/** telas que olham de hoje pra frente: o mês escolhido no topo não muda o que elas mostram */
+const HOJE = new Set(["caixa"]);
 
 const TITULOS: Record<string, [string, string]> = {
   financeiro: ["Financeiro", "caixa do mês: recebido, pago, vencido, bancos e MRR"],
@@ -31,6 +35,7 @@ const TITULOS: Record<string, [string, string]> = {
   atendimento: ["Atendimento", "WhatsApp e Instagram: volume e o que está parado"],
   ia: ["IA e automações", "custo da API, WhatsApp oficial e agentes"],
   automacoes: ["Roda sozinho", "o que agentes e automações fizeram sem passar por você"],
+  caixa: ["Projeção de caixa", "13 semanas, saldo de hoje mais o que está lançado pra entrar e sair"],
   fontes: ["Fontes de dados", "de onde vem cada número e o que falta conectar"],
 };
 
@@ -130,6 +135,7 @@ export default function PainelControlePage() {
       case "ia": return <IA c={ctx} />;
       case "automacoes": return <Automacoes c={ctx} />;
       case "fontes": return <Fontes c={ctx} />;
+      case "caixa": return <Caixa c={ctx} />;
       case "detalhe": return <Detalhe key={rev} mes={mes} bloco={cur.bloco ?? ""} filtro={cur.filtro} titulo={cur.titulo} sub={cur.sub} det={det} />;
       default: return <VisaoGeral c={ctx} />;
     }
@@ -146,7 +152,7 @@ export default function PainelControlePage() {
         {!authLoading && erro && <div className="err">Não consegui carregar {mesLabel(mes)}: {erro}. <button type="button" className="lk" onClick={() => carregar(mes)}>Tentar de novo</button></div>}
         {!authLoading && !erro && !d && <div className="load">Carregando {mesLabel(mes)}...</div>}
         {ctx && cur.view !== "visao" && (
-          <Cab titulo={cur.view === "detalhe" ? cur.titulo ?? "Detalhe" : t?.[0] ?? cur.view} sub={cur.view === "detalhe" ? undefined : `${t?.[1] ?? ""}. ${mesLabel(mes)}`}
+          <Cab titulo={cur.view === "detalhe" ? cur.titulo ?? "Detalhe" : t?.[0] ?? cur.view} sub={cur.view === "detalhe" ? undefined : `${t?.[1] ?? ""}. ${HOJE.has(cur.view) ? "A partir de hoje" : mesLabel(mes)}`}
             crumbs={crumbs} onBack={back} onCrumb={crumb} filtros={filtros} />
         )}
         {conteudo()}

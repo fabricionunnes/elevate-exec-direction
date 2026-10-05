@@ -8,12 +8,14 @@ import { LINK, esc, soma } from "./util";
 import type { Detalhe as DetalheT, Filtro } from "./tipos";
 
 type Tipo = "brl" | "brlfull" | "usd" | "num" | "int" | "data" | "datahora" | "pct" | "txt" | "nivel" | "evento" | "papel" | "proj" | "bool" | "dias" | "horas" | "tend" | "pct2" | "img";
-type ColSpec = { h: string; k: string; t?: Tipo; link?: "lead" | "empresa" | "conversa"; tl?: boolean; idk?: string };
+type ColSpec = { h: string; k: string; t?: Tipo; link?: "lead" | "empresa" | "conversa"; tl?: boolean; idk?: string; /** troca o código pelo rótulo */ map?: Record<string, string> };
 /** pra onde a linha leva: outro bloco de detalhe, um nível abaixo */
 type Drill = { bloco: string; filtro: Filtro; titulo: string };
 type Spec = {
   titulo: string; sub: string; cols: ColSpec[]; resumo?: (d: DetalheT) => { label: string; valor: string; sub?: string }[]; nexus?: string;
   drill?: (l: Record<string, any>, filtro: Filtro) => Drill | null; drillTxt?: string;
+  /** blocos "pra frente" vêm de painel_frente_detalhe, não de painel_controle_detalhe */
+  rpc?: "painel_frente_detalhe";
 };
 
 const S = (titulo: string, sub: string, cols: ColSpec[], extra?: Partial<Spec>): Spec => ({ titulo, sub, cols, ...extra });
@@ -70,6 +72,12 @@ const SPECS: Record<string, Spec> = {
   meta_anuncios: S("Anúncios", "Cada criativo com as mesmas métricas e o que virou lead e venda no CRM.", [
     { h: "Criativo", k: "thumb", t: "img", tl: true }, { h: "Anúncio", k: "nome", tl: true }, { h: "Conjunto", k: "conjunto", tl: true }, { h: "Campanha", k: "campanha", tl: true }, { h: "Status", k: "status" }, { h: "Gasto", k: "spend", t: "brlfull" }, { h: "Impressões", k: "impressoes", t: "int" }, { h: "Cliques", k: "cliques", t: "int" }, { h: "CTR", k: "ctr", t: "pct2" }, { h: "CPC", k: "cpc", t: "brlfull" }, { h: "CPM", k: "cpm", t: "brlfull" }, { h: "Leads Meta", k: "leads", t: "int" }, { h: "CPL", k: "cpl", t: "brlfull" }, { h: "Leads no CRM", k: "leads_crm", t: "int" }, { h: "Vendas", k: "vendas_crm", t: "int" }, { h: "Receita", k: "receita_crm", t: "brl" }, { h: "Dias com gasto", k: "dias", t: "int" }, { h: "Título", k: "titulo", tl: true }, { h: "Texto", k: "texto", tl: true },
   ], { resumo: (d) => [{ label: "Anúncios", valor: num(d.total, 0) }, { label: "Gasto", valor: brl(d.soma) }, { label: "Leads Meta", valor: num(soma(d.linhas, (l) => l.leads), 0) }, { label: "CPL", valor: brl(soma(d.linhas, (l) => l.leads) ? (d.soma ?? 0) / soma(d.linhas, (l) => l.leads) : null) }, { label: "CTR", valor: fp2(soma(d.linhas, (l) => l.impressoes) ? soma(d.linhas, (l) => l.cliques) / soma(d.linhas, (l) => l.impressoes) : null) }, { label: "Receita no CRM", valor: brl(soma(d.linhas, (l) => l.receita_crm)) }], nexus: LINK.crm }),
+  caixa_movimentos: S("Lançamentos da projeção de caixa", "Cada fatura e cada conta a pagar, com a data e o valor que entram em cada cenário.", [
+    { h: "Tipo", k: "tipo", map: { entrada: "Entra", saida: "Sai" } }, { h: "Quem", k: "nome", link: "empresa", idk: "company_id", tl: true }, { h: "Descrição", k: "descricao", tl: true }, { h: "Vencimento", k: "vencimento", t: "data" }, { h: "Valor", k: "valor", t: "brlfull" },
+    { h: "Situação", k: "classe", map: { a_vencer: "A vencer", vencida_recente: "Vencida há até 30 dias", vencida_antiga: "Vencida há mais de 30 dias", renovacao: "Renovação presumida" } }, { h: "Atraso", k: "dias_atraso", t: "dias" },
+    { h: "Data no contratado", k: "data_c", t: "data" }, { h: "Valor no contratado", k: "valor_c", t: "brlfull" }, { h: "Data no realista", k: "data_r", t: "data" }, { h: "Valor no realista", k: "valor_r", t: "brlfull" }, { h: "Regra", k: "motivo_r", tl: true },
+  ], { rpc: "painel_frente_detalhe", nexus: LINK.financeiro,
+    resumo: (d) => { const x = d as any; return [{ label: "Lançamentos", valor: num(d.total, 0) }, { label: "Entra (contratado)", valor: brl(x.entra_c) }, { label: "Entra (realista)", valor: brl(x.entra_r) }, { label: "Sai", valor: brl(x.sai) }, { label: "Saldo do recorte (realista)", valor: brl((x.entra_r ?? 0) - (x.sai ?? 0)) }, ...(x.fora_n ? [{ label: "Fora da projeção", valor: brl(x.fora_valor), sub: `${x.fora_n} vencidos há mais de 30 dias` }] : [])]; } }),
   clientes: S("Clientes", "Empresas com consultor, mensalidade, contrato, health score e NPS.", [
     { h: "Empresa", k: "empresa", link: "empresa", idk: "company_id", tl: true }, { h: "Consultor", k: "consultor" }, { h: "Mensalidade", k: "mensalidade", t: "brlfull" }, { h: "Produto", k: "produto", tl: true }, { h: "Projeto", k: "projeto_status", t: "proj" }, { h: "Início", k: "inicio", t: "data" }, { h: "Fim", k: "fim", t: "data" }, { h: "Plano", k: "plano" },
     { h: "Health", k: "score", t: "num" }, { h: "Nível", k: "nivel", t: "nivel" }, { h: "Tendência", k: "tendencia", t: "tend" }, { h: "NPS", k: "nps", t: "int" }, { h: "Tarefas atrasadas", k: "tarefas_atrasadas", t: "int" }, { h: "Vencido", k: "vencido", t: "brl" }, { h: "Churn em", k: "churn_em", t: "data" }, { h: "Motivo", k: "churn_motivo", tl: true },
@@ -162,7 +170,7 @@ export function Detalhe({ mes, bloco, filtro, titulo, sub, det }: {
     let vivo = true;
     setD(null); setErro(null); setQ(""); setColF("");
     (async () => {
-      const { data, error } = await (supabase as any).rpc("painel_controle_detalhe", { p_month: mes, p_bloco: bloco, p_filtro: filtro ?? {} });
+      const { data, error } = await (supabase as any).rpc(spec?.rpc ?? "painel_controle_detalhe", { p_month: mes, p_bloco: bloco, p_filtro: filtro ?? {} });
       if (!vivo) return;
       if (error) { setErro(error.message); return; }
       setD(data as DetalheT);
@@ -181,7 +189,7 @@ export function Detalhe({ mes, bloco, filtro, titulo, sub, det }: {
   }, [d, q, colF]);
 
   // opções de filtro rápido por coluna de texto (closer, sdr, funil, consultor, atendente, agente...)
-  const colsFiltro = (spec?.cols ?? []).filter((c) => !c.t && !c.link && ["closer", "sdr", "funil", "consultor", "atendente", "agente", "responsavel", "categoria", "status", "origem", "tipo", "modo", "outcome", "canal", "dono", "etapa", "plano", "instancia", "numero", "bloco", "nivel", "papel", "forma", "banco", "campanha", "produto", "conjunto", "objetivo"].includes(c.k));
+  const colsFiltro = (spec?.cols ?? []).filter((c) => !c.t && !c.link && ["closer", "sdr", "funil", "consultor", "atendente", "agente", "responsavel", "categoria", "status", "origem", "tipo", "modo", "outcome", "canal", "dono", "etapa", "plano", "instancia", "numero", "bloco", "nivel", "papel", "forma", "banco", "campanha", "produto", "conjunto", "objetivo", "classe", "motivo_r"].includes(c.k));
   const optsCol = useMemo(() => {
     if (!d) return [] as { value: string; label: string }[];
     const out: { value: string; label: string }[] = [];
@@ -226,6 +234,7 @@ export function Detalhe({ mes, bloco, filtro, titulo, sub, det }: {
                   return <Lk ext onClick={() => abrir(url)} title="Abrir no Nexus">{v == null || v === "" ? "(sem nome)" : String(v)}</Lk>;
                 }
                 if (c.link === "lead" && l.lead_id && c.k !== "nome") return <Lk ext onClick={() => abrir(LINK.lead(l.lead_id))}>{String(v ?? "-")}</Lk>;
+                if (c.map && v != null) return c.map[String(v)] ?? String(v);
                 return cel(v, c.t);
               }))}
               vazio="Nenhum registro com esse filtro."

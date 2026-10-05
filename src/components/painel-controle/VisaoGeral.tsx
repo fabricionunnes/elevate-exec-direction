@@ -5,6 +5,7 @@ import { Barras, Panel, Rank, Tabela, Tile, Lk, Nd } from "./ui";
 import { brl, fp, kfmt, num, pct, plural, usd } from "./fmt";
 import { MetaSaldoTxt, MetaStatusTxt, contaTxt } from "./MetaSync";
 import { FunilMes } from "./funil/FunilMes";
+import { caixaFrase } from "./Caixa";
 import type { EtapaFunil } from "./funil/geo";
 
 export function VisaoGeral({ c }: { c: Ctx }) {
@@ -67,6 +68,14 @@ export function VisaoGeral({ c }: { c: Ctx }) {
           </div>
           <div className="note">Alertas calculados no banco a partir do estado de hoje. Clique pra ver os registros e resolver no Nexus.</div>
         </Panel>
+      </div>
+
+      {/* Pra frente: o que ainda dá pra mudar. Cada cartão abre a sua tela. */}
+      <div className="p frente">
+        <div className="h"><b>Pra frente</b><span>o que ainda dá pra mudar. Os números de cima contam o que já aconteceu.</span></div>
+        <div className="kg">
+          {(() => { const f = caixaFrase(d.frente?.caixa); return <Tile label="Caixa em 30 dias (realista)" valor={f.valor} cls={f.cls} sub={f.sub} onClick={() => c.go({ view: "caixa" })} />; })()}
+        </div>
       </div>
 
       <div className="grid r4">
@@ -182,6 +191,7 @@ function alertaAbre(c: Ctx, titulo: string, view: string) {
   const t = titulo.toLowerCase();
   // Meta Ads (sem conta, sync parado, sem investimento): a tela de Tráfego tem o botão de atualizar e o gasto por dia
   if (t.includes("meta")) return c.go({ view: "trafego" });
+  if (view === "caixa") return c.go({ view: "caixa" });
   if (t.includes("fatura")) return c.det("faturas_vencidas");
   if (t.includes("saldo")) return c.det("contas_a_pagar", {}, "Contas a pagar dos próximos dias");
   if (t.includes("conta") && t.includes("pagar")) return c.det("contas_a_pagar");

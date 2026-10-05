@@ -10,6 +10,29 @@ export type MesSerie = {
   spend: number | null; leads_meta: number | null; custo_ia: number | null; churn: number; novos: number; agente_msgs: number | null;
 };
 
+type ForaItem = { n: number; valor: number };
+type CenarioCaixa = { em30: number; em60: number; em90: number; primeiro_negativo: string | null; pior_valor: number; pior_data: string; entra: number; sai: number };
+
+/** Projeção de caixa de 13 semanas (função painel_caixa_interno). */
+export type Caixa = {
+  hoje: string; saldo_inicial: number; bancos_n: number;
+  taxas: {
+    janela_de: string; janela_ate: string; amostra_n: number; amostra_valor: number; pago_7d_valor: number;
+    taxa_7d: number | null; atraso_medio_dias: number | null;
+    recuperacao_n: number; recuperacao_valor: number; recuperado_valor: number; taxa_recuperacao: number | null; dias_recuperacao: number | null;
+  };
+  historico: { de: string; ate: string; recebido_mes: number; pago_mes: number; faturado_30d: number; a_pagar_30d: number };
+  cenarios: { contratado: CenarioCaixa; realista: CenarioCaixa };
+  semanas: { n: number; de: string; ate: string; entra_c: number; entra_r: number; sai: number; saldo_c: number; saldo_r: number; min_c: number; min_r: number; n_entradas: number; n_entradas_r: number; n_saidas: number }[];
+  dias: { d: string; c: number; r: number }[];
+  fora: { pagar_antigas: ForaItem; receber_antigas: ForaItem; pagar_recentes: ForaItem; receber_recentes: ForaItem; fora_do_realista: ForaItem; renovacoes: ForaItem; recebiveis_legado: ForaItem };
+};
+
+/** Blocos "pra frente": o que ainda dá pra mudar. Cada bloco novo entra aqui. */
+export type Frente = {
+  caixa?: Caixa;
+};
+
 export type Painel = {
   mes: string; hoje: string; gerado_em: string;
   financeiro: {
@@ -84,13 +107,14 @@ export type Painel = {
   equipe: { papel: string; n: number }[];
   alertas: Alerta[];
   serie: MesSerie[];
+  frente?: Frente;
 };
 
 export type Filtro = Record<string, string | boolean | undefined>;
 
 /** Uma tela na pilha de navegação. */
 export type Nav = {
-  view: "visao" | "financeiro" | "comercial" | "trafego" | "clientes" | "atendimento" | "ia" | "automacoes" | "fontes" | "detalhe";
+  view: "visao" | "financeiro" | "comercial" | "trafego" | "clientes" | "atendimento" | "ia" | "automacoes" | "fontes" | "detalhe" | "caixa";
   titulo?: string;
   /** filtros da tela de área (funil, closer, sdr, consultor) */
   f?: Filtro;

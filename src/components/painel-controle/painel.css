@@ -34,6 +34,8 @@
 .pc .bars.dense { gap: 3px; height: 160px; }
 .pc .bars.dense .bc small { font-size: 9.5px; margin-top: 3px; }
 .pc .thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid var(--line); background: var(--panel2); display: block; }
+.pc .p.frente { border-color: #3a3a3a; background: linear-gradient(180deg, #1b1b1b, var(--panel)); }
+.pc .p.frente .kg .p { background: var(--panel2); }
 /* ---------- funil do mês (3D ou SVG) ---------- */
 .pc .fn { position: relative; width: 100%; user-select: none; -webkit-user-select: none; }
 .pc .fn-palco { position: absolute; left: 0; top: 0; }

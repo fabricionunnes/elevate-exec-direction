@@ -1,10 +1,13 @@
 // Formatação do Painel de Controle. Segue a referência: "R$ 39,5 mil", "R$ 1,2 mi",
 // e "-" quando não tem dado (nunca zero falso).
 
+/** sinal de menos tipográfico: não quebra a linha entre o sinal e o "R$", e não se confunde com o "-" de "sem dado" */
+const MENOS = "\u2212";
+
 export const brl = (v: number | null | undefined): string => {
   if (v == null || Number.isNaN(Number(v))) return "-";
   const n = Number(v);
-  const s = n < 0 ? "-" : "";
+  const s = n < 0 ? MENOS : "";
   const a = Math.abs(n);
   if (a >= 1e6) return `${s}R$ ${(a / 1e6).toFixed(2).replace(".", ",")} mi`;
   if (a >= 1000) return `${s}R$ ${(a / 1000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} mil`;
@@ -13,7 +16,7 @@ export const brl = (v: number | null | undefined): string => {
 
 /** Valor cheio, com centavos, pra tabela de registros. */
 export const brlFull = (v: number | null | undefined): string =>
-  v == null || Number.isNaN(Number(v)) ? "-" : `R$ ${Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  v == null || Number.isNaN(Number(v)) ? "-" : `${Number(v) < 0 ? MENOS : ""}R$ ${Math.abs(Number(v)).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export const usd = (v: number | null | undefined): string =>
   v == null || Number.isNaN(Number(v)) ? "-" : `US$ ${Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

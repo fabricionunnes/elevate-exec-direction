@@ -3,6 +3,7 @@ import type { Ctx } from "./ctx";
 import { Barras, Lk, Nd, Panel, Tabela, Tile } from "./ui";
 import { brl, dataBR, dataHoraBR, fp, kfmt, num, pct, plural } from "./fmt";
 import { LINK } from "./util";
+import { caixaFrase } from "./Caixa";
 
 export function Financeiro({ c }: { c: Ctx }) {
   const { d, mes } = c;
@@ -20,6 +21,7 @@ export function Financeiro({ c }: { c: Ctx }) {
         <Tile label="Vence em 3 dias" valor={brl(fin.a_pagar_3d)} sub={`${plural(fin.a_pagar_3d_n, "conta", "contas")} · ${brl(fin.a_pagar_7d)} em 7 dias`} onClick={() => c.det("contas_a_pagar")} />
         <Tile label="Saldo nos bancos" valor={brl(fin.saldo_bancos)} sub={`${fin.bancos.length} contas ativas`} onClick={() => c.det("bancos")} />
         <Tile label="MRR" valor={brl(fin.mrr)} sub={plural(fin.mrr_n, "mensalidade ativa", "mensalidades ativas")} onClick={() => c.det("mrr")} />
+        {(() => { const f = caixaFrase(d.frente?.caixa); return <Tile label="Caixa em 30 dias (projeção)" valor={f.valor} cls={f.cls} sub={f.sub} onClick={() => c.go({ view: "caixa" })} />; })()}
         <Tile label="MRR em aviso de saída" valor={brl(fin.mrr_em_aviso)} sub="clientes em aviso ou com sinal de cancelamento" onClick={() => c.det("clientes", { tipo: "em_aviso" }, "Clientes em aviso de saída")} />
       </div>
 

@@ -136,7 +136,7 @@ as $$
   -- faturas
   select 'entrada', 'fatura', f.id, f.company_id, f.nome, f.description, f.due_date, f.valor,
          case when f.atraso <= 0 then 'a_vencer' when f.atraso <= 30 then 'vencida_recente' else 'vencida_antiga' end,
-         greatest(f.atraso, 0),
+         nullif(greatest(f.atraso, 0), 0),
          case when f.atraso <= 0 then f.due_date when f.atraso <= 30 then f.hoje end,
          case when f.atraso <= 30 then f.valor end,
          r.data_r, r.valor_r, r.motivo
@@ -164,14 +164,14 @@ as $$
         end motivo
     ) r
   union all
-  select 'entrada', 'renovacao', n.id, n.company_id, n.nome, n.description, n.due, n.valor, 'renovacao', 0, n.due, n.valor, null::date, null::numeric,
+  select 'entrada', 'renovacao', n.id, n.company_id, n.nome, n.description, n.due, n.valor, 'renovacao', null::int, n.due, n.valor, null::date, null::numeric,
          'renovação presumida: ainda não tem fatura'
     from ren n
   union all
   -- contas a pagar: iguais nos dois cenários
   select 'saida', 'conta', g.id, null::uuid, g.nome, g.description, g.due_date, g.valor,
          case when g.atraso <= 0 then 'a_vencer' when g.atraso <= 30 then 'vencida_recente' else 'vencida_antiga' end,
-         greatest(g.atraso, 0),
+         nullif(greatest(g.atraso, 0), 0),
          case when g.atraso <= 0 then g.due_date when g.atraso <= 30 then g.hoje end,
          case when g.atraso <= 30 then g.valor end,
          case when g.atraso <= 0 then g.due_date when g.atraso <= 30 then g.hoje end,
@@ -326,7 +326,10 @@ begin
       -- com janela, cada soma só conta o que cai na janela naquele cenário (bate com a linha da semana)
       'entra_c', (select coalesce(sum(valor_c), 0) from base where tipo = 'entrada' and (f_de is null or data_c between f_de and coalesce(f_ate, f_de))),
       'entra_r', (select coalesce(sum(valor_r), 0) from base where tipo = 'entrada' and (f_de is null or data_r between f_de and coalesce(f_ate, f_de))),
-      'sai', (select coalesce(sum(coalesce(valor_c, valor)), 0) from base where tipo = 'saida'),
+      'sai', (select coalesce(sum(valor_c), 0) from base where tipo = 'saida' and (f_de is null or data_c between f_de and coalesce(f_ate, f_de))),
+      -- o que está na lista mas não entra em nenhum cenário (vencido há mais de 30 dias)
+      'fora_valor', (select coalesce(sum(valor), 0) from base where valor_c is null and valor_r is null),
+      'fora_n', (select count(*) from base where valor_c is null and valor_r is null),
       'soma', (select coalesce(sum(valor), 0) from base),
       'linhas', (select coalesce(jsonb_agg(to_jsonb(b) order by b.tipo, coalesce(b.data_c, b.data_r, b.vencimento), b.valor desc), '[]')
                    from (select * from base order by tipo, coalesce(data_c, data_r, vencimento), valor desc limit 500) b)) into saida;
