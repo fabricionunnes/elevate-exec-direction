@@ -40,6 +40,10 @@ export type Painel = {
     meta: {
       conectada: boolean; conta: string | null; ad_account_id: string | null; account_row_id: string | null;
       ultimo_sync: string | null; horas_desde_sync: number | null; ultimo_dia_com_gasto: string | null; dias_sem_gasto: number | null;
+      /** saldo da conta de anúncios, conferido de hora em hora. null = nunca conferido */
+      situacao: string | null; pre_paga: boolean | null; saldo: number | null; devido: number | null; forma_pagamento: string | null;
+      media_dia: number | null; dias_de_saldo: number | null; saldo_conferido_em: string | null; saldo_erro: string | null;
+      nivel_saldo: "ok" | "baixo" | "critico" | "zerado" | null;
     };
     por_dia: { dia: string; spend: number; leads: number; impressoes: number; cliques: number; campanhas: number }[];
     campanhas: {

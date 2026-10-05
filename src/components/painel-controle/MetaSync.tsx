@@ -5,7 +5,7 @@
 // e aí o texto fica âmbar (mais de 8 h) ou vermelho (mais de um dia).
 import { useEffect, useState } from "react";
 import type { Painel } from "./tipos";
-import { dataBR } from "./fmt";
+import { brl, brlFull, dataBR, num } from "./fmt";
 
 type Meta = Painel["trafego"]["meta"];
 
@@ -25,6 +25,33 @@ export function nivelSync(meta: Meta | undefined, agora = Date.now()): "g" | "a"
   if (!meta?.conectada || !meta.ultimo_sync) return "r";
   const h = (agora - new Date(meta.ultimo_sync).getTime()) / 3600000;
   return h > 24 ? "r" : h > 8 ? "a" : "g";
+}
+
+/** classe de cor do saldo: vermelho zerado/crítico, âmbar baixo */
+export const corSaldo = (meta: Meta | undefined): string => (meta?.nivel_saldo === "zerado" || meta?.nivel_saldo === "critico" ? "neg" : meta?.nivel_saldo === "baixo" ? "warn" : "");
+
+/** "dá pra 3 dias no ritmo de R$ 113/dia", ou o motivo de não ter o número */
+export function saldoSub(meta: Meta | undefined, agora = Date.now()): string {
+  if (!meta?.conectada) return "sem conta conectada";
+  if (meta.saldo_erro) return `não consegui conferir: ${meta.saldo_erro}`;
+  if (meta.saldo == null) return "saldo ainda não conferido";
+  if (meta.pre_paga === false) return "conta pós-paga: a Meta cobra no cartão, não tem saldo pra acabar";
+  const ritmo = meta.media_dia ? `no ritmo de ${brl(meta.media_dia)}/dia` : "sem média de gasto recente";
+  const dias = meta.nivel_saldo === "zerado" ? "zerado, campanha ativa não entrega" : meta.dias_de_saldo != null ? `dá pra ${num(meta.dias_de_saldo)} ${meta.dias_de_saldo === 1 ? "dia" : "dias"}` : "";
+  return `${[dias, ritmo].filter(Boolean).join(" ")} · conferido ${haQuanto(meta.saldo_conferido_em, agora) ?? "-"}`;
+}
+
+/** "Conta Ativa · pré-paga · Saldo disponível (R$0,00 BRL)" */
+export function contaTxt(meta: Meta | undefined): string {
+  if (!meta?.conectada) return "";
+  return [meta.situacao ? `conta ${meta.situacao.toLowerCase()}` : null, meta.pre_paga == null ? null : meta.pre_paga ? "pré-paga" : "pós-paga", meta.forma_pagamento ? `pagamento: ${meta.forma_pagamento}` : null,
+    meta.devido ? `devendo ${brlFull(meta.devido)}` : null].filter(Boolean).join(" · ");
+}
+
+/** Linha de saldo pro card clicável da visão geral. */
+export function MetaSaldoTxt({ meta }: { meta: Meta | undefined }) {
+  if (!meta?.conectada || meta.saldo == null || meta.pre_paga === false) return null;
+  return <span className={`msync ${corSaldo(meta) === "neg" ? "r" : corSaldo(meta) === "warn" ? "a" : ""}`}>Saldo no Meta: <b>{brlFull(meta.saldo)}</b>{meta.nivel_saldo === "zerado" ? " · zerado" : meta.dias_de_saldo != null ? ` · dá pra ${num(meta.dias_de_saldo)} ${meta.dias_de_saldo === 1 ? "dia" : "dias"}` : ""}</span>;
 }
 
 /** Só o texto, pra usar dentro de card clicável (botão dentro de botão não pode). */
@@ -62,7 +89,7 @@ export function MetaSync({ meta, sincronizando, onSync, abrir, completo }: {
         {n !== "g" && ". Acesso vencido ou conexão caída"}
         {completo && (
           <span className="nd">
-            {" "}· conta {meta.conta ?? "-"} ({meta.ad_account_id ?? "-"})
+            {" "}· {meta.conta ?? "-"} ({meta.ad_account_id ?? "-"}){contaTxt(meta) ? ` · ${contaTxt(meta)}` : ""}
             {meta.ultimo_dia_com_gasto ? ` · último dia com gasto ${dataBR(meta.ultimo_dia_com_gasto)}${meta.dias_sem_gasto ? ` (${meta.dias_sem_gasto} ${meta.dias_sem_gasto === 1 ? "dia" : "dias"} atrás)` : ""}` : " · nenhum gasto registrado"}
           </span>
         )}

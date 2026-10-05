@@ -3,7 +3,7 @@
 import type { Ctx } from "./ctx";
 import { Barras, HRow, Panel, Rank, Tabela, Tile, Lk, Nd } from "./ui";
 import { brl, fp, kfmt, num, pct, plural, usd } from "./fmt";
-import { MetaStatusTxt } from "./MetaSync";
+import { MetaSaldoTxt, MetaStatusTxt, contaTxt } from "./MetaSync";
 
 export function VisaoGeral({ c }: { c: Ctx }) {
   const { d, mes } = c;
@@ -70,7 +70,11 @@ export function VisaoGeral({ c }: { c: Ctx }) {
           {tra.tem_dados ? (
             <Tabela cols={[{ h: "Campanha", tl: true }, "Gasto", "Leads"]} rows={tra.campanhas.slice(0, 5).map((x) => [<span title={x.nome}>{x.nome.length > 28 ? x.nome.slice(0, 27) + "…" : x.nome}</span>, brl(x.spend), num(x.leads, 0)])} />
           ) : <div className="empty">Sem linhas da Meta neste mês.</div>}
-          <div style={{ marginTop: 10 }}><MetaStatusTxt meta={tra.meta} /></div>
+          <div style={{ marginTop: 10, display: "grid", gap: 4 }}>
+            <MetaSaldoTxt meta={tra.meta} />
+            {contaTxt(tra.meta) && <span className="msync"><span className="nd">{contaTxt(tra.meta)}</span></span>}
+            <MetaStatusTxt meta={tra.meta} />
+          </div>
         </Panel>
 
         <Panel titulo="Comercial" onClick={() => c.go({ view: "comercial" })} more="Abrir detalhes">

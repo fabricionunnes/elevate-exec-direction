@@ -4,7 +4,7 @@ import type { Ctx } from "./ctx";
 import { Barras, BarrasItens, HRow, Lk, Nd, Panel, Tabela, Tile, type ItemBarra } from "./ui";
 import { brl, brlFull, dataBR, fp, fp2, kfmt, num, pct } from "./fmt";
 import { LINK } from "./util";
-import { MetaSync } from "./MetaSync";
+import { MetaSync, corSaldo, saldoSub } from "./MetaSync";
 
 export function Trafego({ c }: { c: Ctx }) {
   const { d, mes } = c;
@@ -32,6 +32,8 @@ export function Trafego({ c }: { c: Ctx }) {
       </div>
 
       <div className="kg">
+        <Tile label="Saldo no Meta" valor={meta?.conectada && meta.saldo != null && meta.pre_paga !== false ? brlFull(meta.saldo) : "-"} cls={corSaldo(meta)} sub={saldoSub(meta)}
+          onClick={() => c.det("meta_dia", {}, "Meta Ads dia a dia", "Gasto de cada dia: é o ritmo que consome o saldo da conta.")} />
         <Tile label="Gasto em mídia" valor={tem ? brl(tra.spend) : "-"}
           sub={!tem ? "sem linhas da Meta no mês" : comGasto ? `${comGasto} ${comGasto === 1 ? "campanha" : "campanhas"} com gasto` : `a Meta reportou zero no mês${meta?.ultimo_dia_com_gasto ? `. Último gasto em ${dataBR(meta.ultimo_dia_com_gasto)}` : ""}`}
           onClick={() => c.det("campanhas")} />

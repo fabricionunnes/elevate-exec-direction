@@ -58,7 +58,8 @@ export default function PainelControlePage() {
   }, [mes, authLoading, isMaster]);
 
   // Meta Ads: "Atualizar agora". A edge busca os últimos 35 dias direto na Meta
-  // (uns 15 s) e grava campanhas, conjuntos e anúncios; depois recarrega o mês e
+  // (uns 15 s) e grava campanhas, conjuntos e anúncios; outra edge confere o
+  // saldo da conta; depois recarrega o mês e
   // joga fora os outros meses guardados, que podem ter mudado junto.
   const [sincronizando, setSincronizando] = useState(false);
   const [rev, setRev] = useState(0);
@@ -76,11 +77,17 @@ export default function PainelControlePage() {
         throw new Error(motivo);
       }
       if ((data as any)?.error) throw new Error((data as any).error);
+      // saldo da conta: confere na hora também. Se falhar, o gasto já veio; só avisa.
+      let saldoFalhou = false;
+      try {
+        const s = await supabase.functions.invoke("crm-meta-ads-balance", { body: {} });
+        if (s.error || (s.data as any)?.error) saldoFalhou = true;
+      } catch { saldoFalhou = true; }
       await carregar(mes);
       setCache((c) => (c[mes] ? { [mes]: c[mes] } : {}));
       setRev((r) => r + 1);
       const r = data as { campaigns?: number; adsets?: number; ads?: number };
-      toast.success(`Meta Ads atualizado: ${r.campaigns ?? 0} linhas de campanha, ${r.adsets ?? 0} de conjunto e ${r.ads ?? 0} de anúncio nos últimos 35 dias`, { id: tid });
+      toast.success(`Meta Ads atualizado: ${r.campaigns ?? 0} linhas de campanha, ${r.adsets ?? 0} de conjunto e ${r.ads ?? 0} de anúncio nos últimos 35 dias${saldoFalhou ? ". O saldo da conta não deu pra conferir agora" : ". Saldo da conta conferido"}`, { id: tid });
     } catch (e) {
       toast.error(`Não consegui sincronizar o Meta Ads: ${(e as Error).message}. Se o acesso venceu, reconecte em CRM, Tráfego Pago.`, { id: tid, duration: 10000 });
     } finally {
