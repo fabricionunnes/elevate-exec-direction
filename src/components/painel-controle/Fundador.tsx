@@ -16,7 +16,9 @@ export function fundadorFrase(f: Frente["fundador"] | undefined): { valor: strin
   if (f.pct_receita == null) return { valor: "-", sub: "sem venda fechada no mês", cls: "" };
   const d = f.delta_pp;
   const seta = d == null ? "" : d > 0 ? `subiu ${num(Math.abs(d), 0)} pontos` : d < 0 ? `caiu ${num(Math.abs(d), 0)} pontos` : "igual";
-  return { valor: fp(f.pct_receita), cls: cls(f.nivel), sub: `da receita nova fechada por ${f.nome.split(" ")[0]}${seta ? `. ${seta[0].toUpperCase()}${seta.slice(1)} contra o mês anterior` : ""}. Referência: abaixo de 30%` };
+  const n = f.mes?.vendas ?? 0;
+  // mês com pouca venda ainda: o percentual pula muito, então a base vai junto
+  return { valor: fp(f.pct_receita), cls: cls(f.nivel), sub: `da receita nova fechada por ${f.nome.split(" ")[0]}, em ${n} ${n === 1 ? "venda" : "vendas"} no mês${seta ? `. ${seta[0].toUpperCase()}${seta.slice(1)} contra o mês anterior` : ""}. Referência: abaixo de 30%` };
 }
 
 export function Fundador({ c }: { c: Ctx }) {

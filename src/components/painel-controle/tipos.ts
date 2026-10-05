@@ -29,6 +29,13 @@ export type Caixa = {
 };
 
 /** Blocos "pra frente": o que ainda dá pra mudar. Cada bloco novo entra aqui. */
+/** meta de vendas do mês no CRM (crm_goal_values, tipo Vendas) */
+export type MetaMes = {
+  mes: string; meta: number | null; super_meta: number | null;
+  com_meta: { staff_id: string; nome: string; papel: string; meta: number; super_meta: number | null }[];
+  sem_meta: { staff_id: string; nome: string; papel: string }[];
+};
+
 type MesFundador = {
   mes: string; vendas: number | null; receita: number | null; vendas_fundador: number | null; receita_fundador: number | null;
   vendas_time: number | null; receita_time: number | null; vendas_sem_fechador: number | null; receita_sem_fechador: number | null;
@@ -43,6 +50,22 @@ export type Frente = {
     nivel: "verde" | "ambar" | "vermelho" | null;
     por_fechador: { id: string | null; nome: string; papel: string | null; grupo: "fundador" | "time" | "sem_fechador"; vendas: number; receita: number }[];
     serie: MesFundador[];
+  };
+  /** o que ainda dá pra mudar: agenda, pipeline e entrada de leads, de hoje pra frente */
+  antecedentes?: {
+    hoje: string;
+    reunioes: {
+      prox7: number; prox14: number; hoje: number; ultimos28: number; media_semanal: number;
+      semanas_passadas: { de: string; ate: string; n: number }[];
+      por_dia: { dia: string; n: number; por: { nome: string; n: number }[] }[];
+      por_closer: { staff_id: string | null; nome: string; prox7: number; prox14: number; ultimos28: number }[];
+    };
+    pipeline: {
+      aberto_valor: number; aberto_n: number; ponderado: number; parado: { n: number; valor: number };
+      etapas: { stage_id: string; funil: string; etapa: string; ordem: number; n: number; valor: number; prob: number; fonte: "funil" | "geral" | "fixa"; amostra_n: number | null; amostra_ganhos: number | null; ponderado: number }[];
+      meta: MetaMes; vendido: number; falta: number | null; cobertura: number | null; meta_batida: boolean; nivel: "verde" | "ambar" | "vermelho" | null;
+    };
+    leads: { novos7: number; novos7_total: number; media4: number; media4_total: number; semanas: { de: string; ate: string; n: number }[]; abertos_14d: number; sem_dono: number; sem_atividade: number };
   };
   /** quanto das mensalidades está em poucos clientes */
   concentracao?: {
@@ -133,7 +156,7 @@ export type Filtro = Record<string, string | boolean | undefined>;
 
 /** Uma tela na pilha de navegação. */
 export type Nav = {
-  view: "visao" | "financeiro" | "comercial" | "trafego" | "clientes" | "atendimento" | "ia" | "automacoes" | "fontes" | "detalhe" | "caixa" | "fundador";
+  view: "visao" | "financeiro" | "comercial" | "trafego" | "clientes" | "atendimento" | "ia" | "automacoes" | "fontes" | "detalhe" | "caixa" | "fundador" | "antecedentes";
   titulo?: string;
   /** filtros da tela de área (funil, closer, sdr, consultor) */
   f?: Filtro;
