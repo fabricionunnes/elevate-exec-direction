@@ -23,6 +23,7 @@ import { Fontes } from "@/components/painel-controle/Fontes";
 import { Caixa } from "@/components/painel-controle/Caixa";
 import { Fundador } from "@/components/painel-controle/Fundador";
 import { Antecedentes } from "@/components/painel-controle/Antecedentes";
+import { Ritmo } from "@/components/painel-controle/Ritmo";
 import { Detalhe, DETALHE_TITULO } from "@/components/painel-controle/Detalhe";
 import { MetaSync } from "@/components/painel-controle/MetaSync";
 
@@ -38,6 +39,7 @@ const TITULOS: Record<string, [string, string]> = {
   ia: ["IA e automações", "custo da API, WhatsApp oficial e agentes"],
   automacoes: ["Roda sozinho", "o que agentes e automações fizeram sem passar por você"],
   caixa: ["Projeção de caixa", "13 semanas, saldo de hoje mais o que está lançado pra entrar e sair"],
+  meta: ["Ritmo da meta", "vendido contra a meta do mês, projeção por dia útil e lucro do ano contra a meta anual"],
   antecedentes: ["O que ainda dá pra mudar", "reuniões na agenda, pipeline contra o que falta da meta e entrada de leads"],
   fundador: ["Dependência do fundador", "quanto da receita nova passa pela mão do dono e quanto das mensalidades está em poucos clientes"],
   fontes: ["Fontes de dados", "de onde vem cada número e o que falta conectar"],
@@ -124,7 +126,9 @@ export default function PainelControlePage() {
   if (!authLoading && !isMaster) return <Navigate to="/" replace />;
 
   const d = cache[mes];
-  const ctx: Ctx | null = d ? { d, mes, setMes, go, det, abrir, f: cur.f ?? {}, setF, syncMeta, sincronizando } : null;
+  // depois de mudar uma configuração: busca o mês de novo e descarta os outros guardados
+  const recarregar = () => { carregar(mes).then(() => setCache((c) => (c[mes] ? { [mes]: c[mes] } : {}))); };
+  const ctx: Ctx | null = d ? { d, mes, setMes, go, det, abrir, f: cur.f ?? {}, setF, syncMeta, sincronizando, recarregar } : null;
   const crumbs = stack.map((n) => (n.view === "detalhe" ? n.titulo ?? DETALHE_TITULO(n.bloco ?? "") : TITULOS[n.view]?.[0] ?? n.view));
 
   const conteudo = () => {
@@ -142,6 +146,7 @@ export default function PainelControlePage() {
       case "caixa": return <Caixa c={ctx} />;
       case "fundador": return <Fundador c={ctx} />;
       case "antecedentes": return <Antecedentes c={ctx} />;
+      case "meta": return <Ritmo c={ctx} />;
       case "detalhe": return <Detalhe key={rev} mes={mes} bloco={cur.bloco ?? ""} filtro={cur.filtro} titulo={cur.titulo} sub={cur.sub} det={det} />;
       default: return <VisaoGeral c={ctx} />;
     }

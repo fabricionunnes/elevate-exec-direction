@@ -147,7 +147,7 @@ export function BarrasItens({ itens, fmt, onItem, ativo, denso }: {
         return (
           <button type="button" key={i.k} className={`bc ${i.k === ativo ? "on" : ""}`} data-tip={t} aria-label={t} disabled={!onItem || i.v == null}
             style={i.v == null ? { cursor: "default" } : undefined} onClick={() => onItem?.(i.k)}>
-            <i style={{ height: `${i.v ? (Math.abs(i.v) / mx) * 100 : 0}%` }} />
+            <i className={i.v != null && i.v < 0 ? "neg" : ""} style={{ height: `${i.v ? (Math.abs(i.v) / mx) * 100 : 0}%` }} />
             <small>{i.rot}{!denso && <b>{i.v == null ? "-" : fmt(i.v)}</b>}{i.sub}</small>
           </button>
         );

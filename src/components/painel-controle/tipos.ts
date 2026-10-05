@@ -67,6 +67,18 @@ export type Frente = {
     };
     leads: { novos7: number; novos7_total: number; media4: number; media4_total: number; semanas: { de: string; ate: string; n: number }[]; abertos_14d: number; sem_dono: number; sem_atividade: number };
   };
+  /** vendido contra a meta do mês e lucro do ano contra a meta anual */
+  ritmo?: {
+    mes: string; hoje: string; meta: MetaMes; vendido: number; vendas: number; falta: number | null; pct_meta: number | null;
+    dias_uteis: { total: number; passados: number; restantes: number; pct_tempo: number | null };
+    ritmo_dia: number | null; projecao: number | null; por_dia_restante: number | null; nivel: "verde" | "ambar" | "vermelho" | null;
+    por_fechador: { staff_id: string | null; nome: string; vendas: number; receita: number; meta: number | null; pct: number | null }[];
+    lucro_ano: {
+      ano: number; meta: number; acumulado: number; primeiro_mes: string | null; meses_fechados: number; media_mes: number | null; projecao: number | null;
+      falta: number; meses_restantes: number; precisa_por_mes: number | null; pct: number | null;
+      meses: { mes: string; recebido: number | null; pago: number | null; lucro: number | null; fechado: boolean; acumulado: number | null }[];
+    };
+  };
   /** quanto das mensalidades está em poucos clientes */
   concentracao?: {
     mrr_base: number; clientes: number; mrr_todas_ativas: number; fora_valor: number; fora_n: number;
@@ -156,7 +168,7 @@ export type Filtro = Record<string, string | boolean | undefined>;
 
 /** Uma tela na pilha de navegação. */
 export type Nav = {
-  view: "visao" | "financeiro" | "comercial" | "trafego" | "clientes" | "atendimento" | "ia" | "automacoes" | "fontes" | "detalhe" | "caixa" | "fundador" | "antecedentes";
+  view: "visao" | "financeiro" | "comercial" | "trafego" | "clientes" | "atendimento" | "ia" | "automacoes" | "fontes" | "detalhe" | "caixa" | "fundador" | "antecedentes" | "meta";
   titulo?: string;
   /** filtros da tela de área (funil, closer, sdr, consultor) */
   f?: Filtro;

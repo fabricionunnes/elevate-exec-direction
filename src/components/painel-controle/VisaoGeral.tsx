@@ -8,6 +8,7 @@ import { FunilMes } from "./funil/FunilMes";
 import { caixaFrase } from "./Caixa";
 import { fundadorFrase } from "./Fundador";
 import { coberturaFrase, reunioesFrase } from "./Antecedentes";
+import { ritmoFrase } from "./Ritmo";
 import type { EtapaFunil } from "./funil/geo";
 
 export function VisaoGeral({ c }: { c: Ctx }) {
@@ -77,6 +78,7 @@ export function VisaoGeral({ c }: { c: Ctx }) {
         <div className="h"><b>Pra frente</b><span>o que ainda dá pra mudar. Os números de cima contam o que já aconteceu.</span></div>
         <div className="kg">
           {(() => { const f = caixaFrase(d.frente?.caixa); return <Tile label="Caixa em 30 dias (realista)" valor={f.valor} cls={f.cls} sub={f.sub} onClick={() => c.go({ view: "caixa" })} />; })()}
+          {(() => { const f = ritmoFrase(d.frente?.ritmo); return <Tile label="Ritmo da meta" valor={f.valor} cls={f.cls} sub={f.sub} onClick={() => c.go({ view: "meta" })} />; })()}
           {(() => { const f = reunioesFrase(d.frente?.antecedentes); return <Tile label="Reuniões da semana" valor={f.valor} cls={f.cls} sub={f.sub} onClick={() => c.go({ view: "antecedentes" })} />; })()}
           {(() => { const f = coberturaFrase(d.frente?.antecedentes); return <Tile label="Cobertura do pipeline" valor={f.valor} cls={f.cls} sub={f.sub} onClick={() => c.go({ view: "antecedentes" })} />; })()}
           {(() => { const f = fundadorFrase(d.frente?.fundador); return <Tile label="Dependência do fundador" valor={f.valor} cls={f.cls} sub={f.sub} onClick={() => c.go({ view: "fundador" })} />; })()}
