@@ -8,6 +8,7 @@ import { FunilMes } from "./funil/FunilMes";
 import { caixaFrase } from "./Caixa";
 import { fundadorFrase } from "./Fundador";
 import { coberturaFrase, reunioesFrase } from "./Antecedentes";
+import { ritmoFrase } from "./Ritmo";
 import type { EtapaFunil } from "./funil/geo";
 
 export function VisaoGeral({ c }: { c: Ctx }) {
@@ -40,7 +41,7 @@ export function VisaoGeral({ c }: { c: Ctx }) {
           sub={`recebido ${brl(fin.recebido)} menos pago ${brl(fin.pago)}. Regime de caixa, não competência.`} onClick={() => c.go({ view: "financeiro" })} />
         <Tile label="Recebido no mês" valor={brl(fin.recebido)} sub={<>{plural(fin.recebido_n, "fatura paga", "faturas pagas")}{dv != null && <> · {dv >= 0 ? "+" : ""}{Math.round(dv * 100)}% vs mês anterior</>}</>} onClick={() => c.det("faturas_pagas")} />
         <Tile label="Caixa (saldo nos bancos)" valor={brl(fin.saldo_bancos)} sub={`${fin.bancos.length} contas · ${brl(fin.a_pagar_7d)} a pagar em 7 dias`} onClick={() => c.det("bancos")} />
-        <Tile label="MRR" valor={brl(fin.mrr)} sub={`${plural(fin.mrr_n, "mensalidade ativa", "mensalidades ativas")} · ${brl(fin.mrr_em_aviso)} em aviso`} onClick={() => c.det("mrr")} />
+        <Tile label="MRR" valor={brl(fin.mrr)} sub={`${plural(fin.mrr_n, "mensalidade ativa", "mensalidades ativas")} · ${brl(fin.mrr_em_aviso)} em aviso de saída`} onClick={() => c.go({ view: "receita" })} />
         <Tile label="Inadimplência" valor={brl(fin.vencidas)} sub={`${plural(fin.vencidas_n, "fatura vencida", "faturas vencidas")} · ${fin.vencidas_7d_n} há mais de 7 dias`} onClick={() => c.det("faturas_vencidas")} />
       </div>
 
@@ -77,10 +78,12 @@ export function VisaoGeral({ c }: { c: Ctx }) {
         <div className="h"><b>Pra frente</b><span>o que ainda dá pra mudar. Os números de cima contam o que já aconteceu.</span></div>
         <div className="kg">
           {(() => { const f = caixaFrase(d.frente?.caixa); return <Tile label="Caixa em 30 dias (realista)" valor={f.valor} cls={f.cls} sub={f.sub} onClick={() => c.go({ view: "caixa" })} />; })()}
+          {(() => { const f = ritmoFrase(d.frente?.ritmo); return <Tile label="Ritmo da meta" valor={f.valor} cls={f.cls} sub={f.sub} onClick={() => c.go({ view: "meta" })} />; })()}
           {(() => { const f = reunioesFrase(d.frente?.antecedentes); return <Tile label="Reuniões da semana" valor={f.valor} cls={f.cls} sub={f.sub} onClick={() => c.go({ view: "antecedentes" })} />; })()}
           {(() => { const f = coberturaFrase(d.frente?.antecedentes); return <Tile label="Cobertura do pipeline" valor={f.valor} cls={f.cls} sub={f.sub} onClick={() => c.go({ view: "antecedentes" })} />; })()}
           {(() => { const f = fundadorFrase(d.frente?.fundador); return <Tile label="Dependência do fundador" valor={f.valor} cls={f.cls} sub={f.sub} onClick={() => c.go({ view: "fundador" })} />; })()}
         </div>
+        <div className="note" style={{ border: 0, marginTop: 10, paddingTop: 0 }}>Mais leituras: <Lk onClick={() => c.go({ view: "receita" })}>receita recorrente (ponte do MRR, LTV, renovações)</Lk> · <Lk onClick={() => c.go({ view: "produtos" })}>margem por produto</Lk> · <Lk onClick={() => c.go({ view: "caixa" })}>projeção de caixa</Lk></div>
       </div>
 
       <div className="grid r4">
@@ -196,6 +199,8 @@ function alertaAbre(c: Ctx, titulo: string, view: string) {
   const t = titulo.toLowerCase();
   // Meta Ads (sem conta, sync parado, sem investimento): a tela de Tráfego tem o botão de atualizar e o gasto por dia
   if (t.includes("meta")) return c.go({ view: "trafego" });
+  if (view === "caixa" && t.includes("vencidas há mais de 30 dias")) return c.det("caixa_movimentos", { tipo: "saida", classe: "vencida_antiga" }, "Contas a pagar vencidas há mais de 30 dias");
+  if (view === "antecedentes" && t.includes("sem dono")) return c.det("leads_atencao", { tipo: "sem_dono" }, "Leads sem dono");
   if (view === "caixa" || view === "fundador" || view === "antecedentes") return c.go({ view });
   if (t.includes("fatura")) return c.det("faturas_vencidas");
   if (t.includes("saldo")) return c.det("contas_a_pagar", {}, "Contas a pagar dos próximos dias");

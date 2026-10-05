@@ -84,8 +84,8 @@ export function Fundador({ c }: { c: Ctx }) {
             <St ok={t.pct <= 0.1} warn={t.pct <= 0.15} tg="ok" tw="de olho" tb="acima de 15%" />,
           ])} vazio="Nenhuma mensalidade faturando." />
         <div className="note">
-          Base: cobrança recorrente ativa, de empresa ativa e com fatura a vencer. <Lk onClick={() => c.det("mrr_clientes", { grupo: "base" }, "Mensalidade por cliente")}>Ver os {co.clientes} clientes</Lk>.
-          {co.fora_n > 0 && <> O MRR do topo do painel ({brl(co.mrr_todas_ativas)}) ainda conta {plural(co.fora_n, "cobrança", "cobranças")} que não fatura mais ({brl(co.fora_valor)}: avulsa de parcela única, plano encerrado ou empresa inativa). <Lk onClick={() => c.det("mrr_clientes", { grupo: "fora" }, "Cobranças ativas que não faturam mais")}>Ver quais são</Lk> e desative no Financeiro.</>}
+          Base: o MRR do painel (cobrança mensal ativa, de empresa ativa, com fatura a vencer). <Lk onClick={() => c.det("mrr_clientes", { grupo: "base" }, "Mensalidade por cliente")}>Ver os {co.clientes} clientes</Lk>.
+          {co.fora_n > 0 && <> {plural(co.fora_n, "cobrança segue ativa", "cobranças seguem ativas")} no cadastro e não {co.fora_n === 1 ? "fatura" : "faturam"} mais ({brl(co.fora_valor)}). <Lk onClick={() => c.det("mrr", { grupo: "fora" }, "Fora do MRR: não faturam mais")}>Ver quais são</Lk> e desative no Financeiro.</>}
         </div>
       </Panel>
 

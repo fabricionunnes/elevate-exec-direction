@@ -20,9 +20,9 @@ export function Financeiro({ c }: { c: Ctx }) {
         <Tile label="A pagar no mês" valor={brl(fin.a_pagar)} sub={plural(fin.a_pagar_n, "conta", "contas")} onClick={() => c.det("contas_a_pagar")} />
         <Tile label="Vence em 3 dias" valor={brl(fin.a_pagar_3d)} sub={`${plural(fin.a_pagar_3d_n, "conta", "contas")} · ${brl(fin.a_pagar_7d)} em 7 dias`} onClick={() => c.det("contas_a_pagar")} />
         <Tile label="Saldo nos bancos" valor={brl(fin.saldo_bancos)} sub={`${fin.bancos.length} contas ativas`} onClick={() => c.det("bancos")} />
-        <Tile label="MRR" valor={brl(fin.mrr)} sub={plural(fin.mrr_n, "mensalidade ativa", "mensalidades ativas")} onClick={() => c.det("mrr")} />
+        <Tile label="MRR" valor={brl(fin.mrr)} sub={`${plural(fin.mrr_n, "mensalidade ativa", "mensalidades ativas")} de ${plural(fin.mrr_clientes, "cliente", "clientes")}. Só o que fatura todo mês`} onClick={() => c.go({ view: "receita" })} />
         {(() => { const f = caixaFrase(d.frente?.caixa); return <Tile label="Caixa em 30 dias (projeção)" valor={f.valor} cls={f.cls} sub={f.sub} onClick={() => c.go({ view: "caixa" })} />; })()}
-        <Tile label="MRR em aviso de saída" valor={brl(fin.mrr_em_aviso)} sub="clientes em aviso ou com sinal de cancelamento" onClick={() => c.det("clientes", { tipo: "em_aviso" }, "Clientes em aviso de saída")} />
+        <Tile label="MRR em aviso de saída" valor={brl(fin.mrr_em_aviso)} sub="parte do MRR de cliente em aviso ou com sinal de cancelamento" onClick={() => c.det("clientes", { tipo: "em_aviso" }, "Clientes em aviso de saída")} />
       </div>
 
       <div className="grid g2">
@@ -41,7 +41,7 @@ export function Financeiro({ c }: { c: Ctx }) {
           <Tabela cols={[{ h: "Categoria", tl: true }, "Contas", "Valor", "% do mês"]} rows={fin.pago_por_categoria.map((x) => [
             <Lk onClick={() => c.det("contas_pagas", { categoria: x.categoria }, `Contas pagas · ${x.categoria}`)}>{x.categoria}</Lk>, num(x.n, 0), brl(x.valor), fp(pct(x.valor, fin.pago)),
           ])} />
-          {fin.pago_por_categoria.length === 1 && fin.pago_por_categoria[0].categoria === "Sem categoria" && <div className="note">Todas as contas pagas estão sem categoria. Classificar no Financeiro deixa o DRE legível.</div>}
+          {(() => { const sc = fin.pago_por_categoria.find((x) => x.categoria === "Sem categoria"); return sc && sc.valor > 0.2 * fin.pago ? <div className="note">{brl(sc.valor)} pagos no mês estão sem categoria. Classificar no Contas a Pagar deixa a leitura por natureza de gasto confiável.</div> : null; })()}
         </Panel>
       </div>
 

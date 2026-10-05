@@ -17,4 +17,6 @@ export type Ctx = {
   /** busca os últimos 35 dias na Meta e recarrega o painel */
   syncMeta: () => void;
   sincronizando: boolean;
+  /** busca o mês de novo no banco (depois de mudar uma configuração) */
+  recarregar: () => void;
 };

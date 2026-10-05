@@ -30,6 +30,9 @@ export const LINK = {
   disparos: "/crm/disparos",
   /** página inicial do CRM: a aba Tráfego Pago (onde conecta o Meta Ads) fica aqui */
   crm: "/crm",
+  /** Configurações do CRM, aba Metas: onde se cadastra a meta de vendas de cada um */
+  metasCrm: "/crm/settings?tab=goals",
+  horarioCrm: "/crm/settings?tab=horario",
   equipe: "/onboarding-tasks/staff",
   automacoesNexus: "/onboarding-tasks/automations",
 };

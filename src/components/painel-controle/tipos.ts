@@ -67,9 +67,21 @@ export type Frente = {
     };
     leads: { novos7: number; novos7_total: number; media4: number; media4_total: number; semanas: { de: string; ate: string; n: number }[]; abertos_14d: number; sem_dono: number; sem_atividade: number };
   };
+  /** vendido contra a meta do mês e lucro do ano contra a meta anual */
+  ritmo?: {
+    mes: string; hoje: string; meta: MetaMes; vendido: number; vendas: number; falta: number | null; pct_meta: number | null;
+    dias_uteis: { total: number; passados: number; restantes: number; pct_tempo: number | null };
+    ritmo_dia: number | null; projecao: number | null; por_dia_restante: number | null; nivel: "verde" | "ambar" | "vermelho" | null;
+    por_fechador: { staff_id: string | null; nome: string; vendas: number; receita: number; meta: number | null; pct: number | null }[];
+    lucro_ano: {
+      ano: number; meta: number; acumulado: number; primeiro_mes: string | null; meses_fechados: number; media_mes: number | null; projecao: number | null;
+      falta: number; meses_restantes: number; precisa_por_mes: number | null; pct: number | null;
+      meses: { mes: string; recebido: number | null; pago: number | null; lucro: number | null; fechado: boolean; acumulado: number | null }[];
+    };
+  };
   /** quanto das mensalidades está em poucos clientes */
   concentracao?: {
-    mrr_base: number; clientes: number; mrr_todas_ativas: number; fora_valor: number; fora_n: number;
+    mrr_base: number; clientes: number; fora_valor: number; fora_n: number;
     maior: { empresa: string; company_id: string; valor: number; pct: number } | null; top5_valor: number; top5_pct: number | null;
     top10: { pos: number; company_id: string; empresa: string; valor: number; pct: number; cobrancas: number; parcelas_ate: string | null; contrato_fim: string | null; plano: string | null; consultor: string | null }[];
   };
@@ -82,7 +94,8 @@ export type Painel = {
     vencidas_7d: number; vencidas_7d_n: number; pago: number; pago_n: number; a_pagar: number; a_pagar_n: number;
     a_pagar_3d: number; a_pagar_3d_n: number; a_pagar_7d: number; saldo_bancos: number; lucro: number;
     bancos: { nome: string; saldo: number; saldo_provedor: number | null; atualizado_em: string | null }[];
-    mrr: number; mrr_n: number; mrr_em_aviso: number;
+    /** MRR oficial: cobrança mensal parcelada ativa, de empresa ativa, com fatura a vencer */
+    mrr: number; mrr_n: number; mrr_clientes: number; mrr_em_aviso: number; mrr_fora_n: number; mrr_fora_valor: number;
     vencidas_lista: { empresa: string; company_id: string; valor: number; vencimento: string; dias: number; descricao: string }[];
     a_pagar_lista: { fornecedor: string; descricao: string; valor: number; vencimento: string; status: string }[];
     recebido_por_empresa: { empresa: string; company_id: string; valor: number; n: number }[];
@@ -152,11 +165,48 @@ export type Painel = {
   frente?: Frente;
 };
 
+/** Bloco sob demanda: saúde da receita recorrente (painel_bloco 'receita'). */
+export type ReceitaBloco = {
+  mes: string; hoje: string;
+  mrr: {
+    valor: number; cobrancas: number; clientes: number; ticket: number | null; em_aviso: number; em_aviso_n: number;
+    composicao: { sem_fim: { n: number; valor: number }; parcelado: { n: number; valor: number; fim_de: string | null; fim_ate: string | null }; acaba_em_60d: { n: number; valor: number } };
+    fora_n: number; fora_valor: number;
+    fora: { charge_id: string; company_id: string; empresa: string; valor: number; descricao: string | null; motivo: string | null; ultima_parcela: string | null; empresa_status: string }[];
+  };
+  ponte: {
+    mes: string; tem_dado: boolean; primeiro: boolean; inicial: number; novo: number; reativacao: number; expansao: number; contracao: number; churn: number; final: number;
+    clientes_inicial: number; clientes_final: number; clientes_churn: number; clientes_novos: number; churn_receita_pct: number | null; churn_clientes_pct: number | null;
+  }[];
+  ltv: { tempo_medio_meses: number | null; empresas_tempo: number; ticket_medio_mensal: number | null; empresas_ticket: number; ticket_contrato: number | null; empresas_ticket_contrato: number; empresas_base: number; ltv: number | null; ltv_contrato: number | null };
+  renovacoes: {
+    em30: { n: number; valor: number }; em60: { n: number; valor: number }; em90: { n: number; valor: number }; mensais_n: number; mensais_valor: number;
+    lista: { company_id: string; empresa: string; consultor: string | null; grupo: "risco" | "mensal"; origem: string; plano: string | null; inicio: string | null; fim: string; dias: number; valor: number | null; mensalidade: number | null; projeto_status: string | null }[];
+  };
+};
+
+/** Bloco sob demanda: margem por produto (painel_bloco 'produtos'). null = sem dado pra aquele produto. */
+export type ProdutosBloco = {
+  mes: string;
+  produtos: {
+    produto: string; clientes: number | null; projetos: number | null; consultores: number | null; mrr: number | null; mrr_clientes: number | null; ticket: number | null;
+    receita: number | null; receita_n: number | null; receita_clientes: number | null; churn_n: number | null; churn_pct: number | null;
+    custo_direto: number | null; custo_n: number | null; margem_direta: number | null;
+  }[];
+  custos: {
+    pago_total: number; pago_n: number; sem_categoria_n: number; sem_categoria_valor: number; sem_centro_n: number; sem_centro_valor: number; compartilhado_valor: number; direto_valor: number;
+    por_centro: { centro: string; n: number; valor: number; tipo: "direto" | "compartilhado" | "sem_centro" }[];
+    por_categoria: { categoria: string; n: number; valor: number }[];
+    aberto_sem_categoria_n: number; aberto_sem_categoria_valor: number;
+  };
+  totais: { receita: number; mrr: number; nao_identificado_receita: number | null; nao_identificado_mrr: number | null };
+};
+
 export type Filtro = Record<string, string | boolean | undefined>;
 
 /** Uma tela na pilha de navegação. */
 export type Nav = {
-  view: "visao" | "financeiro" | "comercial" | "trafego" | "clientes" | "atendimento" | "ia" | "automacoes" | "fontes" | "detalhe" | "caixa" | "fundador" | "antecedentes";
+  view: "visao" | "financeiro" | "comercial" | "trafego" | "clientes" | "atendimento" | "ia" | "automacoes" | "fontes" | "detalhe" | "caixa" | "fundador" | "antecedentes" | "meta" | "receita" | "produtos";
   titulo?: string;
   /** filtros da tela de área (funil, closer, sdr, consultor) */
   f?: Filtro;
