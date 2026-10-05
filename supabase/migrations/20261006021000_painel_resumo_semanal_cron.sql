@@ -4,8 +4,8 @@
 -- O segredo fica em app_secrets (key 'painel_resumo_secret'), o mesmo do secret
 -- PAINEL_RESUMO_SECRET da edge.
 --
--- ATENÇÃO: esta migration LIGA um envio automático de mensagem. Em 06/10/2026 ela
--- foi escrita e NÃO aplicada: só aplicar com o ok do Fabrício.
+-- Esta migration LIGA um envio automático de mensagem. Aplicada em 05/10/2026
+-- depois do Fabrício aprovar o texto do envio de teste (cron 141).
 select cron.unschedule(jobid) from cron.job where jobname = 'painel-resumo-semanal';
 select cron.schedule('painel-resumo-semanal', '0 11 * * 1', $$
   select net.http_post(
