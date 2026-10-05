@@ -21,6 +21,7 @@ import { IA } from "@/components/painel-controle/IA";
 import { Automacoes } from "@/components/painel-controle/Automacoes";
 import { Fontes } from "@/components/painel-controle/Fontes";
 import { Caixa } from "@/components/painel-controle/Caixa";
+import { Fundador } from "@/components/painel-controle/Fundador";
 import { Detalhe, DETALHE_TITULO } from "@/components/painel-controle/Detalhe";
 import { MetaSync } from "@/components/painel-controle/MetaSync";
 
@@ -36,6 +37,7 @@ const TITULOS: Record<string, [string, string]> = {
   ia: ["IA e automações", "custo da API, WhatsApp oficial e agentes"],
   automacoes: ["Roda sozinho", "o que agentes e automações fizeram sem passar por você"],
   caixa: ["Projeção de caixa", "13 semanas, saldo de hoje mais o que está lançado pra entrar e sair"],
+  fundador: ["Dependência do fundador", "quanto da receita nova passa pela mão do dono e quanto das mensalidades está em poucos clientes"],
   fontes: ["Fontes de dados", "de onde vem cada número e o que falta conectar"],
 };
 
@@ -136,6 +138,7 @@ export default function PainelControlePage() {
       case "automacoes": return <Automacoes c={ctx} />;
       case "fontes": return <Fontes c={ctx} />;
       case "caixa": return <Caixa c={ctx} />;
+      case "fundador": return <Fundador c={ctx} />;
       case "detalhe": return <Detalhe key={rev} mes={mes} bloco={cur.bloco ?? ""} filtro={cur.filtro} titulo={cur.titulo} sub={cur.sub} det={det} />;
       default: return <VisaoGeral c={ctx} />;
     }

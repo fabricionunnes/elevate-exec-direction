@@ -29,8 +29,27 @@ export type Caixa = {
 };
 
 /** Blocos "pra frente": o que ainda dá pra mudar. Cada bloco novo entra aqui. */
+type MesFundador = {
+  mes: string; vendas: number | null; receita: number | null; vendas_fundador: number | null; receita_fundador: number | null;
+  vendas_time: number | null; receita_time: number | null; vendas_sem_fechador: number | null; receita_sem_fechador: number | null;
+  pct_receita: number | null; pct_vendas: number | null; reunioes: number | null; reunioes_fundador: number | null; pct_reunioes: number | null;
+};
+
 export type Frente = {
   caixa?: Caixa;
+  /** quanto da receita nova passa pela mão do dono */
+  fundador?: {
+    staff_id: string; nome: string; mes: MesFundador; pct_receita: number | null; pct_receita_anterior: number | null; delta_pp: number | null;
+    nivel: "verde" | "ambar" | "vermelho" | null;
+    por_fechador: { id: string | null; nome: string; papel: string | null; grupo: "fundador" | "time" | "sem_fechador"; vendas: number; receita: number }[];
+    serie: MesFundador[];
+  };
+  /** quanto das mensalidades está em poucos clientes */
+  concentracao?: {
+    mrr_base: number; clientes: number; mrr_todas_ativas: number; fora_valor: number; fora_n: number;
+    maior: { empresa: string; company_id: string; valor: number; pct: number } | null; top5_valor: number; top5_pct: number | null;
+    top10: { pos: number; company_id: string; empresa: string; valor: number; pct: number; cobrancas: number; parcelas_ate: string | null; contrato_fim: string | null; plano: string | null; consultor: string | null }[];
+  };
 };
 
 export type Painel = {
@@ -114,7 +133,7 @@ export type Filtro = Record<string, string | boolean | undefined>;
 
 /** Uma tela na pilha de navegação. */
 export type Nav = {
-  view: "visao" | "financeiro" | "comercial" | "trafego" | "clientes" | "atendimento" | "ia" | "automacoes" | "fontes" | "detalhe" | "caixa";
+  view: "visao" | "financeiro" | "comercial" | "trafego" | "clientes" | "atendimento" | "ia" | "automacoes" | "fontes" | "detalhe" | "caixa" | "fundador";
   titulo?: string;
   /** filtros da tela de área (funil, closer, sdr, consultor) */
   f?: Filtro;

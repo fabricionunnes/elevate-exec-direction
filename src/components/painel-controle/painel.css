@@ -34,6 +34,10 @@
 .pc .bars.dense { gap: 3px; height: 160px; }
 .pc .bars.dense .bc small { font-size: 9.5px; margin-top: 3px; }
 .pc .thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid var(--line); background: var(--panel2); display: block; }
+.pc .bc.pilha .pl { display: flex; flex-direction: column-reverse; min-height: 2px; border-radius: 4px 4px 0 0; overflow: hidden; background: var(--panel2); }
+.pc .bc.pilha .pl i { display: block; min-height: 0; border-radius: 0; background: var(--bar); }
+.pc .bc.pilha.on small b { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.pc .bc.pilha.on .pl { outline: 1px solid var(--ink); outline-offset: 1px; }
 .pc .p.frente { border-color: #3a3a3a; background: linear-gradient(180deg, #1b1b1b, var(--panel)); }
 .pc .p.frente .kg .p { background: var(--panel2); }
 /* ---------- funil do mês (3D ou SVG) ---------- */

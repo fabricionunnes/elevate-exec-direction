@@ -31,6 +31,7 @@ export function Clientes({ c }: { c: Ctx }) {
         <Tile label="CSAT do mês" valor={cli.csat == null ? "-" : `${num(cli.csat)} de 5`} sub={cli.csat_n ? plural(cli.csat_n, "avaliação", "avaliações") : "nenhuma avaliação no mês"} onClick={() => c.det("csat")} />
         <Tile label="Tarefas atrasadas" valor={num(cons ? cons.tarefas_atrasadas : cli.tarefas_atrasadas, 0)} sub="pendentes com prazo vencido em clientes ativos" onClick={() => c.det("tarefas_atrasadas", f.consultor ? { staff_id: String(f.consultor) } : {}, `Tarefas atrasadas${suf}`)} />
         <Tile label="Checkup de hoje" valor={num(cli.checkup_pendentes, 0)} sub={cli.checkup_por_bloco.length ? cli.checkup_por_bloco.map((b) => `${b.bloco}: ${b.n}`).join(" · ") : "nenhuma pendência hoje"} onClick={() => c.det("checkup")} />
+        {c.d.frente?.concentracao?.maior && <Tile label="Maior cliente nas mensalidades" valor={fp(c.d.frente.concentracao.maior.pct)} sub={`${c.d.frente.concentracao.maior.empresa} · 5 maiores: ${fp(c.d.frente.concentracao.top5_pct)}`} onClick={() => c.go({ view: "fundador" })} />}
       </div>
 
       <div className="grid g2">

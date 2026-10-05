@@ -156,6 +156,29 @@ export function BarrasItens({ itens, fmt, onItem, ativo, denso }: {
   );
 }
 
+/* ---------- barras empilhadas por item (fundador x time, por exemplo), clicáveis ---------- */
+export type ItemPilha = { k: string; rot: string; partes: { v: number; cor: string; nome: string }[] | null; sub?: ReactNode; tip?: string };
+export function BarrasPilha({ itens, fmt, onItem, ativo }: { itens: ItemPilha[]; fmt: (v: number) => string; onItem?: (k: string) => void; ativo?: string }) {
+  const tot = (i: ItemPilha) => (i.partes ?? []).reduce((s, p) => s + Math.max(0, p.v), 0);
+  const mx = Math.max(...itens.map(tot), 1e-9);
+  return (
+    <div className="bars">
+      {itens.map((i) => {
+        const t = tot(i);
+        const tip = i.tip ?? `${i.rot}: ${i.partes ? fmt(t) : "sem dados"}`;
+        return (
+          <button type="button" key={i.k} className={`bc pilha ${i.k === ativo ? "on" : ""}`} data-tip={tip} aria-label={tip} onClick={() => onItem?.(i.k)}>
+            <span className="pl" style={{ height: `${(t / mx) * 100}%` }}>
+              {(i.partes ?? []).filter((p) => p.v > 0).map((p) => <i key={p.nome} style={{ flex: p.v, background: p.cor }} />)}
+            </span>
+            <small>{i.rot}<b>{i.partes ? fmt(t) : "-"}</b>{i.sub}</small>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ---------- combo com busca por digitação ---------- */
 export type Opt = { value: string; label: string };
 export function Combo({ k, label, value, opts, todos, onChange }: {
