@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-04T15:00:57",
+ "gerado_em": "2026-10-05T10:01:05",
  "posts": [
+  {
+   "slug": "prazo-minimo-implementacao-nao-negociavel",
+   "url": "/blog/prazo-minimo-implementacao-nao-negociavel/",
+   "titulo": "Prazo mínimo de implementação não é negociável",
+   "resumo": "Você descobre se o projeto vai funcionar no terceiro mês, não no primeiro. Cancelar antes disso é sair antes de ver o que foi feito.",
+   "tags": [
+    "prazo mínimo",
+    "implementação",
+    "estrutura comercial",
+    "decisão",
+    "diagnóstico"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-05",
+   "ts": 2148
+  },
   {
    "slug": "ferramenta-complexa-nao-justifica-nao-usar",
    "url": "/blog/ferramenta-complexa-nao-justifica-nao-usar/",
