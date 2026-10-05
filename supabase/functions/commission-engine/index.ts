@@ -26,22 +26,72 @@ const fmtKpi = (v: number, t: string) =>
     : t === "percentage" ? `${v.toFixed(1)}%`
     : v.toLocaleString("pt-BR");
 
-// Avisa o cliente na hora que a fatura nasce: o que era a meta, o que ele
-// entregou, quanto é a comissão e o link pra pagar. Deixa explícito que é
-// pontual — só nos meses em que a meta é batida.
-async function avisarCliente(
-  supabase: any,
-  opts: {
-    companyId: string; kpiName: string; kpiType: string; meta: number; realizado: number; pct: number;
-    payoutCents: number; dueDate: string; competencia: string; token: string | null; tierLabel: string | null;
-  },
-) {
+// Avisa o cliente na hora que a fatura nasce: a meta, o que ele entregou, a
+// comissão ACORDADA (a regra), o valor do mês e o link pra pagar.
+//
+// Pra quem vai (Fabrício, 05/10/2026: "a parcela de comissão também deve ser
+// enviada para o número do financeiro"): o telefone do dono E o "Telefone
+// (financeiro)" do cadastro da empresa, quando forem números diferentes. Antes
+// ia só pro dono quando ele tinha telefone, e o financeiro do cliente, que é
+// quem paga, não ficava sabendo.
+interface AvisoOpts {
+  companyId: string; kpiName: string; kpiType: string; meta: number; realizado: number; pct: number;
+  payoutCents: number; dueDate: string; competencia: string; token: string | null;
+  tierLabel: string | null; tierHit: boolean; regraTexto: string; calculo: string; usaPercent: boolean;
+}
+
+const soDigitos = (v: unknown) => String(v ?? "").replace(/\D/g, "");
+const comDDI = (d: string) => (d.startsWith("55") && d.length >= 12 ? d : `55${d}`);
+
+/** telefones do dono e do financeiro, sem repetir (compara pelos 8 dígitos finais) */
+function destinatarios(comp: { owner_phone?: string | null; phone?: string | null } | null): { phone: string; quem: string }[] {
+  const out: { phone: string; quem: string }[] = [];
+  for (const [raw, quem] of [[comp?.owner_phone, "dono"], [comp?.phone, "financeiro"]] as [unknown, string][]) {
+    const d = soDigitos(raw);
+    if (d.length < 10) continue;
+    const ja = out.find((o) => o.phone.slice(-8) === d.slice(-8));
+    if (ja) { ja.quem = `${ja.quem} e ${quem}`; continue; }
+    out.push({ phone: comDDI(d), quem });
+  }
+  return out;
+}
+
+function textoAviso(nome: string, o: AvisoOpts): string {
+  const [cy, cm] = o.competencia.split("-");
+  const compLabel = `${cm}/${cy}`;
+  const venc = o.dueDate.split("-").reverse().join("/");
+  const link = o.token ? `https://unvholdings.com.br/fatura?token=${o.token}` : null;
+  const abertura = o.tierHit
+    ? `Parabéns${nome ? `, ${nome}` : ""}! A meta de *${o.kpiName}* foi batida em ${compLabel}${o.tierLabel ? ` (faixa ${o.tierLabel})` : ""}.`
+    : `Olá${nome ? `, ${nome}` : ""}! Fechamos a apuração de *${o.kpiName}* de ${compLabel}.`;
+  const linhaMeta = o.meta > 0 ? fmtKpi(o.meta, o.kpiType) : "não cadastrada nessa competência";
+  const linhaReal = `${fmtKpi(o.realizado, o.kpiType)}${o.meta > 0 ? ` (${o.pct.toFixed(0)}% da meta)` : ""}`;
+  const fecho = o.usaPercent
+    ? "O valor acompanha o resultado de cada mês."
+    : "Essa cobrança não é mensal: ela só acontece nos meses em que a meta é batida.";
+  return (
+    `${abertura}\n\n` +
+    `*Meta:* ${linhaMeta}\n` +
+    `*Realizado:* ${linhaReal}\n` +
+    `*Comissão acordada:* ${o.regraTexto}\n` +
+    `*Comissão do mês:* ${brl(o.payoutCents)}${o.calculo ? ` (${o.calculo})` : ""}\n` +
+    `*Vencimento:* ${venc}\n\n` +
+    (link ? `Para pagar, é só acessar:\n${link}\n\n` : "") +
+    `${fecho} Seguimos juntos!`
+  );
+}
+
+// deno-lint-ignore no-explicit-any
+async function avisarCliente(supabase: any, opts: AvisoOpts, simular = false) {
   try {
     const { data: comp } = await supabase.from("onboarding_companies")
       .select("name, owner_name, owner_phone, phone").eq("id", opts.companyId).maybeSingle();
-    const raw = String(comp?.owner_phone || comp?.phone || "").replace(/\D/g, "");
-    if (!raw || raw.length < 10) return { sent: false, reason: "empresa sem telefone" };
-    const phone = raw.startsWith("55") ? raw : `55${raw}`;
+    const dest = destinatarios(comp);
+    const primeiro = String(comp?.owner_name || comp?.name || "").trim().split(/\s+/)[0] || "";
+    const nome = primeiro ? primeiro.charAt(0).toUpperCase() + primeiro.slice(1).toLowerCase() : "";
+    const msg = textoAviso(nome, opts);
+    if (simular) return { sent: false, simulado: true, destinatarios: dest.map((d) => `${d.quem}: final ${d.phone.slice(-4)}`), mensagem: msg };
+    if (!dest.length) return { sent: false, reason: "empresa sem telefone" };
 
     const { data: cfg } = await supabase.from("whatsapp_default_config")
       .select("setting_value").eq("setting_key", "default_instance").maybeSingle();
@@ -51,29 +101,23 @@ async function avisarCliente(
       : { data: null };
     if (!inst?.api_url || !inst?.api_key) return { sent: false, reason: "sem instância padrão conectada" };
 
-    const [cy, cm] = opts.competencia.split("-");
-    const compLabel = `${cm}/${cy}`;
-    const venc = opts.dueDate.split("-").reverse().join("/");
-    const link = opts.token ? `https://unvholdings.com.br/fatura?token=${opts.token}` : null;
-    const nome = String(comp?.owner_name || comp?.name || "").split(" ")[0];
-
-    const msg =
-      `Parabéns${nome ? `, ${nome}` : ""}! 🏆\n\n` +
-      `A meta de *${opts.kpiName}* foi batida em ${compLabel}${opts.tierLabel ? ` (faixa ${opts.tierLabel})` : ""}.\n\n` +
-      `🎯 *Meta:* ${fmtKpi(opts.meta, opts.kpiType)}\n` +
-      `✅ *Realizado:* ${fmtKpi(opts.realizado, opts.kpiType)}${opts.meta > 0 ? ` (${opts.pct.toFixed(0)}% da meta)` : ""}\n` +
-      `💰 *Comissão por resultado:* ${brl(opts.payoutCents)}\n` +
-      `📅 *Vencimento:* ${venc}\n\n` +
-      (link ? `Para pagar, é só acessar:\n🔗 ${link}\n\n` : "") +
-      `Essa cobrança não é mensal: ela só acontece nos meses em que a meta é batida. Seguimos juntos! 🚀`;
-
-    const r = await fetch(`${String(inst.api_url).replace(/\/+$/, "")}/message/sendText/${inst.instance_name}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", apikey: inst.api_key, Authorization: `Bearer ${inst.api_key}` },
-      body: JSON.stringify({ number: phone, text: msg }),
-    });
-    if (!r.ok) return { sent: false, reason: `whatsapp ${r.status}: ${(await r.text()).slice(0, 120)}` };
-    return { sent: true, phone };
+    const enviados: string[] = [];
+    const falhas: string[] = [];
+    for (const d of dest) {
+      try {
+        const r = await fetch(`${String(inst.api_url).replace(/\/+$/, "")}/message/sendText/${inst.instance_name}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", apikey: inst.api_key, Authorization: `Bearer ${inst.api_key}` },
+          body: JSON.stringify({ number: d.phone, text: msg }),
+        });
+        if (r.ok) enviados.push(d.quem);
+        else falhas.push(`${d.quem}: whatsapp ${r.status} ${(await r.text()).slice(0, 80)}`);
+      } catch (e) {
+        falhas.push(`${d.quem}: ${String((e as Error).message || e).slice(0, 80)}`);
+      }
+    }
+    if (!enviados.length) return { sent: false, reason: falhas.join("; ").slice(0, 200) };
+    return { sent: true, para: enviados.join(" + "), falhas: falhas.length ? falhas.join("; ").slice(0, 200) : undefined, phone: dest[0].phone };
   } catch (e) {
     return { sent: false, reason: String((e as Error).message || e).slice(0, 160) };
   }
@@ -178,14 +222,33 @@ Deno.serve(async (req) => {
         percentCents > 0 ? `${Number(rule.percent)}% sobre ${realizado}: ${brl(percentCents)}` : "",
       ].filter(Boolean).join(" + ");
 
+      // a regra acordada, em texto, pra ir na mensagem do cliente
+      const regraFaixas = usaFaixas && tiers.length
+        ? tiers.map((t) => `${rule.basis === "value" ? `a partir de ${fmtKpi(Number(t.threshold), kpi.kpi_type)}` : `${Number(t.threshold)}% da meta`}: ${brl(Number(t.payout_cents))}`).join("; ")
+        : "";
+      const regraPercent = usaPercent ? `${Number(rule.percent)}% sobre o realizado` : "";
+      const regraTexto = [regraPercent, regraFaixas].filter(Boolean).join(" + ") || "conforme combinado";
+      const calculo = [
+        faixaCents > 0 && tier ? `faixa ${tier.label || `${Number(tier.threshold)}${rule.basis === "value" ? "" : "%"}`}: ${brl(faixaCents)}` : "",
+        percentCents > 0 ? `${Number(rule.percent)}% de ${fmtKpi(realizado, kpi.kpi_type)}: ${brl(percentCents)}` : "",
+      ].filter(Boolean).join(" + ");
+
       // vencimento: dia configurado do mês ATUAL (o da apuração)
       const dueDay = Math.min(28, Math.max(1, rule.due_day || 5));
       const dueDate = `${ymOf(today)}-${String(dueDay).padStart(2, "0")}`;
       const compLabel = `${String(cm).padStart(2, "0")}/${cy}`;
       const description = (rule.description?.trim() || `Comissão por resultado — ${kpi.name}`) + ` (${compLabel})`;
 
+      const avisoOpts: AvisoOpts = {
+        companyId: rule.company_id, kpiName: kpi.name, kpiType: kpi.kpi_type,
+        meta, realizado, pct, payoutCents: totalCents, dueDate, competencia, token: null,
+        tierLabel: tier?.label || null, tierHit: faixaCents > 0, regraTexto, calculo, usaPercent: percentCents > 0,
+      };
+
       if (dryRun) {
-        results.push({ company_id: rule.company_id, status: "dry", tier: tier?.label || null, payout_cents: totalCents, partes, due_date: dueDate, meta, realizado, pct: Number(pct.toFixed(2)) });
+        // a simulação mostra também pra quem iria e o texto exato (sem enviar)
+        const previa = await avisarCliente(supabase, avisoOpts, true);
+        results.push({ company_id: rule.company_id, status: "dry", tier: tier?.label || null, payout_cents: totalCents, partes, due_date: dueDate, meta, realizado, pct: Number(pct.toFixed(2)), aviso: previa });
         continue;
       }
 
@@ -202,16 +265,12 @@ Deno.serve(async (req) => {
       }).select("id, public_token").single();
       if (invErr) throw new Error(invErr.message);
 
-      const aviso = await avisarCliente(supabase, {
-        companyId: rule.company_id, kpiName: kpi.name, kpiType: kpi.kpi_type,
-        meta, realizado, pct, payoutCents: totalCents, dueDate, competencia,
-        token: inv?.public_token || null, tierLabel: tier?.label || (percentCents > 0 ? `${Number(rule.percent)}% sobre o vendido` : null),
-      });
+      const aviso = await avisarCliente(supabase, { ...avisoOpts, token: inv?.public_token || null });
 
       await supabase.from("company_commission_runs").insert({
         ...baseRun, tier_id: tier?.id || null, payout_cents: totalCents, invoice_id: inv?.id || null,
         status: "paid_tier",
-        detail: `${partes} · fatura ${dueDate} · aviso ao cliente: ${aviso.sent ? "enviado" : `não enviado (${aviso.reason})`}`,
+        detail: `${partes} · fatura ${dueDate} · aviso ao cliente: ${aviso.sent ? `enviado (${(aviso as any).para})` : `não enviado (${aviso.reason})`}`,
       });
 
       results.push({ company_id: rule.company_id, status: "faturado", payout_cents: totalCents, partes, invoice_id: inv?.id, due_date: dueDate, competencia, aviso });
