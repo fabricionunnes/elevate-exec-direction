@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-05T15:01:03",
+ "gerado_em": "2026-10-05T21:01:02",
  "posts": [
+  {
+   "slug": "faturamento-alto-nao-paga-estrutura-errada",
+   "url": "/blog/faturamento-alto-nao-paga-estrutura-errada/",
+   "titulo": "Faturamento alto não paga a estrutura errada",
+   "resumo": "Crescer sem estruturar o comercial aumenta o custo fixo mais rápido que o lucro. A conta fecha quando você olha o que sobra, não o que entra.",
+   "tags": [
+    "lucro",
+    "estrutura comercial",
+    "custo fixo",
+    "crescimento",
+    "decisão"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-05",
+   "ts": 2150
+  },
   {
    "slug": "banco-curriculos-pronto-evita-aperto-contratar",
    "url": "/blog/banco-curriculos-pronto-evita-aperto-contratar/",
