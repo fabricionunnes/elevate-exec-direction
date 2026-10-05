@@ -26,6 +26,10 @@ export const pct = (a: number | null | undefined, b: number | null | undefined):
 
 export const fp = (p: number | null | undefined): string => (p == null || Number.isNaN(Number(p)) ? "-" : `${Math.round(Number(p) * 100)}%`);
 
+/** percentual com duas casas, pra taxa pequena tipo CTR: 0.0123 -> "1,23%" */
+export const fp2 = (p: number | null | undefined): string =>
+  p == null || Number.isNaN(Number(p)) ? "-" : `${(Number(p) * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+
 /** Rótulo curto pras barras: "39k", "1,2 mi". */
 export const kfmt = (v: number | null | undefined): string => {
   if (v == null) return "-";

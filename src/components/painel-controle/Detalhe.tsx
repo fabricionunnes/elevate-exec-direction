@@ -3,13 +3,18 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Combo, Lk, Nd, St, Tabela, Tile } from "./ui";
-import { brl, brlFull, dataBR, dataHoraBR, eventoLabel, fp, mesLabel, nivelLabel, num, papelLabel, projetoLabel, tendLabel, usd } from "./fmt";
+import { brl, brlFull, dataBR, dataHoraBR, eventoLabel, fp, fp2, mesLabel, nivelLabel, num, papelLabel, projetoLabel, tendLabel, usd } from "./fmt";
 import { LINK, esc, soma } from "./util";
 import type { Detalhe as DetalheT, Filtro } from "./tipos";
 
-type Tipo = "brl" | "brlfull" | "usd" | "num" | "int" | "data" | "datahora" | "pct" | "txt" | "nivel" | "evento" | "papel" | "proj" | "bool" | "dias" | "horas" | "tend";
+type Tipo = "brl" | "brlfull" | "usd" | "num" | "int" | "data" | "datahora" | "pct" | "txt" | "nivel" | "evento" | "papel" | "proj" | "bool" | "dias" | "horas" | "tend" | "pct2" | "img";
 type ColSpec = { h: string; k: string; t?: Tipo; link?: "lead" | "empresa" | "conversa"; tl?: boolean; idk?: string };
-type Spec = { titulo: string; sub: string; cols: ColSpec[]; resumo?: (d: DetalheT) => { label: string; valor: string; sub?: string }[]; nexus?: string };
+/** pra onde a linha leva: outro bloco de detalhe, um nível abaixo */
+type Drill = { bloco: string; filtro: Filtro; titulo: string };
+type Spec = {
+  titulo: string; sub: string; cols: ColSpec[]; resumo?: (d: DetalheT) => { label: string; valor: string; sub?: string }[]; nexus?: string;
+  drill?: (l: Record<string, any>, filtro: Filtro) => Drill | null; drillTxt?: string;
+};
 
 const S = (titulo: string, sub: string, cols: ColSpec[], extra?: Partial<Spec>): Spec => ({ titulo, sub, cols, ...extra });
 
@@ -47,11 +52,24 @@ const SPECS: Record<string, Spec> = {
     { h: "Lead", k: "nome", link: "lead", idk: "lead_id", tl: true }, { h: "Empresa", k: "empresa", tl: true }, { h: "Origem", k: "origem" }, { h: "Funil", k: "funil" }, { h: "Etapa", k: "etapa" }, { h: "Dono", k: "dono" }, { h: "Criado", k: "criado_em", t: "data" }, { h: "Parado há", k: "dias_parado", t: "dias" }, { h: "Valor", k: "valor", t: "brl" }, { h: "Campanha", k: "campanha", tl: true },
   ], { resumo: (d) => [{ label: "Leads", valor: num(d.total, 0), sub: d.total > d.limite ? `mostrando ${d.limite}` : undefined }, { label: "Ganhos", valor: num(d.linhas.filter((l) => l.desfecho === "won").length, 0) }, { label: "Perdidos", valor: num(d.linhas.filter((l) => l.desfecho === "lost").length, 0) }, { label: "Parados +7 dias", valor: num(d.linhas.filter((l) => !l.desfecho && l.dias_parado > 7).length, 0) }], nexus: LINK.leads }),
   campanhas: S("Campanhas", "Gasto e leads da Meta por campanha, mais o que virou lead e venda no CRM.", [
-    { h: "Campanha", k: "nome", tl: true }, { h: "Status", k: "status" }, { h: "Gasto", k: "spend", t: "brlfull" }, { h: "Leads Meta", k: "leads", t: "int" }, { h: "CPL", k: "cpl", t: "brlfull" }, { h: "Leads no CRM", k: "leads_crm", t: "int" }, { h: "Vendas", k: "vendas_crm", t: "int" }, { h: "Receita", k: "receita_crm", t: "brl" }, { h: "Impressões", k: "impressoes", t: "int" }, { h: "Cliques", k: "cliques", t: "int" }, { h: "Dias", k: "dias", t: "int" },
-  ], { resumo: (d) => [{ label: "Campanhas", valor: num(d.total, 0) }, { label: "Gasto", valor: brl(d.soma) }, { label: "Leads Meta", valor: num(soma(d.linhas, (l) => l.leads), 0) }, { label: "Receita no CRM", valor: brl(soma(d.linhas, (l) => l.receita_crm)) }], nexus: LINK.trafego }),
-  campanhas_dia: S("Tráfego por dia", "Uma linha por campanha por dia.", [
-    { h: "Data", k: "data", t: "data" }, { h: "Campanha", k: "campanha", tl: true }, { h: "Gasto", k: "spend", t: "brlfull" }, { h: "Leads", k: "leads", t: "int" }, { h: "CPL", k: "cpl", t: "brlfull" }, { h: "Impressões", k: "impressoes", t: "int" }, { h: "Cliques", k: "cliques", t: "int" }, { h: "Status", k: "status" },
-  ], { resumo: (d) => [{ label: "Linhas", valor: num(d.total, 0) }, { label: "Gasto", valor: brl(d.soma) }, { label: "Leads", valor: num(soma(d.linhas, (l) => l.leads), 0) }], nexus: LINK.trafego }),
+    { h: "Campanha", k: "nome", tl: true }, { h: "Status", k: "status" }, { h: "Objetivo", k: "objetivo" }, { h: "Gasto", k: "spend", t: "brlfull" }, { h: "Impressões", k: "impressoes", t: "int" }, { h: "Cliques", k: "cliques", t: "int" }, { h: "CTR", k: "ctr", t: "pct2" }, { h: "CPC", k: "cpc", t: "brlfull" }, { h: "CPM", k: "cpm", t: "brlfull" }, { h: "Leads Meta", k: "leads", t: "int" }, { h: "CPL", k: "cpl", t: "brlfull" }, { h: "Leads no CRM", k: "leads_crm", t: "int" }, { h: "Vendas", k: "vendas_crm", t: "int" }, { h: "Receita", k: "receita_crm", t: "brl" }, { h: "Dias com gasto", k: "dias", t: "int" },
+  ], { resumo: (d) => [{ label: "Campanhas", valor: num(d.total, 0) }, { label: "Gasto", valor: brl(d.soma) }, { label: "Leads Meta", valor: num(soma(d.linhas, (l) => l.leads), 0) }, { label: "CPL", valor: brl(soma(d.linhas, (l) => l.leads) ? (d.soma ?? 0) / soma(d.linhas, (l) => l.leads) : null) }, { label: "CTR", valor: fp2(soma(d.linhas, (l) => l.impressoes) ? soma(d.linhas, (l) => l.cliques) / soma(d.linhas, (l) => l.impressoes) : null) }, { label: "Receita no CRM", valor: brl(soma(d.linhas, (l) => l.receita_crm)) }], nexus: LINK.crm,
+    drill: (l, f) => ({ bloco: "meta_conjuntos", filtro: { campaign_id: l.campaign_id, dia: f.dia }, titulo: `Conjuntos · ${l.nome}` }), drillTxt: "os conjuntos da campanha" }),
+  campanhas_dia: S("Campanha por dia", "Uma linha por campanha por dia.", [
+    { h: "Data", k: "data", t: "data" }, { h: "Campanha", k: "campanha", tl: true }, { h: "Gasto", k: "spend", t: "brlfull" }, { h: "Impressões", k: "impressoes", t: "int" }, { h: "Cliques", k: "cliques", t: "int" }, { h: "CTR", k: "ctr", t: "pct2" }, { h: "CPC", k: "cpc", t: "brlfull" }, { h: "CPM", k: "cpm", t: "brlfull" }, { h: "Leads Meta", k: "leads", t: "int" }, { h: "CPL", k: "cpl", t: "brlfull" }, { h: "Status", k: "status" },
+  ], { resumo: (d) => [{ label: "Linhas", valor: num(d.total, 0) }, { label: "Gasto", valor: brl(d.soma) }, { label: "Leads Meta", valor: num(soma(d.linhas, (l) => l.leads), 0) }, { label: "CPL", valor: brl(soma(d.linhas, (l) => l.leads) ? (d.soma ?? 0) / soma(d.linhas, (l) => l.leads) : null) }, { label: "CTR", valor: fp2(soma(d.linhas, (l) => l.impressoes) ? soma(d.linhas, (l) => l.cliques) / soma(d.linhas, (l) => l.impressoes) : null) }], nexus: LINK.crm,
+    drill: (l) => ({ bloco: "meta_conjuntos", filtro: { campaign_id: l.campaign_id, dia: String(l.data).slice(0, 10) }, titulo: `Conjuntos · ${l.campanha} em ${dataBR(l.data)}` }), drillTxt: "os conjuntos da campanha naquele dia" }),
+  meta_dia: S("Meta Ads dia a dia", "Total de todas as campanhas em cada dia.", [
+    { h: "Dia", k: "dia", t: "data" }, { h: "Gasto", k: "spend", t: "brlfull" }, { h: "Impressões", k: "impressoes", t: "int" }, { h: "Cliques", k: "cliques", t: "int" }, { h: "CTR", k: "ctr", t: "pct2" }, { h: "CPC", k: "cpc", t: "brlfull" }, { h: "CPM", k: "cpm", t: "brlfull" }, { h: "Leads Meta", k: "leads", t: "int" }, { h: "CPL", k: "cpl", t: "brlfull" }, { h: "Leads no CRM", k: "leads_crm", t: "int" }, { h: "Campanhas com gasto", k: "campanhas", t: "int" },
+  ], { resumo: (d) => [{ label: "Dias com linha", valor: num(d.total, 0) }, { label: "Gasto", valor: brl(d.soma) }, { label: "Leads Meta", valor: num(soma(d.linhas, (l) => l.leads), 0) }, { label: "CPL", valor: brl(soma(d.linhas, (l) => l.leads) ? (d.soma ?? 0) / soma(d.linhas, (l) => l.leads) : null) }, { label: "CTR", valor: fp2(soma(d.linhas, (l) => l.impressoes) ? soma(d.linhas, (l) => l.cliques) / soma(d.linhas, (l) => l.impressoes) : null) }, { label: "Dias com gasto", valor: num(d.linhas.filter((l) => l.spend > 0).length, 0) }], nexus: LINK.crm,
+    drill: (l, f) => ({ bloco: "campanhas_dia", filtro: { dia: String(l.dia).slice(0, 10), campaign_id: f.campaign_id }, titulo: `Campanhas em ${dataBR(l.dia)}` }), drillTxt: "as campanhas do dia" }),
+  meta_conjuntos: S("Conjuntos de anúncio", "Conjuntos (públicos) com as mesmas métricas da campanha e o que virou lead e venda no CRM.", [
+    { h: "Conjunto", k: "nome", tl: true }, { h: "Campanha", k: "campanha", tl: true }, { h: "Status", k: "status" }, { h: "Orçamento por dia", k: "orcamento_dia", t: "brl" }, { h: "Gasto", k: "spend", t: "brlfull" }, { h: "Impressões", k: "impressoes", t: "int" }, { h: "Cliques", k: "cliques", t: "int" }, { h: "CTR", k: "ctr", t: "pct2" }, { h: "CPC", k: "cpc", t: "brlfull" }, { h: "CPM", k: "cpm", t: "brlfull" }, { h: "Leads Meta", k: "leads", t: "int" }, { h: "CPL", k: "cpl", t: "brlfull" }, { h: "Leads no CRM", k: "leads_crm", t: "int" }, { h: "Vendas", k: "vendas_crm", t: "int" }, { h: "Receita", k: "receita_crm", t: "brl" }, { h: "Dias com gasto", k: "dias", t: "int" },
+  ], { resumo: (d) => [{ label: "Conjuntos", valor: num(d.total, 0) }, { label: "Gasto", valor: brl(d.soma) }, { label: "Leads Meta", valor: num(soma(d.linhas, (l) => l.leads), 0) }, { label: "CPL", valor: brl(soma(d.linhas, (l) => l.leads) ? (d.soma ?? 0) / soma(d.linhas, (l) => l.leads) : null) }, { label: "CTR", valor: fp2(soma(d.linhas, (l) => l.impressoes) ? soma(d.linhas, (l) => l.cliques) / soma(d.linhas, (l) => l.impressoes) : null) }, { label: "Receita no CRM", valor: brl(soma(d.linhas, (l) => l.receita_crm)) }], nexus: LINK.crm,
+    drill: (l, f) => ({ bloco: "meta_anuncios", filtro: { adset_id: l.adset_id, dia: f.dia }, titulo: `Anúncios · ${l.nome}` }), drillTxt: "os anúncios do conjunto" }),
+  meta_anuncios: S("Anúncios", "Cada criativo com as mesmas métricas e o que virou lead e venda no CRM.", [
+    { h: "Criativo", k: "thumb", t: "img", tl: true }, { h: "Anúncio", k: "nome", tl: true }, { h: "Conjunto", k: "conjunto", tl: true }, { h: "Campanha", k: "campanha", tl: true }, { h: "Status", k: "status" }, { h: "Gasto", k: "spend", t: "brlfull" }, { h: "Impressões", k: "impressoes", t: "int" }, { h: "Cliques", k: "cliques", t: "int" }, { h: "CTR", k: "ctr", t: "pct2" }, { h: "CPC", k: "cpc", t: "brlfull" }, { h: "CPM", k: "cpm", t: "brlfull" }, { h: "Leads Meta", k: "leads", t: "int" }, { h: "CPL", k: "cpl", t: "brlfull" }, { h: "Leads no CRM", k: "leads_crm", t: "int" }, { h: "Vendas", k: "vendas_crm", t: "int" }, { h: "Receita", k: "receita_crm", t: "brl" }, { h: "Dias com gasto", k: "dias", t: "int" }, { h: "Título", k: "titulo", tl: true }, { h: "Texto", k: "texto", tl: true },
+  ], { resumo: (d) => [{ label: "Anúncios", valor: num(d.total, 0) }, { label: "Gasto", valor: brl(d.soma) }, { label: "Leads Meta", valor: num(soma(d.linhas, (l) => l.leads), 0) }, { label: "CPL", valor: brl(soma(d.linhas, (l) => l.leads) ? (d.soma ?? 0) / soma(d.linhas, (l) => l.leads) : null) }, { label: "CTR", valor: fp2(soma(d.linhas, (l) => l.impressoes) ? soma(d.linhas, (l) => l.cliques) / soma(d.linhas, (l) => l.impressoes) : null) }, { label: "Receita no CRM", valor: brl(soma(d.linhas, (l) => l.receita_crm)) }], nexus: LINK.crm }),
   clientes: S("Clientes", "Empresas com consultor, mensalidade, contrato, health score e NPS.", [
     { h: "Empresa", k: "empresa", link: "empresa", idk: "company_id", tl: true }, { h: "Consultor", k: "consultor" }, { h: "Mensalidade", k: "mensalidade", t: "brlfull" }, { h: "Produto", k: "produto", tl: true }, { h: "Projeto", k: "projeto_status", t: "proj" }, { h: "Início", k: "inicio", t: "data" }, { h: "Fim", k: "fim", t: "data" }, { h: "Plano", k: "plano" },
     { h: "Health", k: "score", t: "num" }, { h: "Nível", k: "nivel", t: "nivel" }, { h: "Tendência", k: "tendencia", t: "tend" }, { h: "NPS", k: "nps", t: "int" }, { h: "Tarefas atrasadas", k: "tarefas_atrasadas", t: "int" }, { h: "Vencido", k: "vencido", t: "brl" }, { h: "Churn em", k: "churn_em", t: "data" }, { h: "Motivo", k: "churn_motivo", tl: true },
@@ -114,6 +132,8 @@ function cel(v: any, t?: Tipo): ReactNode {
     case "data": return dataBR(String(v));
     case "datahora": return dataHoraBR(String(v));
     case "pct": return fp(Number(v));
+    case "pct2": return fp2(Number(v));
+    case "img": return <a href={String(v)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="Abrir a imagem"><img className="thumb" src={String(v)} alt="" loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }} /></a>;
     case "nivel": return <St ok={v === "excellent" || v === "healthy"} warn={v === "attention"} tg={nivelLabel(v)} tw={nivelLabel(v)} tb={nivelLabel(v)} />;
     case "evento": return eventoLabel(String(v));
     case "papel": return papelLabel(String(v));
@@ -126,7 +146,11 @@ function cel(v: any, t?: Tipo): ReactNode {
   }
 }
 
-export function Detalhe({ mes, bloco, filtro, titulo, sub }: { mes: string; bloco: string; filtro?: Filtro; titulo?: string; sub?: string }) {
+export function Detalhe({ mes, bloco, filtro, titulo, sub, det }: {
+  mes: string; bloco: string; filtro?: Filtro; titulo?: string; sub?: string;
+  /** empilha outro detalhe (campanha abre conjuntos, conjunto abre anúncios) */
+  det?: (bloco: string, filtro?: Filtro, titulo?: string, sub?: string) => void;
+}) {
   const [d, setD] = useState<DetalheT | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -157,7 +181,7 @@ export function Detalhe({ mes, bloco, filtro, titulo, sub }: { mes: string; bloc
   }, [d, q, colF]);
 
   // opções de filtro rápido por coluna de texto (closer, sdr, funil, consultor, atendente, agente...)
-  const colsFiltro = (spec?.cols ?? []).filter((c) => !c.t && !c.link && ["closer", "sdr", "funil", "consultor", "atendente", "agente", "responsavel", "categoria", "status", "origem", "tipo", "modo", "outcome", "canal", "dono", "etapa", "plano", "instancia", "numero", "bloco", "nivel", "papel", "forma", "banco", "campanha", "produto"].includes(c.k));
+  const colsFiltro = (spec?.cols ?? []).filter((c) => !c.t && !c.link && ["closer", "sdr", "funil", "consultor", "atendente", "agente", "responsavel", "categoria", "status", "origem", "tipo", "modo", "outcome", "canal", "dono", "etapa", "plano", "instancia", "numero", "bloco", "nivel", "papel", "forma", "banco", "campanha", "produto", "conjunto", "objetivo"].includes(c.k));
   const optsCol = useMemo(() => {
     if (!d) return [] as { value: string; label: string }[];
     const out: { value: string; label: string }[] = [];
@@ -191,8 +215,9 @@ export function Detalhe({ mes, bloco, filtro, titulo, sub }: { mes: string; bloc
         <>
           {spec.resumo && <div className="kg">{spec.resumo(d).map((t, i) => <Tile key={i} label={t.label} valor={t.valor} sub={t.sub} />)}</div>}
           <div className="p wide">
-            <div className="h"><b>Registros</b><span>{linhas.length === d.total ? `${d.total} linhas` : `${linhas.length} de ${d.total} linhas`}{d.total > d.limite ? `. Limite de ${d.limite} por tela` : ""}. Clique no nome pra abrir no Nexus.</span></div>
+            <div className="h"><b>Registros</b><span>{linhas.length === d.total ? `${d.total} linhas` : `${linhas.length} de ${d.total} linhas`}{d.total > d.limite ? `. Limite de ${d.limite} por tela` : ""}. {spec.drill && det ? `Clique na linha pra abrir ${spec.drillTxt ?? "o detalhe"}.` : "Clique no nome pra abrir no Nexus."}</span></div>
             <Tabela
+              onRow={spec.drill && det ? (i) => { const x = spec.drill!(linhas[i], filtro ?? {}); if (x) det(x.bloco, x.filtro, x.titulo); } : undefined}
               cols={spec.cols.map((c) => ({ h: c.h, tl: c.tl }))}
               rows={linhas.map((l) => spec.cols.map((c) => {
                 const v = l[c.k];

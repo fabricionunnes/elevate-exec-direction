@@ -36,7 +36,16 @@ export type Painel = {
     spend: number; tem_dados: boolean; impressoes: number; cliques: number; leads_meta: number; leads_pagos_crm: number;
     vendas_leads_pagos: number; receita_leads_pagos: number; custo_discador: number | null; cpl: number | null; roas: number | null;
     cac: number | null; custo_reuniao_agendada: number | null; custo_reuniao_realizada: number | null;
-    campanhas: { nome: string; campaign_id: string; spend: number; leads: number; impressoes: number; cliques: number; status: string }[];
+    /** estado da conexão do Meta Ads (conta do CRM) */
+    meta: {
+      conectada: boolean; conta: string | null; ad_account_id: string | null; account_row_id: string | null;
+      ultimo_sync: string | null; horas_desde_sync: number | null; ultimo_dia_com_gasto: string | null; dias_sem_gasto: number | null;
+    };
+    por_dia: { dia: string; spend: number; leads: number; impressoes: number; cliques: number; campanhas: number }[];
+    campanhas: {
+      nome: string; campaign_id: string; spend: number; leads: number; impressoes: number; cliques: number; status: string;
+      objetivo: string | null; dias: number; leads_crm: number; vendas_crm: number; receita_crm: number;
+    }[];
   };
   clientes: {
     ativas: number; em_aviso: number; novos: number; churn_n: number; churn_valor: number; vencendo_30d_n: number;

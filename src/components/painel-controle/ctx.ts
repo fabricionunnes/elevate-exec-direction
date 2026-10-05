@@ -14,4 +14,7 @@ export type Ctx = {
   /** filtros da tela atual (funil, closer, sdr, consultor) */
   f: Filtro;
   setF: (f: Filtro) => void;
+  /** busca os últimos 35 dias na Meta e recarrega o painel */
+  syncMeta: () => void;
+  sincronizando: boolean;
 };

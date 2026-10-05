@@ -28,7 +28,8 @@ export const LINK = {
   agentes: "/crm/agents",
   automacoes: "/crm/automacoes",
   disparos: "/crm/disparos",
-  trafego: "/crm/trafego-pago/api",
+  /** página inicial do CRM: a aba Tráfego Pago (onde conecta o Meta Ads) fica aqui */
+  crm: "/crm",
   equipe: "/onboarding-tasks/staff",
   automacoesNexus: "/onboarding-tasks/automations",
 };

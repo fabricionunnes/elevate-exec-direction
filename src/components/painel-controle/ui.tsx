@@ -130,6 +130,28 @@ export function Barras({ serie, mes, fn, fmt, sub, onMes, permiteNegativo }: {
   );
 }
 
+/* ---------- barras por item (dia do mês, por exemplo), clicáveis ---------- */
+export type ItemBarra = { k: string; rot: string; v: number | null; tip?: string; sub?: ReactNode };
+export function BarrasItens({ itens, fmt, onItem, ativo, denso }: {
+  itens: ItemBarra[]; fmt: (v: number) => string; onItem?: (k: string) => void; ativo?: string; denso?: boolean;
+}) {
+  const mx = Math.max(...itens.map((i) => Math.abs(i.v ?? 0)), 1e-9);
+  return (
+    <div className={`bars ${denso ? "dense" : ""}`}>
+      {itens.map((i) => {
+        const t = i.tip ?? `${i.rot}: ${i.v == null ? "sem dados" : fmt(i.v)}`;
+        return (
+          <button type="button" key={i.k} className={`bc ${i.k === ativo ? "on" : ""}`} data-tip={t} aria-label={t} disabled={!onItem || i.v == null}
+            style={i.v == null ? { cursor: "default" } : undefined} onClick={() => onItem?.(i.k)}>
+            <i style={{ height: `${i.v ? (Math.abs(i.v) / mx) * 100 : 0}%` }} />
+            <small>{i.rot}{!denso && <b>{i.v == null ? "-" : fmt(i.v)}</b>}{i.sub}</small>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ---------- combo com busca por digitação ---------- */
 export type Opt = { value: string; label: string };
 export function Combo({ k, label, value, opts, todos, onChange }: {
@@ -172,8 +194,8 @@ export function Combo({ k, label, value, opts, todos, onChange }: {
 }
 
 /* ---------- topo ---------- */
-export function Topo({ mes, meses, onMes, onHome, onSair, geradoEm, alertas }: {
-  mes: string; meses: string[]; onMes: (m: string) => void; onHome: () => void; onSair: () => void; geradoEm?: string; alertas: number;
+export function Topo({ mes, meses, onMes, onHome, onSair, geradoEm, alertas, meta }: {
+  mes: string; meses: string[]; onMes: (m: string) => void; onHome: () => void; onSair: () => void; geradoEm?: string; alertas: number; meta?: ReactNode;
 }) {
   return (
     <div className="top">
@@ -186,6 +208,7 @@ export function Topo({ mes, meses, onMes, onHome, onSair, geradoEm, alertas }: {
       <div className="ctl">
         <Combo k="mes" label="Mês" value={mes} opts={[...meses].reverse().map((m) => ({ value: m, label: mesLabel(m) }))} onChange={onMes} />
         <button type="button" className="back" onClick={onSair} style={{ marginTop: 14 }}>Voltar ao Nexus</button>
+        {meta && <div style={{ marginTop: 14 }}>{meta}</div>}
       </div>
       <div className="src">
         <span className={`dot ${alertas ? "r" : "g"}`} />{alertas ? `${alertas} ${alertas === 1 ? "item exige" : "itens exigem"} sua decisão` : "Nada fora do padrão"}

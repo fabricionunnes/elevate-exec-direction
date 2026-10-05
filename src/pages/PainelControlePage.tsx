@@ -21,6 +21,7 @@ import { IA } from "@/components/painel-controle/IA";
 import { Automacoes } from "@/components/painel-controle/Automacoes";
 import { Fontes } from "@/components/painel-controle/Fontes";
 import { Detalhe, DETALHE_TITULO } from "@/components/painel-controle/Detalhe";
+import { MetaSync } from "@/components/painel-controle/MetaSync";
 
 const TITULOS: Record<string, [string, string]> = {
   financeiro: ["Financeiro", "caixa do mês: recebido, pago, vencido, bancos e MRR"],
@@ -56,6 +57,37 @@ export default function PainelControlePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mes, authLoading, isMaster]);
 
+  // Meta Ads: "Atualizar agora". A edge busca os últimos 35 dias direto na Meta
+  // (uns 15 s) e grava campanhas, conjuntos e anúncios; depois recarrega o mês e
+  // joga fora os outros meses guardados, que podem ter mudado junto.
+  const [sincronizando, setSincronizando] = useState(false);
+  const [rev, setRev] = useState(0);
+  const syncMeta = useCallback(async () => {
+    const conta = cache[mes]?.trafego?.meta?.account_row_id;
+    if (!conta || sincronizando) return;
+    setSincronizando(true);
+    const tid = toast.loading("Buscando os últimos 35 dias na Meta, leva uns 15 segundos...");
+    try {
+      const { data, error } = await supabase.functions.invoke("crm-meta-ads-sync", { body: { action: "sync", account_id: conta, days: 35 } });
+      if (error) {
+        // resposta fora de 2xx: o motivo de verdade vem no corpo
+        let motivo = error.message;
+        try { const j = await (error as any).context?.json?.(); if (j?.error) motivo = j.error; } catch { /* fica a mensagem genérica */ }
+        throw new Error(motivo);
+      }
+      if ((data as any)?.error) throw new Error((data as any).error);
+      await carregar(mes);
+      setCache((c) => (c[mes] ? { [mes]: c[mes] } : {}));
+      setRev((r) => r + 1);
+      const r = data as { campaigns?: number; adsets?: number; ads?: number };
+      toast.success(`Meta Ads atualizado: ${r.campaigns ?? 0} linhas de campanha, ${r.adsets ?? 0} de conjunto e ${r.ads ?? 0} de anúncio nos últimos 35 dias`, { id: tid });
+    } catch (e) {
+      toast.error(`Não consegui sincronizar o Meta Ads: ${(e as Error).message}. Se o acesso venceu, reconecte em CRM, Tráfego Pago.`, { id: tid, duration: 10000 });
+    } finally {
+      setSincronizando(false);
+    }
+  }, [cache, mes, sincronizando, carregar]);
+
   useEffect(() => { document.title = "Painel de Controle · UNV Nexus"; }, []);
   useEffect(() => { window.scrollTo(0, 0); }, [stack.length, mes]);
   useEffect(() => {
@@ -76,7 +108,7 @@ export default function PainelControlePage() {
   if (!authLoading && !isMaster) return <Navigate to="/" replace />;
 
   const d = cache[mes];
-  const ctx: Ctx | null = d ? { d, mes, setMes, go, det, abrir, f: cur.f ?? {}, setF } : null;
+  const ctx: Ctx | null = d ? { d, mes, setMes, go, det, abrir, f: cur.f ?? {}, setF, syncMeta, sincronizando } : null;
   const crumbs = stack.map((n) => (n.view === "detalhe" ? n.titulo ?? DETALHE_TITULO(n.bloco ?? "") : TITULOS[n.view]?.[0] ?? n.view));
 
   const conteudo = () => {
@@ -91,7 +123,7 @@ export default function PainelControlePage() {
       case "ia": return <IA c={ctx} />;
       case "automacoes": return <Automacoes c={ctx} />;
       case "fontes": return <Fontes c={ctx} />;
-      case "detalhe": return <Detalhe mes={mes} bloco={cur.bloco ?? ""} filtro={cur.filtro} titulo={cur.titulo} sub={cur.sub} />;
+      case "detalhe": return <Detalhe key={rev} mes={mes} bloco={cur.bloco ?? ""} filtro={cur.filtro} titulo={cur.titulo} sub={cur.sub} det={det} />;
       default: return <VisaoGeral c={ctx} />;
     }
   };
@@ -101,7 +133,8 @@ export default function PainelControlePage() {
   return (
     <div className="pc">
       <div className="wrap">
-        <Topo mes={mes} meses={meses} onMes={setMes} onHome={home} onSair={() => navigate("/onboarding-tasks")} geradoEm={d?.gerado_em} alertas={d?.alertas.length ?? 0} />
+        <Topo mes={mes} meses={meses} onMes={setMes} onHome={home} onSair={() => navigate("/onboarding-tasks")} geradoEm={d?.gerado_em} alertas={d?.alertas.length ?? 0}
+          meta={d ? <MetaSync meta={d.trafego.meta} sincronizando={sincronizando} onSync={syncMeta} abrir={abrir} /> : undefined} />
         {authLoading && <div className="load">Conferindo acesso...</div>}
         {!authLoading && erro && <div className="err">Não consegui carregar {mesLabel(mes)}: {erro}. <button type="button" className="lk" onClick={() => carregar(mes)}>Tentar de novo</button></div>}
         {!authLoading && !erro && !d && <div className="load">Carregando {mesLabel(mes)}...</div>}
