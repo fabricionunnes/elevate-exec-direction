@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-05T10:01:05",
+ "gerado_em": "2026-10-05T15:01:03",
  "posts": [
+  {
+   "slug": "banco-curriculos-pronto-evita-aperto-contratar",
+   "url": "/blog/banco-curriculos-pronto-evita-aperto-contratar/",
+   "titulo": "Banco de currículos pronto evita aperto na hora de contratar",
+   "resumo": "Você só descobre que precisava de gente quando já está atrasado. Estruturar o processo de recrutamento antes de precisar muda o tamanho do problema.",
+   "tags": [
+    "recrutamento",
+    "estrutura comercial",
+    "decisão",
+    "crescimento",
+    "time"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-05",
+   "ts": 2149
+  },
   {
    "slug": "prazo-minimo-implementacao-nao-negociavel",
    "url": "/blog/prazo-minimo-implementacao-nao-negociavel/",
