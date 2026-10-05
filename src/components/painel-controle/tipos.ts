@@ -81,7 +81,7 @@ export type Frente = {
   };
   /** quanto das mensalidades está em poucos clientes */
   concentracao?: {
-    mrr_base: number; clientes: number; mrr_todas_ativas: number; fora_valor: number; fora_n: number;
+    mrr_base: number; clientes: number; fora_valor: number; fora_n: number;
     maior: { empresa: string; company_id: string; valor: number; pct: number } | null; top5_valor: number; top5_pct: number | null;
     top10: { pos: number; company_id: string; empresa: string; valor: number; pct: number; cobrancas: number; parcelas_ate: string | null; contrato_fim: string | null; plano: string | null; consultor: string | null }[];
   };
@@ -94,7 +94,8 @@ export type Painel = {
     vencidas_7d: number; vencidas_7d_n: number; pago: number; pago_n: number; a_pagar: number; a_pagar_n: number;
     a_pagar_3d: number; a_pagar_3d_n: number; a_pagar_7d: number; saldo_bancos: number; lucro: number;
     bancos: { nome: string; saldo: number; saldo_provedor: number | null; atualizado_em: string | null }[];
-    mrr: number; mrr_n: number; mrr_em_aviso: number;
+    /** MRR oficial: cobrança mensal parcelada ativa, de empresa ativa, com fatura a vencer */
+    mrr: number; mrr_n: number; mrr_clientes: number; mrr_em_aviso: number; mrr_fora_n: number; mrr_fora_valor: number;
     vencidas_lista: { empresa: string; company_id: string; valor: number; vencimento: string; dias: number; descricao: string }[];
     a_pagar_lista: { fornecedor: string; descricao: string; valor: number; vencimento: string; status: string }[];
     recebido_por_empresa: { empresa: string; company_id: string; valor: number; n: number }[];
@@ -167,12 +168,17 @@ export type Painel = {
 /** Bloco sob demanda: saúde da receita recorrente (painel_bloco 'receita'). */
 export type ReceitaBloco = {
   mes: string; hoje: string;
-  mrr: { cadastrado: number; cadastrado_n: number; que_fatura: number; que_fatura_n: number; clientes: number; fora_valor: number; fora_n: number; fora_empresa_inativa: number; fora_sem_fatura: number; em_aviso: number };
+  mrr: {
+    valor: number; cobrancas: number; clientes: number; ticket: number | null; em_aviso: number; em_aviso_n: number;
+    composicao: { sem_fim: { n: number; valor: number }; parcelado: { n: number; valor: number; fim_de: string | null; fim_ate: string | null }; acaba_em_60d: { n: number; valor: number } };
+    fora_n: number; fora_valor: number;
+    fora: { charge_id: string; company_id: string; empresa: string; valor: number; descricao: string | null; motivo: string | null; ultima_parcela: string | null; empresa_status: string }[];
+  };
   ponte: {
     mes: string; tem_dado: boolean; primeiro: boolean; inicial: number; novo: number; reativacao: number; expansao: number; contracao: number; churn: number; final: number;
     clientes_inicial: number; clientes_final: number; clientes_churn: number; clientes_novos: number; churn_receita_pct: number | null; churn_clientes_pct: number | null;
   }[];
-  ltv: { tempo_medio_meses: number | null; empresas_tempo: number; ticket_medio_mensal: number | null; empresas_ticket: number; empresas_fora_ticket: number; empresas_base: number; ltv: number | null };
+  ltv: { tempo_medio_meses: number | null; empresas_tempo: number; ticket_medio_mensal: number | null; empresas_ticket: number; ticket_contrato: number | null; empresas_ticket_contrato: number; empresas_base: number; ltv: number | null; ltv_contrato: number | null };
   renovacoes: {
     em30: { n: number; valor: number }; em60: { n: number; valor: number }; em90: { n: number; valor: number }; mensais_n: number; mensais_valor: number;
     lista: { company_id: string; empresa: string; consultor: string | null; grupo: "risco" | "mensal"; origem: string; plano: string | null; inicio: string | null; fim: string; dias: number; valor: number | null; mensalidade: number | null; projeto_status: string | null }[];

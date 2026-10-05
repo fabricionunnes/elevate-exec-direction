@@ -34,7 +34,7 @@ export function Produtos({ c }: { c: Ctx }) {
       </div>
 
       <Panel titulo={`Por produto, ${mesLabel(mes)}`} sub="clique no produto pra ver os clientes" cls="wide">
-        <Tabela cols={[{ h: "Produto", tl: true }, "Clientes ativos", "Consultores", "MRR que fatura", "Ticket médio", "Recebido no mês", "% da receita", "Churn no mês", "Custo direto", "Margem direta"]}
+        <Tabela cols={[{ h: "Produto", tl: true }, "Clientes ativos", "Consultores", "MRR", "Ticket médio", "Recebido no mês", "% da receita", "Churn no mês", "Custo direto", "Margem direta"]}
           onRow={(i) => { const p = ps[i]; if (p.clientes != null) c.det("produto_clientes", { produto: p.produto }, `Clientes · ${p.produto}`); else c.det("produto_receita", { produto: p.produto }, `Faturas pagas · ${p.produto}`); }}
           rows={ps.map((p) => [
             <b>{p.produto}</b>,

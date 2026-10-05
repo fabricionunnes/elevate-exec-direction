@@ -42,7 +42,7 @@ const TITULOS: Record<string, [string, string]> = {
   ia: ["IA e automações", "custo da API, WhatsApp oficial e agentes"],
   automacoes: ["Roda sozinho", "o que agentes e automações fizeram sem passar por você"],
   caixa: ["Projeção de caixa", "13 semanas, saldo de hoje mais o que está lançado pra entrar e sair"],
-  receita: ["Receita recorrente", "os dois números de MRR, a ponte mês a mês, LTV e CAC, e as renovações que vêm aí"],
+  receita: ["Receita recorrente", "o MRR e do que ele é feito, a ponte mês a mês, LTV e CAC, e as renovações que vêm aí"],
   produtos: ["Margem por produto", "clientes, MRR, receita, churn e o custo direto de cada produto, sem rateio"],
   meta: ["Ritmo da meta", "vendido contra a meta do mês, projeção por dia útil e lucro do ano contra a meta anual"],
   antecedentes: ["O que ainda dá pra mudar", "reuniões na agenda, pipeline contra o que falta da meta e entrada de leads"],

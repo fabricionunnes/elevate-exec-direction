@@ -41,7 +41,7 @@ export function VisaoGeral({ c }: { c: Ctx }) {
           sub={`recebido ${brl(fin.recebido)} menos pago ${brl(fin.pago)}. Regime de caixa, não competência.`} onClick={() => c.go({ view: "financeiro" })} />
         <Tile label="Recebido no mês" valor={brl(fin.recebido)} sub={<>{plural(fin.recebido_n, "fatura paga", "faturas pagas")}{dv != null && <> · {dv >= 0 ? "+" : ""}{Math.round(dv * 100)}% vs mês anterior</>}</>} onClick={() => c.det("faturas_pagas")} />
         <Tile label="Caixa (saldo nos bancos)" valor={brl(fin.saldo_bancos)} sub={`${fin.bancos.length} contas · ${brl(fin.a_pagar_7d)} a pagar em 7 dias`} onClick={() => c.det("bancos")} />
-        <Tile label="MRR" valor={brl(fin.mrr)} sub={<>{plural(fin.mrr_n, "mensalidade ativa", "mensalidades ativas")} · {brl(fin.mrr_em_aviso)} em aviso{d.frente?.concentracao && <><br /><span className="nd">{brl(d.frente.concentracao.mrr_base)} com fatura a vencer</span></>}</>} onClick={() => c.go({ view: "receita" })} />
+        <Tile label="MRR" valor={brl(fin.mrr)} sub={`${plural(fin.mrr_n, "mensalidade ativa", "mensalidades ativas")} · ${brl(fin.mrr_em_aviso)} em aviso de saída`} onClick={() => c.go({ view: "receita" })} />
         <Tile label="Inadimplência" valor={brl(fin.vencidas)} sub={`${plural(fin.vencidas_n, "fatura vencida", "faturas vencidas")} · ${fin.vencidas_7d_n} há mais de 7 dias`} onClick={() => c.det("faturas_vencidas")} />
       </div>
 

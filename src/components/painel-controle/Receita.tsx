@@ -1,5 +1,6 @@
-// Saúde da receita recorrente: os dois números de MRR lado a lado, a ponte mês a
-// mês (novo, expansão, contração, churn), LTV e CAC, e as renovações que vêm aí.
+// Saúde da receita recorrente: o MRR (só o que fatura todo mês) e do que ele é
+// feito, a lista do que ficou fora dele, a ponte mês a mês (novo, expansão,
+// contração, churn), LTV e CAC, e as renovações que vêm aí.
 // Carregado ao abrir a tela (painel_bloco 'receita').
 import type { Ctx } from "./ctx";
 import type { ReceitaBloco } from "./tipos";
@@ -14,7 +15,7 @@ export function Receita({ c }: { c: Ctx }) {
   if (erro) return <div className="err">Não consegui carregar a receita recorrente: {erro}</div>;
   if (!r) return <div className="load">Carregando a receita recorrente...</div>;
 
-  const m = r.mrr, l = r.ltv, rn = r.renovacoes;
+  const m = r.mrr, cp = m.composicao, l = r.ltv, rn = r.renovacoes;
   const comDado = r.ponte.filter((p) => p.tem_dado);
   const pm = r.ponte.find((p) => p.mes === mes);
   const cac = c.d.trafego.cac;
@@ -26,31 +27,47 @@ export function Receita({ c }: { c: Ctx }) {
   return (
     <>
       <div className="grid g2">
-        <Panel titulo="MRR, os dois números" sub="o mesmo cadastro, lido de dois jeitos">
-          <Tabela cols={[{ h: "Leitura", tl: true }, "Cobranças", "Por mês"]}
-            onRow={(i) => [() => c.det("mrr"), () => c.det("mrr_clientes", { grupo: "base" }, "Mensalidade por cliente (o que fatura)"), () => c.det("mrr_clientes", { grupo: "fora" }, "Cobranças ativas que não faturam mais"), () => c.det("clientes", { tipo: "em_aviso" }, "Clientes em aviso de saída")][i]()}
-            hl={1}
+        <Panel titulo={`MRR: ${brlFull(m.valor)}`} sub="só o que fatura todo mês. Clique na linha pra ver as cobranças.">
+          <Tabela cols={[{ h: "Do que é feito", tl: true }, "Cobranças", "Por mês"]}
+            onRow={(i) => [
+              () => c.det("mrr", {}, "MRR, cobrança por cobrança"),
+              () => c.det("mrr", { tipo_cobranca: "parcelado" }, "MRR · planos parcelados"),
+              () => c.det("mrr", { tipo_cobranca: "sem_fim" }, "MRR · mensais sem data de fim"),
+              () => c.det("mrr", { acaba_em_dias: "60" }, "MRR · última parcela nos próximos 60 dias"),
+              () => c.det("mrr", { em_aviso: "1" }, "MRR · clientes em aviso de saída"),
+            ][i]()}
+            hl={0}
             rows={[
-              [<span><b>MRR cadastrado</b><br /><span className="nd">cobranças recorrentes mensais marcadas como ativas. É o número do topo do painel e do Dashboard financeiro.</span></span>, num(m.cadastrado_n, 0), brlFull(m.cadastrado)],
-              [<span><b>MRR que fatura</b><br /><span className="nd">só cobrança ativa, de empresa ativa, com fatura a vencer. É o usado na ponte e na concentração.</span></span>, num(m.que_fatura_n, 0), brlFull(m.que_fatura)],
-              [<span>Diferença<br /><span className="nd">ativas no cadastro que não faturam mais: {brl(m.fora_sem_fatura)} sem fatura a vencer (avulsa ou plano encerrado) e {brl(m.fora_empresa_inativa)} de empresa inativa.</span></span>, num(m.fora_n, 0), <span className="warn">{brlFull(m.fora_valor)}</span>],
-              [<span>Dentro do que fatura, em aviso de saída<br /><span className="nd">cliente em aviso ou com sinal de cancelamento.</span></span>, <Nd />, m.em_aviso ? <span className="neg">{brlFull(m.em_aviso)}</span> : brlFull(0)],
+              [<span><b>MRR</b><br /><span className="nd">cobrança mensal ativa, de empresa ativa, com fatura a vencer. {plural(m.clientes, "cliente", "clientes")}, {brl(m.ticket)} por cliente.</span></span>, num(m.cobrancas, 0), <b>{brlFull(m.valor)}</b>],
+              [<span>Plano parcelado, com data de fim<br /><span className="nd">{cp.parcelado.n ? `a última parcela cai entre ${dataBR(cp.parcelado.fim_de)} e ${dataBR(cp.parcelado.fim_ate)}. Sem renovar, sai do MRR nessa data.` : "nenhum hoje."}</span></span>, num(cp.parcelado.n, 0), brlFull(cp.parcelado.valor)],
+              [<span>Mensal sem data de fim<br /><span className="nd">{cp.sem_fim.n ? "cobrança sem número de parcelas." : "não existe nenhuma no cadastro hoje: toda mensalidade é um plano com parcelas contadas."}</span></span>, num(cp.sem_fim.n, 0), brlFull(cp.sem_fim.valor)],
+              [<span>Dentro do MRR, última parcela nos próximos 60 dias<br /><span className="nd">renova ou sai do MRR.</span></span>, num(cp.acaba_em_60d.n, 0), cp.acaba_em_60d.valor ? <span className="warn">{brlFull(cp.acaba_em_60d.valor)}</span> : brlFull(0)],
+              [<span>Dentro do MRR, em aviso de saída<br /><span className="nd">cliente em aviso ou com sinal de cancelamento.</span></span>, num(m.em_aviso_n, 0), m.em_aviso ? <span className="neg">{brlFull(m.em_aviso)}</span> : brlFull(0)],
             ]} />
-          <div className="note">Qual dos dois vira o número oficial é decisão de negócio. Enquanto isso, desativar no Financeiro as {m.fora_n} cobranças da diferença faz os dois baterem. <Lk onClick={() => c.det("mrr_clientes", { grupo: "fora" }, "Cobranças ativas que não faturam mais")}>Ver quais são</Lk> · <Lk onClick={() => c.abrir(LINK.recorrencias)} ext>Recorrências no Nexus</Lk></div>
+          <div className="note">Plano parcelado mais mensal sem data de fim dá o MRR. As duas últimas linhas são recortes de dentro dele. <Lk onClick={() => c.abrir(LINK.recorrencias)} ext>Recorrências no Nexus</Lk></div>
         </Panel>
 
-        <Panel titulo="LTV, CAC e payback" sub="LTV pela mesma regra da tela inicial do Nexus">
+        <Panel titulo="LTV, CAC e payback" sub="tempo médio de permanência x ticket do MRR">
           <Tabela cols={[{ h: "Indicador", tl: true }, "Valor"]} rows={[
             [<span>Tempo médio de permanência<br /><span className="nd">meses desde o início do contrato, {l.empresas_tempo} empresas não inativas</span></span>, l.tempo_medio_meses == null ? <Nd /> : `${num(l.tempo_medio_meses)} meses`],
-            [<span>Ticket médio mensal<br /><span className="nd">valor do contrato normalizado pelo ciclo, {l.empresas_ticket} empresas ({l.empresas_fora_ticket} ficam fora: forma de pagamento sem ciclo)</span></span>, brl(l.ticket_medio_mensal)],
+            [<span>Ticket médio mensal<br /><span className="nd">MRR dividido pelos {l.empresas_ticket} clientes que estão nele</span></span>, brl(l.ticket_medio_mensal)],
             [<b>LTV médio</b>, <b>{brl(l.ltv)}</b>],
             [<span>CAC de {mesLabel(mes)}<br /><span className="nd">só mídia: gasto no Meta dividido pelas vendas do mês</span></span>, cac == null ? <Nd>sem gasto ou sem venda</Nd> : brl(cac)],
             [<span>LTV / CAC<br /><span className="nd">acima de 3x é saudável</span></span>, ltvCac == null ? <Nd /> : <b className={ltvCac >= 3 ? "pos" : ltvCac >= 1 ? "warn" : "neg"}>{num(ltvCac)}x</b>],
             [<span>Payback do CAC<br /><span className="nd">CAC dividido pelo ticket médio mensal</span></span>, payback == null ? <Nd /> : `${num(payback)} ${payback === 1 ? "mês" : "meses"}`],
           ]} />
-          <div className="note">O CAC é só mídia e a venda do CRM inclui ingresso de evento, então ele sai baixo e o LTV/CAC sai alto. Serve pra acompanhar a tendência, não pra decidir verba sozinho.</div>
+          <div className="note">O CAC é só mídia e a venda do CRM inclui ingresso de evento, então ele sai baixo e o LTV/CAC sai alto. Serve pra acompanhar a tendência, não pra decidir verba sozinho.{l.ltv_contrato != null && <> A tela inicial do Nexus calcula o ticket pelo valor de contrato do cadastro ({brl(l.ticket_contrato)}, {l.empresas_ticket_contrato} empresas) e por isso mostra LTV de {brl(l.ltv_contrato)}; aqui vale o MRR.</>}</div>
         </Panel>
       </div>
+
+      <Panel titulo="Fora do MRR: não faturam mais" sub={m.fora_n ? `${plural(m.fora_n, "cobrança segue ativa", "cobranças seguem ativas")} no cadastro (${brl(m.fora_valor)}). Clique pra abrir a empresa.` : "nenhuma cobrança ativa fora do MRR"} cls="wide">
+        <Tabela cols={[{ h: "Cliente", tl: true }, "Valor", { h: "Por que está fora", tl: true }, "Última parcela", { h: "Cobrança", tl: true }]}
+          onRow={(i) => c.abrir(LINK.empresa(m.fora[i].company_id))}
+          rows={m.fora.map((x) => [
+            <Lk ext onClick={() => c.abrir(LINK.empresa(x.company_id))}>{x.empresa}</Lk>, brlFull(x.valor), x.motivo ?? <Nd />, x.ultima_parcela ? dataBR(x.ultima_parcela) : <Nd>sem fatura</Nd>, x.descricao ?? <Nd />,
+          ])} vazio="Nenhuma. Toda cobrança ativa no cadastro está faturando." />
+        <div className="note">Isso não é um segundo MRR: é a lista pra limpar o cadastro. São cobranças marcadas como ativas que não vão gerar fatura todo mês (parcela única, plano que já acabou ou empresa inativa). Desativando no Financeiro, a lista some. <Lk onClick={() => c.det("mrr", { grupo: "fora" }, "Fora do MRR: não faturam mais")}>Abrir em lista</Lk> · <Lk onClick={() => c.abrir(LINK.recorrencias)} ext>Recorrências no Nexus</Lk></div>
+      </Panel>
 
       <div className="kg">
         <Tile label={`Faturado recorrente em ${mesCurto(mes)}`} valor={pm?.tem_dado ? brl(pm.final) : "-"} sub={pm?.tem_dado ? `${pm.clientes_final} clientes. Começou o mês em ${brl(pm.inicial)}` : "sem fatura registrada nesse mês"} onClick={() => c.det("mrr_movimentos", { tipo: "mantido" }, `Clientes que mantiveram · ${mesLabel(mes)}`)} />
@@ -71,7 +88,8 @@ export function Receita({ c }: { c: Ctx }) {
             p.churn_receita_pct == null ? <Nd /> : fp(p.churn_receita_pct), p.churn_clientes_pct == null ? <Nd /> : fp(p.churn_clientes_pct),
           ])} vazio="Nenhuma fatura recorrente registrada nos últimos 12 meses." />
         <div className="note">
-          A cobrança recorrente não guarda histórico de valor nem data de cancelamento, então a ponte vem das faturas: o que foi faturado de cada cliente no mês (fora as avulsas: entrada, comissão, cancelamento, renegociação) contra o mês anterior.
+          A cobrança recorrente não guarda histórico de valor nem data de cancelamento, então a ponte vem das faturas: o que foi faturado de cada cliente no mês, com a mesma regra do MRR (cobrança de parcela única, entrada, comissão, cancelamento e renegociação ficam fora), contra o mês anterior.
+          O "= Final" é o que venceu no mês; o MRR lá de cima é o que está ativo hoje, por isso plano que começa a vencer no mês que vem já está no MRR e ainda não na ponte.
           As cobranças entraram no Nexus em maio e junho de 2026: o "novo" desses dois meses é a entrada do cadastro, não venda nova. Cliente que pula um mês de fatura aparece como churn e depois reativação.
         </div>
       </Panel>
