@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { PainelControleAtalho } from "@/components/painel-controle/PainelControleAtalho";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { isHoliday } from "@/lib/businessDays";
 import { useNavigate } from "react-router-dom";
@@ -2160,6 +2159,12 @@ const OnboardingTasksPage = () => {
                             <Gauge className="h-4 w-4 mr-2" />
                             Cockpit UNV
                           </DropdownMenuItem>
+                          {isMaster && (
+                            <DropdownMenuItem onClick={() => navigate("/painel-de-controle")}>
+                              <Gauge className="h-4 w-4 mr-2" />
+                              Painel de Controle
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/mrr")}>
                             <DollarSign className="h-4 w-4 mr-2" />
                             MRR
@@ -2254,8 +2259,6 @@ const OnboardingTasksPage = () => {
 
       {/* Main content below sticky header */}
       <div className="container mx-auto px-2 sm:px-4 pb-4 sm:pb-8">
-        {/* Painel de Controle: atalho exclusivo do master, no topo da tela inicial do sistema */}
-        <div className="pt-3"><PainelControleAtalho /></div>
         <div className="flex flex-col gap-3 mb-4 sm:mb-6">
 
           {/* Desktop Navigation — clean grouped nav */}
@@ -2903,6 +2906,20 @@ const OnboardingTasksPage = () => {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
+            )}
+
+            {/* Painel de Controle: só o master vê. Botão discreto ao lado de Administrar
+                (o card grande no topo chamava atenção demais). */}
+            {isMaster && (
+              <Button
+                size="sm"
+                className="gap-1.5 bg-black text-white hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/85"
+                onClick={() => navigate("/painel-de-controle")}
+                title="Painel de Controle: caixa, vendas, tráfego, clientes, atendimento e IA"
+              >
+                <Gauge className="h-4 w-4" />
+                Painel de Controle
+              </Button>
             )}
 
             {/* ── Right side ──────────────────────────────── */}
