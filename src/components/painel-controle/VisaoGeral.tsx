@@ -83,6 +83,7 @@ export function VisaoGeral({ c }: { c: Ctx }) {
           {(() => { const f = coberturaFrase(d.frente?.antecedentes); return <Tile label="Cobertura do pipeline" valor={f.valor} cls={f.cls} sub={f.sub} onClick={() => c.go({ view: "antecedentes" })} />; })()}
           {(() => { const f = fundadorFrase(d.frente?.fundador); return <Tile label="Dependência do fundador" valor={f.valor} cls={f.cls} sub={f.sub} onClick={() => c.go({ view: "fundador" })} />; })()}
         </div>
+        <div className="note" style={{ border: 0, marginTop: 10, paddingTop: 0 }}>Mais leituras: <Lk onClick={() => c.go({ view: "receita" })}>receita recorrente (ponte do MRR, LTV, renovações)</Lk> · <Lk onClick={() => c.go({ view: "produtos" })}>margem por produto</Lk> · <Lk onClick={() => c.go({ view: "caixa" })}>projeção de caixa</Lk></div>
       </div>
 
       <div className="grid r4">

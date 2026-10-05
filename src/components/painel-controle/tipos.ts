@@ -179,11 +179,28 @@ export type ReceitaBloco = {
   };
 };
 
+/** Bloco sob demanda: margem por produto (painel_bloco 'produtos'). null = sem dado pra aquele produto. */
+export type ProdutosBloco = {
+  mes: string;
+  produtos: {
+    produto: string; clientes: number | null; projetos: number | null; consultores: number | null; mrr: number | null; mrr_clientes: number | null; ticket: number | null;
+    receita: number | null; receita_n: number | null; receita_clientes: number | null; churn_n: number | null; churn_pct: number | null;
+    custo_direto: number | null; custo_n: number | null; margem_direta: number | null;
+  }[];
+  custos: {
+    pago_total: number; pago_n: number; sem_categoria_n: number; sem_categoria_valor: number; sem_centro_n: number; sem_centro_valor: number; compartilhado_valor: number; direto_valor: number;
+    por_centro: { centro: string; n: number; valor: number; tipo: "direto" | "compartilhado" | "sem_centro" }[];
+    por_categoria: { categoria: string; n: number; valor: number }[];
+    aberto_sem_categoria_n: number; aberto_sem_categoria_valor: number;
+  };
+  totais: { receita: number; mrr: number; nao_identificado_receita: number | null; nao_identificado_mrr: number | null };
+};
+
 export type Filtro = Record<string, string | boolean | undefined>;
 
 /** Uma tela na pilha de navegação. */
 export type Nav = {
-  view: "visao" | "financeiro" | "comercial" | "trafego" | "clientes" | "atendimento" | "ia" | "automacoes" | "fontes" | "detalhe" | "caixa" | "fundador" | "antecedentes" | "meta" | "receita";
+  view: "visao" | "financeiro" | "comercial" | "trafego" | "clientes" | "atendimento" | "ia" | "automacoes" | "fontes" | "detalhe" | "caixa" | "fundador" | "antecedentes" | "meta" | "receita" | "produtos";
   titulo?: string;
   /** filtros da tela de área (funil, closer, sdr, consultor) */
   f?: Filtro;
