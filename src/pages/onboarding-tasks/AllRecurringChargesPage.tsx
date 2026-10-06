@@ -3050,6 +3050,7 @@ export default function AllRecurringChargesPage() {
         open={isStatementOpen}
         onOpenChange={setIsStatementOpen}
         formatCurrencyCents={formatCurrencyCents}
+        onChanged={() => { loadData(); }}
       />
       {/* Distribuir Ajuste Asaas */}
       <DistributeAdjustmentDialog

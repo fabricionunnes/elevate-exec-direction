@@ -3,14 +3,20 @@
 // (whatsapp_instance_access.can_view — o filtro é aplicado no backend wa-connections,
 // que também recusa criar/excluir pra quem não é admin/master).
 // Objetivo: o closer reconectar o próprio número sem depender do admin.
+// Master e admin também podem excluir a instância daqui (mesma ação "delete"
+// da tela de administração; o backend recusa pra quem não é admin/master).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, MessageSquare, QrCode, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { ArrowLeft, Loader2, MessageSquare, QrCode, RefreshCw, Trash2, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 
 interface Instance {
@@ -37,6 +43,10 @@ export default function CRMWhatsAppConnectionPage() {
   const [qrFor, setQrFor] = useState<string | null>(null);
   const [qrImg, setQrImg] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
+  // Só master/admin veem o botão Excluir. A página também abre fora do CRMLayout
+  // (/onboarding-tasks/minhas-conexoes-whatsapp), então o papel é lido aqui.
+  const [canDelete, setCanDelete] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const timers = useRef<number[]>([]);
 
   const refresh = useCallback(async () => {
@@ -56,6 +66,20 @@ export default function CRMWhatsAppConnectionPage() {
     refresh();
     return () => { timers.current.forEach(clearTimeout); };
   }, [refresh]);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: staff } = await supabase
+        .from("onboarding_staff")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      setCanDelete(staff?.role === "master" || staff?.role === "admin");
+    })();
+  }, []);
 
   const stopLoops = () => { timers.current.forEach(clearTimeout); timers.current = []; };
   const openQr = async (name: string) => {
@@ -94,6 +118,16 @@ export default function CRMWhatsAppConnectionPage() {
       await callApi("restart", { instance_name: name });
       toast.success("Reconexão disparada. Atualize em ~15s.");
     } catch (e: unknown) { toast.error((e as Error).message); }
+  };
+
+  const remove = async (inst: Instance) => {
+    setDeleting(inst.instance_name);
+    try {
+      await callApi("delete", { instance_name: inst.instance_name });
+      toast.success(`Instância ${inst.display_name || inst.instance_name} excluída`);
+      await refresh();
+    } catch (e: unknown) { toast.error((e as Error).message); }
+    finally { setDeleting(null); }
   };
 
   const connected = (s: string | null) => s === "connected" || s === "connecting";
@@ -156,6 +190,29 @@ export default function CRMWhatsAppConnectionPage() {
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => restart(inst.instance_name)}>
                   <RefreshCw className="h-3.5 w-3.5" /> Reconectar
                 </Button>
+                {canDelete && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="ghost" className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10" disabled={deleting === inst.instance_name}>
+                        {deleting === inst.instance_name ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Excluir
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir {inst.display_name || inst.instance_name}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          O número é desconectado e a instância some daqui e do servidor. As conversas e o histórico continuam no Atendimento, mas perdem o vínculo com este número. Automações, cadências, lembretes e disparos que saíam por ele param de enviar. Não dá pra desfazer, só conectando o número de novo.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => remove(inst)}>
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </CardContent>
             </Card>
           ))}

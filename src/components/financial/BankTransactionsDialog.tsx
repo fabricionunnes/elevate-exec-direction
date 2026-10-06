@@ -69,6 +69,8 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   formatCurrencyCents: (cents: number) => string;
+  /** Chamado quando um lançamento é excluído e o saldo da conta muda (a tela pai recarrega os saldos). */
+  onChanged?: () => void;
 }
 
 // Origem do lançamento em português. Sem isso a coluna Tipo mostra o nome da
@@ -85,13 +87,20 @@ const ORIGEM: Record<string, string> = {
 };
 const origem = (r: string | null) => (r ? ORIGEM[r] || r : "-");
 
-export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrencyCents }: Props) {
+export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrencyCents, onChanged }: Props) {
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
+  // Saldo mostrado no cabeçalho. Vem da tela pai, mas é ajustado aqui na hora
+  // quando um lançamento é excluído, pra não ficar com o número velho na tela.
+  const [saldoCents, setSaldoCents] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<BankTransaction | null>(null);
+
+  useEffect(() => {
+    if (bank) setSaldoCents(Number(bank.current_balance_cents || 0));
+  }, [bank]);
 
   useEffect(() => {
     if (open && bank) {
@@ -165,11 +174,27 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
     }
   };
 
+  // Excluir um lançamento do extrato TEM que desfazer o efeito dele no saldo:
+  // o saldo da conta (financial_banks.current_balance_cents) é um número guardado
+  // que cada lançamento soma ou subtrai via increment_bank_balance. Até 06/10/2026
+  // a exclusão apagava só a linha e o saldo ficava com o valor do lançamento
+  // apagado dentro (caso ACEVIC: recebimento duplicado pela conciliação e pela
+  // fatura, excluiu um e o saldo continuou R$1.000 acima do Asaas).
   const handleDeleteAny = async (t: BankTransaction) => {
     setDeletingId(t.id);
     try {
-      await supabase.from("financial_bank_transactions").delete().eq("id", t.id);
-      toast.success("Lançamento excluído do extrato");
+      const { error: delErr } = await supabase.from("financial_bank_transactions").delete().eq("id", t.id);
+      if (delErr) throw delErr;
+      const reverso = t.type === "credit" ? -Number(t.amount_cents) : Number(t.amount_cents);
+      const { error: balErr } = await supabase.rpc("increment_bank_balance" as any, { p_bank_id: t.bank_id, p_amount: reverso });
+      if (balErr) {
+        console.error("[extrato] lançamento excluído mas o saldo não foi ajustado:", balErr);
+        toast.warning("Lançamento excluído, mas o saldo da conta não foi ajustado. Confira o saldo.");
+      } else {
+        setSaldoCents((s) => s + reverso);
+        toast.success(`Lançamento excluído. Saldo ${reverso < 0 ? "reduzido" : "aumentado"} em ${formatCurrencyCents(Math.abs(reverso))}.`);
+      }
+      onChanged?.();
       await loadTransactions();
     } catch (err) {
       toast.error("Erro ao excluir lançamento");
@@ -236,8 +261,8 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
             </div>
             <div className="rounded-lg border p-2 sm:p-3 text-center">
               <p className="text-[10px] sm:text-xs text-muted-foreground">Saldo Atual</p>
-              <p className={`text-sm sm:text-lg font-bold ${bank.current_balance_cents >= 0 ? "text-emerald-600" : "text-destructive"}`}>
-                {formatCurrencyCents(bank.current_balance_cents)}
+              <p className={`text-sm sm:text-lg font-bold ${saldoCents >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                {formatCurrencyCents(saldoCents)}
               </p>
             </div>
           </div>
@@ -403,7 +428,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
         <AlertDialogHeader>
           <AlertDialogTitle>Excluir lançamento do extrato?</AlertDialogTitle>
           <AlertDialogDescription>
-            Isso remove apenas o registro do extrato bancário. O lançamento original (conta a pagar/receber) não é afetado.
+            Remove a linha do extrato e desfaz o efeito dela no saldo da conta ({confirmDelete ? (confirmDelete.type === "credit" ? "o saldo diminui" : "o saldo aumenta") : ""} {confirmDelete ? formatCurrencyCents(confirmDelete.amount_cents) : ""}). O título de origem (conta a pagar/receber ou fatura) continua como está.
             <br /><br />
             <strong>{confirmDelete?.description}</strong> — {confirmDelete ? (confirmDelete.type === "credit" ? "+" : "-") : ""}{confirmDelete ? formatCurrencyCents(confirmDelete.amount_cents) : ""}
           </AlertDialogDescription>
