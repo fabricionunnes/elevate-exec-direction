@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -213,7 +214,11 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
   // Acrescentado: recorrências criadas no mês e ainda ativas, somadas por cliente.
   // Perdido: clientes com churn no mês × parcela mensal vigente (cobranças ativas
   // ou, se não houver, as da última desativação — ignora recriações antigas).
-  const [mrrDetails, setMrrDetails] = useState<{ added: { name: string; cents: number }[]; lost: { name: string; cents: number }[]; current: { name: string; cents: number }[] }>({ added: [], lost: [], current: [] });
+  // Cada linha do detalhe do MRR. Em "perdido", `kind` separa quem já encerrou de
+  // fato (churned, com churn_date) de quem ainda está em solicitação (em aviso
+  // prévio ou com cancelamento sinalizado), pra lista mostrar os dois blocos.
+  type MrrItem = { name: string; cents: number; kind?: "churned" | "notice_period" | "cancellation_signaled"; date?: string | null; reason?: string | null };
+  const [mrrDetails, setMrrDetails] = useState<{ added: MrrItem[]; lost: MrrItem[]; current: MrrItem[] }>({ added: [], lost: [], current: [] });
   const [mrrDialog, setMrrDialog] = useState<null | "added" | "lost" | "current">(null);
 
   useEffect(() => {
@@ -237,20 +242,35 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
       const end = new Date(selectedYear, selectedMonth + 1, 1).toISOString().slice(0, 10);
       const { data: churned } = await supabase
         .from("onboarding_projects")
-        .select("onboarding_company_id, company_id")
+        .select("onboarding_company_id, company_id, churn_date, churn_reason")
         .gte("churn_date", start).lt("churn_date", end);
       const lostIds = Array.from(new Set((churned || [])
         .map((p: any) => p.onboarding_company_id || p.company_id).filter(Boolean)));
       const lostByCompany = new Map<string, number>();
+      const lostInfo = new Map<string, { kind: "churned" | "notice_period" | "cancellation_signaled"; date: string | null; reason: string | null }>();
+      (churned || []).forEach((p: any) => {
+        const cid = p.onboarding_company_id || p.company_id;
+        if (cid && !lostInfo.has(cid)) lostInfo.set(cid, { kind: "churned", date: p.churn_date || null, reason: p.churn_reason || null });
+      });
 
       // Saindo: pediu cancelamento ou cumprindo aviso → perda de MRR, fora do MRR atual
       const leaving = new Set<string>();
       if (isCurrentMonth) {
         const { data: saindo } = await supabase
           .from("onboarding_projects")
-          .select("onboarding_company_id, company_id, status")
+          .select("onboarding_company_id, company_id, status, notice_end_date, cancellation_signal_date")
           .in("status", ["notice_period", "cancellation_signaled"]);
-        (saindo || []).forEach((p: any) => { const cid = p.onboarding_company_id || p.company_id; if (cid) leaving.add(cid); });
+        (saindo || []).forEach((p: any) => {
+          const cid = p.onboarding_company_id || p.company_id;
+          if (!cid) return;
+          leaving.add(cid);
+          if (!lostInfo.has(cid)) lostInfo.set(cid, {
+            kind: p.status,
+            // em aviso: a data que importa é quando o aviso termina; sinalizado: quando pediu
+            date: p.status === "notice_period" ? (p.notice_end_date || p.cancellation_signal_date || null) : (p.cancellation_signal_date || null),
+            reason: null,
+          });
+        });
         leaving.forEach(cid => {
           const cents = currentByCompany.get(cid) || 0;
           currentByCompany.delete(cid);
@@ -284,9 +304,9 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
         const { data: cos } = await supabase.from("onboarding_companies").select("id, name").in("id", allIds);
         (cos || []).forEach((c: any) => names.set(c.id, c.name));
       }
-      const toList = (m: Map<string, number>) =>
+      const toList = (m: Map<string, number>): MrrItem[] =>
         [...m.entries()]
-          .map(([id, cents]) => ({ name: (names.get(id) || "Cliente sem cadastro") + (leaving.has(id) ? " · em aviso / cancelamento" : ""), cents }))
+          .map(([id, cents]) => ({ name: names.get(id) || "Cliente sem cadastro", cents, ...(lostInfo.get(id) || {}) }))
           .sort((a, b) => b.cents - a.cents);
 
       setMrrDetails({ added: toList(addedByCompany), lost: toList(lostByCompany), current: toList(currentByCompany) });
@@ -848,14 +868,49 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
                     : "Clientes com recorrência ativa hoje e o valor mensal de cada um."}
                 </p>
                 {list.length === 0 && <p className="text-sm text-muted-foreground py-4">Nenhum cliente neste mês.</p>}
-                {list.map((c, i) => (
-                  <div key={i} className="flex items-start gap-4 border-b border-border/50 py-2 min-w-0">
-                    <span className="text-sm font-medium flex-1 min-w-0 break-words leading-snug">{c.name}</span>
-                    <span className={`text-sm font-bold tabular-nums shrink-0 whitespace-nowrap ${cor}`}>
-                      {sinal}{formatCurrencyCents(c.cents)}
-                    </span>
-                  </div>
-                ))}
+                {(() => {
+                  const fmtDia = (d?: string | null) => (d ? format(new Date(d.length === 10 ? d + "T12:00:00" : d), "dd/MM/yyyy") : null);
+                  const linha = (c: MrrItem, i: number) => {
+                    const sub = c.kind === "churned"
+                      ? ["Encerrado" + (fmtDia(c.date) ? ` em ${fmtDia(c.date)}` : ""), c.reason].filter(Boolean).join(" · ")
+                      : c.kind === "notice_period"
+                      ? "Em aviso prévio" + (fmtDia(c.date) ? `, sai em ${fmtDia(c.date)}` : "")
+                      : c.kind === "cancellation_signaled"
+                      ? "Pediu cancelamento" + (fmtDia(c.date) ? ` em ${fmtDia(c.date)}` : "")
+                      : null;
+                    return (
+                      <div key={i} className="flex items-start gap-4 border-b border-border/50 py-2 min-w-0">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium break-words leading-snug">{c.name}</p>
+                          {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+                        </div>
+                        <span className={`text-sm font-bold tabular-nums shrink-0 whitespace-nowrap ${cor}`}>
+                          {sinal}{formatCurrencyCents(c.cents)}
+                        </span>
+                      </div>
+                    );
+                  };
+                  if (mrrDialog !== "lost") return list.map(linha);
+                  // Perdido: quem já encerrou de fato primeiro, depois quem ainda está em solicitação.
+                  const cancelados = list.filter((c) => c.kind === "churned");
+                  const solicitando = list.filter((c) => c.kind !== "churned");
+                  const bloco = (titulo: string, itens: MrrItem[], nota: string) => itens.length > 0 && (
+                    <div className="pt-3 first:pt-0">
+                      <div className="flex items-center gap-3 pb-1">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex-1">{titulo} ({itens.length})</span>
+                        <span className={`text-xs font-semibold tabular-nums ${cor}`}>{sinal}{formatCurrencyCents(itens.reduce((s, x) => s + x.cents, 0))}</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground pb-1">{nota}</p>
+                      {itens.map(linha)}
+                    </div>
+                  );
+                  return (
+                    <>
+                      {bloco("Cancelados de fato", cancelados, "Contrato encerrado neste mês. O MRR já saiu.")}
+                      {bloco("Em solicitação", solicitando, "Pediram cancelamento ou cumprem aviso prévio. Ainda pagam, mas já saem do MRR atual. Dá pra reverter.")}
+                    </>
+                  );
+                })()}
                 {list.length > 0 && (
                   <div className="flex items-center gap-3 pt-2">
                     <span className="text-sm font-semibold flex-1">Total ({list.length} cliente{list.length > 1 ? "s" : ""})</span>
