@@ -21,7 +21,7 @@ export default function UNVStartObrigadoPage() {
       window.fbq(
         "track",
         "Purchase",
-        { value: 37, currency: "BRL", content_name: "Raio-X Comercial" },
+        { value: 97, currency: "BRL", content_name: "Raio-X Comercial" },
         { eventID: `${crmLeadId}:Purchase` },
       );
     }

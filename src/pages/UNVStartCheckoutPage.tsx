@@ -38,7 +38,7 @@ const beneficios = [
   "7 documentos comerciais prontos e personalizados",
   "Raio-X, ICP, Funil, Script, Playbook, Processos e Metas",
   "Acesso na hora, 100% guiado pela IA da UNV",
-  "Seu pra sempre — pagamento único",
+  "Painel de gestão comercial com Diretor Comercial IA",
   "Garantia incondicional de 7 dias",
 ];
 
@@ -74,7 +74,7 @@ export default function UNVStartCheckoutPage() {
   // pixel do Meta (Purchase é server-side via CAPI no gate de pagamento)
   useEffect(() => {
     initMetaPixel();
-    trackMetaEvent("InitiateCheckout", { value: 37, currency: "BRL" });
+    trackMetaEvent("InitiateCheckout", { value: 97, currency: "BRL" });
   }, []);
 
   // polling do pagamento
@@ -158,7 +158,7 @@ export default function UNVStartCheckoutPage() {
         <div className="container-premium">
           <div className="max-w-4xl mx-auto">
             <button
-              onClick={() => (step === "pix" ? setStep("form") : navigate("/unv-start"))}
+              onClick={() => (step === "pix" ? setStep("form") : window.location.assign("/start/"))}
               className="flex items-center gap-2 text-white/70 hover:text-white text-sm mb-6 transition-colors"
             >
               <ArrowLeft className="h-4 w-4" /> Voltar
@@ -261,7 +261,7 @@ export default function UNVStartCheckoutPage() {
                           <Loader2 className="animate-spin" />
                         ) : (
                           <>
-                            Pagar R$ 37 e liberar acesso
+                            Pagar R$ 97 e liberar acesso
                             <ArrowRight className="ml-2" />
                           </>
                         )}
@@ -341,7 +341,7 @@ export default function UNVStartCheckoutPage() {
 
                 <div className="mt-5 flex items-baseline justify-between rounded-2xl bg-white/10 border border-white/10 px-5 py-4">
                   <span className="text-white/70">Total</span>
-                  <span className="font-display text-3xl font-bold text-white">R$ 37</span>
+                  <span className="font-display text-3xl font-bold text-white">R$ 97</span>
                 </div>
 
                 <p className="mt-4 flex items-center gap-2 text-xs text-white/60">

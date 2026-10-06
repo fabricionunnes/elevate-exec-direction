@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import logoUnvBoard from "@/assets/logo-unv-board.png";
 import { generateBoardDeliverablePDF } from "@/components/board/generateBoardDeliverablePDF";
+import UNVStartDashboard from "@/components/unv-start/UNVStartDashboard";
 
 const NAVY = "#0D2B5E";
 const WA_UPSELL = "https://wa.me/5511927008490";
@@ -59,6 +60,7 @@ interface Member {
   name: string;
   company_name: string;
   current_step: number;
+  paid_until?: string | null;
 }
 
 interface AccessData {
@@ -196,6 +198,8 @@ export default function UNVStartPortalPage() {
   const [access, setAccess] = useState<AccessData | null>(null);
 
   const [view, setView] = useState<View>("central");
+  // aba da central: painel (recorrente) ou estrutura (os 7 documentos)
+  const [tab, setTab] = useState<"painel" | "estrutura" | null>(null);
 
   // ----- criação de senha (topo da central) -----
   const [pwd, setPwd] = useState("");
@@ -246,6 +250,8 @@ export default function UNVStartPortalPage() {
 
   const totalModules = access?.modules.length || 7;
   const doneCount = access?.modules.filter((m) => m.done).length || 0;
+  // quem ainda não fez nenhum documento começa pela estrutura; depois o padrão é o painel
+  const activeTab = tab ?? (doneCount > 0 ? "painel" : "estrutura");
   const progressPct = totalModules > 0 ? Math.round((doneCount / totalModules) * 100) : 0;
 
   // ============ AÇÕES ============
@@ -538,9 +544,11 @@ export default function UNVStartPortalPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-muted-foreground">
-              Ainda não confirmamos o pagamento desta compra. Assim que ele for
-              aprovado, seu acesso é liberado automaticamente — pode levar alguns
-              minutos. Se já pagou, atualize esta página em instantes.
+              Seu acesso está pausado porque não identificamos o pagamento da sua
+              assinatura. Se acabou de pagar, a liberação é automática e pode levar
+              alguns minutos: atualize esta página em instantes. Se a mensalidade
+              venceu, regularize pelo link de cobrança que chegou no seu e-mail e
+              tudo volta exatamente de onde parou.
             </p>
             <Button variant="outline" onClick={() => window.location.reload()}>
               Atualizar
@@ -894,6 +902,37 @@ export default function UNVStartPortalPage() {
         </Card>
       )}
 
+      {/* abas da central */}
+      <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1" role="tablist">
+        {(
+          [
+            ["painel", "Painel"],
+            ["estrutura", `Estrutura (${doneCount}/${totalModules})`],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            role="tab"
+            aria-selected={activeTab === key}
+            onClick={() => setTab(key)}
+            className={
+              "h-9 rounded-md text-sm font-medium transition-colors " +
+              (activeTab === key
+                ? "bg-background text-[#0D2B5E] dark:text-blue-300 shadow-sm"
+                : "text-muted-foreground hover:text-foreground")
+            }
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "painel" && token && (
+        <UNVStartDashboard token={token} invokeEngine={invokeEngine} Markdown={MarkdownPreview} />
+      )}
+
+      {activeTab === "estrutura" && (
+      <>
       {/* progresso */}
       <Card>
         <CardContent className="py-5 space-y-3">
@@ -1036,6 +1075,8 @@ export default function UNVStartPortalPage() {
           </Button>
         </CardContent>
       </Card>
+      </>
+      )}
     </>,
   );
 }

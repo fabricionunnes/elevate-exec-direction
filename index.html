@@ -17,13 +17,21 @@
           window.location.replace("/unvsocial/" + qs);
           return;
         }
+        // Página de vendas do UNV Start é a estática em /start/ (uma só, um preço só).
+        if (h === "#/unv-start" || h.indexOf("#/unv-start?") === 0) {
+          var qs2 = window.location.search || "";
+          var iq2 = h.indexOf("?");
+          if (iq2 > -1) qs2 = qs2 ? qs2 + "&" + h.slice(iq2 + 1) : "?" + h.slice(iq2 + 1);
+          window.location.replace("/start/" + qs2);
+          return;
+        }
         if (!window.location.hash) {
           if (p === "/social-media" || p === "/social-media/") {
             window.location.replace("/unvsocial/" + (window.location.search || ""));
             return;
           }
-          if (p === "/start" || p === "/start/" || p === "/unv-start") {
-            window.location.replace("/#/unv-start" + window.location.search);
+          if (p === "/unv-start" || p === "/unv-start/") {
+            window.location.replace("/start/" + window.location.search);
           } else if (p.indexOf("/start/") === 0) {
             window.location.replace("/#" + p + window.location.search);
           }
