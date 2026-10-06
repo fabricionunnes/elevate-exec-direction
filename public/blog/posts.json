@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-06T10:01:14",
+ "gerado_em": "2026-10-06T15:01:10",
  "posts": [
+  {
+   "slug": "periodo-experiencia-comercial-nao-resolve-falta-estrutura",
+   "url": "/blog/periodo-experiencia-comercial-nao-resolve-falta-estrutura/",
+   "titulo": "Período de experiência não resolve falta de estrutura",
+   "resumo": "Dar desconto nos primeiros meses não muda o fato de que o comercial precisa de método, treino e cobrança desde o primeiro dia. Tempo barato não substitui decisão tomada.",
+   "tags": [
+    "decisão comercial",
+    "estrutura comercial",
+    "implementação",
+    "prazo mínimo",
+    "diagnóstico"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-06",
+   "ts": 2152
+  },
   {
    "slug": "ferramenta-bonita-nao-substitui-quem-acompanha-conversa",
    "url": "/blog/ferramenta-bonita-nao-substitui-quem-acompanha-conversa/",
