@@ -825,7 +825,8 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
 
       {/* Detalhe do MRR acrescentado / perdido, cliente a cliente */}
       <Dialog open={mrrDialog !== null} onOpenChange={(o) => !o && setMrrDialog(null)}>
-        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+        {/* Largo e sem rolagem lateral: nome completo quebra linha, valor sempre visível. */}
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>
               {mrrDialog === "added" ? "MRR Acrescentado" : mrrDialog === "lost" ? "MRR Perdido" : "MRR Atual"} — {MONTH_LABELS[selectedMonth]}/{selectedYear}
@@ -848,9 +849,9 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
                 </p>
                 {list.length === 0 && <p className="text-sm text-muted-foreground py-4">Nenhum cliente neste mês.</p>}
                 {list.map((c, i) => (
-                  <div key={i} className="flex items-center gap-3 border-b border-border/50 py-2">
-                    <span className="text-sm font-medium truncate flex-1" title={c.name}>{c.name}</span>
-                    <span className={`text-sm font-bold tabular-nums shrink-0 ${cor}`}>
+                  <div key={i} className="flex items-start gap-4 border-b border-border/50 py-2 min-w-0">
+                    <span className="text-sm font-medium flex-1 min-w-0 break-words leading-snug">{c.name}</span>
+                    <span className={`text-sm font-bold tabular-nums shrink-0 whitespace-nowrap ${cor}`}>
                       {sinal}{formatCurrencyCents(c.cents)}
                     </span>
                   </div>
