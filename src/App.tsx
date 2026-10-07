@@ -38,6 +38,9 @@ const UNVStartLoginPage = lazy(() => import("./pages/UNVStartLoginPage"));
 const UNVStartPortalPage = lazy(() => import("./pages/UNVStartPortalPage"));
 const UNVStartCheckoutPage = lazy(() => import("./pages/UNVStartCheckoutPage"));
 const UNVStartObrigadoPage = lazy(() => import("./pages/UNVStartObrigadoPage"));
+// UNV IA Academy (página de vendas é estática em public/unviaacademy/)
+const IaAcademyCheckoutPage = lazy(() => import("./pages/ia-academy/IaAcademyCheckoutPage"));
+const IaAcademyObrigadoPage = lazy(() => import("./pages/ia-academy/IaAcademyObrigadoPage"));
 const UNVStartClientsPage = lazy(() => import("./pages/onboarding-tasks/UNVStartClientsPage"));
 const ProcessosPage = lazy(() => import("./pages/onboarding-tasks/ProcessosPage"));
 const CustoIAPage = lazy(() => import("./pages/onboarding-tasks/CustoIAPage"));
@@ -321,6 +324,13 @@ const AcademyAdminAccessPage = lazy(() => import("./pages/academy/admin/AcademyA
 const AcademyAdminReportsPage = lazy(() => import("./pages/academy/admin/AcademyAdminReportsPage"));
 const AcademyReportsPage = lazy(() => import("./pages/academy/AcademyReportsPage"));
 const AcademySettingsPage = lazy(() => import("./pages/academy/AcademySettingsPage"));
+// UNV IA Academy (dentro do Academy)
+const AcademyLivePage = lazy(() => import("./pages/academy/AcademyLivePage"));
+const AcademyLabPage = lazy(() => import("./pages/academy/AcademyLabPage"));
+const AcademyAdminSubscribersPage = lazy(() => import("./pages/academy/admin/AcademyAdminSubscribersPage"));
+const AcademyAdminLivePage = lazy(() => import("./pages/academy/admin/AcademyAdminLivePage"));
+const AcademyAdminDeliverablesPage = lazy(() => import("./pages/academy/admin/AcademyAdminDeliverablesPage"));
+const AcademyAdminLabPage = lazy(() => import("./pages/academy/admin/AcademyAdminLabPage"));
 
 // CRM
 const CRMLayout = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMLayout })));
@@ -420,6 +430,8 @@ const AppShell = () => {
             <Route path="/start/checkout" element={<UNVStartCheckoutPage />} />
             <Route path="/start/obrigado" element={<UNVStartObrigadoPage />} />
             <Route path="/start/:token" element={<UNVStartPortalPage />} />
+            <Route path="/unviaacademy/checkout" element={<IaAcademyCheckoutPage />} />
+            <Route path="/unviaacademy/obrigado" element={<IaAcademyObrigadoPage />} />
             <Route path="/sales-ops" element={<SalesOpsPage />} />
             <Route path="/ai-sales-system" element={<AISalesSystemPage />} />
             <Route path="/fractional-cro" element={<FractionalCROPage />} />
@@ -773,6 +785,12 @@ const AppShell = () => {
               <Route path="quiz/:quizId" element={<AcademyQuizPage />} />
               <Route path="team" element={<AcademyTeamPage />} />
               <Route path="reports" element={<AcademyReportsPage />} />
+              <Route path="live" element={<AcademyLivePage />} />
+              <Route path="lab" element={<AcademyLabPage />} />
+              <Route path="admin/subscribers" element={<AcademyAdminSubscribersPage />} />
+              <Route path="admin/live" element={<AcademyAdminLivePage />} />
+              <Route path="admin/deliverables" element={<AcademyAdminDeliverablesPage />} />
+              <Route path="admin/lab" element={<AcademyAdminLabPage />} />
               <Route path="admin/content" element={<AcademyAdminContentPage />} />
               <Route path="admin/quizzes" element={<AcademyAdminQuizzesPage />} />
               <Route path="admin/gamification" element={<AcademyAdminGamificationPage />} />

@@ -140,6 +140,12 @@ export const AcademyAdminContentPage = () => {
     points_on_complete: 10,
     is_active: true,
     module_id: null as string | null,
+    // UNV IA Academy
+    lesson_kind: "video",
+    estimated_duration_minutes: 15 as number | null,
+    content_md: "",
+    deliverable_prompt: "",
+    deliverable_points: 30,
   });
 
   // Delete confirmation
@@ -247,21 +253,27 @@ export const AcademyAdminContentPage = () => {
     if (!lessonTrackId) return;
 
     try {
-      const lessonData = {
+      const lessonData: Record<string, unknown> = {
         ...lessonForm,
+        content_md: lessonForm.content_md.trim() || null,
+        deliverable_prompt: lessonForm.deliverable_prompt.trim() || null,
+        estimated_duration_minutes: lessonForm.estimated_duration_minutes || null,
         track_id: lessonTrackId,
-        sort_order: (trackLessons.get(lessonTrackId)?.length || 0) + 1,
       };
+      // sort_order só na criação (editar não pode mandar a aula pro fim da trilha)
+      if (!editingLesson) {
+        lessonData.sort_order = (trackLessons.get(lessonTrackId)?.length || 0) + 1;
+      }
 
       if (editingLesson) {
         const { error } = await supabase
           .from("academy_lessons")
-          .update(lessonData)
+          .update(lessonData as any)
           .eq("id", editingLesson.id);
         if (error) throw error;
         toast.success("Aula atualizada!");
       } else {
-        const { error } = await supabase.from("academy_lessons").insert(lessonData);
+        const { error } = await supabase.from("academy_lessons").insert(lessonData as any);
         if (error) throw error;
         toast.success("Aula criada!");
       }
@@ -333,6 +345,11 @@ export const AcademyAdminContentPage = () => {
       points_on_complete: lesson.points_on_complete,
       is_active: lesson.is_active,
       module_id: lesson.module_id,
+      lesson_kind: (lesson as any).lesson_kind || "video",
+      estimated_duration_minutes: (lesson as any).estimated_duration_minutes ?? null,
+      content_md: (lesson as any).content_md || "",
+      deliverable_prompt: (lesson as any).deliverable_prompt || "",
+      deliverable_points: (lesson as any).deliverable_points ?? 30,
     });
     setLessonDialogOpen(true);
   };
@@ -406,6 +423,11 @@ export const AcademyAdminContentPage = () => {
       points_on_complete: 10,
       is_active: true,
       module_id: null,
+      lesson_kind: "video",
+      estimated_duration_minutes: 15,
+      content_md: "",
+      deliverable_prompt: "",
+      deliverable_points: 30,
     });
   };
 
@@ -744,7 +766,7 @@ export const AcademyAdminContentPage = () => {
 
       {/* Lesson Dialog */}
       <Dialog open={lessonDialogOpen} onOpenChange={setLessonDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingLesson ? "Editar Aula" : "Nova Aula"}
@@ -793,14 +815,66 @@ export const AcademyAdminContentPage = () => {
                 placeholder="https://..."
               />
             </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label>Pontos ao concluir</Label>
+                <Input
+                  type="number"
+                  value={lessonForm.points_on_complete}
+                  onChange={(e) => setLessonForm({ ...lessonForm, points_on_complete: parseInt(e.target.value) || 10 })}
+                  min={0}
+                />
+              </div>
+              <div>
+                <Label>Duração (min)</Label>
+                <Input
+                  type="number"
+                  value={lessonForm.estimated_duration_minutes ?? ""}
+                  onChange={(e) => setLessonForm({ ...lessonForm, estimated_duration_minutes: e.target.value ? parseInt(e.target.value) : null })}
+                  min={0}
+                />
+              </div>
+              <div>
+                <Label>Tipo</Label>
+                <Select value={lessonForm.lesson_kind} onValueChange={(v) => setLessonForm({ ...lessonForm, lesson_kind: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="video">Aula gravada</SelectItem>
+                    <SelectItem value="live_recording">Gravação de encontro</SelectItem>
+                    <SelectItem value="implementation">Implementação</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div>
-              <Label>Pontos ao concluir</Label>
-              <Input
-                type="number"
-                value={lessonForm.points_on_complete}
-                onChange={(e) => setLessonForm({ ...lessonForm, points_on_complete: parseInt(e.target.value) || 10 })}
-                min={0}
+              <Label>Material / roteiro da aula (markdown)</Label>
+              <Textarea
+                rows={8}
+                className="font-mono text-xs"
+                value={lessonForm.content_md}
+                onChange={(e) => setLessonForm({ ...lessonForm, content_md: e.target.value })}
+                placeholder={"## Gancho\n...\n\n## Demonstração\n1. ...\n\n## Entregável\n..."}
               />
+            </div>
+            <div className="grid grid-cols-[1fr_120px] gap-3">
+              <div>
+                <Label>Entregável pedido ao aluno</Label>
+                <Textarea
+                  rows={3}
+                  value={lessonForm.deliverable_prompt}
+                  onChange={(e) => setLessonForm({ ...lessonForm, deliverable_prompt: e.target.value })}
+                  placeholder="Ex.: Envie o print do agente SDR qualificando um lead real."
+                />
+              </div>
+              <div>
+                <Label>Pontos</Label>
+                <Input
+                  type="number"
+                  value={lessonForm.deliverable_points}
+                  onChange={(e) => setLessonForm({ ...lessonForm, deliverable_points: parseInt(e.target.value) || 0 })}
+                  min={0}
+                />
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <Label>Aula ativa</Label>

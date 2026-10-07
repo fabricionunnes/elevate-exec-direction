@@ -33,7 +33,19 @@
           window.location.replace("/start/" + qs2);
           return;
         }
+        // UNV IA Academy: página de vendas estática em /unviaacademy/ (checkout e obrigado no SPA).
+        if (h === "#/unviaacademy" || h === "#/unviaacademy/" || h.indexOf("#/unviaacademy?") === 0) {
+          var qsa = window.location.search || "";
+          var iqa = h.indexOf("?");
+          if (iqa > -1) qsa = qsa ? qsa + "&" + h.slice(iqa + 1) : "?" + h.slice(iqa + 1);
+          window.location.replace("/unviaacademy/" + qsa);
+          return;
+        }
         if (!window.location.hash) {
+          if (p === "/unviaacademy/checkout" || p === "/unviaacademy/obrigado") {
+            window.location.replace("/#" + p + window.location.search);
+            return;
+          }
           if (p === "/social-media" || p === "/social-media/") {
             window.location.replace("/unvsocial/" + (window.location.search || ""));
             return;
