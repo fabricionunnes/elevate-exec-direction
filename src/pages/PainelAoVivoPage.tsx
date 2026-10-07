@@ -11,6 +11,9 @@ import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { FunilMes } from "@/components/painel-controle/funil/FunilMes";
+import { Detalhe } from "@/components/painel-controle/Detalhe";
+import type { Filtro } from "@/components/painel-controle/tipos";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import "@/components/painel-controle/painel.css";
 import "@/components/painel-controle/aovivo.css";
@@ -24,9 +27,9 @@ type Dados = {
   caixa: number; inadimplencia: { n: number; valor: number };
   em_call: { lead: string; agente: string | null; desde: string; status: string }[];
   agenda_hoje: { hora: string; lead: string; closer: string | null; etapa: string | null }[];
-  ranking_closers: { nome: string; vendas: number; receita: number; meta: number | null; realizadas: number; no_show: number; vendas_hoje: number; pipeline_n: number; pipeline_v: number }[];
-  ranking_sdr: { nome: string; agendadas: number; agendadas_hoje: number; agendadas_semana: number; realizadas: number; no_show: number; leads_mes: number }[];
-  ranking_agentes?: { nome: string; ativo: boolean; respostas_hoje: number; respostas_mes: number; conversas_mes: number; agendadas_hoje: number; agendadas_semana: number; agendadas_mes: number }[];
+  ranking_closers: { staff_id: string | null; nome: string; vendas: number; receita: number; meta: number | null; realizadas: number; no_show: number; vendas_hoje: number; pipeline_n: number; pipeline_v: number }[];
+  ranking_sdr: { staff_id: string | null; nome: string; agendadas: number; agendadas_hoje: number; agendadas_semana: number; realizadas: number; no_show: number; leads_mes: number }[];
+  ranking_agentes?: { agent_id: string; nome: string; ativo: boolean; respostas_hoje: number; respostas_mes: number; conversas_mes: number; agendadas_hoje: number; agendadas_semana: number; agendadas_mes: number }[];
   meta_dia?: {
     comercial: { meta_mes: number | null; vendido_mes: number; vendido_hoje: number; vendas_hoje: number; du_restantes: number; meta_dia: number | null };
     financeiro: { vencendo_hoje_n: number; vencendo_hoje_v: number; vencendo_hoje_pago_v: number; recebido_hoje: number; recebido_hoje_n: number; a_pagar_hoje_v: number; pago_hoje: number };
@@ -67,6 +70,19 @@ export default function PainelAoVivoPage() {
   const oculto = (txt: string) => (finOculto ? "•••••" : txt);
   const timer = useRef<number | null>(null);
   const [produtos, setProdutos] = useState<Produto[] | null>(null);
+  // Pop-up de detalhe: reaproveita a tela de detalhe do Painel (painel_controle_detalhe) num diálogo.
+  // Cada card clicável chama abrir(bloco, filtro, título). "hoje"/"semana" viram filtro de/ate.
+  const [pop, setPop] = useState<{ bloco: string; filtro?: Filtro; titulo?: string; sub?: string }[]>([]);
+  const mesAtual = new Date().toISOString().slice(0, 7) + "-01";
+  const ymd = (dt: Date) => new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const periodo = (k: "hoje" | "semana" | "mes"): Filtro => {
+    const hj = new Date(); const de = new Date(hj);
+    if (k === "semana") de.setDate(hj.getDate() - ((hj.getDay() + 6) % 7));
+    return k === "mes" ? {} : { de: ymd(de), ate: ymd(hj) };
+  };
+  const rotPer = (k: "hoje" | "semana" | "mes") => (k === "hoje" ? "hoje" : k === "semana" ? "esta semana" : "no mês");
+  const abrir = (bloco: string, filtro?: Filtro, titulo?: string, sub?: string) => setPop([{ bloco, filtro, titulo, sub }]);
+  const empilhar = (bloco: string, filtro?: Filtro, titulo?: string, sub?: string) => setPop((pz) => [...pz, { bloco, filtro, titulo, sub }]);
   // feed paginado: cabe o que a altura do card permitir (TV grande mostra mais, notebook menos)
   const [pagFeed, setPagFeed] = useState(0);
   const feedCaixa = useRef<HTMLDivElement>(null);
@@ -161,15 +177,15 @@ export default function PainelAoVivoPage() {
 
       {md && (
         <section className="av-metas">
-          <MetaDia titulo="META DO DIA · COMERCIAL" cor="acc" p={md.comercial.meta_dia ? Math.min(100, pct(md.comercial.vendido_hoje, md.comercial.meta_dia)) : 0}
+          <MetaDia onClick={() => abrir("vendas", periodo("hoje"), "Vendas de hoje")} titulo="META DO DIA · COMERCIAL" cor="acc" p={md.comercial.meta_dia ? Math.min(100, pct(md.comercial.vendido_hoje, md.comercial.meta_dia)) : 0}
             big={brl(md.comercial.vendido_hoje)} de={md.comercial.meta_dia != null ? `de ${brl(md.comercial.meta_dia)} hoje` : "sem meta cadastrada"}
             itens={[["Vendas hoje", String(md.comercial.vendas_hoje)], ["Falta no mês", brl(Math.max(n(md.comercial.meta_mes) - md.comercial.vendido_mes, 0))], ["Dias úteis", String(md.comercial.du_restantes)]]} />
-          <MetaDia titulo="META DO DIA · FINANCEIRO" cor="bar"
+          <MetaDia onClick={() => abrir("faturas_pagas", periodo("hoje"), "Faturas pagas hoje")} titulo="META DO DIA · FINANCEIRO" cor="bar"
             p={md.financeiro.vencendo_hoje_v > 0 ? Math.min(100, pct(md.financeiro.vencendo_hoje_pago_v, md.financeiro.vencendo_hoje_v)) : md.financeiro.recebido_hoje > 0 ? 100 : 0}
             big={brl(md.financeiro.recebido_hoje)}
             de={md.financeiro.vencendo_hoje_v > 0 ? `recebido de ${brl(md.financeiro.vencendo_hoje_v)} que vencem hoje` : "recebido · nada vence hoje"}
             itens={[["Faturas pagas", String(md.financeiro.recebido_hoje_n)], ["A pagar hoje", brl(md.financeiro.a_pagar_hoje_v)], ["Pago hoje", brl(md.financeiro.pago_hoje)]]} />
-          <MetaDia titulo="META DO DIA · PRODUTO E ENTREGA" cor="good"
+          <MetaDia onClick={() => abrir("tarefas_atrasadas", {}, "Tarefas atrasadas (entrega)")} titulo="META DO DIA · PRODUTO E ENTREGA" cor="good"
             p={md.produto.tarefas_vencem_hoje > 0 ? Math.min(100, pct(md.produto.tarefas_vencem_hoje_feitas, md.produto.tarefas_vencem_hoje)) : 100}
             big={`${md.produto.tarefas_vencem_hoje_feitas}/${md.produto.tarefas_vencem_hoje}`} de="tarefas do dia concluídas"
             itens={[["Reuniões", `${md.produto.reunioes_cs_feitas}/${md.produto.reunioes_cs_hoje}`], ["Atrasadas", String(md.produto.tarefas_atrasadas)], ["Checkup", `${md.produto.checkup_total - md.produto.checkup_pendentes}/${md.produto.checkup_total}`]]} />
@@ -180,7 +196,13 @@ export default function PainelAoVivoPage() {
         {/* coluna 1 inteira: funil 3D */}
         <div className="av-card av-funil-card">
           <div className="av-h">FUNIL DO MÊS <small className="av-h-sub">arraste pra girar</small></div>
-          <Funil3DCompacto itens={funilItens} />
+          <Funil3DCompacto itens={funilItens} onEtapa={(nome) => {
+            if (nome === "Leads") abrir("leads", {}, "Leads do mês");
+            else if (nome === "Contatados") abrir("conversas", {}, "Conversas do mês");
+            else if (nome === "Agendadas") abrir("reunioes", { tipo: "scheduled" }, "Reuniões agendadas no mês");
+            else if (nome === "Realizadas") abrir("reunioes", { tipo: "realizadas" }, "Reuniões realizadas no mês");
+            else abrir("vendas", {}, "Vendas do mês");
+          }} />
         </div>
         {/* linha 1 */}
         <div className="av-card">
@@ -188,22 +210,22 @@ export default function PainelAoVivoPage() {
           <table className="av-tab">
             <thead><tr><th></th><th>Hoje</th><th>Semana</th><th>Mês</th></tr></thead>
             <tbody>
-              <Linha l="Leads novos" v={[h?.leads, s?.leads, m?.leads]} />
-              <Linha l="Reuniões agendadas" v={[h?.agendadas, s?.agendadas, m?.agendadas]} />
-              <Linha l="Reuniões realizadas" v={[h?.realizadas, s?.realizadas, m?.realizadas]} />
-              <Linha l="No-show" v={[h?.no_show, s?.no_show, m?.no_show]} bad />
-              <Linha l="Vendas" v={[h?.vendas_n, s?.vendas_n, m?.vendas_n]} forte />
-              <Linha l="Receita vendida" v={[h?.vendas_v, s?.vendas_v, m?.vendas_v]} dinheiro forte />
+              <Linha l="Leads novos" v={[h?.leads, s?.leads, m?.leads]} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrir("leads", periodo(k), `Leads novos ${rotPer(k)}`); }} />
+              <Linha l="Reuniões agendadas" v={[h?.agendadas, s?.agendadas, m?.agendadas]} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrir("reunioes", { ...periodo(k), tipo: "scheduled" }, `Reuniões agendadas ${rotPer(k)}`); }} />
+              <Linha l="Reuniões realizadas" v={[h?.realizadas, s?.realizadas, m?.realizadas]} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrir("reunioes", { ...periodo(k), tipo: "realizadas" }, `Reuniões realizadas ${rotPer(k)}`); }} />
+              <Linha l="No-show" v={[h?.no_show, s?.no_show, m?.no_show]} bad onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrir("reunioes", { ...periodo(k), tipo: "no_show" }, `No-show ${rotPer(k)}`); }} />
+              <Linha l="Vendas" v={[h?.vendas_n, s?.vendas_n, m?.vendas_n]} forte onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrir("vendas", periodo(k), `Vendas ${rotPer(k)}`); }} />
+              <Linha l="Receita vendida" v={[h?.vendas_v, s?.vendas_v, m?.vendas_v]} dinheiro forte onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrir("vendas", periodo(k), `Vendas ${rotPer(k)}`); }} />
             </tbody>
           </table>
         </div>
         <div className="av-card">
           <div className="av-h">CONVERSAS · HOJE</div>
           <div className="av-kpis">
-            <Kpi l="Recebidas" v={d?.conversas.msgs_in_hoje} />
-            <Kpi l="Enviadas" v={d?.conversas.msgs_out_hoje} />
-            <Kpi l="Conversas ativas" v={d?.conversas.conversas_ativas_hoje} />
-            <Kpi l="Aguardando resposta" v={d?.conversas.aguardando} tom={n(d?.conversas.aguardando) > 20 ? "bad" : "ok"} />
+            <Kpi l="Recebidas" v={d?.conversas.msgs_in_hoje} onClick={() => abrir("conversas", periodo("hoje"), "Conversas com movimento hoje")} />
+            <Kpi l="Enviadas" v={d?.conversas.msgs_out_hoje} onClick={() => abrir("conversas", periodo("hoje"), "Conversas com movimento hoje")} />
+            <Kpi l="Conversas ativas" v={d?.conversas.conversas_ativas_hoje} onClick={() => abrir("conversas", periodo("hoje"), "Conversas ativas hoje")} />
+            <Kpi l="Aguardando resposta" v={d?.conversas.aguardando} tom={n(d?.conversas.aguardando) > 20 ? "bad" : "ok"} onClick={() => abrir("conversas_esperando", {}, "Conversas aguardando resposta")} />
           </div>
           <div className="av-h" style={{ marginTop: 8 }}>AGORA</div>
           <div className="av-list">
@@ -225,14 +247,14 @@ export default function PainelAoVivoPage() {
           <table className="av-tab">
             <thead><tr><th></th><th>Hoje</th><th>Semana</th><th>Mês</th></tr></thead>
             <tbody>
-              <Linha l="Recebido" v={[h?.recebido, s?.recebido, m?.recebido]} dinheiro forte oculto={finOculto} />
-              <Linha l="Pago" v={[h?.pago, s?.pago, m?.pago]} dinheiro oculto={finOculto} />
+              <Linha l="Recebido" v={[h?.recebido, s?.recebido, m?.recebido]} dinheiro forte oculto={finOculto} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrir("faturas_pagas", periodo(k), `Faturas pagas ${rotPer(k)}`); }} />
+              <Linha l="Pago" v={[h?.pago, s?.pago, m?.pago]} dinheiro oculto={finOculto} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrir("contas_pagas", periodo(k), `Contas pagas ${rotPer(k)}`); }} />
               <Linha l="Resultado (caixa)" v={[n(h?.recebido) - n(h?.pago), n(s?.recebido) - n(s?.pago), n(m?.recebido) - n(m?.pago)]} dinheiro sinal oculto={finOculto} />
             </tbody>
           </table>
           <div className="av-kpis" style={{ marginTop: 8 }}>
-            <Kpi l="Saldo nos bancos" v={oculto(brl(d?.caixa))} tom={finOculto ? undefined : n(d?.caixa) >= 0 ? "ok" : "bad"} texto />
-            <Kpi l={`Inadimplência · ${d?.inadimplencia.n ?? 0} faturas`} v={oculto(brl(d?.inadimplencia.valor))} tom={finOculto ? undefined : "bad"} texto />
+            <Kpi l="Saldo nos bancos" v={oculto(brl(d?.caixa))} tom={finOculto ? undefined : n(d?.caixa) >= 0 ? "ok" : "bad"} texto onClick={() => abrir("bancos", {}, "Saldo por conta")} />
+            <Kpi l={`Inadimplência · ${d?.inadimplencia.n ?? 0} faturas`} v={oculto(brl(d?.inadimplencia.valor))} tom={finOculto ? undefined : "bad"} texto onClick={() => abrir("faturas_vencidas", {}, "Faturas vencidas")} />
           </div>
         </div>
 
@@ -277,9 +299,9 @@ export default function PainelAoVivoPage() {
             </ResponsiveContainer>
           </div>
           <div className="av-kpis av-kpis-3">
-            <Kpi l="Projeção do mês" v={brl(projecao)} tom={projecao >= meta && meta > 0 ? "ok" : "bad"} texto />
-            <Kpi l="Leads · 30 d vs 30 d antes" v={vLeads == null ? "-" : `${vLeads > 0 ? "+" : ""}${vLeads}%`} tom={vLeads == null ? undefined : vLeads >= 0 ? "ok" : "bad"} texto />
-            <Kpi l="Reuniões · 30 d vs 30 d antes" v={vReun == null ? "-" : `${vReun > 0 ? "+" : ""}${vReun}%`} tom={vReun == null ? undefined : vReun >= 0 ? "ok" : "bad"} texto />
+            <Kpi l="Projeção do mês" v={brl(projecao)} tom={projecao >= meta && meta > 0 ? "ok" : "bad"} texto onClick={() => abrir("vendas", {}, "Vendas do mês")} />
+            <Kpi l="Leads · 30 d vs 30 d antes" v={vLeads == null ? "-" : `${vLeads > 0 ? "+" : ""}${vLeads}%`} tom={vLeads == null ? undefined : vLeads >= 0 ? "ok" : "bad"} texto onClick={() => abrir("leads", { de: ymd(new Date(Date.now() - 29 * 86400000)), ate: ymd(new Date()) }, "Leads dos últimos 30 dias")} />
+            <Kpi l="Reuniões · 30 d vs 30 d antes" v={vReun == null ? "-" : `${vReun > 0 ? "+" : ""}${vReun}%`} tom={vReun == null ? undefined : vReun >= 0 ? "ok" : "bad"} texto onClick={() => abrir("reunioes", { de: ymd(new Date(Date.now() - 29 * 86400000)), ate: ymd(new Date()), tipo: "scheduled" }, "Reuniões agendadas nos últimos 30 dias")} />
           </div>
         </div>
 
@@ -289,7 +311,7 @@ export default function PainelAoVivoPage() {
             {d?.ranking_closers.map((r, i) => {
               const p = r.meta ? pct(r.receita, r.meta) : null;
               return (
-                <div className="av-pessoa" key={i}>
+                <div className="av-pessoa clk" key={i} role="button" title="Ver vendas" onClick={() => abrir("vendas", r.staff_id ? { closer_id: r.staff_id } : {}, `Vendas do mês · ${r.nome}`)}>
                   <div className="l1"><b>{r.nome}</b><span className="v">{brl(r.receita)}<small> · {r.vendas} {r.vendas === 1 ? "venda" : "vendas"}{r.vendas_hoje > 0 ? ` (+${r.vendas_hoje} hoje)` : ""}</small></span></div>
                   <div className="l2">
                     <span>meta <b className={p == null ? "" : p >= pTempo ? "ok" : "bad"}>{p == null ? "sem meta" : `${p}%`}</b></span>
@@ -307,7 +329,7 @@ export default function PainelAoVivoPage() {
             {d?.ranking_sdr.slice(0, 3).map((r, i) => {
               const pres = r.realizadas + r.no_show > 0 ? pct(r.realizadas, r.realizadas + r.no_show) : null;
               return (
-                <div className="av-pessoa" key={i}>
+                <div className="av-pessoa clk" key={i} role="button" title="Ver reuniões" onClick={() => abrir("reunioes", r.staff_id ? { sdr_id: r.staff_id } : {}, `Reuniões do mês · ${r.nome}`)}>
                   <div className="l1"><b>{r.nome}</b><span className="v">{r.agendadas} <small>{r.agendadas === 1 ? "agendada" : "agendadas"} no mês</small></span></div>
                   <div className="l2">
                     <span>hoje <b>{r.agendadas_hoje}</b></span>
@@ -324,7 +346,7 @@ export default function PainelAoVivoPage() {
           <div className="av-h" style={{ marginTop: 8 }}>AGENTES DE IA · MÊS</div>
           <div className="av-list">
             {(d?.ranking_agentes || []).slice(0, 4).map((r, i) => (
-              <div className="av-pessoa ia" key={i}>
+              <div className="av-pessoa ia clk" key={i} role="button" title="Ver execuções" onClick={() => abrir("agente_runs", { agent_id: r.agent_id, outcome: "sent" }, `Respostas do mês · ${r.nome}`)}>
                 <div className="l1"><b>{r.nome}</b><span className="v">{r.agendadas_mes} <small>{r.agendadas_mes === 1 ? "reunião agendada" : "reuniões agendadas"} no mês</small></span></div>
                 <div className="l2">
                   <span>hoje <b>{r.agendadas_hoje}</b></span>
@@ -376,7 +398,7 @@ export default function PainelAoVivoPage() {
             <thead><tr><th></th><th>Clientes</th><th>MRR</th><th>Recebido</th><th>Churn</th></tr></thead>
             <tbody>
               {(produtos || []).filter((x) => n(x.clientes) > 0 || n(x.mrr) > 0 || n(x.receita) > 0).slice(0, 6).map((x, i) => (
-                <tr key={i}>
+                <tr key={i} className="clk" role="button" title="Ver clientes" onClick={() => abrir("produto_clientes", { produto: x.produto }, `Clientes · ${x.produto}`)}>
                   <th>{x.produto}</th>
                   <td>{x.clientes ?? "-"}</td>
                   <td>{brl(x.mrr)}</td>
@@ -390,12 +412,32 @@ export default function PainelAoVivoPage() {
           <div className="av-h" style={{ marginTop: 8 }}>NEXUS · SAÚDE DO PRODUTO</div>
           <div className="av-kpis av-kpis-4">
             <Kpi l="IA" v={d?.produto ? (d.produto.ia_ok === false ? "FORA" : "no ar") : "-"} tom={d?.produto?.ia_ok === false ? "bad" : "ok"} texto />
-            <Kpi l="Agentes ativos" v={d?.produto?.agentes_ativos} />
-            <Kpi l="Respostas da IA hoje" v={d?.produto?.respostas_ia_hoje} />
+            <Kpi l="Agentes ativos" v={d?.produto?.agentes_ativos} onClick={() => abrir("agente_runs", { ...periodo("mes"), outcome: "sent" }, "Respostas da IA no mês")} />
+            <Kpi l="Respostas da IA hoje" v={d?.produto?.respostas_ia_hoje} onClick={() => abrir("agente_runs", { ...periodo("hoje"), outcome: "sent" }, "Respostas da IA hoje")} />
             <Kpi l={`Custo IA hoje · teto US$ ${d?.produto?.teto_dia_usd ?? "-"}`} v={`US$ ${n(d?.produto?.custo_ia_hoje_usd).toFixed(2)}`} tom={n(d?.produto?.custo_ia_hoje_usd) > n(d?.produto?.teto_dia_usd || 1e9) ? "bad" : undefined} texto />
           </div>
         </div>
       </section>
+
+      <Dialog open={pop.length > 0} onOpenChange={(o) => { if (!o) setPop([]); }}>
+        <DialogContent className="av-pop-content">
+          <div className="pc av-pop">
+            {pop.length > 0 && (() => {
+              const atual = pop[pop.length - 1];
+              return (
+                <>
+                  <div className="av-pop-top">
+                    {pop.length > 1 && <button type="button" className="back" onClick={() => setPop((pz) => pz.slice(0, -1))}>Voltar</button>}
+                    <DialogTitle className="av-pop-titulo">{atual.titulo ?? atual.bloco}</DialogTitle>
+                    <button type="button" className="back" onClick={() => setPop([])}>Fechar</button>
+                  </div>
+                  <Detalhe key={`${atual.bloco}:${JSON.stringify(atual.filtro ?? {})}`} mes={mesAtual} bloco={atual.bloco} filtro={atual.filtro} titulo={atual.titulo} sub={atual.sub} det={empilhar} />
+                </>
+              );
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -415,7 +457,7 @@ function Barra3D(props: any) {
   );
 }
 // O funil 3D do Painel (three.js) encaixado no card: mede a caixa e escala a cena pra caber sem rolagem.
-function Funil3DCompacto({ itens }: { itens: [string, number][] }) {
+function Funil3DCompacto({ itens, onEtapa }: { itens: [string, number][]; onEtapa?: (nome: string) => void }) {
   const caixa = useRef<HTMLDivElement>(null);
   const [dim, setDim] = useState({ w: 0, h: 0 });
   useEffect(() => {
@@ -424,7 +466,7 @@ function Funil3DCompacto({ itens }: { itens: [string, number][] }) {
     medir(); const ro = new ResizeObserver(medir); ro.observe(el); return () => ro.disconnect();
   }, []);
   const etapas = itens.map(([nome, v], i) => ({
-    k: nome, nome, v, conv: i > 0 ? (itens[i - 1][1] > 0 ? `${pct(v, itens[i - 1][1])}% da anterior` : "-") : "no mês", onClick: () => {},
+    k: nome, nome, v, conv: i > 0 ? (itens[i - 1][1] > 0 ? `${pct(v, itens[i - 1][1])}% da anterior` : "-") : "no mês", onClick: () => onEtapa?.(nome),
   }));
   // o funil usa a altura inteira do card (a cena 3D se ajusta ao palco)
   const altura = Math.max(260, dim.h - 8);
@@ -434,9 +476,9 @@ function Funil3DCompacto({ itens }: { itens: [string, number][] }) {
     </div>
   );
 }
-function MetaDia({ titulo, cor, p, big, de, itens }: { titulo: string; cor: "acc" | "bar" | "good"; p: number; big: string; de: string; itens: [string, string][] }) {
+function MetaDia({ titulo, cor, p, big, de, itens, onClick }: { titulo: string; cor: "acc" | "bar" | "good"; p: number; big: string; de: string; itens: [string, string][]; onClick?: () => void }) {
   return (
-    <div className={`av-meta-dia ${cor}`}>
+    <div className={`av-meta-dia ${cor} ${onClick ? "clk" : ""}`} onClick={onClick} role={onClick ? "button" : undefined} title={onClick ? "Ver registros" : undefined}>
       <div className="cab"><span className="av-h">{titulo}</span><b className="pct">{p}%</b></div>
       <div className="corpo">
         <div className="big"><b>{big}</b><span>{de}</span></div>
@@ -448,7 +490,7 @@ function MetaDia({ titulo, cor, p, big, de, itens }: { titulo: string; cor: "acc
     </div>
   );
 }
-function Linha({ l, v, dinheiro, forte, bad, sinal, oculto }: { l: string; v: (number | null | undefined)[]; dinheiro?: boolean; forte?: boolean; bad?: boolean; sinal?: boolean; oculto?: boolean }) {
+function Linha({ l, v, dinheiro, forte, bad, sinal, oculto, onClick }: { l: string; v: (number | null | undefined)[]; dinheiro?: boolean; forte?: boolean; bad?: boolean; sinal?: boolean; oculto?: boolean; onClick?: (col: number) => void }) {
   return (
     <tr className={forte ? "forte" : ""}>
       <th>{l}</th>
@@ -456,11 +498,11 @@ function Linha({ l, v, dinheiro, forte, bad, sinal, oculto }: { l: string; v: (n
         const val = n(x);
         if (oculto) return <td key={i} className="mask">•••••</td>;
         const cls = sinal ? (val < 0 ? "bad" : "ok") : bad && val > 0 ? "bad" : "";
-        return <td key={i} className={cls}>{dinheiro ? brl(val) : val.toLocaleString("pt-BR")}</td>;
+        return <td key={i} className={`${cls} ${onClick ? "clk" : ""}`} onClick={onClick ? () => onClick(i) : undefined} role={onClick ? "button" : undefined} title={onClick ? "Ver registros" : undefined}>{dinheiro ? brl(val) : val.toLocaleString("pt-BR")}</td>;
       })}
     </tr>
   );
 }
-function Kpi({ l, v, tom, texto }: { l: string; v: number | string | null | undefined; tom?: "ok" | "bad"; texto?: boolean }) {
-  return <div className="av-kpi"><small>{l}</small><b className={tom || ""}>{texto ? v : n(v as number).toLocaleString("pt-BR")}</b></div>;
+function Kpi({ l, v, tom, texto, onClick }: { l: string; v: number | string | null | undefined; tom?: "ok" | "bad"; texto?: boolean; onClick?: () => void }) {
+  return <div className={`av-kpi ${onClick ? "clk" : ""}`} onClick={onClick} role={onClick ? "button" : undefined} title={onClick ? "Ver registros" : undefined}><small>{l}</small><b className={tom || ""}>{texto ? v : n(v as number).toLocaleString("pt-BR")}</b></div>;
 }
