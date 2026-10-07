@@ -161,3 +161,10 @@
   .pc.av .av-tab tr.forte td { font-size: clamp(11px, 1.05vw, 17px); }
   .pc.av .av-meta-dia .big b { font-size: clamp(24px, 2.4vw, 34px); }
 }
+
+/* grade de 4 colunas: funil 3D vertical na primeira, ocupando as três linhas */
+.pc.av .av-grid-4 { grid-template-columns: .9fr 1fr 1fr 1fr; grid-template-rows: minmax(0, 1.05fr) minmax(0, .95fr) minmax(0, 1.1fr); }
+.pc.av .av-funil-card { grid-column: 1; grid-row: 1 / 4; }
+.pc.av .av-grid-4 .av-feed { grid-column: 2 / 4; }
+.pc.av .av-funil3d .fn-rot small { font-size: 11px; } .pc.av .av-funil3d .fn-rot b { font-size: clamp(18px, 1.6vw, 26px); }
+@media (max-width: 1100px) { .pc.av .av-grid-4 { grid-template-columns: 1fr; grid-template-rows: none; } .pc.av .av-funil-card { grid-column: auto; grid-row: auto; min-height: 420px; } .pc.av .av-grid-4 .av-feed { grid-column: auto; } }

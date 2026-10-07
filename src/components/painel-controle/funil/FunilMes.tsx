@@ -16,8 +16,10 @@ class Guarda extends Component<{ reserva: ReactNode; children: ReactNode }, { er
   render() { return this.state.erro ? this.props.reserva : this.props.children; }
 }
 
-export function FunilMes({ etapas, selo, onSelo }: {
+export function FunilMes({ etapas, selo, onSelo, altura }: {
   etapas: EtapaFunil[];
+  /** altura forçada (a Gestão à vista usa o card inteiro); sem isso, 340 ou 390 conforme a largura */
+  altura?: number;
   /** texto do selo no topo: "R$ 3,4 mil investidos · CPL R$ 83" */
   selo: string;
   onSelo: () => void;
@@ -42,7 +44,7 @@ export function FunilMes({ etapas, selo, onSelo }: {
   }, []);
 
   const estreito = larg > 0 && larg < 520;
-  const alt = estreito ? 340 : 390;
+  const alt = altura ?? (estreito ? 340 : 390);
   const largFunil = Math.round(larg * (estreito ? 0.46 : 0.52));
 
   const guardarAncoras = useCallback((a: Ancora[]) => {

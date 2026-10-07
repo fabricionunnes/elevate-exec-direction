@@ -175,7 +175,12 @@ export default function PainelAoVivoPage() {
         </section>
       )}
 
-      <section className="av-grid av-grid-3">
+      <section className="av-grid av-grid-4">
+        {/* coluna 1 inteira: funil 3D */}
+        <div className="av-card av-funil-card">
+          <div className="av-h">FUNIL DO MÊS <small className="av-h-sub">arraste pra girar</small></div>
+          <Funil3DCompacto itens={funilItens} />
+        </div>
         {/* linha 1 */}
         <div className="av-card">
           <div className="av-h">RESULTADO · DIA, SEMANA E MÊS</div>
@@ -232,10 +237,6 @@ export default function PainelAoVivoPage() {
 
         {/* linha 2: gráficos */}
         <div className="av-card">
-          <div className="av-h">FUNIL DO MÊS <small className="av-h-sub">arraste pra girar</small></div>
-          <Funil3DCompacto itens={funilItens} />
-        </div>
-        <div className="av-card">
           <div className="av-h">VENDAS POR DIA · MÊS <small className="av-h-sub">barra = receita · linha = leads</small></div>
           <div className="av-chart">
             <ResponsiveContainer width="100%" height="100%">
@@ -281,6 +282,50 @@ export default function PainelAoVivoPage() {
           </div>
         </div>
 
+        <div className="av-card">
+          <div className="av-h">CLOSERS · MÊS</div>
+          <table className="av-tab av-tab-sm">
+            <thead><tr><th></th><th>Vendas</th><th>Receita</th><th>Meta</th><th>Reuniões</th><th>No-show</th><th>Em aberto</th></tr></thead>
+            <tbody>
+              {d?.ranking_closers.map((r, i) => {
+                const p = r.meta ? pct(r.receita, r.meta) : null;
+                return (
+                  <tr key={i}>
+                    <th>{r.nome}</th>
+                    <td>{r.vendas}{r.vendas_hoje > 0 && <small className="ok"> +{r.vendas_hoje} hoje</small>}</td>
+                    <td>{brl(r.receita)}</td>
+                    <td className={p == null ? "" : p >= pTempo ? "ok" : "bad"}>{p == null ? "-" : `${p}%`}</td>
+                    <td>{r.realizadas}</td>
+                    <td className={r.no_show > 0 ? "bad" : ""}>{r.no_show}</td>
+                    <td>{r.pipeline_n} · {brl(r.pipeline_v)}</td>
+                  </tr>
+                );
+              })}
+              {d && !d.ranking_closers.length && <tr><td colSpan={7} className="mute">Nenhuma venda no mês</td></tr>}
+            </tbody>
+          </table>
+          <div className="av-h" style={{ marginTop: 8 }}>PRÉ-VENDAS · MÊS</div>
+          <table className="av-tab av-tab-sm">
+            <thead><tr><th></th><th>Hoje</th><th>Semana</th><th>Mês</th><th>Realizadas</th><th>No-show</th><th>Presença</th></tr></thead>
+            <tbody>
+              {d?.ranking_sdr.map((r, i) => {
+                const pres = r.realizadas + r.no_show > 0 ? pct(r.realizadas, r.realizadas + r.no_show) : null;
+                return (
+                  <tr key={i}>
+                    <th>{r.nome}</th>
+                    <td>{r.agendadas_hoje}</td>
+                    <td>{r.agendadas_semana}</td>
+                    <td>{r.agendadas}</td>
+                    <td>{r.realizadas}</td>
+                    <td className={r.no_show > 0 ? "bad" : ""}>{r.no_show}</td>
+                    <td className={pres == null ? "" : pres >= 60 ? "ok" : "bad"}>{pres == null ? "-" : `${pres}%`}</td>
+                  </tr>
+                );
+              })}
+              {d && !d.ranking_sdr.length && <tr><td colSpan={7} className="mute">Nenhum agendamento no mês</td></tr>}
+            </tbody>
+          </table>
+        </div>
         {/* linha 3 */}
         <div className="av-card av-feed">
           <div className="av-h av-h-fin">
@@ -339,50 +384,6 @@ export default function PainelAoVivoPage() {
             <Kpi l={`Custo IA hoje · teto US$ ${d?.produto?.teto_dia_usd ?? "-"}`} v={`US$ ${n(d?.produto?.custo_ia_hoje_usd).toFixed(2)}`} tom={n(d?.produto?.custo_ia_hoje_usd) > n(d?.produto?.teto_dia_usd || 1e9) ? "bad" : undefined} texto />
           </div>
         </div>
-        <div className="av-card">
-          <div className="av-h">CLOSERS · MÊS</div>
-          <table className="av-tab av-tab-sm">
-            <thead><tr><th></th><th>Vendas</th><th>Receita</th><th>Meta</th><th>Reuniões</th><th>No-show</th><th>Em aberto</th></tr></thead>
-            <tbody>
-              {d?.ranking_closers.map((r, i) => {
-                const p = r.meta ? pct(r.receita, r.meta) : null;
-                return (
-                  <tr key={i}>
-                    <th>{r.nome}</th>
-                    <td>{r.vendas}{r.vendas_hoje > 0 && <small className="ok"> +{r.vendas_hoje} hoje</small>}</td>
-                    <td>{brl(r.receita)}</td>
-                    <td className={p == null ? "" : p >= pTempo ? "ok" : "bad"}>{p == null ? "-" : `${p}%`}</td>
-                    <td>{r.realizadas}</td>
-                    <td className={r.no_show > 0 ? "bad" : ""}>{r.no_show}</td>
-                    <td>{r.pipeline_n} · {brl(r.pipeline_v)}</td>
-                  </tr>
-                );
-              })}
-              {d && !d.ranking_closers.length && <tr><td colSpan={7} className="mute">Nenhuma venda no mês</td></tr>}
-            </tbody>
-          </table>
-          <div className="av-h" style={{ marginTop: 8 }}>PRÉ-VENDAS · MÊS</div>
-          <table className="av-tab av-tab-sm">
-            <thead><tr><th></th><th>Hoje</th><th>Semana</th><th>Mês</th><th>Realizadas</th><th>No-show</th><th>Presença</th></tr></thead>
-            <tbody>
-              {d?.ranking_sdr.map((r, i) => {
-                const pres = r.realizadas + r.no_show > 0 ? pct(r.realizadas, r.realizadas + r.no_show) : null;
-                return (
-                  <tr key={i}>
-                    <th>{r.nome}</th>
-                    <td>{r.agendadas_hoje}</td>
-                    <td>{r.agendadas_semana}</td>
-                    <td>{r.agendadas}</td>
-                    <td>{r.realizadas}</td>
-                    <td className={r.no_show > 0 ? "bad" : ""}>{r.no_show}</td>
-                    <td className={pres == null ? "" : pres >= 60 ? "ok" : "bad"}>{pres == null ? "-" : `${pres}%`}</td>
-                  </tr>
-                );
-              })}
-              {d && !d.ranking_sdr.length && <tr><td colSpan={7} className="mute">Nenhum agendamento no mês</td></tr>}
-            </tbody>
-          </table>
-        </div>
       </section>
     </div>
   );
@@ -414,16 +415,11 @@ function Funil3DCompacto({ itens }: { itens: [string, number][] }) {
   const etapas = itens.map(([nome, v], i) => ({
     k: nome, nome, v, conv: i > 0 ? (itens[i - 1][1] > 0 ? `${pct(v, itens[i - 1][1])}% da anterior` : "-") : "no mês", onClick: () => {},
   }));
-  // FunilMes tem altura própria (340 em caixa estreita, 390 nas largas): escala pra altura do card
-  const alt = dim.w / Math.max(1, dim.h) < 1.4 ? 340 : 390;
-  const esc = dim.h > 0 ? Math.min(1, (dim.h - 4) / (alt + 28)) : 1;
+  // o funil usa a altura inteira do card (a cena 3D se ajusta ao palco)
+  const altura = Math.max(260, dim.h - 8);
   return (
     <div className="av-funil3d" ref={caixa}>
-      {dim.w > 0 && (
-        <div style={{ transform: `scale(${esc})`, transformOrigin: "top left", width: `${100 / esc}%` }}>
-          <FunilMes etapas={etapas} selo="" onSelo={() => {}} />
-        </div>
-      )}
+      {dim.w > 0 && <FunilMes etapas={etapas} selo="" onSelo={() => {}} altura={altura} />}
     </div>
   );
 }
