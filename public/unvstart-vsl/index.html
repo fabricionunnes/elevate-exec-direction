@@ -127,9 +127,6 @@ main,header,footer{position:relative;z-index:1}
 .um-a{font-family:var(--f-display);font-stretch:112%;font-weight:800;font-size:18px;line-height:1.15}
 .um-b{font-weight:600;font-size:15px;opacity:.95}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,75,62,.55)}100%{box-shadow:0 0 0 22px rgba(255,75,62,0)}}
-.paused{position:absolute;inset:0;display:grid;place-items:center;background:rgba(5,11,24,.45);z-index:2}
-.paused span{width:84px;height:84px;border-radius:50%;background:rgba(204,27,27,.92);display:grid;place-items:center}
-.paused svg{width:32px;height:32px;margin-left:5px;fill:#fff}
 .vbar{position:absolute;left:0;right:0;bottom:0;height:5px;background:rgba(255,255,255,.14);z-index:4}
 .vbar i{display:block;height:100%;width:0;background:var(--red);transition:width .5s linear}
 
@@ -289,9 +286,6 @@ footer p + p{margin-top:6px}
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5l5 5m0-5l-5 5" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
             <p class="um-b" id="umB">Toque para ouvir</p>
           </div>
-        </div>
-        <div class="paused" id="paused" hidden aria-hidden="true">
-          <span><svg viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg></span>
         </div>
         <div class="vbar" aria-hidden="true"><i id="pct"></i></div>
       </div>
@@ -522,7 +516,7 @@ footer p + p{margin-top:6px}
   var revelado = false;
   function revelar() {
     if (revelado) return; revelado = true;
-    try { localStorage.setItem('unvstart_vsl_revelado', '1'); } catch (e) {}
+    if (comSom) { try { localStorage.setItem('unvstart_vsl9_preco', '1'); } catch (e) {} }
     site.hidden = false; rodape.hidden = false; site.classList.add('on');
     document.querySelectorAll('a.cta.go').forEach(function (a) { a.setAttribute('href', checkout); });
     // preço contando até 97
@@ -538,11 +532,11 @@ footer p + p{margin-top:6px}
     var a = e.target.closest('a.cta.go');
     if (a) { try { fbq('trackCustom', 'CliqueAssinar', { value: 97, currency: 'BRL', origem: 'vsl' }); } catch (err) {} }
   });
-  var jaViu = false; try { jaViu = localStorage.getItem('unvstart_vsl_revelado') === '1'; } catch (e) {}
+  var jaViu = false; try { jaViu = localStorage.getItem('unvstart_vsl9_preco') === '1'; } catch (e) {}
   if (jaViu || !(cfg.HLS_URL || cfg.MP4_URL)) revelar();
 
   // ===== vídeo: começa mudo sozinho; o toque liga o som e volta pro início =====
-  var screen = document.getElementById('screen'), unmute = document.getElementById('unmute'), paused = document.getElementById('paused');
+  var screen = document.getElementById('screen'), unmute = document.getElementById('unmute');
   var v = document.createElement('video');
   v.muted = true; v.defaultMuted = true; v.autoplay = true; v.playsInline = true; v.preload = 'auto';
   v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', '');
@@ -553,9 +547,7 @@ footer p + p{margin-top:6px}
   function tocar() { var pr = v.play(); if (pr && pr.catch) pr.catch(function (err) { if (!comSom && err && err.name === 'NotAllowedError') { document.getElementById('umA').textContent = 'Seu vídeo está pronto'; document.getElementById('umB').textContent = 'Toque para assistir'; } }); }
   // o navegador pausa vídeo mudo em aba escondida: ao voltar, segue a prévia
   document.addEventListener('visibilitychange', function () { if (!document.hidden && !comSom && v.paused && v.readyState > 0) tocar(); });
-  v.addEventListener('playing', function () { var po = document.getElementById('poster'); if (po) po.remove(); paused.hidden = true; });
-  v.addEventListener('play', function () { paused.hidden = true; });
-  v.addEventListener('pause', function () { if (comSom) paused.hidden = false; });
+  v.addEventListener('playing', function () { var po = document.getElementById('poster'); if (po) po.remove(); });
   function carregar() {
     if (cfg.HLS_URL && v.canPlayType('application/vnd.apple.mpegurl')) { v.src = cfg.HLS_URL; tocar(); }
     else if (cfg.HLS_URL && window.Hls && window.Hls.isSupported()) {
