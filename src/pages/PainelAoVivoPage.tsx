@@ -72,7 +72,8 @@ export default function PainelAoVivoPage() {
   const [produtos, setProdutos] = useState<Produto[] | null>(null);
   // Pop-up de detalhe: reaproveita a tela de detalhe do Painel (painel_controle_detalhe) num diálogo.
   // Cada card clicável chama abrir(bloco, filtro, título). "hoje"/"semana" viram filtro de/ate.
-  const [pop, setPop] = useState<{ bloco: string; filtro?: Filtro; titulo?: string; sub?: string }[]>([]);
+  type Pop = { bloco: string; filtro?: Filtro; titulo?: string; sub?: string; per?: "hoje" | "semana" | "mes"; base?: string; extra?: Filtro };
+  const [pop, setPop] = useState<Pop[]>([]);
   const mesAtual = new Date().toISOString().slice(0, 7) + "-01";
   const ymd = (dt: Date) => new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const periodo = (k: "hoje" | "semana" | "mes"): Filtro => {
@@ -82,6 +83,13 @@ export default function PainelAoVivoPage() {
   };
   const rotPer = (k: "hoje" | "semana" | "mes") => (k === "hoje" ? "hoje" : k === "semana" ? "esta semana" : "no mês");
   const abrir = (bloco: string, filtro?: Filtro, titulo?: string, sub?: string) => setPop([{ bloco, filtro, titulo, sub }]);
+  // abre com período alternável (Hoje / Semana / Mês no topo do pop-up): quando "hoje" vem vazio, um clique mostra o mês
+  const abrirPer = (bloco: string, k: "hoje" | "semana" | "mes", base: string, extra: Filtro = {}) =>
+    setPop([{ bloco, filtro: { ...periodo(k), ...extra }, titulo: `${base} ${rotPer(k)}`, per: k, base, extra }]);
+  const trocarPer = (k: "hoje" | "semana" | "mes") => setPop((pz) => {
+    const a = pz[pz.length - 1]; if (!a?.base) return pz;
+    return [...pz.slice(0, -1), { ...a, filtro: { ...periodo(k), ...(a.extra || {}) }, titulo: `${a.base} ${rotPer(k)}`, per: k }];
+  });
   const empilhar = (bloco: string, filtro?: Filtro, titulo?: string, sub?: string) => setPop((pz) => [...pz, { bloco, filtro, titulo, sub }]);
   // feed paginado: cabe o que a altura do card permitir (TV grande mostra mais, notebook menos)
   const [pagFeed, setPagFeed] = useState(0);
@@ -177,10 +185,10 @@ export default function PainelAoVivoPage() {
 
       {md && (
         <section className="av-metas">
-          <MetaDia onClick={() => abrir("vendas", periodo("hoje"), "Vendas de hoje")} titulo="META DO DIA · COMERCIAL" cor="acc" p={md.comercial.meta_dia ? Math.min(100, pct(md.comercial.vendido_hoje, md.comercial.meta_dia)) : 0}
+          <MetaDia onClick={() => abrirPer("vendas", "hoje", "Vendas")} titulo="META DO DIA · COMERCIAL" cor="acc" p={md.comercial.meta_dia ? Math.min(100, pct(md.comercial.vendido_hoje, md.comercial.meta_dia)) : 0}
             big={brl(md.comercial.vendido_hoje)} de={md.comercial.meta_dia != null ? `de ${brl(md.comercial.meta_dia)} hoje` : "sem meta cadastrada"}
             itens={[["Vendas hoje", String(md.comercial.vendas_hoje)], ["Falta no mês", brl(Math.max(n(md.comercial.meta_mes) - md.comercial.vendido_mes, 0))], ["Dias úteis", String(md.comercial.du_restantes)]]} />
-          <MetaDia onClick={() => abrir("faturas_pagas", periodo("hoje"), "Faturas pagas hoje")} titulo="META DO DIA · FINANCEIRO" cor="bar"
+          <MetaDia onClick={() => abrirPer("faturas_pagas", "hoje", "Faturas pagas")} titulo="META DO DIA · FINANCEIRO" cor="bar"
             p={md.financeiro.vencendo_hoje_v > 0 ? Math.min(100, pct(md.financeiro.vencendo_hoje_pago_v, md.financeiro.vencendo_hoje_v)) : md.financeiro.recebido_hoje > 0 ? 100 : 0}
             big={brl(md.financeiro.recebido_hoje)}
             de={md.financeiro.vencendo_hoje_v > 0 ? `recebido de ${brl(md.financeiro.vencendo_hoje_v)} que vencem hoje` : "recebido · nada vence hoje"}
@@ -210,21 +218,21 @@ export default function PainelAoVivoPage() {
           <table className="av-tab">
             <thead><tr><th></th><th>Hoje</th><th>Semana</th><th>Mês</th></tr></thead>
             <tbody>
-              <Linha l="Leads novos" v={[h?.leads, s?.leads, m?.leads]} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrir("leads", periodo(k), `Leads novos ${rotPer(k)}`); }} />
-              <Linha l="Reuniões agendadas" v={[h?.agendadas, s?.agendadas, m?.agendadas]} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrir("reunioes", { ...periodo(k), tipo: "scheduled" }, `Reuniões agendadas ${rotPer(k)}`); }} />
-              <Linha l="Reuniões realizadas" v={[h?.realizadas, s?.realizadas, m?.realizadas]} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrir("reunioes", { ...periodo(k), tipo: "realizadas" }, `Reuniões realizadas ${rotPer(k)}`); }} />
-              <Linha l="No-show" v={[h?.no_show, s?.no_show, m?.no_show]} bad onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrir("reunioes", { ...periodo(k), tipo: "no_show" }, `No-show ${rotPer(k)}`); }} />
-              <Linha l="Vendas" v={[h?.vendas_n, s?.vendas_n, m?.vendas_n]} forte onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrir("vendas", periodo(k), `Vendas ${rotPer(k)}`); }} />
-              <Linha l="Receita vendida" v={[h?.vendas_v, s?.vendas_v, m?.vendas_v]} dinheiro forte onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrir("vendas", periodo(k), `Vendas ${rotPer(k)}`); }} />
+              <Linha l="Leads novos" v={[h?.leads, s?.leads, m?.leads]} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrirPer("leads", k, "Leads novos"); }} />
+              <Linha l="Reuniões agendadas" v={[h?.agendadas, s?.agendadas, m?.agendadas]} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrirPer("reunioes", k, "Reuniões agendadas", { tipo: "scheduled" }); }} />
+              <Linha l="Reuniões realizadas" v={[h?.realizadas, s?.realizadas, m?.realizadas]} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrirPer("reunioes", k, "Reuniões realizadas", { tipo: "realizadas" }); }} />
+              <Linha l="No-show" v={[h?.no_show, s?.no_show, m?.no_show]} bad onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrirPer("reunioes", k, "No-show", { tipo: "no_show" }); }} />
+              <Linha l="Vendas" v={[h?.vendas_n, s?.vendas_n, m?.vendas_n]} forte onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrirPer("vendas", k, "Vendas"); }} />
+              <Linha l="Receita vendida" v={[h?.vendas_v, s?.vendas_v, m?.vendas_v]} dinheiro forte onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrirPer("vendas", k, "Vendas"); }} />
             </tbody>
           </table>
         </div>
         <div className="av-card">
           <div className="av-h">CONVERSAS · HOJE</div>
           <div className="av-kpis">
-            <Kpi l="Recebidas" v={d?.conversas.msgs_in_hoje} onClick={() => abrir("conversas", periodo("hoje"), "Conversas com movimento hoje")} />
-            <Kpi l="Enviadas" v={d?.conversas.msgs_out_hoje} onClick={() => abrir("conversas", periodo("hoje"), "Conversas com movimento hoje")} />
-            <Kpi l="Conversas ativas" v={d?.conversas.conversas_ativas_hoje} onClick={() => abrir("conversas", periodo("hoje"), "Conversas ativas hoje")} />
+            <Kpi l="Recebidas" v={d?.conversas.msgs_in_hoje} onClick={() => abrirPer("conversas", "hoje", "Conversas com movimento")} />
+            <Kpi l="Enviadas" v={d?.conversas.msgs_out_hoje} onClick={() => abrirPer("conversas", "hoje", "Conversas com movimento")} />
+            <Kpi l="Conversas ativas" v={d?.conversas.conversas_ativas_hoje} onClick={() => abrirPer("conversas", "hoje", "Conversas ativas")} />
             <Kpi l="Aguardando resposta" v={d?.conversas.aguardando} tom={n(d?.conversas.aguardando) > 20 ? "bad" : "ok"} onClick={() => abrir("conversas_esperando", {}, "Conversas aguardando resposta")} />
           </div>
           <div className="av-h" style={{ marginTop: 8 }}>AGORA</div>
@@ -247,8 +255,8 @@ export default function PainelAoVivoPage() {
           <table className="av-tab">
             <thead><tr><th></th><th>Hoje</th><th>Semana</th><th>Mês</th></tr></thead>
             <tbody>
-              <Linha l="Recebido" v={[h?.recebido, s?.recebido, m?.recebido]} dinheiro forte oculto={finOculto} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrir("faturas_pagas", periodo(k), `Faturas pagas ${rotPer(k)}`); }} />
-              <Linha l="Pago" v={[h?.pago, s?.pago, m?.pago]} dinheiro oculto={finOculto} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrir("contas_pagas", periodo(k), `Contas pagas ${rotPer(k)}`); }} />
+              <Linha l="Recebido" v={[h?.recebido, s?.recebido, m?.recebido]} dinheiro forte oculto={finOculto} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrirPer("faturas_pagas", k, "Faturas pagas"); }} />
+              <Linha l="Pago" v={[h?.pago, s?.pago, m?.pago]} dinheiro oculto={finOculto} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrirPer("contas_pagas", k, "Contas pagas"); }} />
               <Linha l="Resultado (caixa)" v={[n(h?.recebido) - n(h?.pago), n(s?.recebido) - n(s?.pago), n(m?.recebido) - n(m?.pago)]} dinheiro sinal oculto={finOculto} />
             </tbody>
           </table>
@@ -398,7 +406,7 @@ export default function PainelAoVivoPage() {
             <thead><tr><th></th><th>Clientes</th><th>MRR</th><th>Recebido</th><th>Churn</th></tr></thead>
             <tbody>
               {(produtos || []).filter((x) => n(x.clientes) > 0 || n(x.mrr) > 0 || n(x.receita) > 0).slice(0, 6).map((x, i) => (
-                <tr key={i} className="clk" role="button" title="Ver clientes" onClick={() => abrir("produto_clientes", { produto: x.produto }, `Clientes · ${x.produto}`)}>
+                <tr key={i} className="clk" role="button" title="Ver clientes" onClick={() => (n(x.clientes) > 0 ? abrir("produto_clientes", { produto: x.produto }, `Clientes · ${x.produto}`) : abrir("produto_receita", { produto: x.produto }, `Faturas pagas no mês · ${x.produto}`))}>
                   <th>{x.produto}</th>
                   <td>{x.clientes ?? "-"}</td>
                   <td>{brl(x.mrr)}</td>
@@ -412,8 +420,8 @@ export default function PainelAoVivoPage() {
           <div className="av-h" style={{ marginTop: 8 }}>NEXUS · SAÚDE DO PRODUTO</div>
           <div className="av-kpis av-kpis-4">
             <Kpi l="IA" v={d?.produto ? (d.produto.ia_ok === false ? "FORA" : "no ar") : "-"} tom={d?.produto?.ia_ok === false ? "bad" : "ok"} texto />
-            <Kpi l="Agentes ativos" v={d?.produto?.agentes_ativos} onClick={() => abrir("agente_runs", { ...periodo("mes"), outcome: "sent" }, "Respostas da IA no mês")} />
-            <Kpi l="Respostas da IA hoje" v={d?.produto?.respostas_ia_hoje} onClick={() => abrir("agente_runs", { ...periodo("hoje"), outcome: "sent" }, "Respostas da IA hoje")} />
+            <Kpi l="Agentes ativos" v={d?.produto?.agentes_ativos} onClick={() => abrirPer("agente_runs", "mes", "Respostas da IA", { outcome: "sent" })} />
+            <Kpi l="Respostas da IA hoje" v={d?.produto?.respostas_ia_hoje} onClick={() => abrirPer("agente_runs", "hoje", "Respostas da IA", { outcome: "sent" })} />
             <Kpi l={`Custo IA hoje · teto US$ ${d?.produto?.teto_dia_usd ?? "-"}`} v={`US$ ${n(d?.produto?.custo_ia_hoje_usd).toFixed(2)}`} tom={n(d?.produto?.custo_ia_hoje_usd) > n(d?.produto?.teto_dia_usd || 1e9) ? "bad" : undefined} texto />
           </div>
         </div>
@@ -429,6 +437,13 @@ export default function PainelAoVivoPage() {
                   <div className="av-pop-top">
                     {pop.length > 1 && <button type="button" className="back" onClick={() => setPop((pz) => pz.slice(0, -1))}>Voltar</button>}
                     <DialogTitle className="av-pop-titulo">{atual.titulo ?? atual.bloco}</DialogTitle>
+                    {atual.per && (
+                      <div className="av-pop-per">
+                        {(["hoje", "semana", "mes"] as const).map((k) => (
+                          <button type="button" key={k} className={`back ${atual.per === k ? "acc" : ""}`} onClick={() => trocarPer(k)}>{k === "hoje" ? "Hoje" : k === "semana" ? "Semana" : "Mês"}</button>
+                        ))}
+                      </div>
+                    )}
                     <button type="button" className="back" onClick={() => setPop([])}>Fechar</button>
                   </div>
                   <Detalhe key={`${atual.bloco}:${JSON.stringify(atual.filtro ?? {})}`} mes={mesAtual} bloco={atual.bloco} filtro={atual.filtro} titulo={atual.titulo} sub={atual.sub} det={empilhar} />

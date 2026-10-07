@@ -221,3 +221,6 @@
 .pc.av-pop { background: #0E0E0E; color: #F4F2EC; max-height: 92dvh; overflow: auto; padding: 14px 18px 18px; }
 .pc.av-pop .av-pop-top { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
 .pc.av-pop .av-pop-titulo { flex: 1; font: 700 16px var(--f); color: var(--ink); margin: 0; }
+
+.pc.av-pop .av-pop-per { display: flex; gap: 6px; }
+.pc.av-pop .av-pop-per .back { padding: 5px 10px; font-size: 11px; }
