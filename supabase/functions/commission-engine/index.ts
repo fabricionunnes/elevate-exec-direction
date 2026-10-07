@@ -299,7 +299,9 @@ Deno.serve(async (req) => {
 
       // vencimento: dia configurado do mês ATUAL (o da apuração)
       const dueDay = Math.min(28, Math.max(1, rule.due_day || 5));
-      const dueDate = `${ymOf(today)}-${String(dueDay).padStart(2, "0")}`;
+      // body.due_date (YYYY-MM-DD) força o vencimento: usado pra reemitir uma competência
+      // depois do dia padrão (Be Gym set/26 reemitida pra 15/10, pedido do Fabrício).
+      const dueDate = /^\d{4}-\d{2}-\d{2}$/.test(String(body.due_date || "")) ? String(body.due_date) : `${ymOf(today)}-${String(dueDay).padStart(2, "0")}`;
       const compLabel = `${String(cm).padStart(2, "0")}/${cy}`;
       const description = (rule.description?.trim() || `Comissão por resultado — ${kpi.name}`) + ` (${compLabel})`;
 
