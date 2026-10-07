@@ -26,6 +26,69 @@ const fmtKpi = (v: number, t: string) =>
     : t === "percentage" ? `${v.toFixed(1)}%`
     : v.toLocaleString("pt-BR");
 
+// Boleto da comissão no Asaas. Pedido do Fabrício (07/10/2026): "os vencimentos de boletos por
+// comissão batida também tem que seguir a régua de cobranças e fluxos de mensagens do financeiro".
+// Pra isso a fatura precisa do que toda fatura recorrente tem: cobrança no Asaas (link), id do
+// pagamento (o webhook casa por pagarme_charge_id e dá baixa sozinho) e send_whatsapp = true.
+// O cliente do Asaas vem da assinatura da recorrência ativa da empresa (mesma conta Asaas).
+// Juros 1%/mês, multa 2% e 5% de desconto até 1 dia antes: igual às mensalidades, porque a
+// régua escreve esses números nas mensagens.
+// deno-lint-ignore no-explicit-any
+async function resolverChaveAsaas(supabase: any, accountId: string | null): Promise<string | null> {
+  if (accountId) {
+    const { data: acc } = await supabase.from("asaas_accounts").select("api_key_secret_name").eq("id", accountId).maybeSingle();
+    if (acc?.api_key_secret_name) {
+      const env = Deno.env.get(acc.api_key_secret_name);
+      if (env) return env;
+      const { data: porRef } = await supabase.from("tenant_integration_secrets").select("secret_value").eq("reference_id", accountId).eq("provider", "asaas").limit(1);
+      if (porRef?.[0]?.secret_value) return porRef[0].secret_value;
+      const { data: porNome } = await supabase.from("tenant_integration_secrets").select("secret_value").eq("secret_name", acc.api_key_secret_name).limit(1);
+      if (porNome?.[0]?.secret_value) return porNome[0].secret_value;
+    }
+  }
+  return Deno.env.get("ASAAS_API_KEY") || null;
+}
+// deno-lint-ignore no-explicit-any
+async function criarBoletoAsaas(supabase: any, o: { companyId: string; invoiceId: string; cents: number; dueDate: string; description: string }) {
+  try {
+    const { data: charges } = await supabase.from("company_recurring_charges")
+      .select("pagarme_plan_id, asaas_account_id, customer_document, created_at")
+      .eq("company_id", o.companyId).eq("is_active", true).not("pagarme_plan_id", "is", null)
+      .order("created_at", { ascending: false }).limit(5);
+    const ch = (charges || [])[0];
+    if (!ch) return { ok: false, reason: "empresa sem recorrência com assinatura no Asaas (não sei qual cliente cobrar)" };
+    const key = await resolverChaveAsaas(supabase, ch.asaas_account_id || null);
+    if (!key) return { ok: false, reason: "sem chave do Asaas" };
+    const H = { "Content-Type": "application/json", access_token: key };
+    const subR = await fetch(`https://api.asaas.com/v3/subscriptions/${ch.pagarme_plan_id}`, { headers: H });
+    const sub = subR.ok ? await subR.json() : null;
+    let customer: string | null = sub?.customer || null;
+    if (!customer && ch.customer_document) {
+      const cR = await fetch(`https://api.asaas.com/v3/customers?cpfCnpj=${String(ch.customer_document).replace(/\D/g, "")}&limit=1`, { headers: H });
+      const c = cR.ok ? await cR.json() : null;
+      customer = c?.data?.[0]?.id || null;
+    }
+    if (!customer) return { ok: false, reason: `assinatura ${ch.pagarme_plan_id} sem cliente no Asaas` };
+    const pR = await fetch("https://api.asaas.com/v3/payments", {
+      method: "POST", headers: H,
+      body: JSON.stringify({
+        customer, billingType: "BOLETO", value: o.cents / 100, dueDate: o.dueDate,
+        description: o.description, externalReference: o.invoiceId, notificationDisabled: true,
+        interest: { value: 1, type: "PERCENTAGE" }, fine: { value: 2, type: "PERCENTAGE" },
+        discount: { value: 5, type: "PERCENTAGE", dueDateLimitDays: 1 },
+      }),
+    });
+    const pay = await pR.json().catch(() => ({}));
+    if (!pR.ok || !pay?.id) return { ok: false, reason: `Asaas ${pR.status}: ${JSON.stringify(pay).slice(0, 160)}` };
+    await supabase.from("company_invoices").update({
+      pagarme_charge_id: pay.id, payment_link_url: pay.invoiceUrl || pay.bankSlipUrl || null, payment_method: "boleto",
+    }).eq("id", o.invoiceId);
+    return { ok: true, payment_id: pay.id, url: pay.invoiceUrl || pay.bankSlipUrl || null, account: ch.asaas_account_id || "padrão" };
+  } catch (e) {
+    return { ok: false, reason: String((e as Error).message || e).slice(0, 160) };
+  }
+}
+
 // Avisa o cliente na hora que a fatura nasce: a meta, o que ele entregou, a
 // comissão ACORDADA (a regra), o valor do mês e o link pra pagar.
 //
@@ -36,7 +99,7 @@ const fmtKpi = (v: number, t: string) =>
 // quem paga, não ficava sabendo.
 interface AvisoOpts {
   companyId: string; kpiName: string; kpiType: string; meta: number; realizado: number; pct: number;
-  payoutCents: number; dueDate: string; competencia: string; token: string | null;
+  payoutCents: number; dueDate: string; competencia: string; token: string | null; boletoUrl?: string | null;
   tierLabel: string | null; tierHit: boolean; regraTexto: string; calculo: string; usaPercent: boolean;
 }
 
@@ -76,7 +139,8 @@ function textoAviso(nome: string, o: AvisoOpts): string {
     `*Comissão acordada:* ${o.regraTexto}\n` +
     `*Comissão do mês:* ${brl(o.payoutCents)}${o.calculo ? ` (${o.calculo})` : ""}\n` +
     `*Vencimento:* ${venc}\n\n` +
-    (link ? `Para pagar, é só acessar:\n${link}\n\n` : "") +
+    (o.boletoUrl ? `Boleto/Pix pra pagar:\n${o.boletoUrl}\n\n` : "") +
+    (link ? `${o.boletoUrl ? "Detalhes da fatura" : "Para pagar, é só acessar"}:\n${link}\n\n` : "") +
     `${fecho} Seguimos juntos!`
   );
 }
@@ -259,18 +323,25 @@ Deno.serve(async (req) => {
         due_date: dueDate,
         status: "pending",
         notes: `[COMISSAO] competência ${competencia} · ${kpi.name}: ${realizado} de ${meta} (${pct.toFixed(0)}%) · ${partes}`,
-        // o aviso desta cobrança é o texto próprio abaixo (explica meta x realizado),
-        // então a régua padrão não deve mandar a mensagem genérica de fatura
-        send_whatsapp: false,
+        // o aviso de nascimento é o texto próprio abaixo (meta x realizado); daí em diante a
+        // fatura segue a régua de cobranças igual a qualquer mensalidade (1 dia antes, no dia,
+        // atrasos), por isso send_whatsapp fica ligado. Até 07/10/2026 ficava desligado.
+        send_whatsapp: true,
+        payment_method: "boleto",
       }).select("id, public_token").single();
       if (invErr) throw new Error(invErr.message);
 
-      const aviso = await avisarCliente(supabase, { ...avisoOpts, token: inv?.public_token || null });
+      // boleto no Asaas (link + baixa automática pelo webhook)
+      const boleto = inv?.id
+        ? await criarBoletoAsaas(supabase, { companyId: rule.company_id, invoiceId: inv.id, cents: totalCents, dueDate, description })
+        : { ok: false, reason: "fatura sem id" };
+
+      const aviso = await avisarCliente(supabase, { ...avisoOpts, token: inv?.public_token || null, boletoUrl: boleto.ok ? boleto.url : null });
 
       await supabase.from("company_commission_runs").insert({
         ...baseRun, tier_id: tier?.id || null, payout_cents: totalCents, invoice_id: inv?.id || null,
         status: "paid_tier",
-        detail: `${partes} · fatura ${dueDate} · aviso ao cliente: ${aviso.sent ? `enviado (${(aviso as any).para})` : `não enviado (${aviso.reason})`}`,
+        detail: `${partes} · fatura ${dueDate} · boleto Asaas: ${boleto.ok ? `criado (${(boleto as any).payment_id})` : `NÃO criado (${(boleto as any).reason})`} · aviso ao cliente: ${aviso.sent ? `enviado (${(aviso as any).para})` : `não enviado (${aviso.reason})`}`,
       });
 
       results.push({ company_id: rule.company_id, status: "faturado", payout_cents: totalCents, partes, invoice_id: inv?.id, due_date: dueDate, competencia, aviso });
