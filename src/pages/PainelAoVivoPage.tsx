@@ -180,12 +180,12 @@ export default function PainelAoVivoPage() {
           <div className="av-h">ACONTECENDO</div>
           <div className="av-list">
             {d?.feed.slice(0, 14).map((f, i) => (
-              <div className={`av-row ${f.tipo}`} key={i}><b>{hora(f.ts)}</b> {finOculto && f.tipo === "recebido" ? f.texto.replace(/R\$\s?[\d.,]+/, "R$ •••••") : f.texto}</div>
+              <div className={`av-row ${f.tipo}`} key={i}><b>{hora(f.ts)}</b> {f.texto}</div>
             ))}
             {d && !d.feed.length && <div className="av-row mute">Nada ainda hoje</div>}
           </div>
         </div>
-        <div className={`av-card ${finOculto ? "av-oculto" : ""}`}>
+        <div className="av-card">
           <div className="av-h">PRODUTOS · MÊS</div>
           <table className="av-tab av-tab-sm">
             <thead><tr><th></th><th>Clientes</th><th>MRR</th><th>Recebido</th><th>Churn</th></tr></thead>
@@ -194,8 +194,8 @@ export default function PainelAoVivoPage() {
                 <tr key={i}>
                   <th>{x.produto}</th>
                   <td>{x.clientes ?? "-"}</td>
-                  <td className={finOculto ? "mask" : ""}>{finOculto ? "•••••" : brl(x.mrr)}</td>
-                  <td className={finOculto ? "mask" : ""}>{finOculto ? "•••••" : brl(x.receita)}</td>
+                  <td>{brl(x.mrr)}</td>
+                  <td>{brl(x.receita)}</td>
                   <td className={(x.churn_n ?? 0) > 0 ? "bad" : ""}>{x.churn_n ?? 0}</td>
                 </tr>
               ))}
