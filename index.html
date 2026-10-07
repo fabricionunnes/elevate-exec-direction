@@ -10,6 +10,14 @@
         // fora do SPA). Anúncios antigos apontam pra /#/social-media — redireciona na hora,
         // antes do bundle carregar, preservando UTMs tanto do search quanto do hash.
         var h = window.location.hash || "";
+        // UNV Finance também é estática, em /unvfinance.
+        if (h === "#/finance" || h.indexOf("#/finance?") === 0) {
+          var qsf = window.location.search || "";
+          var iqf = h.indexOf("?");
+          if (iqf > -1) qsf = qsf ? qsf + "&" + h.slice(iqf + 1) : "?" + h.slice(iqf + 1);
+          window.location.replace("/unvfinance/" + qsf);
+          return;
+        }
         if (h.indexOf("#/social-media") === 0) {
           var qs = window.location.search || "";
           var iq = h.indexOf("?");
@@ -28,6 +36,10 @@
         if (!window.location.hash) {
           if (p === "/social-media" || p === "/social-media/") {
             window.location.replace("/unvsocial/" + (window.location.search || ""));
+            return;
+          }
+          if (p === "/finance" || p === "/finance/") {
+            window.location.replace("/unvfinance/" + (window.location.search || ""));
             return;
           }
           if (p === "/unv-start" || p === "/unv-start/") {
@@ -172,6 +184,7 @@
           <li><a href="/blog/">Blog: gestão comercial na prática, por Fabrício Nunnes</a></li>
           <li><a href="/unvsocial/">UNV Social — gestão de redes sociais</a></li>
           <li><a href="/unvads/">UNV Ads — tráfego pago</a></li>
+          <li><a href="/unvfinance/">UNV Finance — consultoria financeira e BPI</a></li>
         </ul>
       </main>
     </div>

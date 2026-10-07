@@ -198,12 +198,12 @@ const leadershipProduct: Product = {
 const strategicProducts: Product[] = [
   {
     name: "UNV Finance",
-    tagline: "Controle financeiro",
+    tagline: "Consultoria financeira + BPI",
     description:
-      "Clareza financeira simples, visual e acionável. DRE gerencial, fluxo de caixa, margem por produto e projeção de 90 dias.",
+      "Consultoria financeira estratégica para auditar e corrigir gargalos, seguida do BPI financeiro com gestão à vista. Caixa previsível, dívida sob controle e decisão com número.",
     icp: "Empresários • Empresas em crescimento",
     href: "/finance",
-    investment: "R$ 3.000/mês",
+    investment: "R$ 5.000/mês (12 meses)",
   },
   {
     name: "UNV People",

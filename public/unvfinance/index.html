@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>UNV Finance — Consultoria Financeira + BPI | Aloísio Ramalho e Fabrício Nunnes</title>
+<meta name="description" content="Sua empresa gera resultado ou só trabalha para pagar contas? A UNV Finance une consultoria financeira estratégica e BPI (gestão financeira à vista) para organizar o caixa, reduzir dívidas e dar previsibilidade. Parceria Aloísio Ramalho + Fabrício Nunnes." />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="https://unvholdings.com.br/unvfinance" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="UNV Finance — Sua empresa fatura. Por que o dinheiro nunca sobra?" />
+<meta property="og:description" content="Consultoria financeira estratégica + BPI financeiro em um só contrato. Caixa organizado, dívida sob controle e decisão com número na mão." />
+<meta property="og:image" content="https://unvholdings.com.br/unvfinance/og.jpg" />
+<meta name="theme-color" content="#0B0D12" />
+<link rel="preload" as="image" href="./aloisio.jpg" fetchpriority="high" />
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="./favicon-192.png" />
+<link rel="apple-touch-icon" href="./favicon-180.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;0,800;1,500;1,700&family=IBM+Plex+Mono:wght@400;500;600&family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --ink:#0B0D12; --ink-2:#10141C; --ink-3:#161B26; --navy:#0E1A36;
+    --cream:#EFE6D2; --cream-2:#E4D8BE; --paper:#F1E8D4;
+    --muted:rgba(239,230,210,.66); --muted2:rgba(239,230,210,.42);
+    --brass:#C9A35B; --brass-2:#A9843F; --brass-line:rgba(201,163,91,.28); --brass-soft:rgba(201,163,91,.08);
+    --red:#D42A30; --red-dark:#A91D22;
+    --line:rgba(239,230,210,.1);
+    --serif:"Playfair Display",Georgia,"Times New Roman",serif;
+    --mono:"IBM Plex Mono",ui-monospace,"Courier New",monospace;
+    --sans:"Libre Franklin",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+  body{background:var(--ink);color:var(--cream);font-family:var(--sans);line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased;position:relative}
+  /* grão de filme */
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:100;opacity:.07;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  img{display:block;max-width:100%;height:auto}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 clamp(16px,6vw,72px)}
+  .pinstripe{background-image:repeating-linear-gradient(90deg,rgba(201,163,91,.035) 0 1px,transparent 1px 64px)}
+  em{font-style:italic;color:var(--brass)}
+  em.r{color:var(--red)}
+
+  /* tipografia */
+  h1,h2,h3{font-family:var(--serif);font-weight:700;letter-spacing:-.01em}
+  h1{font-size:clamp(38px,5.6vw,68px);line-height:1.04}
+  h2{font-size:clamp(30px,4.2vw,50px);line-height:1.08}
+  .kicker{display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--brass);margin-bottom:18px}
+  .kicker::before{content:"";width:34px;height:1px;background:var(--brass)}
+  .center .kicker{justify-content:center}
+  .center .kicker::after{content:"";width:34px;height:1px;background:var(--brass)}
+  .num{font-family:var(--mono);font-size:11px;color:var(--muted2);letter-spacing:.18em}
+  .lead{font-size:17.5px;color:var(--muted);line-height:1.75;max-width:720px;margin-top:18px}
+  .center{text-align:center}
+  .center .lead{margin-left:auto;margin-right:auto}
+
+  /* ornamento art déco */
+  .orn{display:flex;align-items:center;justify-content:center;gap:12px;color:var(--brass);margin:0 auto}
+  .orn::before,.orn::after{content:"";height:1px;width:80px;background:linear-gradient(90deg,transparent,var(--brass))}
+  .orn::after{background:linear-gradient(90deg,var(--brass),transparent)}
+  .orn svg{width:14px;height:14px}
+
+  /* botões */
+  .btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:10px;background:var(--red);color:#fff;border:none;border-radius:2px;padding:19px 30px;font-family:var(--mono);font-size:12.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:background .2s,transform .05s;width:100%;text-align:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 0 0 1px var(--red-dark)}
+  .btn::after{content:"";position:absolute;inset:4px;border:1px solid rgba(255,255,255,.22);pointer-events:none}
+  .btn:hover{background:var(--red-dark)}
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{opacity:.6;cursor:default}
+  .btn svg{width:16px;height:16px;flex:0 0 auto}
+  .btn-ghost{background:transparent;color:var(--cream);box-shadow:inset 0 0 0 1px var(--brass-line)}
+  .btn-ghost::after{border-color:rgba(201,163,91,.15)}
+  .btn-ghost:hover{background:var(--brass-soft)}
+  .tick{color:var(--brass);width:14px;height:14px;flex:0 0 auto}
+  section{position:relative}
+  .rule-top{border-top:1px solid var(--brass-line)}
+
+  /* TOPO */
+  .top{position:sticky;top:0;z-index:30;background:rgba(11,13,18,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--brass-line)}
+  .top .wrap{display:flex;align-items:center;justify-content:space-between;height:68px;gap:16px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .mark{height:34px;width:auto}
+  .brand .wm{font-family:var(--serif);font-size:19px;font-weight:700;letter-spacing:.04em;line-height:1}
+  .brand .wm small{display:block;font-family:var(--mono);font-size:9.5px;font-weight:500;color:var(--brass);letter-spacing:.24em;text-transform:uppercase;margin-top:5px}
+  .top nav{display:flex;gap:28px;font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .top nav a:hover{color:var(--brass)}
+  .top .btn{width:auto;padding:12px 18px;font-size:10.5px}
+
+  /* HERO */
+  #hero{overflow:hidden}
+  #hero .glow{position:absolute;inset:0;background:radial-gradient(ellipse 55% 60% at 75% 30%,rgba(14,26,54,.95) 0%,transparent 70%),radial-gradient(ellipse 35% 40% at 0% 100%,rgba(212,42,48,.10) 0%,transparent 70%);pointer-events:none}
+  #hero .wrap{position:relative;z-index:2;padding-top:clamp(48px,8vh,96px);padding-bottom:clamp(64px,9vh,110px)}
+  .hero-grid{display:grid;grid-template-columns:1.12fr .88fr;gap:clamp(36px,5vw,72px);align-items:center}
+  .est{display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--brass)}
+  .est .seal{width:46px;height:46px;border-radius:50%;border:1px solid var(--brass);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-style:italic;font-size:15px;position:relative}
+  .est .seal::after{content:"";position:absolute;inset:3px;border-radius:50%;border:1px dashed rgba(201,163,91,.5)}
+  .hero-sub{font-size:clamp(16.5px,1.6vw,19px);color:var(--muted);line-height:1.75;max-width:560px;margin-top:26px}
+  .hero-sub strong{color:var(--cream);font-weight:600}
+  .hero-cta{display:flex;gap:12px;margin-top:34px;flex-wrap:wrap}
+  .hero-cta .btn{width:auto}
+  .trust{display:flex;gap:20px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--muted2);flex-wrap:wrap;margin-top:20px;text-transform:uppercase}
+  .trust span{display:flex;align-items:center;gap:7px}
+
+  /* retrato em moldura */
+  .portrait{position:relative;padding:14px;border:1px solid var(--brass-line);background:linear-gradient(180deg,rgba(201,163,91,.06),transparent)}
+  .portrait::before{content:"";position:absolute;inset:5px;border:1px solid rgba(201,163,91,.14);pointer-events:none}
+  .portrait .c{position:absolute;width:18px;height:18px;border-color:var(--brass);border-style:solid}
+  .portrait .c.tl{top:-1px;left:-1px;border-width:2px 0 0 2px}.portrait .c.tr{top:-1px;right:-1px;border-width:2px 2px 0 0}
+  .portrait .c.bl{bottom:-1px;left:-1px;border-width:0 0 2px 2px}.portrait .c.br{bottom:-1px;right:-1px;border-width:0 2px 2px 0}
+  .portrait img{width:100%;aspect-ratio:820/1000;object-fit:cover;object-position:top;filter:grayscale(1) contrast(1.06) sepia(.12)}
+  .portrait .cap{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:14px 4px 2px;border-top:1px solid var(--brass-line);margin-top:14px}
+  .portrait .cap b{font-family:var(--serif);font-size:17px;font-weight:700}
+  .portrait .cap span{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--brass);text-transform:uppercase;white-space:nowrap}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);margin-top:40px;border-top:1px solid var(--brass-line);border-bottom:1px solid var(--brass-line)}
+  .stats .s{padding:20px 16px 18px 0}
+  .stats .s+.s{padding-left:18px;border-left:1px solid var(--brass-line)}
+  .stats .v{font-family:var(--serif);font-size:clamp(24px,2.8vw,34px);font-weight:700;line-height:1}
+  .stats .l{font-family:var(--mono);font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.16em;margin-top:8px}
+
+  /* seções */
+  .sec{padding:clamp(72px,10vw,128px) 0}
+  .alt{background:var(--ink-2)}
+  .alt::before,.alt::after{content:"";position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--brass-line),transparent)}
+  .alt::before{top:0}.alt::after{bottom:0}
+  .navy{background:radial-gradient(ellipse 80% 70% at 50% 0%,#13224A 0%,var(--navy) 45%,var(--ink) 100%)}
+
+  /* cartões */
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:52px}
+  .card{position:relative;padding:28px 24px;border:1px solid var(--line);background:var(--ink-3);height:100%;transition:border-color .25s,transform .25s}
+  .card::before{content:"";position:absolute;inset:5px;border:1px solid rgba(201,163,91,.07);pointer-events:none;transition:border-color .25s}
+  .card:hover{border-color:var(--brass-line)}
+  .card:hover::before{border-color:rgba(201,163,91,.22)}
+  .card .roman{font-family:var(--serif);font-style:italic;font-size:30px;color:var(--brass);line-height:1;margin-bottom:18px;display:block}
+  .card h4{font-family:var(--serif);font-size:21px;font-weight:700;margin-bottom:10px;line-height:1.2}
+  .card p{font-size:14.5px;color:var(--muted);line-height:1.65}
+  .card .tag{display:inline-block;margin-top:18px;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;padding:6px 10px;border:1px solid var(--brass-line);color:var(--brass)}
+  .card .phase{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;color:var(--red);text-transform:uppercase;margin-bottom:12px}
+
+  /* serviços */
+  .svc{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:52px}
+  .svc .box{position:relative;padding:clamp(28px,3.4vw,42px);border:1px solid var(--brass-line);background:var(--ink-3)}
+  .svc .box::before{content:"";position:absolute;inset:6px;border:1px solid rgba(201,163,91,.12);pointer-events:none}
+  .svc .box.feat{background:linear-gradient(160deg,#14244D 0%,#0E1A36 60%,#0B1228 100%)}
+  .svc .pill{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--brass);margin-bottom:18px}
+  .svc .pill b{font-family:var(--serif);font-style:italic;font-size:26px;font-weight:700;letter-spacing:0;color:var(--cream)}
+  .svc h3{font-size:clamp(25px,2.6vw,32px);line-height:1.15}
+  .svc .role{font-family:var(--mono);font-size:11px;color:var(--red);margin-top:10px;text-transform:uppercase;letter-spacing:.14em}
+  .svc p.d{font-size:15.5px;color:var(--muted);line-height:1.7;margin-top:16px}
+  .svc ul{list-style:none;margin-top:24px;padding-top:22px;border-top:1px solid var(--brass-line);display:grid;gap:13px}
+  .svc li{display:flex;gap:12px;font-size:15px;line-height:1.5}
+  .svc li b{font-weight:600}
+  .svc li svg{width:16px;height:16px;color:var(--brass);flex:0 0 auto;margin-top:4px}
+
+  /* regra de ouro */
+  .rule{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(28px,4vw,56px);align-items:start;margin-top:52px}
+  .rule .steps{display:grid;gap:0;border-top:1px solid var(--brass-line)}
+  .rule .st{display:flex;gap:22px;padding:24px 0;border-bottom:1px solid var(--brass-line)}
+  .rule .st .n{flex:0 0 auto;font-family:var(--serif);font-style:italic;font-size:42px;line-height:.9;color:var(--brass);min-width:44px}
+  .rule .st h4{font-family:var(--serif);font-size:21px;font-weight:700;margin-bottom:6px}
+  .rule .st p{font-size:15px;color:var(--muted);line-height:1.65}
+  .warn{position:relative;border:1px solid rgba(212,42,48,.4);background:linear-gradient(180deg,rgba(212,42,48,.07),rgba(212,42,48,.02));padding:30px 28px}
+  .warn::before{content:"";position:absolute;inset:5px;border:1px dashed rgba(212,42,48,.25);pointer-events:none}
+  .warn .stamp{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--red);border:1.5px solid var(--red);padding:6px 10px;transform:rotate(-2deg);margin-bottom:16px}
+  .warn h4{font-family:var(--serif);font-size:24px;margin-bottom:12px}
+  .warn p{font-size:15px;color:var(--muted);line-height:1.7}
+  .warn p+p{margin-top:12px}
+  .warn strong{color:var(--cream);font-weight:600}
+
+  /* cronograma — livro-razão */
+  .ledger{position:relative;margin-top:52px;border:1px solid var(--brass-line);background:var(--ink-3);padding:clamp(20px,3vw,36px)}
+  .ledger::before{content:"";position:absolute;inset:6px;border:1px solid rgba(201,163,91,.1);pointer-events:none}
+  .ledger .lh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--brass);padding-bottom:14px;border-bottom:2px double var(--brass-line);margin-bottom:8px}
+  .g-head,.g-row{display:grid;grid-template-columns:210px repeat(12,1fr);align-items:center}
+  .g-head{font-family:var(--mono);font-size:10.5px;color:var(--muted2);letter-spacing:.06em}
+  .g-head div{text-align:center;padding:10px 0;border-left:1px dashed rgba(239,230,210,.07)}
+  .g-head div:first-child{text-align:left;border-left:none}
+  .g-row{border-top:1px solid rgba(239,230,210,.06);padding:12px 0;background-image:repeating-linear-gradient(90deg,transparent 0 calc((100% - 210px)/12 - 1px),rgba(239,230,210,.05) calc((100% - 210px)/12 - 1px) calc((100% - 210px)/12));background-position:210px 0;background-repeat:no-repeat;background-size:calc(100% - 210px) 100%}
+  .g-row .lbl{font-family:var(--serif);font-size:17px;font-weight:700;line-height:1.25}
+  .g-row .lbl small{display:block;font-family:var(--mono);font-size:10.5px;font-weight:400;color:var(--muted2);letter-spacing:.06em;margin-top:3px}
+  .bar{height:36px;display:flex;align-items:center;padding:0 14px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;white-space:nowrap;overflow:hidden;margin:0 2px}
+  .bar.red{background:var(--red);color:#fff}
+  .bar.brass{background:repeating-linear-gradient(135deg,var(--brass) 0 8px,#B8914B 8px 16px);color:var(--ink);font-weight:600}
+  .bar.cream{background:var(--cream);color:var(--ink);font-weight:600}
+  .g-note{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:28px;padding-top:24px;border-top:2px double var(--brass-line)}
+  .g-note .n b{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-size:19px}
+  .g-note .n b i{width:12px;height:12px;display:inline-block}
+  .g-note .n span{display:block;font-size:14px;color:var(--muted);line-height:1.6;margin-top:6px}
+
+  /* indicadores */
+  .ind{display:grid;grid-template-columns:repeat(3,1fr);margin-top:52px;border-top:1px solid var(--brass-line);border-left:1px solid var(--brass-line)}
+  .ind .i{padding:28px 26px;border-right:1px solid var(--brass-line);border-bottom:1px solid var(--brass-line);transition:background .25s}
+  .ind .i:hover{background:var(--brass-soft)}
+  .ind .i .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;color:var(--brass);text-transform:uppercase}
+  .ind .i .t{font-family:var(--serif);font-size:22px;font-weight:700;margin-top:8px}
+  .ind .i .no{float:right;font-family:var(--serif);font-style:italic;color:var(--muted2);font-size:15px}
+
+  /* investimento — título ao portador */
+  .price-wrap{display:grid;grid-template-columns:1.08fr .92fr;gap:28px;margin-top:52px;align-items:stretch}
+  .bond{position:relative;background:var(--paper);color:var(--ink);padding:14px;
+    background-image:repeating-linear-gradient(45deg,rgba(14,26,54,.05) 0 2px,transparent 2px 7px),repeating-linear-gradient(-45deg,rgba(14,26,54,.05) 0 2px,transparent 2px 7px)}
+  .bond .in{position:relative;background:var(--paper);border:2px solid var(--navy);outline:1px solid var(--navy);outline-offset:-7px;padding:clamp(28px,4vw,46px)}
+  .bond .hd{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--navy);padding-bottom:14px;border-bottom:1px solid rgba(14,26,54,.25)}
+  .bond .hd .no{color:var(--red)}
+  .bond .k{font-family:var(--serif);font-style:italic;font-size:20px;color:var(--navy);margin-top:22px;padding-right:110px}
+  .bond .v{font-family:var(--serif);font-size:clamp(52px,7vw,80px);font-weight:800;letter-spacing:-.02em;line-height:1;margin-top:6px;color:var(--navy)}
+  .bond .v small{font-family:var(--mono);font-size:15px;font-weight:500;color:#5A5444;letter-spacing:.04em}
+  .bond .sub{font-family:var(--mono);font-size:11.5px;color:#5A5444;margin-top:12px;letter-spacing:.04em}
+  .bond ul{list-style:none;margin:26px 0 30px;padding-top:22px;border-top:1px solid rgba(14,26,54,.25);display:grid;gap:12px}
+  .bond li{display:flex;gap:12px;font-size:15px;line-height:1.5;color:#1D2333}
+  .bond li svg{width:16px;height:16px;color:var(--red);flex:0 0 auto;margin-top:3px}
+  .bond .seal{position:absolute;right:clamp(20px,3vw,36px);top:clamp(64px,8vw,86px);width:92px;height:92px;border-radius:50%;border:2px solid var(--red);color:var(--red);display:flex;align-items:center;justify-content:center;text-align:center;font-family:var(--mono);font-size:9px;letter-spacing:.14em;line-height:1.4;text-transform:uppercase;transform:rotate(-12deg);opacity:.85}
+  .bond .seal::after{content:"";position:absolute;inset:4px;border-radius:50%;border:1px solid var(--red)}
+  .bond .seal b{display:block;font-family:var(--serif);font-size:20px;letter-spacing:0}
+  .side{display:grid;gap:18px}
+  .side .card h4{font-size:20px}
+
+  /* sócios */
+  .partners{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:52px}
+  .pt{position:relative;border:1px solid var(--brass-line);background:var(--ink-3);display:grid;grid-template-columns:210px 1fr}
+  .pt::before{content:"";position:absolute;inset:5px;border:1px solid rgba(201,163,91,.1);pointer-events:none;z-index:1}
+  .pt .ph{position:relative;overflow:hidden;border-right:1px solid var(--brass-line)}
+  .pt img{width:100%;height:100%;object-fit:cover;object-position:top;min-height:300px;filter:grayscale(1) contrast(1.05) sepia(.15);transition:filter .5s}
+  .pt:hover img{filter:grayscale(0) sepia(0)}
+  .pt .b{padding:28px 26px}
+  .pt .role{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--brass)}
+  .pt h3{font-size:28px;margin-top:8px}
+  .pt p{font-size:14.5px;color:var(--muted);line-height:1.7;margin-top:12px}
+  .pt ul{list-style:none;margin-top:16px;display:grid;gap:9px}
+  .pt li{display:flex;gap:10px;font-size:14px;line-height:1.45}
+  .pt li svg{width:14px;height:14px;color:var(--brass);flex:0 0 auto;margin-top:4px}
+  .diff{display:grid;grid-template-columns:repeat(3,1fr);margin-top:24px;border:1px solid var(--brass-line)}
+  .diff .d{padding:30px 28px}
+  .diff .d+.d{border-left:1px solid var(--brass-line)}
+  .diff .d .v{font-family:var(--serif);font-size:clamp(30px,3.4vw,42px);font-weight:700;line-height:1}
+  .diff .d .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--red);margin-top:14px}
+  .diff .d p{font-size:14px;color:var(--muted);line-height:1.6;margin-top:6px}
+  .emblem{display:inline-block;padding:22px 34px;margin:0 auto 34px;background:var(--paper);border:1px solid var(--brass);outline:1px solid var(--brass-line);outline-offset:6px}
+  .emblem img{width:190px;height:auto}
+
+  /* FAQ */
+  .faq{max-width:840px;margin:52px auto 0;border-top:1px solid var(--brass-line)}
+  .faq details{border-bottom:1px solid var(--brass-line)}
+  .faq summary{cursor:pointer;list-style:none;padding:24px 0;font-family:var(--serif);font-weight:700;font-size:20px;display:flex;justify-content:space-between;gap:18px;align-items:center}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::after{content:"+";font-family:var(--mono);font-size:22px;color:var(--brass);font-weight:400;flex:0 0 auto;transition:transform .25s}
+  .faq details[open] summary::after{transform:rotate(45deg)}
+  .faq details p{font-size:15.5px;color:var(--muted);line-height:1.75;padding-bottom:24px;max-width:720px}
+
+  /* contato */
+  #contato .glow{position:absolute;inset:0;background:radial-gradient(ellipse 60% 60% at 80% 40%,rgba(19,34,74,.9) 0%,transparent 70%);pointer-events:none}
+  #contato .wrap{position:relative;z-index:2}
+  .final-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(30px,5vw,72px);align-items:center}
+  .form-card{position:relative;background:rgba(11,13,18,.7);border:1px solid var(--brass-line);padding:clamp(24px,3vw,36px)}
+  .form-card::before{content:"";position:absolute;inset:6px;border:1px solid rgba(201,163,91,.12);pointer-events:none}
+  .form-card h3{font-size:24px;margin-bottom:6px}
+  .form-card p.fc-sub{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--brass);margin-bottom:22px}
+  .field{margin-bottom:16px;position:relative;z-index:1}
+  .field label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .field input,.field select{width:100%;background:transparent;border:none;border-bottom:1px solid rgba(239,230,210,.25);border-radius:0;color:var(--cream);font-size:16px;font-family:var(--sans);padding:10px 2px 12px;outline:none;transition:border-color .2s;appearance:none;-webkit-appearance:none}
+  .field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23C9A35B' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 2px center;background-size:16px;padding-right:28px}
+  .field select option{color:#0B0D12}
+  .field input:focus,.field select:focus{border-bottom-color:var(--brass)}
+  .field input::placeholder{color:rgba(239,230,210,.28)}
+  .form-card form{position:relative;z-index:1}
+  .form-err{font-size:13px;color:#f87171;margin:2px 0 12px}
+  .form-foot{display:flex;justify-content:center;gap:18px;margin-top:14px;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted2);flex-wrap:wrap}
+  .form-foot span{display:flex;align-items:center;gap:6px}
+  .form-ok{text-align:center;padding:14px 4px;position:relative;z-index:1}
+  .form-ok .ok-ic{width:58px;height:58px;border-radius:50%;border:1px solid var(--brass);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+  .form-ok h3{font-size:26px}
+  .form-ok p{font-size:15px;color:var(--muted);line-height:1.65;margin:10px 0 20px}
+  .btn-wa{background:#1F8F4E;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 0 0 1px #17713D}.btn-wa:hover{background:#17713D}
+
+  footer{padding:40px 20px 34px;background:#07080C;border-top:1px solid var(--brass-line);text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--muted2);line-height:2;text-transform:uppercase}
+  footer .fm{height:30px;width:auto;margin:0 auto 14px;opacity:.9}
+  footer a{color:var(--brass)}
+
+  .sticky{position:fixed;bottom:0;left:0;right:0;z-index:40;background:linear-gradient(to top,#0B0D12,#0B0D12 78%,transparent);padding:22px 14px 14px;display:none}
+  .sticky .row{display:flex;gap:10px;max-width:600px;margin:0 auto}
+  .sticky .btn{flex:1;padding:16px 16px}
+  .sticky .wa{flex:0 0 52px;height:52px;background:#1F8F4E;border-radius:2px;display:flex;align-items:center;justify-content:center}
+  .sticky .wa svg{width:22px;height:22px;color:#fff}
+  .float-wa{position:fixed;bottom:24px;right:24px;z-index:50;display:flex;align-items:center;gap:9px;background:#1F8F4E;color:#fff;font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;padding:14px 20px;border-radius:2px;box-shadow:0 10px 30px rgba(0,0,0,.4);transition:background .2s}
+  .float-wa:hover{background:#17713D}.float-wa svg{width:18px;height:18px}
+
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  @media(max-width:980px){
+    .cards{grid-template-columns:repeat(2,1fr)}
+    .pt{grid-template-columns:1fr}
+    .pt .ph{border-right:none;border-bottom:1px solid var(--brass-line)}
+    .pt img{max-height:360px;min-height:0}
+  }
+  @media(max-width:880px){
+    .top nav,.top .btn{display:none}
+    .top .wrap{justify-content:center}
+    .hero-grid,.rule,.price-wrap,.final-grid,.svc,.partners{grid-template-columns:1fr}
+    .portrait{order:-1;max-width:290px;margin:0 auto}
+    h1{font-size:clamp(34px,9.4vw,48px)}
+    .cards.c3,.ind,.diff{grid-template-columns:1fr}
+    .diff .d+.d{border-left:none;border-top:1px solid var(--brass-line)}
+    .g-head,.g-row{grid-template-columns:92px repeat(12,1fr)}
+    .g-row{background-position:92px 0;background-size:calc(100% - 92px) 100%}
+    .g-row .lbl{font-size:13px}
+    .g-row .lbl small{display:none}
+    .g-head{font-size:8.5px;letter-spacing:0}
+    .bar{font-size:0;padding:0;height:26px;margin:0 1px}
+    .g-note{grid-template-columns:1fr}
+    .bond .seal{width:74px;height:74px;font-size:7.5px;top:auto;bottom:clamp(110px,22vw,140px)}
+    .bond .seal b{font-size:16px}
+    .float-wa{display:none}
+    .sticky{display:block}
+    body{padding-bottom:88px}
+  }
+  @media(max-width:560px){
+    .cards,.cards.c2{grid-template-columns:1fr}
+    .hero-cta .btn{width:100%}
+    .stats .s{padding-right:8px}.stats .s+.s{padding-left:10px}
+    .bond .seal{display:none}
+  }
+
+  .cost{display:grid;grid-template-columns:.9fr 1.1fr;gap:clamp(28px,4vw,60px);margin-top:56px;padding:clamp(28px,4vw,44px);border:1px solid var(--brass-line);background:linear-gradient(135deg,rgba(212,42,48,.06),transparent 60%)}
+  .cost h3{font-size:clamp(26px,3vw,34px);line-height:1.15}
+  .cost-l p{font-size:15.5px;color:var(--muted);line-height:1.7;margin-top:14px}
+  .cost-r{list-style:none;border-top:1px solid var(--brass-line)}
+  .cost-r li{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:15px 0;border-bottom:1px dashed rgba(201,163,91,.22);font-size:15px}
+  .cost-r li b{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--red);white-space:nowrap}
+  .ba{max-width:960px;margin:52px auto 0;border:1px solid var(--brass-line)}
+  .ba-h,.ba-r{display:grid;grid-template-columns:1fr 1fr}
+  .ba-h span{padding:16px 24px;font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted2);border-bottom:2px double var(--brass-line)}
+  .ba-h span+span{color:var(--brass);border-left:1px solid var(--brass-line);background:var(--brass-soft)}
+  .ba-r span,.ba-r b{padding:18px 24px;font-size:15px;line-height:1.5;border-bottom:1px solid rgba(239,230,210,.07)}
+  .ba-r span{color:var(--muted2);text-decoration:line-through;text-decoration-color:rgba(212,42,48,.55)}
+  .ba-r b{font-weight:600;border-left:1px solid var(--brass-line);background:var(--brass-soft)}
+  .ba-r:last-child span,.ba-r:last-child b{border-bottom:none}
+  @media(max-width:880px){.cost{grid-template-columns:1fr}.ba-h span,.ba-r span,.ba-r b{padding:14px;font-size:13.5px}}
+  @media(max-width:480px){.cost-r li{flex-direction:column;gap:4px}}
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.reveal{transition:none;opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<!-- ══ TOPO ══ -->
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./">
+      <img class="mark" src="./logo-mark.webp" width="56" height="34" alt="" />
+      <span class="wm">UNV Finance<small>Grupo UNV Holdings</small></span>
+    </a>
+    <nav>
+      <a href="#modelo">Modelo</a>
+      <a href="#cronograma">Cronograma</a>
+      <a href="#investimento">Investimento</a>
+      <a href="#socios">Sócios</a>
+      <a href="#faq">Dúvidas</a>
+    </nav>
+    <a class="btn" href="#contato">Agendar reunião</a>
+  </div>
+</header>
+
+<!-- ══ HERO ══ -->
+<section id="hero" class="pinstripe">
+  <div class="glow"></div>
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <div class="est"><span class="seal">UF</span> Consultoria Financeira &amp; BPI · Est. 2026</div>
+        <h1 style="margin-top:28px">Sua empresa fatura todo mês. Então por que o dinheiro <em class="r">nunca sobra?</em></h1>
+        <p class="hero-sub">
+          Não é falta de venda. É <strong>dinheiro vazando</strong> em juros, custo escondido, cliente que não paga e decisão tomada no escuro.
+          A <strong>UNV Finance</strong> entra na sua empresa, audita cada real, fecha os vazamentos e depois <strong>assume o controle financeiro do dia a dia</strong> até o caixa voltar a sobrar.
+        </p>
+        <div class="hero-cta">
+          <a class="btn" href="#contato">
+            Quero descobrir onde meu dinheiro vaza
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <a class="btn btn-ghost" href="#modelo">Como funciona</a>
+        </div>
+        <div class="trust">
+          <span><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Atendimento sênior direto</span>
+          <span><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Foco em caixa e lucro</span>
+        </div>
+        <div class="stats">
+          <div class="s"><div class="v">+20 anos</div><div class="l">em reestruturação</div></div>
+          <div class="s"><div class="v">100%</div><div class="l">sênior</div></div>
+          <div class="s"><div class="v">12 meses</div><div class="l">de contrato</div></div>
+        </div>
+      </div>
+      <div class="portrait reveal">
+        <i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i>
+        <img src="./aloisio.jpg" width="820" height="1000" alt="Aloísio Ramalho, sócio da UNV Finance" fetchpriority="high" />
+        <div class="cap"><b>Aloísio Ramalho</b><span>Sócio · UNV Finance</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ DORES ══ -->
+<section class="sec alt">
+  <div class="wrap">
+    <div class="center reveal">
+      <div class="kicker">Diagnóstico inicial</div>
+      <h2>Você trabalha cada vez mais. <em>E sobra cada vez menos.</em></h2>
+      <p class="lead">Faturar não é lucrar. Se você se reconhece em dois ou mais pontos abaixo, vender mais não vai resolver: só vai aumentar o tamanho do buraco.</p>
+    </div>
+    <div class="cards">
+      <div class="card reveal"><span class="roman">I.</span><h4>Falta de controle</h4><p>Você só descobre que falta dinheiro no dia de pagar. Fluxo de caixa é o extrato do banco.</p></div>
+      <div class="card reveal"><span class="roman">II.</span><h4>Endividamento</h4><p>Cheque especial, antecipação e empréstimo pagando empréstimo. O banco virou seu sócio mais lucrativo.</p></div>
+      <div class="card reveal"><span class="roman">III.</span><h4>Mistura de caixas</h4><p>A conta da empresa paga a casa, a casa cobre a empresa. Ninguém sabe quanto o negócio realmente gera.</p></div>
+      <div class="card reveal"><span class="roman">IV.</span><h4>Visão cega</h4><p>Você não sabe qual produto dá lucro e qual dá prejuízo. Contrata, investe e dá desconto no feeling.</p></div>
+    </div>
+    <div class="cost reveal">
+      <div class="cost-l">
+        <div class="kicker">O custo de não fazer nada</div>
+        <h3>Esse dinheiro não some. <em>Ele vai para alguém.</em></h3>
+        <p>Toda empresa sem gestão financeira paga uma taxa invisível todo mês. Ela não aparece no extrato com esse nome, mas está lá:</p>
+      </div>
+      <ul class="cost-r">
+        <li><span>Juros e tarifas que ninguém renegociou</span><b>para o banco</b></li>
+        <li><span>Produto vendido abaixo do custo real</span><b>para o cliente</b></li>
+        <li><span>Inadimplência que ninguém cobra</span><b>para o caloteiro</b></li>
+        <li><span>Custo fixo que cresceu sem ninguém ver</span><b>para o fornecedor</b></li>
+        <li><span>Decisão errada por falta de número</span><b>para o concorrente</b></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══ MODELO ══ -->
+<section class="sec" id="modelo">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="kicker">Modelo de trabalho</div>
+      <h2>Dois serviços, <em>um único plano</em></h2>
+      <p class="lead">A consultoria é analítica e estratégica. O BPI é operacional. Um não substitui o outro: primeiro a gente entende e organiza, depois executa todos os dias.</p>
+    </div>
+    <div class="svc">
+      <div class="box reveal">
+        <span class="pill"><b>I.</b> Etapa de estratégia</span>
+        <h3>Consultoria Financeira Estratégica</h3>
+        <div class="role">Auditoria · identificação e correção de gargalos</div>
+        <p class="d">Reorganizar financeiramente a empresa, potencializar a geração de caixa e implantar ferramentas para decisões rápidas e assertivas.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Auditoria completa</b> de fluxo de caixa, custos e dívidas</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Mapa de vazamentos</b> e da rentabilidade real</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Plano de redução de endividamento</b> e renegociação</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Autonomia gestora:</b> treinamento e ferramentas para o empresário</span></li>
+        </ul>
+      </div>
+      <div class="box feat reveal">
+        <span class="pill"><b>II.</b> Etapa de execução</span>
+        <h3>BPI Financeiro | Gestão à Vista</h3>
+        <div class="role">Business Performance Intelligence · execução diária</div>
+        <p class="d">O nosso BPO financeiro: acompanhamento gerencial diário e mensal que transforma números brutos em informação visual para decisão rápida.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Fluxo de caixa</b> realizado e projetado</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Contas a receber</b> e redução da inadimplência</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Dashboard gerencial</b> com tendências e alertas de risco</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Reunião mensal</b> de performance e direcionamento</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ REGRA DE OURO ══ -->
+<section class="sec navy">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="kicker">A regra de ouro</div>
+      <h2>O BPI só começa depois que a <em>casa está em ordem</em></h2>
+      <p class="lead">BPO em cima de bagunça é retrabalho pago. Por isso o BPI da UNV Finance só é contratado por quem passa pela consultoria.</p>
+    </div>
+    <div class="rule">
+      <div class="steps">
+        <div class="st reveal"><div class="n">1.</div><div><h4>Primeiro, a consultoria</h4><p>Entendemos a empresa por dentro: números, processos, dívidas e onde o dinheiro está vazando.</p></div></div>
+        <div class="st reveal"><div class="n">2.</div><div><h4>Gatilho: 30 dias de consultoria</h4><p>Não é preciso terminar a consultoria inteira. Com no mínimo 30 dias de auditoria, a base está pronta para o BPI entrar.</p></div></div>
+        <div class="st reveal"><div class="n">3.</div><div><h4>Depois, execução diária</h4><p>O BPI roda em paralelo com a consultoria, executando o planejamento com a casa já organizada. Sem retrabalho, sem tempo perdido.</p></div></div>
+      </div>
+      <div class="warn reveal">
+        <span class="stamp">Atenção</span>
+        <h4>E se eu quiser só o BPI?</h4>
+        <p>É possível, mas não recomendamos, e deixamos isso claro antes de fechar.</p>
+        <p>Sem a consultoria, o BPI vai precisar fazer um trabalho de <strong>auditoria e levantamento que não é o papel dele</strong>. Na prática, os <strong>primeiros meses ficam perdidos ou muito lentos</strong>, e você paga por execução numa operação que ainda não está pronta para ser executada.</p>
+        <p>O caminho que gera resultado mais rápido é o contrato completo.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ CRONOGRAMA ══ -->
+<section class="sec alt" id="cronograma">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="kicker">Cronograma do contrato</div>
+      <h2>Doze meses: auditoria, ajuste fino e <em>execução simultânea</em></h2>
+      <p class="lead">Consultoria e BPI no mesmo contrato. A consultoria abre o caminho, o BPI entra no mês 2 e segue até o fim.</p>
+    </div>
+    <div class="ledger reveal" role="img" aria-label="Cronograma: mês 1 auditoria; meses 2 a 4 ajustes e refinamento de parâmetros; meses 2 a 12 BPI financeiro simultâneo">
+      <div class="lh"><span>Livro de execução · UNV Finance</span><span>Contrato 12 meses</span></div>
+      <div class="g-head">
+        <div>Etapa</div>
+        <div>M1</div><div>M2</div><div>M3</div><div>M4</div><div>M5</div><div>M6</div><div>M7</div><div>M8</div><div>M9</div><div>M10</div><div>M11</div><div>M12</div>
+      </div>
+      <div class="g-row">
+        <div class="lbl">Auditoria<small>30 dias iniciais</small></div>
+        <div class="bar red" style="grid-column:2 / span 1">30d</div>
+      </div>
+      <div class="g-row">
+        <div class="lbl">Ajustes e refinamento<small>90 dias subsequentes</small></div>
+        <div class="bar brass" style="grid-column:3 / span 3">Parâmetros · 90 dias</div>
+      </div>
+      <div class="g-row">
+        <div class="lbl">BPI financeiro<small>11 meses simultâneos</small></div>
+        <div class="bar cream" style="grid-column:3 / span 11">Gestão à vista · execução diária do planejamento · 11 meses</div>
+      </div>
+      <div class="g-note">
+        <div class="n"><b><i style="background:var(--red)"></i>30 dias · Auditoria</b><span>Ênfase total em auditoria: mapeamento de caixa, custos, dívidas e gargalos. Entrega do relatório executivo.</span></div>
+        <div class="n"><b><i style="background:var(--brass)"></i>90 dias · Ajustes</b><span>Diagnóstico, plano estratégico, renegociação e refinamento dos parâmetros de gestão.</span></div>
+        <div class="n"><b><i style="background:var(--cream)"></i>11 meses · BPI</b><span>Execução diária do planejamento com dashboard, controle de recebíveis e reunião mensal.</span></div>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card reveal"><div class="phase">Fase 01</div><h4>Auditoria</h4><p>Mapeamento do fluxo de caixa, custos e dívidas.</p><span class="tag">Relatório executivo</span></div>
+      <div class="card reveal"><div class="phase">Fase 02</div><h4>Diagnóstico</h4><p>Identificação de vazamentos e da rentabilidade real.</p><span class="tag">Mapa de oportunidades</span></div>
+      <div class="card reveal"><div class="phase">Fase 03</div><h4>Plano estratégico</h4><p>Estratégia de renegociação e de geração de caixa.</p><span class="tag">Plano de ação</span></div>
+      <div class="card reveal"><div class="phase">Fase 04</div><h4>Implementação</h4><p>Execução com o BPI e reuniões estratégicas de acompanhamento.</p><span class="tag">Monitoramento contínuo</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ ANTES × DEPOIS ══ -->
+<section class="sec">
+  <div class="wrap">
+    <div class="center reveal">
+      <div class="kicker">O que muda na sua empresa</div>
+      <h2>Do extrato do banco para o <em>painel de controle</em></h2>
+    </div>
+    <div class="ba reveal">
+      <div class="ba-h"><span>Hoje</span><span>Com a UNV Finance</span></div>
+      <div class="ba-r"><span>Você descobre o rombo no dia de pagar</span><b>Você enxerga o caixa dos próximos 90 dias</b></div>
+      <div class="ba-r"><span>Dívida rolando e juros comendo a margem</span><b>Plano de renegociação e redução do endividamento</b></div>
+      <div class="ba-r"><span>Conta pessoal e da empresa misturadas</span><b>Caixas separados e pró-labore definido</b></div>
+      <div class="ba-r"><span>Preço e desconto no feeling</span><b>Margem por produto e ponto de equilíbrio claros</b></div>
+      <div class="ba-r"><span>Cliente atrasa e ninguém cobra</span><b>Contas a receber sob controle, inadimplência caindo</b></div>
+      <div class="ba-r"><span>Reunião com o contador para entender o passado</span><b>Reunião mensal para decidir o futuro</b></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ INDICADORES ══ -->
+<section class="sec">
+  <div class="wrap">
+    <div class="center reveal">
+      <div class="kicker">Métricas de performance</div>
+      <h2>Os indicadores que você vai <em>acompanhar</em></h2>
+      <p class="lead">Nada de planilha que ninguém abre. Seis números que mostram se a empresa está gerando ou consumindo caixa.</p>
+    </div>
+    <div class="ind reveal">
+      <div class="i"><span class="no">i</span><div class="k">Fluxo de caixa</div><div class="t">Controle operacional</div></div>
+      <div class="i"><span class="no">ii</span><div class="k">DRE gerencial</div><div class="t">Geração real de lucro</div></div>
+      <div class="i"><span class="no">iii</span><div class="k">Margem de contribuição</div><div class="t">Rentabilidade por produto</div></div>
+      <div class="i"><span class="no">iv</span><div class="k">Capital de giro</div><div class="t">Necessidade operacional</div></div>
+      <div class="i"><span class="no">v</span><div class="k">Ponto de equilíbrio</div><div class="t">Meta mínima de vendas</div></div>
+      <div class="i"><span class="no">vi</span><div class="k">Liquidez e endividamento</div><div class="t">Capacidade de pagamento</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ INVESTIMENTO ══ -->
+<section class="sec navy" id="investimento">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="kicker">Investimento</div>
+      <h2>Um departamento financeiro sênior <em>pelo preço de um analista</em></h2>
+      <p class="lead">Montar isso dentro de casa exige um diretor financeiro experiente e alguém para executar todo dia. Com salário e encargos, isso custa várias vezes o valor abaixo. E leva meses para contratar.</p>
+    </div>
+    <div class="price-wrap">
+      <div class="bond reveal">
+        <div class="in">
+          <div class="hd"><span>UNV Finance · Contrato completo</span><span class="no">Nº 001</span></div>
+          <div class="seal"><span><b>12</b>meses<br/>de contrato</span></div>
+          <div class="k">Consultoria financeira + BPI financeiro</div>
+          <div class="v">R$ 5.000<small> /mês</small></div>
+          <div class="sub">Contrato de 12 meses · BPI inicia após 30 dias de consultoria</div>
+          <ul>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>30 dias de auditoria financeira completa</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>90 dias de ajustes e refinamento de parâmetros</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>11 meses de BPI financeiro com gestão à vista</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>Plano de redução de endividamento e renegociação</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>Dashboard gerencial e relatório de indicadores</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>Reunião estratégica mensal de performance</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>Atendimento sênior direto, sem equipe júnior</span></li>
+          </ul>
+          <a class="btn" href="#contato">
+            Quero organizar o financeiro
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+        </div>
+      </div>
+      <div class="side">
+        <div class="card reveal"><span class="roman">I.</span><h4>Por que 12 meses?</h4><p>Reestruturação financeira de verdade não acontece em um trimestre. Os primeiros 4 meses arrumam a casa; os seguintes consolidam a rotina e mostram o resultado no caixa.</p></div>
+        <div class="card reveal"><span class="roman">II.</span><h4>Se paga com o que recupera</h4><p>O trabalho começa pelo caixa: custo oculto cortado, juros renegociados e inadimplência cobrada. Na maioria das empresas, só isso já cobre o investimento.</p></div>
+        <div class="card reveal"><span class="roman">III.</span><h4>Vagas limitadas</h4><p>O atendimento é 100% sênior, sem repassar para júnior. Por isso a UNV Finance assume um número limitado de empresas por mês.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SÓCIOS ══ -->
+<section class="sec alt" id="socios">
+  <div class="wrap">
+    <div class="center reveal">
+      <div class="emblem"><img src="./logo.webp" width="190" height="129" alt="UNV Finance" loading="lazy" /></div>
+      <div class="kicker">Quem conduz</div>
+      <h2>Uma parceria entre <em>Aloísio Ramalho</em> e <em>Fabrício Nunnes</em></h2>
+      <p class="lead">A UNV Finance é uma empresa do grupo UNV Holdings. Gestão financeira sênior de um lado, gestão comercial do outro. Caixa e receita andando juntos.</p>
+    </div>
+    <div class="partners">
+      <div class="pt reveal">
+        <div class="ph"><img src="./aloisio-escritorio.jpg" width="820" height="1093" alt="Aloísio Ramalho" loading="lazy" /></div>
+        <div class="b">
+          <div class="role">Sócio · Consultoria e BPI</div>
+          <h3>Aloísio Ramalho</h3>
+          <p>Mais de 20 anos ajudando empresas a recuperar a saúde financeira e reorganizar processos. Conduz pessoalmente cada etapa, do diagnóstico à execução.</p>
+          <ul>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Especialista em reestruturação e caixa</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Atendimento 100% direto, sem delegar para júnior</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Foco em margem e sustentabilidade de caixa</li>
+          </ul>
+        </div>
+      </div>
+      <div class="pt reveal">
+        <div class="ph"><img src="./fabricio.jpg" width="820" height="820" alt="Fabrício Nunnes" loading="lazy" /></div>
+        <div class="b">
+          <div class="role">Sócio · CEO UNV Holdings</div>
+          <h3>Fabrício Nunnes</h3>
+          <p>Fundador da UNV Holdings e diretor comercial terceirizado de PMEs. Mais de 20 anos em vendas, mais de 600 empresas atendidas em 7 países e mais de R$ 1 bilhão em vendas geradas.</p>
+          <ul>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Integração entre financeiro e comercial</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Metodologia e estrutura do grupo UNV</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>Visão de crescimento com previsibilidade</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="diff reveal">
+      <div class="d"><div class="v">+20 anos</div><div class="k">Bagagem prática</div><p>Experiência comprovada em reestruturação financeira de empresas de diversos portes.</p></div>
+      <div class="d"><div class="v">100% sênior</div><div class="k">Sem intermediários</div><p>Atendimento conduzido do início ao fim pelo consultor responsável.</p></div>
+      <div class="d"><div class="v">Foco em caixa</div><div class="k">Visão pragmática</div><p>Metodologia orientada para geração de caixa real e lucro sustentável.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FAQ ══ -->
+<section class="sec" id="faq">
+  <div class="wrap">
+    <div class="center reveal">
+      <div class="kicker">Dúvidas frequentes</div>
+      <h2>Antes de conversar <em>com a gente</em></h2>
+    </div>
+    <div class="faq">
+      <details class="reveal"><summary>Qual a diferença entre a consultoria e o BPI?</summary><p>A consultoria é analítica e estratégica: audita, diagnostica e desenha o plano. O BPI é operacional: executa o planejamento no dia a dia, com fluxo de caixa, contas a receber, dashboard e reunião mensal. Um prepara o terreno, o outro mantém a operação rodando.</p></details>
+      <details class="reveal"><summary>Posso contratar só o BPI?</summary><p>Pode, mas não recomendamos. Sem a consultoria, o BPI precisa fazer auditoria e levantamento antes de executar, e os primeiros meses ficam perdidos ou muito lentos. O contrato completo é o caminho mais rápido para o resultado aparecer no caixa.</p></details>
+      <details class="reveal"><summary>Preciso terminar a consultoria para começar o BPI?</summary><p>Não. O gatilho mínimo é passar por 30 dias de consultoria. A partir do mês 2 o BPI já roda em paralelo com os ajustes da consultoria.</p></details>
+      <details class="reveal"><summary>Quanto custa e qual o prazo?</summary><p>R$ 5.000 por mês, em contrato de 12 meses, com consultoria e BPI incluídos. São 30 dias iniciais de auditoria, 90 dias de ajustes e refinamento de parâmetros e 11 meses de BPI simultâneo.</p></details>
+      <details class="reveal"><summary>Vocês substituem meu contador?</summary><p>Não. A contabilidade cuida do fiscal e do passado. A UNV Finance cuida da gestão: caixa, margem, dívida e decisão. Trabalhamos junto com o seu contador.</p></details>
+      <details class="reveal"><summary>Para qual tipo de empresa funciona?</summary><p>Para empresas que já faturam, mas não sabem onde ganham e onde perdem dinheiro: caixa apertado, dívida crescendo, contas pessoais e da empresa misturadas ou decisões tomadas sem número.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ══ CONTATO ══ -->
+<section id="contato" class="sec navy pinstripe">
+  <div class="glow"></div>
+  <div class="wrap">
+    <div class="final-grid">
+      <div class="reveal">
+        <div class="kicker">Reunião de alinhamento</div>
+        <h2>Daqui a 12 meses, sua empresa vai estar <em>em um de dois lugares.</em></h2>
+        <p class="lead">No mesmo lugar de hoje: faturando, trabalhando muito e sem saber para onde foi o dinheiro. Ou com o caixa organizado, a dívida sob controle e cada decisão tomada com número na mão.</p>
+        <p class="lead" style="color:var(--cream)">A diferença começa com uma conversa de 30 minutos. Sem custo e sem compromisso.</p>
+        <div class="trust" style="margin-top:26px">
+          <span><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Sem compromisso</span>
+          <span><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Conversa com quem executa</span>
+        </div>
+      </div>
+      <div class="form-card reveal" id="formTop">
+        <div class="fc-inner">
+          <h3>Agende sua reunião de alinhamento</h3>
+          <p class="fc-sub">Consultoria Financeira + BPI</p>
+          <form novalidate>
+            <div class="field"><label for="f-nome">Seu nome</label><input id="f-nome" name="nome" type="text" placeholder="Como podemos te chamar?" autocomplete="name" maxlength="120" required /></div>
+            <div class="field"><label for="f-tel">WhatsApp com DDD</label><input id="f-tel" name="telefone" type="tel" inputmode="numeric" placeholder="(31) 99999-9999" autocomplete="tel" maxlength="24" required /></div>
+            <div class="field"><label for="f-email">E-mail</label><input id="f-email" name="email" type="email" placeholder="seu@email.com" autocomplete="email" inputmode="email" maxlength="150" required /></div>
+            <div class="field"><label for="f-emp">Empresa</label><input id="f-emp" name="empresa" type="text" placeholder="Nome da empresa" autocomplete="organization" maxlength="150" /></div>
+            <div class="field"><label for="f-fat">Faturamento mensal</label>
+              <select id="f-fat" name="faturamento">
+                <option value="">Selecione</option>
+                <option>Até R$ 50 mil</option>
+                <option>R$ 50 mil a R$ 100 mil</option>
+                <option>R$ 100 mil a R$ 300 mil</option>
+                <option>R$ 300 mil a R$ 1 milhão</option>
+                <option>Acima de R$ 1 milhão</option>
+              </select>
+            </div>
+            <p class="form-err" hidden></p>
+            <button class="btn" type="submit" style="margin-top:8px">
+              Quero colocar meu caixa em ordem
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+            <div class="form-foot">
+              <span><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Sem compromisso</span>
+              <span><svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Dados protegidos</span>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <img class="fm" src="./logo-mark.webp" width="50" height="30" alt="" />
+  UNV Finance · uma empresa do grupo <a href="/">UNV Holdings</a><br />
+  Todos os direitos reservados · Universidade Nacional de Vendas LTDA
+</footer>
+
+<div class="sticky">
+  <div class="row">
+    <a class="btn" href="#contato">Agendar reunião</a>
+    <a class="wa" id="waSticky" target="_blank" rel="noopener" aria-label="WhatsApp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></a>
+  </div>
+</div>
+<a class="float-wa" id="waFloat" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg> WhatsApp</a>
+
+<script>
+(function(){
+  "use strict";
+  // Token do formulário do funil "UNV Finance" no CRM (Nexus > CRM > Formulários do funil).
+  // Enquanto estiver vazio, o envio abre o WhatsApp já com os dados preenchidos.
+  var FORM_TOKEN = "";
+  var SUPA = "https://xrncvhzxjmddqluxoosu.supabase.co";
+  var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+  var WA_NUMBER = "5511927008490";
+  var WA_MSG = "Olá, vim pelo site da UNV Finance e quero agendar uma reunião de alinhamento sobre consultoria financeira + BPI.";
+  function waUrl(msg){ return "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(msg); }
+
+  function qp(name){ try { return new URLSearchParams(location.search).get(name) || undefined; } catch(e){ return undefined; } }
+
+  var wf = document.getElementById("waFloat"); if(wf) wf.href = waUrl(WA_MSG);
+  var ws = document.getElementById("waSticky"); if(ws) ws.href = waUrl(WA_MSG);
+
+  function maskPhone(v){
+    var d = v.replace(/\D/g,"");
+    if(d.length > 11 && d.slice(0,2) === "55") d = d.slice(2);
+    d = d.slice(0,11);
+    if(d.length<=2) return d.length?"("+d:d;
+    if(d.length<=6) return "("+d.slice(0,2)+") "+d.slice(2);
+    if(d.length<=10) return "("+d.slice(0,2)+") "+d.slice(2,6)+"-"+d.slice(6);
+    return "("+d.slice(0,2)+") "+d.slice(2,7)+"-"+d.slice(7);
+  }
+
+  function success(card, nome, waLink){
+    card.querySelector(".fc-inner").innerHTML =
+      '<div class="form-ok"><div class="ok-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#C9A35B" stroke-width="2.5" style="width:26px;height:26px"><path d="M20 6L9 17l-5-5"/></svg></div>' +
+      '<h3>Recebido, ' + nome.split(" ")[0].replace(/[<>&"]/g,"") + '.</h3>' +
+      '<p>Nosso time vai te chamar no WhatsApp para marcar a reunião de alinhamento. Se preferir adiantar, fale com a gente agora.</p>' +
+      '<a class="btn btn-wa" target="_blank" rel="noopener" href="' + waLink + '">Falar no WhatsApp agora</a></div>';
+  }
+
+  function wireForm(card){
+    var form = card.querySelector("form");
+    var phone = form.querySelector('input[name="telefone"]');
+    phone.addEventListener("input", function(){ phone.value = maskPhone(phone.value); });
+
+    form.addEventListener("submit", function(ev){
+      ev.preventDefault();
+      var errEl = form.querySelector(".form-err");
+      var btn = form.querySelector('button[type="submit"]');
+      var nome = form.nome.value.trim();
+      var tel = phone.value.replace(/\D/g,"");
+      var email = form.email.value.trim();
+      var empresa = form.empresa.value.trim();
+      var fat = form.faturamento.value;
+
+      function showErr(m){ errEl.textContent = m; errEl.hidden = false; }
+      errEl.hidden = true;
+      if(nome.length < 2) return showErr("Informe seu nome.");
+      if(tel.length < 10) return showErr("Informe seu WhatsApp com DDD.");
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showErr("Informe um e-mail válido.");
+
+      var resumo = "Olá, vim pelo site da UNV Finance e quero agendar uma reunião de alinhamento." +
+        "\nNome: " + nome + (empresa ? "\nEmpresa: " + empresa : "") + (fat ? "\nFaturamento: " + fat : "");
+      var link = waUrl(resumo);
+
+      if(!FORM_TOKEN){
+        window.open(link, "_blank", "noopener");
+        success(card, nome, link);
+        return;
+      }
+
+      btn.disabled = true;
+      var original = btn.innerHTML;
+      btn.textContent = "Enviando...";
+
+      fetch(SUPA + "/functions/v1/submit-pipeline-form", {
+        method: "POST",
+        headers: { "Content-Type":"application/json", "Authorization":"Bearer "+ANON, "apikey":ANON },
+        body: JSON.stringify({
+          form_token: FORM_TOKEN, nome: nome, telefone: tel, email: email,
+          empresa: empresa || undefined,
+          observacao: fat ? "Faturamento mensal: " + fat : undefined,
+          utm_source: qp("utm_source") || "unvfinance", utm_medium: qp("utm_medium"),
+          utm_campaign: qp("utm_campaign"), utm_content: qp("utm_content"), utm_term: qp("utm_term"),
+          fbclid: qp("fbclid")
+        })
+      }).then(function(r){
+        return r.json().then(function(data){ return { ok:r.ok, data:data }; });
+      }).then(function(res){
+        if(!res.ok) throw new Error((res.data && res.data.error) || "Erro ao enviar");
+        success(card, nome, link);
+      }).catch(function(err){
+        btn.disabled = false; btn.innerHTML = original;
+        showErr((err && err.message) || "Algo deu errado. Tente de novo ou fale com a gente no WhatsApp.");
+      });
+    });
+  }
+  wireForm(document.getElementById("formTop"));
+
+  if("IntersectionObserver" in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); } });
+    }, { rootMargin: "-40px" });
+    Array.prototype.forEach.call(document.querySelectorAll(".reveal"), function(el){ io.observe(el); });
+  } else {
+    Array.prototype.forEach.call(document.querySelectorAll(".reveal"), function(el){ el.classList.add("in"); });
+  }
+})();
+</script>
+</body>
+</html>

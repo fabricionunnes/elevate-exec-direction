@@ -230,10 +230,10 @@ const products: ProductPrice[] = [
   {
     id: "finance",
     name: "UNV Finance",
-    tagline: "Controle Financeiro Estratégico",
+    tagline: "Consultoria Financeira + BPI",
     icon: DollarSign,
     color: "text-green-500 bg-green-500/10",
-    price: "R$ 3.000",
+    price: "R$ 5.000",
     priceType: "/mês",
     link: "/finance",
     category: "Estratégia & Estrutura"
