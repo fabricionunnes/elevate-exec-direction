@@ -756,6 +756,8 @@
   Todos os direitos reservados · Universidade Nacional de Vendas LTDA
 </footer>
 
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=247392077001023&ev=PageView&noscript=1"/></noscript>
+
 <div class="sticky">
   <div class="row">
     <a class="btn" href="#contato">Agendar reunião</a>
@@ -777,6 +779,14 @@
   function waUrl(msg){ return "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(msg); }
 
   function qp(name){ try { return new URLSearchParams(location.search).get(name) || undefined; } catch(e){ return undefined; } }
+
+  // Meta Pixel (mesmo da UNV Ads)
+  var PIXEL = "247392077001023";
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");
+  function fb(){ try { fbq.apply(null, arguments); } catch(e){} }
+  fb("set", "autoConfig", false, PIXEL);
+  fb("init", PIXEL);
+  fb("track", "PageView");
 
   var wf = document.getElementById("waFloat"); if(wf) wf.href = waUrl(WA_MSG);
   var ws = document.getElementById("waSticky"); if(ws) ws.href = waUrl(WA_MSG);
@@ -849,6 +859,9 @@
         return r.json().then(function(data){ return { ok:r.ok, data:data }; });
       }).then(function(res){
         if(!res.ok) throw new Error((res.data && res.data.error) || "Erro ao enviar");
+        var leadId = res.data && res.data.lead_id;
+        fb("track", "Lead", { content_name: "UNV Finance - landing", value: 1, currency: "BRL" },
+           leadId ? { eventID: leadId + ":Lead" } : undefined);
         success(card, nome, link);
       }).catch(function(err){
         btn.disabled = false; btn.innerHTML = original;
