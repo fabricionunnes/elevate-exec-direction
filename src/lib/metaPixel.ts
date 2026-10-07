@@ -31,6 +31,8 @@ export function initMetaPixel() {
   }
   if (!initialized) {
     initialized = true;
+    // sem eventos automáticos de clique: só os que a gente dispara
+    window.fbq("set", "autoConfig", false, META_PIXEL_ID);
     window.fbq("init", META_PIXEL_ID);
   }
   window.fbq("track", "PageView");
@@ -39,4 +41,20 @@ export function initMetaPixel() {
 export function trackMetaEvent(event: string, params?: Record<string, unknown>) {
   if (typeof window === "undefined" || !window.fbq) return;
   window.fbq("track", event, params);
+}
+
+// Correspondência avançada: o pixel criptografa esses dados antes de enviar.
+// Melhora o casamento do evento com a pessoa que clicou no anúncio.
+export function identifyMetaUser(u: { email?: string; phone?: string; name?: string; externalId?: string }) {
+  if (typeof window === "undefined" || !window.fbq) return;
+  const partes = (u.name || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+  let ph = (u.phone || "").replace(/\D/g, "");
+  if (ph && ph.length <= 11) ph = "55" + ph;
+  const dados: Record<string, string> = {};
+  if (u.email) dados.em = u.email.trim().toLowerCase();
+  if (ph) dados.ph = ph;
+  if (partes[0]) dados.fn = partes[0];
+  if (partes.length > 1) dados.ln = partes[partes.length - 1];
+  if (u.externalId) dados.external_id = u.externalId;
+  window.fbq("init", META_PIXEL_ID, dados);
 }

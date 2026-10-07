@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { initMetaPixel, trackMetaEvent } from "@/lib/metaPixel";
+import { initMetaPixel, trackMetaEvent, identifyMetaUser } from "@/lib/metaPixel";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import logoUnvBoard from "@/assets/logo-unv-board.png";
@@ -105,6 +105,9 @@ export default function UNVStartCheckoutPage() {
     if (digitsCpf.length !== 11) return setError("Informe um CPF válido.");
 
     setLoading(true);
+    // pixel: identifica quem está comprando e marca o envio dos dados de pagamento
+    identifyMetaUser({ email: email.trim(), phone: digitsWhats, name: name.trim() });
+    trackMetaEvent("AddPaymentInfo", { value: 97, currency: "BRL", content_name: "Raio-X Comercial", payment_method: method });
     try {
       const fbclid =
         new URLSearchParams(window.location.search).get("fbclid") ||

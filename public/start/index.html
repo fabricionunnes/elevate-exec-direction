@@ -614,7 +614,7 @@ footer p + p{margin-top:6px}
   var checkout = '/#/start/checkout' + (qs.toString() ? '?' + qs.toString() : '');
   document.querySelectorAll('a.cta.go').forEach(function (a) {
     a.setAttribute('href', checkout);
-    a.addEventListener('click', function () { try { fbq('track', 'InitiateCheckout', { value: 97, currency: 'BRL' }); } catch (e) {} });
+    a.addEventListener('click', function () { try { fbq('trackCustom', 'CliqueAssinar', { value: 97, currency: 'BRL', origem: 'start' }); } catch (e) {} });
   });
 
   // barra fixa no celular: só depois que a oferta apareceu na tela

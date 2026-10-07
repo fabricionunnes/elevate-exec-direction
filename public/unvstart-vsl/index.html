@@ -527,7 +527,7 @@ footer p + p{margin-top:6px}
   }
   document.addEventListener('click', function (e) {
     var a = e.target.closest('a.cta.go');
-    if (a && !a.classList.contains('locked')) { try { fbq('track', 'InitiateCheckout', { value: 97, currency: 'BRL' }); } catch (err) {} }
+    if (a && !a.classList.contains('locked')) { try { fbq('trackCustom', 'CliqueAssinar', { value: 97, currency: 'BRL', origem: 'vsl' }); } catch (err) {} }
   });
   var jaViu = false; try { jaViu = localStorage.getItem('unvstart_vsl_revelado') === '1'; } catch (e) {}
   if (jaViu || !(cfg.HLS_URL || cfg.MP4_URL)) revelar();
@@ -539,6 +539,10 @@ footer p + p{margin-top:6px}
     var screen = document.getElementById('screen');
     var v = document.createElement('video');
     v.controls = true; v.playsInline = true; v.preload = 'auto'; v.poster = cfg.POSTER || '';
+    // sem acelerar: tira a opção do menu e volta pra 1x se alguém forçar
+    v.setAttribute('controlslist', 'noplaybackrate nodownload'); v.disablePictureInPicture = true;
+    v.addEventListener('ratechange', function () { if (v.playbackRate !== 1) v.playbackRate = 1; });
+    v.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     screen.innerHTML = ''; screen.appendChild(v);
     // HLS: o servidor não atende pedido por trecho, e o iPhone exige isso pra tocar MP4
     var tocar = function () { v.play().catch(function () {}); };
