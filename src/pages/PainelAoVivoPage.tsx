@@ -304,7 +304,7 @@ export default function PainelAoVivoPage() {
           </div>
           <div className="av-h" style={{ marginTop: 8 }}>PRÉ-VENDAS · MÊS</div>
           <div className="av-list">
-            {d?.ranking_sdr.map((r, i) => {
+            {d?.ranking_sdr.slice(0, 3).map((r, i) => {
               const pres = r.realizadas + r.no_show > 0 ? pct(r.realizadas, r.realizadas + r.no_show) : null;
               return (
                 <div className="av-pessoa" key={i}>
@@ -323,7 +323,7 @@ export default function PainelAoVivoPage() {
           </div>
           <div className="av-h" style={{ marginTop: 8 }}>AGENTES DE IA · MÊS</div>
           <div className="av-list">
-            {(d?.ranking_agentes || []).slice(0, 5).map((r, i) => (
+            {(d?.ranking_agentes || []).slice(0, 4).map((r, i) => (
               <div className="av-pessoa ia" key={i}>
                 <div className="l1"><b>{r.nome}</b><span className="v">{r.agendadas_mes} <small>{r.agendadas_mes === 1 ? "reunião agendada" : "reuniões agendadas"} no mês</small></span></div>
                 <div className="l2">
