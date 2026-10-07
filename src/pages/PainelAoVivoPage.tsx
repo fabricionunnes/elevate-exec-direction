@@ -148,16 +148,16 @@ export default function PainelAoVivoPage() {
         <section className="av-metas">
           <MetaDia titulo="META DO DIA · COMERCIAL" cor="acc" p={md.comercial.meta_dia ? Math.min(100, pct(md.comercial.vendido_hoje, md.comercial.meta_dia)) : 0}
             big={brl(md.comercial.vendido_hoje)} de={md.comercial.meta_dia != null ? `de ${brl(md.comercial.meta_dia)} hoje` : "sem meta cadastrada"}
-            sub={`${md.comercial.vendas_hoje} ${md.comercial.vendas_hoje === 1 ? "venda" : "vendas"} hoje · falta ${brl(Math.max(n(md.comercial.meta_mes) - md.comercial.vendido_mes, 0))} no mês em ${md.comercial.du_restantes} ${md.comercial.du_restantes === 1 ? "dia útil" : "dias úteis"}`} />
+            itens={[["Vendas hoje", String(md.comercial.vendas_hoje)], ["Falta no mês", brl(Math.max(n(md.comercial.meta_mes) - md.comercial.vendido_mes, 0))], ["Dias úteis", String(md.comercial.du_restantes)]]} />
           <MetaDia titulo="META DO DIA · FINANCEIRO" cor="bar"
             p={md.financeiro.vencendo_hoje_v > 0 ? Math.min(100, pct(md.financeiro.vencendo_hoje_pago_v, md.financeiro.vencendo_hoje_v)) : md.financeiro.recebido_hoje > 0 ? 100 : 0}
             big={oculto(brl(md.financeiro.recebido_hoje))}
-            de={finOculto ? "" : md.financeiro.vencendo_hoje_v > 0 ? `recebido · ${brl(md.financeiro.vencendo_hoje_v)} vencem hoje (${md.financeiro.vencendo_hoje_n})` : "recebido · nada vence hoje"}
-            sub={finOculto ? "valores ocultos" : `${md.financeiro.recebido_hoje_n} ${md.financeiro.recebido_hoje_n === 1 ? "fatura paga" : "faturas pagas"} · a pagar hoje ${brl(md.financeiro.a_pagar_hoje_v)} · pago ${brl(md.financeiro.pago_hoje)}`} />
+            de={finOculto ? "recebido hoje" : md.financeiro.vencendo_hoje_v > 0 ? `recebido de ${brl(md.financeiro.vencendo_hoje_v)} que vencem hoje` : "recebido · nada vence hoje"}
+            itens={[["Faturas pagas", String(md.financeiro.recebido_hoje_n)], ["A pagar hoje", oculto(brl(md.financeiro.a_pagar_hoje_v))], ["Pago hoje", oculto(brl(md.financeiro.pago_hoje))]]} />
           <MetaDia titulo="META DO DIA · PRODUTO E ENTREGA" cor="good"
             p={md.produto.tarefas_vencem_hoje > 0 ? Math.min(100, pct(md.produto.tarefas_vencem_hoje_feitas, md.produto.tarefas_vencem_hoje)) : 100}
             big={`${md.produto.tarefas_vencem_hoje_feitas}/${md.produto.tarefas_vencem_hoje}`} de="tarefas do dia concluídas"
-            sub={`${md.produto.tarefas_feitas_hoje} concluídas hoje · ${md.produto.reunioes_cs_feitas}/${md.produto.reunioes_cs_hoje} reuniões de consultoria · ${md.produto.tarefas_atrasadas} atrasadas · checkup ${md.produto.checkup_total - md.produto.checkup_pendentes}/${md.produto.checkup_total}`} />
+            itens={[["Reuniões", `${md.produto.reunioes_cs_feitas}/${md.produto.reunioes_cs_hoje}`], ["Atrasadas", String(md.produto.tarefas_atrasadas)], ["Checkup", `${md.produto.checkup_total - md.produto.checkup_pendentes}/${md.produto.checkup_total}`]]} />
         </section>
       )}
 
@@ -376,13 +376,17 @@ export default function PainelAoVivoPage() {
   );
 }
 
-function MetaDia({ titulo, cor, p, big, de, sub }: { titulo: string; cor: "acc" | "bar" | "good"; p: number; big: string; de: string; sub: string }) {
+function MetaDia({ titulo, cor, p, big, de, itens }: { titulo: string; cor: "acc" | "bar" | "good"; p: number; big: string; de: string; itens: [string, string][] }) {
   return (
     <div className={`av-meta-dia ${cor}`}>
-      <div className="av-h">{titulo}</div>
-      <div className="big"><b>{big}</b><span>{de}</span></div>
-      <div className="bar"><i style={{ width: `${p}%` }} /></div>
-      <div className="sub">{p}% · {sub}</div>
+      <div className="cab"><span className="av-h">{titulo}</span><b className="pct">{p}%</b></div>
+      <div className="corpo">
+        <div className="big"><b>{big}</b><span>{de}</span></div>
+        <div className="mini">
+          {itens.map(([l, v]) => <div key={l}><small>{l}</small><b>{v}</b></div>)}
+        </div>
+      </div>
+      <div className="bar"><i style={{ width: `${Math.min(100, p)}%` }} /></div>
     </div>
   );
 }
