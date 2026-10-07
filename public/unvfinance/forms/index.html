@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Diagnóstico Financeiro | UNV Finance</title>
+<meta name="description" content="Responda 8 perguntas rápidas e descubra em 1 minuto onde o dinheiro da sua empresa está vazando." />
+<meta name="robots" content="noindex,nofollow" />
+<meta name="theme-color" content="#0B0D12" />
+<link rel="icon" href="/unvfinance/favicon-32.png" sizes="32x32" />
+<link rel="apple-touch-icon" href="/unvfinance/favicon-180.png" />
+<link rel="preload" as="image" href="/unvfinance/logo-mark.webp" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=IBM+Plex+Mono:wght@500;600&family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --ink:#0B0D12; --ink-3:#161B26; --navy:#0E1A36;
+  --cream:#EFE6D2; --muted:rgba(239,230,210,.66); --muted2:rgba(239,230,210,.42);
+  --brass:#C9A35B; --bl:rgba(201,163,91,.3); --bsoft:rgba(201,163,91,.1);
+  --red:#D42A30; --red-dark:#A91D22; --paper:#F1E8D4;
+  --serif:"Playfair Display",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --sans:"Libre Franklin",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  --pad:20px;
+}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--sans);background:var(--ink);color:var(--cream);
+  min-height:100svh;display:flex;flex-direction:column;overflow-x:hidden;-webkit-font-smoothing:antialiased;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(900px 520px at 85% -5%, rgba(20,36,77,.95), transparent 62%),
+    radial-gradient(600px 400px at 0% 100%, rgba(212,42,48,.12), transparent 60%),
+    repeating-linear-gradient(90deg, rgba(201,163,91,.035) 0 1px, transparent 1px 56px);
+}
+body::after{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── topo ── */
+header{position:relative;z-index:2;padding:16px var(--pad) 0;display:flex;align-items:center;gap:12px;max-width:600px;width:100%;margin:0 auto}
+header img{height:30px;width:auto;display:block}
+header .wm{font-family:var(--serif);font-weight:700;font-size:17px;line-height:1;white-space:nowrap}
+header .wm small{display:block;font-family:var(--mono);font-size:8.5px;font-weight:500;letter-spacing:.22em;color:var(--brass);text-transform:uppercase;margin-top:5px}
+.badge{
+  margin-left:auto;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.16em;color:var(--brass);
+  border:1px solid var(--bl);padding:7px 10px;white-space:nowrap;text-transform:uppercase;
+}
+
+/* ── progresso ── */
+.pwrap{position:relative;z-index:2;padding:18px var(--pad) 0;max-width:600px;width:100%;margin:0 auto}
+.pbar{height:4px;background:rgba(239,230,210,.12);overflow:hidden}
+.pfill{height:100%;width:0%;background:linear-gradient(90deg,var(--brass),var(--red));transition:width .45s cubic-bezier(.22,1,.36,1)}
+.pmeta{display:flex;justify-content:space-between;align-items:center;margin-top:9px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--muted2);text-transform:uppercase}
+.pmeta b{color:var(--cream);font-weight:600}
+
+/* ── palco ── */
+main{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;justify-content:center;padding:22px var(--pad) 28px;max-width:600px;width:100%;margin:0 auto}
+.step{display:none;animation:in .42s cubic-bezier(.22,1,.36,1) both}
+.step.on{display:block}
+@keyframes in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.step{animation:none}.pfill{transition:none}}
+
+.kicker{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.2em;color:var(--brass);text-transform:uppercase;margin:0 0 14px}
+.kicker::before{content:"";width:26px;height:1px;background:var(--brass)}
+h1,h2{font-family:var(--serif);color:var(--cream);font-weight:700;margin:0 0 10px;line-height:1.14}
+h1{font-size:clamp(30px,8vw,42px)}
+h2{font-size:clamp(24px,6.4vw,31px)}
+h1 em,h2 em{color:var(--red);font-style:italic}
+.sub{color:var(--muted);font-size:15.5px;line-height:1.6;margin:0 0 24px}
+.sub strong{color:var(--cream);font-weight:600}
+
+/* ── campos ── */
+label.f{display:block;margin-bottom:14px}
+input{
+  width:100%;font-size:17px;font-family:inherit;color:var(--cream);
+  background:transparent;border:0;border-bottom:1.5px solid rgba(239,230,210,.28);border-radius:0;
+  padding:14px 2px;outline:none;transition:border-color .18s;
+}
+input::placeholder{color:rgba(239,230,210,.3)}
+input:focus{border-bottom-color:var(--brass)}
+input.bad{border-bottom-color:var(--red)}
+
+/* ── opções ── */
+.opts{display:grid;gap:10px;margin-bottom:6px}
+.opt{
+  position:relative;display:flex;align-items:center;gap:14px;width:100%;text-align:left;cursor:pointer;
+  background:var(--ink-3);border:1px solid rgba(239,230,210,.12);
+  padding:16px;min-height:60px;color:var(--cream);font-size:15.5px;font-weight:500;font-family:inherit;line-height:1.35;
+  transition:transform .14s,border-color .18s,background .18s;
+}
+.opt:active{transform:scale(.985)}
+.opt .dot{flex:0 0 20px;height:20px;border:1.5px solid rgba(201,163,91,.55);transform:rotate(45deg);display:grid;place-items:center;transition:background .18s,border-color .18s}
+.opt .dot i{width:8px;height:8px;background:var(--ink);opacity:0;transition:opacity .18s}
+.opt.sel{border-color:var(--brass);background:rgba(201,163,91,.12)}
+.opt.sel .dot{background:var(--brass);border-color:var(--brass)}
+.opt.sel .dot i{opacity:1}
+@media (hover:hover){.opt:hover{border-color:var(--bl)}}
+
+/* ── botões ── */
+.btn{
+  position:relative;width:100%;border:0;border-radius:2px;cursor:pointer;
+  font-family:var(--mono);font-size:13.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  padding:19px;min-height:58px;background:var(--red);color:#fff;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),0 0 0 1px var(--red-dark),0 12px 28px rgba(212,42,48,.25);
+  transition:transform .14s,opacity .18s,background .18s;margin-top:8px;
+}
+.btn::after{content:"";position:absolute;inset:4px;border:1px solid rgba(255,255,255,.22);pointer-events:none}
+.btn:hover{background:var(--red-dark)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.6;cursor:default}
+.btn.wa{background:#1F8F4E;box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),0 0 0 1px #17713D,0 12px 28px rgba(31,143,78,.25);display:block;text-align:center;text-decoration:none;line-height:1.4}
+.btn.wa:hover{background:#17713D}
+.back{
+  background:none;border:0;color:var(--muted2);font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  padding:16px 2px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+}
+.err{color:#FF9B9B;font-size:13.5px;font-weight:600;margin:10px 0 0;min-height:18px}
+.hint{color:var(--muted2);font-size:12.5px;margin:14px 0 0;text-align:center;line-height:1.55}
+
+/* ── resultado (papel) ── */
+.card{position:relative;background:var(--paper);color:#1D2333;padding:12px;
+  background-image:repeating-linear-gradient(45deg,rgba(14,26,54,.05) 0 2px,transparent 2px 7px),repeating-linear-gradient(-45deg,rgba(14,26,54,.05) 0 2px,transparent 2px 7px)}
+.card .in{background:var(--paper);border:2px solid var(--navy);outline:1px solid var(--navy);outline-offset:-6px;padding:24px 22px}
+.card .hd{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--navy);padding-bottom:12px;border-bottom:1px solid rgba(14,26,54,.25);margin-bottom:16px}
+.card .hd span:last-child{color:var(--red)}
+.card h3{margin:0 0 6px;font-family:var(--serif);font-size:24px;color:var(--navy);line-height:1.2}
+.card p{margin:0;color:#3D4459;font-size:15px;line-height:1.6}
+.diag{margin:16px 0 0;padding:15px 16px;background:rgba(14,26,54,.06);border-left:3px solid var(--red)}
+.diag b{color:var(--navy)}
+.rows{list-style:none;margin:18px 0 0;padding:0;border-top:1px solid rgba(14,26,54,.2)}
+.rows li{display:flex;gap:12px;padding:10px 0;border-bottom:1px dashed rgba(14,26,54,.2);font-size:14px}
+.rows span{color:#5A5444;flex:0 0 112px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding-top:2px}
+.rows b{color:#1D2333;font-weight:600;word-break:break-word}
+.card .hint{color:#6B6352}
+
+.ftr{position:relative;z-index:2;text-align:center;padding:0 0 18px}
+.ftr small{color:var(--muted2);font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+</style>
+</head>
+<body>
+
+<header>
+  <img src="/unvfinance/logo-mark.webp" alt="" width="56" height="34" />
+  <span class="wm">UNV Finance<small>Grupo UNV Holdings</small></span>
+  <span class="badge">Diagnóstico · 1 min</span>
+</header>
+
+<div class="pwrap" id="pwrap" hidden>
+  <div class="pbar"><div class="pfill" id="pfill"></div></div>
+  <div class="pmeta"><span id="pstep">Pergunta 1 de 8</span><span><b id="ppct">0%</b> concluído</span></div>
+</div>
+
+<main>
+
+  <!-- 0 — abertura -->
+  <section class="step on" id="s0">
+    <p class="kicker">Diagnóstico financeiro</p>
+    <h1>Descubra em 1 minuto onde o dinheiro da sua empresa <em>está vazando.</em></h1>
+    <p class="sub">São <strong>8 perguntas rápidas</strong>. No final você recebe uma leitura do seu cenário financeiro e fala direto com a UNV Finance no WhatsApp.</p>
+    <button class="btn" id="go">Começar o diagnóstico</button>
+    <p class="hint">Leva menos de 1 minuto. Seus dados não vão pra lista nenhuma.</p>
+  </section>
+
+  <!-- 10 — triagem (numerada fora da sequência, mesmo padrão da UNV Ads) -->
+  <section class="step" id="s10">
+    <p class="kicker">Pergunta 1 de 8</p>
+    <h2>Você é dono ou sócio da empresa?</h2>
+    <p class="sub">O diagnóstico parte de caixa, dívida e faturamento. Só faz sentido pra quem decide isso.</p>
+    <div class="opts" id="optEmp"></div>
+    <p class="err" id="e10"></p>
+    <button class="back" data-back="10" data-back-to="0">← Voltar</button>
+  </section>
+
+  <!-- 1 — nome -->
+  <section class="step" id="s1">
+    <p class="kicker">Pergunta 2 de 8</p>
+    <h2>Como você se chama?</h2>
+    <p class="sub">Pra gente te chamar pelo nome.</p>
+    <label class="f"><input id="nome" type="text" name="name" autocomplete="name" autocapitalize="words" placeholder="Seu nome completo" maxlength="80" enterkeyhint="next" /></label>
+    <button class="btn" data-next="1">Continuar</button>
+    <p class="err" id="e1"></p>
+    <button class="back" data-back="1" data-back-to="10">← Voltar</button>
+  </section>
+
+  <!-- 2 — whatsapp -->
+  <section class="step" id="s2">
+    <p class="kicker">Pergunta 3 de 8</p>
+    <h2>Qual seu WhatsApp?</h2>
+    <p class="sub">É por ali que a gente marca sua reunião de alinhamento.</p>
+    <label class="f"><input id="tel" type="tel" name="tel" inputmode="numeric" autocomplete="tel" placeholder="(31) 99999-9999" maxlength="24" enterkeyhint="next" /></label>
+    <button class="btn" data-next="2">Continuar</button>
+    <p class="err" id="e2"></p>
+    <button class="back" data-back="2">← Voltar</button>
+  </section>
+
+  <!-- 3 — email -->
+  <section class="step" id="s3">
+    <p class="kicker">Pergunta 4 de 8</p>
+    <h2>E seu melhor e-mail?</h2>
+    <p class="sub">Só pra registrar no sistema. Nada de spam.</p>
+    <label class="f"><input id="email" type="email" name="email" inputmode="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="voce@suaempresa.com.br" maxlength="120" enterkeyhint="next" /></label>
+    <button class="btn" data-next="3">Continuar</button>
+    <p class="err" id="e3"></p>
+    <button class="back" data-back="3">← Voltar</button>
+  </section>
+
+  <!-- 4 — empresa -->
+  <section class="step" id="s4">
+    <p class="kicker">Pergunta 5 de 8</p>
+    <h2>Qual o nome da sua empresa?</h2>
+    <p class="sub">A gente dá uma olhada antes de falar com você.</p>
+    <label class="f"><input id="empresa" type="text" name="organization" autocomplete="organization" placeholder="Nome da empresa" maxlength="120" enterkeyhint="next" /></label>
+    <button class="btn" data-next="4">Continuar</button>
+    <p class="err" id="e4"></p>
+    <button class="back" data-back="4">← Voltar</button>
+  </section>
+
+  <!-- 5 — faturamento -->
+  <section class="step" id="s5">
+    <p class="kicker">Pergunta 6 de 8</p>
+    <h2>Quanto sua empresa fatura por mês?</h2>
+    <p class="sub">Uma média dos últimos meses já serve.</p>
+    <div class="opts" id="optFat"></div>
+    <p class="err" id="e5"></p>
+    <button class="back" data-back="5">← Voltar</button>
+  </section>
+
+  <!-- 6 — dor -->
+  <section class="step" id="s6">
+    <p class="kicker">Pergunta 7 de 8</p>
+    <h2>O que mais te incomoda no financeiro hoje?</h2>
+    <p class="sub">Escolhe a que mais pesa.</p>
+    <div class="opts" id="optDor"></div>
+    <p class="err" id="e6"></p>
+    <button class="back" data-back="6">← Voltar</button>
+  </section>
+
+  <!-- 7 — quem cuida -->
+  <section class="step" id="s7">
+    <p class="kicker">Última pergunta</p>
+    <h2>Quem cuida do financeiro hoje?</h2>
+    <p class="sub">Sem julgamento. É o que mais diz por onde começar.</p>
+    <div class="opts" id="optQuem"></div>
+    <p class="err" id="e7"></p>
+    <button class="back" data-back="7">← Voltar</button>
+  </section>
+
+  <!-- 8 — enviando -->
+  <section class="step" id="s8">
+    <h2>Montando seu diagnóstico…</h2>
+    <p class="sub">Um segundo. Estamos cruzando suas respostas.</p>
+  </section>
+
+  <!-- 9 — resultado -->
+  <section class="step" id="s9">
+    <div class="card"><div class="in">
+      <div class="hd"><span>UNV Finance · Diagnóstico</span><span>Nº 001</span></div>
+      <h3 id="rTitle">Diagnóstico pronto</h3>
+      <p id="rSub">Recebemos suas respostas.</p>
+      <div class="diag" id="rDiag"></div>
+      <a class="btn wa" id="waBtn" href="#" rel="noopener">Agendar reunião no WhatsApp</a>
+      <p class="hint">A mensagem já vai preenchida com suas respostas. É só apertar enviar.</p>
+      <ul class="rows" id="rRows"></ul>
+    </div></div>
+  </section>
+
+  <!-- 11 — não é dono. Fim do fluxo: nada vai pro CRM. -->
+  <section class="step" id="s11">
+    <div class="card"><div class="in">
+      <h3>Esse diagnóstico é pra dono de empresa.</h3>
+      <p>Ele parte de caixa, dívida e faturamento, coisas que só quem decide o rumo do negócio consegue responder. Não vamos tomar seu tempo pra entregar no final um diagnóstico que não serve pro seu caso.</p>
+      <a class="btn" href="/unvfinance/" style="margin-top:18px;display:block;text-align:center;text-decoration:none;line-height:1.4">Conhecer a UNV Finance</a>
+      <p class="hint">Se você trabalha numa empresa e acha que isso serve pro seu dono, manda esse link pra ele.</p>
+    </div></div>
+  </section>
+
+</main>
+
+<div class="ftr"><small>UNV Finance · Grupo UNV Holdings</small></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ── config ── */
+var FORM_TOKEN = "d258f08ac89524a41542c61121b8a08c";              // funil UNV Finance
+var SUPA = "https://xrncvhzxjmddqluxoosu.supabase.co";
+var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+var PIXEL = "247392077001023";     // mesmo pixel da UNV Ads
+var WA_NUMBER = "5511927008490";
+
+var EMP = [
+  {v:"Sim, a empresa é minha",  s:"dono"},
+  {v:"Sou sócio da empresa",    s:"socio"},
+  {v:"Não",                     s:"nao"}
+];
+var FAT = [
+  {v:"Até R$ 50 mil por mês",             s:"ate50k"},
+  {v:"Entre R$ 50 mil e R$ 100 mil",      s:"50a100k"},
+  {v:"Entre R$ 100 mil e R$ 300 mil",     s:"100a300k"},
+  {v:"Entre R$ 300 mil e R$ 1 milhão",    s:"300ka1m"},
+  {v:"Acima de R$ 1 milhão por mês",      s:"1m+"}
+];
+var DOR = [
+  {v:"Falta dinheiro pra pagar as contas no fim do mês", s:"caixa"},
+  {v:"Dívidas e juros comendo a margem",                  s:"divida"},
+  {v:"Conta pessoal e da empresa misturadas",             s:"mistura"},
+  {v:"Não sei quanto a empresa lucra de verdade",         s:"lucro"},
+  {v:"Cliente atrasa e ninguém cobra",                    s:"inadimplencia"},
+  {v:"Não sei qual produto dá lucro e qual dá prejuízo",  s:"margem"}
+];
+var QUEM = [
+  {v:"Eu mesmo, no meio de todo o resto",   s:"dono"},
+  {v:"Um funcionário interno",              s:"interno"},
+  {v:"Só o contador",                       s:"contador"},
+  {v:"Já tenho um BPO financeiro",          s:"bpo"},
+  {v:"Ninguém cuida de verdade",            s:"ninguem"}
+];
+
+/* ── util ── */
+function $(id){ return document.getElementById(id); }
+function qp(n){ try { return new URLSearchParams(location.search).get(n) || undefined; } catch(e){ return undefined; } }
+function buzz(ms){ try { if(navigator.vibrate) navigator.vibrate(ms||12); } catch(e){} }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+var MINUS = ["de","da","do","das","dos","e"];
+function capitalize(s){
+  return s.toLowerCase().split(" ").map(function(w,i){
+    if(i > 0 && MINUS.indexOf(w) !== -1) return w;
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }).join(" ");
+}
+function fb(){ if(!PIXEL) return; try { fbq.apply(null, arguments); } catch(e){} }
+
+/* ── Meta Pixel (só carrega se houver ID) ── */
+if(PIXEL){
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");
+  fb("set", "autoConfig", false, PIXEL);
+  fb("init", PIXEL);
+  fb("track","PageView");
+}
+
+/* ── estado ── */
+var A = { nome:"", tel:"", email:"", empresa:"", fat:null, dor:null, quem:null, emp:null, prefill:"" };
+var cur = 0, maxSeen = 0;
+var STEP_NAMES = { 10:"dono", 1:"nome", 2:"whatsapp", 3:"email", 4:"empresa",
+                   5:"faturamento", 6:"dor", 7:"quem_cuida" };
+var ORDEM = [10, 1, 2, 3, 4, 5, 6, 7];
+var TOTAL = ORDEM.length;
+function numPergunta(i){
+  var k = ORDEM.indexOf(i === undefined ? cur : i);
+  return k < 0 ? 0 : k + 1;
+}
+
+function paint(){
+  var q = numPergunta();
+  var pct = Math.round(Math.max(0, q - 1) / TOTAL * 100);
+  $("pfill").style.width = pct + "%";
+  $("ppct").textContent = pct + "%";
+  $("pstep").textContent = q ? ("Pergunta " + q + " de " + TOTAL) : "Quase lá";
+  $("pwrap").hidden = !q;
+}
+
+function show(i){
+  var el = document.querySelector(".step.on");
+  if(el) el.classList.remove("on");
+  $("s" + i).classList.add("on");
+  cur = i;
+  paint();
+  var q = numPergunta();
+  if(q && q > maxSeen && i !== 10){
+    maxSeen = q;
+    fb("trackCustom","FormStep",{ step:q, step_name:STEP_NAMES[i], form:"unvfinance-diagnostico" });
+  }
+  var inp = $("s" + i).querySelector("input");
+  if(inp && window.matchMedia("(min-width:768px)").matches) setTimeout(function(){ inp.focus(); }, 260);
+  try { window.scrollTo(0,0); } catch(e){}
+}
+
+function err(i, msg){
+  var e = $("e" + i); if(e) e.textContent = msg || "";
+  var inp = $("s" + i).querySelector("input");
+  if(inp){ inp.classList.toggle("bad", !!msg); if(msg) inp.focus(); }
+  if(msg) buzz(40);
+}
+
+/* ── máscara de telefone (tolera DDI colado pelo autofill) ── */
+function maskPhone(v){
+  var d = v.replace(/\D/g,"");
+  if(d.length > 11 && d.slice(0,2) === "55") d = d.slice(2);
+  d = d.slice(0,11);
+  if(d.length <= 2) return d.length ? "(" + d : d;
+  if(d.length <= 6) return "(" + d.slice(0,2) + ") " + d.slice(2);
+  if(d.length <= 10) return "(" + d.slice(0,2) + ") " + d.slice(2,6) + "-" + d.slice(6);
+  return "(" + d.slice(0,2) + ") " + d.slice(2,7) + "-" + d.slice(7);
+}
+$("tel").addEventListener("input", function(){ this.value = maskPhone(this.value); });
+
+/* ── pré-preenchimento: link (prioridade) ou o que a pessoa já digitou neste aparelho ── */
+var LS = "unvfinance_lead", LS_TTL = 90 * 24 * 3600 * 1000;
+function lsGet(){
+  try {
+    var o = JSON.parse(localStorage.getItem(LS) || "{}");
+    if(!o.t || Date.now() - o.t > LS_TTL) return {};
+    return o;
+  } catch(e){ return {}; }
+}
+function lsSet(k, v){
+  try { var o = lsGet(); o[k] = v; o.t = Date.now(); localStorage.setItem(LS, JSON.stringify(o)); } catch(e){}
+}
+function firstQp(){
+  for(var i = 0; i < arguments.length; i++){ var v = qp(arguments[i]); if(v) return v; }
+}
+var PESSOAIS = ["nome","name","full_name","tel","telefone","phone","whatsapp","email","e_mail","empresa","company"];
+
+function prefill(){
+  var saved = lsGet(), achou = [];
+  var nome = firstQp("nome","name","full_name") || saved.nome;
+  if(nome && nome.trim().length >= 2){ $("nome").value = capitalize(nome.trim().replace(/\s+/g," ")); achou.push("nome"); }
+  var tel = firstQp("tel","telefone","phone","whatsapp") || saved.tel;
+  if(tel && String(tel).replace(/\D/g,"").length >= 10){ $("tel").value = maskPhone(String(tel)); achou.push("tel"); }
+  var mail = firstQp("email","e_mail") || saved.email;
+  if(mail && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(mail).trim())){ $("email").value = String(mail).trim(); achou.push("email"); }
+  var emp = firstQp("empresa","company") || saved.empresa;
+  if(emp) $("empresa").value = String(emp).trim();
+
+  // Tira os dados pessoais da barra de endereço depois de ler. UTMs ficam.
+  try {
+    var u = new URL(location.href), mexeu = false;
+    PESSOAIS.forEach(function(k){ if(u.searchParams.has(k)){ u.searchParams.delete(k); mexeu = true; } });
+    if(mexeu){
+      var q = u.searchParams.toString();
+      history.replaceState(null, "", u.pathname + (q ? "?" + q : "") + u.hash);
+    }
+  } catch(e){}
+  A.prefill = achou.join(",");
+}
+
+/* ── cards de opção ── */
+function buildOpts(box, items, onPick){
+  box.innerHTML = "";
+  items.forEach(function(it){
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "opt";
+    b.innerHTML = '<span class="dot"><i></i></span><span>' + it.v + '</span>';
+    b.addEventListener("click", function(){
+      Array.prototype.forEach.call(box.children, function(c){ c.classList.remove("sel"); });
+      b.classList.add("sel"); buzz(14);
+      setTimeout(function(){ onPick(it); }, 190);
+    });
+    box.appendChild(b);
+  });
+}
+
+buildOpts($("optEmp"), EMP, function(it){
+  A.emp = it; err(10,"");
+  if(it.s === "nao"){ show(11); return; }   // fim de linha: nada vai pro CRM nem pro pixel
+  fb("trackCustom","FormStart",{ form:"unvfinance-diagnostico" });
+  fb("trackCustom","FormAnswer",{ field:"dono", value:it.s });
+  if(A.prefill) fb("trackCustom","FormPrefill",{ campos:A.prefill, form:"unvfinance-diagnostico" });
+  show(1);
+});
+buildOpts($("optFat"), FAT, function(it){
+  A.fat = it; err(5,"");
+  fb("trackCustom","FormAnswer",{ field:"faturamento", value:it.s });
+  show(6);
+});
+buildOpts($("optDor"), DOR, function(it){
+  A.dor = it; err(6,"");
+  fb("trackCustom","FormAnswer",{ field:"dor", value:it.s });
+  show(7);
+});
+buildOpts($("optQuem"), QUEM, function(it){
+  A.quem = it; err(7,"");
+  fb("trackCustom","FormAnswer",{ field:"quem_cuida", value:it.s });
+  finish();
+});
+
+/* ── navegação ── */
+$("go").addEventListener("click", function(){ show(10); });
+
+function validate(i){
+  if(i === 1){
+    var v = $("nome").value.trim().replace(/\s+/g," ");
+    if(v.length < 2){ err(1,"Escreve seu nome pra gente te chamar direito."); return false; }
+    A.nome = capitalize(v); lsSet("nome", A.nome); err(1,""); return true;
+  }
+  if(i === 2){
+    var d = $("tel").value.replace(/\D/g,"");
+    if(d.length < 10){ err(2,"Coloca seu WhatsApp com DDD."); return false; }
+    A.tel = d; lsSet("tel", d); err(2,""); return true;
+  }
+  if(i === 3){
+    var e = $("email").value.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)){ err(3,"Confere o e-mail, parece que faltou algo."); return false; }
+    A.email = e; lsSet("email", e); err(3,""); return true;
+  }
+  if(i === 4){
+    var em = $("empresa").value.trim().replace(/\s+/g," ");
+    if(em.length < 2){ err(4,"Coloca o nome da empresa."); return false; }
+    A.empresa = em; lsSet("empresa", em); err(4,""); return true;
+  }
+  return true;
+}
+
+Array.prototype.forEach.call(document.querySelectorAll("[data-next]"), function(b){
+  b.addEventListener("click", function(){
+    var i = +b.getAttribute("data-next");
+    if(validate(i)) show(i + 1);
+  });
+});
+Array.prototype.forEach.call(document.querySelectorAll("[data-back]"), function(b){
+  b.addEventListener("click", function(){
+    var to = b.getAttribute("data-back-to");
+    if(to !== null) return show(+to);
+    show(+b.getAttribute("data-back") - 1);
+  });
+});
+Array.prototype.forEach.call(document.querySelectorAll("input"), function(inp){
+  inp.addEventListener("keydown", function(ev){
+    if(ev.key === "Enter"){ ev.preventDefault(); var b = $("s" + cur).querySelector("[data-next]"); if(b) b.click(); }
+  });
+});
+
+/* ── diagnóstico curto por perfil ── */
+function diagnose(){
+  var d = A.dor ? A.dor.s : "";
+  if(d === "caixa")         return "Faltar dinheiro no fim do mês quase nunca é falta de venda. É falta de previsão: entrada e saída sem fluxo de caixa projetado. O primeiro passo é enxergar os próximos 90 dias antes de eles chegarem.";
+  if(d === "divida")        return "Quando a dívida cresce, os juros passam a ser o maior custo da empresa sem aparecer no DRE de ninguém. Antes de pegar mais crédito, é preciso mapear o custo real de cada dívida e renegociar na ordem certa.";
+  if(d === "mistura")       return "Com caixa pessoal e da empresa misturados, nenhum número é confiável: nem o lucro, nem o pró-labore, nem o preço. Separar os caixas é a primeira auditoria, e costuma revelar dinheiro que ninguém sabia que estava saindo.";
+  if(d === "lucro")         return "Faturar e não saber quanto sobra é o sinal mais claro de falta de DRE gerencial. Sem ele, toda decisão de investimento, contratação e desconto é tomada no escuro.";
+  if(d === "inadimplencia") return "Venda que não é recebida é trabalho de graça. Contas a receber sem rotina de cobrança viram rombo no caixa e, muitas vezes, empréstimo pra cobrir o que o cliente deve.";
+  return "Sem margem de contribuição por produto, a empresa costuma vender mais justamente o que dá menos lucro. Saber onde ganha e onde perde muda preço, mix e esforço comercial.";
+}
+function porQuem(){
+  var q = A.quem ? A.quem.s : "";
+  if(q === "dono")     return " E com o financeiro na sua mão, junto com todo o resto, ele sempre fica pra depois. É exatamente essa rotina que o BPO assume.";
+  if(q === "contador") return " O contador cuida do fiscal e do passado. A gestão do caixa de amanhã fica sem dono, e é aí que a consultoria entra.";
+  if(q === "bpo")      return " Se já existe um BPO e o problema continua, é sinal de execução em cima de uma casa que nunca foi organizada. Falta a auditoria antes.";
+  if(q === "ninguem")  return " Sem ninguém olhando, o vazamento não para. A boa notícia: é onde a auditoria encontra mais dinheiro rápido.";
+  return " Ter alguém dentro de casa ajuda, mas sem método e indicadores a pessoa vira só quem paga as contas. A consultoria monta o método e o BPO garante a execução.";
+}
+
+/* ── envio ── */
+function payloadDesafio(){
+  var parts = [];
+  if(A.fat) parts.push("Faturamento: " + A.fat.v);
+  if(A.dor) parts.push("Maior dor: " + A.dor.v);
+  if(A.quem) parts.push("Quem cuida do financeiro: " + A.quem.v);
+  return parts.join(" | ");
+}
+
+function waText(){
+  var t = "Olá, acabei de preencher o diagnóstico financeiro da UNV Finance.\n\n";
+  t += "Nome: " + A.nome + "\n";
+  t += "Empresa: " + A.empresa + "\n";
+  t += "WhatsApp: " + $("tel").value + "\n";
+  t += "E-mail: " + A.email + "\n";
+  if(A.fat) t += "Faturamento: " + A.fat.v + "\n";
+  if(A.dor) t += "Maior dor: " + A.dor.v + "\n";
+  if(A.quem) t += "Quem cuida do financeiro: " + A.quem.v + "\n";
+  t += "\nQuero agendar a reunião de alinhamento.";
+  return t;
+}
+
+function render(){
+  $("rTitle").textContent = A.nome.split(" ")[0] + ", seu diagnóstico está pronto.";
+  $("rSub").textContent = "Recebemos suas respostas. Olha o que elas dizem sobre o seu financeiro:";
+  $("rDiag").innerHTML = "<b>O que já dá pra ver:</b><br>" + esc(diagnose() + porQuem());
+  var rows = [["Nome", A.nome], ["Empresa", A.empresa], ["WhatsApp", $("tel").value], ["E-mail", A.email]];
+  if(A.fat) rows.push(["Faturamento", A.fat.v]);
+  if(A.dor) rows.push(["Maior dor", A.dor.v]);
+  if(A.quem) rows.push(["Financeiro", A.quem.v]);
+  $("rRows").innerHTML = rows.map(function(r){ return "<li><span>" + esc(r[0]) + "</span><b>" + esc(r[1]) + "</b></li>"; }).join("");
+
+  var wa = $("waBtn");
+  wa.href = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(waText());
+  wa.addEventListener("click", function(){ fb("trackCustom","WhatsAppClick",{ form:"unvfinance-diagnostico" }); });
+  show(9);
+}
+
+var sending = false;
+function finish(){
+  if(sending) return;
+  sending = true;
+  show(8);
+
+  var payload = {
+    form_token: FORM_TOKEN,
+    nome: A.nome,
+    telefone: A.tel,
+    email: A.email,
+    empresa: A.empresa,
+    desafio: payloadDesafio(),
+    utm_source: qp("utm_source") || "unvfinance-forms", utm_medium: qp("utm_medium"),
+    utm_campaign: qp("utm_campaign"), utm_content: qp("utm_content"), utm_term: qp("utm_term"),
+    fbclid: qp("fbclid"),
+    ad_name: qp("ad_name"), adset_name: qp("adset_name"), campaign_name: qp("campaign_name"),
+    meta_campaign_id: qp("meta_campaign_id") || qp("campaign_id"),
+    meta_adset_id: qp("meta_adset_id") || qp("adset_id"),
+    meta_ad_id: qp("meta_ad_id") || qp("ad_id")
+  };
+
+  fetch(SUPA + "/functions/v1/submit-pipeline-form", {
+    method: "POST",
+    headers: { "Content-Type":"application/json", "Authorization":"Bearer " + ANON, "apikey": ANON },
+    body: JSON.stringify(payload)
+  }).then(function(r){
+    return r.json().then(function(d){ return { ok:r.ok, data:d }; });
+  }).then(function(res){
+    if(!res.ok) throw new Error((res.data && res.data.error) || "Erro ao enviar");
+    var leadId = res.data && res.data.lead_id;
+    fb("track","Lead", { content_name:"Diagnóstico UNV Finance", content_category:A.fat ? A.fat.s : "", value:1, currency:"BRL" },
+       leadId ? { eventID: leadId + ":Lead" } : undefined);
+    render();
+  }).catch(function(e){
+    sending = false;
+    // Não perde o lead: mostra o resultado e joga pro WhatsApp do mesmo jeito.
+    fb("trackCustom","FormError",{ msg: String(e && e.message || e).slice(0,100) });
+    render();
+  });
+}
+
+prefill();
+paint();
+})();
+</script>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=247392077001023&ev=PageView&noscript=1"/></noscript>
+</body>
+</html>
