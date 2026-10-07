@@ -516,7 +516,6 @@ footer p + p{margin-top:6px}
   var revelado = false;
   function revelar() {
     if (revelado) return; revelado = true;
-    if (comSom) { try { localStorage.setItem('unvstart_vsl9_preco', '1'); } catch (e) {} }
     site.hidden = false; rodape.hidden = false; site.classList.add('on');
     document.querySelectorAll('a.cta.go').forEach(function (a) { a.setAttribute('href', checkout); });
     // preço contando até 97
@@ -532,8 +531,9 @@ footer p + p{margin-top:6px}
     var a = e.target.closest('a.cta.go');
     if (a) { try { fbq('trackCustom', 'CliqueAssinar', { value: 97, currency: 'BRL', origem: 'vsl' }); } catch (err) {} }
   });
-  var jaViu = false; try { jaViu = localStorage.getItem('unvstart_vsl9_preco') === '1'; } catch (e) {}
-  if (jaViu || !(cfg.HLS_URL || cfg.MP4_URL)) revelar();
+  // o site só aparece quando o vídeo chega no preço, sempre (limpa a memória das versões antigas)
+  try { localStorage.removeItem('unvstart_vsl_revelado'); localStorage.removeItem('unvstart_vsl9_preco'); } catch (e) {}
+  if (!(cfg.HLS_URL || cfg.MP4_URL)) revelar();
 
   // ===== vídeo: começa mudo sozinho; o toque liga o som e volta pro início =====
   var screen = document.getElementById('screen'), unmute = document.getElementById('unmute');
