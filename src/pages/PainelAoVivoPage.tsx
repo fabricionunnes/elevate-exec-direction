@@ -179,7 +179,7 @@ export default function PainelAoVivoPage() {
         {/* linha 2: feed + ranking */}
         <div className="av-card av-feed">
           <div className="av-h av-h-fin">
-            <span>ACONTECENDO · HOJE</span>
+            <span>ACONTECENDO · ÚLTIMOS 15 DE HOJE</span>
             {d?.feed_contagem && (
               <span className="av-cont">
                 <b>{d.feed_contagem.tarefas_concluidas}</b> tarefas · <b>{d.feed_contagem.reunioes_consultoria}</b> reuniões de consultoria · <b>{d.feed_contagem.mudancas_etapa}</b> etapas · <b>{d.feed_contagem.atividades_concluidas}</b> atividades
@@ -187,7 +187,7 @@ export default function PainelAoVivoPage() {
             )}
           </div>
           <div className="av-list av-list-feed">
-            {d?.feed.map((f, i) => (
+            {d?.feed.slice(0, 15).map((f, i) => (
               <div className={`av-row ${f.tipo}`} key={i}><b>{hora(f.ts)}</b> {f.texto}</div>
             ))}
             {d && !d.feed.length && <div className="av-row mute">Nada ainda hoje</div>}

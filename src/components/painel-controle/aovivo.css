@@ -20,7 +20,7 @@
 .pc.av .av-live.on i { animation: avpulse .6s ease-out; }
 @keyframes avpulse { 0% { box-shadow: 0 0 0 0 rgba(79,210,138,.7); } 100% { box-shadow: 0 0 0 10px rgba(79,210,138,0); } }
 .pc.av .av-err { background: rgba(255,107,107,.12); border: 1px solid var(--bad); color: var(--ink); padding: 10px 14px; border-radius: 8px; }
-.pc.av .av-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.1fr 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 10px; }
+.pc.av .av-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.1fr 1fr 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
 .pc.av .av-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .pc.av .av-feed { grid-column: auto; }
 .pc.av .av-h { font-size: 10px; letter-spacing: 1.5px; color: var(--mute); margin-bottom: 8px; }
