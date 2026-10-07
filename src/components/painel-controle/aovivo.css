@@ -224,3 +224,8 @@
 
 .pc.av-pop .av-pop-per { display: flex; gap: 6px; }
 .pc.av-pop .av-pop-per .back { padding: 5px 10px; font-size: 11px; }
+
+/* pop-up: rola por dentro e respeita o espaçamento da tela de detalhe do Painel (.wrap) */
+.pc.av-pop { min-height: 0 !important; height: auto; max-height: 92dvh; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; }
+.pc.av-pop .av-pop-wrap { max-width: 100%; margin: 0; padding: 4px 0 8px; gap: 14px; }
+.av-pop-content { display: block; }

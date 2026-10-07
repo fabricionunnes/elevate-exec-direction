@@ -446,7 +446,9 @@ export default function PainelAoVivoPage() {
                     )}
                     <button type="button" className="back" onClick={() => setPop([])}>Fechar</button>
                   </div>
-                  <Detalhe key={`${atual.bloco}:${JSON.stringify(atual.filtro ?? {})}`} mes={mesAtual} bloco={atual.bloco} filtro={atual.filtro} titulo={atual.titulo} sub={atual.sub} det={empilhar} />
+                  <div className="wrap av-pop-wrap">
+                    <Detalhe key={`${atual.bloco}:${JSON.stringify(atual.filtro ?? {})}`} mes={mesAtual} bloco={atual.bloco} filtro={atual.filtro} titulo={atual.titulo} sub={atual.sub} det={empilhar} />
+                  </div>
                 </>
               );
             })()}
