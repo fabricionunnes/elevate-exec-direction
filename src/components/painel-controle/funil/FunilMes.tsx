@@ -16,10 +16,12 @@ class Guarda extends Component<{ reserva: ReactNode; children: ReactNode }, { er
   render() { return this.state.erro ? this.props.reserva : this.props.children; }
 }
 
-export function FunilMes({ etapas, selo, onSelo, altura }: {
+export function FunilMes({ etapas, selo, onSelo, altura, fracao }: {
   etapas: EtapaFunil[];
   /** altura forçada (a Gestão à vista usa o card inteiro); sem isso, 340 ou 390 conforme a largura */
   altura?: number;
+  /** fração da largura que o funil ocupa (o resto é dos rótulos); padrão 0,46 estreito e 0,52 largo */
+  fracao?: number;
   /** texto do selo no topo: "R$ 3,4 mil investidos · CPL R$ 83" */
   selo: string;
   onSelo: () => void;
@@ -45,7 +47,7 @@ export function FunilMes({ etapas, selo, onSelo, altura }: {
 
   const estreito = larg > 0 && larg < 520;
   const alt = altura ?? (estreito ? 340 : 390);
-  const largFunil = Math.round(larg * (estreito ? 0.46 : 0.52));
+  const largFunil = Math.round(larg * (fracao ?? (estreito ? 0.46 : 0.52)));
 
   const guardarAncoras = useCallback((a: Ancora[]) => {
     setAncoras((ant) => (ant.length === a.length && ant.every((p, i) => Math.abs(p.x - a[i].x) < 2 && Math.abs(p.y - a[i].y) < 2) ? ant : a));
@@ -53,7 +55,7 @@ export function FunilMes({ etapas, selo, onSelo, altura }: {
   const abrir = useCallback((i: number) => etapas[i]?.onClick(), [etapas]);
 
   const svg = <FunilSvg pecas={pecas} w={largFunil} h={alt} ativo={ativo} onAtivo={setAtivo} onEtapa={abrir} onAncoras={guardarAncoras} parado={parado} />;
-  const xRot = largFunil + (estreito ? 14 : 30);
+  const xRot = largFunil + (fracao ? 10 : estreito ? 14 : 30);
   // Rótulos em faixas iguais na altura: a perspectiva aproxima os anéis de baixo e,
   // presos na altura do anel, os textos encavalavam. A linha guia faz o cotovelo.
   const faixa = alt / Math.max(1, etapas.length);

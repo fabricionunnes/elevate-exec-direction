@@ -419,7 +419,7 @@ function Funil3DCompacto({ itens }: { itens: [string, number][] }) {
   const altura = Math.max(260, dim.h - 8);
   return (
     <div className="av-funil3d" ref={caixa}>
-      {dim.w > 0 && <FunilMes etapas={etapas} selo="" onSelo={() => {}} altura={altura} />}
+      {dim.w > 0 && <FunilMes etapas={etapas} selo="" onSelo={() => {}} altura={altura} fracao={0.64} />}
     </div>
   );
 }
