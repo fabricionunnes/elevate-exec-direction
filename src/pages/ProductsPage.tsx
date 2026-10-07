@@ -198,9 +198,9 @@ const leadershipProduct: Product = {
 const strategicProducts: Product[] = [
   {
     name: "UNV Finance",
-    tagline: "Consultoria financeira + BPI",
+    tagline: "Consultoria financeira + BPO",
     description:
-      "Consultoria financeira estratégica para auditar e corrigir gargalos, seguida do BPI financeiro com gestão à vista. Caixa previsível, dívida sob controle e decisão com número.",
+      "Consultoria financeira estratégica para auditar e corrigir gargalos, seguida do BPO financeiro com gestão à vista. Caixa previsível, dívida sob controle e decisão com número.",
     icp: "Empresários • Empresas em crescimento",
     href: "/finance",
     investment: "R$ 5.000/mês (12 meses)",

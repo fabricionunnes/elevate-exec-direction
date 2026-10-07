@@ -283,7 +283,7 @@ const products: Product[] = [
   {
     id: "finance",
     name: "UNV Finance",
-    tagline: "Consultoria Financeira + BPI",
+    tagline: "Consultoria Financeira + BPO",
     icon: DollarSign,
     color: "bg-emerald-600",
     category: "Suporte",
@@ -293,10 +293,10 @@ const products: Product[] = [
     price: "R$ 5.000",
     priceType: "/mês",
     link: "/finance",
-    keyDiff: "Consultoria que organiza a casa + BPI que executa o planejamento todo dia",
+    keyDiff: "Consultoria que organiza a casa + BPO que executa o planejamento todo dia",
     bestFor: "Empresários que faturam alto mas não sabem onde ganham ou perdem",
     notFor: "Quem busca contabilidade ou assessoria de investimentos",
-    highlights: ["Auditoria financeira", "Redução de dívidas", "Fluxo de caixa", "Dashboard BPI"]
+    highlights: ["Auditoria financeira", "Redução de dívidas", "Fluxo de caixa", "Dashboard gerencial"]
   },
   {
     id: "safe",

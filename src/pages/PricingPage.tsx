@@ -230,7 +230,7 @@ const products: ProductPrice[] = [
   {
     id: "finance",
     name: "UNV Finance",
-    tagline: "Consultoria Financeira + BPI",
+    tagline: "Consultoria Financeira + BPO",
     icon: DollarSign,
     color: "text-green-500 bg-green-500/10",
     price: "R$ 5.000",
