@@ -24,11 +24,12 @@ type Dados = {
   ranking_closers: { nome: string; vendas: number; receita: number }[];
   ranking_sdr: { nome: string; agendamentos: number; realizadas: number }[];
   feed: { ts: string; tipo: string; texto: string }[];
+  feed_contagem?: { tarefas_concluidas: number; atividades_concluidas: number; reunioes_consultoria: number; mudancas_etapa: number };
   produto?: { checkup_pendentes: number; agentes_ativos: number; respostas_ia_hoje: number; respostas_ia_mes: number; custo_ia_hoje_usd: number; custo_ia_mes_usd: number; teto_dia_usd: number | null; ia_ok: boolean | null };
 };
 type Produto = { produto: string; clientes: number | null; mrr: number | null; receita: number | null; churn_n: number | null; margem_direta: number | null };
 
-const TABELAS = ["crm_leads", "crm_whatsapp_messages", "crm_whatsapp_conversations", "crm_meeting_events", "crm_lead_history", "company_invoices", "financial_payables", "crm_calls"];
+const TABELAS = ["crm_leads", "crm_whatsapp_messages", "crm_whatsapp_conversations", "crm_meeting_events", "crm_lead_history", "company_invoices", "financial_payables", "crm_calls", "crm_activities", "onboarding_tasks", "onboarding_meeting_notes"];
 
 const brl = (v: number | null | undefined, compact = true) => {
   const n = Number(v || 0);
@@ -177,9 +178,16 @@ export default function PainelAoVivoPage() {
 
         {/* linha 2: feed + ranking */}
         <div className="av-card av-feed">
-          <div className="av-h">ACONTECENDO</div>
-          <div className="av-list">
-            {d?.feed.slice(0, 14).map((f, i) => (
+          <div className="av-h av-h-fin">
+            <span>ACONTECENDO · HOJE</span>
+            {d?.feed_contagem && (
+              <span className="av-cont">
+                <b>{d.feed_contagem.tarefas_concluidas}</b> tarefas · <b>{d.feed_contagem.reunioes_consultoria}</b> reuniões de consultoria · <b>{d.feed_contagem.mudancas_etapa}</b> etapas · <b>{d.feed_contagem.atividades_concluidas}</b> atividades
+              </span>
+            )}
+          </div>
+          <div className="av-list av-list-feed">
+            {d?.feed.map((f, i) => (
               <div className={`av-row ${f.tipo}`} key={i}><b>{hora(f.ts)}</b> {f.texto}</div>
             ))}
             {d && !d.feed.length && <div className="av-row mute">Nada ainda hoje</div>}

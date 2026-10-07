@@ -61,3 +61,14 @@
 .pc.av .av-kpis-4 { grid-template-columns: repeat(4, 1fr); }
 .pc.av .av-kpis-4 .av-kpi b { font-size: clamp(14px, 1.3vw, 20px); }
 .pc.av td.mute { color: var(--mute); text-align: left; font-weight: 400; font-size: 12px; }
+
+/* feed do dia: linhas compactas, mostra quantas couberem (o resto fica escondido, sem rolagem) */
+.pc.av .av-cont { font-size: 10px; letter-spacing: 0; color: var(--mute); text-transform: none; }
+.pc.av .av-cont b { color: var(--ink); }
+.pc.av .av-list-feed { gap: 3px; }
+.pc.av .av-list-feed .av-row { font-size: clamp(11px, .95vw, 14px); padding: 3px 6px; }
+.pc.av .av-row.tarefa { border-left: 3px solid #7CB7FF; }
+.pc.av .av-row.reuniao_cs, .pc.av .av-row.reuniao_cs_prox { border-left: 3px solid #B48CFF; }
+.pc.av .av-row.etapa { border-left: 3px solid var(--ink2); }
+.pc.av .av-row.atividade { border-left: 3px solid #5FD3C8; }
+.pc.av .av-row.realized_out_of_icp, .pc.av .av-row.out_of_icp { border-left: 3px solid var(--mute); }
