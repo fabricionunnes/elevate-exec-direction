@@ -339,6 +339,18 @@
   .ba-r:last-child span,.ba-r:last-child b{border-bottom:none}
   @media(max-width:880px){.cost{grid-template-columns:1fr}.ba-h span,.ba-r span,.ba-r b{padding:14px;font-size:13.5px}}
   @media(max-width:480px){.cost-r li{flex-direction:column;gap:4px}}
+
+  .cad{margin-top:22px;border:1px solid var(--brass-line)}
+  .cad-h{padding:14px 22px;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--brass);border-bottom:2px double var(--brass-line)}
+  .cad-g{display:grid;grid-template-columns:repeat(4,1fr)}
+  .cad .c{padding:22px}
+  .cad .c+.c{border-left:1px solid var(--brass-line)}
+  .cad .c.hl{background:var(--brass-soft)}
+  .cad .m{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted2)}
+  .cad .f{font-family:var(--serif);font-style:italic;font-size:28px;font-weight:700;color:var(--brass);margin-top:6px;line-height:1.1}
+  .cad p{font-size:14px;color:var(--muted);line-height:1.6;margin-top:8px}
+  @media(max-width:880px){.cad-g{grid-template-columns:1fr 1fr}.cad .c:nth-child(3){border-left:none}.cad .c:nth-child(n+3){border-top:1px solid var(--brass-line)}}
+  @media(max-width:480px){.cad-g{grid-template-columns:1fr}.cad .c+.c{border-left:none;border-top:1px solid var(--brass-line)}}
   @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.reveal{transition:none;opacity:1;transform:none}}
 </style>
 </head>
@@ -450,6 +462,7 @@
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Mapa de vazamentos</b> e da rentabilidade real</span></li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Plano de redução de endividamento</b> e renegociação</span></li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Autonomia gestora:</b> treinamento e ferramentas para o empresário</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Encontros semanais</b> no 1º mês, <b>quinzenais</b> no 2º e <b>mensais</b> no 3º e 4º</span></li>
         </ul>
       </div>
       <div class="box feat reveal">
@@ -461,6 +474,7 @@
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Fluxo de caixa</b> realizado e projetado</span></li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Contas a receber</b> e redução da inadimplência</span></li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Dashboard gerencial</b> com tendências e alertas de risco</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Conversas diárias</b> para executar e ajustar o planejamento</span></li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span><b>Reunião mensal</b> de performance e direcionamento</span></li>
         </ul>
       </div>
@@ -520,12 +534,21 @@
         <div class="bar cream" style="grid-column:3 / span 11">Gestão à vista · execução diária do planejamento · 11 meses</div>
       </div>
       <div class="g-note">
-        <div class="n"><b><i style="background:var(--red)"></i>30 dias · Auditoria</b><span>Ênfase total em auditoria: mapeamento de caixa, custos, dívidas e gargalos. Entrega do relatório executivo.</span></div>
-        <div class="n"><b><i style="background:var(--brass)"></i>90 dias · Ajustes</b><span>Diagnóstico, plano estratégico, renegociação e refinamento dos parâmetros de gestão.</span></div>
-        <div class="n"><b><i style="background:var(--cream)"></i>11 meses · BPO</b><span>Execução diária do planejamento com dashboard, controle de recebíveis e reunião mensal.</span></div>
+        <div class="n"><b><i style="background:var(--red)"></i>30 dias · Auditoria</b><span>Encontros semanais com ênfase total em auditoria: caixa, custos, dívidas e gargalos. Entrega do relatório executivo.</span></div>
+        <div class="n"><b><i style="background:var(--brass)"></i>90 dias · Ajustes</b><span>Encontros quinzenais no 2º mês e mensais no 3º e 4º: diagnóstico, plano estratégico, renegociação e ajuste dos parâmetros.</span></div>
+        <div class="n"><b><i style="background:var(--cream)"></i>11 meses · BPO</b><span>Conversas diárias para executar o planejamento, com dashboard, controle de recebíveis e reunião mensal.</span></div>
       </div>
     </div>
 
+    <div class="cad reveal">
+      <div class="cad-h"><span>Ritmo de acompanhamento</span></div>
+      <div class="cad-g">
+        <div class="c"><div class="m">Mês 1</div><div class="f">Semanal</div><p>Consultoria toda semana. É o mês da auditoria, quando a casa é aberta por inteiro.</p></div>
+        <div class="c"><div class="m">Mês 2</div><div class="f">Quinzenal</div><p>Consultoria a cada 15 dias, ajustando o plano enquanto o BPO entra na operação.</p></div>
+        <div class="c"><div class="m">Meses 3 e 4</div><div class="f">Mensal</div><p>Consultoria uma vez por mês para refinar parâmetros e consolidar a rotina.</p></div>
+        <div class="c hl"><div class="m">BPO · meses 2 a 12</div><div class="f">Diário</div><p>Conversas diárias para executar o planejamento e reunião mensal de performance.</p></div>
+      </div>
+    </div>
     <div class="cards">
       <div class="card reveal"><div class="phase">Fase 01</div><h4>Auditoria</h4><p>Mapeamento do fluxo de caixa, custos e dívidas.</p><span class="tag">Relatório executivo</span></div>
       <div class="card reveal"><div class="phase">Fase 02</div><h4>Diagnóstico</h4><p>Identificação de vazamentos e da rentabilidade real.</p><span class="tag">Mapa de oportunidades</span></div>
@@ -590,12 +613,12 @@
           <div class="v">12 meses</div>
           <div class="sub">BPO inicia após 30 dias de consultoria · investimento apresentado na reunião de alinhamento</div>
           <ul>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>30 dias de auditoria financeira completa</span></li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>90 dias de ajustes e refinamento de parâmetros</span></li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>11 meses de BPO financeiro com gestão à vista</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>30 dias de auditoria financeira com encontros semanais</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>90 dias de ajustes: encontros quinzenais no 2º mês e mensais no 3º e 4º</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>11 meses de BPO financeiro com conversas diárias</span></li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>Plano de redução de endividamento e renegociação</span></li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>Dashboard gerencial e relatório de indicadores</span></li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>Reunião estratégica mensal de performance</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>Reunião mensal de performance do BPO</span></li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg><span>Atendimento sênior direto, sem equipe júnior</span></li>
           </ul>
           <a class="btn" href="#contato">
@@ -669,6 +692,7 @@
       <details class="reveal"><summary>Qual a diferença entre a consultoria e o BPO?</summary><p>A consultoria é analítica e estratégica: audita, diagnostica e desenha o plano. O BPO é operacional: executa o planejamento no dia a dia, com fluxo de caixa, contas a receber, dashboard e reunião mensal. Um prepara o terreno, o outro mantém a operação rodando.</p></details>
       <details class="reveal"><summary>Posso contratar só o BPO?</summary><p>Pode, mas não recomendamos. Sem a consultoria, o BPO precisa fazer auditoria e levantamento antes de executar, e os primeiros meses ficam perdidos ou muito lentos. O contrato completo é o caminho mais rápido para o resultado aparecer no caixa.</p></details>
       <details class="reveal"><summary>Preciso terminar a consultoria para começar o BPO?</summary><p>Não. O gatilho mínimo é passar por 30 dias de consultoria. A partir do mês 2 o BPO já roda em paralelo com os ajustes da consultoria.</p></details>
+      <details class="reveal"><summary>Com que frequência a gente se fala?</summary><p>Na consultoria, os encontros são semanais no 1º mês, quinzenais no 2º e mensais no 3º e 4º. No BPO, as conversas são diárias para executar o planejamento, com uma reunião mensal de performance.</p></details>
       <details class="reveal"><summary>Quanto custa e qual o prazo?</summary><p>O contrato é de 12 meses, com consultoria e BPO incluídos: 30 dias iniciais de auditoria, 90 dias de ajustes e refinamento de parâmetros e 11 meses de BPO simultâneo. O investimento é apresentado na reunião de alinhamento, depois que entendermos o momento e o tamanho da sua operação.</p></details>
       <details class="reveal"><summary>Vocês substituem meu contador?</summary><p>Não. A contabilidade cuida do fiscal e do passado. A UNV Finance cuida da gestão: caixa, margem, dívida e decisão. Trabalhamos junto com o seu contador.</p></details>
       <details class="reveal"><summary>Para qual tipo de empresa funciona?</summary><p>Para empresas que já faturam, mas não sabem onde ganham e onde perdem dinheiro: caixa apertado, dívida crescendo, contas pessoais e da empresa misturadas ou decisões tomadas sem número.</p></details>
