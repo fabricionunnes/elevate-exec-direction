@@ -280,6 +280,17 @@ input.bad{border-bottom-color:var(--red)}
     </div></div>
   </section>
 
+  <!-- 12 — faturamento abaixo de R$ 30 mil. Fim do fluxo: nada vai pro CRM. -->
+  <section class="step" id="s12">
+    <div class="card"><div class="in">
+      <h3>Ainda não é o momento da UNV Finance.</h3>
+      <p>Hoje a UNV Finance atende empresas a partir de R$ 30 mil de faturamento por mês. Abaixo disso, um contrato de 12 meses de consultoria e BPO pesa mais do que o retorno que ele traz, e a gente não vai te vender algo que não se paga.</p>
+      <p style="margin-top:10px">Enquanto isso, separar a conta pessoal da conta da empresa e anotar toda entrada e saída já muda o jogo.</p>
+      <a class="btn" href="https://instagram.com/unvholdings" target="_blank" rel="noopener" style="margin-top:18px;display:block;text-align:center;text-decoration:none;line-height:1.4">Acompanhar no Instagram</a>
+      <p class="hint">Quando a empresa passar dos R$ 30 mil por mês, volta aqui.</p>
+    </div></div>
+  </section>
+
 </main>
 
 <div class="ftr"><small>UNV Finance · Grupo UNV Holdings</small></div>
@@ -301,8 +312,8 @@ var EMP = [
   {v:"Não",                     s:"nao"}
 ];
 var FAT = [
-  {v:"Até R$ 50 mil por mês",             s:"ate50k"},
-  {v:"Entre R$ 50 mil e R$ 100 mil",      s:"50a100k"},
+  {v:"Até R$ 30 mil por mês",             s:"ate30k"},
+  {v:"Entre R$ 30 mil e R$ 100 mil",      s:"30a100k"},
   {v:"Entre R$ 100 mil e R$ 300 mil",     s:"100a300k"},
   {v:"Entre R$ 300 mil e R$ 1 milhão",    s:"300ka1m"},
   {v:"Acima de R$ 1 milhão por mês",      s:"1m+"}
@@ -468,6 +479,7 @@ buildOpts($("optEmp"), EMP, function(it){
 buildOpts($("optFat"), FAT, function(it){
   A.fat = it; err(5,"");
   fb("trackCustom","FormAnswer",{ field:"faturamento", value:it.s });
+  if(it.s === "ate30k"){ show(12); return; }   // abaixo do mínimo: sai do fluxo, nada vai pro CRM nem vira Lead
   show(6);
 });
 buildOpts($("optDor"), DOR, function(it){
