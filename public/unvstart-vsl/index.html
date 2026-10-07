@@ -550,7 +550,9 @@ footer p + p{margin-top:6px}
   v.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   screen.insertBefore(v, screen.firstChild);
   var comSom = false, marcos = { 25: 0, 50: 0, 75: 0, 95: 0 };
-  function tocar() { var pr = v.play(); if (pr && pr.catch) pr.catch(function () { if (!comSom) { document.getElementById('umA').textContent = 'Seu vídeo está pronto'; document.getElementById('umB').textContent = 'Toque para assistir'; } }); }
+  function tocar() { var pr = v.play(); if (pr && pr.catch) pr.catch(function (err) { if (!comSom && err && err.name === 'NotAllowedError') { document.getElementById('umA').textContent = 'Seu vídeo está pronto'; document.getElementById('umB').textContent = 'Toque para assistir'; } }); }
+  // o navegador pausa vídeo mudo em aba escondida: ao voltar, segue a prévia
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && !comSom && v.paused && v.readyState > 0) tocar(); });
   v.addEventListener('playing', function () { var po = document.getElementById('poster'); if (po) po.remove(); paused.hidden = true; });
   v.addEventListener('play', function () { paused.hidden = true; });
   v.addEventListener('pause', function () { if (comSom) paused.hidden = false; });
