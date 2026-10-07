@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-06T15:01:10",
+ "gerado_em": "2026-10-07T01:31:04",
  "posts": [
+  {
+   "slug": "dashboard-sem-olhar-nao-adianta-ter",
+   "url": "/blog/dashboard-sem-olhar-nao-adianta-ter/",
+   "titulo": "Dashboard sem quem olha não adianta ter instalado",
+   "resumo": "Ferramenta não cobra o número sozinha. Alguém tem que sentar toda semana e olhar o que o vendedor está fazendo com o lead que chegou.",
+   "tags": [
+    "ferramenta",
+    "rotina de cobrança",
+    "estrutura comercial",
+    "acompanhamento",
+    "meta mensal"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-07",
+   "ts": 2153
+  },
   {
    "slug": "periodo-experiencia-comercial-nao-resolve-falta-estrutura",
    "url": "/blog/periodo-experiencia-comercial-nao-resolve-falta-estrutura/",
