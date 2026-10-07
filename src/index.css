@@ -533,8 +533,12 @@ html.is-safari header.sticky,
 html.is-safari nav.fixed,
 html.is-safari header.fixed,
 html.is-safari .sticky.top-0,
-html.is-safari .fixed.bottom-0,
-html.is-safari .fixed.top-0 {
+html.is-safari .fixed.bottom-0:not(.toast-viewport),
+html.is-safari .fixed.top-0:not(.toast-viewport) {
   background-color: hsl(var(--background)) !important;
 }
+/* A área dos toasts (ol vazio, fixed top-0 + sm:bottom-0 right-0, p-4) entrava na regra acima e
+   virava uma faixa branca de 420x32px no canto inferior direito das telas escuras no Safari
+   (Painel de Controle, 07/10/2026). Ela tem que continuar transparente. */
+html.is-safari .toast-viewport { background-color: transparent !important; }
 
