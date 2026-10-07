@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { initMetaPixel, trackMetaEvent, identifyMetaUser } from "@/lib/metaPixel";
 import { Layout } from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
-import logoUnv from "@/assets/logo-unv.png";
+import logoIaAcademy from "@/assets/logo-unv-ia-academy.webp";
 import {
   ArrowRight,
   ArrowLeft,
@@ -194,6 +194,7 @@ export default function IaAcademyCheckoutPage() {
               <div className="min-w-0 bg-white rounded-2xl p-6 md:p-8 shadow-2xl order-2 md:order-1">
                 {step === "form" ? (
                   <>
+                    <img src={logoIaAcademy} alt="UNV IA Academy" className="h-16 w-auto mb-4" />
                     <h1 className="font-display text-2xl md:text-3xl font-bold text-[#0D2B5E] mb-1">
                       Bora montar seu time de IA
                     </h1>
@@ -372,7 +373,9 @@ export default function IaAcademyCheckoutPage() {
               {/* Resumo do pedido */}
               <div className="min-w-0 order-1 md:order-2">
                 <div className="text-center md:text-left mb-5">
-                  <img src={logoUnv} alt="UNV" className="h-10 mx-auto md:mx-0 mb-3 brightness-0 invert" />
+                  <div className="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-3 mb-4 shadow-lg">
+                    <img src={logoIaAcademy} alt="UNV IA Academy" className="h-14 w-auto" />
+                  </div>
                   <p className="text-white/60 text-sm uppercase tracking-wider">Você está assinando</p>
                   <h2 className="font-display text-xl font-bold text-white flex items-center gap-2 justify-center md:justify-start">
                     <Sparkles className="h-5 w-5 text-[#ff6b6b]" /> UNV IA Academy

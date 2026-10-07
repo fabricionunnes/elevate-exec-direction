@@ -10,9 +10,15 @@
 <meta property="og:description" content="Cada aula termina com um agente ou processo rodando na sua empresa. Método CRESCER aplicado com IA, com o Fabrício do lado.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://unvholdings.com.br/unviaacademy/">
-<meta property="og:image" content="https://unvholdings.com.br/unviaacademy/fabricio-mentor.webp">
+<meta property="og:image" content="https://unvholdings.com.br/unviaacademy/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://unvholdings.com.br/unviaacademy/">
-<link rel="icon" href="/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./favicon-192.png">
+<link rel="apple-touch-icon" href="./favicon-180.png">
+<link rel="preload" as="image" href="./emblem.webp" fetchpriority="high">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
@@ -58,8 +64,10 @@ p.lead{font-size:clamp(17px,1.6vw,20px);color:var(--mute);max-width:58ch}
 main,header,footer{position:relative;z-index:1}
 
 .top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:18px}
-.brand{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-stretch:118%;font-weight:800;font-size:17px;letter-spacing:.02em}
-.brand i{width:10px;height:10px;border-radius:50%;background:var(--ai);box-shadow:0 0 14px var(--ai);animation:blink 2.2s ease-in-out infinite}
+.brand{display:flex;align-items:center;gap:12px;font-family:var(--f-display);font-stretch:118%;font-weight:800;font-size:17px;letter-spacing:.02em;text-decoration:none}
+.brand img{height:44px;width:auto;filter:drop-shadow(0 6px 14px rgba(0,0,0,.45))}
+.brand small{display:block;font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;color:var(--mute);font-weight:500;margin-top:2px}
+.brand i{width:8px;height:8px;border-radius:50%;background:var(--ai);box-shadow:0 0 14px var(--ai);animation:blink 2.2s ease-in-out infinite;margin-left:4px}
 @keyframes blink{50%{opacity:.35}}
 .top .mono{color:var(--mute)}
 .top a.mini{font-size:14px;color:var(--mute);text-decoration:none;border:1px solid var(--line);border-radius:99px;padding:8px 14px}
@@ -204,6 +212,7 @@ details p{color:var(--mute);margin-top:10px;max-width:70ch}
 
 .final{border-radius:26px;padding:44px;background:radial-gradient(ellipse at 80% 0%,rgba(52,211,153,.18),transparent 55%),radial-gradient(ellipse at 0% 100%,rgba(204,27,27,.2),transparent 55%),var(--film-2);border:1px solid var(--line);display:grid;grid-template-columns:1.2fr .8fr;gap:30px;align-items:center}
 .final > *{min-width:0}
+.final img{height:72px;width:auto;margin-bottom:14px;filter:drop-shadow(0 8px 18px rgba(0,0,0,.45))}
 
 footer{border-top:1px solid var(--line);margin-top:70px;padding-block:28px;color:var(--mute);font-size:12px}
 footer p{max-width:720px}
@@ -240,7 +249,7 @@ footer p + p{margin-top:6px}
 <div class="grid-bg" aria-hidden="true"></div>
 
 <header class="wrap top">
-  <div class="brand"><i aria-hidden="true"></i>UNV IA ACADEMY</div>
+  <a class="brand" href="/unviaacademy/"><img src="./emblem.webp" alt="UNV IA Academy" width="48" height="27"><span>UNV IA ACADEMY<small>IA aplicada ao comercial</small></span><i aria-hidden="true"></i></a>
   <a class="mini" href="/#/onboarding-tasks/login?redirect=%2Facademy">Já sou aluno</a>
 </header>
 
@@ -495,7 +504,7 @@ footer p + p{margin-top:6px}
   <section class="blk" style="padding-top:0">
     <div class="wrap">
       <div class="final rv">
-        <div><span class="mono" style="color:var(--scan)">Próximo passo</span><h2 style="margin-top:10px">Seu time de IA começa na sua sessão com o Fabrício. Bora?</h2></div>
+        <div><img src="./emblem.webp" alt="" width="128" height="72" loading="lazy"><span class="mono" style="color:var(--scan)">Próximo passo</span><h2 style="margin-top:10px">Seu time de IA começa na sua sessão com o Fabrício. Bora?</h2></div>
         <div><a class="cta go" data-plan="anual" href="/#/unviaacademy/checkout?plano=anual">Assinar o UNV IA Academy</a><p class="selos">Anual R$ 2.497 · Mensal R$ 297 · Garantia de 7 dias</p></div>
       </div>
     </div>

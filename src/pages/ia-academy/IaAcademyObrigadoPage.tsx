@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { initMetaPixel, META_PIXEL_ID } from "@/lib/metaPixel";
 import { ArrowRight, CalendarCheck, CheckCircle, Mail, MessageSquare, GraduationCap, Users } from "lucide-react";
 import { IA_ACADEMY_PLANS } from "./IaAcademyCheckoutPage";
+import logoIaAcademy from "@/assets/logo-unv-ia-academy.webp";
 
 // Página de obrigado do UNV IA Academy. Dispara o Purchase com eventID
 // `${crm_lead_id}:Purchase` (mesmo id do CAPI server-side, se houver).
@@ -28,6 +29,9 @@ export default function IaAcademyObrigadoPage() {
     <main className="min-h-screen bg-gradient-to-br from-[#0D2B5E] via-[#0D2B5E] to-[#081d40] flex items-center">
       <div className="container-premium py-16">
         <div className="max-w-2xl mx-auto text-center">
+          <div className="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 mb-8 shadow-xl">
+            <img src={logoIaAcademy} alt="UNV IA Academy" className="h-14 w-auto" />
+          </div>
           <div className="w-20 h-20 rounded-full bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center mx-auto mb-8">
             <CheckCircle className="h-10 w-10 text-emerald-400" />
           </div>
