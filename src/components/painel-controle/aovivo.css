@@ -22,7 +22,7 @@
 .pc.av .av-err { background: rgba(255,107,107,.12); border: 1px solid var(--bad); color: var(--ink); padding: 10px 14px; border-radius: 8px; }
 .pc.av .av-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.1fr 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 10px; }
 .pc.av .av-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-.pc.av .av-feed { grid-column: 1 / 3; }
+.pc.av .av-feed { grid-column: auto; }
 .pc.av .av-h { font-size: 10px; letter-spacing: 1.5px; color: var(--mute); margin-bottom: 8px; }
 .pc.av .av-tab { width: 100%; border-collapse: collapse; }
 .pc.av .av-tab th { text-align: left; font-weight: 500; color: var(--ink2); font-size: clamp(12px, 1vw, 15px); padding: 6px 4px; }
@@ -53,3 +53,11 @@
 .pc.av .av-olho { background: none; border: 1px solid var(--line); color: var(--ink2); border-radius: 6px; width: 28px; height: 24px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .pc.av .av-olho:hover { border-color: var(--acc); color: var(--ink); }
 .pc.av .av-tab td.mask, .pc.av .av-oculto .av-kpi b { color: var(--mute) !important; letter-spacing: 2px; }
+
+/* card de produtos: tabela compacta e 4 kpis */
+.pc.av .av-tab-sm td { font-size: clamp(12px, 1.05vw, 16px); font-weight: 600; padding: 4px; }
+.pc.av .av-tab-sm th { font-size: clamp(11px, .9vw, 14px); padding: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+.pc.av .av-tab-sm thead th { font-size: 9px; }
+.pc.av .av-kpis-4 { grid-template-columns: repeat(4, 1fr); }
+.pc.av .av-kpis-4 .av-kpi b { font-size: clamp(14px, 1.3vw, 20px); }
+.pc.av td.mute { color: var(--mute); text-align: left; font-weight: 400; font-size: 12px; }

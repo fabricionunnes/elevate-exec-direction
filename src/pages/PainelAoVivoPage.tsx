@@ -24,7 +24,9 @@ type Dados = {
   ranking_closers: { nome: string; vendas: number; receita: number }[];
   ranking_sdr: { nome: string; agendamentos: number; realizadas: number }[];
   feed: { ts: string; tipo: string; texto: string }[];
+  produto?: { checkup_pendentes: number; agentes_ativos: number; respostas_ia_hoje: number; respostas_ia_mes: number; custo_ia_hoje_usd: number; custo_ia_mes_usd: number; teto_dia_usd: number | null; ia_ok: boolean | null };
 };
+type Produto = { produto: string; clientes: number | null; mrr: number | null; receita: number | null; churn_n: number | null; margem_direta: number | null };
 
 const TABELAS = ["crm_leads", "crm_whatsapp_messages", "crm_whatsapp_conversations", "crm_meeting_events", "crm_lead_history", "company_invoices", "financial_payables", "crm_calls"];
 
@@ -48,6 +50,12 @@ export default function PainelAoVivoPage() {
   const alternarFin = () => setFinOculto((v) => { try { localStorage.setItem("pc_av_fin_oculto", v ? "0" : "1"); } catch { /* sem storage */ } return !v; });
   const oculto = (txt: string) => (finOculto ? "•••••" : txt);
   const timer = useRef<number | null>(null);
+  const [produtos, setProdutos] = useState<Produto[] | null>(null);
+  const carregarProdutos = useCallback(async () => {
+    const { data } = await supabase.rpc("painel_bloco" as any, { p_month: new Date().toISOString().slice(0, 7) + "-01", p_nome: "produtos" });
+    const ps = (data as any)?.produtos as Produto[] | undefined;
+    if (ps) setProdutos([...ps].sort((a, b) => (b.mrr ?? 0) - (a.mrr ?? 0)));
+  }, []);
 
   const carregar = useCallback(async () => {
     const { data, error } = await supabase.rpc("painel_ao_vivo" as any);
@@ -63,16 +71,16 @@ export default function PainelAoVivoPage() {
   }, [carregar]);
 
   useEffect(() => {
-    carregar();
+    carregar(); carregarProdutos();
     const ch = supabase.channel("painel-ao-vivo");
     TABELAS.forEach((t) => ch.on("postgres_changes", { event: "*", schema: "public", table: t }, agendar));
     ch.subscribe();
-    const pulsoId = window.setInterval(carregar, 30000);
+    const pulsoId = window.setInterval(() => { carregar(); carregarProdutos(); }, 30000);
     const relogio = window.setInterval(() => setAgora(new Date()), 1000);
     const fs = () => setCheia(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", fs);
     return () => { supabase.removeChannel(ch); window.clearInterval(pulsoId); window.clearInterval(relogio); document.removeEventListener("fullscreenchange", fs); if (timer.current) window.clearTimeout(timer.current); };
-  }, [carregar, agendar]);
+  }, [carregar, agendar, carregarProdutos]);
 
   const telaCheia = async () => {
     try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); } catch { /* navegador sem suporte */ }
@@ -176,6 +184,32 @@ export default function PainelAoVivoPage() {
             ))}
             {d && !d.feed.length && <div className="av-row mute">Nada ainda hoje</div>}
           </div>
+        </div>
+        <div className={`av-card ${finOculto ? "av-oculto" : ""}`}>
+          <div className="av-h">PRODUTOS · MÊS</div>
+          <table className="av-tab av-tab-sm">
+            <thead><tr><th></th><th>Clientes</th><th>MRR</th><th>Recebido</th><th>Churn</th></tr></thead>
+            <tbody>
+              {(produtos || []).filter((x) => (x.clientes ?? 0) > 0 || (x.mrr ?? 0) > 0 || (x.receita ?? 0) > 0).slice(0, 7).map((x, i) => (
+                <tr key={i}>
+                  <th>{x.produto}</th>
+                  <td>{x.clientes ?? "-"}</td>
+                  <td className={finOculto ? "mask" : ""}>{finOculto ? "•••••" : brl(x.mrr)}</td>
+                  <td className={finOculto ? "mask" : ""}>{finOculto ? "•••••" : brl(x.receita)}</td>
+                  <td className={(x.churn_n ?? 0) > 0 ? "bad" : ""}>{x.churn_n ?? 0}</td>
+                </tr>
+              ))}
+              {produtos && !produtos.length && <tr><td colSpan={5} className="mute">Sem produto com movimento no mês</td></tr>}
+            </tbody>
+          </table>
+          <div className="av-h" style={{ marginTop: 10 }}>NEXUS · SAÚDE DO PRODUTO</div>
+          <div className="av-kpis av-kpis-4">
+            <Kpi l="IA" v={d?.produto ? (d.produto.ia_ok === false ? "FORA" : "no ar") : "-"} tom={d?.produto?.ia_ok === false ? "bad" : "ok"} texto />
+            <Kpi l="Agentes ativos" v={d?.produto?.agentes_ativos} />
+            <Kpi l="Respostas da IA hoje" v={d?.produto?.respostas_ia_hoje} />
+            <Kpi l={`Custo IA hoje · teto US$ ${d?.produto?.teto_dia_usd ?? "-"}`} v={`US$ ${Number(d?.produto?.custo_ia_hoje_usd || 0).toFixed(2)}`} tom={Number(d?.produto?.custo_ia_hoje_usd || 0) > Number(d?.produto?.teto_dia_usd || 1e9) ? "bad" : undefined} texto />
+          </div>
+          <div className="av-row mute" style={{ marginTop: 6 }}>{d?.produto ? `${d.produto.checkup_pendentes} pendência${d.produto.checkup_pendentes === 1 ? "" : "s"} no checkup de hoje · ${d.produto.respostas_ia_mes} respostas da IA no mês · US$ ${Number(d.produto.custo_ia_mes_usd).toFixed(2)} no mês` : ""}</div>
         </div>
         <div className="av-card">
           <div className="av-h">CLOSERS · MÊS</div>
