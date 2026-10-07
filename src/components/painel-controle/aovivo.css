@@ -180,3 +180,14 @@
 .pc.av .av-pessoa .l1 .v small { font-size: clamp(10px, .85vw, 12px); font-weight: 500; color: var(--ink2); }
 .pc.av .av-pessoa .l2 { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 3px; color: var(--mute); font-size: clamp(10px, .85vw, 12px); }
 .pc.av .av-pessoa .l2 b { color: var(--ink); font-weight: 700; }
+
+/* closers e pré-vendas ocupam a última coluna nas linhas 2 e 3 (altura dobrada); o feed fica numa coluna só */
+.pc.av .av-grid-4 .av-feed { grid-column: auto; }
+.pc.av .av-closers-card { grid-column: 4; grid-row: 2 / 4; }
+.pc.av .av-closers-card .av-list { flex: 0 0 auto; }
+/* produtos: colunas que cabem */
+.pc.av .av-tab-sm { table-layout: fixed; }
+.pc.av .av-tab-sm th:first-child { width: 30%; }
+.pc.av .av-tab-sm td { font-size: clamp(10px, .85vw, 14px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc.av .av-tab-sm thead th { font-size: 8px; letter-spacing: .5px; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1100px) { .pc.av .av-closers-card { grid-column: auto; grid-row: auto; } }

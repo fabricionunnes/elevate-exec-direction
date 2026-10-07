@@ -282,7 +282,7 @@ export default function PainelAoVivoPage() {
           </div>
         </div>
 
-        <div className="av-card">
+        <div className="av-card av-closers-card">
           <div className="av-h">CLOSERS · MÊS</div>
           <div className="av-list">
             {d?.ranking_closers.map((r, i) => {
