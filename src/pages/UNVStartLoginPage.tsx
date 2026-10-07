@@ -167,13 +167,13 @@ export default function UNVStartLoginPage() {
                 <div className="mt-2 space-y-3">
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     Logo após a compra você recebe um link exclusivo por e-mail e
-                    WhatsApp. É só abrir esse link — ele já entra direto na sua área,
+                    WhatsApp. É só abrir esse link, ele já entra direto na sua área,
                     sem senha. Na primeira vez, você pode criar uma senha lá dentro
                     para voltar quando quiser.
                   </p>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     Perdeu o link? Digite o e-mail da compra no campo acima e clique
-                    abaixo — reenvio na hora.
+                    abaixo, reenvio na hora.
                   </p>
                   <Button
                     type="button"

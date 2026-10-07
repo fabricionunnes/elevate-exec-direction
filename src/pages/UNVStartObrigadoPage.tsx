@@ -46,7 +46,7 @@ export default function UNVStartObrigadoPage() {
             <div className="rounded-xl bg-white/5 border border-white/15 p-5 flex items-start gap-3">
               <Mail className="h-5 w-5 text-white/60 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-white/80">
-                Confira seu <strong className="text-white">e-mail</strong> — o link de
+                Confira seu <strong className="text-white">e-mail</strong>, o link de
                 acesso chegou por lá (olhe o spam se não achar).
               </p>
             </div>
@@ -88,7 +88,7 @@ export default function UNVStartObrigadoPage() {
                 <p className="text-white/75 mb-5">
                   Enquanto a IA monta a sua estrutura, que tal uma conversa de
                   diagnóstico com um diretor comercial de verdade? Preencha o
-                  formulário e agende a sua sessão — sem custo.
+                  formulário e agende a sua sessão, sem custo.
                 </p>
                 <a href="/sessao/?origem=unv-start">
                   <Button

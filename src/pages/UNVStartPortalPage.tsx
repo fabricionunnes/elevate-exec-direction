@@ -150,6 +150,7 @@ function MarkdownPreview({ content }: { content: string }) {
         const line = raw.replace(/\*\*/g, "").trimEnd();
         const t = line.trim();
         if (!t) return <div key={i} className="h-2.5" />;
+        if (/^(-{3,}|\*{3,}|_{3,})$/.test(t)) return <hr key={i} className="my-5 border-border" />;
         if (t.startsWith("### ")) {
           return (
             <p key={i} className="font-semibold mt-3 mb-1 text-[#091C40] dark:text-blue-200">
@@ -641,7 +642,7 @@ export default function UNVStartPortalPage() {
             </div>
             {finalizing && (
               <p className="text-xs text-muted-foreground text-center">
-                Gerando o PDF oficial e liberando o próximo módulo — não feche a página.
+                Gerando o PDF oficial e liberando o próximo módulo, não feche a página.
               </p>
             )}
           </CardContent>
@@ -671,7 +672,7 @@ export default function UNVStartPortalPage() {
             </p>
             <CardTitle className="text-lg">{moduleDetail.label}</CardTitle>
             <CardDescription>
-              Responda com a realidade da sua empresa — não precisa ser bonito,
+              Responda com a realidade da sua empresa, não precisa ser bonito,
               precisa ser real. A IA transforma isso num documento oficial.
             </CardDescription>
           </CardHeader>
@@ -723,7 +724,7 @@ export default function UNVStartPortalPage() {
             {generating && (
               <div className="rounded-md border border-blue-500/30 bg-blue-500/10 p-3 text-sm flex items-center gap-2 text-blue-700 dark:text-blue-300">
                 <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-                Montando seu documento — isso pode levar até 1 minuto. Não feche a página.
+                Montando seu documento, isso pode levar até 1 minuto. Não feche a página.
               </div>
             )}
 
@@ -758,7 +759,7 @@ export default function UNVStartPortalPage() {
               </h2>
               <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
                 Você construiu, do zero, os 7 documentos que formam a base comercial
-                da sua empresa — reunidos agora no seu Book da Estrutura. O download
+                da sua empresa, reunidos agora no seu Book da Estrutura. O download
                 começou no seu aparelho.
               </p>
             </div>
@@ -769,7 +770,7 @@ export default function UNVStartPortalPage() {
               </p>
               <p className="text-sm text-muted-foreground">
                 A UNV tem programas pra colocar essa estrutura pra rodar com o seu
-                time — do processo à gestão que faz bater meta todo mês.
+                time, do processo à gestão que faz bater meta todo mês.
               </p>
               <Button
                 asChild
@@ -809,7 +810,7 @@ export default function UNVStartPortalPage() {
                 Montando o seu Book da Estrutura
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Consolidando os 7 documentos num único material — isso pode levar até
+                Consolidando os 7 documentos num único material, isso pode levar até
                 1 minuto. Não feche a página.
               </p>
             </div>
