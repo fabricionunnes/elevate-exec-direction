@@ -65,6 +65,9 @@ export default function PainelAoVivoPage() {
   const oculto = (txt: string) => (finOculto ? "•••••" : txt);
   const timer = useRef<number | null>(null);
   const [produtos, setProdutos] = useState<Produto[] | null>(null);
+  // feed paginado: 10 por página, setas pra ver o resto do dia
+  const [pagFeed, setPagFeed] = useState(0);
+  const POR_PAG = 10;
 
   const carregar = useCallback(async () => {
     const { data, error } = await supabase.rpc("painel_ao_vivo" as any);
@@ -269,7 +272,7 @@ export default function PainelAoVivoPage() {
         {/* linha 3 */}
         <div className="av-card av-feed">
           <div className="av-h av-h-fin">
-            <span>ACONTECENDO · ÚLTIMOS 15 DE HOJE</span>
+            <span>ACONTECENDO · HOJE</span>
             {d?.feed_contagem && (
               <span className="av-cont">
                 <b>{d.feed_contagem.tarefas_concluidas}</b> tarefas · <b>{d.feed_contagem.reunioes_consultoria}</b> reuniões · <b>{d.feed_contagem.mudancas_etapa}</b> etapas · <b>{d.feed_contagem.atividades_concluidas}</b> atividades
@@ -277,10 +280,26 @@ export default function PainelAoVivoPage() {
             )}
           </div>
           <div className="av-list av-list-feed">
-            {d?.feed.slice(0, 15).map((f, i) => (
-              <div className={`av-row ${f.tipo}`} key={i}><b>{hora(f.ts)}</b> {f.texto}</div>
-            ))}
-            {d && !d.feed.length && <div className="av-row mute">Nada ainda hoje</div>}
+            {(() => {
+              const total = d?.feed.length ?? 0;
+              const paginas = Math.max(1, Math.ceil(total / POR_PAG));
+              const pg = Math.min(pagFeed, paginas - 1);
+              return (
+                <>
+                  {d?.feed.slice(pg * POR_PAG, pg * POR_PAG + POR_PAG).map((f, i) => (
+                    <div className={`av-row ${f.tipo}`} key={pg * POR_PAG + i}><b>{hora(f.ts)}</b> {f.texto}</div>
+                  ))}
+                  {d && !total && <div className="av-row mute">Nada ainda hoje</div>}
+                  {total > POR_PAG && (
+                    <div className="av-pag">
+                      <button type="button" className="back" onClick={() => setPagFeed(Math.max(0, pg - 1))} disabled={pg === 0} aria-label="Mais recentes">‹</button>
+                      <span>{pg * POR_PAG + 1}–{Math.min(total, pg * POR_PAG + POR_PAG)} de {total} · página {pg + 1} de {paginas}</span>
+                      <button type="button" className="back" onClick={() => setPagFeed(Math.min(paginas - 1, pg + 1))} disabled={pg >= paginas - 1} aria-label="Mais antigos">›</button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </div>
         <div className="av-card">

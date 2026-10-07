@@ -92,3 +92,8 @@
 .pc.av .av-tab th { padding: 4px; }
 .pc.av .av-kpi { padding: 6px 8px; }
 .pc.av .av-kpi b { font-size: clamp(16px, 1.6vw, 24px); }
+
+/* paginação do feed */
+.pc.av .av-pag { margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--mute); font-size: 11px; padding-top: 4px; }
+.pc.av .av-pag .back { padding: 2px 10px; font-size: 14px; line-height: 1; }
+.pc.av .av-pag .back[disabled] { opacity: .35; cursor: default; }
