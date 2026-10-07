@@ -131,6 +131,10 @@ main,header,footer{position:relative;z-index:1}
 .progress{display:flex;align-items:center;gap:12px;margin-top:14px;color:var(--mute);font-size:14px}
 .bar{flex:1;height:6px;border-radius:99px;background:var(--film-2);overflow:hidden;border:1px solid var(--line)}
 .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--scan),var(--leak));transition:width .4s}
+.vel{flex:0 0 auto;border:1px solid var(--line);background:var(--film-2);color:var(--bone);border-radius:99px;padding:7px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .2s,background .2s}
+.vel:hover{border-color:rgba(124,196,255,.55)}
+.vel[aria-pressed="true"]{background:rgba(124,196,255,.14);border-color:var(--scan);color:var(--scan)}
+@media(max-width:600px){.progress{flex-wrap:wrap}.progress #hint{order:3;width:100%}}
 
 /* oferta (revelada) */
 .offer{display:none;margin-top:28px}
@@ -345,7 +349,7 @@ footer p + p{margin-top:6px}
         </button>
       </div>
     </div>
-    <div class="progress" id="progressRow"><span class="mono" id="pctLabel">0%</span><div class="bar"><i id="pct"></i></div><span id="hint">A condição especial aparece no fim do vídeo</span></div>
+    <div class="progress" id="progressRow"><span class="mono" id="pctLabel">0%</span><div class="bar"><i id="pct"></i></div><span id="hint">A condição especial aparece no fim do vídeo</span><button type="button" class="vel" id="vel" aria-pressed="false" hidden>Assistir em 2x</button></div>
 
     <!-- oferta: aparece quando o vídeo chega no preço -->
     <div class="offer" id="offer">
@@ -539,10 +543,18 @@ footer p + p{margin-top:6px}
     var screen = document.getElementById('screen');
     var v = document.createElement('video');
     v.controls = true; v.playsInline = true; v.preload = 'auto'; v.poster = cfg.POSTER || '';
-    // sem acelerar: tira a opção do menu e volta pra 1x se alguém forçar
-    v.setAttribute('controlslist', 'noplaybackrate nodownload'); v.disablePictureInPicture = true;
-    v.addEventListener('ratechange', function () { if (v.playbackRate !== 1) v.playbackRate = 1; });
+    v.setAttribute('controlslist', 'nodownload'); v.disablePictureInPicture = true;
     v.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    // botão de velocidade: 1x / 2x
+    var vel = document.getElementById('vel');
+    vel.hidden = false;
+    vel.onclick = function () { v.playbackRate = v.playbackRate === 2 ? 1 : 2; };
+    v.addEventListener('ratechange', function () {
+      var dois = v.playbackRate >= 1.95;
+      vel.setAttribute('aria-pressed', dois ? 'true' : 'false');
+      vel.textContent = dois ? 'Velocidade 2x' : 'Assistir em 2x';
+      try { if (dois) fbq('trackCustom', 'VSL_2x'); } catch (e) {}
+    });
     screen.innerHTML = ''; screen.appendChild(v);
     // HLS: o servidor não atende pedido por trecho, e o iPhone exige isso pra tocar MP4
     var tocar = function () { v.play().catch(function () {}); };
