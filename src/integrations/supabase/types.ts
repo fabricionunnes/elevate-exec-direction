@@ -15537,6 +15537,7 @@ export type Database = {
           origin_id: string | null
           owner_staff_id: string | null
           payment_method: string | null
+          extra_phones: string[]
           phone: string | null
           pipeline_id: string | null
           plan_id: string | null
@@ -15611,6 +15612,7 @@ export type Database = {
           origin_id?: string | null
           owner_staff_id?: string | null
           payment_method?: string | null
+          extra_phones?: string[]
           phone?: string | null
           pipeline_id?: string | null
           plan_id?: string | null
@@ -15685,6 +15687,7 @@ export type Database = {
           origin_id?: string | null
           owner_staff_id?: string | null
           payment_method?: string | null
+          extra_phones?: string[]
           phone?: string | null
           pipeline_id?: string | null
           plan_id?: string | null

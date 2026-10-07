@@ -585,6 +585,7 @@ export const LeadCustomFieldsTab = ({
       created_at: "created_at",
       email: "email",
       phone: "phone",
+      extra_phones: "extra_phones",
       company: "company",
       company_name: "company",
       city: "city",
@@ -616,6 +617,8 @@ export const LeadCustomFieldsTab = ({
 
     const key = mapping[fieldName];
     if (key && leadData[key] !== undefined) {
+      // Outros telefones: lista no banco, texto separado por vírgula na tela
+      if (key === "extra_phones") return Array.isArray(leadData[key]) ? leadData[key].join(", ") : "";
       return leadData[key]?.toString() || "";
     }
     return null;
@@ -644,6 +647,7 @@ export const LeadCustomFieldsTab = ({
         name: "name",
         email: "email",
         phone: "phone",
+        extra_phones: "extra_phones",
         company: "company",
         company_name: "company",
         city: "city",
@@ -678,7 +682,11 @@ export const LeadCustomFieldsTab = ({
       setSaving(field.id);
       try {
         const updateData: Record<string, any> = {};
-        if (field.field_type === "number" || field.field_name === "due_day") {
+        if (field.field_name === "extra_phones") {
+          // "31 99999-0000, 11 98888-7777" → lista; só dígitos, sem repetir
+          const lista = Array.from(new Set(String(value || "").split(/[,;\n]+/).map((t) => t.replace(/\D/g, "")).filter((t) => t.length >= 10)));
+          updateData[dbField] = lista;
+        } else if (field.field_type === "number" || field.field_name === "due_day") {
           updateData[dbField] = value ? parseFloat(value) : null;
         } else if (["closer_staff_id", "sdr_staff_id", "product_id", "plan_id"].includes(field.field_name)) {
           updateData[dbField] = value || null;

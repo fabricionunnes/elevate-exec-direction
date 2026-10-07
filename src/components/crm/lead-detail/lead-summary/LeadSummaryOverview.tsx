@@ -106,6 +106,9 @@ export const LeadSummaryOverview = ({ data, loading, onRegenerate }: Props) => {
             <PartnerCard leadId={lead.id} manualValue={lead.has_partner} aiValue={ai?.qualification?.has_partner} />
             <InfoCard icon={Globe} label="Website" value={lead.email} />
             <InfoCard icon={Phone} label="Telefone" value={lead.phone} onCall={lead.phone ? () => startCall({ id: lead.id, name: lead.company || lead.name, phone: lead.phone }) : undefined} />
+            {Array.isArray((lead as any).extra_phones) && (lead as any).extra_phones.length > 0 && (
+              <InfoCard icon={Phone} label="Outros telefones" value={(lead as any).extra_phones.join(", ")} />
+            )}
             <InfoCard icon={MapPin} label="Localização" value={[lead.city, lead.state].filter(Boolean).join("/")} />
             <InfoCard icon={Briefcase} label="Porte" value={lead.employee_count} />
             <InfoCard icon={User} label="Responsável" value={lead.name} />
