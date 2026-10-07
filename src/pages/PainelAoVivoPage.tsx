@@ -66,9 +66,22 @@ export default function PainelAoVivoPage() {
   const oculto = (txt: string) => (finOculto ? "•••••" : txt);
   const timer = useRef<number | null>(null);
   const [produtos, setProdutos] = useState<Produto[] | null>(null);
-  // feed paginado: 10 por página, setas pra ver o resto do dia
+  // feed paginado: cabe o que a altura do card permitir (TV grande mostra mais, notebook menos)
   const [pagFeed, setPagFeed] = useState(0);
-  const POR_PAG = 10;
+  const feedCaixa = useRef<HTMLDivElement>(null);
+  const [POR_PAG, setPorPag] = useState(10);
+  useEffect(() => {
+    const el = feedCaixa.current; if (!el) return;
+    const medir = () => {
+      const linha = el.querySelector<HTMLElement>(".av-row");
+      const hLinha = (linha?.offsetHeight || 24) + 3; // + gap
+      const hPager = 30;
+      setPorPag(Math.max(4, Math.floor((el.clientHeight - hPager) / hLinha)));
+    };
+    medir();
+    const ro = new ResizeObserver(medir); ro.observe(el);
+    return () => ro.disconnect();
+  }, [d?.feed.length]);
 
   const carregar = useCallback(async () => {
     const { data, error } = await supabase.rpc("painel_ao_vivo" as any);
@@ -278,7 +291,7 @@ export default function PainelAoVivoPage() {
               </span>
             )}
           </div>
-          <div className="av-list av-list-feed">
+          <div className="av-list av-list-feed" ref={feedCaixa}>
             {(() => {
               const total = d?.feed.length ?? 0;
               const paginas = Math.max(1, Math.ceil(total / POR_PAG));

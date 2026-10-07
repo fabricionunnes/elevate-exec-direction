@@ -137,3 +137,27 @@
 .pc.av .av-funil3d { flex: 1; min-height: 0; overflow: hidden; position: relative; }
 .pc.av .av-funil3d .fn-selo { display: none; }
 .pc.av .av-funil3d .fn { position: relative; }
+
+/* telas mais baixas (notebook, 1080p sem tela cheia): tudo um degrau menor pra nada cortar */
+@media (max-height: 1050px) {
+  .pc.av { gap: 8px; padding: 10px 14px; }
+  .pc.av .av-grid { gap: 8px; }
+  .pc.av .av-card { padding: 8px 10px; }
+  .pc.av .av-h { margin-bottom: 5px; }
+  .pc.av .av-tab td { font-size: clamp(11px, 1.05vw, 18px); padding: 3px 4px; }
+  .pc.av .av-tab tr.forte td { font-size: clamp(12px, 1.2vw, 21px); }
+  .pc.av .av-tab th { font-size: clamp(10px, .8vw, 13px); padding: 3px 4px; }
+  .pc.av .av-kpi { padding: 4px 8px; } .pc.av .av-kpi b { font-size: clamp(13px, 1.25vw, 20px); } .pc.av .av-kpi small { font-size: 9px; }
+  .pc.av .av-row { padding: 2px 6px; font-size: clamp(11px, .9vw, 13px); }
+  .pc.av .av-meta-dia { padding: 8px 14px 10px; gap: 4px; }
+  .pc.av .av-meta-dia .big b { font-size: clamp(28px, 2.8vw, 42px); }
+  .pc.av .av-meta-dia .mini b { font-size: clamp(12px, 1.15vw, 17px); }
+  .pc.av .av-meta-dia .bar { height: 9px; }
+  .pc.av .av-clock b { font-size: clamp(20px, 2vw, 28px); }
+  .pc.av .av-kpis-3 .av-kpi b, .pc.av .av-kpis-4 .av-kpi b { font-size: clamp(12px, 1.1vw, 17px); }
+}
+@media (max-height: 900px) {
+  .pc.av .av-tab td { font-size: clamp(10px, .95vw, 15px); padding: 2px 4px; }
+  .pc.av .av-tab tr.forte td { font-size: clamp(11px, 1.05vw, 17px); }
+  .pc.av .av-meta-dia .big b { font-size: clamp(24px, 2.4vw, 34px); }
+}
