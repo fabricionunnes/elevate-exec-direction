@@ -2200,9 +2200,15 @@ const mcpSlug = (s)=>String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").to
 // não conta como resposta do lead e a mensagem fica fora do histórico que a IA vê.
 const AUTOMATICA_FORTE_RE = /mensagem\s+autom[aá]tica|resposta\s+autom[aá]tica|atendimento\s+(virtual|automatizado)|assistente\s+virtual|chatbot|\d+[ºo°]\s+da\s+fila|posi[cç][aã]o\s+na\s+fila|logo\s+(voc[eê]\s+)?ser[aá]\s+atendid|aguarde\s+(um\s+)?(momento|instante)|agradece(mos)?\s+(a\s+|o\s+)?(sua|seu|pelo|pela)?\s*(mensagem|contato)|agrade[cç]o\s+(o\s+|a\s+)?(seu|sua|pelo|pela)?\s*(contato|mensagem)|lerei\s+(a\s+)?sua\s+mensagem|obrigad[oa]\s+por\s+(entrar\s+em\s+)?conta(to|tar)|recebemos\s+(a\s+|sua\s+)?mensagem|n[aã]o\s+estamos\s+dispon[ií]ve|fora\s+do\s+(nosso\s+)?hor[aá]rio|hor[aá]rio\s+de\s+(atendimento|funcionamento)|retornaremos|responderemos\s+(assim|em\s+breve|o\s+mais)|entraremos\s+em\s+contato|um\s+de\s+nossos\s+(atendentes|consultores|especialistas)|digite\s+(o\s+n[uú]mero|uma\s+op[cç][aã]o|\d)|escolha\s+(uma|a)\s+op[cç][aã]o|selecione\s+(uma|a)\s+op[cç][aã]o|n[uú]mero\s+do\s+protocolo|seu\s+protocolo|seja\s+bem[-\s]?vind|bem[-\s]?vind[oa]\(a\)\s+ao\s+atendimento/i;
 const AUTOMATICA_FRACA_RE = /em\s+breve|em\s+instantes|atendente|hor[aá]rio\s+de|segunda\s+a\s+sexta|op[cç][aã]o|\bmenu\b|bem[-\s]?vind|nossa\s+equipe|assim\s+que\s+poss[ií]vel|\d\s*[-.)]\s*\S/gi;
+// Texto que o NOSSO formulário monta pro lead mandar pelo wa.me (diagnóstico da UNV Ads e
+// afins). É a pessoa falando, mesmo cheio de "Nome: / WhatsApp: / E-mail:". Sem esta exceção
+// os telefones e valores contavam como 3+ sinais fracos e o agente ignorava (Bruno, 06/10/2026;
+// liberado pelo Fabrício em 07/10/2026).
+const FORMULARIO_PROPRIO_RE = /acabei de preencher o (diagn[óo]stico|formul[áa]rio)|preenchi o (diagn[óo]stico|formul[áa]rio)/i;
 function ehMensagemAutomatica(texto) {
   const t = String(texto || "").replace(/\s+/g, " ").trim();
   if (t.length < 12) return false;
+  if (FORMULARIO_PROPRIO_RE.test(t)) return false;
   if (AUTOMATICA_FORTE_RE.test(t)) return true;
   // vários sinais fracos juntos numa mensagem longa (menu de chatbot, texto institucional)
   const fracos = (t.match(AUTOMATICA_FRACA_RE) || []).length;
