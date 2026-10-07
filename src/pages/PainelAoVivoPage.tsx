@@ -166,9 +166,9 @@ export default function PainelAoVivoPage() {
             itens={[["Vendas hoje", String(md.comercial.vendas_hoje)], ["Falta no mês", brl(Math.max(n(md.comercial.meta_mes) - md.comercial.vendido_mes, 0))], ["Dias úteis", String(md.comercial.du_restantes)]]} />
           <MetaDia titulo="META DO DIA · FINANCEIRO" cor="bar"
             p={md.financeiro.vencendo_hoje_v > 0 ? Math.min(100, pct(md.financeiro.vencendo_hoje_pago_v, md.financeiro.vencendo_hoje_v)) : md.financeiro.recebido_hoje > 0 ? 100 : 0}
-            big={oculto(brl(md.financeiro.recebido_hoje))}
-            de={finOculto ? "recebido hoje" : md.financeiro.vencendo_hoje_v > 0 ? `recebido de ${brl(md.financeiro.vencendo_hoje_v)} que vencem hoje` : "recebido · nada vence hoje"}
-            itens={[["Faturas pagas", String(md.financeiro.recebido_hoje_n)], ["A pagar hoje", oculto(brl(md.financeiro.a_pagar_hoje_v))], ["Pago hoje", oculto(brl(md.financeiro.pago_hoje))]]} />
+            big={brl(md.financeiro.recebido_hoje)}
+            de={md.financeiro.vencendo_hoje_v > 0 ? `recebido de ${brl(md.financeiro.vencendo_hoje_v)} que vencem hoje` : "recebido · nada vence hoje"}
+            itens={[["Faturas pagas", String(md.financeiro.recebido_hoje_n)], ["A pagar hoje", brl(md.financeiro.a_pagar_hoje_v)], ["Pago hoje", brl(md.financeiro.pago_hoje)]]} />
           <MetaDia titulo="META DO DIA · PRODUTO E ENTREGA" cor="good"
             p={md.produto.tarefas_vencem_hoje > 0 ? Math.min(100, pct(md.produto.tarefas_vencem_hoje_feitas, md.produto.tarefas_vencem_hoje)) : 100}
             big={`${md.produto.tarefas_vencem_hoje_feitas}/${md.produto.tarefas_vencem_hoje}`} de="tarefas do dia concluídas"
