@@ -91,9 +91,9 @@ begin
                  'respostas_hoje', count(*) filter (where r.created_at >= d0 and r.outcome like 'sent%'),
                  'respostas_mes', count(*) filter (where r.outcome like 'sent%'),
                  'conversas_mes', count(distinct r.conversation_id) filter (where r.outcome like 'sent%'),
-                 'agendadas_hoje', count(*) filter (where r.created_at >= d0 and r.tool_calls::text ~* 'agendar_reuniao\\([^\\]]*\\) -> Reuni[ãa]o agendada'),
-                 'agendadas_semana', count(*) filter (where r.created_at >= s0 and r.tool_calls::text ~* 'agendar_reuniao\\([^\\]]*\\) -> Reuni[ãa]o agendada'),
-                 'agendadas_mes', count(*) filter (where r.tool_calls::text ~* 'agendar_reuniao\\([^\\]]*\\) -> Reuni[ãa]o agendada')) x
+                 'agendadas_hoje', count(*) filter (where r.created_at >= d0 and r.tool_calls::text ~* 'agendar_reuniao\([^]]*\) -> Reuni[ãa]o agendada'),
+                 'agendadas_semana', count(*) filter (where r.created_at >= s0 and r.tool_calls::text ~* 'agendar_reuniao\([^]]*\) -> Reuni[ãa]o agendada'),
+                 'agendadas_mes', count(*) filter (where r.tool_calls::text ~* 'agendar_reuniao\([^]]*\) -> Reuni[ãa]o agendada')) x
           from crm_ai_agent_runs r join crm_ai_agents a on a.id = r.agent_id
          where r.created_at >= m0 and r.created_at < m1 and a.tenant_id is null
          group by a.id, a.name, a.is_active
