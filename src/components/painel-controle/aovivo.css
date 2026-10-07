@@ -72,3 +72,23 @@
 .pc.av .av-row.etapa { border-left: 3px solid var(--ink2); }
 .pc.av .av-row.atividade { border-left: 3px solid #5FD3C8; }
 .pc.av .av-row.realized_out_of_icp, .pc.av .av-row.out_of_icp { border-left: 3px solid var(--mute); }
+
+/* três linhas, gráficos e funil (07/10/2026) */
+.pc.av .av-grid-3 { grid-template-rows: minmax(0, 1.05fr) minmax(0, .95fr) minmax(0, 1.1fr); }
+.pc.av .av-card { padding: 10px 12px; }
+.pc.av .av-h-sub { font-size: 9px; letter-spacing: 0; text-transform: none; margin-left: 8px; color: var(--mute); }
+.pc.av .av-chart { flex: 1; min-height: 0; }
+.pc.av .av-chart-sm { flex: 1; min-height: 0; }
+.pc.av .av-kpis-3 { grid-template-columns: repeat(3, 1fr); margin-top: 6px; }
+.pc.av .av-kpis-3 .av-kpi b { font-size: clamp(14px, 1.3vw, 20px); }
+.pc.av .av-funil { display: flex; flex-direction: column; gap: 6px; justify-content: center; flex: 1; min-height: 0; }
+.pc.av .av-funil .fl { display: grid; grid-template-columns: 90px 1fr 56px 44px; align-items: center; gap: 8px; }
+.pc.av .av-funil .r { color: var(--ink2); font-size: clamp(11px, 1vw, 14px); }
+.pc.av .av-funil .t { height: clamp(14px, 1.6vw, 22px); background: var(--panel2); border-radius: 4px; overflow: hidden; }
+.pc.av .av-funil .t i { display: block; height: 100%; background: linear-gradient(90deg, var(--navy), var(--acc)); border-radius: 4px; transition: width .6s ease; }
+.pc.av .av-funil b { font-size: clamp(14px, 1.4vw, 22px); text-align: right; }
+.pc.av .av-funil small { color: var(--mute); font-size: 10px; text-align: right; }
+.pc.av .av-tab td, .pc.av .av-tab tr.forte td { padding: 4px; }
+.pc.av .av-tab th { padding: 4px; }
+.pc.av .av-kpi { padding: 6px 8px; }
+.pc.av .av-kpi b { font-size: clamp(16px, 1.6vw, 24px); }
