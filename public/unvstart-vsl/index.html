@@ -15,13 +15,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
-<link rel="preload" as="image" href="img/poster.webp">
+<link rel="preload" as="image" href="img/poster-v.webp">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.20/hls.min.js" defer></script>
 <script>
 /* ===== Vídeo =====
    MP4_URL: arquivo do vídeo (fica nesta pasta)
    REVEAL_AT: segundo do vídeo em que a condição aparece (quando o preço é dito) */
-window.VSL = { HLS_URL: "hls/vsl.m3u8", MP4_URL: "vsl.mp4", POSTER: "img/poster.webp", REVEAL_AT: 320 };
+window.VSL = { HLS_URL: "hls/v.m3u8", MP4_URL: "vsl-v.mp4", POSTER: "img/poster-v.webp", REVEAL_AT: 321 };
 </script>
 <!-- Meta Pixel -->
 <script>
@@ -87,7 +87,7 @@ main,header,footer{position:relative;z-index:1}
 .top .mono{color:var(--mute)}
 
 /* hero */
-.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding-block:28px 40px}
+.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding-block:64px 24px}
 .hero > *{min-width:0}
 .eyebrow{display:inline-flex;align-items:center;gap:10px;color:var(--scan);margin-bottom:18px}
 .eyebrow::before{content:"";width:26px;height:1px;background:var(--scan)}
@@ -112,33 +112,30 @@ main,header,footer{position:relative;z-index:1}
 .xray .foot b{white-space:nowrap;font-family:var(--f-display);font-stretch:112%;font-size:30px;color:var(--leak)}
 .xray .foot span{color:var(--mute);font-size:14px}
 
-/* vídeo */
-.vsl{padding-block:10px 20px}
-.vhead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;color:var(--mute)}
-.vhead .rec{display:inline-flex;align-items:center;gap:8px;color:var(--bone)}
-.vhead .rec i{width:8px;height:8px;border-radius:50%;background:var(--leak);box-shadow:0 0 10px var(--leak)}
-.frame{position:relative;border-radius:var(--r);padding:2px;background:conic-gradient(from var(--a,0deg),rgba(124,196,255,.65),rgba(255,75,62,.55),rgba(124,196,255,.15),rgba(124,196,255,.65));animation:spin 8s linear infinite}
+/* vídeo vertical, só o vídeo */
+.top-v{display:flex;justify-content:center;padding-block:18px 14px}
+.stage{display:flex;justify-content:center;padding-inline:16px}
+.vframe{position:relative;width:min(440px,100%,calc((100svh - 96px) * 9 / 16));min-width:min(280px,100%);border-radius:24px;padding:2px;background:conic-gradient(from var(--a,0deg),rgba(124,196,255,.65),rgba(255,75,62,.55),rgba(124,196,255,.15),rgba(124,196,255,.65));animation:spin 8s linear infinite;box-shadow:0 40px 100px rgba(0,0,0,.6)}
 @property --a{syntax:"<angle>";initial-value:0deg;inherits:false}
 @keyframes spin{to{--a:360deg}}
-.screen{position:relative;aspect-ratio:16/9;max-width:100%;border-radius:calc(var(--r) - 2px);overflow:hidden;background:#000}
-.screen video,.screen img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.play{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;border:0;background:radial-gradient(ellipse at 50% 50%,rgba(5,11,24,.55),rgba(5,11,24,.82));color:var(--bone);cursor:pointer;font:inherit}
-.play .btnp{width:92px;height:92px;border-radius:50%;background:var(--red);display:grid;place-items:center;box-shadow:0 0 0 0 rgba(255,75,62,.6);animation:pulse 1.8s ease-out infinite;transition:transform .2s}
-.play:hover .btnp{transform:scale(1.07)}
-.play .btnp svg{width:34px;height:34px;margin-left:6px;fill:#fff}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,75,62,.55)}100%{box-shadow:0 0 0 26px rgba(255,75,62,0)}}
-.play .lbl{font-weight:600;background:rgba(5,11,24,.7);padding:8px 16px;border-radius:99px;font-size:15px}
-.progress{display:flex;align-items:center;gap:12px;margin-top:14px;color:var(--mute);font-size:14px}
-.bar{flex:1;height:6px;border-radius:99px;background:var(--film-2);overflow:hidden;border:1px solid var(--line)}
-.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--scan),var(--leak));transition:width .4s}
-.vel{flex:0 0 auto;border:1px solid var(--line);background:var(--film-2);color:var(--bone);border-radius:99px;padding:7px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .2s,background .2s}
-.vel:hover{border-color:rgba(124,196,255,.55)}
-.vel[aria-pressed="true"]{background:rgba(124,196,255,.14);border-color:var(--scan);color:var(--scan)}
-@media(max-width:600px){.progress{flex-wrap:wrap}.progress #hint{order:3;width:100%}}
+.screen9{position:relative;aspect-ratio:9/16;width:100%;border-radius:22px;overflow:hidden;background:#000;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+.screen9 video,.screen9 > img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.screen9 video::-webkit-media-controls{display:none!important}
+.unmute{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,11,24,.18);z-index:3}
+.um-card{display:flex;flex-direction:column;align-items:center;gap:10px;padding:22px 26px;border-radius:18px;background:rgba(204,27,27,.94);color:#fff;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.45);animation:pulse 1.8s ease-out infinite}
+.um-card svg{width:46px;height:46px;fill:#fff;stroke:#fff}
+.um-a{font-family:var(--f-display);font-stretch:112%;font-weight:800;font-size:18px;line-height:1.15}
+.um-b{font-weight:600;font-size:15px;opacity:.95}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,75,62,.55)}100%{box-shadow:0 0 0 22px rgba(255,75,62,0)}}
+.paused{position:absolute;inset:0;display:grid;place-items:center;background:rgba(5,11,24,.45);z-index:2}
+.paused span{width:84px;height:84px;border-radius:50%;background:rgba(204,27,27,.92);display:grid;place-items:center}
+.paused svg{width:32px;height:32px;margin-left:5px;fill:#fff}
+.vbar{position:absolute;left:0;right:0;bottom:0;height:5px;background:rgba(255,255,255,.14);z-index:4}
+.vbar i{display:block;height:100%;width:0;background:var(--red);transition:width .5s linear}
 
 /* oferta (revelada) */
-.offer{display:none;margin-top:28px}
-.offer.on{display:block;animation:rise .7s cubic-bezier(.2,.7,.2,1)}
+.offer{margin-top:28px}
+#site.on{animation:rise .7s cubic-bezier(.2,.7,.2,1)}
 @keyframes rise{from{transform:translateY(18px);opacity:.3}to{transform:none;opacity:1}}
 .ticket{display:grid;grid-template-columns:1.2fr 1fr;border-radius:22px;overflow:hidden;border:1px solid rgba(124,196,255,.3);background:var(--film-2)}
 .ticket > *{min-width:0;padding:30px}
@@ -276,18 +273,64 @@ footer p + p{margin-top:6px}
 <body>
 <div class="grid-bg" aria-hidden="true"></div>
 
-<header class="wrap top">
+<header class="top-v">
   <div class="brand"><i aria-hidden="true"></i>RAIO-X COMERCIAL</div>
-  <span class="mono">UNV · Exame comercial</span>
 </header>
 
 <main>
+  <!-- VÍDEO: só o vídeo, sem botão. O site aparece embaixo quando o preço é falado. -->
+  <div class="stage">
+    <div class="vframe" id="vframe">
+      <div class="screen9" id="screen">
+        <img src="img/poster-v.webp" alt="" id="poster" fetchpriority="high">
+        <div class="unmute" id="unmute" role="button" tabindex="0" aria-label="Ativar o som e assistir do começo">
+          <div class="um-card">
+            <p class="um-a" id="umA">Seu vídeo já começou</p>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5l5 5m0-5l-5 5" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+            <p class="um-b" id="umB">Toque para ouvir</p>
+          </div>
+        </div>
+        <div class="paused" id="paused" hidden aria-hidden="true">
+          <span><svg viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg></span>
+        </div>
+        <div class="vbar" aria-hidden="true"><i id="pct"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SITE: liberado quando o vídeo chega no preço -->
+  <div id="site" hidden>
+  <div class="wrap">
+    <div class="offer" id="offer">
+      <div class="ticket">
+        <div class="l">
+          <p class="mono" style="color:var(--scan)">Conduta recomendada</p>
+          <h2 style="margin-top:10px">Assinatura Raio-X Comercial</h2>
+          <ul>
+            <li>Diagnóstico Raio-X guiado por IA, em cerca de 30 minutos</li>
+            <li>ICP, funil, script com contorno de objeções, playbook, processos e metas</li>
+            <li>Painel de gestão comercial com meta, projeção e funil</li>
+            <li>Diretor Comercial IA lendo seus números toda semana</li>
+            <li>Relatório do mês no seu WhatsApp</li>
+          </ul>
+        </div>
+        <div class="r">
+          <p class="mono" style="color:var(--mute)">Investimento</p>
+          <div class="price"><span>R$ </span><span id="priceNum">97</span><small>/mês</small></div>
+          <p style="color:var(--mute);margin-top:8px">Sem fidelidade. Cancele quando quiser.</p>
+          <a class="cta go" href="/#/start/checkout">Quero meu Raio-X Comercial</a>
+          <div class="selos"><span>Compra segura</span><span>Cartão ou Pix Automático</span><span>Garantia de 7 dias</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- HERO -->
   <div class="wrap hero">
     <div>
       <p class="eyebrow mono">Para donos de empresa com time de vendas</p>
       <h1>Descubra em 30 minutos onde a sua empresa está <span class="hl leak">perdendo vendas</span></h1>
-      <p class="lead">Assista ao vídeo: o sistema por dentro, mostrando como o Método dos Vazamentos Comerciais encontra o ponto exato por onde o dinheiro sai da sua operação.</p>
+      <p class="lead">Você viu o sistema por dentro: o Método dos Vazamentos Comerciais encontra o ponto exato por onde o dinheiro sai da sua operação, e o painel mostra se ele foi fechado.</p>
       <div class="chips">
         <span class="chip"><b>30 min</b> pro diagnóstico</span>
         <span class="chip"><b>7</b> documentos prontos</span>
@@ -337,45 +380,6 @@ footer p + p{margin-top:6px}
     </div>
   </div>
 
-  <!-- VÍDEO -->
-  <div class="wrap vsl" id="video">
-    <div class="vhead"><span class="rec mono"><i aria-hidden="true"></i>Exame em vídeo</span><span class="mono">6 min · ative o som</span></div>
-    <div class="frame">
-      <div class="screen" id="screen">
-        <img src="img/poster.webp" alt="Abertura do vídeo do Raio-X Comercial" id="poster">
-        <button class="play" id="play" type="button" aria-label="Assistir ao vídeo com som">
-          <span class="btnp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg></span>
-          <span class="lbl">Assistir com som</span>
-        </button>
-      </div>
-    </div>
-    <div class="progress" id="progressRow"><span class="mono" id="pctLabel">0%</span><div class="bar"><i id="pct"></i></div><span id="hint">A condição especial aparece no fim do vídeo</span><button type="button" class="vel" id="vel" aria-pressed="false" hidden>Assistir em 2x</button></div>
-
-    <!-- oferta: aparece quando o vídeo chega no preço -->
-    <div class="offer" id="offer">
-      <div class="ticket">
-        <div class="l">
-          <p class="mono" style="color:var(--scan)">Conduta recomendada</p>
-          <h2 style="margin-top:10px">Assinatura Raio-X Comercial</h2>
-          <ul>
-            <li>Diagnóstico Raio-X guiado por IA, em cerca de 30 minutos</li>
-            <li>ICP, funil, script com contorno de objeções, playbook, processos e metas</li>
-            <li>Painel de gestão comercial com meta, projeção e funil</li>
-            <li>Diretor Comercial IA lendo seus números toda semana</li>
-            <li>Relatório do mês no seu WhatsApp</li>
-          </ul>
-        </div>
-        <div class="r">
-          <p class="mono" style="color:var(--mute)">Investimento</p>
-          <div class="price"><span>R$ </span><span id="priceNum">97</span><small>/mês</small></div>
-          <p style="color:var(--mute);margin-top:8px">Sem fidelidade. Cancele quando quiser.</p>
-          <a class="cta go" href="/#/start/checkout">Quero meu Raio-X Comercial</a>
-          <div class="selos"><span>Compra segura</span><span>Cartão ou Pix Automático</span><span>Garantia de 7 dias</span></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- CHECKLIST -->
   <section class="blk" id="exame">
     <div class="wrap">
@@ -401,7 +405,7 @@ footer p + p{margin-top:6px}
             <b><span><span id="count">0</span><small>DE 7</small></span></b>
           </div>
           <p id="laudoTxt"><strong>Marque os achados ao lado.</strong> Na maioria das empresas que a UNV atende, pelo menos 3 estão abertos ao mesmo tempo.</p>
-          <a class="cta go locked" href="#video" style="margin-top:18px">Ver a condição no vídeo</a>
+          <a class="cta go" href="/#/start/checkout" style="margin-top:18px">Quero meu Raio-X Comercial</a>
         </aside>
       </div>
     </div>
@@ -487,13 +491,14 @@ footer p + p{margin-top:6px}
     <div class="wrap">
       <div class="final rv">
         <div><span class="mono" style="color:var(--scan)">Próximo passo</span><h2 style="margin-top:10px">Pare de decidir no escuro. Abra o capô da sua operação hoje.</h2></div>
-        <div><a class="cta go locked" href="#video">Ver a condição no vídeo</a><p class="selos" style="justify-content:flex-start">R$ 97/mês · sem fidelidade · garantia de 7 dias</p></div>
+        <div><a class="cta go" href="/#/start/checkout">Quero meu Raio-X Comercial</a><p class="selos" style="justify-content:flex-start">R$ 97/mês · sem fidelidade · garantia de 7 dias</p></div>
       </div>
     </div>
   </section>
+  </div>
 </main>
 
-<footer class="wrap">
+<footer class="wrap" id="rodape" hidden>
   <p><strong style="color:var(--bone)">UNV Holdings, Universidade Nacional de Vendas.</strong> Dúvidas: acesso@unvholdings.com.br</p>
   <p>Este site não é afiliado ao Facebook nem a qualquer entidade do Facebook. A compra deste material não garante nenhum tipo de resultado, os resultados dependem da aplicação no seu negócio.</p>
   <p>© 2026 UNV Holdings. Todos os direitos reservados.</p>
@@ -512,66 +517,75 @@ footer p + p{margin-top:6px}
   if (!qs.get('utm_source')) qs.set('utm_source', 'vsl');
   var checkout = '/#/start/checkout?' + qs.toString();
 
-  // ===== revelação da oferta =====
+  // ===== revelação do site =====
+  var site = document.getElementById('site'), rodape = document.getElementById('rodape'), dock = document.getElementById('dock');
   var revelado = false;
   function revelar() {
     if (revelado) return; revelado = true;
     try { localStorage.setItem('unvstart_vsl_revelado', '1'); } catch (e) {}
-    document.getElementById('offer').classList.add('on');
-    document.getElementById('dock').classList.add('on');
-    document.getElementById('hint').textContent = 'Condição liberada abaixo do vídeo';
-    document.querySelectorAll('a.cta.go').forEach(function (a) {
-      a.classList.remove('locked'); a.setAttribute('href', checkout);
-      if (a.textContent.indexOf('Ver a condição') === 0) a.textContent = 'Quero meu Raio-X Comercial';
-    });
+    site.hidden = false; rodape.hidden = false; site.classList.add('on');
+    document.querySelectorAll('a.cta.go').forEach(function (a) { a.setAttribute('href', checkout); });
     // preço contando até 97
     var el = document.getElementById('priceNum'), t0 = performance.now();
     (function tick(t) { var k = Math.min(1, (t - t0) / 900); el.textContent = Math.round(97 * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(tick); })(t0);
+    // barra fixa do celular só quando o vídeo sai da tela
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (es) { dock.classList.toggle('on', !es[0].isIntersecting); }, { threshold: .25 }).observe(document.getElementById('vframe'));
+    } else dock.classList.add('on');
     try { fbq('trackCustom', 'VSL_Oferta'); } catch (e) {}
   }
   document.addEventListener('click', function (e) {
     var a = e.target.closest('a.cta.go');
-    if (a && !a.classList.contains('locked')) { try { fbq('trackCustom', 'CliqueAssinar', { value: 97, currency: 'BRL', origem: 'vsl' }); } catch (err) {} }
+    if (a) { try { fbq('trackCustom', 'CliqueAssinar', { value: 97, currency: 'BRL', origem: 'vsl' }); } catch (err) {} }
   });
   var jaViu = false; try { jaViu = localStorage.getItem('unvstart_vsl_revelado') === '1'; } catch (e) {}
   if (jaViu || !(cfg.HLS_URL || cfg.MP4_URL)) revelar();
 
-  // ===== vídeo =====
-  var marcos = { 25: 0, 50: 0, 75: 0, 95: 0 };
-  var playBtn = document.getElementById('play');
-  playBtn.addEventListener('click', function () {
-    var screen = document.getElementById('screen');
-    var v = document.createElement('video');
-    v.controls = true; v.playsInline = true; v.preload = 'auto'; v.poster = cfg.POSTER || '';
-    v.setAttribute('controlslist', 'nodownload'); v.disablePictureInPicture = true;
-    v.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-    // botão de velocidade: 1x / 2x
-    var vel = document.getElementById('vel');
-    vel.hidden = false;
-    vel.onclick = function () { v.playbackRate = v.playbackRate === 2 ? 1 : 2; };
-    v.addEventListener('ratechange', function () {
-      var dois = v.playbackRate >= 1.95;
-      vel.setAttribute('aria-pressed', dois ? 'true' : 'false');
-      vel.textContent = dois ? 'Velocidade 2x' : 'Assistir em 2x';
-      try { if (dois) fbq('trackCustom', 'VSL_2x'); } catch (e) {}
-    });
-    screen.innerHTML = ''; screen.appendChild(v);
-    // HLS: o servidor não atende pedido por trecho, e o iPhone exige isso pra tocar MP4
-    var tocar = function () { v.play().catch(function () {}); };
+  // ===== vídeo: começa mudo sozinho; o toque liga o som e volta pro início =====
+  var screen = document.getElementById('screen'), unmute = document.getElementById('unmute'), paused = document.getElementById('paused');
+  var v = document.createElement('video');
+  v.muted = true; v.defaultMuted = true; v.autoplay = true; v.playsInline = true; v.preload = 'auto';
+  v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', '');
+  v.poster = cfg.POSTER || ''; v.disablePictureInPicture = true; v.controls = false;
+  v.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  screen.insertBefore(v, screen.firstChild);
+  var comSom = false, marcos = { 25: 0, 50: 0, 75: 0, 95: 0 };
+  function tocar() { var pr = v.play(); if (pr && pr.catch) pr.catch(function () { if (!comSom) { document.getElementById('umA').textContent = 'Seu vídeo está pronto'; document.getElementById('umB').textContent = 'Toque para assistir'; } }); }
+  v.addEventListener('playing', function () { var po = document.getElementById('poster'); if (po) po.remove(); paused.hidden = true; });
+  v.addEventListener('play', function () { paused.hidden = true; });
+  v.addEventListener('pause', function () { if (comSom) paused.hidden = false; });
+  function carregar() {
     if (cfg.HLS_URL && v.canPlayType('application/vnd.apple.mpegurl')) { v.src = cfg.HLS_URL; tocar(); }
     else if (cfg.HLS_URL && window.Hls && window.Hls.isSupported()) {
       var hls = new window.Hls({ maxBufferLength: 30 }); hls.loadSource(cfg.HLS_URL); hls.attachMedia(v);
       hls.on(window.Hls.Events.MANIFEST_PARSED, tocar);
       hls.on(window.Hls.Events.ERROR, function (ev, d) { if (d && d.fatal) { hls.destroy(); v.src = cfg.MP4_URL; tocar(); } });
     } else { v.src = cfg.MP4_URL; tocar(); }
+  }
+  // hls.js carrega com defer: espera o documento terminar
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', carregar); else carregar();
+
+  function ligarSom() {
+    comSom = true; unmute.remove();
+    v.muted = false; v.currentTime = 0; tocar();
     try { fbq('trackCustom', 'VSL_Play'); } catch (e) {}
-    v.addEventListener('timeupdate', function () {
-      var d = v.duration || 1, p = Math.min(100, (v.currentTime / d) * 100);
-      document.getElementById('pct').style.width = p + '%';
-      document.getElementById('pctLabel').textContent = Math.round(p) + '%';
-      if (v.currentTime >= cfg.REVEAL_AT) revelar();
-      Object.keys(marcos).forEach(function (k) { if (!marcos[k] && p >= +k) { marcos[k] = 1; try { fbq('trackCustom', 'VSL_' + k); } catch (e) {} } });
-    });
+  }
+  unmute.addEventListener('click', function (e) { e.stopPropagation(); ligarSom(); });
+  unmute.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ligarSom(); } });
+  // depois do som ligado, tocar no vídeo pausa e continua
+  screen.addEventListener('click', function () {
+    if (!comSom) return;
+    if (v.paused) { tocar(); } else { v.pause(); }
+  });
+  v.addEventListener('ended', function () { revelar(); });
+
+  // barra fina: anda mais rápido no começo, como nos players de VSL
+  v.addEventListener('timeupdate', function () {
+    var d = v.duration || 0; if (!d) return;
+    var r = Math.min(1, v.currentTime / d);
+    document.getElementById('pct').style.width = ((1 - Math.pow(1 - r, 1.5)) * 100) + '%';
+    if (v.currentTime >= cfg.REVEAL_AT) revelar();
+    if (comSom) Object.keys(marcos).forEach(function (k) { if (!marcos[k] && r * 100 >= +k) { marcos[k] = 1; try { fbq('trackCustom', 'VSL_' + k); } catch (e) {} } });
   });
 
   // ===== checklist =====
