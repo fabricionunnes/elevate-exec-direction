@@ -221,8 +221,8 @@ export function Combo({ k, label, value, opts, todos, onChange }: {
 }
 
 /* ---------- topo ---------- */
-export function Topo({ mes, meses, onMes, onHome, onSair, geradoEm, alertas, meta }: {
-  mes: string; meses: string[]; onMes: (m: string) => void; onHome: () => void; onSair: () => void; geradoEm?: string; alertas: number; meta?: ReactNode;
+export function Topo({ mes, meses, onMes, onHome, onSair, onAoVivo, geradoEm, alertas, meta }: {
+  mes: string; meses: string[]; onMes: (m: string) => void; onHome: () => void; onSair: () => void; onAoVivo?: () => void; geradoEm?: string; alertas: number; meta?: ReactNode;
 }) {
   return (
     <div className="top">
@@ -234,6 +234,7 @@ export function Topo({ mes, meses, onMes, onHome, onSair, geradoEm, alertas, met
       <div className="ttl">Cockpit do dono<b>{mesLabel(mes)}</b></div>
       <div className="ctl">
         <Combo k="mes" label="Mês" value={mes} opts={[...meses].reverse().map((m) => ({ value: m, label: mesLabel(m) }))} onChange={onMes} />
+        {onAoVivo && <button type="button" className="back acc" onClick={onAoVivo} style={{ marginTop: 14 }} title="Quadro de gestão à vista, em tela cheia e em tempo real">Gestão à vista</button>}
         <button type="button" className="back" onClick={onSair} style={{ marginTop: 14 }}>Voltar ao Nexus</button>
         {meta && <div style={{ marginTop: 14 }}>{meta}</div>}
       </div>

@@ -165,7 +165,8 @@ export default function PainelControlePage() {
   return (
     <div className="pc">
       <div className="wrap">
-        <Topo mes={mes} meses={meses} onMes={setMes} onHome={home} onSair={() => navigate("/onboarding-tasks")} geradoEm={d?.gerado_em} alertas={d?.alertas.length ?? 0}
+        <Topo mes={mes} meses={meses} onMes={setMes} onHome={home} onSair={() => navigate("/onboarding-tasks")}
+          onAoVivo={() => { document.documentElement.requestFullscreen?.().catch(() => {}); navigate("/painel-de-controle/ao-vivo"); }} geradoEm={d?.gerado_em} alertas={d?.alertas.length ?? 0}
           meta={d ? <MetaSync meta={d.trafego.meta} sincronizando={sincronizando} onSync={syncMeta} abrir={abrir} /> : undefined} />
         {authLoading && <div className="load">Conferindo acesso...</div>}
         {!authLoading && erro && <div className="err">Não consegui carregar {mesLabel(mes)}: {erro}. <button type="button" className="lk" onClick={() => carregar(mes)}>Tentar de novo</button></div>}
