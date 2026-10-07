@@ -9,7 +9,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { FunilMes } from "@/components/painel-controle/funil/FunilMes";
 import { supabase } from "@/integrations/supabase/client";
 import "@/components/painel-controle/painel.css";
 import "@/components/painel-controle/aovivo.css";
@@ -218,33 +219,26 @@ export default function PainelAoVivoPage() {
 
         {/* linha 2: gráficos */}
         <div className="av-card">
-          <div className="av-h">FUNIL DO MÊS</div>
-          <div className="av-funil">
-            {funilItens.map(([rot, val], i) => {
-              const ant = i > 0 ? funilItens[i - 1][1] : 0;
-              return (
-                <div className="fl" key={rot}>
-                  <span className="r">{rot}</span>
-                  <div className="t"><i style={{ width: `${Math.max(4, (val / funilMax) * 100)}%` }} /></div>
-                  <b>{val}</b>
-                  <small>{i > 0 ? (ant > 0 ? `${pct(val, ant)}%` : "-") : ""}</small>
-                </div>
-              );
-            })}
-            {!funilItens.length && <div className="av-row mute">Carregando...</div>}
-          </div>
+          <div className="av-h">FUNIL DO MÊS <small className="av-h-sub">arraste pra girar</small></div>
+          <Funil3DCompacto itens={funilItens} />
         </div>
         <div className="av-card">
           <div className="av-h">VENDAS POR DIA · MÊS <small className="av-h-sub">barra = receita · linha = leads</small></div>
           <div className="av-chart">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={serie} margin={{ top: 6, right: 6, left: -18, bottom: 0 }}>
-                <CartesianGrid stroke="#2C2C2C" vertical={false} />
+              <ComposedChart data={serie} margin={{ top: 14, right: 8, left: -18, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="avBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#67E8F9" /><stop offset="100%" stopColor="#2563EB" /></linearGradient>
+                  <filter id="avGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.5" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+                </defs>
+                <CartesianGrid stroke="#262626" vertical={false} />
                 <XAxis dataKey="d" tick={{ fill: "#8E8B84", fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#8E8B84", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
+                <YAxis yAxisId="r" tick={{ fill: "#8E8B84", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
+                <YAxis yAxisId="l" orientation="right" hide />
                 <Tooltip contentStyle={{ background: "#181818", border: "1px solid #2C2C2C", fontSize: 12 }} labelFormatter={(l) => `dia ${l}`} formatter={(v: any, k: any) => [k === "receita" ? brl(Number(v), false) : v, k === "receita" ? "Receita" : k === "leads" ? "Leads" : "Vendas"]} />
-                <Bar dataKey="receita" fill="#3F5F9E" radius={[3, 3, 0, 0]} />
-              </BarChart>
+                <Bar yAxisId="r" dataKey="receita" fill="url(#avBar)" shape={<Barra3D />} />
+                <Line yAxisId="l" type="monotone" dataKey="leads" stroke="#FB923C" strokeWidth={2.5} dot={{ r: 2.5, fill: "#FB923C", strokeWidth: 0 }} filter="url(#avGlow)" />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -252,14 +246,19 @@ export default function PainelAoVivoPage() {
           <div className="av-h">TENDÊNCIA · 6 MESES E PROJEÇÃO</div>
           <div className="av-chart av-chart-sm">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={tend} margin={{ top: 6, right: 8, left: -18, bottom: 0 }}>
-                <CartesianGrid stroke="#2C2C2C" vertical={false} />
+              <ComposedChart data={tend} margin={{ top: 10, right: 10, left: -18, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="avArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#F472B6" stopOpacity={0.55} /><stop offset="100%" stopColor="#F472B6" stopOpacity={0.02} /></linearGradient>
+                  <filter id="avGlow2" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+                </defs>
+                <CartesianGrid stroke="#262626" vertical={false} />
                 <XAxis dataKey="m" tick={{ fill: "#8E8B84", fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: "#8E8B84", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
                 <Tooltip contentStyle={{ background: "#181818", border: "1px solid #2C2C2C", fontSize: 12 }} formatter={(v: any, k: any) => [brl(Number(v), false), k === "receita" ? "Vendido" : "Meta"]} />
-                <Line type="monotone" dataKey="meta" stroke="#8E8B84" strokeDasharray="4 4" dot={false} strokeWidth={1.5} />
-                <Line type="monotone" dataKey="receita" stroke="#CC1B1B" strokeWidth={2.5} dot={{ r: 3 }} />
-              </LineChart>
+                <Area type="monotone" dataKey="receita" stroke="none" fill="url(#avArea)" />
+                <Line type="monotone" dataKey="meta" stroke="#FACC15" strokeDasharray="5 4" dot={false} strokeWidth={2} />
+                <Line type="monotone" dataKey="receita" stroke="#F472B6" strokeWidth={3} dot={{ r: 4, fill: "#F472B6", strokeWidth: 0 }} filter="url(#avGlow2)" />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
           <div className="av-kpis av-kpis-3">
@@ -376,6 +375,45 @@ export default function PainelAoVivoPage() {
   );
 }
 
+// Barra com cara de bloco: face da frente com o degradê, topo e lateral mais escuros (profundidade 7px).
+function Barra3D(props: any) {
+  const { x, y, width, height, fill } = props;
+  if (!height || height <= 0) return null;
+  const dp = Math.min(7, Math.max(3, width * 0.22));
+  const w = Math.max(2, width - dp);
+  return (
+    <g>
+      <polygon points={`${x},${y} ${x + dp},${y - dp} ${x + w + dp},${y - dp} ${x + w},${y}`} fill="#A5F3FC" opacity={0.95} />
+      <polygon points={`${x + w},${y} ${x + w + dp},${y - dp} ${x + w + dp},${y + height - dp} ${x + w},${y + height}`} fill="#1E3A8A" opacity={0.95} />
+      <rect x={x} y={y} width={w} height={height} fill={fill} rx={1} />
+    </g>
+  );
+}
+// O funil 3D do Painel (three.js) encaixado no card: mede a caixa e escala a cena pra caber sem rolagem.
+function Funil3DCompacto({ itens }: { itens: [string, number][] }) {
+  const caixa = useRef<HTMLDivElement>(null);
+  const [dim, setDim] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = caixa.current; if (!el) return;
+    const medir = () => setDim({ w: el.clientWidth, h: el.clientHeight });
+    medir(); const ro = new ResizeObserver(medir); ro.observe(el); return () => ro.disconnect();
+  }, []);
+  const etapas = itens.map(([nome, v], i) => ({
+    k: nome, nome, v, conv: i > 0 ? (itens[i - 1][1] > 0 ? `${pct(v, itens[i - 1][1])}% da anterior` : "-") : "no mês", onClick: () => {},
+  }));
+  // FunilMes tem altura própria (340 em caixa estreita, 390 nas largas): escala pra altura do card
+  const alt = dim.w / Math.max(1, dim.h) < 1.4 ? 340 : 390;
+  const esc = dim.h > 0 ? Math.min(1, (dim.h - 4) / (alt + 28)) : 1;
+  return (
+    <div className="av-funil3d" ref={caixa}>
+      {dim.w > 0 && (
+        <div style={{ transform: `scale(${esc})`, transformOrigin: "top left", width: `${100 / esc}%` }}>
+          <FunilMes etapas={etapas} selo="" onSelo={() => {}} />
+        </div>
+      )}
+    </div>
+  );
+}
 function MetaDia({ titulo, cor, p, big, de, itens }: { titulo: string; cor: "acc" | "bar" | "good"; p: number; big: string; de: string; itens: [string, string][] }) {
   return (
     <div className={`av-meta-dia ${cor}`}>
