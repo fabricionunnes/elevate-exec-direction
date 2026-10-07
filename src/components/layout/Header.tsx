@@ -55,7 +55,7 @@ const productCategories: ProductCategory[] = [
     category: "Estratégia & Estrutura",
     items: [
       { name: "UNV Leadership", href: "/leadership" },
-      { name: "UNV Finance", href: "/finance", comingSoon: true },
+      { name: "UNV Finance", href: "/unvfinance/", staticPage: true, highlight: true },
       { name: "UNV People", href: "/people" },
       { name: "UNV Safe", href: "/safe" },
       { name: "UNV AI Advisor", href: "/ai-advisor", highlight: true },

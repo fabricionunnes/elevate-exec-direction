@@ -283,20 +283,20 @@ const products: Product[] = [
   {
     id: "finance",
     name: "UNV Finance",
-    tagline: "Controle Financeiro Estratégico",
+    tagline: "Consultoria Financeira + BPI",
     icon: DollarSign,
     color: "bg-emerald-600",
     category: "Suporte",
     icp: "Empresas sem clareza financeira",
     revenue: "R$ 100k–2M+/mês",
     team: "Decisores",
-    price: "R$ 3.000",
+    price: "R$ 5.000",
     priceType: "/mês",
     link: "/finance",
-    keyDiff: "Clareza financeira — DRE, fluxo de caixa e margem sem burocracia",
+    keyDiff: "Consultoria que organiza a casa + BPI que executa o planejamento todo dia",
     bestFor: "Empresários que faturam alto mas não sabem onde ganham ou perdem",
     notFor: "Quem busca contabilidade ou assessoria de investimentos",
-    highlights: ["DRE mensal", "Fluxo de caixa", "Margem por produto", "Dashboards"]
+    highlights: ["Auditoria financeira", "Redução de dívidas", "Fluxo de caixa", "Dashboard BPI"]
   },
   {
     id: "safe",

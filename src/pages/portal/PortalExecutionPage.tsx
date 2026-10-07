@@ -155,7 +155,7 @@ const UNV_SERVICES = {
   },
   finance: {
     name: "UNV Finance",
-    description: "Controladoria e clareza financeira",
+    description: "Consultoria financeira e BPI (gestão à vista)",
     url: "/finance",
     tags: ["financeiro", "margem", "fluxo"]
   },
