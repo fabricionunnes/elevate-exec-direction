@@ -203,7 +203,7 @@ const strategicProducts: Product[] = [
       "Consultoria financeira estratégica para auditar e corrigir gargalos, seguida do BPO financeiro com gestão à vista. Caixa previsível, dívida sob controle e decisão com número.",
     icp: "Empresários • Empresas em crescimento",
     href: "/finance",
-    investment: "R$ 5.000/mês (12 meses)",
+    investment: "Sob consulta (12 meses)",
   },
   {
     name: "UNV People",
