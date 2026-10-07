@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>UNV IA Academy — monte o time de IA que vende pela sua empresa</title>
+<meta name="description" content="Aulas curtas, prompts e agentes prontos pra implantar IA no comercial da sua PME. Sessão individual de planejamento com Fabrício Nunnes na entrada e hotseat mensal ao vivo. Anual R$ 2.497 ou mensal R$ 297.">
+<meta property="og:title" content="UNV IA Academy — o time de IA que vende todos os dias">
+<meta property="og:description" content="Cada aula termina com um agente ou processo rodando na sua empresa. Método CRESCER aplicado com IA, com o Fabrício do lado.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://unvholdings.com.br/unviaacademy/">
+<meta property="og:image" content="https://unvholdings.com.br/unviaacademy/fabricio-mentor.webp">
+<link rel="canonical" href="https://unvholdings.com.br/unviaacademy/">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<!-- Meta Pixel -->
+<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('set','autoConfig',false,'247392077001023');
+fbq('init','247392077001023');
+fbq('track','PageView');
+fbq('track','ViewContent',{content_name:'UNV IA Academy',content_category:'assinatura',value:2497,currency:'BRL'});
+</script>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=247392077001023&ev=PageView&noscript=1" alt=""></noscript>
+<style>
+/* Conceito: a sala de controle do time de IA. Mesma família visual do /start
+   (fundo filme, grade, mono), com acento ciano de "agente ativo" e vermelho UNV no CTA. */
+:root{
+  --film:#050b18; --film-2:#0a1730; --navy:#0D2B5E; --bone:#e9eef8; --mute:#8fa3c4;
+  --line:rgba(143,163,196,.18); --scan:#7cc4ff; --ai:#34d399; --red:#CC1B1B; --hot:#ff4b3e;
+  --f-display:"Archivo","Arial Narrow",Arial,sans-serif;
+  --f-body:"Instrument Sans",-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --r:18px; color-scheme:dark;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;background:var(--film)}
+body{background:var(--film);color:var(--bone);font-family:var(--f-body);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%;display:block}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--scan);outline-offset:3px;border-radius:6px}
+.wrap{width:100%;max-width:1160px;margin:0 auto;padding-inline:20px}
+.mono{font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+h1,h2,h3{font-family:var(--f-display);font-stretch:112%;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:clamp(34px,4.6vw,58px);line-height:1.03;font-weight:850}
+h2{font-size:clamp(28px,3.6vw,44px);line-height:1.06;font-weight:800}
+h3{font-size:20px;line-height:1.2;font-weight:700}
+p.lead{font-size:clamp(17px,1.6vw,20px);color:var(--mute);max-width:58ch}
+.ai{color:var(--ai)}.hotc{color:var(--hot)}
+.grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:56px 56px;mask-image:radial-gradient(ellipse at 70% 0%,#000 0%,transparent 70%);opacity:.55}
+main,header,footer{position:relative;z-index:1}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:18px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-stretch:118%;font-weight:800;font-size:17px;letter-spacing:.02em}
+.brand i{width:10px;height:10px;border-radius:50%;background:var(--ai);box-shadow:0 0 14px var(--ai);animation:blink 2.2s ease-in-out infinite}
+@keyframes blink{50%{opacity:.35}}
+.top .mono{color:var(--mute)}
+.top a.mini{font-size:14px;color:var(--mute);text-decoration:none;border:1px solid var(--line);border-radius:99px;padding:8px 14px}
+
+.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding-block:28px 56px}
+.hero > *{min-width:0}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;color:var(--scan);margin-bottom:18px}
+.eyebrow::before{content:"";width:26px;height:1px;background:var(--scan)}
+.hero h1{margin-bottom:20px}
+.hl{position:relative}
+.hl::after{content:"";position:absolute;left:0;right:0;bottom:.02em;height:.09em;background:var(--ai);transform-origin:left;animation:draw 1.1s .5s cubic-bezier(.2,.7,.2,1) both;box-shadow:0 0 18px rgba(52,211,153,.6)}
+@keyframes draw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:rgba(10,23,48,.6);border-radius:99px;padding:8px 14px;font-size:14px;color:var(--mute)}
+.chip b{color:var(--bone);font-weight:600}
+.scrolldown{display:inline-flex;align-items:center;gap:10px;margin-top:26px;color:var(--scan);text-decoration:none;font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+
+/* painel do time de IA */
+.panel{position:relative;border-radius:22px;background:radial-gradient(ellipse at 50% 30%,#0f2550 0%,var(--film-2) 60%,#060f22 100%);border:1px solid var(--line);padding:22px;overflow:hidden;box-shadow:0 40px 90px rgba(0,0,0,.5),inset 0 0 80px rgba(52,211,153,.05)}
+.panel .meta{display:flex;justify-content:space-between;gap:12px;color:var(--mute);font-size:11px;margin-bottom:14px}
+.agents{display:grid;gap:10px}
+.agent{display:grid;grid-template-columns:38px 1fr auto;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:rgba(5,11,24,.55)}
+.agent i{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-family:var(--f-mono);font-size:12px;font-style:normal;color:var(--ai);background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3)}
+.agent b{display:block;font-size:15px}
+.agent span{display:block;color:var(--mute);font-size:13px}
+.agent .st{font-family:var(--f-mono);font-size:11px;color:var(--ai);display:inline-flex;align-items:center;gap:6px}
+.agent .st::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ai);box-shadow:0 0 10px var(--ai);animation:blink 1.8s infinite}
+.agent.off .st{color:var(--mute)}.agent.off .st::before{background:var(--mute);box-shadow:none;animation:none}
+.agent.off i{color:var(--mute);background:rgba(143,163,196,.08);border-color:var(--line)}
+.panel .foot{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-top:1px dashed var(--line);margin-top:14px;padding-top:12px}
+.panel .foot b{white-space:nowrap;font-family:var(--f-display);font-stretch:112%;font-size:28px;color:var(--ai)}
+.panel .foot span{color:var(--mute);font-size:14px}
+
+.proof{border-block:1px solid var(--line);background:rgba(10,23,48,.55)}
+.proof .wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding-block:22px}
+.proof b{display:block;font-family:var(--f-display);font-stretch:116%;font-weight:850;font-size:clamp(24px,3vw,34px);font-variant-numeric:tabular-nums}
+.proof span{color:var(--mute);font-size:14px}
+
+section.blk{padding-block:84px}
+.sec-head{display:grid;gap:14px;margin-bottom:36px;max-width:780px}
+.sec-head .mono{color:var(--scan)}
+
+.symptoms{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.symp{padding:20px 22px;border-radius:16px;border:1px solid var(--line);background:var(--film-2)}
+.symp .mono{color:var(--hot);font-size:11px}
+.symp p{margin-top:8px;font-size:18px;font-style:italic;line-height:1.4}
+.after{margin-top:26px;color:var(--mute)}
+.after strong{color:var(--bone)}
+
+.turn{padding-block:56px;border-block:1px solid var(--line);background:linear-gradient(90deg,rgba(52,211,153,.10),rgba(124,196,255,.08))}
+.turn p{font-family:var(--f-display);font-stretch:118%;font-weight:900;font-size:clamp(24px,3.6vw,42px);line-height:1.1;text-wrap:balance;max-width:26ch}
+
+.mech{padding:26px 28px;border-radius:20px;border:1px solid rgba(124,196,255,.3);background:radial-gradient(ellipse at 0% 0%,rgba(124,196,255,.12),transparent 60%),var(--film-2);display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center}
+.mech > *{min-width:0}
+.mech .mono{color:var(--scan)}
+.mech h3{font-size:clamp(20px,2.4vw,26px);margin:6px 0 8px}
+.mech p{color:var(--mute)}
+
+/* trilhas */
+.tracks{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.track{display:grid;grid-template-columns:54px 1fr;gap:16px;padding:20px;border-radius:16px;border:1px solid var(--line);background:var(--film-2)}
+.track > *{min-width:0}
+.track i{width:54px;height:54px;border-radius:14px;display:grid;place-items:center;font-family:var(--f-display);font-stretch:118%;font-weight:900;font-size:22px;font-style:normal;color:var(--bone);background:rgba(124,196,255,.1);border:1px solid rgba(124,196,255,.3)}
+.track.free i{color:var(--ai);background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.35)}
+.track .k{font-family:var(--f-mono);font-size:11px;color:var(--scan);letter-spacing:.14em}
+.track.free .k{color:var(--ai)}
+.track b{display:block;font-size:17px;margin:4px 0 6px}
+.track p{color:var(--mute);font-size:15px}
+.track .out{margin-top:10px;font-size:13px;color:var(--bone);display:flex;gap:8px;align-items:flex-start}
+.track .out::before{content:"→";color:var(--ai);font-family:var(--f-mono)}
+
+/* como funciona */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.step{padding:24px;border-radius:16px;border:1px solid var(--line);background:var(--film-2)}
+.step .k{font-family:var(--f-mono);font-size:12px;color:var(--scan);letter-spacing:.14em}
+.step h3{margin:10px 0 8px}
+.step p{color:var(--mute);font-size:15px}
+.step.hot{border-color:rgba(255,75,62,.45);background:radial-gradient(ellipse at 100% 0%,rgba(255,75,62,.14),transparent 60%),var(--film-2)}
+.step.hot .k{color:var(--hot)}
+
+/* acesso direto ao Fabrício */
+.direct{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.direct > div{padding:28px;border-radius:22px;border:1px solid rgba(52,211,153,.35);background:radial-gradient(ellipse at 0% 0%,rgba(52,211,153,.12),transparent 60%),var(--film-2)}
+.direct .mono{color:var(--ai)}
+.direct h3{font-size:clamp(20px,2.4vw,26px);margin:8px 0 10px}
+.direct p{color:var(--mute)}
+.direct ul{list-style:none;margin-top:14px;display:grid;gap:8px}
+.direct li{display:flex;gap:10px;color:var(--bone);font-size:15px}
+.direct li::before{content:"+";font-family:var(--f-mono);color:var(--ai)}
+
+.gets{display:grid;gap:12px;max-width:820px}
+.get{display:flex;gap:14px;align-items:flex-start;padding:18px 20px;border-radius:14px;border:1px solid var(--line);background:var(--film-2);font-size:17px}
+.get::before{content:"";flex:0 0 20px;height:20px;margin-top:3px;border-radius:6px;background:var(--ai);mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/%3E%3C/svg%3E") center/contain no-repeat}
+
+.fit{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.fit > div{padding:24px;border-radius:18px;border:1px solid var(--line);background:var(--film-2)}
+.fit h3{margin-bottom:14px}
+.fit li{list-style:none;display:flex;gap:10px;color:var(--mute);padding-block:8px;border-top:1px dashed var(--line)}
+.fit li b{color:var(--bone);font-weight:600}
+.fit .yes li::before{content:"+";font-family:var(--f-mono);color:var(--ai)}
+.fit .no li::before{content:"×";font-family:var(--f-mono);color:var(--hot)}
+
+/* oferta: dois planos */
+.plans{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;align-items:stretch}
+.plan{border-radius:22px;border:1px solid var(--line);background:var(--film-2);padding:30px;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.plan.best{border-color:rgba(52,211,153,.5);background:radial-gradient(ellipse at 80% 0%,rgba(52,211,153,.16),transparent 55%),var(--film-2)}
+.plan .tag{position:absolute;top:18px;right:18px;font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#052e1c;background:var(--ai);padding:6px 10px;border-radius:99px}
+.plan .nm{font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--scan)}
+.plan .price{font-family:var(--f-display);font-stretch:118%;font-weight:900;font-size:clamp(46px,6vw,72px);line-height:1;font-variant-numeric:tabular-nums;margin-top:10px}
+.plan .price small{font-size:.3em;color:var(--mute);font-weight:600;margin-left:6px}
+.plan .eq{color:var(--mute);font-size:14px;margin-top:6px}
+.plan ul{list-style:none;display:grid;gap:10px;margin-top:18px;flex:1}
+.plan li{display:flex;gap:12px;align-items:flex-start;font-size:15px}
+.plan li::before{content:"";flex:0 0 18px;height:18px;margin-top:3px;border-radius:5px;background:var(--ai);mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/%3E%3C/svg%3E") center/contain no-repeat}
+.plan li.dim{color:var(--mute)}.plan li.dim::before{background:var(--mute)}
+.cta{position:relative;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:20px;padding:20px 22px;border-radius:14px;background:var(--red);color:#fff;font-family:var(--f-display);font-stretch:112%;font-weight:800;font-size:18px;letter-spacing:.02em;text-decoration:none;overflow:hidden;border:0;cursor:pointer;box-shadow:0 14px 36px rgba(204,27,27,.4);transition:transform .15s,box-shadow .15s}
+.cta::after{content:"";position:absolute;top:0;bottom:0;width:60px;left:-80px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);transform:skewX(-20deg);animation:shine 3.2s ease-in-out infinite}
+@keyframes shine{0%,60%{left:-80px}100%{left:110%}}
+.cta:hover{transform:translateY(-2px);box-shadow:0 18px 44px rgba(204,27,27,.5)}
+.cta.ghost{background:transparent;border:1px solid var(--line);box-shadow:none;color:var(--bone)}
+.cta.ghost::after{display:none}
+.selos{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px;color:var(--mute);font-size:13px}
+
+.guard{display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:center;padding:30px;border-radius:22px;border:1px solid rgba(52,211,153,.35);background:radial-gradient(ellipse at 0% 50%,rgba(52,211,153,.12),transparent 60%),var(--film-2)}
+.seal{width:120px;height:120px;border-radius:50%;border:3px solid var(--ai);display:grid;place-items:center;text-align:center;box-shadow:0 0 0 10px rgba(52,211,153,.08)}
+.seal b{display:block;font-family:var(--f-display);font-stretch:118%;font-size:44px;font-weight:900;line-height:1}
+.seal span{font-family:var(--f-mono);font-size:11px;color:var(--ai);letter-spacing:.14em}
+.guard p{color:var(--mute)}
+
+.author{display:grid;grid-template-columns:auto 1fr;gap:30px;align-items:center;padding:30px;border-radius:22px;border:1px solid var(--line);background:var(--film-2)}
+.author > *{min-width:0}
+.author img{width:180px;height:180px;object-fit:cover;border-radius:18px;filter:saturate(.9)}
+.author p{color:var(--mute);margin-top:10px}
+
+details{border-top:1px solid var(--line);padding-block:18px}
+details:last-of-type{border-bottom:1px solid var(--line)}
+summary{display:flex;justify-content:space-between;gap:16px;cursor:pointer;list-style:none;font-weight:600;font-size:18px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-family:var(--f-mono);color:var(--scan);transition:transform .2s}
+details[open] summary::after{transform:rotate(45deg)}
+details p{color:var(--mute);margin-top:10px;max-width:70ch}
+
+.final{border-radius:26px;padding:44px;background:radial-gradient(ellipse at 80% 0%,rgba(52,211,153,.18),transparent 55%),radial-gradient(ellipse at 0% 100%,rgba(204,27,27,.2),transparent 55%),var(--film-2);border:1px solid var(--line);display:grid;grid-template-columns:1.2fr .8fr;gap:30px;align-items:center}
+.final > *{min-width:0}
+
+footer{border-top:1px solid var(--line);margin-top:70px;padding-block:28px;color:var(--mute);font-size:12px}
+footer p{max-width:720px}
+footer p + p{margin-top:6px}
+
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:rgba(5,11,24,.92);backdrop-filter:blur(10px);border-top:1px solid var(--line);transform:translateY(110%);transition:transform .35s}
+.dock.on{transform:none}
+.dock .cta{margin:0;padding:15px 18px;font-size:16px}
+@media(min-width:900px){.dock{display:none}}
+
+.rv.in{animation:rise .7s cubic-bezier(.2,.7,.2,1) both}
+@keyframes rise{from{transform:translateY(18px);opacity:.3}to{transform:none;opacity:1}}
+
+@media(max-width:900px){
+  .hero,.final,.mech,.direct,.plans{grid-template-columns:1fr}
+  .steps,.tracks{grid-template-columns:1fr}
+  .symptoms{grid-template-columns:1fr 1fr}
+  .proof .wrap{grid-template-columns:1fr 1fr}
+  section.blk{padding-block:56px}
+  .final{padding:28px}
+  .hero{gap:28px}
+}
+@media(max-width:600px){
+  .fit,.symptoms{grid-template-columns:1fr}
+  .guard,.author{grid-template-columns:1fr}
+  .plan{padding:22px}
+  .author img{width:140px;height:140px}
+  .top a.mini{display:none}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="grid-bg" aria-hidden="true"></div>
+
+<header class="wrap top">
+  <div class="brand"><i aria-hidden="true"></i>UNV IA ACADEMY</div>
+  <a class="mini" href="/#/onboarding-tasks/login?redirect=%2Facademy">Já sou aluno</a>
+</header>
+
+<main>
+  <!-- 1. HERO -->
+  <div class="wrap hero">
+    <div>
+      <p class="eyebrow mono">IA aplicada ao comercial da sua PME</p>
+      <h1>Monte o <span class="hl ai">time de IA</span> que atende, qualifica e cobra o seu comercial todos os dias. Com o Fabrício do lado.</h1>
+      <p class="lead">Aulas curtas onde cada uma termina com um agente ou processo rodando na sua empresa. Sessão individual de planejamento na entrada, hotseat ao vivo todo mês e o Método CRESCER como mapa.</p>
+      <div class="chips">
+        <span class="chip"><b>7 trilhas</b> · uma por fase do CRESCER</span>
+        <span class="chip"><b>1 sessão 1:1</b> com o Fabrício</span>
+        <span class="chip"><b>1 hotseat</b> ao vivo por mês</span>
+      </div>
+      <a class="scrolldown" href="#trilhas">Ver as trilhas <span aria-hidden="true">↓</span></a>
+    </div>
+
+    <div class="panel" aria-label="Exemplo do painel do time de IA de um aluno">
+      <div class="meta mono"><span>Time de IA · empresa do aluno</span><span>Hoje</span></div>
+      <div class="agents">
+        <div class="agent"><i>01</i><div><b>Agente SDR</b><span>Qualificou 14 leads no WhatsApp · 3 passados pro closer</span></div><span class="st">ativo</span></div>
+        <div class="agent"><i>02</i><div><b>Follow-up</b><span>9 propostas cutucadas com motivo real · 2 responderam</span></div><span class="st">ativo</span></div>
+        <div class="agent"><i>03</i><div><b>Avaliador de call</b><span>6 calls avaliadas contra o playbook · nota média 7,2</span></div><span class="st">ativo</span></div>
+        <div class="agent"><i>04</i><div><b>Agente gestor</b><span>17h: fechou o dia com os 3 vendedores e mandou o resumo</span></div><span class="st">ativo</span></div>
+        <div class="agent off"><i>05</i><div><b>Reativação</b><span>Trilha 4, aula 4 · próxima implementação</span></div><span class="st">em breve</span></div>
+      </div>
+      <div class="foot"><b>4 agentes</b><span>rodando sem o dono entrar na operação</span></div>
+    </div>
+  </div>
+
+  <!-- 2. PROVA -->
+  <div class="proof">
+    <div class="wrap">
+      <div><b>+20 anos</b><span>de vendas na prática</span></div>
+      <div><b>R$ 1 bilhão</b><span>vendidos na carreira</span></div>
+      <div><b>+600</b><span>empresas atendidas</span></div>
+      <div><b>12 agentes</b><span>criados ao vivo na Mansão Empreendedora</span></div>
+    </div>
+  </div>
+
+  <!-- 3. SINTOMAS -->
+  <section class="blk">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <span class="mono">O que o dono de PME diz sobre IA</span>
+        <h2>Você sabe que IA vai mudar o seu comercial. Só não sabe por onde começar sem perder dinheiro e tempo.</h2>
+      </div>
+      <div class="symptoms">
+        <div class="symp rv"><span class="mono">Já testou</span><p>“Assinei ChatGPT, usei duas semanas e abandonei.”</p></div>
+        <div class="symp rv"><span class="mono">Já ouviu proposta</span><p>“Me ofereceram um agente de R$ 3 mil por mês e eu não sei o que ele faria.”</p></div>
+        <div class="symp rv"><span class="mono">Curso de IA</span><p>“Fiz curso, aprendi 40 ferramentas e não implantei nenhuma.”</p></div>
+        <div class="symp rv"><span class="mono">Lead sem resposta</span><p>“Lead chega de madrugada e meu vendedor responde às 10h. Já era.”</p></div>
+        <div class="symp rv"><span class="mono">Dependência</span><p>“Se eu não cobro, a cadência do time morre em uma semana.”</p></div>
+        <div class="symp rv"><span class="mono">Sem processo</span><p>“Quero automatizar, mas o processo mora na minha cabeça.”</p></div>
+      </div>
+      <p class="after">Faz sentido? <strong>O problema não é a ferramenta. É não ter método e ninguém do lado na hora de implantar.</strong></p>
+    </div>
+  </section>
+
+  <div class="turn"><div class="wrap"><p>Curso de IA te ensina ferramenta. O UNV IA Academy <span class="ai">implanta processo</span> na sua empresa.</p></div></div>
+
+  <!-- 4. MECANISMO -->
+  <section class="blk">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <span class="mono">O mecanismo</span>
+        <h2>Método CRESCER aplicado com IA: uma trilha por fase, um agente por aula</h2>
+        <p class="lead">O mesmo método que a UNV usa como diretoria comercial terceirizada em mais de 600 empresas, agora com a IA fazendo o trabalho pesado de cada fase.</p>
+      </div>
+      <div class="mech rv">
+        <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="none" stroke="#7cc4ff" stroke-opacity=".5"/><circle cx="32" cy="32" r="18" fill="none" stroke="#7cc4ff" stroke-opacity=".35"/><circle cx="32" cy="32" r="5" fill="#34d399"/></svg>
+        <div><span class="mono">A regra de ouro</span><h3>Nenhuma aula termina em teoria</h3><p>Toda aula tem um entregável: o print do agente respondendo, o fluxo rodando, o documento publicado. O time UNV revisa, você pontua, e o que você construiu fica na sua empresa.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. TRILHAS -->
+  <section class="blk" id="trilhas" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head rv"><span class="mono">7 trilhas · Método CRESCER</span><h2>O que você vai implantar, fase por fase</h2></div>
+      <div class="tracks">
+        <div class="track free rv"><i>0</i><div><span class="k">Trilha 0 · aberta</span><b>IA sem mistério para o dono</b><p>Onde a IA ganha dinheiro em PME, a conta certa, o prompt de 5 blocos, agente × automação × chatbot.</p><div class="out">Mapa das 5 tarefas da sua empresa que IA faz hoje</div></div></div>
+        <div class="track rv"><i>1</i><div><span class="k">Cenário</span><b>Diagnóstico da empresa com IA</b><p>Processo mapeado, Raio-X Comercial com escore 0 a 70, leitura do CRM e ICP.</p><div class="out">Fluxograma do processo real e o gargalo com número</div></div></div>
+        <div class="track rv"><i>2</i><div><span class="k">Resultado ideal + Estrutura</span><b>Processo comercial documentado</b><p>Funil reverso da meta, playbook de 6 etapas, scripts, descrição de cargo, rituais de gestão.</p><div class="out">Playbook publicado e rituais na agenda do time</div></div></div>
+        <div class="track rv"><i>3</i><div><span class="k">Sistema de captação</span><b>Agentes que trazem lead todo dia</b><p>WhatsApp API + N8N, agente SDR em 40 minutos, prospecção com IA, conteúdo e anúncios.</p><div class="out">Agente SDR qualificando lead real e gravando no CRM</div></div></div>
+        <div class="track rv"><i>4</i><div><span class="k">Conversão</span><b>Fechar mais com os leads que já entram</b><p>Follow-up automático, call vira treino, proposta em 10 minutos, agente de reativação.</p><div class="out">Cadência rodando e toda call avaliada contra o playbook</div></div></div>
+        <div class="track rv"><i>5</i><div><span class="k">Escala</span><b>Gestão por número com agentes</b><p>Os 6 números do dono, dashboard Looker, agente gestor cobrando cadência, financeiro e RH com IA.</p><div class="out">Agente gestor fechando o dia com o time no WhatsApp</div></div></div>
+        <div class="track rv"><i>6</i><div><span class="k">Revisão</span><b>Auditoria, custo e governança de IA</b><p>Auditoria mensal dos agentes, custo por lead qualificado, LGPD, quando trocar de ferramenta.</p><div class="out">Rotina de 30 minutos por mês pra manter tudo no padrão</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. COMO FUNCIONA -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head rv"><span class="mono">Como funciona</span><h2>Da assinatura ao primeiro agente rodando</h2></div>
+      <div class="steps">
+        <div class="step hot rv"><span class="k">PASSO 1 · NA ENTRADA</span><h3>Sessão individual com o Fabrício</h3><p>Ao vivo, 1:1. Olha a sua operação, escolhe a primeira implementação e já inicia as ações de IA no seu plano de 90 dias.</p></div>
+        <div class="step rv"><span class="k">PASSO 2</span><h3>Aula curta, tela aberta</h3><p>12 a 20 minutos. Você constrói junto, com o prompt e o fluxo prontos no Laboratório pra copiar.</p></div>
+        <div class="step rv"><span class="k">PASSO 3</span><h3>Entregável revisado</h3><p>Sobe o print do agente rodando. O time UNV aprova ou devolve com o ajuste. Pontos, nível e certificado.</p></div>
+        <div class="step rv"><span class="k">PASSO 4 · TODO MÊS</span><h3>Hotseat ao vivo em grupo</h3><p>Leva o seu caso, tira dúvida com o Fabrício e destrava o que travou. Gravação vira aula.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. ACESSO DIRETO -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head rv"><span class="mono">O que nenhum curso de IA te dá</span><h2>Acesso direto a quem implanta isso em empresa de verdade</h2></div>
+      <div class="direct">
+        <div class="rv">
+          <span class="mono">Sessão individual · 1:1 · ao vivo</span>
+          <h3>A primeira aula é só sua</h3>
+          <p>Antes de qualquer trilha, você senta com o Fabrício pra montar o planejamento de IA da sua empresa e sair com as primeiras ações em andamento.</p>
+          <ul>
+            <li>Leitura da sua operação e do seu funil</li>
+            <li>Escolha da primeira implementação pelo maior retorno</li>
+            <li>Plano de 90 dias registrado na sua conta</li>
+          </ul>
+        </div>
+        <div class="rv">
+          <span class="mono">Hotseat mensal · em grupo · ao vivo</span>
+          <h3>Todo mês, a cadeira quente é sua</h3>
+          <p>Um encontro por mês com o Fabrício e a turma. Você inscreve o seu caso, apresenta o que implantou e sai com a correção na mão.</p>
+          <ul>
+            <li>Dúvidas de implementação respondidas na tela</li>
+            <li>Revisão de agente, prompt e fluxo ao vivo</li>
+            <li>Gravação publicada na trilha no dia seguinte</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. RESULTADOS -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head rv"><span class="mono">Conduta</span><h2>Em 90 dias, você vai conseguir…</h2></div>
+      <div class="gets">
+        <div class="get rv">Responder todo lead em menos de 1 minuto, 24 horas por dia, com qualificação e registro no CRM</div>
+        <div class="get rv">Ter o processo comercial escrito, com script, playbook e rituais rodando sem você</div>
+        <div class="get rv">Saber o que seu vendedor fala em cada call, com nota e correção, sem ouvir 40 horas de gravação</div>
+        <div class="get rv">Fechar o dia com os números do time no seu WhatsApp, cobrados por um agente, não por você</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. PRA QUEM -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head rv"><span class="mono">Indicação</span><h2>O UNV IA Academy é pra você que…</h2></div>
+      <div class="fit">
+        <div class="yes rv"><h3>Indicado</h3><ul><li><b>É dono de empresa</b> com pelo menos 1 vendedor</li><li><b>Fatura acima de R$ 50 mil/mês</b> e quer escalar sem depender de si mesmo</li><li><b>Quer implantar</b>, não só entender IA</li><li><b>Topa 2 horas por semana</b> de construção com o material pronto</li></ul></div>
+        <div class="no rv"><h3>Não indicado</h3><ul><li>Quer curso pra assistir aula (aqui você constrói, não assiste)</li><li>Ainda não tem operação de vendas rodando</li><li>Quer que alguém implante tudo por você (pra isso existe o Diretor Comercial Terceirizado da UNV)</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. OFERTA -->
+  <section class="blk" id="oferta" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head rv"><span class="mono">Escolha o plano</span><h2>Menos do que um vendedor júnior por mês. Mais do que qualquer curso de IA entrega.</h2></div>
+      <div class="plans">
+        <div class="plan best rv">
+          <span class="tag">Melhor valor · 2 meses grátis</span>
+          <span class="nm">Plano anual</span>
+          <div class="price">R$ 2.497<small>/ano</small></div>
+          <div class="eq">equivale a R$ 208/mês · 12 meses de acesso</div>
+          <ul>
+            <li>7 trilhas do Método CRESCER com IA</li>
+            <li>Sessão individual de planejamento com o Fabrício</li>
+            <li>12 hotseats mensais ao vivo em grupo</li>
+            <li>Laboratório de agentes: prompts e fluxos prontos</li>
+            <li>Tutor IA 24h dentro de cada aula</li>
+            <li>Entregáveis revisados pelo time UNV</li>
+            <li>Certificado UNV com verificação pública</li>
+          </ul>
+          <a class="cta go" data-plan="anual" href="/#/unviaacademy/checkout?plano=anual">Quero o plano anual</a>
+          <div class="selos"><span>Pix ou cartão</span><span>Garantia de 7 dias</span></div>
+        </div>
+        <div class="plan rv">
+          <span class="nm">Plano mensal</span>
+          <div class="price">R$ 297<small>/mês</small></div>
+          <div class="eq">sem fidelidade · cancele quando quiser</div>
+          <ul>
+            <li>7 trilhas do Método CRESCER com IA</li>
+            <li>Sessão individual de planejamento com o Fabrício</li>
+            <li>1 hotseat ao vivo por mês enquanto for assinante</li>
+            <li>Laboratório de agentes e Tutor IA</li>
+            <li>Entregáveis revisados e certificado</li>
+          </ul>
+          <a class="cta ghost go" data-plan="mensal" href="/#/unviaacademy/checkout?plano=mensal">Começar no mensal</a>
+          <div class="selos"><span>Pix ou cartão</span><span>Garantia de 7 dias</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11. GARANTIA -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="guard rv">
+        <div class="seal"><div><b>7</b><span>DIAS</span></div></div>
+        <div><h2 style="font-size:clamp(24px,3vw,34px)">O risco é todo nosso</h2><p style="margin-top:8px">Entre, faça a Trilha 0, peça a sua sessão individual. Se em 7 dias achar que não valeu, é só pedir: devolvemos 100% do valor, sem pergunta.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12. FECHAMENTO -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap" style="max-width:760px">
+      <span class="mono" style="color:var(--scan)">Me fala sem rodeios</span>
+      <p class="lead" style="margin-top:14px;color:var(--bone)">Você já sabe que IA vai entrar no seu comercial. A pergunta é se vai entrar com método, com alguém do lado, ou na tentativa e erro que custa meses.</p>
+      <p class="lead" style="margin-top:14px">Cara, eu monto time de IA ao vivo em evento, em cliente, em empresa minha. O Academy é o jeito de fazer isso com você, no seu ritmo, sem o preço de um diretor comercial dentro de casa.</p>
+      <a class="cta go" data-plan="anual" href="/#/unviaacademy/checkout?plano=anual" style="max-width:460px">Bora montar meu time de IA</a>
+      <p class="selos">Anual R$ 2.497 · Mensal R$ 297 · Garantia de 7 dias</p>
+    </div>
+  </section>
+
+  <!-- 13. AUTORIDADE -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="author rv">
+        <img src="./fabricio-mentor.webp" alt="Fabrício Nunnes" width="180" height="180" loading="lazy">
+        <div>
+          <span class="mono" style="color:var(--scan)">Quem conduz</span>
+          <h2 style="font-size:clamp(24px,3vw,34px);margin-top:8px">Fabrício Nunnes</h2>
+          <p>Fundador da UNV, Universidade Nacional de Vendas, que atua como diretoria comercial terceirizada. Mais de 20 anos vendendo, 10 como diretor comercial, mais de R$ 1 bilhão em vendas na carreira e mais de 600 empresas atendidas em 7 países.</p>
+          <p>Criador do Método CRESCER e do UNV Nexus, plataforma onde o Academy roda. Na Mansão Empreendedora, montou 12 agentes de IA ao vivo, no palco, em um dia.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap" style="max-width:860px">
+      <div class="sec-head rv"><span class="mono">Perguntas frequentes</span><h2>Antes de assinar</h2></div>
+      <details><summary>Preciso saber programar?</summary><p>Não. Tudo é copiar, colar e configurar. Os fluxos do N8N e os prompts dos agentes já vêm prontos no Laboratório. Se você usa WhatsApp e planilha, você consegue.</p></details>
+      <details><summary>Como funciona a sessão individual?</summary><p>Assim que o pagamento confirma, você entra no Academy e solicita a sessão em "Encontros ao Vivo", informando seus horários. É uma videochamada 1:1 com o Fabrício pra montar o seu planejamento de IA e iniciar as primeiras ações. O plano fica registrado na sua conta.</p></details>
+      <details><summary>E o hotseat mensal?</summary><p>Um encontro ao vivo por mês, em grupo, com o Fabrício. Você se inscreve, envia o seu caso ou dúvida e, se quiser, pede a cadeira quente pra apresentar o que implantou. A gravação entra na trilha no dia seguinte.</p></details>
+      <details><summary>Qual a diferença pro Diretor Comercial Terceirizado da UNV?</summary><p>No Academy você implanta com o nosso método e com o Fabrício do lado nos encontros. No DCT a UNV entra na sua empresa e implanta com você, todo mês. Quem é cliente DCT já tem o Academy incluído.</p></details>
+      <details><summary>Quanto tempo por semana?</summary><p>Cerca de 2 horas: uma aula curta e a implementação. Quem segue uma trilha por mês termina as 7 em 7 meses, com o time de IA montado no caminho.</p></details>
+      <details><summary>Serve pro meu segmento?</summary><p>Sim. O método é de processo comercial, não de nicho. Os agentes são configurados com o contexto e o ICP da sua empresa, que você monta na Trilha 0 e na Trilha 1.</p></details>
+      <details><summary>Posso cancelar?</summary><p>No mensal, quando quiser, sem fidelidade. No anual, você tem 7 dias de garantia incondicional. Depois disso o acesso vale pelos 12 meses.</p></details>
+      <details><summary>Quando recebo o acesso?</summary><p>Na hora. Pagou, o acesso libera com o e-mail e a senha que você criou no checkout, e o link chega no WhatsApp e no e-mail.</p></details>
+    </div>
+  </section>
+
+  <!-- FINAL -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="final rv">
+        <div><span class="mono" style="color:var(--scan)">Próximo passo</span><h2 style="margin-top:10px">Seu time de IA começa na sua sessão com o Fabrício. Bora?</h2></div>
+        <div><a class="cta go" data-plan="anual" href="/#/unviaacademy/checkout?plano=anual">Assinar o UNV IA Academy</a><p class="selos">Anual R$ 2.497 · Mensal R$ 297 · Garantia de 7 dias</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <p><strong style="color:var(--bone)">UNV Holdings, Universidade Nacional de Vendas.</strong> Dúvidas: acesso@unvholdings.com.br</p>
+  <p>Este site não é afiliado ao Facebook nem a qualquer entidade do Facebook. A assinatura não garante nenhum tipo de resultado, os resultados dependem da aplicação no seu negócio.</p>
+  <p>© 2026 UNV Holdings. Todos os direitos reservados.</p>
+</footer>
+
+<div class="dock" id="dock"><a class="cta go" data-plan="anual" href="/#/unviaacademy/checkout?plano=anual">Assinar · R$ 2.497/ano</a></div>
+
+<script>
+(function () {
+  // checkout com UTMs e fbclid do anúncio
+  var qs = new URLSearchParams(location.search);
+  if (!qs.get('utm_campaign')) qs.set('utm_campaign', 'unv_ia_academy');
+  document.querySelectorAll('a.cta.go').forEach(function (a) {
+    var plan = a.getAttribute('data-plan') || 'anual';
+    var p = new URLSearchParams(qs.toString());
+    p.set('plano', plan);
+    a.setAttribute('href', '/#/unviaacademy/checkout?' + p.toString());
+    a.addEventListener('click', function () {
+      try { fbq('trackCustom', 'CliqueAssinar', { value: plan === 'anual' ? 2497 : 297, currency: 'BRL', origem: 'unviaacademy', plano: plan }); } catch (e) {}
+    });
+  });
+
+  // barra fixa no celular: só depois que a oferta apareceu na tela
+  var dock = document.getElementById('dock'), oferta = document.getElementById('oferta');
+  if ('IntersectionObserver' in window && oferta) {
+    new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting || e.boundingClientRect.top < 0) dock.classList.add('on'); });
+    }, { threshold: .2 }).observe(oferta);
+  }
+
+  // entradas ao rolar
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }); }, { threshold: .15 });
+    document.querySelectorAll('.rv').forEach(function (el) { io.observe(el); });
+  }
+})();
+</script>
+</body>
+</html>

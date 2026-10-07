@@ -16,7 +16,10 @@ import {
   Award,
 } from "lucide-react";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
 import { issueLessonCertificate, maybeIssueTrackCertificate } from "@/lib/academy/certificates";
+import { AcademyDeliverableCard } from "@/components/academy/AcademyDeliverableCard";
+import { AcademyTutorPanel } from "@/components/academy/AcademyTutorPanel";
 import type { AcademyUserContext } from "./AcademyLayout";
 
 // Declaração global para a YouTube IFrame Player API
@@ -254,6 +257,11 @@ interface Lesson {
   track_id: string;
   track_name: string;
   sort_order: number;
+  // UNV IA Academy
+  lesson_kind: string;
+  content_md: string | null;
+  deliverable_prompt: string | null;
+  deliverable_points: number;
 }
 
 interface Asset {
@@ -431,6 +439,10 @@ export const AcademyLessonPage = () => {
         track_id: trackData.id,
         track_name: trackData.name,
         sort_order: lessonData.sort_order,
+        lesson_kind: (lessonData as any).lesson_kind || "video",
+        content_md: (lessonData as any).content_md || null,
+        deliverable_prompt: (lessonData as any).deliverable_prompt || null,
+        deliverable_points: (lessonData as any).deliverable_points ?? 30,
       });
 
       // Load assets
@@ -922,6 +934,34 @@ export const AcademyLessonPage = () => {
           <p className="text-muted-foreground">{lesson.description}</p>
         )}
       </div>
+
+      {/* Roteiro / material da aula (UNV IA Academy) */}
+      {lesson.content_md && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <FileText className="h-5 w-5" />
+              {lesson.lesson_kind === "live_recording" ? "Sobre este encontro" : "Material da aula"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="prose prose-sm md:prose-base max-w-none dark:prose-invert prose-headings:mt-5 prose-headings:mb-2 prose-h2:text-lg prose-p:my-2 prose-li:my-0.5">
+              <ReactMarkdown>{lesson.content_md}</ReactMarkdown>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Entregável + Tutor IA */}
+      {lesson.deliverable_prompt && (
+        <AcademyDeliverableCard
+          lessonId={lesson.id}
+          onboardingUserId={userContext.onboardingUserId}
+          prompt={lesson.deliverable_prompt}
+          points={lesson.deliverable_points}
+        />
+      )}
+      <AcademyTutorPanel lessonId={lesson.id} onboardingUserId={userContext.onboardingUserId} lessonTitle={lesson.title} />
 
       {/* Assets */}
       {assets.length > 0 && (

@@ -25,6 +25,7 @@ const productCategories: ProductCategory[] = [
   {
     category: "Trilha Principal",
     items: [
+      { name: "UNV IA Academy", href: "/unviaacademy/", staticPage: true, highlight: true },
       { name: "UNV Core", href: "/core" },
       { name: "UNV Control", href: "/control" },
       { name: "Sales Acceleration", href: "/sales-acceleration", highlight: true },

@@ -14,6 +14,10 @@ import {
   Home,
   Award,
   Sparkles,
+  Radio,
+  FlaskConical,
+  ClipboardList,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -35,10 +39,16 @@ const navItems: NavItem[] = [
   { title: "Certificados", href: "/academy/certificates", icon: GraduationCap },
   { title: "Ranking", href: "/academy/ranking", icon: Award },
   { title: "Provas", href: "/academy/quizzes", icon: ClipboardCheck },
+  { title: "Encontros ao Vivo", href: "/academy/live", icon: Radio },
+  { title: "Laboratório de Agentes", href: "/academy/lab", icon: FlaskConical },
   { title: "Meu Time", href: "/academy/team", icon: Users, clientManagerOnly: true },
   { title: "Relatórios", href: "/academy/reports", icon: BarChart3, clientManagerOnly: true },
   { title: "Admin: Conteúdos", href: "/academy/admin/content", icon: BookOpen, adminOnly: true },
   { title: "Admin: Provas & IA", href: "/academy/admin/quizzes", icon: Sparkles, adminOnly: true },
+  { title: "Admin: Assinantes IA Academy", href: "/academy/admin/subscribers", icon: CreditCard, adminOnly: true },
+  { title: "Admin: Encontros", href: "/academy/admin/live", icon: Radio, adminOnly: true },
+  { title: "Admin: Entregáveis", href: "/academy/admin/deliverables", icon: ClipboardList, adminOnly: true },
+  { title: "Admin: Laboratório", href: "/academy/admin/lab", icon: FlaskConical, adminOnly: true },
   { title: "Admin: Gamificação", href: "/academy/admin/gamification", icon: Trophy, adminOnly: true },
   { title: "Admin: Acessos", href: "/academy/admin/access", icon: Users, adminOnly: true },
   { title: "Admin: Relatórios", href: "/academy/admin/reports", icon: BarChart3, adminOnly: true },

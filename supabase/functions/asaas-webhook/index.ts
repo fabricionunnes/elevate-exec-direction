@@ -30,6 +30,21 @@ function mapAsaasStatus(paymentStatus: string): string {
   }
 }
 
+// UNV IA Academy: a lógica da assinatura (liberar, renovar, bloquear) mora na ia-academy-checkout.
+async function forwardIaAcademy(body: unknown) {
+  try {
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/ia-academy-checkout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ ...(body as Record<string, unknown>), action: "asaas_event" }),
+    });
+    console.log(`[Asaas Webhook] IA Academy encaminhado: ${r.status} ${(await r.text()).slice(0, 200)}`);
+  } catch (e) {
+    console.error("[Asaas Webhook] IA Academy erro ao encaminhar:", e);
+  }
+}
+
 // UNV Start: a lógica da assinatura (liberar, renovar, bloquear) mora na unv-start-checkout.
 async function forwardUnvStart(body: unknown) {
   try {
@@ -186,6 +201,23 @@ Deno.serve(async (req) => {
       if (isUnvStart) {
         await forwardUnvStart(body);
         return new Response(JSON.stringify({ received: true, unv_start: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // === UNV IA Academy — assinatura (1ª cobrança, renovação, atraso, estorno) ===
+    // Casa por externalReference "ia-academy:<id>" ou pela assinatura Asaas.
+    {
+      const ref = String(payment.externalReference || "");
+      let isIaAcademy = ref.startsWith("ia-academy:");
+      if (!isIaAcademy && subscriptionId) {
+        const { data: iaSub } = await supabase.from("ia_academy_subscriptions").select("id").eq("asaas_subscription_id", subscriptionId).limit(1).maybeSingle();
+        isIaAcademy = !!iaSub;
+      }
+      if (isIaAcademy) {
+        await forwardIaAcademy(body);
+        return new Response(JSON.stringify({ received: true, ia_academy: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }

@@ -11,6 +11,10 @@ project_id = "czmyjgdixwhpfasfugkm"
     verify_jwt = false
   [functions.academy-generate-quiz]
     verify_jwt = true
+  [functions.ia-academy-checkout]
+    verify_jwt = false
+  [functions.academy-tutor]
+    verify_jwt = true
   [functions.analyze-meeting-sentiment]
     verify_jwt = true
   [functions.analyze-payment-receipt]
