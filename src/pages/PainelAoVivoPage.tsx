@@ -6,6 +6,7 @@
 // evento, recarrega a RPC painel_ao_vivo (com atraso de 1,2 s pra agrupar rajadas). Fora
 // isso, pulso a cada 30 s e relógio a cada segundo. Só o master enxerga (a RPC recusa o resto).
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import "@/components/painel-controle/painel.css";
@@ -42,6 +43,10 @@ export default function PainelAoVivoPage() {
   const [agora, setAgora] = useState(new Date());
   const [pulso, setPulso] = useState(false);
   const [cheia, setCheia] = useState(!!document.fullscreenElement);
+  // Olhinho do financeiro: esconde os valores (TV na parede, visita na sala). Lembra a escolha no aparelho.
+  const [finOculto, setFinOculto] = useState<boolean>(() => { try { return localStorage.getItem("pc_av_fin_oculto") === "1"; } catch { return false; } });
+  const alternarFin = () => setFinOculto((v) => { try { localStorage.setItem("pc_av_fin_oculto", v ? "0" : "1"); } catch { /* sem storage */ } return !v; });
+  const oculto = (txt: string) => (finOculto ? "•••••" : txt);
   const timer = useRef<number | null>(null);
 
   const carregar = useCallback(async () => {
@@ -141,19 +146,24 @@ export default function PainelAoVivoPage() {
         </div>
 
         {/* coluna 3: financeiro */}
-        <div className="av-card">
-          <div className="av-h">FINANCEIRO · DIA, SEMANA E MÊS</div>
+        <div className={`av-card ${finOculto ? "av-oculto" : ""}`}>
+          <div className="av-h av-h-fin">
+            <span>FINANCEIRO · DIA, SEMANA E MÊS</span>
+            <button type="button" className="av-olho" onClick={alternarFin} title={finOculto ? "Mostrar os valores" : "Ocultar os valores"} aria-label={finOculto ? "Mostrar os valores do financeiro" : "Ocultar os valores do financeiro"}>
+              {finOculto ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
           <table className="av-tab">
             <thead><tr><th></th><th>Hoje</th><th>Semana</th><th>Mês</th></tr></thead>
             <tbody>
-              <Linha l="Recebido" v={[h?.recebido, s?.recebido, m?.recebido]} dinheiro forte />
-              <Linha l="Pago" v={[h?.pago, s?.pago, m?.pago]} dinheiro />
-              <Linha l="Resultado (caixa)" v={[n(h?.recebido) - n(h?.pago), n(s?.recebido) - n(s?.pago), n(m?.recebido) - n(m?.pago)]} dinheiro sinal />
+              <Linha l="Recebido" v={[h?.recebido, s?.recebido, m?.recebido]} dinheiro forte oculto={finOculto} />
+              <Linha l="Pago" v={[h?.pago, s?.pago, m?.pago]} dinheiro oculto={finOculto} />
+              <Linha l="Resultado (caixa)" v={[n(h?.recebido) - n(h?.pago), n(s?.recebido) - n(s?.pago), n(m?.recebido) - n(m?.pago)]} dinheiro sinal oculto={finOculto} />
             </tbody>
           </table>
           <div className="av-kpis" style={{ marginTop: 10 }}>
-            <Kpi l="Saldo nos bancos" v={brl(d?.caixa)} tom={Number(d?.caixa || 0) >= 0 ? "ok" : "bad"} texto />
-            <Kpi l={`Inadimplência · ${d?.inadimplencia.n ?? 0} faturas`} v={brl(d?.inadimplencia.valor)} tom="bad" texto />
+            <Kpi l="Saldo nos bancos" v={oculto(brl(d?.caixa))} tom={finOculto ? undefined : Number(d?.caixa || 0) >= 0 ? "ok" : "bad"} texto />
+            <Kpi l={`Inadimplência · ${d?.inadimplencia.n ?? 0} faturas`} v={oculto(brl(d?.inadimplencia.valor))} tom={finOculto ? undefined : "bad"} texto />
           </div>
         </div>
 
@@ -162,7 +172,7 @@ export default function PainelAoVivoPage() {
           <div className="av-h">ACONTECENDO</div>
           <div className="av-list">
             {d?.feed.slice(0, 14).map((f, i) => (
-              <div className={`av-row ${f.tipo}`} key={i}><b>{hora(f.ts)}</b> {f.texto}</div>
+              <div className={`av-row ${f.tipo}`} key={i}><b>{hora(f.ts)}</b> {finOculto && f.tipo === "recebido" ? f.texto.replace(/R\$\s?[\d.,]+/, "R$ •••••") : f.texto}</div>
             ))}
             {d && !d.feed.length && <div className="av-row mute">Nada ainda hoje</div>}
           </div>
@@ -185,12 +195,13 @@ export default function PainelAoVivoPage() {
 }
 
 const n = (v: number | null | undefined) => Number(v || 0);
-function Linha({ l, v, dinheiro, forte, bad, sinal }: { l: string; v: (number | null | undefined)[]; dinheiro?: boolean; forte?: boolean; bad?: boolean; sinal?: boolean }) {
+function Linha({ l, v, dinheiro, forte, bad, sinal, oculto }: { l: string; v: (number | null | undefined)[]; dinheiro?: boolean; forte?: boolean; bad?: boolean; sinal?: boolean; oculto?: boolean }) {
   return (
     <tr className={forte ? "forte" : ""}>
       <th>{l}</th>
       {v.map((x, i) => {
         const val = n(x);
+        if (oculto) return <td key={i} className="mask">•••••</td>;
         const cls = sinal ? (val < 0 ? "bad" : "ok") : bad && val > 0 ? "bad" : "";
         return <td key={i} className={cls}>{dinheiro ? brl(val) : val.toLocaleString("pt-BR")}</td>;
       })}

@@ -47,3 +47,9 @@
 .pc.av .av-row.scheduled, .pc.av .av-row.realized { border-left: 3px solid var(--bar); }
 .pc.av .av-row.lead { border-left: 3px solid var(--warn); }
 @media (max-width: 1100px) { .pc.av { height: auto; overflow: auto; } .pc.av .av-grid { grid-template-columns: 1fr; grid-template-rows: none; } .pc.av .av-feed { grid-column: auto; } .pc.av .av-top { grid-template-columns: 1fr 1fr; } }
+
+/* olhinho do financeiro */
+.pc.av .av-h-fin { display: flex; align-items: center; justify-content: space-between; }
+.pc.av .av-olho { background: none; border: 1px solid var(--line); color: var(--ink2); border-radius: 6px; width: 28px; height: 24px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.pc.av .av-olho:hover { border-color: var(--acc); color: var(--ink); }
+.pc.av .av-tab td.mask, .pc.av .av-oculto .av-kpi b { color: var(--mute) !important; letter-spacing: 2px; }
