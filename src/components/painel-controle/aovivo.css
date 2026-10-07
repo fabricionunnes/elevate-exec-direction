@@ -171,3 +171,12 @@
 
 /* funil maior: rótulos compactos à direita */
 .pc.av .av-funil3d .fn-rot small { font-size: 10px; letter-spacing: .8px; } .pc.av .av-funil3d .fn-rot em { font-size: 10px; }
+
+/* closers e pré-vendas: uma linha por pessoa, com os indicadores em texto corrido (não embola em card estreito) */
+.pc.av .av-pessoa { background: var(--panel2); border-radius: 8px; padding: 6px 10px; }
+.pc.av .av-pessoa .l1 { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.pc.av .av-pessoa .l1 > b { font-size: clamp(13px, 1.1vw, 17px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc.av .av-pessoa .l1 .v { font-size: clamp(15px, 1.4vw, 22px); font-weight: 800; white-space: nowrap; }
+.pc.av .av-pessoa .l1 .v small { font-size: clamp(10px, .85vw, 12px); font-weight: 500; color: var(--ink2); }
+.pc.av .av-pessoa .l2 { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 3px; color: var(--mute); font-size: clamp(10px, .85vw, 12px); }
+.pc.av .av-pessoa .l2 b { color: var(--ink); font-weight: 700; }

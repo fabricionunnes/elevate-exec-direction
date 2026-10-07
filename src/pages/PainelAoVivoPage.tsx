@@ -284,47 +284,42 @@ export default function PainelAoVivoPage() {
 
         <div className="av-card">
           <div className="av-h">CLOSERS · MÊS</div>
-          <table className="av-tab av-tab-sm">
-            <thead><tr><th></th><th>Vendas</th><th>Receita</th><th>Meta</th><th>Reuniões</th><th>No-show</th><th>Em aberto</th></tr></thead>
-            <tbody>
-              {d?.ranking_closers.map((r, i) => {
-                const p = r.meta ? pct(r.receita, r.meta) : null;
-                return (
-                  <tr key={i}>
-                    <th>{r.nome}</th>
-                    <td>{r.vendas}{r.vendas_hoje > 0 && <small className="ok"> +{r.vendas_hoje} hoje</small>}</td>
-                    <td>{brl(r.receita)}</td>
-                    <td className={p == null ? "" : p >= pTempo ? "ok" : "bad"}>{p == null ? "-" : `${p}%`}</td>
-                    <td>{r.realizadas}</td>
-                    <td className={r.no_show > 0 ? "bad" : ""}>{r.no_show}</td>
-                    <td>{r.pipeline_n} · {brl(r.pipeline_v)}</td>
-                  </tr>
-                );
-              })}
-              {d && !d.ranking_closers.length && <tr><td colSpan={7} className="mute">Nenhuma venda no mês</td></tr>}
-            </tbody>
-          </table>
+          <div className="av-list">
+            {d?.ranking_closers.map((r, i) => {
+              const p = r.meta ? pct(r.receita, r.meta) : null;
+              return (
+                <div className="av-pessoa" key={i}>
+                  <div className="l1"><b>{r.nome}</b><span className="v">{brl(r.receita)}<small> · {r.vendas} {r.vendas === 1 ? "venda" : "vendas"}{r.vendas_hoje > 0 ? ` (+${r.vendas_hoje} hoje)` : ""}</small></span></div>
+                  <div className="l2">
+                    <span>meta <b className={p == null ? "" : p >= pTempo ? "ok" : "bad"}>{p == null ? "sem meta" : `${p}%`}</b></span>
+                    <span>reuniões <b>{r.realizadas}</b></span>
+                    <span>no-show <b className={r.no_show > 0 ? "bad" : ""}>{r.no_show}</b></span>
+                    <span>em aberto <b>{r.pipeline_n}</b> · {brl(r.pipeline_v)}</span>
+                  </div>
+                </div>
+              );
+            })}
+            {d && !d.ranking_closers.length && <div className="av-row mute">Nenhuma venda no mês</div>}
+          </div>
           <div className="av-h" style={{ marginTop: 8 }}>PRÉ-VENDAS · MÊS</div>
-          <table className="av-tab av-tab-sm">
-            <thead><tr><th></th><th>Hoje</th><th>Semana</th><th>Mês</th><th>Realizadas</th><th>No-show</th><th>Presença</th></tr></thead>
-            <tbody>
-              {d?.ranking_sdr.map((r, i) => {
-                const pres = r.realizadas + r.no_show > 0 ? pct(r.realizadas, r.realizadas + r.no_show) : null;
-                return (
-                  <tr key={i}>
-                    <th>{r.nome}</th>
-                    <td>{r.agendadas_hoje}</td>
-                    <td>{r.agendadas_semana}</td>
-                    <td>{r.agendadas}</td>
-                    <td>{r.realizadas}</td>
-                    <td className={r.no_show > 0 ? "bad" : ""}>{r.no_show}</td>
-                    <td className={pres == null ? "" : pres >= 60 ? "ok" : "bad"}>{pres == null ? "-" : `${pres}%`}</td>
-                  </tr>
-                );
-              })}
-              {d && !d.ranking_sdr.length && <tr><td colSpan={7} className="mute">Nenhum agendamento no mês</td></tr>}
-            </tbody>
-          </table>
+          <div className="av-list">
+            {d?.ranking_sdr.map((r, i) => {
+              const pres = r.realizadas + r.no_show > 0 ? pct(r.realizadas, r.realizadas + r.no_show) : null;
+              return (
+                <div className="av-pessoa" key={i}>
+                  <div className="l1"><b>{r.nome}</b><span className="v">{r.agendadas} <small>{r.agendadas === 1 ? "agendada" : "agendadas"} no mês</small></span></div>
+                  <div className="l2">
+                    <span>hoje <b>{r.agendadas_hoje}</b></span>
+                    <span>semana <b>{r.agendadas_semana}</b></span>
+                    <span>realizadas <b>{r.realizadas}</b></span>
+                    <span>no-show <b className={r.no_show > 0 ? "bad" : ""}>{r.no_show}</b></span>
+                    <span>presença <b className={pres == null ? "" : pres >= 60 ? "ok" : "bad"}>{pres == null ? "-" : `${pres}%`}</b></span>
+                  </div>
+                </div>
+              );
+            })}
+            {d && !d.ranking_sdr.length && <div className="av-row mute">Nenhum agendamento no mês</div>}
+          </div>
         </div>
         {/* linha 3 */}
         <div className="av-card av-feed">
