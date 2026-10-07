@@ -59,6 +59,7 @@ export default function UNVStartCheckoutPage() {
   const [pixCode, setPixCode] = useState<string | null>(null);
   const [pixImg, setPixImg] = useState<string | null>(null);
   const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
+  const [billingMode, setBillingMode] = useState<string | null>(null);
 
   const pollRef = useRef<number | null>(null);
 
@@ -134,10 +135,8 @@ export default function UNVStartCheckoutPage() {
       setPixCode(r.pix_qr_code || null);
       setPixImg(r.pix_qr_code_url || null);
       setInvoiceUrl(r.invoice_url || null);
+      setBillingMode(r.billing_mode || null);
       setStep("pix");
-      if (method === "credit_card" && r.invoice_url) {
-        window.open(r.invoice_url, "_blank");
-      }
     } catch {
       setError("Não consegui gerar o pagamento. Tente de novo.");
     } finally {
@@ -261,13 +260,13 @@ export default function UNVStartCheckoutPage() {
                           <Loader2 className="animate-spin" />
                         ) : (
                           <>
-                            Pagar R$ 97 e liberar acesso
+                            Assinar por R$ 97/mês
                             <ArrowRight className="ml-2" />
                           </>
                         )}
                       </Button>
                       <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                        <Lock className="h-3 w-3" /> Pagamento seguro · Acesso imediato
+                        <Lock className="h-3 w-3" /> Pagamento seguro · Sem fidelidade · Cancele quando quiser
                       </p>
                     </form>
                   </>
@@ -278,8 +277,10 @@ export default function UNVStartCheckoutPage() {
                     </h1>
                     <p className="text-muted-foreground mb-6">
                       {method === "pix"
-                        ? "Escaneie o QR code ou copie o código. O acesso libera automaticamente."
-                        : "Abrimos a página segura de pagamento. Assim que aprovar, seu acesso libera aqui."}
+                        ? billingMode === "pix_automatico"
+                          ? "Escaneie o QR code ou copie o código. Seu banco vai pedir pra autorizar o Pix Automático: autorize e as próximas mensalidades caem sozinhas. O acesso libera aqui na hora."
+                          : "Escaneie o QR code ou copie o código. O acesso libera aqui na hora. Todo mês você recebe o Pix da mensalidade no WhatsApp."
+                        : "Clique abaixo pra abrir a página segura do Asaas. Os dados do cartão ficam só lá, e as próximas mensalidades são cobradas no mesmo cartão. Assim que aprovar, seu acesso libera aqui."}
                     </p>
 
                     {method === "pix" && pixImg && (
@@ -327,7 +328,7 @@ export default function UNVStartCheckoutPage() {
                   <img src={logoUnvBoard} alt="UNV" className="h-12 mx-auto md:mx-0 mb-3" />
                   <p className="text-white/60 text-sm uppercase tracking-wider">Você está adquirindo</p>
                   <h2 className="font-display text-xl font-bold text-white">UNV Start</h2>
-                  <p className="text-white/70 text-sm">Estrutura comercial completa da sua empresa</p>
+                  <p className="text-white/70 text-sm">Assinatura mensal: estrutura comercial + painel com Diretor Comercial IA</p>
                 </div>
 
                 <div className="rounded-2xl bg-white/5 border border-white/10 p-5 space-y-3">
@@ -340,12 +341,14 @@ export default function UNVStartCheckoutPage() {
                 </div>
 
                 <div className="mt-5 flex items-baseline justify-between rounded-2xl bg-white/10 border border-white/10 px-5 py-4">
-                  <span className="text-white/70">Total</span>
-                  <span className="font-display text-3xl font-bold text-white">R$ 97</span>
+                  <span className="text-white/70">Mensalidade</span>
+                  <span className="font-display text-3xl font-bold text-white">
+                    R$ 97<span className="text-base font-medium text-white/70">/mês</span>
+                  </span>
                 </div>
 
                 <p className="mt-4 flex items-center gap-2 text-xs text-white/60">
-                  <ShieldCheck className="h-4 w-4" /> Garantia incondicional de 7 dias.
+                  <ShieldCheck className="h-4 w-4" /> Garantia incondicional de 7 dias. Sem fidelidade.
                 </p>
               </div>
             </div>

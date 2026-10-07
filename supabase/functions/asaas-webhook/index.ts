@@ -30,6 +30,21 @@ function mapAsaasStatus(paymentStatus: string): string {
   }
 }
 
+// UNV Start: a lógica da assinatura (liberar, renovar, bloquear) mora na unv-start-checkout.
+async function forwardUnvStart(body: unknown) {
+  try {
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/unv-start-checkout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ ...(body as Record<string, unknown>), action: "asaas_event" }),
+    });
+    console.log(`[Asaas Webhook] UNV Start encaminhado: ${r.status} ${(await r.text()).slice(0, 200)}`);
+  } catch (e) {
+    console.error("[Asaas Webhook] UNV Start erro ao encaminhar:", e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -83,6 +98,16 @@ Deno.serve(async (req) => {
         }
       } catch (e) { console.error("[Asaas Webhook] transfer receipt error", e); }
       return new Response(JSON.stringify({ received: true, transfer_event: event }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // === UNV Start — autorização do Pix Automático (vem sem objeto payment) ===
+    if (event && String(event).startsWith("PIX_AUTOMATIC_") && body.authorization?.id) {
+      const sbAuth = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { data: mAuth } = await sbAuth.from("unv_start_members").select("id").eq("pix_auto_authorization_id", body.authorization.id).maybeSingle();
+      if (mAuth) await forwardUnvStart(body);
+      return new Response(JSON.stringify({ received: true, unv_start_pix_auto: !!mAuth }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -144,6 +169,27 @@ Deno.serve(async (req) => {
         });
       }
     } catch (e) { console.error("[Asaas Webhook] lead payment handling error", e); }
+
+    // === UNV Start — assinatura (1ª cobrança, renovação, atraso, estorno) ===
+    // Casa por externalReference, pela assinatura ou pela autorização do Pix Automático.
+    {
+      const ref = String(payment.externalReference || "");
+      let isUnvStart = ref.startsWith("unv-start:");
+      if (!isUnvStart && (subscriptionId || payment.pixAutomaticAuthorizationId)) {
+        const ors = [
+          subscriptionId ? `asaas_subscription_id.eq.${subscriptionId}` : null,
+          payment.pixAutomaticAuthorizationId ? `pix_auto_authorization_id.eq.${payment.pixAutomaticAuthorizationId}` : null,
+        ].filter(Boolean).join(",");
+        const { data: mSub } = await supabase.from("unv_start_members").select("id").or(ors).limit(1).maybeSingle();
+        isUnvStart = !!mSub;
+      }
+      if (isUnvStart) {
+        await forwardUnvStart(body);
+        return new Response(JSON.stringify({ received: true, unv_start: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     // === Recarga da carteira do discador — tratamento isolado (early return) ===
     const extRef: string | undefined = payment.externalReference;
