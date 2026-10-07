@@ -2,15 +2,19 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light only">
-<title>Raio-X Comercial: descubra onde sua empresa perde vendas</title>
-<meta name="description" content="Descubra em 30 minutos onde a sua empresa está perdendo vendas, receba o plano pronto pra corrigir e acompanhe tudo num painel com Diretor Comercial IA. R$ 97/mês, sem fidelidade.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Raio-X Comercial</title>
+<meta name="description" content="Descubra em 30 minutos onde a sua empresa está perdendo vendas, receba a estrutura comercial pronta e acompanhe tudo num painel com Diretor Comercial IA. R$ 97/mês, sem fidelidade.">
 <meta property="og:title" content="Raio-X Comercial: descubra onde sua empresa perde vendas">
 <meta property="og:description" content="O diagnóstico que mostra por onde o dinheiro escapa da sua operação, com o plano pronto pra fechar cada vazamento.">
 <meta property="og:type" content="website">
+<meta property="og:image" content="https://unvholdings.com.br/unvstart-vsl/img/poster.webp">
 <meta property="og:url" content="https://unvholdings.com.br/start">
 <link rel="icon" href="/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <!-- Meta Pixel -->
 <script>
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -18,393 +22,688 @@ n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
 n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
 t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
 document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('set','autoConfig',false,'247392077001023');
 fbq('init','247392077001023');
 fbq('track','PageView');
 fbq('track','ViewContent',{content_name:'Raio-X Comercial',content_category:'assinatura',value:97,currency:'BRL'});
 </script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=247392077001023&ev=PageView&noscript=1" alt=""></noscript>
 <style>
-:root{--navy:#0D2B5E;--navy2:#081d40;--red:#CC1B1B;--red2:#e8453a;--soft:#f87171;--soft2:#fecaca;--green:#34d399;--ink:#1a2233;--mut:#5b6b85;--bg:#f6f8fc}
+/* Conceito: o laudo de raio-X do comercial (mesma linguagem da VSL). Carta de vendas em texto,
+   sem preço nem botão antes do bloco de oferta; achados em vermelho, varredura em azul. */
+:root{
+  --film:#050b18; --film-2:#0a1730; --navy:#0D2B5E; --bone:#e9eef8; --mute:#8fa3c4;
+  --line:rgba(143,163,196,.18); --scan:#7cc4ff; --leak:#ff4b3e; --red:#CC1B1B; --ok:#34d399;
+  --f-display:"Archivo","Arial Narrow",Arial,sans-serif;
+  --f-body:"Instrument Sans",-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --r:18px; color-scheme:dark;
+}
 *{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth;color-scheme:light only}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased}
-h1,h2,h3,.disp{font-family:Georgia,"Times New Roman",serif}
-.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
-.narrow{max-width:760px;margin:0 auto}
-section{padding:56px 0}
-.navy{background:linear-gradient(135deg,var(--navy) 0%,var(--navy) 55%,var(--navy2) 100%);color:#fff}
-.kicker{font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase}
-h2{font-size:clamp(24px,4vw,34px);line-height:1.25;margin-bottom:16px}
-.center{text-align:center}
-.mut{color:var(--mut)}
-.card{background:#fff;border:1px solid #e3e9f2;border-radius:14px;padding:20px;box-shadow:0 1px 4px rgba(13,43,94,.05)}
-.grid2{display:grid;gap:16px;grid-template-columns:1fr}
-.grid3{display:grid;gap:16px;grid-template-columns:1fr}
-@media(min-width:640px){.grid2{grid-template-columns:1fr 1fr}.grid3{grid-template-columns:1fr 1fr 1fr}}
-.btn{display:inline-block;background:var(--red);color:#fff;font-weight:700;font-size:17px;text-decoration:none;padding:18px 34px;border-radius:12px;box-shadow:0 6px 20px rgba(204,27,27,.35);transition:transform .15s,box-shadow .15s;text-align:center}
-.btn:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(204,27,27,.42)}
-.btn.full{display:block;width:100%}
-.check{color:var(--green);font-weight:700;margin-right:8px}
-.x{color:#93a2bb;font-weight:700;margin-right:8px}
-/* hero */
-.hero{padding:56px 0 48px}
-.hero-grid{display:grid;gap:36px;align-items:center;grid-template-columns:1fr}
-@media(min-width:840px){.hero-grid{grid-template-columns:1.05fr .95fr}}
-.badge{display:inline-block;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);border-radius:99px;padding:7px 18px;font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;margin-bottom:18px}
-.hero h1{font-size:clamp(28px,4.6vw,42px);line-height:1.2;margin:10px 0 18px}
-.hero .u{text-decoration:underline;text-decoration-color:rgba(248,113,113,.75);text-decoration-thickness:4px;text-underline-offset:6px}
-.hero p.sub{font-size:clamp(16px,2vw,19px);color:rgba(255,255,255,.82)}
+html{scroll-behavior:smooth;background:var(--film)}
+body{background:var(--film);color:var(--bone);font-family:var(--f-body);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%;display:block}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--scan);outline-offset:3px;border-radius:6px}
+.wrap{width:100%;max-width:1160px;margin:0 auto;padding-inline:20px}
+.mono{font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+h1,h2,h3{font-family:var(--f-display);font-stretch:112%;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:clamp(34px,4.6vw,58px);line-height:1.03;font-weight:850}
+h2{font-size:clamp(28px,3.6vw,44px);line-height:1.06;font-weight:800}
+h3{font-size:20px;line-height:1.2;font-weight:700}
+p.lead{font-size:clamp(17px,1.6vw,20px);color:var(--mute);max-width:58ch}
+.leak{color:var(--leak)}
+.grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:56px 56px;mask-image:radial-gradient(ellipse at 70% 0%,#000 0%,transparent 70%);opacity:.55}
+main,header,footer{position:relative;z-index:1}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:18px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-stretch:118%;font-weight:800;font-size:17px;letter-spacing:.02em}
+.brand i{width:10px;height:10px;border-radius:50%;background:var(--leak);box-shadow:0 0 14px var(--leak);animation:blink 2.2s ease-in-out infinite}
+@keyframes blink{50%{opacity:.35}}
+.top .mono{color:var(--mute)}
+
+.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding-block:28px 56px}
+.hero > *{min-width:0}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;color:var(--scan);margin-bottom:18px}
+.eyebrow::before{content:"";width:26px;height:1px;background:var(--scan)}
+.hero h1{margin-bottom:20px}
+.hl{position:relative}
+.hl::after{content:"";position:absolute;left:0;right:0;bottom:.02em;height:.09em;background:var(--leak);transform-origin:left;animation:draw 1.1s .5s cubic-bezier(.2,.7,.2,1) both;box-shadow:0 0 18px rgba(255,75,62,.6)}
+@keyframes draw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:rgba(10,23,48,.6);border-radius:99px;padding:8px 14px;font-size:14px;color:var(--mute)}
+.chip b{color:var(--bone);font-weight:600}
+.scrolldown{display:inline-flex;align-items:center;gap:10px;margin-top:26px;color:var(--scan);text-decoration:none;font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+.scrolldown span{display:inline-block;animation:bob 1.4s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(4px)}}
+
+.xray{position:relative;border-radius:22px;background:radial-gradient(ellipse at 50% 30%,#0f2550 0%,var(--film-2) 60%,#060f22 100%);border:1px solid var(--line);padding:22px 22px 18px;overflow:hidden;box-shadow:0 40px 90px rgba(0,0,0,.5),inset 0 0 80px rgba(124,196,255,.06)}
+.xray .meta{display:flex;justify-content:space-between;gap:12px;color:var(--mute);font-size:11px}
+.xray svg{width:100%;height:auto;display:block;margin-top:10px}
+.beam{position:absolute;left:0;right:0;height:90px;top:-90px;background:linear-gradient(180deg,transparent,rgba(124,196,255,.22) 55%,rgba(124,196,255,.85) 92%,transparent);mix-blend-mode:screen;animation:beam 4.8s cubic-bezier(.45,.05,.55,.95) infinite;pointer-events:none}
+@keyframes beam{0%{top:-90px}70%{top:100%}100%{top:100%}}
+.dot{animation:leakpulse 4.8s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.d1{animation-delay:.9s}.d2{animation-delay:1.25s}.d3{animation-delay:1.75s}.d4{animation-delay:2.05s}.d5{animation-delay:2.55s}
+@keyframes leakpulse{0%,8%{opacity:.25;transform:scale(.6)}14%{opacity:1;transform:scale(1.35)}24%,100%{opacity:1;transform:scale(1)}}
+.xray .foot{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-top:1px dashed var(--line);margin-top:10px;padding-top:12px}
+.xray .foot b{white-space:nowrap;font-family:var(--f-display);font-stretch:112%;font-size:30px;color:var(--leak)}
+.xray .foot span{color:var(--mute);font-size:14px}
+
 /* faixa de prova */
-.prova{background:#fff;border-bottom:1px solid #e3e9f2;padding:28px 0}
-.prova .grid4{display:grid;gap:18px;grid-template-columns:1fr 1fr;text-align:center}
-@media(min-width:640px){.prova .grid4{grid-template-columns:repeat(4,1fr)}}
-.prova b{display:block;font-size:24px;color:var(--navy);font-family:Georgia,serif}
-.prova span{font-size:13px;color:var(--mut)}
-/* ruminações */
-.rum{background:var(--bg)}
-.rum .card b{display:block;color:var(--red);font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
-.rum .card em{font-style:italic}
-/* consequências */
-.cons .card{display:flex;gap:14px}
-.cons .ic{flex:0 0 40px;height:40px;border-radius:10px;background:rgba(204,27,27,.09);color:var(--red2);display:flex;align-items:center;justify-content:center;font-size:19px}
-.cons b{display:block;margin-bottom:4px}
-.cons p{font-size:14px;color:var(--mut)}
-/* transição */
-.trans{padding:38px 0;text-align:center}
-.trans p{font-family:Georgia,serif;font-weight:700;font-size:clamp(19px,3vw,26px);max-width:820px;margin:0 auto}
-/* passos + mockup */
-.passos{background:#fff}
-.passo{display:flex;gap:18px;margin-bottom:26px}
-.passo .num{flex:0 0 48px;height:48px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;font-weight:700;font-size:20px}
-.passo b{display:block;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
-.mock{max-width:460px;margin:0 auto;border-radius:14px;overflow:hidden;box-shadow:0 18px 50px rgba(13,43,94,.18);border:1px solid #e3e9f2;background:#fff}
-.mock .bar{display:flex;gap:6px;align-items:center;background:#eef2f8;border-bottom:1px solid #e3e9f2;padding:10px 14px}
-.mock .dot{width:10px;height:10px;border-radius:50%}
-.mock .t{font-size:11px;color:#93a2bb;margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mock .inner{padding:18px}
-.mock .et{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
-.mock .pg{height:6px;border-radius:99px;background:#eef2f8;margin-bottom:16px}
-.mock .pg i{display:block;height:6px;width:14%;border-radius:99px;background:var(--navy)}
-.mock .q{font-size:14px;font-weight:600;margin-bottom:10px}
-.mock .op{border:1px solid #e3e9f2;border-radius:10px;padding:10px 14px;font-size:13px;color:#7a8aa5;margin-bottom:8px}
-.mock .op.sel{border-color:var(--navy);background:rgba(13,43,94,.05);color:var(--navy);font-weight:600}
-.mock .ia{display:flex;gap:10px;align-items:center;background:#f6f8fc;border:1px solid #e3e9f2;border-radius:10px;padding:10px 14px;margin-top:14px}
-.mock .ia b{flex:0 0 24px;height:24px;border-radius:50%;background:var(--navy);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center}
-.mock .ia p{font-size:12px;color:#7a8aa5}
-/* funil svg */
-.funil{width:100%;max-width:420px;margin:0 auto;display:block}
-/* stack */
-.doc{border-radius:14px;overflow:hidden;border:1px solid #e3e9f2;background:#fff;box-shadow:0 2px 10px rgba(13,43,94,.06)}
-.doc .head{background:var(--navy);color:#fff;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:11px 16px}
-.doc .body{padding:16px}
-.doc .body p{font-size:14px;color:var(--mut);margin-bottom:12px}
-.doc .l{height:6px;border-radius:4px;background:#e9eef6;margin-bottom:6px}
-.doc .l.s1{width:92%}.doc .l.s2{width:78%}.doc .l.s3{width:60%;background:#f1f5fa}
-.book{border:2px solid rgba(248,113,113,.5);background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;border-radius:14px;padding:18px}
-.book b{color:var(--soft2);font-size:11px;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:6px}
-.book p{font-size:14px;color:rgba(255,255,255,.75)}
-.book .tt{font-size:16px;font-weight:700;color:#fff;margin-bottom:4px}
+.proof{border-block:1px solid var(--line);background:rgba(10,23,48,.55)}
+.proof .wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding-block:22px}
+.proof b{display:block;font-family:var(--f-display);font-stretch:116%;font-weight:850;font-size:clamp(24px,3vw,34px);font-variant-numeric:tabular-nums}
+.proof span{color:var(--mute);font-size:14px}
+
+section.blk{padding-block:84px}
+.sec-head{display:grid;gap:14px;margin-bottom:36px;max-width:780px}
+.sec-head .mono{color:var(--scan)}
+
+/* sintomas */
+.symptoms{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.symp{padding:20px 22px;border-radius:16px;border:1px solid var(--line);background:var(--film-2)}
+.symp .mono{color:var(--leak);font-size:11px}
+.symp p{margin-top:8px;font-size:18px;font-style:italic;line-height:1.4}
+.after{margin-top:26px;color:var(--mute)}
+.after strong{color:var(--bone)}
+
+/* agitação */
+.cons{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.con{display:grid;grid-template-columns:42px 1fr;gap:14px;padding:20px;border-radius:16px;border:1px solid var(--line);background:var(--film-2)}
+.con > *{min-width:0}
+.con i{width:42px;height:42px;border-radius:12px;background:rgba(255,75,62,.12);display:grid;place-items:center;color:var(--leak);font-style:normal;font-family:var(--f-mono)}
+.con b{display:block;font-size:17px;margin-bottom:4px}
+.con p{color:var(--mute);font-size:15px}
+
+.turn{padding-block:56px;border-block:1px solid var(--line);background:linear-gradient(90deg,rgba(204,27,27,.12),rgba(124,196,255,.08))}
+.turn p{font-family:var(--f-display);font-stretch:118%;font-weight:900;font-size:clamp(24px,3.6vw,42px);line-height:1.1;text-wrap:balance;max-width:24ch}
+
+/* checklist */
+.exam{display:grid;grid-template-columns:1.25fr .75fr;gap:28px;align-items:start}
+.exam > *{min-width:0}
+.sx{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sx button{display:flex;gap:14px;align-items:center;text-align:left;width:100%;padding:16px 18px;border-radius:14px;border:1px solid var(--line);background:var(--film-2);color:var(--bone);font:inherit;font-size:16px;cursor:pointer;transition:border-color .2s,background .2s,transform .15s}
+.sx button:hover{transform:translateY(-1px);border-color:rgba(124,196,255,.45)}
+.sx .n{flex:0 0 34px;height:34px;border-radius:10px;display:grid;place-items:center;font-family:var(--f-mono);font-size:13px;border:1px solid var(--line);color:var(--mute);transition:all .2s}
+.sx button[aria-pressed="true"]{border-color:rgba(255,75,62,.7);background:linear-gradient(90deg,rgba(255,75,62,.16),var(--film-2))}
+.sx button[aria-pressed="true"] .n{background:var(--leak);border-color:var(--leak);color:#fff;box-shadow:0 0 16px rgba(255,75,62,.55)}
+.laudo{position:sticky;top:calc(20px + env(safe-area-inset-top,0px));border-radius:22px;border:1px solid var(--line);background:var(--film-2);padding:26px}
+.ring{width:150px;height:150px;margin:6px auto 14px;position:relative}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:10}
+.ring .bg{stroke:rgba(143,163,196,.15)}
+.ring .fg{stroke:var(--leak);stroke-linecap:round;transition:stroke-dashoffset .6s cubic-bezier(.2,.7,.2,1);filter:drop-shadow(0 0 8px rgba(255,75,62,.6))}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--f-display);font-stretch:118%;font-size:46px;font-weight:900}
+.ring b small{display:block;font-size:12px;font-family:var(--f-mono);color:var(--mute);letter-spacing:.12em;margin-top:-6px}
+.laudo p{color:var(--mute);font-size:15px;text-align:center}
+.laudo p strong{color:var(--bone)}
+.mech{margin-top:30px;padding:26px 28px;border-radius:20px;border:1px solid rgba(124,196,255,.3);background:radial-gradient(ellipse at 0% 0%,rgba(124,196,255,.12),transparent 60%),var(--film-2);display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center}
+.mech > *{min-width:0}
+.mech .mono{color:var(--scan)}
+.mech h3{font-size:clamp(20px,2.4vw,26px);margin:6px 0 8px}
+.mech p{color:var(--mute)}
+
+/* calculadora */
+.calc{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:stretch}
+.calc > *{min-width:0}
+.field{display:grid;gap:8px;padding:18px 20px;border-radius:14px;border:1px solid var(--line);background:var(--film-2)}
+.field + .field{margin-top:12px}
+.field label{display:flex;justify-content:space-between;gap:12px;color:var(--mute);font-size:15px}
+.field output{font-family:var(--f-mono);color:var(--bone);font-size:15px;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--scan);height:28px;cursor:pointer}
+.result{border-radius:22px;padding:30px;border:1px solid rgba(255,75,62,.35);background:radial-gradient(ellipse at 100% 0%,rgba(255,75,62,.16),transparent 60%),var(--film-2);display:flex;flex-direction:column;justify-content:center;gap:10px}
+.result .big{font-family:var(--f-display);font-stretch:116%;font-weight:900;font-size:clamp(40px,5vw,60px);line-height:1;color:var(--leak);font-variant-numeric:tabular-nums}
+.result .small{color:var(--mute);font-size:15px}
+.result .row{display:flex;justify-content:space-between;gap:12px;border-top:1px dashed var(--line);padding-top:12px;font-size:15px}
+.result .row span{color:var(--mute)}
+.result .row b{font-variant-numeric:tabular-nums}
+.nota{font-size:12px;color:var(--mute);opacity:.8}
+
+/* etapas + sistema */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:46px}
+.step{padding:24px;border-radius:16px;border:1px solid var(--line);background:var(--film-2)}
+.step .k{font-family:var(--f-mono);font-size:12px;color:var(--scan);letter-spacing:.14em}
+.step h3{margin:10px 0 8px}
+.step p{color:var(--mute);font-size:15px}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.tab{border:1px solid var(--line);background:transparent;color:var(--mute);border-radius:99px;padding:10px 16px;font:inherit;font-size:15px;cursor:pointer;position:relative;overflow:hidden;transition:color .2s,border-color .2s}
+.tab[aria-selected="true"]{color:var(--bone);border-color:rgba(124,196,255,.6);background:rgba(124,196,255,.08)}
+.tab .t{position:absolute;left:0;bottom:0;height:2px;width:0;background:var(--scan)}
+.tab[aria-selected="true"] .t.run{animation:fill 5.5s linear forwards}
+@keyframes fill{to{width:100%}}
+.shot{display:grid;grid-template-columns:.85fr 1.15fr;gap:30px;align-items:center}
+.shot > *{min-width:0}
+.shot .txt h3{font-size:clamp(22px,2.4vw,30px);margin-bottom:12px}
+.shot .txt p{color:var(--mute)}
+.device{border-radius:18px;border:1px solid var(--line);background:#081226;padding:10px;box-shadow:0 30px 70px rgba(0,0,0,.5)}
+.device .dots{display:flex;gap:6px;padding:4px 6px 10px}
+.device .dots i{width:9px;height:9px;border-radius:50%;background:rgba(143,163,196,.3)}
+.device img{border-radius:10px;aspect-ratio:1100/861;object-fit:cover;width:100%;height:auto;transition:opacity .25s}
+
+/* resultados e stack */
+.gets{display:grid;gap:12px;max-width:820px}
+.get{display:flex;gap:14px;align-items:flex-start;padding:18px 20px;border-radius:14px;border:1px solid var(--line);background:var(--film-2);font-size:17px}
+.get::before{content:"";flex:0 0 20px;height:20px;margin-top:3px;border-radius:6px;background:var(--ok);mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/%3E%3C/svg%3E") center/contain no-repeat}
+.stack{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.doc{border-radius:16px;border:1px solid var(--line);background:var(--film-2);overflow:hidden;display:flex;flex-direction:column}
+.doc .hd{padding:12px 16px;font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--scan);border-bottom:1px dashed var(--line)}
+.doc .bd{padding:16px;display:grid;gap:8px}
+.doc .bd b{font-size:17px;line-height:1.25}
+.doc .bd p{color:var(--mute);font-size:14px}
+.doc.hot{border-color:rgba(255,75,62,.45);background:radial-gradient(ellipse at 100% 0%,rgba(255,75,62,.14),transparent 60%),var(--film-2)}
+.doc.hot .hd{color:var(--leak)}
+
+/* pra quem */
+.fit{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.fit > div{padding:24px;border-radius:18px;border:1px solid var(--line);background:var(--film-2)}
+.fit h3{margin-bottom:14px}
+.fit li{list-style:none;display:flex;gap:10px;color:var(--mute);padding-block:8px;border-top:1px dashed var(--line)}
+.fit li b{color:var(--bone);font-weight:600}
+.fit .yes li::before{content:"+";font-family:var(--f-mono);color:var(--ok)}
+.fit .no li::before{content:"×";font-family:var(--f-mono);color:var(--leak)}
+
 /* oferta */
-.oferta-card{background:#fff;color:var(--ink);border-radius:18px;padding:34px 26px;box-shadow:0 24px 60px rgba(0,0,0,.35);max-width:560px;margin:0 auto;text-align:center}
-.oferta-card .itens{text-align:left;margin:22px 0 26px}
-.oferta-card .itens div{padding:7px 0;font-size:15px}
-.oferta-card .de{color:var(--mut);font-size:14px}
-.oferta-card .de s{color:#a4b0c4}
-.oferta-card .preco{font-family:Georgia,serif;font-size:64px;font-weight:700;color:var(--navy);line-height:1.05}
-.selos{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:16px;font-size:12px;color:var(--mut)}
-/* garantia / autoridade */
-.foto{width:170px;height:170px;border-radius:16px;object-fit:cover}
-.aut{display:grid;gap:24px;align-items:center;grid-template-columns:1fr;text-align:center}
-@media(min-width:720px){.aut{grid-template-columns:auto 1fr;text-align:left}.aut img{margin:0}}
-.aut img{margin:0 auto}
-/* faq */
-details{background:#fff;border:1px solid #e3e9f2;border-radius:12px;padding:16px 20px;margin-bottom:10px}
-summary{font-weight:600;cursor:pointer;list-style:none;position:relative;padding-right:26px}
-summary::after{content:"▾";position:absolute;right:0;color:var(--mut)}
-details[open] summary::after{content:"▴"}
-details p{margin-top:10px;color:var(--mut);font-size:15px}
-/* footer */
-footer{background:var(--navy2);color:rgba(255,255,255,.45);text-align:center;padding:36px 20px;font-size:12px}
-footer a{color:rgba(255,255,255,.6)}
-footer p{max-width:620px;margin:6px auto}
-.mb8{margin-bottom:8px}.mb16{margin-bottom:16px}.mb24{margin-bottom:24px}.mb40{margin-bottom:40px}
-.up{color:var(--red);font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;margin-bottom:12px}
-.up-w{color:var(--soft2)}
+.ticket{display:grid;grid-template-columns:1.2fr 1fr;border-radius:22px;overflow:hidden;border:1px solid rgba(124,196,255,.3);background:var(--film-2)}
+.ticket > *{min-width:0;padding:34px}
+.ticket .l{border-right:1px dashed var(--line)}
+.ticket ul{list-style:none;display:grid;gap:12px;margin-top:16px}
+.ticket li{display:flex;gap:12px;align-items:flex-start}
+.ticket li::before{content:"";flex:0 0 18px;height:18px;margin-top:4px;border-radius:5px;background:var(--ok);mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/%3E%3C/svg%3E") center/contain no-repeat}
+.ticket .r{background:radial-gradient(ellipse at 50% 0%,rgba(204,27,27,.22),transparent 70%);display:flex;flex-direction:column;justify-content:center}
+.anchor{color:var(--mute);font-size:14px;display:grid;gap:6px;margin-bottom:16px}
+.anchor s{text-decoration-color:var(--leak)}
+.price{font-family:var(--f-display);font-stretch:118%;font-weight:900;font-size:clamp(56px,7vw,84px);line-height:1;font-variant-numeric:tabular-nums}
+.price small{font-size:.32em;color:var(--mute);font-weight:600;margin-left:6px}
+.cta{position:relative;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:20px;padding:20px 22px;border-radius:14px;background:var(--red);color:#fff;font-family:var(--f-display);font-stretch:112%;font-weight:800;font-size:18px;letter-spacing:.02em;text-decoration:none;overflow:hidden;border:0;cursor:pointer;box-shadow:0 14px 36px rgba(204,27,27,.4);transition:transform .15s,box-shadow .15s}
+.cta::after{content:"";position:absolute;top:0;bottom:0;width:60px;left:-80px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);transform:skewX(-20deg);animation:shine 3.2s ease-in-out infinite}
+@keyframes shine{0%,60%{left:-80px}100%{left:110%}}
+.cta:hover{transform:translateY(-2px);box-shadow:0 18px 44px rgba(204,27,27,.5)}
+.selos{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px;color:var(--mute);font-size:13px}
+
+.post{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.post div{padding:22px;border-radius:16px;border:1px solid var(--line);background:var(--film-2)}
+.post .k{font-family:var(--f-mono);font-size:12px;color:var(--scan);letter-spacing:.14em}
+.post h3{margin:10px 0 6px}
+.post p{color:var(--mute);font-size:15px}
+
+.guard{display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:center;padding:30px;border-radius:22px;border:1px solid rgba(52,211,153,.35);background:radial-gradient(ellipse at 0% 50%,rgba(52,211,153,.12),transparent 60%),var(--film-2)}
+.seal{width:120px;height:120px;border-radius:50%;border:3px solid var(--ok);display:grid;place-items:center;text-align:center;box-shadow:0 0 0 10px rgba(52,211,153,.08)}
+.seal b{display:block;font-family:var(--f-display);font-stretch:118%;font-size:44px;font-weight:900;line-height:1}
+.seal span{font-family:var(--f-mono);font-size:11px;color:var(--ok);letter-spacing:.14em}
+.guard p{color:var(--mute)}
+
+.talk{max-width:760px}
+.talk p{font-size:clamp(18px,1.8vw,21px);color:var(--mute);margin-top:14px}
+.talk p.q{color:var(--bone);font-style:italic;font-weight:600}
+
+.author{display:grid;grid-template-columns:auto 1fr;gap:30px;align-items:center;padding:30px;border-radius:22px;border:1px solid var(--line);background:var(--film-2)}
+.author > *{min-width:0}
+.author img{width:180px;height:180px;object-fit:cover;border-radius:18px;filter:saturate(.9)}
+.author p{color:var(--mute);margin-top:10px}
+
+details{border-top:1px solid var(--line);padding-block:18px}
+details:last-of-type{border-bottom:1px solid var(--line)}
+summary{display:flex;justify-content:space-between;gap:16px;cursor:pointer;list-style:none;font-weight:600;font-size:18px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-family:var(--f-mono);color:var(--scan);transition:transform .2s}
+details[open] summary::after{transform:rotate(45deg)}
+details p{color:var(--mute);margin-top:10px;max-width:70ch}
+
+.final{border-radius:26px;padding:44px;background:radial-gradient(ellipse at 80% 0%,rgba(124,196,255,.18),transparent 55%),radial-gradient(ellipse at 0% 100%,rgba(204,27,27,.2),transparent 55%),var(--film-2);border:1px solid var(--line);display:grid;grid-template-columns:1.2fr .8fr;gap:30px;align-items:center}
+.final > *{min-width:0}
+
+footer{border-top:1px solid var(--line);margin-top:70px;padding-block:28px;color:var(--mute);font-size:12px}
+footer p{max-width:720px}
+footer p + p{margin-top:6px}
+
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:rgba(5,11,24,.92);backdrop-filter:blur(10px);border-top:1px solid var(--line);transform:translateY(110%);transition:transform .35s}
+.dock.on{transform:none}
+.dock .cta{margin:0;padding:15px 18px;font-size:16px}
+@media(min-width:900px){.dock{display:none}}
+
+.rv.in{animation:rise .7s cubic-bezier(.2,.7,.2,1) both}
+@keyframes rise{from{transform:translateY(18px);opacity:.3}to{transform:none;opacity:1}}
+
+@media(max-width:900px){
+  .hero,.exam,.calc,.shot,.final,.ticket,.mech{grid-template-columns:1fr}
+  .ticket .l{border-right:0;border-bottom:1px dashed var(--line)}
+  .laudo{position:static}
+  .steps,.post{grid-template-columns:1fr}
+  .symptoms{grid-template-columns:1fr 1fr}
+  .stack{grid-template-columns:1fr 1fr}
+  .proof .wrap{grid-template-columns:1fr 1fr}
+  section.blk{padding-block:56px}
+  .final{padding:28px}
+  .hero{gap:28px}
+}
+@media(max-width:600px){
+  .sx,.cons,.fit,.symptoms,.stack{grid-template-columns:1fr}
+  .guard,.author{grid-template-columns:1fr}
+  .ticket > *{padding:22px}
+  .author img{width:140px;height:140px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
+<div class="grid-bg" aria-hidden="true"></div>
 
-<!-- 1. HERO, sem preço, sem botão -->
-<header class="navy hero">
-  <div class="wrap hero-grid">
-    <div>
-      <span class="badge">Raio-X Comercial</span>
-      <p style="color:rgba(255,255,255,.7);font-size:14px">O diagnóstico pronto do seu processo de vendas</p>
-      <h1>Descubra onde a sua empresa está <span class="u">perdendo vendas</span>, mesmo que você ache que o problema é a equipe.</h1>
-      <p class="sub">Em 30 minutos, o <strong style="color:#fff">Método dos Vazamentos Comerciais</strong> mostra por onde o dinheiro escapa da sua operação, e já entrega o plano pronto pra fechar cada vazamento. Depois, um painel com Diretor Comercial IA acompanha seus números todo mês.</p>
-    </div>
-    <div>
-      <svg class="funil" viewBox="0 0 380 340" role="img" aria-label="Funil de vendas com vazamentos">
-        <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#fff" stop-opacity=".1"/></linearGradient></defs>
-        <path d="M40 20 H340 L305 85 H75 Z" fill="url(#g)" stroke="#fff" stroke-opacity=".35"/>
-        <path d="M80 95 H300 L272 155 H108 Z" fill="url(#g)" stroke="#fff" stroke-opacity=".3"/>
-        <path d="M113 165 H267 L244 220 H136 Z" fill="url(#g)" stroke="#fff" stroke-opacity=".25"/>
-        <path d="M141 230 H239 L222 280 H158 Z" fill="url(#g)" stroke="#fff" stroke-opacity=".2"/>
-        <text x="190" y="58" text-anchor="middle" fill="#fff" font-size="15" font-weight="600">100 leads</text>
-        <text x="190" y="130" text-anchor="middle" fill="#fff" fill-opacity=".85" font-size="14">42 conversas</text>
-        <text x="190" y="197" text-anchor="middle" fill="#fff" fill-opacity=".75" font-size="13">11 propostas</text>
-        <text x="190" y="260" text-anchor="middle" fill="#fff" fill-opacity=".7" font-size="13">3 vendas</text>
-        <g fill="#f87171">
-          <circle cx="62" cy="105" r="5"/><circle cx="58" cy="122" r="3.5" opacity=".7"/>
-          <circle cx="316" cy="112" r="5"/><circle cx="322" cy="130" r="3.5" opacity=".7"/>
-          <circle cx="96" cy="178" r="5"/><circle cx="90" cy="196" r="3.5" opacity=".7"/>
-          <circle cx="282" cy="185" r="5"/><circle cx="288" cy="203" r="3.5" opacity=".7"/>
-          <circle cx="128" cy="248" r="5"/><circle cx="123" cy="265" r="3.5" opacity=".7"/>
-        </g>
-        <g font-size="11" fill="#fecaca">
-          <text x="58" y="142" text-anchor="middle">lead esfriou</text>
-          <text x="318" y="150" text-anchor="middle">sem follow-up</text>
-          <text x="90" y="215" text-anchor="middle">objeção</text>
-          <text x="288" y="222" text-anchor="middle">discurso solto</text>
-          <text x="124" y="294" text-anchor="middle">proposta parada</text>
-        </g>
-        <text x="190" y="320" text-anchor="middle" fill="#fecaca" font-size="13" font-weight="600">97 vendas perdidas, e você não vê onde</text>
-      </svg>
-    </div>
-  </div>
+<header class="wrap top">
+  <div class="brand"><i aria-hidden="true"></i>RAIO-X COMERCIAL</div>
+  <span class="mono">UNV · Exame comercial</span>
 </header>
 
-<!-- 2. PROVA -->
-<div class="prova">
-  <div class="wrap grid4">
-    <div><b>+20 anos</b><span>de vendas na prática</span></div>
-    <div><b>R$ 1 bilhão</b><span>vendidos na carreira</span></div>
-    <div><b>+600</b><span>empresas atendidas</span></div>
-    <div><b>7 pilares</b><span>num único diagnóstico</span></div>
-  </div>
-</div>
-
-<!-- 3. A REALIDADE, ruminações -->
-<section class="rum">
-  <div class="wrap">
-    <p class="up center">A realidade de quem tem time de vendas</p>
-    <h2 class="center narrow">Você já tentou de tudo pro comercial andar e, mesmo assim, a sensação de que algo está errado não sai da sua cabeça.</h2>
-    <p class="center mut narrow mb40">A gente sabe como é. É frustrante investir em time, tráfego e ferramenta… e continuar sem saber por que a venda não acontece.</p>
-    <div class="grid3">
-      <div class="card"><b>Time abaixo do potencial</b><em>“Meu time vende muito menos do que poderia.”</em></div>
-      <div class="card"><b>Lead que não vira venda</b><em>“Tem lead entrando e ninguém converte.”</em></div>
-      <div class="card"><b>Desculpa pronta</b><em>“Meu vendedor diz que o cliente ‘não tinha interesse’. Será?”</em></div>
-      <div class="card"><b>Meta que nunca fecha</b><em>“Todo mês a meta fica perto… mas nunca bate.”</em></div>
-      <div class="card"><b>Dúvida que não sai</b><em>“Será que o problema é a minha equipe ou o meu processo?”</em></div>
-      <div class="card"><b>Dinheiro na mesa</b><em>“Eu sei que estou deixando dinheiro na mesa. Só não sei onde.”</em></div>
+<main>
+  <!-- 1. HERO: promessa + mecanismo, sem preço e sem botão de compra -->
+  <div class="wrap hero">
+    <div>
+      <p class="eyebrow mono">O diagnóstico pronto do seu processo de vendas</p>
+      <h1>Descubra onde a sua empresa está <span class="hl leak">perdendo vendas</span>, mesmo que você ache que o problema é a equipe.</h1>
+      <p class="lead">Em 30 minutos, o Método dos Vazamentos Comerciais mostra por onde o dinheiro escapa da sua operação e já entrega o plano pronto pra fechar cada vazamento. Depois, um painel com Diretor Comercial IA acompanha seus números todo mês.</p>
+      <div class="chips">
+        <span class="chip"><b>30 min</b> pro diagnóstico</span>
+        <span class="chip"><b>7</b> documentos prontos</span>
+        <span class="chip"><b>Diretor IA</b> no seu painel</span>
+      </div>
+      <a class="scrolldown" href="#exame">Faça o exame rápido <span aria-hidden="true">↓</span></a>
     </div>
-    <p class="center" style="margin-top:32px">Dá um nó na cabeça, né? <strong>Mas dá pra virar esse jogo agora.</strong></p>
-  </div>
-</section>
 
-<!-- 4. AGITAÇÃO -->
-<section class="cons" style="background:#fff">
-  <div class="wrap">
-    <h2 class="center narrow">“Já troquei vendedor, já pus dinheiro em tráfego… e continuo no escuro. O que eu tô fazendo de errado?”</h2>
-    <p class="center mut narrow mb40">Sem saber <strong style="color:var(--ink)">onde</strong> o processo vaza, toda tentativa vira aposta. E é isso que acontece:</p>
-    <div class="grid2">
-      <div class="card"><div class="ic">↘</div><div><b>Você troca vendedor, e nada muda</b><p>Porque o problema não estava no vendedor. Estava no processo que ninguém enxerga.</p></div></div>
-      <div class="card"><div class="ic">↘</div><div><b>Você coloca mais dinheiro em tráfego</b><p>Mais lead entrando pelo mesmo funil furado. O vazamento só fica mais caro.</p></div></div>
-      <div class="card"><div class="ic">↘</div><div><b>Você cobra mais o time</b><p>Reunião, pressão, planilha… e o mês seguinte repete o anterior.</p></div></div>
-      <div class="card"><div class="ic">↘</div><div><b>Cada venda vira caso único</b><p>Sem padrão, o resultado depende do humor do dia. Impossível prever o mês.</p></div></div>
-      <div class="card"><div class="ic">↘</div><div><b>Você entra na venda pra salvar o mês</b><p>A empresa só bate meta quando VOCÊ vende. Isso não é time, é dependência.</p></div></div>
-      <div class="card"><div class="ic">↘</div><div><b>Você decide tudo no escuro</b><p>Sem diagnóstico, toda decisão é aposta. E aposta errada custa caro todo mês.</p></div></div>
+    <div class="xray" aria-label="Exemplo de raio-X de um funil de vendas: 100 leads viram 3 vendas">
+      <div class="meta mono"><span>AP 01 · Funil comercial</span><span>Varredura ativa</span></div>
+      <svg viewBox="0 0 420 330" role="img" aria-hidden="true">
+        <defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cc4ff" stop-opacity=".30"/><stop offset="1" stop-color="#7cc4ff" stop-opacity=".08"/></linearGradient></defs>
+        <g stroke="#7cc4ff" stroke-opacity=".55" fill="url(#fg)">
+          <path d="M60 18 H360 L326 82 H94 Z"/><path d="M100 92 H320 L292 152 H128 Z"/><path d="M133 162 H287 L264 216 H156 Z"/><path d="M161 226 H259 L242 274 H178 Z"/>
+        </g>
+        <g fill="#e9eef8" font-family="JetBrains Mono, monospace" font-size="13" text-anchor="middle">
+          <text x="210" y="56">100 leads</text><text x="210" y="127" fill-opacity=".85">42 conversas</text><text x="210" y="194" fill-opacity=".75">11 propostas</text><text x="210" y="255" fill-opacity=".7">3 vendas</text>
+        </g>
+        <g fill="#ff4b3e"><circle class="dot d1" cx="78" cy="104" r="6"/><circle class="dot d2" cx="338" cy="112" r="6"/><circle class="dot d3" cx="112" cy="178" r="6"/><circle class="dot d4" cx="306" cy="186" r="6"/><circle class="dot d5" cx="146" cy="246" r="6"/></g>
+        <g fill="#ffb4ad" font-family="JetBrains Mono, monospace" font-size="10.5">
+          <text x="20" y="128">lead esfriou</text><text x="318" y="134">sem follow-up</text><text x="62" y="202">objeção</text><text x="300" y="210">discurso solto</text><text x="58" y="292">proposta parada</text>
+        </g>
+        <g stroke="#8fa3c4" stroke-opacity=".35"><line x1="400" y1="18" x2="400" y2="274"/><line x1="394" y1="18" x2="406" y2="18"/><line x1="394" y1="92" x2="406" y2="92"/><line x1="394" y1="162" x2="406" y2="162"/><line x1="394" y1="226" x2="406" y2="226"/><line x1="394" y1="274" x2="406" y2="274"/></g>
+      </svg>
+      <div class="beam" aria-hidden="true"></div>
+      <div class="foot"><b>97 vendas</b><span>perdidas a cada 100 leads, e você não vê onde</span></div>
     </div>
   </div>
-</section>
 
-<!-- 5. TRANSIÇÃO -->
-<div class="navy trans"><div class="wrap"><p>É JUSTAMENTE PRA EVITAR ISSO QUE EXISTE O RAIO-X COMERCIAL.</p></div></div>
-
-<!-- 6. 3 PASSOS + MOCKUP -->
-<section class="passos">
-  <div class="wrap">
-    <div class="center mb40">
-      <span class="up" style="display:inline-block">Raio-X Comercial</span>
-      <h2>Com ele, você abre o capô da sua operação em 3 passos simples.</h2>
+  <!-- 2. PROVA -->
+  <div class="proof">
+    <div class="wrap">
+      <div><b>+20 anos</b><span>de vendas na prática</span></div>
+      <div><b>R$ 1 bilhão</b><span>vendidos na carreira</span></div>
+      <div><b>+600</b><span>empresas atendidas</span></div>
+      <div><b>7 países</b><span>em 3 continentes</span></div>
     </div>
-    <div class="hero-grid">
-      <div class="mock">
-        <div class="bar"><span class="dot" style="background:#f87171"></span><span class="dot" style="background:#fbbf24"></span><span class="dot" style="background:#34d399"></span><span class="t">Raio-X Comercial, seu diagnóstico</span></div>
-        <div class="inner">
-          <div class="et"><span>Etapa 1 de 7 · Raio-X</span><span style="color:#93a2bb">14%</span></div>
-          <div class="pg"><i></i></div>
-          <p class="q">Hoje, quando um lead novo chega, o que acontece primeiro?</p>
-          <div class="op">Alguém do time responde na hora, com padrão definido</div>
-          <div class="op sel">Cada um responde do seu jeito, quando dá</div>
-          <div class="op">Depende do dia, às vezes o lead fica sem resposta</div>
-          <div class="ia"><b>IA</b><p>Entendi. Isso costuma indicar o vazamento nº 6. Vamos confirmar…</p></div>
+  </div>
+
+  <!-- 3. SINTOMAS (ruminações) -->
+  <section class="blk">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <span class="mono">Sintomas relatados por quem tem time de vendas</span>
+        <h2>Você já tentou de tudo pro comercial andar, e a sensação de que algo está errado não sai da cabeça.</h2>
+      </div>
+      <div class="symptoms">
+        <div class="symp rv"><span class="mono">Time abaixo do potencial</span><p>“Meu time vende muito menos do que poderia.”</p></div>
+        <div class="symp rv"><span class="mono">Lead que não vira venda</span><p>“Tem lead entrando e ninguém converte.”</p></div>
+        <div class="symp rv"><span class="mono">Desculpa pronta</span><p>“Meu vendedor diz que o cliente não tinha interesse. Será?”</p></div>
+        <div class="symp rv"><span class="mono">Meta que nunca fecha</span><p>“Todo mês a meta fica perto… mas nunca bate.”</p></div>
+        <div class="symp rv"><span class="mono">Dúvida que não sai</span><p>“O problema é a minha equipe ou o meu processo?”</p></div>
+        <div class="symp rv"><span class="mono">Dinheiro na mesa</span><p>“Sei que estou deixando dinheiro na mesa. Só não sei onde.”</p></div>
+      </div>
+      <p class="after">Dá um nó na cabeça, né? <strong>Mas dá pra virar esse jogo agora.</strong></p>
+    </div>
+  </section>
+
+  <!-- 4. AGITAÇÃO -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <span class="mono">O que acontece sem diagnóstico</span>
+        <h2>Já trocou vendedor, já pôs dinheiro em tráfego, e continua no escuro?</h2>
+        <p class="lead">Sem saber onde o processo vaza, toda tentativa vira aposta.</p>
+      </div>
+      <div class="cons">
+        <div class="con rv"><i>01</i><div><b>Troca o vendedor, e nada muda</b><p>O problema não estava no vendedor. Estava no processo que ninguém enxerga.</p></div></div>
+        <div class="con rv"><i>02</i><div><b>Coloca mais dinheiro em tráfego</b><p>Mais lead entrando pelo mesmo funil furado. O vazamento só fica mais caro.</p></div></div>
+        <div class="con rv"><i>03</i><div><b>Cobra mais o time</b><p>Reunião, pressão, planilha, e o mês seguinte repete o anterior.</p></div></div>
+        <div class="con rv"><i>04</i><div><b>Cada venda vira caso único</b><p>Sem padrão, o resultado depende do humor do dia. Impossível prever o mês.</p></div></div>
+        <div class="con rv"><i>05</i><div><b>Entra na venda pra salvar o mês</b><p>A empresa só bate meta quando você vende. Isso não é time, é dependência.</p></div></div>
+        <div class="con rv"><i>06</i><div><b>Decide tudo no escuro</b><p>Sem diagnóstico, toda decisão é aposta. E aposta errada custa caro todo mês.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="turn"><div class="wrap"><p>O mais caro não é perder a venda. É <span class="leak">não saber onde</span> ela foi perdida.</p></div></div>
+
+  <!-- 5. EXAME RÁPIDO + MECANISMO -->
+  <section class="blk" id="exame">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <span class="mono">Exame rápido · 7 achados possíveis</span>
+        <h2>Quantos vazamentos estão abertos na sua empresa?</h2>
+        <p class="lead">Marque o que acontece hoje no seu comercial. O laudo atualiza na hora.</p>
+      </div>
+      <div class="exam">
+        <div class="sx" id="sx">
+          <button type="button" aria-pressed="false" id="v1"><span class="n">01</span>Vendo pra quem nunca vai comprar</button>
+          <button type="button" aria-pressed="false" id="v2"><span class="n">02</span>Não sei em qual etapa a venda morre</button>
+          <button type="button" aria-pressed="false" id="v3"><span class="n">03</span>Cada vendedor fala uma coisa</button>
+          <button type="button" aria-pressed="false" id="v4"><span class="n">04</span>"Vou pensar" encerra a conversa</button>
+          <button type="button" aria-pressed="false" id="v5"><span class="n">05</span>Orçamento enviado ninguém acompanha</button>
+          <button type="button" aria-pressed="false" id="v6"><span class="n">06</span>A rotina comercial é no improviso</button>
+          <button type="button" aria-pressed="false" id="v7"><span class="n">07</span>A meta é um número, sem plano</button>
+        </div>
+        <aside class="laudo" aria-live="polite">
+          <p class="mono" style="text-align:center;color:var(--scan)">Laudo</p>
+          <div class="ring">
+            <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="bg" cx="60" cy="60" r="50"/><circle class="fg" id="ringFg" cx="60" cy="60" r="50" stroke-dasharray="314.16" stroke-dashoffset="314.16"/></svg>
+            <b><span><span id="count">0</span><small>DE 7</small></span></b>
+          </div>
+          <p id="laudoTxt"><strong>Marque os achados ao lado.</strong> Na maioria das empresas que a UNV atende, pelo menos 3 estão abertos ao mesmo tempo.</p>
+        </aside>
+      </div>
+      <div class="mech rv">
+        <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="none" stroke="#7cc4ff" stroke-opacity=".5"/><circle cx="32" cy="32" r="18" fill="none" stroke="#7cc4ff" stroke-opacity=".35"/><circle cx="32" cy="32" r="5" fill="#ff4b3e"/></svg>
+        <div><span class="mono">O mecanismo</span><h3>Método dos Vazamentos Comerciais</h3><p>Um diagnóstico guiado que varre o seu processo de ponta a ponta (público, funil, abordagem, objeção, follow-up, rotina e meta), aponta onde a operação vaza e já monta o material pronto pra fechar cada vazamento. Personalizado pro seu negócio, não um PDF genérico.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. CALCULADORA -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head rv">
+        <span class="mono">Medição · R$ por mês</span>
+        <h2>Quanto vale cada ponto de conversão que você recupera</h2>
+        <p class="lead">Mexa nos números do seu comercial. É uma simulação com a sua própria conta, não uma promessa.</p>
+      </div>
+      <div class="calc">
+        <div>
+          <div class="field"><label for="cLeads">Leads por mês <output id="oLeads">120</output></label><input type="range" id="cLeads" min="10" max="2000" step="10" value="120"></div>
+          <div class="field"><label for="cConv">Conversão de lead em venda <output id="oConv">8%</output></label><input type="range" id="cConv" min="1" max="50" step="1" value="8"></div>
+          <div class="field"><label for="cTicket">Ticket médio <output id="oTicket">R$ 1.500</output></label><input type="range" id="cTicket" min="100" max="20000" step="100" value="1500"></div>
+        </div>
+        <div class="result">
+          <span class="mono" style="color:var(--mute)">Cada ponto a mais de conversão vale</span>
+          <div class="big" id="rPonto">R$ 1.800</div>
+          <span class="small">por mês, todo mês, com os mesmos leads que você já tem.</span>
+          <div class="row"><span>Faturamento atual estimado</span><b id="rAtual">R$ 14.400</b></div>
+          <div class="row"><span>Fechando 3 pontos de vazamento</span><b class="leak" id="rTres">+ R$ 5.400 por mês</b></div>
+          <p class="nota">Conta: leads × conversão × ticket. O Raio-X mostra em qual etapa estão esses pontos.</p>
         </div>
       </div>
-      <div>
-        <div class="passo"><div class="num">1</div><div><b>Você responde</b><p class="mut">Perguntas guiadas sobre o seu negócio, direto na tela. Você conhece a sua empresa, leva minutos.</p></div></div>
-        <div class="passo"><div class="num">2</div><div><b>A IA diagnostica</b><p class="mut">O sistema cruza suas respostas com o Método dos Vazamentos Comerciais e localiza onde sua operação perde venda.</p></div></div>
-        <div class="passo"><div class="num">3</div><div><b>Você recebe o plano pronto</b><p class="mut">Documentos profissionais montados sob medida, prontos pra aplicar com o time amanhã de manhã.</p></div></div>
+    </div>
+  </section>
+
+  <!-- 7. COMO FUNCIONA + SISTEMA -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head rv"><span class="mono">Como funciona</span><h2>Com ele, você abre o capô da sua operação em 3 passos</h2></div>
+      <div class="steps">
+        <div class="step rv"><span class="k">PASSO 1</span><h3>Você responde</h3><p>Perguntas guiadas sobre o seu negócio, direto na tela. Você conhece a sua empresa, leva minutos.</p></div>
+        <div class="step rv"><span class="k">PASSO 2</span><h3>A IA diagnostica</h3><p>Cruza suas respostas com o Método dos Vazamentos Comerciais e localiza onde a operação perde venda.</p></div>
+        <div class="step rv"><span class="k">PASSO 3</span><h3>Você recebe o plano pronto</h3><p>Documentos sob medida pra aplicar com o time amanhã de manhã, e o painel pra acompanhar.</p></div>
+      </div>
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div class="shot">
+        <div class="txt"><p class="mono" id="sKicker" style="color:var(--scan)"></p><h3 id="sTitle"></h3><p id="sText"></p></div>
+        <div class="device"><div class="dots" aria-hidden="true"><i></i><i></i><i></i></div><img id="sImg" src="/unvstart-vsl/img/raiox.webp" alt="" width="1100" height="861" loading="lazy"></div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- 7. RESULTADOS -->
-<section>
-  <div class="wrap narrow">
-    <h2 class="center mb24">Seguindo os 3 passos acima, você vai conseguir…</h2>
-    <div class="card mb8"><span class="check">✓</span>Enxergar o seu funil como ele é, e saber exatamente onde cada venda morre</div>
-    <div class="card mb8"><span class="check">✓</span>Parar de decidir por achismo: agir primeiro no vazamento que mais custa dinheiro</div>
-    <div class="card"><span class="check">✓</span>Ter processo, script e meta documentados, sem depender de você entrar na venda</div>
-    <p class="center disp" style="font-weight:700;font-size:20px;margin-top:36px">E AINDA NÃO ACABOU.</p>
-  </div>
-</section>
-
-<!-- 8. STACK -->
-<section style="background:#fff">
-  <div class="wrap">
-    <h2 class="center">Veja tudo que você vai receber no Raio-X Comercial:</h2>
-    <p class="center mut narrow mb40">O diagnóstico, os 7 documentos que fecham os vazamentos e o painel que acompanha tudo todo mês, cada um montado sob medida pelas suas respostas.</p>
-    <div class="grid3" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr))">
-      <div class="doc"><div class="head">Raio-X Comercial</div><div class="body"><p>O diagnóstico completo: onde sua empresa perde venda hoje, ponto por ponto.</p><div class="l"></div><div class="l s1"></div><div class="l s2"></div><div class="l s3"></div></div></div>
-      <div class="doc"><div class="head">ICP e Proposta de Valor</div><div class="body"><p>Pare de gastar energia com quem nunca vai comprar.</p><div class="l"></div><div class="l s1"></div><div class="l s2"></div><div class="l s3"></div></div></div>
-      <div class="doc"><div class="head">Funil de Vendas</div><div class="body"><p>Etapas claras: você enxerga onde cada venda morre.</p><div class="l"></div><div class="l s1"></div><div class="l s2"></div><div class="l s3"></div></div></div>
-      <div class="doc"><div class="head">Script de Vendas</div><div class="body"><p>O que o time fala em cada etapa, com contorno de objeção pronto.</p><div class="l"></div><div class="l s1"></div><div class="l s2"></div><div class="l s3"></div></div></div>
-      <div class="doc"><div class="head">Playbook Comercial</div><div class="body"><p>O manual que padroniza o jeito certo de vender na sua empresa.</p><div class="l"></div><div class="l s1"></div><div class="l s2"></div><div class="l s3"></div></div></div>
-      <div class="doc"><div class="head">Processos Comerciais</div><div class="body"><p>A rotina que roda sem depender de você.</p><div class="l"></div><div class="l s1"></div><div class="l s2"></div><div class="l s3"></div></div></div>
-      <div class="doc"><div class="head">Metas e Calendário</div><div class="body"><p>O plano pra bater número por gestão, não por sorte.</p><div class="l"></div><div class="l s1"></div><div class="l s2"></div><div class="l s3"></div></div></div>
-      <div class="doc"><div class="head">Painel de Gestão Comercial</div><div class="body"><p>Lance seus números em 1 minuto por dia e veja meta, funil, conversão e projeção do mês.</p><div class="l"></div><div class="l s1"></div><div class="l s2"></div><div class="l s3"></div></div></div>
-      <div class="doc"><div class="head">Diretor Comercial IA</div><div class="body"><p>Lê seus números e a estrutura que você montou e diz onde está o vazamento e o que fazer na semana.</p><div class="l"></div><div class="l s1"></div><div class="l s2"></div><div class="l s3"></div></div></div>
-      <div class="book"><b>Bônus</b><div class="tt">Book da Estrutura</div><p>Tudo compilado num documento oficial com a sua marca, pronto pra entregar pro time.</p></div>
-    </div>
-  </div>
-</section>
-
-<!-- 9. PRA QUEM É -->
-<section>
-  <div class="wrap">
-    <h2 class="center mb40">O Raio-X Comercial é pra você que…</h2>
-    <div class="grid2" style="max-width:900px;margin:0 auto">
-      <div>
-        <div class="card mb8"><span class="check">✓</span>É dono de empresa com pelo menos 1 vendedor</div>
-        <div class="card mb8"><span class="check">✓</span>Já vende, mas sente que vende menos do que poderia</div>
-        <div class="card"><span class="check">✓</span>Quer saber ONDE o processo falha antes de trocar time ou dobrar tráfego</div>
-      </div>
-      <div>
-        <div class="card mb8 mut"><span class="x">✕</span>Quer curso pra assistir aula (aqui você constrói, não assiste)</div>
-        <div class="card mb8 mut"><span class="x">✕</span>Não tem operação de vendas rodando ainda</div>
-        <div class="card mut"><span class="x">✕</span>Procura fórmula mágica sem responder sobre o próprio negócio</div>
+  <!-- 8. RESULTADOS -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head rv"><span class="mono">Conduta</span><h2>Seguindo os 3 passos, você vai conseguir…</h2></div>
+      <div class="gets">
+        <div class="get rv">Enxergar o seu funil como ele é, e saber exatamente onde cada venda morre</div>
+        <div class="get rv">Parar de decidir por achismo e agir primeiro no vazamento que mais custa dinheiro</div>
+        <div class="get rv">Ter processo, script e meta documentados, sem depender de você entrar na venda</div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- 10. OFERTA -->
-<section class="navy" id="oferta">
-  <div class="wrap">
-    <p class="up up-w center">Chega de decidir no escuro</p>
-    <h2 class="center narrow mb40">O diagnóstico completo da sua operação, com o plano pronto pra corrigir.</h2>
-    <div class="oferta-card">
-      <p class="kicker" style="color:var(--navy)">Assinatura Raio-X Comercial</p>
-      <p class="mut" style="font-size:14px">Achar os vazamentos, fechar cada um e acompanhar todo mês</p>
-      <div class="itens">
-        <div><span class="check">✓</span>Diagnóstico Raio-X guiado por IA</div>
-        <div><span class="check">✓</span>7 documentos personalizados pro seu negócio</div>
-        <div><span class="check">✓</span>Painel de Gestão Comercial: meta, funil e projeção do mês</div>
-        <div><span class="check">✓</span>Diretor Comercial IA analisando seus números</div>
-        <div><span class="check">✓</span>Book da Estrutura com a sua marca</div>
-      </div>
-      <p class="de">Menos do que uma hora de consultoria, por mês</p>
-      <p class="preco">R$ 97<span style="font-size:22px;font-weight:600;color:var(--mut)">/mês</span></p>
-      <p class="mut" style="font-size:14px;margin-bottom:22px">Sem fidelidade · Cancele quando quiser</p>
-      <a class="btn full" href="/#/start/checkout" onclick="fbq('track','InitiateCheckout',{value:97,currency:'BRL'})">SIM! QUERO MEU RAIO-X AGORA&nbsp;→</a>
-      <div class="selos"><span>🔒 Compra 100% segura</span><span>💳 Cartão ou Pix Automático</span><span>↺ Sem fidelidade</span><span>🛡 Garantia de 7 dias</span></div>
-    </div>
-  </div>
-</section>
-
-<!-- 11. PÓS-COMPRA -->
-<section>
-  <div class="wrap">
-    <h2 class="center mb40">Seu acesso chega em minutos. Funciona assim:</h2>
-    <div class="grid3" style="max-width:960px;margin:0 auto">
-      <div class="card center"><p style="font-size:26px;margin-bottom:8px">📩</p><b>Verifique seu WhatsApp e e-mail</b><p class="mut" style="font-size:14px;margin-top:6px">Assim que o pagamento confirma, seu link de acesso chega na hora pelos dois canais.</p></div>
-      <div class="card center"><p style="font-size:26px;margin-bottom:8px">🔍</p><b>Faça o seu Raio-X</b><p class="mut" style="font-size:14px;margin-top:6px">Responda as perguntas guiadas e veja o diagnóstico da sua operação em cerca de 30 minutos.</p></div>
-      <div class="card center"><p style="font-size:26px;margin-bottom:8px">📄</p><b>Acompanhe no painel</b><p class="mut" style="font-size:14px;margin-top:6px">Aplique os documentos com o time e lance os números: o Diretor Comercial IA mostra o próximo passo.</p></div>
-    </div>
-  </div>
-</section>
-
-<!-- 12. GARANTIA -->
-<section style="background:#fff">
-  <div class="wrap narrow">
-    <div class="card center" style="padding:36px">
-      <p style="font-size:30px;margin-bottom:10px">🛡</p>
-      <h2>O risco é todo meu.</h2>
-      <p class="mut">Faça o seu Raio-X. Use por 7 dias. Se você achar que não valeu cada centavo, é só pedir: devolvo 100% do seu dinheiro, sem pergunta nenhuma.</p>
-    </div>
-  </div>
-</section>
-
-<!-- 13. FECHAMENTO -->
-<section>
-  <div class="wrap narrow center">
-    <h2>Me fala sem rodeios…</h2>
-    <p class="mut mb8">Todo fim de mês é a mesma coisa, né?</p>
-    <p style="font-style:italic;font-weight:600" class="mb8">“Será que dessa vez a meta sai?”</p>
-    <p class="mut mb8">Você olha o funil e não sabe dizer onde a venda morre. Cobra o time e ouve desculpa. Entra na negociação e salva o mês, de novo.</p>
-    <p class="mut mb24">É por isso que o Raio-X Comercial existe: pra te mostrar <strong style="color:var(--ink)">onde está o vazamento, na ordem certa de corrigir</strong>, e você parar de pagar caro pra descobrir por tentativa e erro.</p>
-    <a class="btn" href="/#/start/checkout" onclick="fbq('track','InitiateCheckout',{value:97,currency:'BRL'})">Fazer meu Raio-X Comercial agora&nbsp;→</a>
-    <p class="mut" style="font-size:13px;margin-top:14px">R$ 97/mês · Sem fidelidade · Acesso imediato · Garantia de 7 dias</p>
-  </div>
-</section>
-
-<!-- 14. AUTORIDADE -->
-<section style="background:#fff">
-  <div class="wrap narrow">
-    <p class="up center" style="margin-bottom:28px">Quem criou o Raio-X Comercial?</p>
-    <div class="card aut" style="padding:30px">
-      <img class="foto" src="./fabricio-mentor.webp" alt="Fabrício Nunes" width="170" height="170" loading="lazy">
-      <div>
-        <h2 style="font-size:24px">Oi, eu sou o Fabrício Nunes.</h2>
-        <p class="mut mb8">Sou fundador da UNV, Universidade Nacional de Vendas, que atua como diretoria comercial terceirizada de dezenas de empresas. São mais de 20 anos vendendo e mais de R$ 1 bilhão em vendas geradas na carreira.</p>
-        <p class="mut">O Método dos Vazamentos Comerciais nasceu do padrão que eu vejo todo dia dentro das operações: empresa boa, produto bom, perdendo venda em pontos que o dono não enxerga. O Raio-X existe pra você enxergar. Sem precisar aprender do jeito difícil.</p>
+  <!-- 9. STACK -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head rv"><span class="mono">E ainda não acabou</span><h2>Tudo que você recebe na assinatura</h2></div>
+      <div class="stack">
+        <div class="doc hot rv"><div class="hd">Diagnóstico</div><div class="bd"><b>Raio-X Comercial</b><p>Onde sua empresa perde venda hoje, ponto por ponto, com nota por dimensão.</p></div></div>
+        <div class="doc rv"><div class="hd">Documento</div><div class="bd"><b>ICP e proposta de valor</b><p>Pare de gastar energia com quem nunca vai comprar.</p></div></div>
+        <div class="doc rv"><div class="hd">Documento</div><div class="bd"><b>Funil de vendas</b><p>Etapas claras pra enxergar onde cada venda morre.</p></div></div>
+        <div class="doc rv"><div class="hd">Documento</div><div class="bd"><b>Script de vendas</b><p>O que falar em cada etapa, com contorno de objeção pronto.</p></div></div>
+        <div class="doc rv"><div class="hd">Documento</div><div class="bd"><b>Playbook comercial</b><p>O manual que padroniza o jeito certo de vender.</p></div></div>
+        <div class="doc rv"><div class="hd">Documento</div><div class="bd"><b>Processos e metas</b><p>A rotina que roda sem você e o plano pra bater número.</p></div></div>
+        <div class="doc rv"><div class="hd">Todo mês</div><div class="bd"><b>Painel + Diretor IA</b><p>Meta, projeção, funil e a leitura semanal do que fazer.</p></div></div>
+        <div class="doc rv"><div class="hd">Bônus</div><div class="bd"><b>Book da Estrutura</b><p>Tudo num documento com a sua marca, pronto pro time.</p></div></div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<!-- FAQ -->
-<section>
-  <div class="wrap narrow">
-    <h2 class="center mb24">Perguntas Frequentes</h2>
-    <details><summary>Preciso entender de vendas pra usar?</summary><p>Não. As perguntas te guiam passo a passo. Se você conhece o seu negócio, você consegue.</p></details>
-    <details><summary>Serve pro meu segmento?</summary><p>Sim. Nada aqui é genérico, o diagnóstico e os documentos são montados a partir das suas respostas, pro seu mercado.</p></details>
-    <details><summary>É mensalidade?</summary><p>Sim. R$ 97 por mês, sem fidelidade: cancela quando quiser. Os documentos que você baixou continuam seus.</p></details>
-    <details><summary>O que eu ganho todo mês?</summary><p>O painel de gestão comercial com meta, funil e projeção, e o Diretor Comercial IA lendo os seus números e dizendo onde agir. É o acompanhamento que transforma a estrutura em resultado.</p></details>
-    <details><summary>Quando eu recebo o acesso?</summary><p>Na hora. Assim que o pagamento confirma, você recebe o link de acesso por e-mail e WhatsApp.</p></details>
-    <details><summary>Quanto tempo leva?</summary><p>O Raio-X sai em cerca de 30 minutos. A estrutura completa, a maioria monta em uma tarde. O painel você usa todo dia, em 1 minuto.</p></details>
-    <details><summary>E se eu quiser ajuda pra colocar em prática?</summary><p>Depois que sua estrutura estiver pronta, a UNV tem programas de execução acompanhada. Mas o Raio-X já te entrega tudo pra agir sozinho.</p></details>
-    <div class="center" style="margin-top:28px">
-      <a class="btn" href="/#/start/checkout" onclick="fbq('track','InitiateCheckout',{value:97,currency:'BRL'})">SIM! QUERO MEU RAIO-X AGORA&nbsp;→</a>
+  <!-- 10. PRA QUEM -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head rv"><span class="mono">Indicação</span><h2>O Raio-X Comercial é pra você que…</h2></div>
+      <div class="fit">
+        <div class="yes rv"><h3>Indicado</h3><ul><li><b>É dono de empresa</b> com pelo menos 1 vendedor</li><li><b>Já vende</b>, mas sente que vende menos do que poderia</li><li><b>Quer saber onde</b> o processo falha antes de trocar time ou dobrar tráfego</li></ul></div>
+        <div class="no rv"><h3>Não indicado</h3><ul><li>Quer curso pra assistir aula (aqui você constrói, não assiste)</li><li>Ainda não tem operação de vendas rodando</li><li>Procura fórmula mágica sem responder sobre o próprio negócio</li></ul></div>
+      </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<footer>
-  <p><strong style="color:rgba(255,255,255,.65)">UNV Holdings, Universidade Nacional de Vendas</strong></p>
-  <p>Dúvidas? <a href="mailto:acesso@unvholdings.com.br">acesso@unvholdings.com.br</a></p>
+  <!-- 11. OFERTA: primeira aparição de preço e botão -->
+  <section class="blk" id="oferta" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head rv"><span class="mono">Chega de decidir no escuro</span><h2>O diagnóstico completo da sua operação, com o plano pronto pra corrigir</h2></div>
+      <div class="ticket">
+        <div class="l">
+          <p class="mono" style="color:var(--scan)">Assinatura Raio-X Comercial</p>
+          <ul>
+            <li>Diagnóstico Raio-X guiado por IA</li>
+            <li>7 documentos personalizados pro seu negócio</li>
+            <li>Painel de gestão comercial: meta, funil e projeção do mês</li>
+            <li>Diretor Comercial IA analisando seus números</li>
+            <li>Relatório do mês no seu WhatsApp</li>
+            <li>Book da Estrutura com a sua marca</li>
+          </ul>
+        </div>
+        <div class="r">
+          <div class="anchor"><span>Diretor comercial dentro da empresa: <s>milhares de reais por mês</s></span><span>Consultoria de diagnóstico: <s>R$ 5.000 ou mais</s></span></div>
+          <div class="price"><span>R$ </span><span id="priceNum">97</span><small>/mês</small></div>
+          <p style="color:var(--mute);margin-top:8px">Sem fidelidade. Cancele quando quiser.</p>
+          <a class="cta go" href="/#/start/checkout">Quero meu Raio-X Comercial</a>
+          <div class="selos"><span>Compra segura</span><span>Cartão ou Pix Automático</span><span>Garantia de 7 dias</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12. PÓS-COMPRA -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head rv"><span class="mono">Depois da assinatura</span><h2>Seu acesso chega em minutos</h2></div>
+      <div class="post">
+        <div class="rv"><span class="k">1</span><h3>WhatsApp e e-mail</h3><p>Assim que o pagamento confirma, o link de acesso chega pelos dois canais.</p></div>
+        <div class="rv"><span class="k">2</span><h3>Faça o seu Raio-X</h3><p>Responda as perguntas guiadas e veja o diagnóstico em cerca de 30 minutos.</p></div>
+        <div class="rv"><span class="k">3</span><h3>Acompanhe no painel</h3><p>Aplique com o time e lance os números. O Diretor Comercial IA mostra o próximo passo.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13. GARANTIA -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="guard rv">
+        <div class="seal"><div><b>7</b><span>DIAS</span></div></div>
+        <div><h2 style="font-size:clamp(24px,3vw,34px)">O risco é todo nosso</h2><p style="margin-top:8px">Faça o seu Raio-X e use por 7 dias. Se achar que não valeu cada centavo, é só pedir: devolvemos 100% do valor, sem pergunta.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14. FECHAMENTO EMOCIONAL -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap talk rv">
+      <span class="mono" style="color:var(--scan)">Me fala sem rodeios</span>
+      <p>Todo fim de mês é a mesma coisa, né?</p>
+      <p class="q">“Será que dessa vez a meta sai?”</p>
+      <p>Você olha o funil e não sabe dizer onde a venda morre. Cobra o time e ouve desculpa. Entra na negociação e salva o mês, de novo.</p>
+      <p>É por isso que o Raio-X Comercial existe: pra te mostrar onde está o vazamento, na ordem certa de corrigir, e você parar de pagar caro pra descobrir por tentativa e erro.</p>
+      <a class="cta go" href="/#/start/checkout" style="max-width:460px">Fazer meu Raio-X Comercial agora</a>
+      <p class="selos">R$ 97/mês · sem fidelidade · garantia de 7 dias</p>
+    </div>
+  </section>
+
+  <!-- 15. AUTORIDADE -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="author rv">
+        <img src="./fabricio-mentor.webp" alt="Fabrício Nunnes" width="180" height="180" loading="lazy">
+        <div>
+          <span class="mono" style="color:var(--scan)">Quem criou o método</span>
+          <h2 style="font-size:clamp(24px,3vw,34px);margin-top:8px">Fabrício Nunnes</h2>
+          <p>Fundador da UNV, Universidade Nacional de Vendas, que atua como diretoria comercial terceirizada. Mais de 20 anos vendendo, 10 como diretor comercial, mais de R$ 1 bilhão em vendas na carreira e mais de 600 empresas atendidas em 7 países.</p>
+          <p>O Método dos Vazamentos Comerciais nasceu do padrão que ele vê dentro das operações: empresa boa, produto bom, perdendo venda em pontos que o dono não enxerga.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap" style="max-width:860px">
+      <div class="sec-head rv"><span class="mono">Perguntas frequentes</span><h2>Antes de assinar</h2></div>
+      <details><summary>É mensalidade?</summary><p>Sim. R$ 97 por mês, sem fidelidade: você cancela quando quiser. Os documentos que você baixou continuam seus.</p></details>
+      <details><summary>O que eu ganho todo mês?</summary><p>O painel de gestão comercial com meta, funil e projeção, e o Diretor Comercial IA lendo os seus números e dizendo onde agir. É o acompanhamento que transforma a estrutura em resultado.</p></details>
+      <details><summary>Preciso entender de vendas pra usar?</summary><p>Não. As perguntas te guiam passo a passo. Se você conhece o seu negócio, você consegue.</p></details>
+      <details><summary>Serve pro meu segmento?</summary><p>Sim. O diagnóstico e os documentos são montados a partir das suas respostas, pro seu mercado.</p></details>
+      <details><summary>Quando eu recebo o acesso?</summary><p>Na hora. Assim que o pagamento confirma, o link chega no seu WhatsApp e no e-mail.</p></details>
+      <details><summary>Como funciona o pagamento?</summary><p>No cartão, as mensalidades seguintes caem no mesmo cartão. No Pix Automático, você autoriza uma vez no banco e as próximas caem sozinhas.</p></details>
+    </div>
+  </section>
+
+  <!-- FINAL -->
+  <section class="blk" style="padding-top:0">
+    <div class="wrap">
+      <div class="final rv">
+        <div><span class="mono" style="color:var(--scan)">Próximo passo</span><h2 style="margin-top:10px">Pare de decidir no escuro. Abra o capô da sua operação hoje.</h2></div>
+        <div><a class="cta go" href="/#/start/checkout">Quero meu Raio-X Comercial</a><p class="selos">R$ 97/mês · sem fidelidade · garantia de 7 dias</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <p><strong style="color:var(--bone)">UNV Holdings, Universidade Nacional de Vendas.</strong> Dúvidas: acesso@unvholdings.com.br</p>
   <p>Este site não é afiliado ao Facebook nem a qualquer entidade do Facebook. A compra deste material não garante nenhum tipo de resultado, os resultados dependem da aplicação no seu negócio.</p>
   <p>© 2026 UNV Holdings. Todos os direitos reservados.</p>
 </footer>
 
+<div class="dock" id="dock"><a class="cta go" href="/#/start/checkout">Assinar por R$ 97/mês</a></div>
+
 <script>
-(function(){
-  var q = window.location.search;
-  if (!q) return;
-  var links = document.querySelectorAll('a[href="/#/start/checkout"]');
-  for (var i = 0; i < links.length; i++) links[i].setAttribute('href', '/#/start/checkout' + q);
+(function () {
+  var brl = function (n) { return 'R$ ' + Math.round(n).toLocaleString('pt-BR'); };
+  // checkout com UTMs e fbclid do anúncio
+  var qs = new URLSearchParams(location.search);
+  if (!qs.get('utm_campaign')) qs.set('utm_campaign', 'unv_start');
+  var checkout = '/#/start/checkout' + (qs.toString() ? '?' + qs.toString() : '');
+  document.querySelectorAll('a.cta.go').forEach(function (a) {
+    a.setAttribute('href', checkout);
+    a.addEventListener('click', function () { try { fbq('track', 'InitiateCheckout', { value: 97, currency: 'BRL' }); } catch (e) {} });
+  });
+
+  // barra fixa no celular: só depois que a oferta apareceu na tela
+  var dock = document.getElementById('dock'), oferta = document.getElementById('oferta');
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (e.isIntersecting || e.boundingClientRect.top < 0) {
+          dock.classList.add('on');
+          if (!oferta.dataset.counted) {
+            oferta.dataset.counted = '1';
+            var el = document.getElementById('priceNum'), t0 = performance.now();
+            (function tick(t) { var k = Math.min(1, (t - t0) / 900); el.textContent = Math.round(97 * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(tick); })(t0);
+          }
+        }
+      });
+    }, { threshold: .2 }).observe(oferta);
+  }
+
+  // checklist
+  var C = 314.16, ring = document.getElementById('ringFg');
+  var msgs = [
+    '<strong>Marque os achados ao lado.</strong> Na maioria das empresas que a UNV atende, pelo menos 3 estão abertos ao mesmo tempo.',
+    '<strong>1 vazamento aberto.</strong> Parece pouco, mas é venda saindo todo mês pelo mesmo lugar.',
+    '<strong>2 vazamentos abertos.</strong> O Raio-X mostra qual deles custa mais e qual fechar primeiro.',
+    '<strong>3 vazamentos abertos.</strong> É o padrão que o método encontra na maioria das operações.'
+  ];
+  function atualizar() {
+    var n = document.querySelectorAll('#sx button[aria-pressed="true"]').length;
+    document.getElementById('count').textContent = n;
+    ring.style.strokeDashoffset = C * (1 - n / 7);
+    document.getElementById('laudoTxt').innerHTML = n <= 3 ? msgs[n] : '<strong>' + n + ' vazamentos abertos ao mesmo tempo.</strong> Cada um tira venda do mesmo funil. Hora de abrir o capô.';
+  }
+  document.querySelectorAll('#sx button').forEach(function (b) {
+    b.addEventListener('click', function () { b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true'); atualizar(); });
+  });
+
+  // calculadora
+  var L = document.getElementById('cLeads'), Cv = document.getElementById('cConv'), T = document.getElementById('cTicket');
+  function calc() {
+    var l = +L.value, c = +Cv.value, t = +T.value;
+    document.getElementById('oLeads').textContent = l.toLocaleString('pt-BR');
+    document.getElementById('oConv').textContent = c + '%';
+    document.getElementById('oTicket').textContent = brl(t);
+    var ponto = l * 0.01 * t;
+    document.getElementById('rPonto').textContent = brl(ponto);
+    document.getElementById('rAtual').textContent = brl(l * c / 100 * t);
+    document.getElementById('rTres').textContent = '+ ' + brl(ponto * 3) + ' por mês';
+  }
+  [L, Cv, T].forEach(function (i) { i.addEventListener('input', calc); }); calc();
+
+  // telas do sistema
+  var S = [
+    { id: 'raiox', tab: 'Raio-X', k: 'Passo 1 · 30 minutos', h: 'O diagnóstico da sua operação', p: 'Nota por dimensão, escore geral e os vazamentos em ordem de impacto, com o que corrigir primeiro.' },
+    { id: 'estrutura', tab: 'Estrutura', k: 'Passo 2 · 7 documentos', h: 'A estrutura comercial montada pra você', p: 'ICP, funil, script, playbook, processos e metas. Um destrava o outro, tudo a partir das suas respostas.' },
+    { id: 'script', tab: 'Script', k: 'Book da Estrutura', h: 'Resposta pronta pras objeções do seu time', p: '"Está caro", "vou pensar", "vou ver com meu sócio". O script já vem com o contorno de cada uma.' },
+    { id: 'painel', tab: 'Painel', k: 'Todo dia · 1 minuto', h: 'Meta, projeção e quanto falta por dia', p: 'Lance leads, conversas, propostas, vendas e faturamento. O painel compara com o mês anterior e projeta o fechamento.' },
+    { id: 'funil', tab: 'Funil', k: 'Taxa de passagem', h: 'Onde a venda está morrendo, com número', p: 'O funil mostra a passagem entre cada etapa e o faturamento dia a dia. Achismo sai, número entra.' },
+    { id: 'diretor', tab: 'Diretor IA', k: 'Toda semana', h: 'O Diretor Comercial IA lê seus números', p: 'Vazamento nº 1 agora, as 3 ações da semana e a projeção contra a meta, como um diretor faria.' }
+  ];
+  var tabs = document.getElementById('tabs'), cur = 0, timer = null, manual = false;
+  S.forEach(function (s, i) {
+    var b = document.createElement('button');
+    b.className = 'tab'; b.type = 'button'; b.setAttribute('role', 'tab'); b.id = 'tab-' + s.id;
+    b.innerHTML = s.tab + '<span class="t"></span>';
+    b.addEventListener('click', function () { manual = true; mostrar(i); });
+    tabs.appendChild(b);
+  });
+  function mostrar(i) {
+    cur = i; var s = S[i], img = document.getElementById('sImg');
+    tabs.querySelectorAll('.tab').forEach(function (b, j) {
+      b.setAttribute('aria-selected', j === i ? 'true' : 'false');
+      var bar = b.querySelector('.t'); bar.classList.remove('run'); void bar.offsetWidth; if (j === i && !manual) bar.classList.add('run');
+    });
+    img.style.opacity = .2;
+    setTimeout(function () { img.src = '/unvstart-vsl/img/' + s.id + '.webp'; img.alt = 'Tela do sistema: ' + s.h; img.style.opacity = 1; }, 180);
+    document.getElementById('sKicker').textContent = s.k;
+    document.getElementById('sTitle').textContent = s.h;
+    document.getElementById('sText').textContent = s.p;
+    clearTimeout(timer); if (!manual) timer = setTimeout(function () { mostrar((cur + 1) % S.length); }, 5500);
+  }
+  mostrar(0);
+  S.forEach(function (s) { var im = new Image(); im.src = '/unvstart-vsl/img/' + s.id + '.webp'; });
+
+  // entradas ao rolar (partem de estado visível)
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }); }, { threshold: .15 });
+    document.querySelectorAll('.rv').forEach(function (el) { io.observe(el); });
+  }
 })();
 </script>
 </body>
