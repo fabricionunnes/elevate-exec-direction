@@ -830,7 +830,7 @@
       if(tel.length < 10) return showErr("Informe seu WhatsApp com DDD.");
       if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showErr("Informe um e-mail válido.");
 
-      var resumo = "Olá, vim pelo site da UNV Finance e quero agendar uma reunião de alinhamento." +
+      var resumo = "Olá, acabei de preencher o formulário da UNV Finance e quero agendar uma reunião de alinhamento." +
         "\nNome: " + nome + (empresa ? "\nEmpresa: " + empresa : "") + (fat ? "\nFaturamento: " + fat : "");
       var link = waUrl(resumo);
 
