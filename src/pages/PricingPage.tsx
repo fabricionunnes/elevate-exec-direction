@@ -233,8 +233,8 @@ const products: ProductPrice[] = [
     tagline: "Consultoria Financeira + BPO",
     icon: DollarSign,
     color: "text-green-500 bg-green-500/10",
-    price: "R$ 5.000",
-    priceType: "/mês",
+    price: "Sob consulta",
+    priceType: "contrato de 12 meses",
     link: "/finance",
     category: "Estratégia & Estrutura"
   },
