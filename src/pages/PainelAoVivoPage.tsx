@@ -26,6 +26,7 @@ type Dados = {
   agenda_hoje: { hora: string; lead: string; closer: string | null; etapa: string | null }[];
   ranking_closers: { nome: string; vendas: number; receita: number; meta: number | null; realizadas: number; no_show: number; vendas_hoje: number; pipeline_n: number; pipeline_v: number }[];
   ranking_sdr: { nome: string; agendadas: number; agendadas_hoje: number; agendadas_semana: number; realizadas: number; no_show: number; leads_mes: number }[];
+  ranking_agentes?: { nome: string; ativo: boolean; respostas_hoje: number; respostas_mes: number; conversas_mes: number; agendadas_hoje: number; agendadas_semana: number; agendadas_mes: number }[];
   meta_dia?: {
     comercial: { meta_mes: number | null; vendido_mes: number; vendido_hoje: number; vendas_hoje: number; du_restantes: number; meta_dia: number | null };
     financeiro: { vencendo_hoje_n: number; vencendo_hoje_v: number; vencendo_hoje_pago_v: number; recebido_hoje: number; recebido_hoje_n: number; a_pagar_hoje_v: number; pago_hoje: number };
@@ -320,6 +321,21 @@ export default function PainelAoVivoPage() {
             })}
             {d && !d.ranking_sdr.length && <div className="av-row mute">Nenhum agendamento no mês</div>}
           </div>
+          <div className="av-h" style={{ marginTop: 8 }}>AGENTES DE IA · MÊS</div>
+          <div className="av-list">
+            {(d?.ranking_agentes || []).slice(0, 5).map((r, i) => (
+              <div className="av-pessoa ia" key={i}>
+                <div className="l1"><b>{r.nome}</b><span className="v">{r.agendadas_mes} <small>{r.agendadas_mes === 1 ? "reunião agendada" : "reuniões agendadas"} no mês</small></span></div>
+                <div className="l2">
+                  <span>hoje <b>{r.agendadas_hoje}</b></span>
+                  <span>semana <b>{r.agendadas_semana}</b></span>
+                  <span>respostas <b>{r.respostas_mes}</b> <small>({r.respostas_hoje} hoje)</small></span>
+                  <span>conversas <b>{r.conversas_mes}</b></span>
+                </div>
+              </div>
+            ))}
+            {d && d.ranking_agentes && !d.ranking_agentes.length && <div className="av-row mute">Nenhum agente respondeu no mês</div>}
+          </div>
         </div>
         {/* linha 3 */}
         <div className="av-card av-feed">
@@ -359,7 +375,7 @@ export default function PainelAoVivoPage() {
           <table className="av-tab av-tab-sm">
             <thead><tr><th></th><th>Clientes</th><th>MRR</th><th>Recebido</th><th>Churn</th></tr></thead>
             <tbody>
-              {(produtos || []).filter((x) => n(x.clientes) > 0 || n(x.mrr) > 0 || n(x.receita) > 0).slice(0, 7).map((x, i) => (
+              {(produtos || []).filter((x) => n(x.clientes) > 0 || n(x.mrr) > 0 || n(x.receita) > 0).slice(0, 6).map((x, i) => (
                 <tr key={i}>
                   <th>{x.produto}</th>
                   <td>{x.clientes ?? "-"}</td>
