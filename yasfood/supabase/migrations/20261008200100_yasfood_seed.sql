@@ -11,19 +11,24 @@ update yasfood.settings set
   default_daily_capacity = 10
 where id = 1;
 
-insert into yasfood.products (name, description, price, weight_g, category, sort_order) values
+insert into yasfood.products (name, description, price, weight_g, category, sort_order)
+select * from (values
   ('Bolo de Cenoura com Cobertura de Chocolate', 'Massa fofinha de cenoura de verdade, assada no dia, com cobertura cremosa de chocolate que escorre pelas laterais. 570g.', 35.00, 570, 'Bolos', 1),
   ('Bolo de Cenoura sem Cobertura', 'O mesmo bolo caseiro, dourado por fora e macio por dentro, pra quem prefere puro. 570g.', 35.00, 570, 'Bolos', 2)
-on conflict do nothing;
+) as v(name, description, price, weight_g, category, sort_order)
+where not exists (select 1 from yasfood.products);
 
-insert into yasfood.delivery_zones (name, fee, sort_order, notes) values
-  ('Meu condomínio (Alphaville)', 0, 1, 'Entrega sem custo dentro do condomínio'),
-  ('Outros condomínios do Alphaville', 5, 2, 'Casas e prédios'),
-  ('Fora do Alphaville (combinar)', 15, 3, '')
-on conflict do nothing;
+insert into yasfood.delivery_zones (name, fee, sort_order, notes)
+select * from (values
+  ('Meu condomínio (Alphaville)', 0::numeric, 1, 'Entrega sem custo dentro do condomínio'),
+  ('Outros condomínios do Alphaville', 5::numeric, 2, 'Casas e prédios'),
+  ('Fora do Alphaville (combinar)', 15::numeric, 3, '')
+) as v(name, fee, sort_order, notes)
+where not exists (select 1 from yasfood.delivery_zones);
 
 -- Insumos com custo aproximado (ajuste no painel de estoque)
-insert into yasfood.ingredients (name, unit, qty_on_hand, min_qty, cost_per_unit, supplier) values
+insert into yasfood.ingredients (name, unit, qty_on_hand, min_qty, cost_per_unit, supplier)
+select * from (values
   ('Cenoura', 'g', 3000, 1000, 0.006, 'Hortifruti'),
   ('Farinha de trigo', 'g', 5000, 1000, 0.005, 'Supermercado'),
   ('Açúcar', 'g', 5000, 1000, 0.004, 'Supermercado'),
@@ -34,7 +39,8 @@ insert into yasfood.ingredients (name, unit, qty_on_hand, min_qty, cost_per_unit
   ('Leite condensado', 'g', 2000, 400, 0.012, 'Supermercado'),
   ('Manteiga', 'g', 1000, 200, 0.03, 'Supermercado'),
   ('Embalagem com tampa', 'un', 20, 5, 2.50, 'Loja de embalagens')
-on conflict do nothing;
+) as v(name, unit, qty_on_hand, min_qty, cost_per_unit, supplier)
+where not exists (select 1 from yasfood.ingredients);
 
 -- Receita aproximada por bolo (ajuste conforme a receita real da Yasmim)
 insert into yasfood.product_ingredients (product_id, ingredient_id, qty)
