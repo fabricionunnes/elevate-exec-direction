@@ -297,8 +297,8 @@ var INVEST = [
   {v:"Acima de R$ 7.000 por mês",        s:"7k+"}
 ];
 var FAT = [
-  {v:"Até R$ 30 mil por mês",             s:"ate30k"},
-  {v:"Entre R$ 30 mil e R$ 100 mil",      s:"30a100k"},
+  {v:"Até R$ 25 mil por mês",             s:"ate25k"},   // desqualifica: vai pro CRM como Perdido, sem Lead pro Meta
+  {v:"Entre R$ 25 mil e R$ 100 mil",      s:"25a100k"},
   {v:"Entre R$ 100 mil e R$ 300 mil",     s:"100a300k"},
   {v:"Acima de R$ 300 mil por mês",       s:"300k+"}
 ];
@@ -575,7 +575,7 @@ function proporcao(){
   if(!f || !i || i === "nao") return "";
   if((f === "100a300k" || f === "300k+") && (i === "ate500" || i === "500a1k"))
     return " Pro tamanho da sua operação, essa verba é pequena demais. Você está deixando volume na mesa todo mês.";
-  if(f === "ate30k" && (i === "3a7k" || i === "7k+"))
+  if(f === "ate25k" && (i === "3a7k" || i === "7k+"))
     return " Você está investindo uma fatia grande do seu faturamento em mídia. Isso só se sustenta se cada real voltar rastreado, e é exatamente aí que a maioria não tem controle.";
   return "";
 }
@@ -635,8 +635,13 @@ function finish(){
   sending = true;
   show(8);
 
+  // Faturamento até R$ 25 mil: lead desqualificado. Entra no CRM como Perdido,
+  // o aviso do time já chega marcado e o Meta NÃO recebe o evento Lead.
+  var desqualificado = (A.fat && A.fat.s === "ate25k") ? "Faturamento até R$ 25 mil por mês" : null;
+
   var payload = {
     form_token: FORM_TOKEN,
+    desqualificado: desqualificado || undefined,
     nome: A.nome,
     telefone: A.tel,
     email: A.email,
@@ -661,13 +666,18 @@ function finish(){
     if(!res.ok) throw new Error((res.data && res.data.error) || "Erro ao enviar");
     var leadId = res.data && res.data.lead_id;
 
-    // Conversão. O event_id casa com o que a trigger do banco manda pela CAPI,
-    // então o Meta conta UM Lead só (browser + servidor deduplicados).
-    fb("track","Lead", {
-      content_name: "Diagnóstico UNV Ads",
-      content_category: A.invest ? A.invest.s : "nao",
-      value: 1, currency: "BRL"
-    }, leadId ? { eventID: leadId + ":Lead" } : undefined);
+    if(desqualificado){
+      // Não é conversão: só um evento custom pra análise, nunca o "Lead".
+      fb("trackCustom","LeadDesqualificado",{ motivo:"faturamento_ate_25k", form:"unvads-diagnostico" });
+    } else {
+      // Conversão. O event_id casa com o que a trigger do banco manda pela CAPI,
+      // então o Meta conta UM Lead só (browser + servidor deduplicados).
+      fb("track","Lead", {
+        content_name: "Diagnóstico UNV Ads",
+        content_category: A.invest ? A.invest.s : "nao",
+        value: 1, currency: "BRL"
+      }, leadId ? { eventID: leadId + ":Lead" } : undefined);
+    }
 
     render(leadId);
   }).catch(function(e){

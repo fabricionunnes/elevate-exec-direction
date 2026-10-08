@@ -154,13 +154,16 @@ Deno.serve(async (req) => {
 
     // ── Default action: create lead (step 1) ──
     const {
-      form_token, nome, telefone, email, instagram, empresa, desafio, observacao,
+      form_token, nome, telefone, email, instagram, empresa, desafio, observacao, desqualificado,
       utm_source, utm_medium, utm_campaign, utm_content, utm_term,
       fbclid, ad_name, adset_name, campaign_name,
       meta_campaign_id, meta_adset_id, meta_ad_id,
     } = body;
 
     if (!form_token) return jsonResponse({ error: 'Token do formulário é obrigatório' }, 400);
+    // Lead desqualificado pelo próprio formulário (ex.: UNV Ads, faturamento até R$ 25 mil):
+    // entra no funil direto na etapa Perdido, com motivo "Fora do ICP", e o aviso do time já diz isso.
+    const desqMotivo: string | null = desqualificado ? String(desqualificado).slice(0, 120) : null;
     // Email é opcional: formulários de captação rápida (ex.: landing /sessao) coletam só nome + WhatsApp.
     if (!nome || !telefone) return jsonResponse({ error: 'Campos obrigatórios: nome, telefone' }, 400);
 
@@ -222,6 +225,9 @@ Deno.serve(async (req) => {
           ...(observacao && !(existingLead.notes || '').includes(String(observacao).slice(0, 300))
             ? { notes: existingLead.notes ? `${existingLead.notes} | ${String(observacao).slice(0, 300)}` : String(observacao).slice(0, 300) }
             : {}),
+          ...(desqMotivo && !(existingLead.notes || '').includes('DESQUALIFICADO')
+            ? { notes: `DESQUALIFICADO: ${desqMotivo}${existingLead.notes ? ' | ' + existingLead.notes : ''}` }
+            : {}),
         })
         .eq('id', existingLead.id);
 
@@ -237,7 +243,7 @@ Deno.serve(async (req) => {
 
       // Still send notifications for returning leads
       const originName = form.origin_name || 'Formulário Público';
-      await sendInternalNotifications(supabase, existingLead.id, nome, email, empresa, originName);
+      await sendInternalNotifications(supabase, existingLead.id, nome, email, empresa, originName, desqMotivo);
 
       const { data: owner } = await supabase
         .from('onboarding_staff')
@@ -248,13 +254,13 @@ Deno.serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
-      await sendWhatsAppNotification(supabase, existingLead.id, nome, telefone, email, empresa, desafio, utm_source, owner, pipelineName);
+      await sendWhatsAppNotification(supabase, existingLead.id, nome, telefone, email, empresa, desafio, utm_source, owner, pipelineName, desqMotivo);
 
-      return jsonResponse({ success: true, lead_id: existingLead.id });
+      return jsonResponse({ success: true, lead_id: existingLead.id, desqualificado: !!desqMotivo });
     }
 
     // ── New lead: create normally ──
-    const { data: stage } = form.target_stage_id
+    let { data: stage } = form.target_stage_id
       ? { data: { id: form.target_stage_id } }
       : await supabase
           .from('crm_stages')
@@ -263,6 +269,27 @@ Deno.serve(async (req) => {
           .order('sort_order', { ascending: true })
           .limit(1)
           .maybeSingle();
+
+    let lossReasonId: string | null = null;
+    if (desqMotivo) {
+      const { data: lostStage } = await supabase
+        .from('crm_stages')
+        .select('id')
+        .eq('pipeline_id', form.pipeline_id)
+        .eq('final_type', 'lost')
+        .order('sort_order', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (lostStage?.id) stage = lostStage;
+      else console.warn('[submit-pipeline-form] Funil sem etapa Perdido; lead desqualificado entra na etapa inicial');
+      const { data: reason } = await supabase
+        .from('crm_loss_reasons')
+        .select('id')
+        .ilike('name', 'fora do icp')
+        .limit(1)
+        .maybeSingle();
+      lossReasonId = reason?.id || null;
+    }
 
     if (!stage) return jsonResponse({ error: 'Pipeline sem etapas configuradas' }, 500);
 
@@ -320,6 +347,7 @@ Deno.serve(async (req) => {
     }
 
     const notesParts: string[] = [];
+    if (desqMotivo) notesParts.push(`DESQUALIFICADO: ${desqMotivo}`);
     if (observacao) notesParts.push(String(observacao).slice(0, 300));
     if (desafio) notesParts.push(`Desafio: ${desafio}`);
     if (utm_source) notesParts.push(`UTM Source: ${utm_source}`);
@@ -344,6 +372,7 @@ Deno.serve(async (req) => {
         owner_staff_id: owner?.id || null,
         origin_id: origin?.id || null,
         entered_pipeline_at: new Date().toISOString(),
+        ...(desqMotivo ? { loss_reason_id: lossReasonId, closed_at: new Date().toISOString() } : {}),
         utm_source: utm_source || null,
         utm_medium: utm_medium || null,
         utm_campaign: utm_campaign || null,
@@ -368,10 +397,15 @@ Deno.serve(async (req) => {
     console.log('[submit-pipeline-form] Lead created:', lead.id);
 
     // ── Internal notifications for head_comercial, sdr, master ──
-    await sendInternalNotifications(supabase, lead.id, nome, email, empresa, originName);
+    await sendInternalNotifications(supabase, lead.id, nome, email, empresa, originName, desqMotivo);
 
     // ── WhatsApp notification ──
-    await sendWhatsAppNotification(supabase, lead.id, nome, telefone, email, empresa, desafio, utm_source, owner, pipelineName);
+    await sendWhatsAppNotification(supabase, lead.id, nome, telefone, email, empresa, desafio, utm_source, owner, pipelineName, desqMotivo);
+
+    // Desqualificado não entra em automação nem em régua de mensagem: já nasceu Perdido.
+    if (desqMotivo) {
+      return jsonResponse({ success: true, lead_id: lead.id, desqualificado: true });
+    }
 
     // ── Fire automation engine for lead_created ──
     try {
@@ -423,7 +457,8 @@ Deno.serve(async (req) => {
 async function sendInternalNotifications(
   supabase: any, leadId: string,
   nome: string, email: string,
-  empresa?: string, originName?: string
+  empresa?: string, originName?: string,
+  desqMotivo?: string | null
 ) {
   try {
     const { data: rawStaff } = await supabase
@@ -450,8 +485,8 @@ async function sendInternalNotifications(
 
     if (!staffToNotify || staffToNotify.length === 0) return;
 
-    const title = `🚀 Novo Lead: ${nome}`;
-    const message = `Novo lead via formulário: ${nome}` +
+    const title = desqMotivo ? `⛔ Lead desqualificado: ${nome}` : `🚀 Novo Lead: ${nome}`;
+    const message = (desqMotivo ? `Lead DESQUALIFICADO (${desqMotivo}) via formulário, entrou como Perdido: ${nome}` : `Novo lead via formulário: ${nome}`) +
       (empresa ? ` | Empresa: ${empresa}` : '') +
       ` | Email: ${email}` +
       (originName ? ` | Origem: ${originName}` : '');
@@ -581,12 +616,15 @@ async function sendWhatsAppNotification(
   nome: string, telefone: string, email: string,
   empresa?: string, desafio?: string, utm_source?: string,
   owner?: { id: string; phone: string | null } | null,
-  pipelineName?: string
+  pipelineName?: string,
+  desqMotivo?: string | null
 ) {
   const APP_URL = 'https://unvholdings.com.br';
   const leadLink = `${APP_URL}/#/crm/leads/${leadId}`;
 
-  const message = `📋 *${nome}* preencheu o formulário no funil *${pipelineName || 'Desconhecido'}*.` +
+  const message = (desqMotivo
+    ? `⛔ *LEAD DESQUALIFICADO* (${desqMotivo})\n\n*${nome}* preencheu o formulário no funil *${pipelineName || 'Desconhecido'}* e entrou no CRM como *Perdido*. Não precisa atender.`
+    : `📋 *${nome}* preencheu o formulário no funil *${pipelineName || 'Desconhecido'}*.`) +
     (telefone ? `\n\n📱 ${telefone}` : '') +
     `\n\n🔗 ${leadLink}`;
 
