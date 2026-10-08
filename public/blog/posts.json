@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-08T10:01:09",
+ "gerado_em": "2026-10-08T15:01:19",
  "posts": [
+  {
+   "slug": "acompanhamento-diario-separa-quem-bate-meta-quem-nao-bate",
+   "url": "/blog/acompanhamento-diario-separa-quem-bate-meta-quem-nao-bate/",
+   "titulo": "Acompanhamento diário separa quem bate meta de quem não bate",
+   "resumo": "Meta batida todo mês não acontece sozinha. Precisa de alguém cobrando o número todo dia, olhando conversão, agendamento, ligação e atendimento no grupo de vendas.",
+   "tags": [
+    "rotina de cobrança",
+    "meta mensal",
+    "acompanhamento",
+    "estrutura comercial",
+    "treino de vendedor"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-08",
+   "ts": 2158
+  },
   {
    "slug": "automacao-atendimento-nao-substitui-estrutura-conversao",
    "url": "/blog/automacao-atendimento-nao-substitui-estrutura-conversao/",
