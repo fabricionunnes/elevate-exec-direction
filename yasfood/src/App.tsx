@@ -9,6 +9,7 @@ import Pedido from "@/pages/cliente/Pedido";
 import MeusPedidos from "@/pages/cliente/MeusPedidos";
 import AdminLayout from "@/pages/admin/Layout";
 import Login from "@/pages/admin/Login";
+import Recuperar from "@/pages/admin/Recuperar";
 import Dashboard from "@/pages/admin/Dashboard";
 import Pedidos from "@/pages/admin/Pedidos";
 import Agenda from "@/pages/admin/Agenda";
@@ -34,6 +35,7 @@ export default function App() {
                 <Route path="/meus-pedidos" element={<MeusPedidos />} />
               </Route>
               <Route path="/admin/login" element={<Login />} />
+              <Route path="/admin/recuperar" element={<Recuperar />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="pedidos" element={<Pedidos />} />
