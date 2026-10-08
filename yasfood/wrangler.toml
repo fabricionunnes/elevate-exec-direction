@@ -1,0 +1,10 @@
+name = "yasfood"
+compatibility_date = "2026-05-15"
+
+# Sem rota de domínio: publica em https://yasfood.<conta>.workers.dev
+# Pra usar domínio próprio (ex.: yasdelicias.com.br), adicione:
+# routes = [{ pattern = "yasdelicias.com.br/*", zone_name = "yasdelicias.com.br" }]
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"

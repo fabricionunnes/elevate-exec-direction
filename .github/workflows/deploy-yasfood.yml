@@ -1,0 +1,41 @@
+name: Deploy YasFood (Cloudflare)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'yasfood/**'
+      - '.github/workflows/deploy-yasfood.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Build & Deploy YasFood to Cloudflare
+    defaults:
+      run:
+        working-directory: yasfood
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: yasfood/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          # Se os secrets não existirem, o Vite usa yasfood/.env.production (quando commitado).
+          VITE_SUPABASE_URL: ${{ secrets.YASFOOD_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.YASFOOD_SUPABASE_ANON_KEY }}
+
+      - name: Deploy to Cloudflare Workers
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
