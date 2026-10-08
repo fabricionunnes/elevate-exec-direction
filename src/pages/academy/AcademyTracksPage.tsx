@@ -198,7 +198,7 @@ export const AcademyTracksPage = () => {
     <div className="min-h-screen bg-gradient-to-b from-zinc-900 via-black to-black text-white">
       {/* Hero Section */}
       {filteredTracks.length > 0 && (
-        <div className="relative h-[50vh] overflow-hidden">
+        <div className="relative h-[340px] sm:h-[50vh] overflow-hidden">
           <div 
             className="absolute inset-0 bg-cover bg-center"
             style={{ 
@@ -208,17 +208,17 @@ export const AcademyTracksPage = () => {
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
           
-          <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12">
+          <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-8 md:p-12">
             <Badge className={`${getCategoryColor(filteredTracks[0].category)} mb-4`}>
               {filteredTracks[0].category.toUpperCase()}
             </Badge>
-            <h1 className="text-4xl md:text-6xl font-bold mb-4 max-w-2xl">
+            <h1 className="text-2xl sm:text-4xl md:text-6xl font-bold mb-3 sm:mb-4 max-w-2xl">
               {filteredTracks[0].name}
             </h1>
-            <p className="text-lg text-gray-300 mb-6 max-w-xl line-clamp-2">
+            <p className="text-base sm:text-lg text-gray-300 mb-4 sm:mb-6 max-w-xl line-clamp-2">
               {filteredTracks[0].description}
             </p>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
               <Button
                 size="lg"
                 className="bg-white text-black hover:bg-gray-200 font-semibold"
@@ -245,7 +245,7 @@ export const AcademyTracksPage = () => {
       )}
 
       {/* Filters */}
-      <div className="px-6 md:px-12 py-6 space-y-6">
+      <div className="px-4 sm:px-6 md:px-12 py-4 sm:py-6 space-y-6">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -287,7 +287,7 @@ export const AcademyTracksPage = () => {
       </div>
 
       {/* Netflix-style Rows */}
-      <div className="px-6 md:px-12 pb-12 space-y-10">
+      <div className="px-4 sm:px-6 md:px-12 pb-8 sm:pb-12 space-y-8 sm:space-y-10">
         {Object.entries(tracksByCategory).map(([category, categoryTracks]) => (
           <div key={category}>
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
@@ -403,7 +403,7 @@ export const AcademyTracksPage = () => {
         ))}
 
         {filteredTracks.length === 0 && (
-          <div className="text-center py-20">
+          <div className="text-center py-12 sm:py-20">
             <BookOpen className="h-16 w-16 text-gray-600 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-300 mb-2">Nenhuma trilha encontrada</h3>
             <p className="text-gray-500">

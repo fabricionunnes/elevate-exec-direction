@@ -189,7 +189,7 @@ export const AcademyReportsPage = () => {
           <p className="text-muted-foreground">Acompanhe o progresso e desempenho da sua equipe na Academy</p>
         </div>
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-full sm:w-40">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -287,18 +287,18 @@ export const AcademyReportsPage = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead className="text-center">Aulas</TableHead>
-                  <TableHead className="text-center">Provas</TableHead>
+                  <TableHead className="min-w-[160px]">Nome</TableHead>
+                  <TableHead className="text-center hidden sm:table-cell">Aulas</TableHead>
+                  <TableHead className="text-center hidden md:table-cell">Provas</TableHead>
                   <TableHead className="text-center">Pontos</TableHead>
                   <TableHead className="text-center">Nível</TableHead>
-                  <TableHead className="text-center">Última Atividade</TableHead>
+                  <TableHead className="text-center hidden md:table-cell">Última Atividade</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {memberStats.map((member, index) => (
                   <TableRow key={member.id}>
-                    <TableCell>
+                    <TableCell className="min-w-[160px]">
                       <div className="flex items-center gap-2">
                         {index < 3 && (
                           <span className={`text-lg ${
@@ -309,15 +309,15 @@ export const AcademyReportsPage = () => {
                             {index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}
                           </span>
                         )}
-                        <span className="font-medium">{member.name}</span>
+                        <span className="font-medium truncate max-w-[200px]">{member.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center hidden sm:table-cell">
                       <span className="text-sm">
                         {member.lessonsCompleted}/{member.totalLessons}
                       </span>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center hidden md:table-cell">
                       <Badge variant="outline">{member.quizzesPassed}</Badge>
                     </TableCell>
                     <TableCell className="text-center font-medium">
@@ -326,7 +326,7 @@ export const AcademyReportsPage = () => {
                     <TableCell className="text-center">
                       <Badge>{member.currentLevel}</Badge>
                     </TableCell>
-                    <TableCell className="text-center text-sm text-muted-foreground">
+                    <TableCell className="text-center text-sm text-muted-foreground hidden md:table-cell">
                       {member.lastActivity 
                         ? new Date(member.lastActivity).toLocaleDateString("pt-BR")
                         : "—"

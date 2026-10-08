@@ -88,7 +88,7 @@ export function AcademyDeliverableCard({ lessonId, onboardingUserId, prompt, poi
   return (
     <Card className="border-primary/30">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
+        <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
           <ClipboardCheck className="h-5 w-5 text-primary" />
           Entregável da aula
           {st && (
@@ -119,11 +119,11 @@ export function AcademyDeliverableCard({ lessonId, onboardingUserId, prompt, poi
           <div className="space-y-3">
             <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Link do print, documento, fluxo ou agente (Drive, Notion, N8N...)" />
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="O que você implementou e o que mudou na operação (2 a 4 linhas)" />
-            <div className="flex gap-2">
-              <Button onClick={submit} disabled={saving}>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button onClick={submit} disabled={saving} className="w-full sm:w-auto">
                 <Send className="h-4 w-4 mr-2" /> {saving ? "Enviando..." : row ? "Reenviar" : "Enviar entregável"}
               </Button>
-              {row && editing && <Button variant="ghost" onClick={() => setEditing(false)}>Cancelar</Button>}
+              {row && editing && <Button variant="ghost" className="w-full sm:w-auto" onClick={() => setEditing(false)}>Cancelar</Button>}
             </div>
           </div>
         ) : (

@@ -85,9 +85,9 @@ export function AcademyTutorPanel({ lessonId, onboardingUserId, lessonTitle }: P
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
+        <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
           <Bot className="h-5 w-5 text-primary" /> Tutor IA
-          <span className="text-xs font-normal text-muted-foreground ml-1">· dúvidas de implementação desta aula</span>
+          <span className="text-xs font-normal text-muted-foreground ml-0 sm:ml-1 basis-full sm:basis-auto">· dúvidas de implementação desta aula</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -97,14 +97,14 @@ export function AcademyTutorPanel({ lessonId, onboardingUserId, lessonTitle }: P
               <p className="text-sm text-muted-foreground">Pergunte como aplicar “{lessonTitle}” na sua empresa. Comece por uma dessas:</p>
               <div className="flex flex-wrap gap-2">
                 {SUGGESTIONS.map((s) => (
-                  <Button key={s} size="sm" variant="outline" onClick={() => send(s)} disabled={sending}>{s}</Button>
+                  <Button key={s} size="sm" variant="outline" className="h-auto whitespace-normal text-left py-1.5 w-full sm:w-auto" onClick={() => send(s)} disabled={sending}>{s}</Button>
                 ))}
               </div>
             </div>
           )}
           {messages.map((m, i) => (
             <div key={m.id || i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+              <div className={`max-w-[85%] min-w-0 break-words rounded-2xl px-4 py-2.5 text-sm ${m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
                 {m.role === "assistant" ? (
                   <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5">
                     <ReactMarkdown>{m.content}</ReactMarkdown>

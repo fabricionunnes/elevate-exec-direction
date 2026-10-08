@@ -247,7 +247,7 @@ export const AcademyAdminReportsPage = () => {
 
   if (!userContext.isAdmin) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <Card className="p-12 text-center">
           <h3 className="font-semibold mb-2">Acesso negado</h3>
         </Card>
@@ -257,23 +257,23 @@ export const AcademyAdminReportsPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Relatórios Globais</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Relatórios Globais</h1>
           <p className="text-muted-foreground mt-1">
             Visão geral do desempenho na UNV Academy
           </p>
         </div>
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-full sm:w-40">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -385,29 +385,29 @@ export const AcademyAdminReportsPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Empresa</TableHead>
-                <TableHead className="text-center">Usuários</TableHead>
+                <TableHead className="min-w-[160px]">Empresa</TableHead>
+                <TableHead className="hidden md:table-cell text-center">Usuários</TableHead>
                 <TableHead className="text-center">Ativos</TableHead>
-                <TableHead className="text-center">Aulas</TableHead>
-                <TableHead className="text-center">Provas</TableHead>
+                <TableHead className="hidden md:table-cell text-center">Aulas</TableHead>
+                <TableHead className="hidden md:table-cell text-center">Provas</TableHead>
                 <TableHead className="text-center">Pontos</TableHead>
-                <TableHead className="text-center">Média</TableHead>
+                <TableHead className="hidden md:table-cell text-center">Média</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {companyStats.slice(0, 15).map((company) => (
                 <TableRow key={company.company_id}>
-                  <TableCell className="font-medium">{company.company_name}</TableCell>
-                  <TableCell className="text-center">{company.users_count}</TableCell>
+                  <TableCell className="font-medium min-w-[160px]">{company.company_name}</TableCell>
+                  <TableCell className="hidden md:table-cell text-center">{company.users_count}</TableCell>
                   <TableCell className="text-center">
                     <Badge variant={company.active_users > 0 ? "default" : "secondary"}>
                       {company.active_users}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-center">{company.lessons_completed}</TableCell>
-                  <TableCell className="text-center">{company.quizzes_passed}</TableCell>
+                  <TableCell className="hidden md:table-cell text-center">{company.lessons_completed}</TableCell>
+                  <TableCell className="hidden md:table-cell text-center">{company.quizzes_passed}</TableCell>
                   <TableCell className="text-center font-semibold">{company.total_points}</TableCell>
-                  <TableCell className="text-center">{company.avg_points}</TableCell>
+                  <TableCell className="hidden md:table-cell text-center">{company.avg_points}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -436,29 +436,29 @@ export const AcademyAdminReportsPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Trilha</TableHead>
-                <TableHead>Categoria</TableHead>
+                <TableHead className="min-w-[160px]">Trilha</TableHead>
+                <TableHead className="hidden md:table-cell">Categoria</TableHead>
                 <TableHead className="text-center">Matrículas</TableHead>
-                <TableHead className="text-center">Conclusões</TableHead>
+                <TableHead className="hidden md:table-cell text-center">Conclusões</TableHead>
                 <TableHead className="text-center">Taxa</TableHead>
-                <TableHead className="text-center">Nota média</TableHead>
+                <TableHead className="hidden md:table-cell text-center">Nota média</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {trackStats.map((track) => (
                 <TableRow key={track.track_id}>
-                  <TableCell className="font-medium">{track.track_name}</TableCell>
-                  <TableCell>
+                  <TableCell className="font-medium min-w-[160px]">{track.track_name}</TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Badge variant="outline">{track.category}</Badge>
                   </TableCell>
                   <TableCell className="text-center">{track.total_enrollments}</TableCell>
-                  <TableCell className="text-center">{track.completions}</TableCell>
+                  <TableCell className="hidden md:table-cell text-center">{track.completions}</TableCell>
                   <TableCell className="text-center">
                     <Badge variant={track.completion_rate >= 50 ? "default" : "secondary"}>
                       {track.completion_rate}%
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="hidden md:table-cell text-center">
                     {track.avg_quiz_score > 0 ? `${track.avg_quiz_score}%` : "-"}
                   </TableCell>
                 </TableRow>

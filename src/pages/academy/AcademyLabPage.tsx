@@ -62,7 +62,7 @@ export const AcademyLabPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
@@ -71,7 +71,7 @@ export const AcademyLabPage = () => {
   const categories = ["all", ...Object.keys(LAB_CATEGORY_LABEL)];
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
           <FlaskConical className="h-7 w-7 text-primary" /> Laboratório de Agentes
@@ -82,7 +82,7 @@ export const AcademyLabPage = () => {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 w-full max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input className="pl-10" placeholder="Buscar por nome, descrição ou ferramenta..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
@@ -120,7 +120,7 @@ export const AcademyLabPage = () => {
                     <BookOpen className="h-3 w-3" /> {tracks[item.track_id]}
                   </Link>
                 )}
-                <div className="mt-auto flex gap-2 pt-1">
+                <div className="mt-auto flex flex-wrap gap-2 pt-1">
                   {item.prompt_text && (
                     <>
                       <Button size="sm" className="flex-1" onClick={() => copy(item)}>
@@ -146,10 +146,10 @@ export const AcademyLabPage = () => {
       )}
 
       <Dialog open={!!open} onOpenChange={(o) => !o && setOpen(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>{open?.title}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-2xl w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle className="break-words pr-6">{open?.title}</DialogTitle></DialogHeader>
           {open?.description && <p className="text-sm text-muted-foreground">{open.description}</p>}
-          <pre className="whitespace-pre-wrap text-sm rounded-lg border bg-muted/50 p-4 max-h-[60vh] overflow-auto font-mono">{open?.prompt_text}</pre>
+          <pre className="whitespace-pre-wrap break-words text-sm rounded-lg border bg-muted/50 p-4 max-h-[60vh] overflow-auto font-mono">{open?.prompt_text}</pre>
           {open && (
             <Button onClick={() => copy(open)}>
               <Copy className="h-4 w-4 mr-2" /> Copiar prompt

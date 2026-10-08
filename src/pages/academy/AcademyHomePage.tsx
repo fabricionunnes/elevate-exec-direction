@@ -196,25 +196,25 @@ export const AcademyHomePage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-4 md:p-6 space-y-6 md:space-y-8">
       {/* Welcome Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-2xl sm:text-3xl font-bold">
             Olá, {userContext.userName.split(" ")[0]}! 👋
           </h1>
           <p className="text-muted-foreground mt-1">
             Continue sua jornada de aprendizado na UNV Academy
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="w-full md:w-auto">
           <Link to="/academy/tracks">
             Ver todas as trilhas
             <ChevronRight className="ml-2 h-4 w-4" />
@@ -285,19 +285,19 @@ export const AcademyHomePage = () => {
       {userStats && (
         <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-primary rounded-full">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="p-3 bg-primary rounded-full shrink-0">
                   {getLevelIcon(userStats.current_level)}
                 </div>
-                <div>
-                  <p className="font-semibold">Nível {userStats.current_level}: {userStats.level_name}</p>
+                <div className="min-w-0">
+                  <p className="font-semibold break-words">Nível {userStats.current_level}: {userStats.level_name}</p>
                   <p className="text-sm text-muted-foreground">
                     {userStats.tracks_completed} trilhas completadas
                   </p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
                 <Link to="/academy/progress">Ver detalhes</Link>
               </Button>
             </div>
@@ -315,18 +315,18 @@ export const AcademyHomePage = () => {
                 <CardContent className="p-4">
                   <Link
                     to={`/academy/lesson/${lesson.id}`}
-                    className="flex items-center justify-between"
+                    className="flex items-center justify-between gap-3"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 bg-primary/10 rounded-lg">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="p-2 bg-primary/10 rounded-lg shrink-0">
                         <Play className="h-5 w-5 text-primary" />
                       </div>
-                      <div>
-                        <p className="font-medium">{lesson.title}</p>
-                        <p className="text-sm text-muted-foreground">{lesson.track_name}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{lesson.title}</p>
+                        <p className="text-sm text-muted-foreground truncate">{lesson.track_name}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <Badge variant={lesson.progress_status === "completed" ? "default" : "secondary"}>
                         {lesson.progress_status === "completed" ? "Concluída" : "Em andamento"}
                       </Badge>
@@ -342,7 +342,7 @@ export const AcademyHomePage = () => {
 
       {/* Featured Tracks */}
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between gap-2 mb-4">
           <h2 className="text-xl font-semibold">Trilhas em Destaque</h2>
           <Button variant="ghost" size="sm" asChild>
             <Link to="/academy/tracks">
@@ -351,7 +351,7 @@ export const AcademyHomePage = () => {
           </Button>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {tracks.map((track) => {
             const progress = track.lessons_count > 0
               ? (track.completed_lessons / track.lessons_count) * 100
@@ -402,7 +402,7 @@ export const AcademyHomePage = () => {
         </div>
 
         {tracks.length === 0 && (
-          <Card className="p-12 text-center">
+          <Card className="p-8 md:p-12 text-center">
             <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="font-semibold mb-2">Nenhuma trilha disponível</h3>
             <p className="text-muted-foreground">

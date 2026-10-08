@@ -266,7 +266,7 @@ export const AcademyTrackDetailPage = () => {
   const renderLesson = (lesson: Lesson) => (
     <div
       key={lesson.id}
-      className={`flex items-center gap-4 p-4 rounded-lg border transition-colors ${
+      className={`flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg border transition-colors ${
         lesson.is_locked
           ? "bg-muted/50 opacity-60"
           : lesson.status === "completed"
@@ -274,7 +274,7 @@ export const AcademyTrackDetailPage = () => {
           : "hover:bg-muted/50"
       }`}
     >
-      <div className={`p-2 rounded-lg ${
+      <div className={`p-2 rounded-lg shrink-0 ${
         lesson.status === "completed"
           ? "bg-green-100"
           : lesson.is_locked
@@ -290,14 +290,14 @@ export const AcademyTrackDetailPage = () => {
         )}
       </div>
 
-      <div className="flex-1">
-        <p className="font-medium">{lesson.title}</p>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium break-words">{lesson.title}</p>
         {lesson.description && (
           <p className="text-sm text-muted-foreground line-clamp-1">
             {lesson.description}
           </p>
         )}
-        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
           <span className="capitalize">{lesson.video_provider}</span>
           {lesson.estimated_duration_minutes && (
             <span className="flex items-center gap-1">
@@ -313,6 +313,7 @@ export const AcademyTrackDetailPage = () => {
           variant={lesson.status === "completed" ? "outline" : "default"}
           size="sm"
           asChild
+          className="shrink-0"
         >
           <Link to={`/academy/lesson/${lesson.id}`}>
             {lesson.status === "completed" ? "Revisar" : 
@@ -325,7 +326,7 @@ export const AcademyTrackDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
@@ -333,8 +334,8 @@ export const AcademyTrackDetailPage = () => {
 
   if (!track) {
     return (
-      <div className="p-6">
-        <Card className="p-12 text-center">
+      <div className="p-4 md:p-6">
+        <Card className="p-8 md:p-12 text-center">
           <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="font-semibold mb-2">Trilha não encontrada</h3>
           <Button asChild>
@@ -349,7 +350,7 @@ export const AcademyTrackDetailPage = () => {
   const canTakeQuiz = completedLessons === totalLessons && totalLessons > 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Back Button */}
       <Button variant="ghost" asChild>
         <Link to="/academy/tracks">
@@ -381,13 +382,13 @@ export const AcademyTrackDetailPage = () => {
             </span>
           </div>
 
-          <h1 className="text-3xl font-bold">{track.name}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold break-words">{track.name}</h1>
           
           {track.description && (
             <p className="text-muted-foreground">{track.description}</p>
           )}
 
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1">
               <BookOpen className="h-4 w-4" />
               {totalLessons} aulas
@@ -409,18 +410,18 @@ export const AcademyTrackDetailPage = () => {
           {/* Trilha 100% concluída → certificado */}
           {totalLessons > 0 && completedLessons === totalLessons && (
             <div className="flex items-center justify-between gap-3 flex-wrap rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-emerald-500/20">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 rounded-lg bg-emerald-500/20 shrink-0">
                   <GraduationCap className="h-5 w-5 text-emerald-600" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="font-semibold text-sm">Trilha concluída — parabéns!</p>
                   <p className="text-xs text-muted-foreground">Seu certificado com carga horária está disponível.</p>
                 </div>
               </div>
               {trackCertUrl ? (
                 /* link direto: window.open pós-async é bloqueado no iOS */
-                <Button asChild size="sm">
+                <Button asChild size="sm" className="w-full sm:w-auto">
                   <a href={trackCertUrl} target="_blank" rel="noopener noreferrer">
                     <GraduationCap className="h-4 w-4 mr-2" />
                     Abrir certificado
@@ -429,6 +430,7 @@ export const AcademyTrackDetailPage = () => {
               ) : (
                 <Button
                   size="sm"
+                  className="w-full sm:w-auto"
                   disabled={issuingCert}
                   onClick={async () => {
                     if (!userContext.onboardingUserId || !track) return;
@@ -516,9 +518,9 @@ export const AcademyTrackDetailPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{quiz.title}</p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="font-medium break-words">{quiz.title}</p>
                   <p className="text-sm text-muted-foreground">
                     Nota mínima: {quiz.min_score}%
                     {quiz.best_score !== null && (
@@ -533,13 +535,13 @@ export const AcademyTrackDetailPage = () => {
                     <span className="font-medium">Aprovado!</span>
                   </div>
                 ) : canTakeQuiz ? (
-                  <Button asChild>
+                  <Button asChild className="w-full sm:w-auto">
                     <Link to={`/academy/quiz/${quiz.id}`}>
                       {quiz.best_score !== null ? "Tentar novamente" : "Fazer prova"}
                     </Link>
                   </Button>
                 ) : (
-                  <Button disabled>
+                  <Button disabled className="w-full sm:w-auto">
                     <Lock className="h-4 w-4 mr-2" />
                     Complete as aulas
                   </Button>
@@ -550,7 +552,7 @@ export const AcademyTrackDetailPage = () => {
         )}
 
         {modules.length === 0 && lessonsWithoutModule.length === 0 && (
-          <Card className="p-12 text-center">
+          <Card className="p-8 md:p-12 text-center">
             <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="font-semibold mb-2">Nenhuma aula disponível</h3>
             <p className="text-muted-foreground">

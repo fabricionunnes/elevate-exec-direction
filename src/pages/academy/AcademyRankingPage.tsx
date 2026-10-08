@@ -118,17 +118,17 @@ export const AcademyRankingPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Ranking</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Ranking</h1>
           <p className="text-muted-foreground mt-1">
             {userContext.isAdmin
               ? "Ranking global de todos os usuários"
@@ -137,7 +137,7 @@ export const AcademyRankingPage = () => {
         </div>
 
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-full sm:w-40">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -152,9 +152,9 @@ export const AcademyRankingPage = () => {
       {currentUserRanking && (
         <Card className="bg-primary/5 border-primary/20">
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-primary/10 rounded-full">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="p-3 bg-primary/10 rounded-full shrink-0">
                   <Trophy className="h-6 w-6 text-primary" />
                 </div>
                 <div>
@@ -164,7 +164,7 @@ export const AcademyRankingPage = () => {
                   </p>
                 </div>
               </div>
-              <div className="text-right">
+              <div className="text-right shrink-0">
                 <p className="text-sm text-muted-foreground">Seus pontos</p>
                 <p className="text-2xl font-bold text-primary">
                   {currentUserRanking.total_points}
@@ -177,7 +177,7 @@ export const AcademyRankingPage = () => {
 
       {/* Top 3 Podium */}
       {ranking.length >= 3 && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* 2nd Place */}
           <Card className={`text-center ${getPositionClass(2)}`}>
             <CardContent className="pt-8 pb-6">
@@ -200,7 +200,7 @@ export const AcademyRankingPage = () => {
           </Card>
 
           {/* 1st Place */}
-          <Card className={`text-center -mt-4 ${getPositionClass(1)}`}>
+          <Card className={`text-center order-first sm:order-none sm:-mt-4 ${getPositionClass(1)}`}>
             <CardContent className="pt-8 pb-6">
               <div className="flex justify-center mb-3">
                 {getPositionIcon(1)}
@@ -256,30 +256,30 @@ export const AcademyRankingPage = () => {
             {ranking.map((entry) => (
               <div
                 key={entry.user_id}
-                className={`flex items-center gap-4 p-3 rounded-lg border transition-colors ${
+                className={`flex items-center gap-3 sm:gap-4 p-3 rounded-lg border transition-colors ${
                   entry.is_current_user
                     ? "bg-primary/5 border-primary/20"
                     : "hover:bg-muted/50"
                 } ${getPositionClass(entry.position)}`}
               >
-                <div className="w-10 flex justify-center">
+                <div className="w-8 sm:w-10 flex justify-center shrink-0">
                   {getPositionIcon(entry.position)}
                 </div>
 
-                <Avatar className="h-10 w-10">
+                <Avatar className="h-10 w-10 shrink-0">
                   <AvatarFallback>
                     {getInitials(entry.user_name)}
                   </AvatarFallback>
                 </Avatar>
 
-                <div className="flex-1">
-                  <p className="font-medium">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">
                     {entry.user_name}
                     {entry.is_current_user && (
                       <span className="text-primary ml-2">(você)</span>
                     )}
                   </p>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span>{entry.level_name}</span>
                     <span>•</span>
                     <span>{entry.lessons_completed} aulas</span>
@@ -295,7 +295,7 @@ export const AcademyRankingPage = () => {
                   </div>
                 </div>
 
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <p className="font-bold text-primary">{entry.total_points}</p>
                   <p className="text-xs text-muted-foreground">pontos</p>
                 </div>

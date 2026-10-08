@@ -133,7 +133,7 @@ export const AcademyLivePage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
@@ -145,7 +145,7 @@ export const AcademyLivePage = () => {
   const callStatus = sub?.onboarding_call_status || "pending";
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
           <Radio className="h-7 w-7 text-primary" /> Encontros ao Vivo
@@ -158,8 +158,8 @@ export const AcademyLivePage = () => {
       {/* Sessão individual */}
       <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <CalendarCheck className="h-5 w-5 text-primary" /> Sessão individual de planejamento
+          <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
+            <CalendarCheck className="h-5 w-5 text-primary shrink-0" /> Sessão individual de planejamento
             {sub && <Badge variant={callStatus === "done" ? "default" : "secondary"} className="ml-auto">{CALL_STATUS_LABEL[callStatus]}</Badge>}
           </CardTitle>
         </CardHeader>
@@ -225,16 +225,16 @@ export const AcademyLivePage = () => {
                 <Card key={s.id} className={isLive ? "border-red-500/50" : ""}>
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between gap-2">
-                      <div>
+                      <div className="min-w-0">
                         <Badge variant="outline" className="mb-2">{LIVE_KIND_LABEL[s.kind]}</Badge>
                         <CardTitle className="text-base leading-tight">{s.title}</CardTitle>
                       </div>
-                      {isLive && <Badge className="bg-red-600 animate-pulse">AO VIVO</Badge>}
+                      {isLive && <Badge className="bg-red-600 animate-pulse shrink-0">AO VIVO</Badge>}
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Clock className="h-4 w-4" /> {fmtDateTime(s.scheduled_at)} · {s.duration_minutes} min · com {s.host_name}
+                    <p className="text-sm text-muted-foreground flex items-start gap-2">
+                      <Clock className="h-4 w-4 shrink-0 mt-0.5" /> <span className="min-w-0 break-words">{fmtDateTime(s.scheduled_at)} · {s.duration_minutes} min · com {s.host_name}</span>
                     </p>
                     {s.description && <p className="text-sm">{s.description}</p>}
                     {registered && r.question && (
@@ -279,11 +279,11 @@ export const AcademyLivePage = () => {
                   <p className="text-xs text-muted-foreground">{LIVE_KIND_LABEL[s.kind]} · {fmtDateTime(s.scheduled_at)}</p>
                 </div>
                 {s.recording_lesson_id ? (
-                  <Button asChild size="sm" variant="outline"><Link to={`/academy/lesson/${s.recording_lesson_id}`}><PlayCircle className="h-4 w-4 mr-1" /> Assistir</Link></Button>
+                  <Button asChild size="sm" variant="outline" className="shrink-0"><Link to={`/academy/lesson/${s.recording_lesson_id}`}><PlayCircle className="h-4 w-4 mr-1" /> Assistir</Link></Button>
                 ) : s.recording_url ? (
-                  <Button asChild size="sm" variant="outline"><a href={s.recording_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4 mr-1" /> Gravação</a></Button>
+                  <Button asChild size="sm" variant="outline" className="shrink-0"><a href={s.recording_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4 mr-1" /> Gravação</a></Button>
                 ) : (
-                  <span className="text-xs text-muted-foreground">Gravação em breve</span>
+                  <span className="text-xs text-muted-foreground shrink-0">Gravação em breve</span>
                 )}
               </div>
             ))}
@@ -293,7 +293,7 @@ export const AcademyLivePage = () => {
 
       {/* Dialog: pedir sessão 1:1 */}
       <Dialog open={callOpen} onOpenChange={setCallOpen}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Solicitar sessão individual</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">Diga 2 ou 3 horários que funcionam pra você (dias e faixas). O time UNV confirma no WhatsApp.</p>
@@ -313,8 +313,8 @@ export const AcademyLivePage = () => {
 
       {/* Dialog: inscrição */}
       <Dialog open={!!regSession} onOpenChange={(o) => !o && setRegSession(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{regSession?.title}</DialogTitle></DialogHeader>
+        <DialogContent className="w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle className="break-words pr-6">{regSession?.title}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium">Qual caso ou dúvida você quer levar?</label>

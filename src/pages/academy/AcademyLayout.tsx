@@ -302,7 +302,7 @@ export const AcademyLayout = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex overflow-x-hidden">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex w-64 border-r border-border flex-col bg-card">
         <NavContent />
@@ -316,7 +316,7 @@ export const AcademyLayout = () => {
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-64">
+          <SheetContent side="left" className="p-0 w-[85vw] max-w-72">
             <NavContent />
           </SheetContent>
         </Sheet>
@@ -328,7 +328,8 @@ export const AcademyLayout = () => {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 lg:p-0 pt-16 lg:pt-0">
+      {/* min-w-0 + overflow-x-hidden: sem isso o flex-1 cresce com tabela/grade larga e a página inteira rola de lado no celular */}
+      <main className="flex-1 min-w-0 w-full max-w-full overflow-x-hidden lg:p-0 pt-16 lg:pt-0">
         <Outlet context={userContext} />
       </main>
     </div>

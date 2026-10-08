@@ -106,16 +106,16 @@ export const AcademyQuizzesListPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Provas & Avaliações</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Provas & Avaliações</h1>
         <p className="text-muted-foreground mt-1">
           Teste seus conhecimentos e ganhe pontos
         </p>
@@ -128,10 +128,10 @@ export const AcademyQuizzesListPage = () => {
             className={quiz.passed ? "border-green-200 bg-green-50/50" : ""}
           >
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-4 min-w-0">
                   <div
-                    className={`p-3 rounded-lg ${
+                    className={`p-3 rounded-lg shrink-0 ${
                       quiz.passed ? "bg-green-100" : "bg-primary/10"
                     }`}
                   >
@@ -141,9 +141,9 @@ export const AcademyQuizzesListPage = () => {
                       <ClipboardCheck className="h-6 w-6 text-primary" />
                     )}
                   </div>
-                  <div>
-                    <h3 className="font-semibold">{quiz.title}</h3>
-                    <div className="flex items-center gap-2 mt-1">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold break-words">{quiz.title}</h3>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
                       <Badge variant="outline">{getQuizTypeLabel(quiz.quiz_type)}</Badge>
                       {quiz.track_name && (
                         <Badge variant="secondary">{quiz.track_name}</Badge>
@@ -159,9 +159,9 @@ export const AcademyQuizzesListPage = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 sm:shrink-0">
                   {quiz.best_score !== null && (
-                    <div className="text-right">
+                    <div className="text-left sm:text-right shrink-0">
                       <p className="text-sm text-muted-foreground">Melhor nota</p>
                       <p
                         className={`text-xl font-bold ${
@@ -173,7 +173,7 @@ export const AcademyQuizzesListPage = () => {
                     </div>
                   )}
 
-                  <Button asChild>
+                  <Button asChild className="flex-1 sm:flex-none">
                     <Link to={`/academy/quiz/${quiz.id}`}>
                       {quiz.passed ? "Revisar" : quiz.user_attempts > 0 ? "Tentar novamente" : "Fazer prova"}
                       <ChevronRight className="h-4 w-4 ml-1" />

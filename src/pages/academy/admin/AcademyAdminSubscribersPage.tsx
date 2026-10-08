@@ -109,7 +109,7 @@ export const AcademyAdminSubscribersPage = () => {
   }, [subs]);
 
   if (!userContext.isAdmin) {
-    return <div className="p-6"><Card className="p-12 text-center"><h3 className="font-semibold">Acesso negado</h3></Card></div>;
+    return <div className="p-4 md:p-6"><Card className="p-12 text-center"><h3 className="font-semibold">Acesso negado</h3></Card></div>;
   }
 
   const wa = (s: IaSubscription) => {
@@ -118,9 +118,9 @@ export const AcademyAdminSubscribersPage = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2"><CreditCard className="h-7 w-7 text-primary" /> Assinantes IA Academy</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2"><CreditCard className="h-7 w-7 text-primary" /> Assinantes IA Academy</h1>
         <p className="text-muted-foreground mt-1">Quem assinou, como está o pagamento e a agenda da sessão individual.</p>
       </div>
 
@@ -167,27 +167,27 @@ export const AcademyAdminSubscribersPage = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Assinante</TableHead>
-                  <TableHead>Plano</TableHead>
+                  <TableHead className="min-w-[160px]">Assinante</TableHead>
+                  <TableHead className="hidden md:table-cell">Plano</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Período até</TableHead>
-                  <TableHead>Sessão 1:1</TableHead>
+                  <TableHead className="hidden md:table-cell">Período até</TableHead>
+                  <TableHead className="hidden sm:table-cell">Sessão 1:1</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((s) => (
                   <TableRow key={s.id}>
-                    <TableCell>
+                    <TableCell className="min-w-[160px]">
                       <div className="font-medium">{s.name}</div>
-                      <div className="text-xs text-muted-foreground">{s.email}{s.company_name ? ` · ${s.company_name}` : ""}</div>
+                      <div className="text-xs text-muted-foreground truncate max-w-[200px] md:max-w-none">{s.email}{s.company_name ? ` · ${s.company_name}` : ""}</div>
                     </TableCell>
-                    <TableCell className="text-sm">{PLAN_LABEL[s.plan]}</TableCell>
+                    <TableCell className="hidden md:table-cell text-sm">{PLAN_LABEL[s.plan]}</TableCell>
                     <TableCell>
                       <Badge variant={s.status === "active" ? "default" : s.status === "pending" ? "secondary" : "destructive"}>{SUB_STATUS_LABEL[s.status]}</Badge>
                     </TableCell>
-                    <TableCell className="text-sm">{fmtDate(s.current_period_end)}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell text-sm">{fmtDate(s.current_period_end)}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <div className="text-sm">{CALL_STATUS_LABEL[s.onboarding_call_status]}</div>
                       {s.onboarding_call_status === "requested" && s.onboarding_call_preferences && (
                         <div className="text-xs text-muted-foreground max-w-[220px] truncate" title={s.onboarding_call_preferences}>{s.onboarding_call_preferences}</div>
@@ -195,7 +195,7 @@ export const AcademyAdminSubscribersPage = () => {
                       {s.onboarding_call_status === "scheduled" && <div className="text-xs text-muted-foreground">{fmtDateTime(s.onboarding_call_at)}</div>}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
+                      <div className="flex flex-wrap justify-end gap-1">
                         {wa(s) && (
                           <Button size="icon" variant="ghost" asChild title="WhatsApp">
                             <a href={wa(s)!} target="_blank" rel="noopener noreferrer"><MessageSquare className="h-4 w-4" /></a>
@@ -206,7 +206,7 @@ export const AcademyAdminSubscribersPage = () => {
                             <a href={s.asaas_invoice_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a>
                           </Button>
                         )}
-                        <Button size="sm" variant="outline" onClick={() => openCall(s)}><CalendarCheck className="h-4 w-4 mr-1" /> Sessão</Button>
+                        <Button size="sm" variant="outline" onClick={() => openCall(s)}><CalendarCheck className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Sessão</span></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -218,7 +218,7 @@ export const AcademyAdminSubscribersPage = () => {
       </Card>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Sessão individual · {editing?.name}</DialogTitle></DialogHeader>
           {editing && (
             <div className="space-y-4">

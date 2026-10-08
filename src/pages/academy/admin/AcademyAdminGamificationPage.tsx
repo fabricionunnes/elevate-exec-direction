@@ -310,7 +310,7 @@ export const AcademyAdminGamificationPage = () => {
 
   if (!userContext.isAdmin) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <Card className="p-12 text-center">
           <h3 className="font-semibold mb-2">Acesso negado</h3>
         </Card>
@@ -320,16 +320,16 @@ export const AcademyAdminGamificationPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Gamificação</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Gamificação</h1>
         <p className="text-muted-foreground mt-1">
           Configure pontos, níveis e conquistas
         </p>
@@ -345,7 +345,7 @@ export const AcademyAdminGamificationPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <div>
                 <Label>Pontos por aula</Label>
                 <Input
@@ -396,7 +396,7 @@ export const AcademyAdminGamificationPage = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-6 pt-4 border-t">
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6 pt-4 border-t">
               <div className="flex items-center gap-2">
                 <Switch
                   checked={config.enable_ranking}
@@ -413,7 +413,7 @@ export const AcademyAdminGamificationPage = () => {
               </div>
             </div>
 
-            <Button onClick={handleSaveConfig}>
+            <Button className="w-full sm:w-auto" onClick={handleSaveConfig}>
               Salvar Configurações
             </Button>
           </CardContent>
@@ -423,7 +423,7 @@ export const AcademyAdminGamificationPage = () => {
       {/* Levels */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2">
               <Star className="h-5 w-5" />
               Níveis
@@ -439,23 +439,23 @@ export const AcademyAdminGamificationPage = () => {
             {levels.map((level) => (
               <div
                 key={level.id}
-                className="flex items-center justify-between p-3 rounded-lg border"
+                className="flex items-center justify-between gap-3 p-3 rounded-lg border"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center"
+                    className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center"
                     style={{ backgroundColor: `${level.color}20` }}
                   >
                     <Star className="h-5 w-5" style={{ color: level.color || "#FFD700" }} />
                   </div>
-                  <div>
-                    <p className="font-medium">Nível {level.level}: {level.name}</p>
+                  <div className="min-w-0">
+                    <p className="font-medium break-words">Nível {level.level}: {level.name}</p>
                     <p className="text-sm text-muted-foreground">
                       A partir de {level.min_points} pontos
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                   <Button variant="ghost" size="sm" onClick={() => openEditLevel(level)}>
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -472,7 +472,7 @@ export const AcademyAdminGamificationPage = () => {
       {/* Badges */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="flex items-center gap-2">
               <Award className="h-5 w-5" />
               Conquistas
@@ -488,23 +488,23 @@ export const AcademyAdminGamificationPage = () => {
             {badges.map((badge) => (
               <Card key={badge.id} className={!badge.is_active ? "opacity-60" : ""}>
                 <CardContent className="pt-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
                       <div
-                        className="w-12 h-12 rounded-full flex items-center justify-center"
+                        className="w-12 h-12 shrink-0 rounded-full flex items-center justify-center"
                         style={{ backgroundColor: `${badge.color}20` }}
                       >
                         <Award className="h-6 w-6" style={{ color: badge.color }} />
                       </div>
-                      <div>
-                        <p className="font-semibold">{badge.name}</p>
-                        <p className="text-xs text-muted-foreground">{badge.description}</p>
+                      <div className="min-w-0">
+                        <p className="font-semibold break-words">{badge.name}</p>
+                        <p className="text-xs text-muted-foreground break-words">{badge.description}</p>
                         <Badge variant="secondary" className="mt-1">
                           +{badge.points_reward} pts
                         </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex shrink-0 items-center gap-1">
                       <Button variant="ghost" size="sm" onClick={() => openEditBadge(badge)}>
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -522,7 +522,7 @@ export const AcademyAdminGamificationPage = () => {
 
       {/* Badge Dialog */}
       <Dialog open={badgeDialogOpen} onOpenChange={setBadgeDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingBadge ? "Editar Conquista" : "Nova Conquista"}</DialogTitle>
           </DialogHeader>
@@ -541,7 +541,7 @@ export const AcademyAdminGamificationPage = () => {
                 onChange={(e) => setBadgeForm({ ...badgeForm, description: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Ícone</Label>
                 <Select value={badgeForm.icon} onValueChange={(v) => setBadgeForm({ ...badgeForm, icon: v })}>
@@ -564,7 +564,7 @@ export const AcademyAdminGamificationPage = () => {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Critério</Label>
                 <Select value={badgeForm.criteria_type} onValueChange={(v) => setBadgeForm({ ...badgeForm, criteria_type: v })}>
@@ -606,12 +606,12 @@ export const AcademyAdminGamificationPage = () => {
 
       {/* Level Dialog */}
       <Dialog open={levelDialogOpen} onOpenChange={setLevelDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingLevel ? "Editar Nível" : "Novo Nível"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Número do nível</Label>
                 <Input

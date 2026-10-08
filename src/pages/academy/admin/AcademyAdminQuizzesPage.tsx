@@ -458,7 +458,7 @@ export const AcademyAdminQuizzesPage = () => {
 
   if (!userContext.isAdmin) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <Card className="p-12 text-center">
           <h3 className="font-semibold mb-2">Acesso negado</h3>
         </Card>
@@ -468,22 +468,22 @@ export const AcademyAdminQuizzesPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Provas & IA</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Provas & IA</h1>
           <p className="text-muted-foreground mt-1">
             Crie provas e gere questões automaticamente com IA
           </p>
         </div>
-        <Button onClick={() => { setEditingQuiz(null); resetQuizForm(); setQuizDialogOpen(true); }}>
+        <Button className="w-full sm:w-auto" onClick={() => { setEditingQuiz(null); resetQuizForm(); setQuizDialogOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" />
           Nova Prova
         </Button>
@@ -494,14 +494,14 @@ export const AcademyAdminQuizzesPage = () => {
         {quizzes.map((quiz) => (
           <Card key={quiz.id}>
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-primary/10 rounded-lg">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-[12rem] flex-1 items-center gap-4">
+                  <div className="shrink-0 p-3 bg-primary/10 rounded-lg">
                     <ClipboardCheck className="h-6 w-6 text-primary" />
                   </div>
-                  <div>
-                    <h3 className="font-semibold">{quiz.title}</h3>
-                    <div className="flex items-center gap-2 mt-1">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold break-words">{quiz.title}</h3>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
                       <Badge variant={quiz.is_active ? "default" : "secondary"}>
                         {quiz.is_active ? "Ativa" : "Inativa"}
                       </Badge>
@@ -522,7 +522,7 @@ export const AcademyAdminQuizzesPage = () => {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="ml-auto flex shrink-0 flex-wrap items-center gap-2">
                   <Button variant="outline" size="sm" onClick={() => loadQuestions(quiz)}>
                     <HelpCircle className="h-4 w-4 mr-1" />
                     Questões
@@ -557,7 +557,7 @@ export const AcademyAdminQuizzesPage = () => {
 
       {/* Quiz Dialog */}
       <Dialog open={quizDialogOpen} onOpenChange={setQuizDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingQuiz ? "Editar Prova" : "Nova Prova"}</DialogTitle>
           </DialogHeader>
@@ -576,7 +576,7 @@ export const AcademyAdminQuizzesPage = () => {
                 onChange={(e) => setQuizForm({ ...quizForm, description: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Trilha</Label>
                 <Select
@@ -614,7 +614,7 @@ export const AcademyAdminQuizzesPage = () => {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Nota mínima (%)</Label>
                 <Input
@@ -632,7 +632,7 @@ export const AcademyAdminQuizzesPage = () => {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Tempo limite (minutos)</Label>
                 <Input
@@ -681,11 +681,11 @@ export const AcademyAdminQuizzesPage = () => {
 
       {/* Questions Dialog */}
       <Dialog open={questionsDialogOpen} onOpenChange={setQuestionsDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh]">
+        <DialogContent className="max-w-3xl w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>Questões: {selectedQuiz?.title}</span>
-              <div className="flex gap-2">
+            <DialogTitle className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <span className="min-w-0 break-words">Questões: {selectedQuiz?.title}</span>
+              <div className="flex flex-wrap gap-2 sm:shrink-0">
                 {selectedQuiz?.lesson_id && (
                   <Button
                     variant="outline"
@@ -718,9 +718,9 @@ export const AcademyAdminQuizzesPage = () => {
               questions.map((question, index) => (
                 <Card key={question.id} className={!question.is_approved ? "opacity-60" : ""}>
                   <CardContent className="pt-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="min-w-[12rem] flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
                           <Badge variant="outline">#{index + 1}</Badge>
                           <Badge variant="secondary">{question.difficulty}</Badge>
                           <Badge variant="secondary">{question.points} pts</Badge>
@@ -734,7 +734,7 @@ export const AcademyAdminQuizzesPage = () => {
                             <Badge variant="destructive">Não aprovada</Badge>
                           )}
                         </div>
-                        <p className="font-medium">{question.question_text}</p>
+                        <p className="font-medium break-words">{question.question_text}</p>
                         <div className="mt-2 space-y-1">
                           {question.options.map((opt, i) => (
                             <div
@@ -744,16 +744,16 @@ export const AcademyAdminQuizzesPage = () => {
                               }`}
                             >
                               {opt.isCorrect ? (
-                                <CheckCircle className="h-4 w-4" />
+                                <CheckCircle className="h-4 w-4 shrink-0" />
                               ) : (
-                                <XCircle className="h-4 w-4" />
+                                <XCircle className="h-4 w-4 shrink-0" />
                               )}
-                              {opt.text}
+                              <span className="min-w-0 break-words">{opt.text}</span>
                             </div>
                           ))}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="ml-auto flex shrink-0 items-center gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -792,7 +792,7 @@ export const AcademyAdminQuizzesPage = () => {
 
       {/* Question Form Dialog */}
       <Dialog open={questionDialogOpen} onOpenChange={setQuestionDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingQuestion ? "Editar Questão" : "Nova Questão"}</DialogTitle>
           </DialogHeader>
@@ -830,7 +830,7 @@ export const AcademyAdminQuizzesPage = () => {
                 onChange={(e) => setQuestionForm({ ...questionForm, explanation: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Dificuldade</Label>
                 <Select

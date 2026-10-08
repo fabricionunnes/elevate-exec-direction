@@ -272,16 +272,16 @@ export const AcademyTeamPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Meu Time</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Meu Time</h1>
         <p className="text-muted-foreground mt-1">
           Acompanhe o progresso de treinamento da sua equipe
         </p>
@@ -381,12 +381,12 @@ export const AcademyTeamPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Usuário</TableHead>
-                <TableHead className="text-center">Nível</TableHead>
+                <TableHead className="min-w-[160px]">Usuário</TableHead>
+                <TableHead className="text-center hidden md:table-cell">Nível</TableHead>
                 <TableHead className="text-center">Pontos</TableHead>
-                <TableHead className="text-center">Aulas</TableHead>
-                <TableHead className="text-center">Provas</TableHead>
-                <TableHead className="text-center">Sequência</TableHead>
+                <TableHead className="text-center hidden md:table-cell">Aulas</TableHead>
+                <TableHead className="text-center hidden md:table-cell">Provas</TableHead>
+                <TableHead className="text-center hidden md:table-cell">Sequência</TableHead>
                 <TableHead>Última atividade</TableHead>
                 <TableHead></TableHead>
               </TableRow>
@@ -394,30 +394,30 @@ export const AcademyTeamPage = () => {
             <TableBody>
               {filteredMembers.map((member) => (
                 <TableRow key={member.id}>
-                  <TableCell>
+                  <TableCell className="min-w-[160px]">
                     <div className="flex items-center gap-3">
-                      <Avatar>
+                      <Avatar className="shrink-0">
                         <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
                       </Avatar>
-                      <div>
-                        <p className="font-medium">{member.name}</p>
-                        <p className="text-sm text-muted-foreground">{member.email}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium truncate max-w-[200px]">{member.name}</p>
+                        <p className="text-sm text-muted-foreground truncate max-w-[200px]">{member.email}</p>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-center hidden md:table-cell">
                     <Badge variant="outline">{member.level_name}</Badge>
                   </TableCell>
                   <TableCell className="text-center font-semibold">
                     {member.total_points}
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-center hidden md:table-cell">
                     {member.lessons_completed}
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-center hidden md:table-cell">
                     {member.quizzes_passed}
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-center hidden md:table-cell">
                     {member.current_streak > 0 && (
                       <span className="flex items-center justify-center gap-1 text-amber-600">
                         <Flame className="h-4 w-4" />
@@ -426,9 +426,9 @@ export const AcademyTeamPage = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2">
                       {getStatusBadge(getActivityStatus(member.last_activity_at))}
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-muted-foreground whitespace-nowrap">
                         {formatDate(member.last_activity_at)}
                       </span>
                     </div>
@@ -461,17 +461,17 @@ export const AcademyTeamPage = () => {
 
       {/* Member Detail Dialog */}
       <Dialog open={!!selectedMember} onOpenChange={() => setSelectedMember(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              <Avatar>
+            <DialogTitle className="flex items-center gap-3 pr-6">
+              <Avatar className="shrink-0">
                 <AvatarFallback>
                   {selectedMember ? getInitials(selectedMember.name) : ""}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <p>{selectedMember?.name}</p>
-                <p className="text-sm text-muted-foreground font-normal">
+              <div className="min-w-0 text-left">
+                <p className="truncate">{selectedMember?.name}</p>
+                <p className="text-sm text-muted-foreground font-normal truncate">
                   {selectedMember?.email}
                 </p>
               </div>
@@ -481,7 +481,7 @@ export const AcademyTeamPage = () => {
           {selectedMember && (
             <div className="space-y-4">
               {/* Stats */}
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="text-center p-3 bg-muted rounded-lg">
                   <p className="text-2xl font-bold">{selectedMember.total_points}</p>
                   <p className="text-xs text-muted-foreground">Pontos</p>
@@ -512,10 +512,10 @@ export const AcademyTeamPage = () => {
                     {memberProgress.map((item, index) => (
                       <div
                         key={`${item.type}-${item.id}-${index}`}
-                        className="flex items-center justify-between p-3 rounded-lg border"
+                        className="flex items-center justify-between gap-3 p-3 rounded-lg border"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`p-2 rounded-lg shrink-0 ${
                             item.type === "lesson"
                               ? "bg-blue-100"
                               : item.status === "passed"
@@ -532,15 +532,15 @@ export const AcademyTeamPage = () => {
                               }`} />
                             )}
                           </div>
-                          <div>
-                            <p className="font-medium">{item.title}</p>
+                          <div className="min-w-0">
+                            <p className="font-medium break-words">{item.title}</p>
                             <p className="text-xs text-muted-foreground">
                               {item.type === "lesson" ? "Aula" : "Prova"}
                               {item.score !== null && ` • ${item.score}%`}
                             </p>
                           </div>
                         </div>
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-sm text-muted-foreground shrink-0 text-right">
                           {formatDate(item.completed_at)}
                         </span>
                       </div>

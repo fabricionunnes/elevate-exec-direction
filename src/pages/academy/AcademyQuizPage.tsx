@@ -298,7 +298,7 @@ export const AcademyQuizPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
@@ -306,7 +306,7 @@ export const AcademyQuizPage = () => {
 
   if (!quiz || questions.length === 0) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <Card className="p-12 text-center">
           <h3 className="font-semibold mb-2">Prova não encontrada</h3>
           <Button asChild>
@@ -320,7 +320,7 @@ export const AcademyQuizPage = () => {
   // Show results
   if (finished && result) {
     return (
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
+      <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
         <Card className={result.passed ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
           <CardContent className="pt-8 pb-8 text-center">
             <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 ${
@@ -343,31 +343,31 @@ export const AcademyQuizPage = () => {
                 : `Você não atingiu a nota mínima de ${quiz.min_score}%`}
             </p>
 
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
               <div>
-                <p className="text-3xl font-bold text-primary">{result.score}%</p>
+                <p className="text-2xl sm:text-3xl font-bold text-primary">{result.score}%</p>
                 <p className="text-sm text-muted-foreground">Sua nota</p>
               </div>
               <div>
-                <p className="text-3xl font-bold">
+                <p className="text-2xl sm:text-3xl font-bold">
                   {result.correctAnswers}/{questions.length}
                 </p>
                 <p className="text-sm text-muted-foreground">Acertos</p>
               </div>
               <div>
-                <p className="text-3xl font-bold text-green-600">+{result.points}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-green-600">+{result.points}</p>
                 <p className="text-sm text-muted-foreground">Pontos</p>
               </div>
             </div>
 
-            <div className="flex gap-3 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
               {!result.passed && canRetry && (
-                <Button onClick={() => window.location.reload()}>
+                <Button onClick={() => window.location.reload()} className="w-full sm:w-auto">
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Tentar novamente
                 </Button>
               )}
-              <Button variant="outline" asChild>
+              <Button variant="outline" asChild className="w-full sm:w-auto">
                 <Link to={quiz.track_id ? `/academy/track/${quiz.track_id}` : "/academy/quizzes"}>
                   Voltar
                 </Link>
@@ -382,7 +382,7 @@ export const AcademyQuizPage = () => {
   // Show start screen
   if (!started) {
     return (
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
+      <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
         <Button variant="ghost" asChild>
           <Link to={quiz.track_id ? `/academy/track/${quiz.track_id}` : "/academy/quizzes"}>
             <ChevronLeft className="h-4 w-4 mr-2" />
@@ -443,11 +443,11 @@ export const AcademyQuizPage = () => {
 
   // Show quiz
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">{quiz.title}</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold break-words">{quiz.title}</h1>
           <p className="text-sm text-muted-foreground">
             Questão {currentQuestionIndex + 1} de {questions.length}
           </p>
@@ -455,7 +455,7 @@ export const AcademyQuizPage = () => {
         {timeRemaining !== null && (
           <Badge
             variant={timeRemaining < 60 ? "destructive" : "secondary"}
-            className="text-lg px-4 py-2"
+            className="text-lg px-4 py-2 self-start sm:self-auto shrink-0"
           >
             <Clock className="h-4 w-4 mr-2" />
             {formatTime(timeRemaining)}
@@ -491,7 +491,7 @@ export const AcademyQuizPage = () => {
                   <RadioGroupItem value={option.text} id={`option-${index}`} />
                   <Label
                     htmlFor={`option-${index}`}
-                    className="flex-1 cursor-pointer"
+                    className="flex-1 min-w-0 cursor-pointer break-words"
                   >
                     {option.text}
                   </Label>
@@ -503,7 +503,7 @@ export const AcademyQuizPage = () => {
       </Card>
 
       {/* Navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Button
           variant="outline"
           onClick={() => setCurrentQuestionIndex((prev) => prev - 1)}
@@ -513,7 +513,7 @@ export const AcademyQuizPage = () => {
           Anterior
         </Button>
 
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground w-full text-center order-first sm:order-none sm:w-auto">
           {answeredCount} de {questions.length} respondidas
         </p>
 

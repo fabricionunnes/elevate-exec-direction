@@ -132,17 +132,17 @@ export const AcademyAdminLivePage = () => {
   };
 
   if (!userContext.isAdmin) {
-    return <div className="p-6"><Card className="p-12 text-center"><h3 className="font-semibold">Acesso negado</h3></Card></div>;
+    return <div className="p-4 md:p-6"><Card className="p-12 text-center"><h3 className="font-semibold">Acesso negado</h3></Card></div>;
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2"><Radio className="h-7 w-7 text-primary" /> Encontros ao Vivo</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2"><Radio className="h-7 w-7 text-primary" /> Encontros ao Vivo</h1>
           <p className="text-muted-foreground mt-1">Hotseat mensal, implementações ao vivo e masterclasses do IA Academy.</p>
         </div>
-        <Button onClick={openNew}><Plus className="h-4 w-4 mr-2" /> Novo encontro</Button>
+        <Button className="w-full sm:w-auto" onClick={openNew}><Plus className="h-4 w-4 mr-2" /> Novo encontro</Button>
       </div>
 
       <Card>
@@ -155,28 +155,29 @@ export const AcademyAdminLivePage = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Encontro</TableHead>
-                  <TableHead>Quando</TableHead>
+                  <TableHead className="min-w-[160px]">Encontro</TableHead>
+                  <TableHead className="hidden sm:table-cell">Quando</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Gravação</TableHead>
+                  <TableHead className="hidden md:table-cell">Gravação</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sessions.map((s) => (
                   <TableRow key={s.id}>
-                    <TableCell>
+                    <TableCell className="min-w-[160px]">
                       <div className="font-medium">{s.title}</div>
                       <div className="text-xs text-muted-foreground">{LIVE_KIND_LABEL[s.kind]} · {s.host_name}</div>
+                      <div className="text-xs text-muted-foreground sm:hidden">{fmtDateTime(s.scheduled_at)} · {s.duration_minutes} min</div>
                     </TableCell>
-                    <TableCell className="text-sm">{fmtDateTime(s.scheduled_at)} · {s.duration_minutes} min</TableCell>
+                    <TableCell className="hidden sm:table-cell text-sm">{fmtDateTime(s.scheduled_at)} · {s.duration_minutes} min</TableCell>
                     <TableCell>
                       <Badge variant={s.status === "live" ? "destructive" : s.status === "done" ? "default" : s.status === "cancelled" ? "outline" : "secondary"}>{s.status}</Badge>
                     </TableCell>
-                    <TableCell className="text-xs">{s.recording_lesson_id ? "Aula vinculada" : s.recording_url ? "Link" : "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell text-xs">{s.recording_lesson_id ? "Aula vinculada" : s.recording_url ? "Link" : "—"}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="outline" onClick={() => openRegs(s)}><Users className="h-4 w-4 mr-1" /> Inscritos</Button>
+                      <div className="flex flex-wrap justify-end gap-1">
+                        <Button size="sm" variant="outline" onClick={() => openRegs(s)}><Users className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Inscritos</span></Button>
                         <Button size="icon" variant="ghost" onClick={() => openEdit(s)}><Pencil className="h-4 w-4" /></Button>
                         {s.status !== "cancelled" && <Button size="icon" variant="ghost" onClick={() => remove(s)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}
                       </div>
@@ -191,7 +192,7 @@ export const AcademyAdminLivePage = () => {
 
       {/* Form */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Editar encontro" : "Novo encontro"}</DialogTitle></DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
@@ -263,7 +264,7 @@ export const AcademyAdminLivePage = () => {
 
       {/* Inscritos */}
       <Dialog open={!!regsFor} onOpenChange={(o) => !o && setRegsFor(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Inscritos · {regsFor?.title}</DialogTitle></DialogHeader>
           {regs.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">Ninguém inscrito ainda.</p>
@@ -273,7 +274,7 @@ export const AcademyAdminLivePage = () => {
                 <Card key={r.id} className={r.picked_for_hotseat ? "border-amber-500/50" : ""}>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
-                      {r.student_name} <span className="text-xs font-normal text-muted-foreground">{r.student_email}</span>
+                      {r.student_name} <span className="text-xs font-normal text-muted-foreground min-w-0 break-all">{r.student_email}</span>
                       {r.wants_hotseat && <Badge variant="outline" className="text-amber-600 border-amber-500/50"><Flame className="h-3 w-3 mr-1" /> quer a cadeira</Badge>}
                       <Badge variant="secondary" className="ml-auto">{r.status}</Badge>
                     </CardTitle>

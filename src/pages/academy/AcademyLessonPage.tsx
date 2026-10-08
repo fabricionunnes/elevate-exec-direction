@@ -768,7 +768,7 @@ export const AcademyLessonPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
@@ -776,8 +776,8 @@ export const AcademyLessonPage = () => {
 
   if (!lesson) {
     return (
-      <div className="p-6">
-        <Card className="p-12 text-center">
+      <div className="p-4 md:p-6">
+        <Card className="p-8 md:p-12 text-center">
           <h3 className="font-semibold mb-2">Aula não encontrada</h3>
           <Button asChild>
             <Link to="/academy/tracks">Voltar às trilhas</Link>
@@ -788,17 +788,17 @@ export const AcademyLessonPage = () => {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto">
       {/* Navigation Header */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" asChild>
+      <div className="flex items-center justify-between gap-2">
+        <Button variant="ghost" asChild className="min-w-0 px-2 sm:px-4">
           <Link to={`/academy/track/${lesson.track_id}`}>
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            {lesson.track_name}
+            <ChevronLeft className="h-4 w-4 mr-2 shrink-0" />
+            <span className="truncate">{lesson.track_name}</span>
           </Link>
         </Button>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {prevLesson && (
             <Button variant="outline" size="sm" asChild>
               <Link to={`/academy/lesson/${prevLesson.id}`}>
@@ -839,8 +839,8 @@ export const AcademyLessonPage = () => {
       {/* Lesson Info */}
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-bold">{lesson.title}</h1>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold break-words">{lesson.title}</h1>
             <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground flex-wrap">
               <Badge variant="outline">{lesson.track_name}</Badge>
               {lesson.estimated_duration_minutes && (
@@ -858,11 +858,11 @@ export const AcademyLessonPage = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
           {isCompleted && certUrl && (
             /* Link DIRETO: window.open depois de operação assíncrona é bloqueado
                pelo iOS (popup blocker) — o certificado "sumia" depois de gerar */
-            <Button asChild variant="outline" className="border-emerald-500/50 text-emerald-600">
+            <Button asChild variant="outline" className="border-emerald-500/50 text-emerald-600 w-full sm:w-auto">
               <a href={certUrl} target="_blank" rel="noopener noreferrer">
                 <Award className="h-4 w-4 mr-2" />
                 Abrir certificado
@@ -872,6 +872,7 @@ export const AcademyLessonPage = () => {
           {isCompleted && !certUrl && (
             <Button
               variant="outline"
+              className="w-full sm:w-auto"
               disabled={issuingCert}
               onClick={async () => {
                 if (!userContext.onboardingUserId || !lesson) return;
@@ -907,7 +908,7 @@ export const AcademyLessonPage = () => {
           <Button
             onClick={handleComplete}
             disabled={isCompleted || completing || !canComplete}
-            className={isCompleted ? "bg-green-600 hover:bg-green-700" : ""}
+            className={`w-full sm:w-auto ${isCompleted ? "bg-green-600 hover:bg-green-700" : ""}`}
             title={!canComplete && isYouTubeLesson ? "Assista pelo menos 20% do vídeo para concluir" : undefined}
           >
             {completing ? (
@@ -979,19 +980,19 @@ export const AcademyLessonPage = () => {
                 href={asset.asset_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted transition-colors"
+                className="flex items-center justify-between gap-3 p-3 rounded-lg border hover:bg-muted transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 bg-primary/10 rounded-lg shrink-0">
                     {asset.asset_type === "pdf" ? (
                       <FileText className="h-4 w-4 text-primary" />
                     ) : (
                       <ExternalLink className="h-4 w-4 text-primary" />
                     )}
                   </div>
-                  <span className="font-medium">{asset.name}</span>
+                  <span className="font-medium truncate">{asset.name}</span>
                 </div>
-                <Badge variant="outline">{asset.asset_type.toUpperCase()}</Badge>
+                <Badge variant="outline" className="shrink-0">{asset.asset_type.toUpperCase()}</Badge>
               </a>
             ))}
           </CardContent>
@@ -999,26 +1000,26 @@ export const AcademyLessonPage = () => {
       )}
 
       {/* Navigation Footer */}
-      <div className="flex items-center justify-between pt-4 border-t">
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between pt-4 border-t">
         {prevLesson ? (
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="w-full sm:w-auto">
             <Link to={`/academy/lesson/${prevLesson.id}`}>
               <ChevronLeft className="h-4 w-4 mr-2" />
               Aula anterior
             </Link>
           </Button>
         ) : (
-          <div />
+          <div className="hidden sm:block" />
         )}
         
         {nextLesson ? (
           isNextLessonLocked() ? (
-            <Button disabled className="opacity-50">
+            <Button disabled className="opacity-50 w-full sm:w-auto">
               <Lock className="h-4 w-4 mr-2" />
               Conclua esta aula primeiro
             </Button>
           ) : (
-            <Button asChild>
+            <Button asChild className="w-full sm:w-auto">
               <Link to={`/academy/lesson/${nextLesson.id}`}>
                 Próxima aula
                 <ChevronRight className="h-4 w-4 ml-2" />
@@ -1026,7 +1027,7 @@ export const AcademyLessonPage = () => {
             </Button>
           )
         ) : (
-          <Button asChild>
+          <Button asChild className="w-full sm:w-auto">
             <Link to={`/academy/track/${lesson.track_id}`}>
               Voltar à trilha
             </Link>

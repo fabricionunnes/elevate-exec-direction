@@ -259,7 +259,7 @@ export const AcademyAdminAccessPage = () => {
 
   if (!userContext.isAdmin) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <Card className="p-12 text-center">
           <h3 className="font-semibold mb-2">Acesso negado</h3>
         </Card>
@@ -269,22 +269,22 @@ export const AcademyAdminAccessPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Gerenciar Acessos</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Gerenciar Acessos</h1>
           <p className="text-muted-foreground mt-1">
             Libere acesso à Academy para usuários e empresas
           </p>
         </div>
-        <Button onClick={() => { resetForm(); setDialogOpen(true); }}>
+        <Button className="w-full sm:w-auto" onClick={() => { resetForm(); setDialogOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" />
           Novo Acesso
         </Button>
@@ -307,10 +307,10 @@ export const AcademyAdminAccessPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Trilha</TableHead>
-                <TableHead>Concedido em</TableHead>
+                <TableHead className="hidden md:table-cell">Tipo</TableHead>
+                <TableHead className="min-w-[160px]">Nome</TableHead>
+                <TableHead className="hidden sm:table-cell">Trilha</TableHead>
+                <TableHead className="hidden md:table-cell">Concedido em</TableHead>
                 <TableHead className="text-center">Ativo</TableHead>
                 <TableHead></TableHead>
               </TableRow>
@@ -318,7 +318,7 @@ export const AcademyAdminAccessPage = () => {
             <TableBody>
               {filteredAccess.map((access) => (
                 <TableRow key={access.id}>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     {access.onboarding_user_id ? (
                       <Badge variant="outline" className="gap-1">
                         <User className="h-3 w-3" />
@@ -331,10 +331,10 @@ export const AcademyAdminAccessPage = () => {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium min-w-[160px]">
                     {access.user_name || access.company_name || "-"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     {access.track_name ? (
                       <Badge variant="secondary" className="gap-1">
                         <BookOpen className="h-3 w-3" />
@@ -344,7 +344,7 @@ export const AcademyAdminAccessPage = () => {
                       <Badge className="bg-green-100 text-green-800">Todas as trilhas</Badge>
                     )}
                   </TableCell>
-                  <TableCell>{formatDate(access.granted_at)}</TableCell>
+                  <TableCell className="hidden md:table-cell">{formatDate(access.granted_at)}</TableCell>
                   <TableCell className="text-center">
                     <Switch
                       checked={access.is_active}
@@ -379,7 +379,7 @@ export const AcademyAdminAccessPage = () => {
 
       {/* Grant Access Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Conceder Acesso</DialogTitle>
           </DialogHeader>
@@ -448,7 +448,7 @@ export const AcademyAdminAccessPage = () => {
               </Select>
             </div>
 
-            <div className="flex gap-2 justify-end">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancelar
               </Button>

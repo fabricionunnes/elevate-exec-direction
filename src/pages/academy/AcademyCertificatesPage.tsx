@@ -56,23 +56,23 @@ export const AcademyCertificatesPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl mx-auto">
+    <div className="p-4 md:p-6 space-y-6 max-w-4xl mx-auto">
       <div>
-        <h1 className="text-3xl font-bold">Certificados</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Certificados</h1>
         <p className="text-muted-foreground mt-1">
           Cada aula concluída gera um certificado — e a trilha completa gera o certificado da trilha.
         </p>
       </div>
 
       {certs.length === 0 ? (
-        <Card className="p-12 text-center">
+        <Card className="p-8 md:p-12 text-center">
           <GraduationCap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="font-semibold mb-2">Nenhum certificado ainda</h3>
           <p className="text-muted-foreground mb-4">
@@ -103,7 +103,7 @@ export const AcademyCertificatesPage = () => {
                         {cert.lesson_title ? "Aula" : "Trilha"}
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground break-words">
                       {cert.total_hours ? `${cert.total_hours}h · ` : ""}
                       {new Date(cert.issued_at).toLocaleDateString("pt-BR")} · Código {cert.certificate_code}
                     </p>

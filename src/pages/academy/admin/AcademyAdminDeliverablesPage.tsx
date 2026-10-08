@@ -90,7 +90,7 @@ export const AcademyAdminDeliverablesPage = () => {
   };
 
   if (!userContext.isAdmin) {
-    return <div className="p-6"><Card className="p-12 text-center"><h3 className="font-semibold">Acesso negado</h3></Card></div>;
+    return <div className="p-4 md:p-6"><Card className="p-12 text-center"><h3 className="font-semibold">Acesso negado</h3></Card></div>;
   }
 
   const filters: { k: Filter; label: string }[] = [
@@ -101,9 +101,9 @@ export const AcademyAdminDeliverablesPage = () => {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2"><ClipboardList className="h-7 w-7 text-primary" /> Entregáveis</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2"><ClipboardList className="h-7 w-7 text-primary" /> Entregáveis</h1>
         <p className="text-muted-foreground mt-1">Revise a prova de implementação de cada aula. Aprovar pontua o aluno.</p>
       </div>
 
@@ -123,26 +123,26 @@ export const AcademyAdminDeliverablesPage = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Aluno</TableHead>
-                  <TableHead>Aula</TableHead>
-                  <TableHead>Enviado</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="min-w-[160px]">Aluno</TableHead>
+                  <TableHead className="min-w-[160px]">Aula</TableHead>
+                  <TableHead className="hidden md:table-cell">Enviado</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
                   <TableHead className="text-right">Ação</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell>
+                    <TableCell className="min-w-[160px]">
                       <div className="font-medium">{r.student_name}</div>
-                      <div className="text-xs text-muted-foreground">{r.student_email}</div>
+                      <div className="text-xs text-muted-foreground truncate max-w-[200px] md:max-w-none">{r.student_email}</div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="min-w-[160px]">
                       <div className="font-medium">{r.lesson_title}</div>
                       <div className="text-xs text-muted-foreground">{r.track_name}</div>
                     </TableCell>
-                    <TableCell className="text-sm">{fmtDateTime(r.updated_at)}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell text-sm">{fmtDateTime(r.updated_at)}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <Badge variant={r.status === "approved" ? "default" : r.status === "submitted" ? "secondary" : "destructive"}>
                         {r.status === "approved" ? `Aprovado · ${r.points_awarded} pts` : r.status === "submitted" ? "Em revisão" : "Ajustes"}
                       </Badge>
@@ -159,7 +159,7 @@ export const AcademyAdminDeliverablesPage = () => {
       </Card>
 
       <Dialog open={!!review} onOpenChange={(o) => !o && setReview(null)}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{review?.lesson_title}</DialogTitle></DialogHeader>
           {review && (
             <div className="space-y-4 text-sm">
@@ -176,7 +176,7 @@ export const AcademyAdminDeliverablesPage = () => {
               </div>
             </div>
           )}
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 flex-wrap">
             <Button variant="outline" onClick={() => decide("changes_requested")} disabled={saving}>
               <RotateCcw className="h-4 w-4 mr-2" /> Pedir ajustes
             </Button>

@@ -433,7 +433,7 @@ export const AcademyAdminContentPage = () => {
 
   if (!userContext.isAdmin) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <Card className="p-12 text-center">
           <h3 className="font-semibold mb-2">Acesso negado</h3>
           <p className="text-muted-foreground">
@@ -446,22 +446,22 @@ export const AcademyAdminContentPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Gerenciar Conteúdos</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Gerenciar Conteúdos</h1>
           <p className="text-muted-foreground mt-1">
             Crie e gerencie trilhas, módulos e aulas
           </p>
         </div>
-        <Button onClick={() => { setEditingTrack(null); resetTrackForm(); setTrackDialogOpen(true); }}>
+        <Button className="w-full sm:w-auto" onClick={() => { setEditingTrack(null); resetTrackForm(); setTrackDialogOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" />
           Nova Trilha
         </Button>
@@ -472,13 +472,13 @@ export const AcademyAdminContentPage = () => {
         {tracks.map((track) => (
           <Card key={track.id}>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-[12rem] flex-1 items-center gap-3">
+                  <div className="shrink-0 p-2 bg-primary/10 rounded-lg">
                     <BookOpen className="h-5 w-5 text-primary" />
                   </div>
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
+                  <div className="min-w-0">
+                    <CardTitle className="flex flex-wrap items-center gap-2 break-words">
                       {track.name}
                       <Badge variant={track.is_active ? "default" : "secondary"}>
                         {track.is_active ? "Ativa" : "Inativa"}
@@ -490,7 +490,7 @@ export const AcademyAdminContentPage = () => {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
                   <Button variant="ghost" size="sm" onClick={() => openEditTrack(track)}>
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -535,9 +535,9 @@ export const AcademyAdminContentPage = () => {
                   {(trackLessons.get(track.id) || []).map((lesson, index) => (
                     <div
                       key={lesson.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50"
+                      className="flex flex-wrap items-center gap-3 p-3 rounded-lg border hover:bg-muted/50"
                     >
-                      <div className="flex flex-col gap-0.5">
+                      <div className="flex shrink-0 flex-col gap-0.5">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -557,28 +557,30 @@ export const AcademyAdminContentPage = () => {
                           <ArrowDown className="h-3 w-3" />
                         </Button>
                       </div>
-                      <div className="p-2 bg-primary/10 rounded-lg">
+                      <div className="shrink-0 p-2 bg-primary/10 rounded-lg">
                         <Video className="h-4 w-4 text-primary" />
                       </div>
-                      <div className="flex-1">
-                        <p className="font-medium">{lesson.title}</p>
+                      <div className="min-w-[10rem] flex-1">
+                        <p className="font-medium break-words">{lesson.title}</p>
                         <p className="text-xs text-muted-foreground">
                           {lesson.video_provider} • {lesson.points_on_complete} pontos
                         </p>
                       </div>
-                      <Badge variant={lesson.is_active ? "default" : "secondary"}>
-                        {lesson.is_active ? "Ativa" : "Inativa"}
-                      </Badge>
-                      <Button variant="ghost" size="sm" onClick={() => openEditLesson(lesson, track.id)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setDeleteConfirm({ type: "lesson", id: lesson.id, name: lesson.title })}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
+                      <div className="ml-auto flex shrink-0 items-center gap-2">
+                        <Badge variant={lesson.is_active ? "default" : "secondary"}>
+                          {lesson.is_active ? "Ativa" : "Inativa"}
+                        </Badge>
+                        <Button variant="ghost" size="sm" onClick={() => openEditLesson(lesson, track.id)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeleteConfirm({ type: "lesson", id: lesson.id, name: lesson.title })}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
 
@@ -610,7 +612,7 @@ export const AcademyAdminContentPage = () => {
 
       {/* Track Dialog */}
       <Dialog open={trackDialogOpen} onOpenChange={setTrackDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingTrack ? "Editar Trilha" : "Nova Trilha"}
@@ -681,7 +683,7 @@ export const AcademyAdminContentPage = () => {
                 </label>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Categoria</Label>
                 <Select
@@ -766,7 +768,7 @@ export const AcademyAdminContentPage = () => {
 
       {/* Lesson Dialog */}
       <Dialog open={lessonDialogOpen} onOpenChange={setLessonDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingLesson ? "Editar Aula" : "Nova Aula"}
@@ -815,7 +817,7 @@ export const AcademyAdminContentPage = () => {
                 placeholder="https://..."
               />
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <Label>Pontos ao concluir</Label>
                 <Input
@@ -856,7 +858,7 @@ export const AcademyAdminContentPage = () => {
                 placeholder={"## Gancho\n...\n\n## Demonstração\n1. ...\n\n## Entregável\n..."}
               />
             </div>
-            <div className="grid grid-cols-[1fr_120px] gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px] gap-3">
               <div>
                 <Label>Entregável pedido ao aluno</Label>
                 <Textarea

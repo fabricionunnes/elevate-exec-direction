@@ -102,17 +102,17 @@ export const AcademyAdminLabPage = () => {
   };
 
   if (!userContext.isAdmin) {
-    return <div className="p-6"><Card className="p-12 text-center"><h3 className="font-semibold">Acesso negado</h3></Card></div>;
+    return <div className="p-4 md:p-6"><Card className="p-12 text-center"><h3 className="font-semibold">Acesso negado</h3></Card></div>;
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="p-4 md:p-6 space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2"><FlaskConical className="h-7 w-7 text-primary" /> Laboratório de Agentes</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2"><FlaskConical className="h-7 w-7 text-primary" /> Laboratório de Agentes</h1>
           <p className="text-muted-foreground mt-1">Prompts, agentes, fluxos N8N e templates que o aluno copia.</p>
         </div>
-        <Button onClick={openNew}><Plus className="h-4 w-4 mr-2" /> Novo item</Button>
+        <Button className="w-full sm:w-auto" onClick={openNew}><Plus className="h-4 w-4 mr-2" /> Novo item</Button>
       </div>
 
       <Card>
@@ -123,10 +123,10 @@ export const AcademyAdminLabPage = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>#</TableHead>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Fase</TableHead>
+                  <TableHead className="hidden md:table-cell">#</TableHead>
+                  <TableHead className="min-w-[160px]">Item</TableHead>
+                  <TableHead className="hidden sm:table-cell">Categoria</TableHead>
+                  <TableHead className="hidden md:table-cell">Fase</TableHead>
                   <TableHead>Ativo</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -134,17 +134,19 @@ export const AcademyAdminLabPage = () => {
               <TableBody>
                 {items.map((i) => (
                   <TableRow key={i.id}>
-                    <TableCell className="text-muted-foreground">{i.sort_order}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell text-muted-foreground">{i.sort_order}</TableCell>
+                    <TableCell className="min-w-[160px]">
                       <div className="font-medium">{i.title}</div>
-                      <div className="text-xs text-muted-foreground">{i.slug}{i.tools?.length ? ` · ${i.tools.join(", ")}` : ""}</div>
+                      <div className="text-xs text-muted-foreground truncate max-w-[200px] md:max-w-none">{i.slug}{i.tools?.length ? ` · ${i.tools.join(", ")}` : ""}</div>
                     </TableCell>
-                    <TableCell><Badge variant="outline">{LAB_CATEGORY_LABEL[i.category]}</Badge></TableCell>
-                    <TableCell className="text-sm">{i.crescer_phase ? CRESCER_PHASE_LABEL[i.crescer_phase] || i.crescer_phase : "—"}</TableCell>
+                    <TableCell className="hidden sm:table-cell"><Badge variant="outline">{LAB_CATEGORY_LABEL[i.category]}</Badge></TableCell>
+                    <TableCell className="hidden md:table-cell text-sm">{i.crescer_phase ? CRESCER_PHASE_LABEL[i.crescer_phase] || i.crescer_phase : "—"}</TableCell>
                     <TableCell><Badge variant={i.is_active ? "default" : "secondary"}>{i.is_active ? "Sim" : "Não"}</Badge></TableCell>
                     <TableCell className="text-right">
-                      <Button size="icon" variant="ghost" onClick={() => openEdit(i)}><Pencil className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => remove(i)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <div className="flex flex-wrap justify-end gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => openEdit(i)}><Pencil className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => remove(i)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -155,7 +157,7 @@ export const AcademyAdminLabPage = () => {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Editar item" : "Novo item"}</DialogTitle></DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">

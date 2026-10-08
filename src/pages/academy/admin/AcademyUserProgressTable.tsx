@@ -242,8 +242,8 @@ export const AcademyUserProgressTable = ({
             <UserCheck className="h-5 w-5 text-primary" />
             {title}
           </CardTitle>
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative w-52 max-w-full">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+            <div className="relative w-full sm:w-52 max-w-full">
               <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
@@ -254,7 +254,7 @@ export const AcademyUserProgressTable = ({
             </div>
             {showCompanyCol && (
               <Select value={companyFilter} onValueChange={setCompanyFilter}>
-                <SelectTrigger className="h-9 w-44">
+                <SelectTrigger className="h-9 w-full sm:w-44">
                   <SelectValue placeholder="Empresa" />
                 </SelectTrigger>
                 <SelectContent>
@@ -266,7 +266,7 @@ export const AcademyUserProgressTable = ({
               </Select>
             )}
             <Select value={activityFilter} onValueChange={setActivityFilter}>
-              <SelectTrigger className="h-9 w-40">
+              <SelectTrigger className="h-9 w-full sm:w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -275,7 +275,7 @@ export const AcademyUserProgressTable = ({
                 <SelectItem value="never">Nunca acessou</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm" className="h-9" onClick={exportCsv} disabled={filtered.length === 0}>
+            <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto" onClick={exportCsv} disabled={filtered.length === 0}>
               <Download className="h-4 w-4 mr-1.5" /> Exportar CSV
             </Button>
           </div>
@@ -295,12 +295,12 @@ export const AcademyUserProgressTable = ({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-8" />
-                <TableHead>Pessoa</TableHead>
+                <TableHead className="min-w-[160px]">Pessoa</TableHead>
                 {showCompanyCol && <TableHead className="hidden lg:table-cell">Empresa</TableHead>}
                 <TableHead>Aulas concluídas</TableHead>
                 <TableHead className="hidden md:table-cell">Tempo</TableHead>
                 <TableHead className="hidden md:table-cell">Certificados</TableHead>
-                <TableHead>Última atividade</TableHead>
+                <TableHead className="hidden sm:table-cell">Última atividade</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -322,9 +322,9 @@ export const AcademyUserProgressTable = ({
                           <ChevronRight className="h-4 w-4 text-muted-foreground" />
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="min-w-[160px]">
                         <p className="font-medium">{u.name}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground truncate max-w-[200px] md:max-w-none">
                           {SOURCE_LABEL[u.source] || u.source}
                           {u.email ? ` · ${u.email}` : ""}
                         </p>
@@ -340,12 +340,12 @@ export const AcademyUserProgressTable = ({
                             Nunca acessou
                           </Badge>
                         ) : (
-                          <div className="flex items-center gap-2 min-w-[140px]">
-                            <Progress value={pct} className="h-2 w-20" />
+                          <div className="flex items-center gap-2 min-w-[120px] md:min-w-[140px]">
+                            <Progress value={pct} className="h-2 w-16 md:w-20" />
                             <span className="text-sm whitespace-nowrap">
                               {u.completed}/{totalLessons}
                               {u.inProgress > 0 && (
-                                <span className="text-xs text-muted-foreground"> · {u.inProgress} em andamento</span>
+                                <span className="hidden sm:inline text-xs text-muted-foreground"> · {u.inProgress} em andamento</span>
                               )}
                             </span>
                           </div>
@@ -363,12 +363,12 @@ export const AcademyUserProgressTable = ({
                           {u.certificates}
                         </span>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{fmtDate(u.lastActivity)}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{fmtDate(u.lastActivity)}</TableCell>
                     </TableRow>
                     {isOpen && (
                       <TableRow key={`${u.key}-detail`} className="hover:bg-transparent">
                         <TableCell colSpan={showCompanyCol ? 7 : 6} className="bg-muted/30 p-0">
-                          <div className="px-6 py-3 space-y-1.5">
+                          <div className="px-3 md:px-6 py-3 space-y-1.5">
                             {u.lessons
                               .slice()
                               .sort((a, b) =>
@@ -383,7 +383,7 @@ export const AcademyUserProgressTable = ({
                                     <p className="truncate font-medium">{l.lesson_title}</p>
                                     <p className="text-xs text-muted-foreground">{l.track_name}</p>
                                   </div>
-                                  <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
+                                  <div className="flex items-center gap-2 md:gap-3 shrink-0 text-xs text-muted-foreground">
                                     <span>{fmtTime(l.time_spent_seconds || 0)}</span>
                                     <span className="hidden sm:inline">
                                       {l.status === "completed"

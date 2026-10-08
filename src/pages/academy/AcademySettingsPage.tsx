@@ -31,7 +31,7 @@ export const AcademySettingsPage = () => {
 
   if (!userContext.isAdmin) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <Card>
           <CardContent className="p-8 text-center">
             <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -53,9 +53,9 @@ export const AcademySettingsPage = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Settings className="h-6 w-6" />
@@ -65,7 +65,7 @@ export const AcademySettingsPage = () => {
             Gerencie as configurações gerais da plataforma
           </p>
         </div>
-        <Button onClick={handleSave} disabled={saving}>
+        <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
           <Save className="h-4 w-4 mr-2" />
           {saving ? "Salvando..." : "Salvar Alterações"}
         </Button>
@@ -113,42 +113,46 @@ export const AcademySettingsPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
                 <Label>Notificações por E-mail</Label>
                 <p className="text-sm text-muted-foreground">Enviar e-mails sobre atividades</p>
               </div>
               <Switch
+                className="shrink-0"
                 checked={settings.enableEmailNotifications}
                 onCheckedChange={(checked) => setSettings(s => ({ ...s, enableEmailNotifications: checked }))}
               />
             </div>
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
                 <Label>Progresso de Aulas</Label>
                 <p className="text-sm text-muted-foreground">Notificar ao completar aulas</p>
               </div>
               <Switch
+                className="shrink-0"
                 checked={settings.enableProgressNotifications}
                 onCheckedChange={(checked) => setSettings(s => ({ ...s, enableProgressNotifications: checked }))}
               />
             </div>
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
                 <Label>Conquista de Badges</Label>
                 <p className="text-sm text-muted-foreground">Notificar novos badges</p>
               </div>
               <Switch
+                className="shrink-0"
                 checked={settings.enableBadgeNotifications}
                 onCheckedChange={(checked) => setSettings(s => ({ ...s, enableBadgeNotifications: checked }))}
               />
             </div>
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
                 <Label>Mudanças no Ranking</Label>
                 <p className="text-sm text-muted-foreground">Notificar alterações de posição</p>
               </div>
               <Switch
+                className="shrink-0"
                 checked={settings.enableRankingNotifications}
                 onCheckedChange={(checked) => setSettings(s => ({ ...s, enableRankingNotifications: checked }))}
               />
@@ -177,22 +181,24 @@ export const AcademySettingsPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
                 <Label>Verificação de E-mail</Label>
                 <p className="text-sm text-muted-foreground">Exigir verificação de e-mail</p>
               </div>
               <Switch
+                className="shrink-0"
                 checked={settings.requireEmailVerification}
                 onCheckedChange={(checked) => setSettings(s => ({ ...s, requireEmailVerification: checked }))}
               />
             </div>
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
                 <Label>Auto-inscrição</Label>
                 <p className="text-sm text-muted-foreground">Permitir usuários se inscreverem em trilhas</p>
               </div>
               <Switch
+                className="shrink-0"
                 checked={settings.allowSelfEnrollment}
                 onCheckedChange={(checked) => setSettings(s => ({ ...s, allowSelfEnrollment: checked }))}
               />

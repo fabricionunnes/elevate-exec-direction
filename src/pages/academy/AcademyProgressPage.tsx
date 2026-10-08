@@ -260,7 +260,7 @@ export const AcademyProgressPage = () => {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
@@ -269,9 +269,9 @@ export const AcademyProgressPage = () => {
   const nextLevel = getNextLevel();
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Meu Progresso</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Meu Progresso</h1>
         <p className="text-muted-foreground mt-1">
           Acompanhe sua evolução na UNV Academy
         </p>
@@ -281,13 +281,13 @@ export const AcademyProgressPage = () => {
       <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="p-4 bg-primary rounded-full">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="p-4 bg-primary rounded-full shrink-0">
                 <Trophy className="h-8 w-8 text-primary-foreground" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm text-muted-foreground">Seu nível</p>
-                <p className="text-2xl font-bold">
+                <p className="text-xl sm:text-2xl font-bold break-words">
                   Nível {userLevel?.current_level || 1}: {userLevel?.level_name || "Iniciante"}
                 </p>
                 <p className="text-primary font-semibold">
@@ -297,7 +297,7 @@ export const AcademyProgressPage = () => {
             </div>
 
             {nextLevel && (
-              <div className="flex-1 max-w-md">
+              <div className="flex-1 w-full max-w-md">
                 <div className="flex items-center justify-between text-sm mb-2">
                   <span className="text-muted-foreground">Próximo nível</span>
                   <span className="font-medium">
@@ -375,7 +375,7 @@ export const AcademyProgressPage = () => {
 
       {/* Tabs */}
       <Tabs defaultValue="badges" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex flex-wrap h-auto w-full sm:w-auto">
           <TabsTrigger value="badges">Conquistas</TabsTrigger>
           <TabsTrigger value="certificates">Certificados</TabsTrigger>
           <TabsTrigger value="tracks">Trilhas</TabsTrigger>
@@ -475,25 +475,25 @@ export const AcademyProgressPage = () => {
               {trackProgress.map((track) => (
                 <Card key={track.id}>
                   <CardContent className="pt-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-lg">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2 bg-primary/10 rounded-lg shrink-0">
                           <BookOpen className="h-5 w-5 text-primary" />
                         </div>
-                        <div>
-                          <p className="font-semibold">{track.name}</p>
+                        <div className="min-w-0">
+                          <p className="font-semibold break-words">{track.name}</p>
                           <p className="text-sm text-muted-foreground">
                             {track.completed_lessons} de {track.total_lessons} aulas
                           </p>
                         </div>
                       </div>
                       {track.is_completed ? (
-                        <Badge className="bg-green-100 text-green-800">
+                        <Badge className="bg-green-100 text-green-800 shrink-0">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Concluída
                         </Badge>
                       ) : (
-                        <Button size="sm" variant="outline" asChild>
+                        <Button size="sm" variant="outline" asChild className="shrink-0">
                           <Link to={`/academy/track/${track.id}`}>Continuar</Link>
                         </Button>
                       )}
@@ -528,24 +528,24 @@ export const AcademyProgressPage = () => {
                   {pointsHistory.map((entry) => (
                     <div
                       key={entry.id}
-                      className="flex items-center justify-between py-2 border-b last:border-0"
+                      className="flex items-center justify-between gap-3 py-2 border-b last:border-0"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-green-100 rounded-lg">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2 bg-green-100 rounded-lg shrink-0">
                           <TrendingUp className="h-4 w-4 text-green-600" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <p className="font-medium">
                             {getActionTypeLabel(entry.action_type)}
                           </p>
                           {entry.description && (
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-muted-foreground break-words">
                               {entry.description}
                             </p>
                           )}
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <p className="font-semibold text-green-600">
                           +{entry.points}
                         </p>
