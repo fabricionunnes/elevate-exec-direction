@@ -1,0 +1,807 @@
+-- =====================================================================
+-- YasFood — schema completo (loja: Yas Delícias)
+-- Pedidos (tipo iFood), agenda de produção com capacidade, entrega com
+-- rastreio, estoque com receita, financeiro e login da administradora.
+-- =====================================================================
+
+create extension if not exists pgcrypto;
+
+-- ---------------------------------------------------------------------
+-- Administradores (Yasmim). Qualquer usuário do auth listado aqui é admin.
+-- ---------------------------------------------------------------------
+create table if not exists public.admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  name text,
+  created_at timestamptz not null default now()
+);
+
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from public.admins where user_id = auth.uid());
+$$;
+
+-- ---------------------------------------------------------------------
+-- Configurações (linha única)
+-- ---------------------------------------------------------------------
+create table if not exists public.settings (
+  id int primary key default 1 check (id = 1),
+  business_name text not null default 'Yas Delícias',
+  whatsapp text not null default '5531992372507',
+  pix_key text not null default '',
+  pix_name text not null default 'Yasmim',
+  min_lead_days int not null default 1,
+  pickup_enabled boolean not null default true,
+  pickup_address text not null default '',
+  default_daily_capacity int not null default 10,
+  is_open boolean not null default true,
+  closed_message text not null default 'Estamos sem receber pedidos no momento. Volte em breve!',
+  logo_url text not null default '',
+  instagram text not null default '',
+  site_url text not null default '',                 -- ex.: https://deliciasdayas.com.br (monta o link de rastreio/avaliação)
+  review_auto_enabled boolean not null default true,  -- pedir avaliação automaticamente após a entrega
+  review_delay_hours int not null default 3,          -- quantas horas depois de entregue
+  review_webhook_url text not null default '',        -- N8N / WhatsApp API: recebe {phone,name,code,link,message}
+  review_message text not null default 'Oi {nome}! Aqui é a Yasmim, da Yas Delícias. Espero que tenha gostado do bolo! Pode me contar o que achou? É rapidinho, de 1 a 5 estrelas: {link}',
+  updated_at timestamptz not null default now()
+);
+insert into public.settings (id) values (1) on conflict (id) do nothing;
+
+-- ---------------------------------------------------------------------
+-- Cardápio
+-- ---------------------------------------------------------------------
+create table if not exists public.products (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  description text not null default '',
+  price numeric(10,2) not null check (price >= 0),
+  weight_g int,
+  image_url text,
+  category text not null default 'Bolos',
+  active boolean not null default true,
+  sort_order int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------
+-- Zonas de entrega e frete
+-- ---------------------------------------------------------------------
+create table if not exists public.delivery_zones (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  fee numeric(10,2) not null default 0 check (fee >= 0),
+  active boolean not null default true,
+  sort_order int not null default 0,
+  notes text not null default ''
+);
+
+-- ---------------------------------------------------------------------
+-- Agenda de produção (capacidade por dia)
+-- ---------------------------------------------------------------------
+create table if not exists public.capacity_days (
+  day date primary key,
+  max_units int not null default 10 check (max_units >= 0),
+  is_open boolean not null default true,
+  notes text not null default ''
+);
+
+-- ---------------------------------------------------------------------
+-- Clientes
+-- ---------------------------------------------------------------------
+create table if not exists public.customers (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  phone text not null unique,
+  zone_id uuid references public.delivery_zones(id) on delete set null,
+  address text not null default '',
+  reference text not null default '',
+  notes text not null default '',
+  kind text not null default 'lead' check (kind in ('lead','cliente')),
+  source text not null default 'cardapio',   -- cardapio, whatsapp, indicacao, grupo, instagram, outro
+  tags text[] not null default '{}',
+  created_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------
+-- Pedidos
+-- ---------------------------------------------------------------------
+create sequence if not exists public.orders_code_seq;
+
+create table if not exists public.orders (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique default ('DY-' || lpad(nextval('public.orders_code_seq')::text, 4, '0')),
+  tracking_token uuid not null unique default gen_random_uuid(),
+  customer_id uuid references public.customers(id) on delete set null,
+  customer_name text not null,
+  customer_phone text not null,
+  fulfillment text not null check (fulfillment in ('entrega','retirada')),
+  zone_id uuid references public.delivery_zones(id) on delete set null,
+  zone_name text,
+  address text not null default '',
+  reference text not null default '',
+  delivery_fee numeric(10,2) not null default 0,
+  scheduled_date date not null,
+  items_total numeric(10,2) not null default 0,
+  total numeric(10,2) not null default 0,
+  payment_method text not null check (payment_method in ('pix','dinheiro','cartao')),
+  change_for numeric(10,2),
+  payment_status text not null default 'pendente' check (payment_status in ('pendente','pago','estornado')),
+  status text not null default 'recebido' check (status in ('recebido','confirmado','em_producao','pronto','saiu_entrega','entregue','cancelado')),
+  notes text not null default '',
+  cancel_reason text,
+  stock_consumed boolean not null default false,
+  delivered_at timestamptz,
+  review_request_due_at timestamptz,   -- quando pedir avaliação
+  review_request_sent_at timestamptz,  -- quando foi enviado (webhook ou manual)
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists orders_scheduled_date_idx on public.orders (scheduled_date);
+create index if not exists orders_status_idx on public.orders (status);
+create index if not exists orders_customer_idx on public.orders (customer_id);
+
+create table if not exists public.order_items (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references public.orders(id) on delete cascade,
+  product_id uuid references public.products(id) on delete set null,
+  product_name text not null,
+  unit_price numeric(10,2) not null,
+  qty int not null check (qty > 0),
+  line_total numeric(10,2) not null
+);
+create index if not exists order_items_order_idx on public.order_items (order_id);
+
+-- Linha do tempo do pedido (rastreio estilo Mercado Livre)
+create table if not exists public.order_events (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references public.orders(id) on delete cascade,
+  status text not null,
+  note text not null default '',
+  created_at timestamptz not null default now()
+);
+create index if not exists order_events_order_idx on public.order_events (order_id, created_at);
+
+-- ---------------------------------------------------------------------
+-- Estoque: insumos, receita por produto, movimentações
+-- ---------------------------------------------------------------------
+create table if not exists public.ingredients (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  unit text not null default 'g' check (unit in ('g','kg','ml','l','un')),
+  qty_on_hand numeric(12,3) not null default 0,
+  min_qty numeric(12,3) not null default 0,
+  cost_per_unit numeric(12,4) not null default 0,
+  supplier text not null default '',
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.product_ingredients (
+  product_id uuid not null references public.products(id) on delete cascade,
+  ingredient_id uuid not null references public.ingredients(id) on delete cascade,
+  qty numeric(12,3) not null check (qty > 0),
+  primary key (product_id, ingredient_id)
+);
+
+create table if not exists public.stock_movements (
+  id uuid primary key default gen_random_uuid(),
+  ingredient_id uuid not null references public.ingredients(id) on delete cascade,
+  type text not null check (type in ('entrada','saida','ajuste','producao')),
+  qty numeric(12,3) not null,            -- positiva entra, negativa sai
+  unit_cost numeric(12,4),
+  note text not null default '',
+  order_id uuid references public.orders(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists stock_movements_ing_idx on public.stock_movements (ingredient_id, created_at);
+
+-- Custo de produção por produto (soma da receita)
+create or replace view public.product_costs as
+select
+  p.id as product_id,
+  p.name,
+  p.price,
+  coalesce(sum(pi.qty * i.cost_per_unit), 0)::numeric(10,2) as cost,
+  (p.price - coalesce(sum(pi.qty * i.cost_per_unit), 0))::numeric(10,2) as margin,
+  case when p.price > 0 then round((p.price - coalesce(sum(pi.qty * i.cost_per_unit), 0)) / p.price * 100, 1) else 0 end as margin_pct
+from public.products p
+left join public.product_ingredients pi on pi.product_id = p.id
+left join public.ingredients i on i.id = pi.ingredient_id
+group by p.id, p.name, p.price;
+
+-- ---------------------------------------------------------------------
+-- Avaliações (feedback do cliente após a entrega)
+-- ---------------------------------------------------------------------
+create table if not exists public.reviews (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null unique references public.orders(id) on delete cascade,
+  customer_id uuid references public.customers(id) on delete set null,
+  customer_name text not null,
+  rating int not null check (rating between 1 and 5),
+  comment text not null default '',
+  approved boolean not null default true,     -- Yasmim pode ocultar
+  reply text not null default '',
+  created_at timestamptz not null default now()
+);
+
+-- Visão pública (só aprovadas, sem dados sensíveis)
+create or replace view public.public_reviews as
+select r.id, split_part(r.customer_name, ' ', 1) as first_name, r.rating, r.comment, r.reply, r.created_at
+from public.reviews r
+where r.approved;
+
+-- Estatísticas de cliente (quantas vezes comprou, quanto gastou, última compra)
+create or replace view public.customer_stats as
+select
+  c.id as customer_id,
+  count(o.id) filter (where o.status <> 'cancelado')::int as orders_count,
+  coalesce(sum(o.total) filter (where o.status <> 'cancelado'), 0)::numeric(10,2) as total_spent,
+  coalesce(avg(o.total) filter (where o.status <> 'cancelado'), 0)::numeric(10,2) as avg_ticket,
+  min(o.created_at) as first_order_at,
+  max(o.created_at) as last_order_at,
+  (current_date - max(o.scheduled_date))::int as days_since_last
+from public.customers c
+left join public.orders o on o.customer_id = c.id
+group by c.id;
+
+-- ---------------------------------------------------------------------
+-- Financeiro
+-- ---------------------------------------------------------------------
+create table if not exists public.transactions (
+  id uuid primary key default gen_random_uuid(),
+  type text not null check (type in ('receita','despesa')),
+  category text not null default 'Outros',
+  amount numeric(10,2) not null check (amount >= 0),
+  occurred_on date not null default current_date,
+  description text not null default '',
+  payment_method text,
+  order_id uuid references public.orders(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists transactions_date_idx on public.transactions (occurred_on);
+create unique index if not exists transactions_order_receita_uq on public.transactions (order_id) where order_id is not null and type = 'receita';
+
+-- ---------------------------------------------------------------------
+-- Helpers
+-- ---------------------------------------------------------------------
+create or replace function public.normalize_phone(p text)
+returns text language sql immutable as $$
+  select regexp_replace(coalesce(p, ''), '\D', '', 'g');
+$$;
+
+create or replace function public.touch_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end $$;
+
+drop trigger if exists orders_touch on public.orders;
+create trigger orders_touch before update on public.orders
+for each row execute function public.touch_updated_at();
+
+-- Aplica movimentação no saldo do insumo
+create or replace function public.apply_stock_movement()
+returns trigger language plpgsql as $$
+begin
+  update public.ingredients set qty_on_hand = qty_on_hand + new.qty where id = new.ingredient_id;
+  if new.type = 'entrada' and new.unit_cost is not null and new.unit_cost > 0 then
+    update public.ingredients set cost_per_unit = new.unit_cost where id = new.ingredient_id;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists stock_movements_apply on public.stock_movements;
+create trigger stock_movements_apply after insert on public.stock_movements
+for each row execute function public.apply_stock_movement();
+
+-- ---------------------------------------------------------------------
+-- Disponibilidade pública (cliente vê vagas por dia)
+-- ---------------------------------------------------------------------
+create or replace function public.availability(p_from date, p_to date)
+returns table (day date, max_units int, is_open boolean, booked_units int, remaining int, bookable boolean)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with s as (select min_lead_days, is_open as store_open from public.settings where id = 1),
+  booked as (
+    select o.scheduled_date, coalesce(sum(oi.qty), 0)::int as units
+    from public.orders o
+    join public.order_items oi on oi.order_id = o.id
+    where o.status <> 'cancelado' and o.scheduled_date between p_from and p_to
+    group by o.scheduled_date
+  )
+  select
+    c.day,
+    c.max_units,
+    c.is_open,
+    coalesce(b.units, 0) as booked_units,
+    greatest(c.max_units - coalesce(b.units, 0), 0) as remaining,
+    (c.is_open and s.store_open and c.day >= current_date + s.min_lead_days and (c.max_units - coalesce(b.units, 0)) > 0) as bookable
+  from public.capacity_days c
+  cross join s
+  left join booked b on b.scheduled_date = c.day
+  where c.day between p_from and p_to
+  order by c.day;
+$$;
+
+-- ---------------------------------------------------------------------
+-- Criar pedido (chamado pelo cliente, sem login). Preços, frete e
+-- capacidade são validados no banco, nunca confiados no front.
+-- payload: { name, phone, fulfillment, zone_id, address, reference,
+--            scheduled_date, payment_method, change_for, notes,
+--            items: [{product_id, qty}] }
+-- ---------------------------------------------------------------------
+create or replace function public.place_order(p jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_settings public.settings%rowtype;
+  v_cap public.capacity_days%rowtype;
+  v_phone text;
+  v_name text;
+  v_fulfillment text;
+  v_zone public.delivery_zones%rowtype;
+  v_fee numeric(10,2) := 0;
+  v_date date;
+  v_items jsonb;
+  v_item jsonb;
+  v_product public.products%rowtype;
+  v_qty int;
+  v_total_qty int := 0;
+  v_items_total numeric(10,2) := 0;
+  v_booked int;
+  v_customer_id uuid;
+  v_order_id uuid;
+  v_code text;
+  v_token uuid;
+  v_payment text;
+begin
+  select * into v_settings from public.settings where id = 1;
+  if not v_settings.is_open then
+    raise exception 'LOJA_FECHADA: %', v_settings.closed_message;
+  end if;
+
+  v_name := trim(coalesce(p->>'name', ''));
+  v_phone := public.normalize_phone(p->>'phone');
+  if length(v_name) < 2 then raise exception 'DADOS: informe seu nome'; end if;
+  if length(v_phone) < 10 then raise exception 'DADOS: informe um telefone válido com DDD'; end if;
+
+  v_fulfillment := p->>'fulfillment';
+  if v_fulfillment not in ('entrega','retirada') then raise exception 'DADOS: escolha entrega ou retirada'; end if;
+  if v_fulfillment = 'retirada' and not v_settings.pickup_enabled then raise exception 'DADOS: retirada indisponível no momento'; end if;
+
+  if v_fulfillment = 'entrega' then
+    select * into v_zone from public.delivery_zones where id = (p->>'zone_id')::uuid and active;
+    if not found then raise exception 'ENTREGA: não entregamos nesse endereço'; end if;
+    v_fee := v_zone.fee;
+    if length(trim(coalesce(p->>'address',''))) < 3 then raise exception 'DADOS: informe o endereço (bloco/apto)'; end if;
+  end if;
+
+  v_payment := p->>'payment_method';
+  if v_payment not in ('pix','dinheiro','cartao') then raise exception 'DADOS: escolha a forma de pagamento'; end if;
+
+  v_date := (p->>'scheduled_date')::date;
+  if v_date is null then raise exception 'DATA: escolha a data da encomenda'; end if;
+  if v_date < current_date + v_settings.min_lead_days then
+    raise exception 'DATA: pedidos precisam de pelo menos % dia(s) de antecedência', v_settings.min_lead_days;
+  end if;
+
+  -- trava a linha do dia para evitar overbooking em pedidos simultâneos
+  select * into v_cap from public.capacity_days where day = v_date for update;
+  if not found or not v_cap.is_open then raise exception 'DATA: não estamos produzindo nesse dia'; end if;
+
+  v_items := p->'items';
+  if v_items is null or jsonb_array_length(v_items) = 0 then raise exception 'ITENS: seu carrinho está vazio'; end if;
+
+  for v_item in select * from jsonb_array_elements(v_items) loop
+    v_qty := (v_item->>'qty')::int;
+    if v_qty is null or v_qty <= 0 then raise exception 'ITENS: quantidade inválida'; end if;
+    select * into v_product from public.products where id = (v_item->>'product_id')::uuid and active;
+    if not found then raise exception 'ITENS: produto indisponível'; end if;
+    v_total_qty := v_total_qty + v_qty;
+    v_items_total := v_items_total + v_product.price * v_qty;
+  end loop;
+
+  select coalesce(sum(oi.qty), 0) into v_booked
+  from public.orders o join public.order_items oi on oi.order_id = o.id
+  where o.scheduled_date = v_date and o.status <> 'cancelado';
+
+  if v_booked + v_total_qty > v_cap.max_units then
+    raise exception 'CAPACIDADE: só temos % unidade(s) disponíveis para esse dia', greatest(v_cap.max_units - v_booked, 0);
+  end if;
+
+  -- cliente: cria ou atualiza pelo telefone
+  insert into public.customers (name, phone, zone_id, address, reference, kind)
+  values (v_name, v_phone, case when v_fulfillment = 'entrega' then v_zone.id else null end,
+          coalesce(p->>'address',''), coalesce(p->>'reference',''), 'cliente')
+  on conflict (phone) do update
+    set name = excluded.name,
+        kind = 'cliente',
+        zone_id = coalesce(excluded.zone_id, public.customers.zone_id),
+        address = case when excluded.address <> '' then excluded.address else public.customers.address end,
+        reference = case when excluded.reference <> '' then excluded.reference else public.customers.reference end
+  returning id into v_customer_id;
+
+  insert into public.orders (customer_id, customer_name, customer_phone, fulfillment, zone_id, zone_name, address, reference,
+                             delivery_fee, scheduled_date, items_total, total, payment_method, change_for, notes)
+  values (v_customer_id, v_name, v_phone, v_fulfillment,
+          case when v_fulfillment = 'entrega' then v_zone.id else null end,
+          case when v_fulfillment = 'entrega' then v_zone.name else null end,
+          coalesce(p->>'address',''), coalesce(p->>'reference',''),
+          v_fee, v_date, v_items_total, v_items_total + v_fee, v_payment,
+          nullif(p->>'change_for','')::numeric, coalesce(p->>'notes',''))
+  returning id, code, tracking_token into v_order_id, v_code, v_token;
+
+  for v_item in select * from jsonb_array_elements(v_items) loop
+    select * into v_product from public.products where id = (v_item->>'product_id')::uuid;
+    insert into public.order_items (order_id, product_id, product_name, unit_price, qty, line_total)
+    values (v_order_id, v_product.id, v_product.name, v_product.price, (v_item->>'qty')::int, v_product.price * (v_item->>'qty')::int);
+  end loop;
+
+  insert into public.order_events (order_id, status, note) values (v_order_id, 'recebido', 'Pedido recebido. Aguardando confirmação.');
+
+  return jsonb_build_object('order_id', v_order_id, 'code', v_code, 'tracking_token', v_token, 'total', v_items_total + v_fee);
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Rastreio público pelo token (o cliente recebe o link)
+-- ---------------------------------------------------------------------
+create or replace function public.get_order_by_token(p_token uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select jsonb_build_object(
+    'order', to_jsonb(o) - 'customer_id' - 'stock_consumed',
+    'items', (select coalesce(jsonb_agg(to_jsonb(oi) order by oi.product_name), '[]'::jsonb) from public.order_items oi where oi.order_id = o.id),
+    'events', (select coalesce(jsonb_agg(to_jsonb(e) order by e.created_at), '[]'::jsonb) from public.order_events e where e.order_id = o.id),
+    'review', (select jsonb_build_object('rating', r.rating, 'comment', r.comment, 'reply', r.reply) from public.reviews r where r.order_id = o.id),
+    'settings', (select jsonb_build_object('business_name', s.business_name, 'whatsapp', s.whatsapp, 'pix_key', s.pix_key, 'pix_name', s.pix_name, 'pickup_address', s.pickup_address) from public.settings s where s.id = 1)
+  )
+  from public.orders o
+  where o.tracking_token = p_token;
+$$;
+
+-- ---------------------------------------------------------------------
+-- Cliente avalia o pedido pelo token (só depois de entregue)
+-- ---------------------------------------------------------------------
+create or replace function public.submit_review(p_token uuid, p_rating int, p_comment text default '')
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_order public.orders%rowtype;
+  v_id uuid;
+begin
+  select * into v_order from public.orders where tracking_token = p_token;
+  if not found then raise exception 'pedido não encontrado'; end if;
+  if v_order.status <> 'entregue' then raise exception 'AVALIACAO: você pode avaliar depois de receber o pedido'; end if;
+  if p_rating < 1 or p_rating > 5 then raise exception 'AVALIACAO: nota de 1 a 5'; end if;
+  insert into public.reviews (order_id, customer_id, customer_name, rating, comment)
+  values (v_order.id, v_order.customer_id, v_order.customer_name, p_rating, left(coalesce(p_comment,''), 600))
+  on conflict (order_id) do update set rating = excluded.rating, comment = excluded.comment, created_at = now()
+  returning id into v_id;
+  return jsonb_build_object('id', v_id);
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Admin: mudar status (gera evento, baixa estoque ao entrar em produção)
+-- ---------------------------------------------------------------------
+create or replace function public.set_order_status(p_order_id uuid, p_status text, p_note text default '')
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_order public.orders%rowtype;
+  v_default_note text;
+  r record;
+begin
+  if not public.is_admin() then raise exception 'sem permissão'; end if;
+  select * into v_order from public.orders where id = p_order_id for update;
+  if not found then raise exception 'pedido não encontrado'; end if;
+  if p_status not in ('recebido','confirmado','em_producao','pronto','saiu_entrega','entregue','cancelado') then
+    raise exception 'status inválido';
+  end if;
+
+  v_default_note := case p_status
+    when 'confirmado' then 'Pedido confirmado. Entra na fila de produção.'
+    when 'em_producao' then 'Seu bolo está sendo preparado com carinho.'
+    when 'pronto' then 'Bolo pronto e embalado.'
+    when 'saiu_entrega' then 'Saiu para entrega. Fica de olho no interfone!'
+    when 'entregue' then case when v_order.fulfillment = 'retirada' then 'Retirado. Bom apetite!' else 'Entregue. Bom apetite!' end
+    when 'cancelado' then 'Pedido cancelado.'
+    else 'Pedido recebido.' end;
+
+  update public.orders
+    set status = p_status,
+        delivered_at = case when p_status = 'entregue' then now() else delivered_at end,
+        review_request_due_at = case
+          when p_status = 'entregue' and review_request_sent_at is null
+            then now() + make_interval(hours => (select review_delay_hours from public.settings where id = 1))
+          when p_status = 'cancelado' then null
+          else review_request_due_at end,
+        cancel_reason = case when p_status = 'cancelado' then nullif(p_note,'') else cancel_reason end
+  where id = p_order_id;
+
+  insert into public.order_events (order_id, status, note)
+  values (p_order_id, p_status, coalesce(nullif(p_note,''), v_default_note));
+
+  -- baixa de estoque uma única vez, quando entra em produção
+  if p_status = 'em_producao' and not v_order.stock_consumed then
+    for r in
+      select pi.ingredient_id, sum(pi.qty * oi.qty) as qty
+      from public.order_items oi
+      join public.product_ingredients pi on pi.product_id = oi.product_id
+      where oi.order_id = p_order_id
+      group by pi.ingredient_id
+    loop
+      insert into public.stock_movements (ingredient_id, type, qty, note, order_id)
+      values (r.ingredient_id, 'producao', -r.qty, 'Produção do pedido ' || v_order.code, p_order_id);
+    end loop;
+    update public.orders set stock_consumed = true where id = p_order_id;
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Admin: marcar pago / não pago (gera ou remove a receita no financeiro)
+-- ---------------------------------------------------------------------
+create or replace function public.set_order_paid(p_order_id uuid, p_paid boolean)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_order public.orders%rowtype;
+begin
+  if not public.is_admin() then raise exception 'sem permissão'; end if;
+  select * into v_order from public.orders where id = p_order_id;
+  if not found then raise exception 'pedido não encontrado'; end if;
+
+  if p_paid then
+    update public.orders set payment_status = 'pago' where id = p_order_id;
+    insert into public.transactions (type, category, amount, occurred_on, description, payment_method, order_id)
+    values ('receita', 'Vendas', v_order.total, current_date, 'Pedido ' || v_order.code || ' - ' || v_order.customer_name, v_order.payment_method, p_order_id)
+    on conflict do nothing;
+  else
+    update public.orders set payment_status = 'pendente' where id = p_order_id;
+    delete from public.transactions where order_id = p_order_id and type = 'receita';
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Admin: abrir agenda em lote (ex.: próximos 30 dias, seg a sáb, 10 un)
+-- ---------------------------------------------------------------------
+create or replace function public.open_capacity_range(p_from date, p_to date, p_max_units int, p_weekdays int[] default array[0,1,2,3,4,5,6], p_overwrite boolean default false)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  d date;
+  n int := 0;
+begin
+  if not public.is_admin() then raise exception 'sem permissão'; end if;
+  d := p_from;
+  while d <= p_to loop
+    if extract(dow from d)::int = any(p_weekdays) then
+      if p_overwrite then
+        insert into public.capacity_days (day, max_units, is_open) values (d, p_max_units, true)
+        on conflict (day) do update set max_units = excluded.max_units, is_open = true;
+      else
+        insert into public.capacity_days (day, max_units, is_open) values (d, p_max_units, true)
+        on conflict (day) do nothing;
+      end if;
+      n := n + 1;
+    end if;
+    d := d + 1;
+  end loop;
+  return n;
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Pedido de avaliação automático (X horas após "entregue")
+-- Lista o que está na hora e dispara pro webhook (N8N / WhatsApp API).
+-- Sem webhook configurado, o painel mostra a fila pra envio manual.
+-- ---------------------------------------------------------------------
+create or replace function public.build_review_link(p_token uuid)
+returns text language sql stable security definer set search_path = public as $$
+  select rtrim(coalesce((select site_url from public.settings where id = 1), ''), '/') || '/pedido/' || p_token::text || '#avaliar';
+$$;
+
+create or replace function public.pending_review_requests()
+returns table (order_id uuid, code text, customer_name text, customer_phone text, due_at timestamptz, link text, message text)
+language sql stable security definer set search_path = public as $$
+  select o.id, o.code, o.customer_name, o.customer_phone, o.review_request_due_at,
+         public.build_review_link(o.tracking_token),
+         replace(replace(replace(s.review_message, '{nome}', split_part(o.customer_name, ' ', 1)), '{link}', public.build_review_link(o.tracking_token)), '{codigo}', o.code)
+  from public.orders o cross join public.settings s
+  where s.id = 1
+    and o.status = 'entregue'
+    and o.review_request_sent_at is null
+    and o.review_request_due_at is not null
+    and o.review_request_due_at <= now()
+    and not exists (select 1 from public.reviews r where r.order_id = o.id)
+  order by o.review_request_due_at;
+$$;
+
+create or replace function public.mark_review_request_sent(p_order_id uuid)
+returns void language sql security definer set search_path = public as $$
+  update public.orders set review_request_sent_at = now() where id = p_order_id;
+$$;
+
+-- Executado pelo pg_cron a cada 10 min. Só dispara se automático estiver ligado e houver webhook.
+create or replace function public.dispatch_review_requests()
+returns int
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  s public.settings%rowtype;
+  r record;
+  n int := 0;
+begin
+  select * into s from public.settings where id = 1;
+  if not s.review_auto_enabled or s.review_webhook_url = '' then return 0; end if;
+  for r in select * from public.pending_review_requests() loop
+    perform net.http_post(
+      url := s.review_webhook_url,
+      headers := '{"Content-Type":"application/json"}'::jsonb,
+      body := jsonb_build_object(
+        'event', 'review_request',
+        'order_id', r.order_id, 'code', r.code,
+        'name', r.customer_name, 'phone', r.customer_phone,
+        'link', r.link, 'message', r.message
+      )
+    );
+    perform public.mark_review_request_sent(r.order_id);
+    n := n + 1;
+  end loop;
+  return n;
+end $$;
+
+do $$
+begin
+  create extension if not exists pg_net with schema extensions;
+exception when others then raise notice 'pg_net indisponível: %', sqlerrm; end $$;
+
+do $$
+begin
+  create extension if not exists pg_cron with schema extensions;
+  perform cron.unschedule('delicias_review_requests') where exists (select 1 from cron.job where jobname = 'delicias_review_requests');
+  perform cron.schedule('delicias_review_requests', '*/10 * * * *', 'select public.dispatch_review_requests();');
+exception when others then raise notice 'pg_cron indisponível (agende manualmente): %', sqlerrm; end $$;
+
+-- ---------------------------------------------------------------------
+-- RLS
+-- ---------------------------------------------------------------------
+alter table public.admins enable row level security;
+alter table public.settings enable row level security;
+alter table public.products enable row level security;
+alter table public.delivery_zones enable row level security;
+alter table public.capacity_days enable row level security;
+alter table public.customers enable row level security;
+alter table public.orders enable row level security;
+alter table public.order_items enable row level security;
+alter table public.order_events enable row level security;
+alter table public.ingredients enable row level security;
+alter table public.product_ingredients enable row level security;
+alter table public.stock_movements enable row level security;
+alter table public.transactions enable row level security;
+alter table public.reviews enable row level security;
+
+-- admins: cada um vê a si mesmo
+drop policy if exists admins_self on public.admins;
+create policy admins_self on public.admins for select using (user_id = auth.uid());
+
+-- público lê: configurações, produtos ativos, zonas ativas, agenda
+drop policy if exists settings_public_read on public.settings;
+create policy settings_public_read on public.settings for select using (true);
+drop policy if exists settings_admin_write on public.settings;
+create policy settings_admin_write on public.settings for update using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists products_public_read on public.products;
+create policy products_public_read on public.products for select using (active or public.is_admin());
+drop policy if exists products_admin_all on public.products;
+create policy products_admin_all on public.products for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists zones_public_read on public.delivery_zones;
+create policy zones_public_read on public.delivery_zones for select using (active or public.is_admin());
+drop policy if exists zones_admin_all on public.delivery_zones;
+create policy zones_admin_all on public.delivery_zones for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists capacity_public_read on public.capacity_days;
+create policy capacity_public_read on public.capacity_days for select using (true);
+drop policy if exists capacity_admin_all on public.capacity_days;
+create policy capacity_admin_all on public.capacity_days for all using (public.is_admin()) with check (public.is_admin());
+
+-- privado (só admin): clientes, pedidos, itens, eventos, estoque, financeiro
+drop policy if exists customers_admin_all on public.customers;
+create policy customers_admin_all on public.customers for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists orders_admin_all on public.orders;
+create policy orders_admin_all on public.orders for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists order_items_admin_all on public.order_items;
+create policy order_items_admin_all on public.order_items for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists order_events_admin_all on public.order_events;
+create policy order_events_admin_all on public.order_events for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists ingredients_admin_all on public.ingredients;
+create policy ingredients_admin_all on public.ingredients for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists product_ingredients_admin_all on public.product_ingredients;
+create policy product_ingredients_admin_all on public.product_ingredients for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists stock_movements_admin_all on public.stock_movements;
+create policy stock_movements_admin_all on public.stock_movements for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists reviews_admin_all on public.reviews;
+create policy reviews_admin_all on public.reviews for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists reviews_public_read on public.reviews;
+create policy reviews_public_read on public.reviews for select using (approved);
+drop policy if exists transactions_admin_all on public.transactions;
+create policy transactions_admin_all on public.transactions for all using (public.is_admin()) with check (public.is_admin());
+
+-- funções públicas
+grant execute on function public.availability(date, date) to anon, authenticated;
+grant execute on function public.place_order(jsonb) to anon, authenticated;
+grant execute on function public.get_order_by_token(uuid) to anon, authenticated;
+grant execute on function public.submit_review(uuid, int, text) to anon, authenticated;
+grant execute on function public.set_order_status(uuid, text, text) to authenticated;
+grant execute on function public.set_order_paid(uuid, boolean) to authenticated;
+grant execute on function public.open_capacity_range(date, date, int, int[], boolean) to authenticated;
+grant execute on function public.pending_review_requests() to authenticated;
+grant execute on function public.mark_review_request_sent(uuid) to authenticated;
+grant execute on function public.dispatch_review_requests() to authenticated;
+revoke execute on function public.pending_review_requests() from anon;
+revoke execute on function public.mark_review_request_sent(uuid) from anon;
+revoke execute on function public.dispatch_review_requests() from anon;
+revoke execute on function public.build_review_link(uuid) from anon;
+grant execute on function public.is_admin() to anon, authenticated;
+
+-- view de custos só pra admin (RLS das tabelas base já protege via security_invoker)
+alter view public.product_costs set (security_invoker = on);
+alter view public.customer_stats set (security_invoker = on);
+alter view public.public_reviews set (security_invoker = on);
+grant select on public.public_reviews to anon, authenticated;
+
+-- realtime pro painel da Yasmim
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    begin
+      alter publication supabase_realtime add table public.orders;
+    exception when duplicate_object then null; end;
+    begin
+      alter publication supabase_realtime add table public.order_events;
+    exception when duplicate_object then null; end;
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Storage: fotos dos produtos
+-- ---------------------------------------------------------------------
+insert into storage.buckets (id, name, public) values ('produtos', 'produtos', true)
+on conflict (id) do nothing;
+
+drop policy if exists produtos_public_read on storage.objects;
+create policy produtos_public_read on storage.objects for select using (bucket_id = 'produtos');
+drop policy if exists produtos_admin_write on storage.objects;
+create policy produtos_admin_write on storage.objects for insert with check (bucket_id = 'produtos' and public.is_admin());
+drop policy if exists produtos_admin_update on storage.objects;
+create policy produtos_admin_update on storage.objects for update using (bucket_id = 'produtos' and public.is_admin());
+drop policy if exists produtos_admin_delete on storage.objects;
+create policy produtos_admin_delete on storage.objects for delete using (bucket_id = 'produtos' and public.is_admin());
