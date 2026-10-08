@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Copy, MessageCircle, PartyPopper, RefreshCw } from "lucide-react";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { brl, dayLong, PAYMENT_LABEL, statusLabelFor, STATUS_COLOR } from "@/lib/format";
-import { waLink } from "@/lib/whatsapp";
+import { waLink, pedidoClienteMsg } from "@/lib/whatsapp";
 import type { TrackedOrder } from "@/lib/types";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Button, Badge, Spinner, Empty, Stars, Textarea, useToast } from "@/components/ui";
@@ -71,15 +71,31 @@ export default function Pedido() {
   };
 
   const waMsg = `Oi Yasmim! Sobre meu pedido ${order.code}...`;
+  const waPedido = pedidoClienteMsg({
+    code: order.code,
+    name: order.customer_name,
+    items: items.map((i) => ({ name: i.product_name, qty: i.qty })),
+    fulfillment: order.fulfillment,
+    zoneName: order.zone_name,
+    address: order.address,
+    reference: order.reference,
+    scheduledDate: order.scheduled_date,
+    paymentLabel: PAYMENT_LABEL[order.payment_method],
+    changeFor: order.change_for,
+    total: Number(order.total),
+    notes: order.notes,
+    token: order.tracking_token,
+  });
 
   return (
     <div className="space-y-5">
       {novo && (
         <div className="flex items-start gap-3 rounded-2xl bg-emerald-50 p-4 text-emerald-900">
           <PartyPopper className="mt-0.5 shrink-0" />
-          <div>
+          <div className="flex-1">
             <div className="font-bold">Pedido recebido!</div>
-            <div className="text-sm">Guarde este link pra acompanhar. A Yasmim confirma em breve.</div>
+            <div className="text-sm">Agora é só mandar o resumo pra Yasmim no WhatsApp. Se a aba não abriu sozinha, usa o botão abaixo.</div>
+            <a href={waLink(settings.whatsapp, waPedido)} target="_blank" rel="noreferrer" className="mt-3 block"><Button variant="wa" size="lg" className="w-full"><MessageCircle size={18} /> Enviar pedido no WhatsApp</Button></a>
           </div>
         </div>
       )}
@@ -142,7 +158,7 @@ export default function Pedido() {
       )}
 
       <div className="flex flex-col gap-2 sm:flex-row">
-        <a href={waLink(settings.whatsapp, waMsg)} target="_blank" rel="noreferrer" className="flex-1"><Button variant="wa" className="w-full"><MessageCircle size={18} /> Falar com a Yasmim</Button></a>
+        <a href={waLink(settings.whatsapp, novo ? waMsg : waPedido)} target="_blank" rel="noreferrer" className="flex-1"><Button variant="wa" className="w-full"><MessageCircle size={18} /> {novo ? "Falar com a Yasmim" : "Reenviar pedido no WhatsApp"}</Button></a>
         <Link to="/" className="flex-1"><Button variant="outline" className="w-full">Fazer outro pedido</Button></Link>
       </div>
     </div>

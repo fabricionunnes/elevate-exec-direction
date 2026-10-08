@@ -13,6 +13,40 @@ export function trackingUrl(token: string, siteUrl?: string) {
 
 const first = (name: string) => name.trim().split(" ")[0];
 
+/** Mensagem que o CLIENTE manda pra Yasmim logo após fechar o pedido no site. */
+export function pedidoClienteMsg(p: {
+  code: string;
+  name: string;
+  items: { name: string; qty: number }[];
+  fulfillment: "entrega" | "retirada";
+  zoneName?: string | null;
+  address?: string;
+  reference?: string;
+  scheduledDate: string;
+  paymentLabel: string;
+  changeFor?: number | null;
+  total: number;
+  notes?: string;
+  token: string;
+  siteUrl?: string;
+}) {
+  const lines = [
+    `Oi Yasmim! Acabei de fazer um pedido pelo site. Segue o resumo:`,
+    ``,
+    `*Pedido ${p.code}* - ${first(p.name)}`,
+    ...p.items.map((i) => `• ${i.qty}x ${i.name}`),
+    ``,
+    `${p.fulfillment === "entrega" ? "Entrega" : "Retirada"}: ${dayLong(p.scheduledDate)}`,
+    p.fulfillment === "entrega" ? `Endereço: ${[p.zoneName, p.address, p.reference].filter(Boolean).join(" · ")}` : null,
+    `Pagamento: ${p.paymentLabel}${p.changeFor ? ` (troco para ${brl(p.changeFor)})` : ""}`,
+    `Total: *${brl(p.total)}*`,
+    p.notes ? `Obs.: ${p.notes}` : null,
+    ``,
+    `Acompanhamento: ${trackingUrl(p.token, p.siteUrl)}`,
+  ];
+  return lines.filter((l) => l !== null).join("\n");
+}
+
 /** Mensagens que a Yasmim manda pro cliente a partir do painel. */
 export const msgs = {
   confirmacao: (o: Order, items: OrderItem[], siteUrl?: string) =>

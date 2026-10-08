@@ -5,7 +5,8 @@ import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useCart, rememberOrder, saveMe, loadMe } from "@/lib/cart";
 import { useSettings } from "@/lib/useSettings";
-import { brl, dayLabel, weekdayBR, todayISO, addDaysISO, onlyDigits, formatPhone } from "@/lib/format";
+import { brl, dayLabel, weekdayBR, todayISO, addDaysISO, onlyDigits, formatPhone, PAYMENT_LABEL } from "@/lib/format";
+import { waLink, pedidoClienteMsg } from "@/lib/whatsapp";
 import type { Availability, DeliveryZone, Fulfillment, PaymentMethod } from "@/lib/types";
 import { Button, Input, Textarea, Select, Empty, useToast } from "@/components/ui";
 
@@ -59,6 +60,8 @@ export default function Checkout() {
     if (!date) return setError("Escolha a data da encomenda.");
     if (notEnough) return setError(`Só temos ${selectedDay?.remaining} vaga(s) nesse dia. Reduza a quantidade ou escolha outra data.`);
     setSending(true);
+    // Abre a aba ainda dentro do clique (bloqueador de pop-up deixa) e preenche depois.
+    const waWindow = settings?.whatsapp ? window.open("", "_blank") : null;
     const payload = {
       name: name.trim(),
       phone: onlyDigits(phone),
@@ -75,10 +78,30 @@ export default function Checkout() {
     const { data, error: err } = await supabase.rpc("place_order", { p: payload });
     setSending(false);
     if (err) {
+      waWindow?.close();
       setError(friendlyError(err));
       return;
     }
     const res = data as { order_id: string; code: string; tracking_token: string; total: number };
+    if (waWindow && settings?.whatsapp) {
+      const msg = pedidoClienteMsg({
+        code: res.code,
+        name: payload.name,
+        items: cart.lines.map((l) => ({ name: l.product.name, qty: l.qty })),
+        fulfillment,
+        zoneName: zone?.name,
+        address: payload.address,
+        reference: payload.reference,
+        scheduledDate: date,
+        paymentLabel: PAYMENT_LABEL[payment],
+        changeFor: payload.change_for,
+        total: res.total,
+        notes: payload.notes,
+        token: res.tracking_token,
+        siteUrl: settings.site_url,
+      });
+      waWindow.location.href = waLink(settings.whatsapp, msg);
+    }
     rememberOrder({ code: res.code, token: res.tracking_token, created_at: new Date().toISOString() });
     saveMe({ name: payload.name, phone: payload.phone, zone_id: zoneId, address: payload.address, reference: payload.reference });
     cart.clear();
