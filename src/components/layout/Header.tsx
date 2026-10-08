@@ -83,7 +83,6 @@ const navigation = [
   { name: "Trilha", href: "/pricing" },
   { name: "Scanner", href: "/scanner-vendas" },
   { name: "Depoimentos", href: "/depoimentos" },
-  { name: "Planejamento", href: "/portal" },
   { name: "Diagnóstico", href: "/diagnostico" },
   { name: "FAQ", href: "/faq" },
   { name: "Login", href: "/onboarding-tasks/login" },
