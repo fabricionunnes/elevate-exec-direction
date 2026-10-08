@@ -125,7 +125,7 @@ export default function PainelClienteAoVivoPage() {
   const d = useMemo(() => (b ? montar(b, new Date(minuto * 60000)) : null), [b, minuto]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const telaCheia = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); } catch { /* sem suporte */ } };
-  const sair = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); } catch { /* ok */ } navigate(`/painel/${token}/controle`); };
+  const sair = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); } catch { /* ok */ } navigate(`/painel/${token}`); };
 
   const h = d?.periodos.hoje, s = d?.periodos.semana, mm = d?.periodos.mes;
   const meta = n(d?.meta);
