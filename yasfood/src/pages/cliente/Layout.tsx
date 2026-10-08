@@ -6,7 +6,7 @@ import { useSettings } from "@/lib/useSettings";
 import { waLink } from "@/lib/whatsapp";
 
 export function Logo({ size = 44, url }: { size?: number; url?: string }) {
-  const src = url && url.trim() ? url : "/logo.png";
+  const src = url && url.trim() ? url : "/logo.webp";
   return (
     <img
       src={src}
