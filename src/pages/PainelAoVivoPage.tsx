@@ -206,7 +206,7 @@ export default function PainelAoVivoPage() {
           <div className="av-h">FUNIL DO MÊS <small className="av-h-sub">arraste pra girar</small></div>
           <Funil3DCompacto itens={funilItens} onEtapa={(nome) => {
             if (nome === "Leads") abrir("leads", {}, "Leads do mês");
-            else if (nome === "Contatados") abrir("conversas", {}, "Conversas do mês");
+            else if (nome === "Contatados") abrir("leads", { contatado: true }, "Leads contatados no mês", "Leads criados no mês que receberam pelo menos uma mensagem nossa no WhatsApp.");
             else if (nome === "Agendadas") abrir("reunioes", { tipo: "scheduled" }, "Reuniões agendadas no mês");
             else if (nome === "Realizadas") abrir("reunioes", { tipo: "realizadas" }, "Reuniões realizadas no mês");
             else abrir("vendas", {}, "Vendas do mês");
