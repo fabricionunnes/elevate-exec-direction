@@ -169,7 +169,7 @@ export default function PainelAoVivoPage() {
           <b>{agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</b>
           <small>{agora.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}</small>
         </div>
-        <div className="av-meta">
+        <div className="av-meta clk" onClick={() => abrirPer("vendas", "mes", "Vendas")} role="button" title="Ver as vendas do mês">
           <div className="lbl">META DO MÊS · VENDAS</div>
           <div className="bar"><i style={{ width: `${pMeta}%` }} /><em style={{ left: `${pTempo}%` }} title="onde o mês está" /></div>
           <div className="nums"><b>{brl(vendido)}</b> de {brl(meta)} · <b className={pMeta >= pTempo ? "ok" : "bad"}>{pMeta}%</b> da meta com {pTempo}% do mês · no ritmo fecha em {brl(ritmo)}</div>
