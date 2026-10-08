@@ -1,0 +1,13 @@
+/* Ajustes do painel do cliente sobre o tema do Painel de Controle (painel.css) */
+.pc .mk { grid-template-columns: 1fr 1fr; }
+.pc .mk .val { font-size: 22px; }
+.pc .mk .lbl { min-height: 26px; }
+.pc .meta-g { display: grid; grid-template-columns: minmax(260px, 320px) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 900px) { .pc .meta-g { grid-template-columns: minmax(0, 1fr); } }
+.pc .brand svg { flex: none; }
+/* Gestão à vista do cliente: linhas não encolhem (a lista corta no fim em vez de sobrepor) */
+.pc.av .av-list > .av-row, .pc.av .av-list > .av-h, .pc.av .av-list > .av-pessoa { flex-shrink: 0; }
+.pc.av .av-brand .brand { display: flex; align-items: center; gap: 10px; background: none; border: 0; color: inherit; cursor: pointer; padding: 0; }
+.pc.av .av-brand .wm { font-weight: 800; font-size: 19px; letter-spacing: .05em; line-height: 1; text-align: left; }
+.pc.av .av-brand .wm small { display: block; font-size: 8.5px; letter-spacing: .3em; font-weight: 600; margin-top: 3px; color: var(--ink2); }
+.pc.av .av-tab.av-tab-sm td, .pc.av .av-tab.av-tab-sm tr.forte td { font-size: clamp(11px, .85vw, 16px); }

@@ -168,6 +168,8 @@ const CACFormPage = lazy(() => import("./pages/onboarding-tasks/CACFormPage"));
 const RescheduleTasks = lazy(() => import("./pages/onboarding-tasks/RescheduleTasks"));
 const KickoffFormPage = lazy(() => import("./pages/onboarding-tasks/KickoffFormPage"));
 const PublicProjectDashboardPage = lazy(() => import("./pages/PublicProjectDashboardPage"));
+const PainelClientePage = lazy(() => import("./pages/PainelClientePage"));
+const PainelClienteAoVivoPage = lazy(() => import("./pages/PainelClienteAoVivoPage"));
 const OnboardingRenewalsPage = lazy(() => import("./pages/onboarding-tasks/OnboardingRenewalsPage"));
 const OnboardingCancellationsPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCancellationsPage"));
 const CancellationsRetentionModulePage = lazy(() => import("./pages/onboarding-tasks/CancellationsRetentionModulePage"));
@@ -631,6 +633,8 @@ const AppShell = () => {
             <Route path="/disparador/:projectId" element={<ClientDisparadorPage />} />
             <Route path="/cac-form/:projectId" element={<CACFormPage />} />
             <Route path="/kickoff/:companyId" element={<KickoffFormPage />} />
+            <Route path="/painel/:token/controle" element={<PainelClientePage />} />
+            <Route path="/painel/:token/ao-vivo" element={<PainelClienteAoVivoPage />} />
             <Route path="/painel/:token" element={<PublicProjectDashboardPage />} />
             <Route path="/nps" element={<NPSSurveyPage />} />
             <Route path="/csat" element={<CSATSurveyPage />} />
