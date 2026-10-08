@@ -96,9 +96,11 @@ const dt = (s: string | null) =>
 const tplLabel = (name: string) => name.replace(/_/g, " ");
 
 // Filtro por data (data do disparo). Datas no fuso do navegador.
-type Periodo = "hoje" | "ontem" | "7" | "30" | "90" | "180" | "custom";
+type Periodo = "hoje" | "ontem" | "semana" | "semana_passada" | "mes" | "mes_passado" | "7" | "30" | "90" | "180" | "custom";
 const PERIODO_LABEL: Record<Periodo, string> = {
-  hoje: "Hoje", ontem: "Ontem", "7": "Últimos 7 dias", "30": "Últimos 30 dias",
+  hoje: "Hoje", ontem: "Ontem", semana: "Essa semana", semana_passada: "Semana passada",
+  mes: "Mês atual", mes_passado: "Mês passado",
+  "7": "Últimos 7 dias", "30": "Últimos 30 dias",
   "90": "Últimos 90 dias", "180": "Últimos 180 dias", custom: "Personalizado",
 };
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -108,6 +110,13 @@ function intervaloDo(periodo: Periodo, de: string, ate: string): { from: Date; t
   const amanha = new Date(hoje); amanha.setDate(amanha.getDate() + 1);
   if (periodo === "hoje") return { from: hoje, to: amanha };
   if (periodo === "ontem") { const o = new Date(hoje); o.setDate(o.getDate() - 1); return { from: o, to: hoje }; }
+  // semana começa na segunda-feira
+  const segunda = new Date(hoje); segunda.setDate(hoje.getDate() - ((hoje.getDay() + 6) % 7));
+  if (periodo === "semana") return { from: segunda, to: amanha };
+  if (periodo === "semana_passada") { const ini = new Date(segunda); ini.setDate(ini.getDate() - 7); return { from: ini, to: segunda }; }
+  const mesIni = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  if (periodo === "mes") return { from: mesIni, to: amanha };
+  if (periodo === "mes_passado") return { from: new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1), to: mesIni };
   if (periodo === "custom") {
     const from = de ? inicioDoDia(de) : new Date(2020, 0, 1);
     const to = ate ? inicioDoDia(ate) : new Date(hoje);
