@@ -412,9 +412,9 @@ export default function PainelAoVivoPage() {
             {d && !d.ranking_sdr.length && <div className="av-row mute">Nenhum agendamento no mês</div>}
           </div>
           </div>
-          <div className="av-col">
+          <div className="av-col av-col-agentes">
           <div className="av-h">AGENTES DE IA · MÊS</div>
-          <div className="av-list">
+          <div className="av-list av-list-agentes">
             {(d?.ranking_agentes || []).slice(0, 5).map((r, i) => (
               <div className="av-pessoa ia clk" key={i} role="button" title="Ver execuções" onClick={() => abrir("agente_runs", { agent_id: r.agent_id, outcome: "sent" }, `Respostas do mês · ${r.nome}`)}>
                 <div className="l1"><b>{r.nome}</b><span className="v">{r.agendadas_mes} <small>{r.agendadas_mes === 1 ? "reunião agendada" : "reuniões agendadas"} no mês</small></span></div>
