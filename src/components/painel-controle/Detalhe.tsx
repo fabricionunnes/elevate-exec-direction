@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Combo, Lk, Nd, St, Tabela, Tile } from "./ui";
 import { brl, brlFull, dataBR, dataHoraBR, eventoLabel, fp, fp2, mesLabel, nivelLabel, num, papelLabel, projetoLabel, tendLabel, usd } from "./fmt";
-import { LINK, esc, soma } from "./util";
+import { LINK, esc, soma, abrirNexus } from "./util";
 import type { Detalhe as DetalheT, Filtro } from "./tipos";
 
 type Tipo = "brl" | "brlfull" | "usd" | "num" | "int" | "data" | "datahora" | "pct" | "txt" | "nivel" | "evento" | "papel" | "proj" | "bool" | "dias" | "horas" | "tend" | "pct2" | "img";
@@ -240,7 +240,7 @@ export function Detalhe({ mes, bloco, filtro, titulo, sub, det }: {
     return out;
   }, [d]);
 
-  const abrir = (url: string) => window.open(url, "_blank", "noopener");
+  const abrir = (url: string) => abrirNexus(url);
 
   if (!spec) return <div className="err">Bloco de detalhe desconhecido: {bloco}</div>;
 

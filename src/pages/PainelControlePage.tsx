@@ -1,3 +1,4 @@
+import { abrirNexus } from "@/components/painel-controle/util";
 // Painel de Controle (30/09/2026): cockpit do dono. Só o master vê.
 // Visão macro na entrada e, clicando em qualquer card, barra, alerta ou linha,
 // a visão micro até o registro individual. Navegação em pilha com breadcrumb.
@@ -127,7 +128,7 @@ export default function PainelControlePage() {
   const home = () => setStack([]);
   const crumb = (i: number) => setStack((s) => (i < 0 ? [] : s.slice(0, i + 1)));
   const setF = (f: Filtro) => setStack((s) => s.map((n, i) => (i === s.length - 1 ? { ...n, f } : n)));
-  const abrir = (url: string) => window.open(url, "_blank", "noopener");
+  const abrir = (url: string) => abrirNexus(url);
 
   if (!authLoading && !isMaster) return <Navigate to="/" replace />;
 

@@ -36,3 +36,11 @@ export const LINK = {
   equipe: "/onboarding-tasks/staff",
   automacoesNexus: "/onboarding-tasks/automations",
 };
+
+/** Abre uma tela do Nexus em outra aba. O app usa HashRouter: caminho interno precisa do "/#" na
+ *  frente, senão o servidor devolve a home pública (foi o que aconteceu ao clicar num lead do pop-up
+ *  da Gestão à vista em 07/10/2026). Links externos (http) passam direto. */
+export function abrirNexus(url: string) {
+  const alvo = /^https?:\/\//i.test(url) || url.startsWith("/#") ? url : `/#${url.startsWith("/") ? url : `/${url}`}`;
+  window.open(alvo, "_blank", "noopener");
+}
