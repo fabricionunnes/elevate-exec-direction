@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-07T21:01:06",
+ "gerado_em": "2026-10-08T10:01:09",
  "posts": [
+  {
+   "slug": "automacao-atendimento-nao-substitui-estrutura-conversao",
+   "url": "/blog/automacao-atendimento-nao-substitui-estrutura-conversao/",
+   "titulo": "Automação no atendimento não substitui estrutura de conversão",
+   "resumo": "Ferramenta inteligente vende sozinha quando existe processo por trás. Sem isso, você só automatizou a bagunça.",
+   "tags": [
+    "automação",
+    "ferramenta",
+    "conversão",
+    "estrutura comercial",
+    "treino de vendedor"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-08",
+   "ts": 2157
+  },
   {
    "slug": "depoimento-cliente-nao-substitui-estrutura-conversao",
    "url": "/blog/depoimento-cliente-nao-substitui-estrutura-conversao/",
