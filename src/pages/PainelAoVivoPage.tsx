@@ -313,58 +313,27 @@ export default function PainelAoVivoPage() {
           </div>
         </div>
 
-        <div className="av-card av-closers-card">
-          <div className="av-h">CLOSERS · MÊS</div>
+        <div className="av-card av-produtos-card">
+          <div className="av-h">PRODUTOS · MÊS</div>
           <div className="av-list">
-            {d?.ranking_closers.map((r, i) => {
-              const p = r.meta ? pct(r.receita, r.meta) : null;
-              return (
-                <div className="av-pessoa clk" key={i} role="button" title="Ver vendas" onClick={() => abrir("vendas", r.staff_id ? { closer_id: r.staff_id } : {}, `Vendas do mês · ${r.nome}`)}>
-                  <div className="l1"><b>{r.nome}</b><span className="v">{brl(r.receita)}<small> · {r.vendas} {r.vendas === 1 ? "venda" : "vendas"}{r.vendas_hoje > 0 ? ` (+${r.vendas_hoje} hoje)` : ""}</small></span></div>
-                  <div className="l2">
-                    <span>meta <b className={p == null ? "" : p >= pTempo ? "ok" : "bad"}>{p == null ? "sem meta" : `${p}%`}</b></span>
-                    <span>reuniões <b>{r.realizadas}</b></span>
-                    <span>no-show <b className={r.no_show > 0 ? "bad" : ""}>{r.no_show}</b></span>
-                    <span>em aberto <b>{r.pipeline_n}</b> · {brl(r.pipeline_v)}</span>
-                  </div>
-                </div>
-              );
-            })}
-            {d && !d.ranking_closers.length && <div className="av-row mute">Nenhuma venda no mês</div>}
-          </div>
-          <div className="av-h" style={{ marginTop: 8 }}>PRÉ-VENDAS · MÊS</div>
-          <div className="av-list">
-            {d?.ranking_sdr.slice(0, 3).map((r, i) => {
-              const pres = r.realizadas + r.no_show > 0 ? pct(r.realizadas, r.realizadas + r.no_show) : null;
-              return (
-                <div className="av-pessoa clk" key={i} role="button" title="Ver reuniões" onClick={() => abrir("reunioes", r.staff_id ? { sdr_id: r.staff_id } : {}, `Reuniões do mês · ${r.nome}`)}>
-                  <div className="l1"><b>{r.nome}</b><span className="v">{r.agendadas} <small>{r.agendadas === 1 ? "agendada" : "agendadas"} no mês</small></span></div>
-                  <div className="l2">
-                    <span>hoje <b>{r.agendadas_hoje}</b></span>
-                    <span>semana <b>{r.agendadas_semana}</b></span>
-                    <span>realizadas <b>{r.realizadas}</b></span>
-                    <span>no-show <b className={r.no_show > 0 ? "bad" : ""}>{r.no_show}</b></span>
-                    <span>presença <b className={pres == null ? "" : pres >= 60 ? "ok" : "bad"}>{pres == null ? "-" : `${pres}%`}</b></span>
-                  </div>
-                </div>
-              );
-            })}
-            {d && !d.ranking_sdr.length && <div className="av-row mute">Nenhum agendamento no mês</div>}
-          </div>
-          <div className="av-h" style={{ marginTop: 8 }}>AGENTES DE IA · MÊS</div>
-          <div className="av-list">
-            {(d?.ranking_agentes || []).slice(0, 4).map((r, i) => (
-              <div className="av-pessoa ia clk" key={i} role="button" title="Ver execuções" onClick={() => abrir("agente_runs", { agent_id: r.agent_id, outcome: "sent" }, `Respostas do mês · ${r.nome}`)}>
-                <div className="l1"><b>{r.nome}</b><span className="v">{r.agendadas_mes} <small>{r.agendadas_mes === 1 ? "reunião agendada" : "reuniões agendadas"} no mês</small></span></div>
+            {(produtos || []).filter((x) => n(x.clientes) > 0 || n(x.mrr) > 0 || n(x.receita) > 0).slice(0, 6).map((x, i) => (
+              <div className="av-pessoa clk" key={i} role="button" title="Ver registros" onClick={() => (n(x.clientes) > 0 ? abrir("produto_clientes", { produto: x.produto }, `Clientes · ${x.produto}`) : abrir("produto_receita", { produto: x.produto }, `Faturas pagas no mês · ${x.produto}`))}>
+                <div className="l1"><b>{x.produto}</b><span className="v">{brl(x.mrr)}<small> MRR</small></span></div>
                 <div className="l2">
-                  <span>hoje <b>{r.agendadas_hoje}</b></span>
-                  <span>semana <b>{r.agendadas_semana}</b></span>
-                  <span>respostas <b>{r.respostas_mes}</b> <small>({r.respostas_hoje} hoje)</small></span>
-                  <span>conversas <b>{r.conversas_mes}</b></span>
+                  <span>clientes <b>{x.clientes ?? "-"}</b></span>
+                  <span>recebido <b>{brl(x.receita)}</b></span>
+                  <span>churn <b className={n(x.churn_n) > 0 ? "bad" : ""}>{x.churn_n ?? 0}</b></span>
                 </div>
               </div>
             ))}
-            {d && d.ranking_agentes && !d.ranking_agentes.length && <div className="av-row mute">Nenhum agente respondeu no mês</div>}
+            {produtos && !produtos.length && <div className="av-row mute">Sem produto com movimento no mês</div>}
+          </div>
+          <div className="av-h" style={{ marginTop: 8 }}>NEXUS · SAÚDE DO PRODUTO</div>
+          <div className="av-kpis av-kpis-4">
+            <Kpi l="IA" v={d?.produto ? (d.produto.ia_ok === false ? "FORA" : "no ar") : "-"} tom={d?.produto?.ia_ok === false ? "bad" : "ok"} texto />
+            <Kpi l="Agentes ativos" v={d?.produto?.agentes_ativos} onClick={() => abrirPer("agente_runs", "mes", "Respostas da IA", { outcome: "sent" })} />
+            <Kpi l="Respostas da IA hoje" v={d?.produto?.respostas_ia_hoje} onClick={() => abrirPer("agente_runs", "hoje", "Respostas da IA", { outcome: "sent" })} />
+            <Kpi l={`Custo IA hoje · teto US$ ${d?.produto?.teto_dia_usd ?? "-"}`} v={`US$ ${n(d?.produto?.custo_ia_hoje_usd).toFixed(2)}`} tom={n(d?.produto?.custo_ia_hoje_usd) > n(d?.produto?.teto_dia_usd || 1e9) ? "bad" : undefined} texto />
           </div>
         </div>
         {/* linha 3 */}
@@ -400,29 +369,66 @@ export default function PainelAoVivoPage() {
             })()}
           </div>
         </div>
-        <div className="av-card">
-          <div className="av-h">PRODUTOS · MÊS</div>
-          <table className="av-tab av-tab-sm">
-            <thead><tr><th></th><th>Clientes</th><th>MRR</th><th>Recebido</th><th>Churn</th></tr></thead>
-            <tbody>
-              {(produtos || []).filter((x) => n(x.clientes) > 0 || n(x.mrr) > 0 || n(x.receita) > 0).slice(0, 6).map((x, i) => (
-                <tr key={i} className="clk" role="button" title="Ver clientes" onClick={() => (n(x.clientes) > 0 ? abrir("produto_clientes", { produto: x.produto }, `Clientes · ${x.produto}`) : abrir("produto_receita", { produto: x.produto }, `Faturas pagas no mês · ${x.produto}`))}>
-                  <th>{x.produto}</th>
-                  <td>{x.clientes ?? "-"}</td>
-                  <td>{brl(x.mrr)}</td>
-                  <td>{brl(x.receita)}</td>
-                  <td className={n(x.churn_n) > 0 ? "bad" : ""}>{x.churn_n ?? 0}</td>
-                </tr>
-              ))}
-              {produtos && !produtos.length && <tr><td colSpan={5} className="mute">Sem produto com movimento no mês</td></tr>}
-            </tbody>
-          </table>
-          <div className="av-h" style={{ marginTop: 8 }}>NEXUS · SAÚDE DO PRODUTO</div>
-          <div className="av-kpis av-kpis-4">
-            <Kpi l="IA" v={d?.produto ? (d.produto.ia_ok === false ? "FORA" : "no ar") : "-"} tom={d?.produto?.ia_ok === false ? "bad" : "ok"} texto />
-            <Kpi l="Agentes ativos" v={d?.produto?.agentes_ativos} onClick={() => abrirPer("agente_runs", "mes", "Respostas da IA", { outcome: "sent" })} />
-            <Kpi l="Respostas da IA hoje" v={d?.produto?.respostas_ia_hoje} onClick={() => abrirPer("agente_runs", "hoje", "Respostas da IA", { outcome: "sent" })} />
-            <Kpi l={`Custo IA hoje · teto US$ ${d?.produto?.teto_dia_usd ?? "-"}`} v={`US$ ${n(d?.produto?.custo_ia_hoje_usd).toFixed(2)}`} tom={n(d?.produto?.custo_ia_hoje_usd) > n(d?.produto?.teto_dia_usd || 1e9) ? "bad" : undefined} texto />
+        <div className="av-card av-closers-card">
+          <div className="av-closers-grid">
+          <div className="av-col">
+          <div className="av-h">CLOSERS · MÊS</div>
+          <div className="av-list">
+            {d?.ranking_closers.map((r, i) => {
+              const p = r.meta ? pct(r.receita, r.meta) : null;
+              return (
+                <div className="av-pessoa clk" key={i} role="button" title="Ver vendas" onClick={() => abrir("vendas", r.staff_id ? { closer_id: r.staff_id } : {}, `Vendas do mês · ${r.nome}`)}>
+                  <div className="l1"><b>{r.nome}</b><span className="v">{brl(r.receita)}<small> · {r.vendas} {r.vendas === 1 ? "venda" : "vendas"}{r.vendas_hoje > 0 ? ` (+${r.vendas_hoje} hoje)` : ""}</small></span></div>
+                  <div className="l2">
+                    <span>meta <b className={p == null ? "" : p >= pTempo ? "ok" : "bad"}>{p == null ? "sem meta" : `${p}%`}</b></span>
+                    <span>reuniões <b>{r.realizadas}</b></span>
+                    <span>no-show <b className={r.no_show > 0 ? "bad" : ""}>{r.no_show}</b></span>
+                    <span>em aberto <b>{r.pipeline_n}</b> · {brl(r.pipeline_v)}</span>
+                  </div>
+                </div>
+              );
+            })}
+            {d && !d.ranking_closers.length && <div className="av-row mute">Nenhuma venda no mês</div>}
+          </div>
+          </div>
+          <div className="av-col">
+          <div className="av-h">PRÉ-VENDAS · MÊS</div>
+          <div className="av-list">
+            {d?.ranking_sdr.slice(0, 4).map((r, i) => {
+              const pres = r.realizadas + r.no_show > 0 ? pct(r.realizadas, r.realizadas + r.no_show) : null;
+              return (
+                <div className="av-pessoa clk" key={i} role="button" title="Ver reuniões" onClick={() => abrir("reunioes", r.staff_id ? { sdr_id: r.staff_id } : {}, `Reuniões do mês · ${r.nome}`)}>
+                  <div className="l1"><b>{r.nome}</b><span className="v">{r.agendadas} <small>{r.agendadas === 1 ? "agendada" : "agendadas"} no mês</small></span></div>
+                  <div className="l2">
+                    <span>hoje <b>{r.agendadas_hoje}</b></span>
+                    <span>semana <b>{r.agendadas_semana}</b></span>
+                    <span>realizadas <b>{r.realizadas}</b></span>
+                    <span>no-show <b className={r.no_show > 0 ? "bad" : ""}>{r.no_show}</b></span>
+                    <span>presença <b className={pres == null ? "" : pres >= 60 ? "ok" : "bad"}>{pres == null ? "-" : `${pres}%`}</b></span>
+                  </div>
+                </div>
+              );
+            })}
+            {d && !d.ranking_sdr.length && <div className="av-row mute">Nenhum agendamento no mês</div>}
+          </div>
+          </div>
+          <div className="av-col">
+          <div className="av-h">AGENTES DE IA · MÊS</div>
+          <div className="av-list">
+            {(d?.ranking_agentes || []).slice(0, 5).map((r, i) => (
+              <div className="av-pessoa ia clk" key={i} role="button" title="Ver execuções" onClick={() => abrir("agente_runs", { agent_id: r.agent_id, outcome: "sent" }, `Respostas do mês · ${r.nome}`)}>
+                <div className="l1"><b>{r.nome}</b><span className="v">{r.agendadas_mes} <small>{r.agendadas_mes === 1 ? "reunião agendada" : "reuniões agendadas"} no mês</small></span></div>
+                <div className="l2">
+                  <span>hoje <b>{r.agendadas_hoje}</b></span>
+                  <span>semana <b>{r.agendadas_semana}</b></span>
+                  <span>respostas <b>{r.respostas_mes}</b> <small>({r.respostas_hoje} hoje)</small></span>
+                  <span>conversas <b>{r.conversas_mes}</b></span>
+                </div>
+              </div>
+            ))}
+            {d && d.ranking_agentes && !d.ranking_agentes.length && <div className="av-row mute">Nenhum agente respondeu no mês</div>}
+          </div>
+          </div>
           </div>
         </div>
       </section>
