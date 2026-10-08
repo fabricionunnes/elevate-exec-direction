@@ -124,3 +124,31 @@ jobs:
           curl -sS --fail-with-body -X POST "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/query" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @/tmp/body.json
           echo
+
+      - name: Verificar site e API ao vivo
+        if: steps.wrangler.outputs.url != ''
+        env:
+          SITE_URL: ${{ steps.wrangler.outputs.url }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          sleep 10
+          code=$(curl -sS -o /tmp/index.html -w '%{http_code}' "$SITE_URL/")
+          echo "site: HTTP $code"; [ "$code" = "200" ]
+          grep -q 'id="root"' /tmp/index.html
+          H=(-H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+          echo "public_settings: $(curl -sS --fail-with-body "$SUPABASE_URL/rest/v1/public_settings?select=business_name,site_url,is_open" "${H[@]}" -H 'Accept-Profile: yasfood')"
+          prods=$(curl -sS --fail-with-body "$SUPABASE_URL/rest/v1/products?select=name,price" "${H[@]}" -H 'Accept-Profile: yasfood')
+          echo "produtos: $prods"; [ "$(echo "$prods" | jq length)" -ge 1 ]
+          avail=$(curl -sS --fail-with-body -X POST "$SUPABASE_URL/rest/v1/rpc/availability" "${H[@]}" -H 'Content-Profile: yasfood' -H 'Content-Type: application/json' \
+                  -d "{\"p_from\":\"$(date -u +%F)\",\"p_to\":\"$(date -u -d '+7 days' +%F)\"}")
+          echo "agenda (7 dias): $(echo "$avail" | jq -c '[.[] | {day, remaining, bookable}]')"
+          # dados privados precisam vir vazios/negados pro anônimo
+          for t in settings orders customers transactions; do
+            r=$(curl -sS -o /tmp/r.json -w '%{http_code}' "$SUPABASE_URL/rest/v1/$t?select=*" "${H[@]}" -H 'Accept-Profile: yasfood')
+            n=$(jq 'if type=="array" then length else -1 end' /tmp/r.json 2>/dev/null || echo -1)
+            echo "anon -> $t: HTTP $r, linhas: $n"
+            if [ "$r" = "200" ] && [ "$n" != "0" ]; then echo "::error::anônimo conseguiu ler $t"; exit 1; fi
+          done
+          echo "verificação ok"
