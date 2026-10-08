@@ -1,4 +1,5 @@
-const CACHE_NAME = 'unv-nexus-v4';
+// v5 (09/10/2026): troca o nome pra apagar os caches que guardaram HTML no lugar de JS
+const CACHE_NAME = 'unv-nexus-v5';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_ASSETS = [
@@ -63,12 +64,17 @@ self.addEventListener('fetch', (event) => {
   const isStaticAsset =
     url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|gif|webp|woff2?|ttf|eot|ico)$/);
 
+  // Arquivo que não existe (deploy em andamento, chunk antigo) volta como index.html com 200.
+  // Esse HTML não pode entrar no cache no lugar do JS/CSS: o lazy import quebrava para sempre
+  // ("Failed to fetch dynamically imported module"). Só guarda o que veio com o tipo certo,
+  // e um HTML que já esteja guardado conta como ausente.
+  const tipoErrado = (response) => (response.headers.get('content-type') || '').includes('text/html');
   if (isStaticAsset) {
     event.respondWith(
       caches.match(request).then((cached) => {
-        if (cached) return cached;
+        if (cached && !tipoErrado(cached)) return cached;
         return fetch(request).then((response) => {
-          if (response.ok) {
+          if (response.ok && !tipoErrado(response)) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
           }
