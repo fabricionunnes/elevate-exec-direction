@@ -53,7 +53,7 @@ export default function ClienteLayout() {
           {settings?.instagram && <a className="inline-flex items-center gap-1 underline" href={`https://instagram.com/${settings.instagram.replace("@", "")}`} target="_blank" rel="noreferrer"><Instagram size={12} />{settings.instagram}</a>}
           <Link to="/admin" className="text-choco-300 hover:text-choco-500">Painel</Link>
         </div>
-        <div className="mt-2 text-[10px] text-choco-300">feito com <b>YasFood</b></div>
+        <div className="mt-2 text-[10px] text-choco-300">feito com <b><span className="text-vinho-400">Yas</span><span className="text-choco-400">Food</span></b></div>
       </footer>
     </div>
   );

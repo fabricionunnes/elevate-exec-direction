@@ -7,6 +7,7 @@ export const supabaseConfigured = Boolean(url && key);
 
 export const supabase = createClient(url ?? "https://placeholder.supabase.co", key ?? "placeholder", {
   auth: { persistSession: true, autoRefreshToken: true },
+  db: { schema: "yasfood" }, // schema próprio: lembre de expor 'yasfood' em Data API → Exposed schemas
 });
 
 /** Converte erro do Postgres/RPC em mensagem amigável (as functions lançam "CODIGO: mensagem"). */

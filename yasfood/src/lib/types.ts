@@ -11,16 +11,17 @@ export interface Settings {
   min_lead_days: number;
   pickup_enabled: boolean;
   pickup_address: string;
-  default_daily_capacity: number;
   is_open: boolean;
   closed_message: string;
   logo_url: string;
   instagram: string;
   site_url: string;
+  /** Só na tabela completa (useSettings(true)); a view pública não traz. */
   review_auto_enabled: boolean;
   review_delay_hours: number;
   review_webhook_url: string;
   review_message: string;
+  default_daily_capacity: number;
 }
 
 export interface Product {

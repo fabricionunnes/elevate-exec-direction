@@ -7,6 +7,7 @@ import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, todayISO, addDaysISO, dateTimeBR } from "@/lib/format";
 import type { Availability, Product, PublicReview } from "@/lib/types";
 import { Button, Spinner, Empty, Stars } from "@/components/ui";
+import { Logo } from "./Layout";
 
 export default function Cardapio() {
   const { settings } = useSettings();
@@ -36,14 +37,17 @@ export default function Cardapio() {
         <div className="rounded-2xl bg-vinho-100 p-4 text-sm font-medium text-vinho-800">{settings.closed_message}</div>
       )}
 
-      <section className="rounded-3xl bg-gradient-to-br from-vinho-600 to-vinho-800 p-5 text-white shadow-soft">
-        <h1 className="text-2xl font-black leading-tight">Bolo caseiro de verdade, entregue no seu apê.</h1>
-        <p className="mt-1 text-sm text-rosa-100">Assado no dia da entrega. Escolha o bolo, a data e pronto.</p>
+      <section className="flex items-center gap-4 rounded-3xl bg-gradient-to-br from-vinho-600 via-vinho-700 to-choco-800 p-5 text-white shadow-soft">
+        <Logo size={96} url={settings?.logo_url} />
+        <div>
+          <h1 className="text-2xl font-black leading-tight">Bolo caseiro de verdade, entregue na sua casa.</h1>
+          <p className="mt-1 text-sm text-rosa-100">Assado no dia da entrega. Entregamos nos condomínios do Alphaville. Escolha o bolo, a data e pronto.</p>
         {reviews.length > 0 && (
           <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-sm">
             <Star size={14} fill="#f0801f" stroke="#f0801f" /> {avg.toFixed(1)} · {reviews.length} avaliaç{reviews.length === 1 ? "ão" : "ões"}
           </div>
         )}
+        </div>
       </section>
 
       {avail.length > 0 && (

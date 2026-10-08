@@ -1,7 +1,7 @@
 -- Dados iniciais pra Yasmim começar a vender no mesmo dia.
 -- Tudo pode ser editado no painel.
 
-update public.settings set
+update yasfood.settings set
   business_name = 'Yas Delícias',
   whatsapp = '5531992372507',
   pix_name = 'Yasmim',
@@ -11,19 +11,19 @@ update public.settings set
   default_daily_capacity = 10
 where id = 1;
 
-insert into public.products (name, description, price, weight_g, category, sort_order) values
+insert into yasfood.products (name, description, price, weight_g, category, sort_order) values
   ('Bolo de Cenoura com Cobertura de Chocolate', 'Massa fofinha de cenoura de verdade, assada no dia, com cobertura cremosa de chocolate que escorre pelas laterais. 570g.', 35.00, 570, 'Bolos', 1),
   ('Bolo de Cenoura sem Cobertura', 'O mesmo bolo caseiro, dourado por fora e macio por dentro, pra quem prefere puro. 570g.', 35.00, 570, 'Bolos', 2)
 on conflict do nothing;
 
-insert into public.delivery_zones (name, fee, sort_order, notes) values
-  ('Meu condomínio (entrega no apê)', 0, 1, 'Entrega sem custo dentro do condomínio'),
-  ('Condomínios vizinhos', 5, 2, ''),
-  ('Bairro (até 3 km)', 10, 3, '')
+insert into yasfood.delivery_zones (name, fee, sort_order, notes) values
+  ('Meu condomínio (Alphaville)', 0, 1, 'Entrega sem custo dentro do condomínio'),
+  ('Outros condomínios do Alphaville', 5, 2, 'Casas e prédios'),
+  ('Fora do Alphaville (combinar)', 15, 3, '')
 on conflict do nothing;
 
 -- Insumos com custo aproximado (ajuste no painel de estoque)
-insert into public.ingredients (name, unit, qty_on_hand, min_qty, cost_per_unit, supplier) values
+insert into yasfood.ingredients (name, unit, qty_on_hand, min_qty, cost_per_unit, supplier) values
   ('Cenoura', 'g', 3000, 1000, 0.006, 'Hortifruti'),
   ('Farinha de trigo', 'g', 5000, 1000, 0.005, 'Supermercado'),
   ('Açúcar', 'g', 5000, 1000, 0.004, 'Supermercado'),
@@ -37,7 +37,7 @@ insert into public.ingredients (name, unit, qty_on_hand, min_qty, cost_per_unit,
 on conflict do nothing;
 
 -- Receita aproximada por bolo (ajuste conforme a receita real da Yasmim)
-insert into public.product_ingredients (product_id, ingredient_id, qty)
+insert into yasfood.product_ingredients (product_id, ingredient_id, qty)
 select p.id, i.id, r.qty
 from (values
   ('Bolo de Cenoura com Cobertura de Chocolate', 'Cenoura', 250),
@@ -58,12 +58,12 @@ from (values
   ('Bolo de Cenoura sem Cobertura', 'Fermento em pó', 12),
   ('Bolo de Cenoura sem Cobertura', 'Embalagem com tampa', 1)
 ) as r(product_name, ingredient_name, qty)
-join public.products p on p.name = r.product_name
-join public.ingredients i on i.name = r.ingredient_name
+join yasfood.products p on p.name = r.product_name
+join yasfood.ingredients i on i.name = r.ingredient_name
 on conflict do nothing;
 
 -- Abre a agenda dos próximos 30 dias, segunda a sábado, 10 bolos/dia
-insert into public.capacity_days (day, max_units, is_open)
+insert into yasfood.capacity_days (day, max_units, is_open)
 select d::date, 10, true
 from generate_series(current_date + 1, current_date + 30, interval '1 day') as d
 where extract(dow from d) between 1 and 6

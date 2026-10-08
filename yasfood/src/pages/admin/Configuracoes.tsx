@@ -9,7 +9,7 @@ import { Logo } from "@/pages/cliente/Layout";
 
 export default function Configuracoes() {
   const toast = useToast();
-  const { settings, reload } = useSettings();
+  const { settings, reload } = useSettings(true);
   const { session } = useAuth();
   const [form, setForm] = useState<Settings | null>(null);
   const [busy, setBusy] = useState(false);

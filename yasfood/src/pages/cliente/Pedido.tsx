@@ -30,12 +30,14 @@ export default function Pedido() {
     return () => clearInterval(id);
   }, [load]);
 
+  const savedRating = data?.review?.rating;
+  const savedComment = data?.review?.comment;
   useEffect(() => {
-    if (data?.review) {
-      setRating(data.review.rating);
-      setComment(data.review.comment);
+    if (savedRating) {
+      setRating(savedRating);
+      setComment(savedComment ?? "");
     }
-  }, [data?.review]);
+  }, [savedRating, savedComment]);
 
   useEffect(() => {
     if (window.location.hash === "#avaliar" && data) {

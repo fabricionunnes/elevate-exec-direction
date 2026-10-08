@@ -158,11 +158,11 @@ export default function Checkout() {
         </div>
         {fulfillment === "entrega" ? (
           <div className="mt-3 space-y-3">
-            <Select label="Onde você está?" value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
+            <Select label="Qual condomínio / região?" value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
               {zones.map((z) => <option key={z.id} value={z.id}>{z.name} · {Number(z.fee) === 0 ? "frete grátis" : brl(z.fee)}</option>)}
             </Select>
-            <Input label="Endereço (bloco, apto, rua)" placeholder="Ex.: Bloco 3, apto 502" value={address} onChange={(e) => setAddress(e.target.value)} />
-            <Input label="Ponto de referência (opcional)" placeholder="Ex.: portaria 2, deixar com o porteiro" value={reference} onChange={(e) => setReference(e.target.value)} />
+            <Input label="Endereço (rua, número, casa ou apto)" placeholder="Ex.: Rua das Acácias, 120, casa 7" value={address} onChange={(e) => setAddress(e.target.value)} />
+            <Input label="Ponto de referência (opcional)" placeholder="Ex.: portaria principal, deixar com o porteiro" value={reference} onChange={(e) => setReference(e.target.value)} />
           </div>
         ) : (
           settings?.pickup_address && <p className="mt-3 rounded-xl bg-choco-50 p-3 text-sm text-choco-700">{settings.pickup_address}</p>
@@ -188,7 +188,7 @@ export default function Checkout() {
         </div>
         {payment === "dinheiro" && <Input label="Troco para quanto? (opcional)" placeholder="Ex.: 50" inputMode="decimal" value={changeFor} onChange={(e) => setChangeFor(e.target.value)} />}
         {payment === "pix" && settings?.pix_key && <p className="rounded-xl bg-choco-50 p-3 text-xs text-choco-700">A chave Pix aparece na tela do pedido. O pagamento confirma sua vaga.</p>}
-        <Textarea label="Observações (opcional)" placeholder="Ex.: sem cobertura em um dos bolos, entregar depois das 18h" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <Textarea label="Observações (opcional)" placeholder="Ex.: entregar depois das 18h, deixar na portaria" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </section>
 
       {/* Resumo */}

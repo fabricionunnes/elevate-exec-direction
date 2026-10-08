@@ -8,7 +8,7 @@ import { Button, Card, Input, Spinner, Empty, useToast } from "@/components/ui";
 
 export default function Entregas() {
   const toast = useToast();
-  const { settings, reload } = useSettings();
+  const { settings, reload } = useSettings(true);
   const [zones, setZones] = useState<DeliveryZone[] | null>(null);
   const [name, setName] = useState("");
   const [fee, setFee] = useState("0");
@@ -49,7 +49,7 @@ export default function Entregas() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-black text-choco-900">Entregas e frete</h1>
-      <p className="text-sm text-choco-600">Cadastre onde você entrega e quanto cobra. O cliente escolhe a região no checkout e o frete entra sozinho no total.</p>
+      <p className="text-sm text-choco-600">Cadastre cada condomínio ou região do Alphaville onde você entrega e quanto cobra. O cliente escolhe no checkout e o frete entra sozinho no total.</p>
 
       <Card title="Onde entregamos">
         {zones === null ? <Spinner /> : zones.length === 0 ? <Empty>Nenhuma região. Adicione abaixo.</Empty> : (
@@ -66,7 +66,7 @@ export default function Entregas() {
           </ul>
         )}
         <div className="mt-3 flex flex-wrap items-end gap-2">
-          <div className="min-w-[200px] flex-1"><Input label="Nova região" placeholder="Ex.: Condomínio Vila das Flores" value={name} onChange={(e) => setName(e.target.value)} /></div>
+          <div className="min-w-[200px] flex-1"><Input label="Nova região" placeholder="Ex.: Alphaville Lagoa dos Ingleses" value={name} onChange={(e) => setName(e.target.value)} /></div>
           <div className="w-28"><Input label="Frete (R$)" value={fee} onChange={(e) => setFee(e.target.value)} inputMode="decimal" /></div>
           <Button onClick={add}><Plus size={16} /> Adicionar</Button>
         </div>

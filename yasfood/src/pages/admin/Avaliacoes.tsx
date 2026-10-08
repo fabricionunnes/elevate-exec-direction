@@ -11,7 +11,7 @@ interface Pending { order_id: string; code: string; customer_name: string; custo
 
 export default function Avaliacoes() {
   const toast = useToast();
-  const { settings, reload } = useSettings();
+  const { settings, reload } = useSettings(true);
   const [reviews, setReviews] = useState<Review[] | null>(null);
   const [pending, setPending] = useState<Pending[]>([]);
   const [reply, setReply] = useState<Record<string, string>>({});

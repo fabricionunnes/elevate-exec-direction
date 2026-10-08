@@ -12,19 +12,20 @@ React + Vite + TypeScript + Tailwind, Supabase (Postgres, Auth, Storage, RLS, pg
 ## Subir em 15 minutos
 
 1. **Criar o projeto no Supabase** (região São Paulo).
-2. **Aplicar as migrations** (na ordem) no SQL Editor ou via CLI:
+2. **Aplicar as migrations** (na ordem) no SQL Editor ou via CLI. Tudo fica no schema `yasfood`, isolado das tabelas de outros sistemas no mesmo projeto:
    - `supabase/migrations/20261008200000_yasfood_schema.sql`
    - `supabase/migrations/20261008200100_yasfood_seed.sql` (produtos, zonas, insumos, agenda de 30 dias)
-3. **Criar o usuário da Yasmim e torná-lo admin**:
+3. **Expor o schema na API**: Project Settings → Data API → *Exposed schemas* → adicionar `yasfood` (e salvar). Sem isso o front recebe erro 406/404.
+4. **Criar o usuário da Yasmim e torná-lo admin**:
    ```bash
    SUPABASE_URL=https://xxx.supabase.co SUPABASE_SERVICE_ROLE_KEY=... \
    ADMIN_EMAIL=email@dela.com ADMIN_PASSWORD='senha-forte' \
    node scripts/create-admin.mjs
    ```
-   Alternativa: criar o usuário em Authentication → Users e rodar `insert into admins (user_id, name) values ('<uuid>', 'Yasmim');`.
-4. **Configurar o front**: copie `.env.example` para `.env` e preencha `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
-5. **Rodar**: `npm install && npm run dev` → http://localhost:8081. Painel em `/admin`.
-6. **Publicar**: `npm run build` e hospedar a pasta `dist` (Vercel/Netlify/Cloudflare Pages) com fallback de SPA para `index.html`. Depois, no painel → Configurações, preencha **Endereço do site** (usado nos links de rastreio enviados por WhatsApp) e suba a logo da loja.
+   Alternativa: criar o usuário em Authentication → Users e rodar `insert into yasfood.admins (user_id, name) values ('<uuid>', 'Yasmim');`.
+5. **Configurar o front**: copie `.env.example` para `.env` e preencha `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
+6. **Rodar**: `npm install && npm run dev` → http://localhost:8081. Painel em `/admin`.
+7. **Publicar**: `npm run build` e hospedar a pasta `dist` (Vercel/Netlify/Cloudflare Pages) com fallback de SPA para `index.html`. Depois, no painel → Configurações, preencha **Endereço do site** (usado nos links de rastreio enviados por WhatsApp) e suba a logo da loja.
 
 ## Avaliação automática após a entrega
 
@@ -41,7 +42,9 @@ Todo contato com o cliente sai do painel com mensagem pronta (confirmação, Pix
 
 - Preços, frete, capacidade e datas são validados **no banco** (`place_order`), nunca no front.
 - Clientes não precisam de login: cada pedido tem um token único de rastreio.
-- Tabelas privadas (pedidos, clientes, estoque, financeiro) só são lidas por quem está na tabela `admins`.
+- Tabelas privadas (pedidos, clientes, estoque, financeiro, configurações) só são lidas por quem está na tabela `admins`. O público lê apenas as views `public_settings` e `public_reviews`.
+- Funções internas (fila de avaliação, disparo do webhook) não são executáveis pela API anônima.
+- Datas de negócio (hoje, antecedência, receita) usam o fuso de São Paulo, não o UTC do servidor.
 - A `service_role` key é usada só no script de criação de admin, nunca no front.
 
 ## Estrutura

@@ -53,8 +53,18 @@ export default function Clientes() {
   const save = async () => {
     if (!editing?.name || !editing.phone) return toast("Nome e telefone são obrigatórios.", "err");
     setBusy(true);
-    const { id, ...rest } = editing;
-    const payload = { ...rest, phone: onlyDigits(rest.phone ?? ""), kind: rest.kind ?? "lead", source: rest.source ?? "whatsapp", zone_id: rest.zone_id || null };
+    const { id } = editing;
+    const payload = {
+      name: editing.name.trim(),
+      phone: onlyDigits(formatPhone(editing.phone)),
+      kind: editing.kind ?? "lead",
+      source: editing.source ?? "whatsapp",
+      zone_id: editing.zone_id || null,
+      address: editing.address ?? "",
+      reference: editing.reference ?? "",
+      notes: editing.notes ?? "",
+      tags: editing.tags ?? [],
+    };
     const { error } = id ? await supabase.from("customers").update(payload).eq("id", id) : await supabase.from("customers").insert(payload);
     setBusy(false);
     if (error) return toast(friendlyError(error).includes("duplicate") ? "Já existe cliente com esse telefone." : friendlyError(error), "err");

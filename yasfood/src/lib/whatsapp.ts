@@ -37,7 +37,7 @@ export const msgs = {
       .replace("{codigo}", o.code),
 
   lead: (name: string, cardapioUrl: string) =>
-    `Oi ${first(name)}! Aqui é a Yasmim, da Yas Delícias. Faço bolo de cenoura caseiro com cobertura de chocolate (570g por R$ 35), assado no dia e entregue no seu apê. Dá uma olhada no cardápio e escolhe o dia: ${cardapioUrl}`,
+    `Oi ${first(name)}! Aqui é a Yasmim, da Yas Delícias. Faço bolo de cenoura caseiro com cobertura de chocolate (570g por R$ 35), assado no dia e entregue na sua casa, aqui no Alphaville. Dá uma olhada no cardápio e escolhe o dia: ${cardapioUrl}`,
 
   reativacao: (name: string, cardapioUrl: string) =>
     `Oi ${first(name)}! Saudade de você por aqui. Essa semana tem bolo de cenoura fresquinho saindo. Quer garantir o seu? ${cardapioUrl}`,

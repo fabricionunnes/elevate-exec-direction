@@ -10,7 +10,7 @@ const WD = ["D", "S", "T", "Q", "Q", "S", "S"];
 
 export default function Agenda() {
   const toast = useToast();
-  const { settings } = useSettings();
+  const { settings } = useSettings(true);
   const [days, setDays] = useState<Availability[] | null>(null);
   const [from, setFrom] = useState(addDaysISO(1));
   const [to, setTo] = useState(addDaysISO(30));
@@ -73,7 +73,7 @@ export default function Agenda() {
         </div>
       </Card>
 
-      <Card title="Próximos 60 dias" action={<Button size="sm" variant="outline" onClick={() => addSingle(prompt("Data (AAAA-MM-DD):", addDaysISO(1)) ?? "")}>+ dia avulso</Button>}>
+      <Card title="Próximos 60 dias" action={<Button size="sm" variant="outline" onClick={() => { const d = prompt("Data (AAAA-MM-DD):", addDaysISO(1)); if (d) void addSingle(d); }}>+ dia avulso</Button>}>
         {days === null ? <Spinner /> : days.length === 0 ? <Empty>Nenhum dia aberto. Use "Abrir agenda" acima.</Empty> : (
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {days.map((d) => {

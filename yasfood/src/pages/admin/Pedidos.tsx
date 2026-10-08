@@ -14,7 +14,7 @@ type Filter = "abertos" | "hoje" | "amanha" | "todos" | "cancelados";
 
 export default function Pedidos() {
   const toast = useToast();
-  const { settings } = useSettings();
+  const { settings } = useSettings(true);
   const [params, setParams] = useSearchParams();
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [filter, setFilter] = useState<Filter>("abertos");
@@ -32,7 +32,7 @@ export default function Pedidos() {
     void load();
     const ch = supabase
       .channel("orders-admin")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => void load())
+      .on("postgres_changes", { event: "*", schema: "yasfood", table: "orders" }, () => void load())
       .subscribe();
     return () => { void supabase.removeChannel(ch); };
   }, [load]);
@@ -276,6 +276,7 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
   const submit = async () => {
     const items = Object.entries(qty).filter(([, q]) => q > 0).map(([product_id, q]) => ({ product_id, qty: q }));
     if (!items.length) return toast("Escolha pelo menos um produto.", "err");
+    if (!date) return toast("Escolha a data da encomenda.", "err");
     setBusy(true);
     const { error } = await supabase.rpc("place_order", {
       p: { name, phone: onlyDigits(phone), fulfillment, zone_id: fulfillment === "entrega" ? zoneId : null, address, reference: "", scheduled_date: date, payment_method: payment, notes: notes ? `[manual] ${notes}` : "[manual]", items },

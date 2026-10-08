@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { useSettings } from "@/lib/useSettings";
 import { Spinner } from "@/components/ui";
 import { YasFoodMark, YasFoodWord } from "@/components/Brand";
+import { Logo } from "@/pages/cliente/Layout";
 
 const NAV = [
   { to: "/admin", label: "Início", icon: LayoutDashboard, end: true },
@@ -49,20 +50,21 @@ export default function AdminLayout() {
       {/* Sidebar desktop */}
       <aside className="hidden w-60 shrink-0 flex-col border-r border-rosa-200 bg-white p-4 lg:flex">
         <Link to="/admin" className="mb-6 flex items-center gap-2">
-          <YasFoodMark size={40} />
-          <div className="leading-tight"><YasFoodWord /><div className="text-[11px] text-choco-500">{settings?.business_name ?? "Yas Delícias"}</div></div>
+          <Logo size={48} url={settings?.logo_url} />
+          <div className="leading-tight"><div className="font-black text-vinho-700">{settings?.business_name ?? "Yas Delícias"}</div><div className="text-[11px] text-choco-500">Painel da Yasmim</div></div>
         </Link>
         {nav}
         <div className="mt-auto space-y-1 pt-4">
           <a href="/" target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-choco-600 hover:bg-rosa-100"><ExternalLink size={16} /> Ver cardápio</a>
           <button onClick={signOut} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-choco-600 hover:bg-rosa-100"><LogOut size={16} /> Sair</button>
+          <div className="flex items-center gap-1 px-3 pt-2 text-[10px] text-choco-300"><YasFoodMark size={14} className="!rounded" /> feito com <YasFoodWord size="text-[11px]" /></div>
         </div>
       </aside>
 
       {/* Topbar mobile */}
       <div className="flex-1">
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-rosa-200 bg-white/90 px-4 py-2 backdrop-blur lg:hidden">
-          <Link to="/admin" className="flex items-center gap-2"><YasFoodMark size={34} /><YasFoodWord /></Link>
+          <Link to="/admin" className="flex items-center gap-2"><Logo size={36} url={settings?.logo_url} /><span className="font-black text-vinho-700">{settings?.business_name ?? "Yas Delícias"}</span></Link>
           <button onClick={() => setOpen((o) => !o)} className="rounded-xl p-2 text-choco-700 hover:bg-rosa-100" aria-label="Menu"><Menu /></button>
         </header>
         {open && (
