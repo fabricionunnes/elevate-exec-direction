@@ -1,5 +1,6 @@
 name = "yasfood"
 compatibility_date = "2026-05-15"
+workers_dev = true
 
 # Sem rota de domínio: publica em https://yasfood.<conta>.workers.dev
 # Pra usar domínio próprio (ex.: yasdelicias.com.br), adicione:
