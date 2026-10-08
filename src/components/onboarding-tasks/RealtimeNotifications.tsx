@@ -159,8 +159,8 @@ export const RealtimeNotifications = () => {
   const notificationTarget = (n: Notification): { path: string; label: string } | null => {
     // notificações novas já dizem pra onde levar
     if (n.action_url && !/^https?:\/\//i.test(n.action_url)) return { path: n.action_url.replace(/^\/?#/, ""), label: "Abrir" };
-    if (n.reference_type === "crm_lead" && n.reference_id) {
-      return { path: `/crm/leads/${n.reference_id}`, label: "Ver Lead" };
+    if ((n.reference_type === "crm_lead" || n.reference_type === "lead") && n.reference_id) {
+      return { path: `/crm/leads/${n.reference_id}`, label: "Abrir lead" };
     }
     if (n.project_id) return { path: `/onboarding-tasks/${n.project_id}`, label: "Ver Projeto" };
     return null;

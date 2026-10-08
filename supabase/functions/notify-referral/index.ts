@@ -72,6 +72,22 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${staffMembers.length} staff members to notify`);
 
+    // O gatilho create_lead_on_referral já criou o lead no funil Indicações: acha pelo telefone
+    // pra notificação abrir direto o lead (botão "Abrir lead").
+    let leadId: string | null = null;
+    const digits = String(body.referredPhone || "").replace(/\D/g, "");
+    if (digits.length >= 8) {
+      const { data: pipe } = await supabase
+        .from("crm_pipelines").select("id").is("tenant_id", null).ilike("name", "indica%").limit(1).maybeSingle();
+      if (pipe?.id) {
+        const { data: leads } = await supabase
+          .from("crm_leads").select("id, phone, created_at").eq("pipeline_id", pipe.id)
+          .order("created_at", { ascending: false }).limit(50);
+        const tail = digits.slice(-8);
+        leadId = (leads || []).find((l) => String(l.phone || "").replace(/\D/g, "").endsWith(tail))?.id || null;
+      }
+    }
+
     // Create notification for each admin and CS
     const notifications = staffMembers.map((staff) => ({
       staff_id: staff.id,
@@ -79,7 +95,9 @@ Deno.serve(async (req) => {
       type: "referral",
       title: "🎉 Nova Indicação Recebida!",
       message: `${body.referrerName || "Um cliente"} de ${companyName} indicou ${body.referredName} (${body.referredPhone}). Fonte: ${body.source === "nps" ? "Pesquisa NPS" : "Portal do Cliente"}`,
-      reference_type: "referral",
+      reference_type: leadId ? "crm_lead" : "referral",
+      reference_id: leadId,
+      action_url: leadId ? `/crm/leads/${leadId}` : null,
       is_read: false,
     }));
 

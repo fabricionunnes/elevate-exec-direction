@@ -9,7 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Bell, CheckCheck, Clock, X } from "lucide-react";
+import { Bell, CheckCheck, Clock, X, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -117,8 +117,18 @@ export const CRMNotificationsBell = ({ staffId }: CRMNotificationsBellProps) => 
 
   // Chamado de suporte: clicar leva pra conversa (os outros tipos só marcam como lida).
   // Resposta do suporte abre o widget de ajuda; chamado novo abre a aba Suporte.
+  // Lead do CRM (indicação, formulário, atividade, fluxo): abre o card do lead.
+  const leadPath = (n: Notification): string | null => {
+    const url = (n as Notification & { action_url?: string | null }).action_url;
+    if (url && /^\/?#?\/crm\/leads\//.test(url)) return url.replace(/^\/?#/, "");
+    if ((n.reference_type === "crm_lead" || n.reference_type === "lead") && n.reference_id) return `/crm/leads/${n.reference_id}`;
+    return null;
+  };
+
   const openNotification = (n: Notification) => {
     markAsRead(n.id);
+    const lp = leadPath(n);
+    if (lp) { navigate(lp); setOpen(false); return; }
     if (!n.reference_id) return;
     if (n.type === "crm_support_reply") {
       window.dispatchEvent(new CustomEvent("crm-support-open", { detail: { ticketId: n.reference_id } }));
@@ -197,6 +207,17 @@ export const CRMNotificationsBell = ({ staffId }: CRMNotificationsBellProps) => 
                       </div>
                       <p className="font-medium text-xs leading-tight truncate">{n.title}</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
+                      {leadPath(n) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-1.5 h-6 px-2 text-[11px]"
+                          onClick={(e) => { e.stopPropagation(); openNotification(n); }}
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          Abrir lead
+                        </Button>
+                      )}
                     </div>
                     <Button
                       variant="ghost"
