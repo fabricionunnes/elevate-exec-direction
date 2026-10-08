@@ -78,6 +78,32 @@ export default function UNVStartCheckoutPage() {
     trackMetaEvent("InitiateCheckout", { value: 97, currency: "BRL" });
   }, []);
 
+  // lead no CRM assim que nome, WhatsApp e e-mail estão válidos, mesmo que não pague
+  const leadEnviado = useRef("");
+  useEffect(() => {
+    const n = name.trim();
+    const em = email.trim().toLowerCase();
+    const w = whatsapp.replace(/\D/g, "");
+    if (n.length < 2 || w.length < 10 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return;
+    const assinatura = `${n}|${em}|${w}`;
+    if (assinatura === leadEnviado.current) return;
+    const t = window.setTimeout(() => {
+      leadEnviado.current = assinatura;
+      const qs = new URLSearchParams(window.location.search || window.location.hash.split("?")[1] || "");
+      callCheckout({
+        action: "lead",
+        name: n,
+        email: em,
+        whatsapp: w,
+        fbclid: qs.get("fbclid") || "",
+        origem: qs.get("utm_source") || "",
+      }).catch(() => {
+        /* silencioso: o create também grava o lead */
+      });
+    }, 1500);
+    return () => window.clearTimeout(t);
+  }, [name, email, whatsapp]);
+
   // polling do pagamento
   useEffect(() => {
     if (step !== "pix" || !memberId) return;

@@ -573,11 +573,13 @@ footer p + p{margin-top:6px}
   });
   v.addEventListener('ended', function () { revelar(); });
 
-  // barra fina: anda mais rápido no começo, como nos players de VSL
+  // barra fina desproporcional: dispara no começo (o vídeo parece mais curto) e desacelera no fim,
+  // sem parar, chegando a 100% junto com o vídeo. 14% do vídeo = 29% da barra; metade = 77%; 90% = 98%.
+  function barra(r) { return 0.8 * (1 - Math.pow(1 - r, 2.6)) + 0.2 * r; }
   v.addEventListener('timeupdate', function () {
     var d = v.duration || 0; if (!d) return;
     var r = Math.min(1, v.currentTime / d);
-    document.getElementById('pct').style.width = ((1 - Math.pow(1 - r, 1.5)) * 100) + '%';
+    document.getElementById('pct').style.width = (barra(r) * 100) + '%';
     if (v.currentTime >= cfg.REVEAL_AT) revelar();
     if (comSom) Object.keys(marcos).forEach(function (k) { if (!marcos[k] && r * 100 >= +k) { marcos[k] = 1; try { fbq('trackCustom', 'VSL_' + k); } catch (e) {} } });
   });
