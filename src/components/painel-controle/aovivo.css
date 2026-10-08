@@ -229,3 +229,5 @@
 .pc.av-pop { min-height: 0 !important; height: auto; max-height: 92dvh; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; }
 .pc.av-pop .av-pop-wrap { max-width: 100%; margin: 0; padding: 4px 0 8px; gap: 14px; }
 .av-pop-content { display: block; }
+
+.pc.av .av-meta-dia .mini div.clk:hover small, .pc.av .av-meta-dia .big.clk:hover span { color: var(--ink); text-decoration: underline; }

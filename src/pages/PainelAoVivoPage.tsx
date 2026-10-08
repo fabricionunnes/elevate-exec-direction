@@ -187,16 +187,16 @@ export default function PainelAoVivoPage() {
         <section className="av-metas">
           <MetaDia onClick={() => abrirPer("vendas", "hoje", "Vendas")} titulo="META DO DIA · COMERCIAL" cor="acc" p={md.comercial.meta_dia ? Math.min(100, pct(md.comercial.vendido_hoje, md.comercial.meta_dia)) : 0}
             big={brl(md.comercial.vendido_hoje)} de={md.comercial.meta_dia != null ? `de ${brl(md.comercial.meta_dia)} hoje` : "sem meta cadastrada"}
-            itens={[["Vendas hoje", String(md.comercial.vendas_hoje)], ["Falta no mês", brl(Math.max(n(md.comercial.meta_mes) - md.comercial.vendido_mes, 0))], ["Dias úteis", String(md.comercial.du_restantes)]]} />
+            itens={[["Vendas hoje", String(md.comercial.vendas_hoje), () => abrirPer("vendas", "hoje", "Vendas")], ["Falta no mês", brl(Math.max(n(md.comercial.meta_mes) - md.comercial.vendido_mes, 0)), () => abrirPer("vendas", "mes", "Vendas")], ["Dias úteis", String(md.comercial.du_restantes)]]} />
           <MetaDia onClick={() => abrirPer("faturas_pagas", "hoje", "Faturas pagas")} titulo="META DO DIA · FINANCEIRO" cor="bar"
             p={md.financeiro.vencendo_hoje_v > 0 ? Math.min(100, pct(md.financeiro.vencendo_hoje_pago_v, md.financeiro.vencendo_hoje_v)) : md.financeiro.recebido_hoje > 0 ? 100 : 0}
             big={brl(md.financeiro.recebido_hoje)}
             de={md.financeiro.vencendo_hoje_v > 0 ? `recebido de ${brl(md.financeiro.vencendo_hoje_v)} que vencem hoje` : "recebido · nada vence hoje"}
-            itens={[["Faturas pagas", String(md.financeiro.recebido_hoje_n)], ["A pagar hoje", brl(md.financeiro.a_pagar_hoje_v)], ["Pago hoje", brl(md.financeiro.pago_hoje)]]} />
+            itens={[["Faturas pagas", String(md.financeiro.recebido_hoje_n), () => abrirPer("faturas_pagas", "hoje", "Faturas pagas")], ["A pagar hoje", brl(md.financeiro.a_pagar_hoje_v), () => abrirPer("contas_a_pagar", "hoje", "Contas a pagar com vencimento")], ["Pago hoje", brl(md.financeiro.pago_hoje), () => abrirPer("contas_pagas", "hoje", "Contas pagas")]]} />
           <MetaDia onClick={() => abrir("tarefas_atrasadas", {}, "Tarefas atrasadas (entrega)")} titulo="META DO DIA · PRODUTO E ENTREGA" cor="good"
             p={md.produto.tarefas_vencem_hoje > 0 ? Math.min(100, pct(md.produto.tarefas_vencem_hoje_feitas, md.produto.tarefas_vencem_hoje)) : 100}
             big={`${md.produto.tarefas_vencem_hoje_feitas}/${md.produto.tarefas_vencem_hoje}`} de="tarefas do dia concluídas"
-            itens={[["Reuniões", `${md.produto.reunioes_cs_feitas}/${md.produto.reunioes_cs_hoje}`], ["Atrasadas", String(md.produto.tarefas_atrasadas)], ["Checkup", `${md.produto.checkup_total - md.produto.checkup_pendentes}/${md.produto.checkup_total}`]]} />
+            itens={[["Reuniões", `${md.produto.reunioes_cs_feitas}/${md.produto.reunioes_cs_hoje}`], ["Atrasadas", String(md.produto.tarefas_atrasadas), () => abrir("tarefas_atrasadas", {}, "Tarefas atrasadas (entrega)")], ["Checkup", `${md.produto.checkup_total - md.produto.checkup_pendentes}/${md.produto.checkup_total}`, () => abrir("checkup", {}, "Checkup de hoje")]]} />
         </section>
       )}
 
@@ -493,14 +493,14 @@ function Funil3DCompacto({ itens, onEtapa }: { itens: [string, number][]; onEtap
     </div>
   );
 }
-function MetaDia({ titulo, cor, p, big, de, itens, onClick }: { titulo: string; cor: "acc" | "bar" | "good"; p: number; big: string; de: string; itens: [string, string][]; onClick?: () => void }) {
+function MetaDia({ titulo, cor, p, big, de, itens, onClick }: { titulo: string; cor: "acc" | "bar" | "good"; p: number; big: string; de: string; itens: [string, string, (() => void)?][]; onClick?: () => void }) {
   return (
-    <div className={`av-meta-dia ${cor} ${onClick ? "clk" : ""}`} onClick={onClick} role={onClick ? "button" : undefined} title={onClick ? "Ver registros" : undefined}>
+    <div className={`av-meta-dia ${cor}`}>
       <div className="cab"><span className="av-h">{titulo}</span><b className="pct">{p}%</b></div>
       <div className="corpo">
-        <div className="big"><b>{big}</b><span>{de}</span></div>
+        <div className={`big ${onClick ? "clk" : ""}`} onClick={onClick} role={onClick ? "button" : undefined} title={onClick ? "Ver registros" : undefined}><b>{big}</b><span>{de}</span></div>
         <div className="mini">
-          {itens.map(([l, v]) => <div key={l}><small>{l}</small><b>{v}</b></div>)}
+          {itens.map(([l, v, fn]) => <div key={l} className={fn ? "clk" : ""} onClick={fn} role={fn ? "button" : undefined} title={fn ? "Ver registros" : undefined}><small>{l}</small><b>{v}</b></div>)}
         </div>
       </div>
       <div className="bar"><i style={{ width: `${Math.min(100, p)}%` }} /></div>
