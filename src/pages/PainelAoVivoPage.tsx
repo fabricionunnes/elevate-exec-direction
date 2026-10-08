@@ -84,8 +84,8 @@ export default function PainelAoVivoPage() {
   const rotPer = (k: "hoje" | "semana" | "mes") => (k === "hoje" ? "hoje" : k === "semana" ? "esta semana" : "no mês");
   const abrir = (bloco: string, filtro?: Filtro, titulo?: string, sub?: string) => setPop([{ bloco, filtro, titulo, sub }]);
   // abre com período alternável (Hoje / Semana / Mês no topo do pop-up): quando "hoje" vem vazio, um clique mostra o mês
-  const abrirPer = (bloco: string, k: "hoje" | "semana" | "mes", base: string, extra: Filtro = {}) =>
-    setPop([{ bloco, filtro: { ...periodo(k), ...extra }, titulo: `${base} ${rotPer(k)}`, per: k, base, extra }]);
+  const abrirPer = (bloco: string, k: "hoje" | "semana" | "mes", base: string, extra: Filtro = {}, sub?: string) =>
+    setPop([{ bloco, filtro: { ...periodo(k), ...extra }, titulo: `${base} ${rotPer(k)}`, sub, per: k, base, extra }]);
   const trocarPer = (k: "hoje" | "semana" | "mes") => setPop((pz) => {
     const a = pz[pz.length - 1]; if (!a?.base) return pz;
     return [...pz.slice(0, -1), { ...a, filtro: { ...periodo(k), ...(a.extra || {}) }, titulo: `${a.base} ${rotPer(k)}`, per: k }];
@@ -188,11 +188,11 @@ export default function PainelAoVivoPage() {
           <MetaDia onClick={() => abrirPer("vendas", "hoje", "Vendas")} titulo="META DO DIA · COMERCIAL" cor="acc" p={md.comercial.meta_dia ? Math.min(100, pct(md.comercial.vendido_hoje, md.comercial.meta_dia)) : 0}
             big={brl(md.comercial.vendido_hoje)} de={md.comercial.meta_dia != null ? `de ${brl(md.comercial.meta_dia)} hoje` : "sem meta cadastrada"}
             itens={[["Vendas hoje", String(md.comercial.vendas_hoje), () => abrirPer("vendas", "hoje", "Vendas")], ["Falta no mês", brl(Math.max(n(md.comercial.meta_mes) - md.comercial.vendido_mes, 0)), () => abrirPer("vendas", "mes", "Vendas")], ["Dias úteis", String(md.comercial.du_restantes)]]} />
-          <MetaDia onClick={() => abrirPer("faturas_pagas", "hoje", "Faturas pagas")} titulo="META DO DIA · FINANCEIRO" cor="bar"
+          <MetaDia onClick={() => abrirPer("faturas_pagas", "hoje", "Recebido", {}, "Pagamentos de clientes confirmados no período (faturas pagas).")} titulo="META DO DIA · FINANCEIRO" cor="bar"
             p={md.financeiro.vencendo_hoje_v > 0 ? Math.min(100, pct(md.financeiro.vencendo_hoje_pago_v, md.financeiro.vencendo_hoje_v)) : md.financeiro.recebido_hoje > 0 ? 100 : 0}
             big={brl(md.financeiro.recebido_hoje)}
             de={md.financeiro.vencendo_hoje_v > 0 ? `recebido de ${brl(md.financeiro.vencendo_hoje_v)} que vencem hoje` : "recebido · nada vence hoje"}
-            itens={[["Faturas pagas", String(md.financeiro.recebido_hoje_n), () => abrirPer("faturas_pagas", "hoje", "Faturas pagas")], ["A pagar hoje", brl(md.financeiro.a_pagar_hoje_v), () => abrirPer("contas_a_pagar", "hoje", "Contas a pagar com vencimento")], ["Pago hoje", brl(md.financeiro.pago_hoje), () => abrirPer("contas_pagas", "hoje", "Contas pagas")]]} />
+            itens={[["Faturas pagas", String(md.financeiro.recebido_hoje_n), () => abrirPer("faturas_pagas", "hoje", "Recebido", {}, "Pagamentos de clientes confirmados no período (faturas pagas).")], ["A pagar hoje", brl(md.financeiro.a_pagar_hoje_v), () => abrirPer("contas_a_pagar", "hoje", "A pagar com vencimento", {}, "Contas em aberto cujo vencimento cai no período.")], ["Pago hoje", brl(md.financeiro.pago_hoje), () => abrirPer("contas_pagas", "hoje", "Pago", {}, "Contas a pagar quitadas no período.")]]} />
           <MetaDia onClick={() => abrir("tarefas_atrasadas", {}, "Tarefas atrasadas (entrega)")} titulo="META DO DIA · PRODUTO E ENTREGA" cor="good"
             p={md.produto.tarefas_vencem_hoje > 0 ? Math.min(100, pct(md.produto.tarefas_vencem_hoje_feitas, md.produto.tarefas_vencem_hoje)) : 100}
             big={`${md.produto.tarefas_vencem_hoje_feitas}/${md.produto.tarefas_vencem_hoje}`} de="tarefas do dia concluídas"
@@ -255,8 +255,8 @@ export default function PainelAoVivoPage() {
           <table className="av-tab">
             <thead><tr><th></th><th>Hoje</th><th>Semana</th><th>Mês</th></tr></thead>
             <tbody>
-              <Linha l="Recebido" v={[h?.recebido, s?.recebido, m?.recebido]} dinheiro forte oculto={finOculto} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrirPer("faturas_pagas", k, "Faturas pagas"); }} />
-              <Linha l="Pago" v={[h?.pago, s?.pago, m?.pago]} dinheiro oculto={finOculto} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrirPer("contas_pagas", k, "Contas pagas"); }} />
+              <Linha l="Recebido" v={[h?.recebido, s?.recebido, m?.recebido]} dinheiro forte oculto={finOculto} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrirPer("faturas_pagas", k, "Recebido", {}, "Pagamentos de clientes confirmados no período (faturas pagas)."); }} />
+              <Linha l="Pago" v={[h?.pago, s?.pago, m?.pago]} dinheiro oculto={finOculto} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrirPer("contas_pagas", k, "Pago", {}, "Contas a pagar quitadas no período."); }} />
               <Linha l="Resultado (caixa)" v={[n(h?.recebido) - n(h?.pago), n(s?.recebido) - n(s?.pago), n(m?.recebido) - n(m?.pago)]} dinheiro sinal oculto={finOculto} />
             </tbody>
           </table>
