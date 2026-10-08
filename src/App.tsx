@@ -633,9 +633,11 @@ const AppShell = () => {
             <Route path="/disparador/:projectId" element={<ClientDisparadorPage />} />
             <Route path="/cac-form/:projectId" element={<CACFormPage />} />
             <Route path="/kickoff/:companyId" element={<KickoffFormPage />} />
+            {/* 09/10/2026: o link público do cliente abre o Painel de Controle novo; o painel antigo (HTML) fica em /classico */}
             <Route path="/painel/:token/controle" element={<PainelClientePage />} />
             <Route path="/painel/:token/ao-vivo" element={<PainelClienteAoVivoPage />} />
-            <Route path="/painel/:token" element={<PublicProjectDashboardPage />} />
+            <Route path="/painel/:token/classico" element={<PublicProjectDashboardPage />} />
+            <Route path="/painel/:token" element={<PainelClientePage />} />
             <Route path="/nps" element={<NPSSurveyPage />} />
             <Route path="/csat" element={<CSATSurveyPage />} />
             <Route path="/kpi-entry/:companyId" element={<KPIEntryPage />} />
