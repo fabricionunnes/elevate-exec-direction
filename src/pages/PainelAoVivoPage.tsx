@@ -32,7 +32,7 @@ type Dados = {
   ranking_agentes?: { agent_id: string; nome: string; ativo: boolean; respostas_hoje: number; respostas_mes: number; conversas_mes: number; agendadas_hoje: number; agendadas_semana: number; agendadas_mes: number }[];
   meta_dia?: {
     comercial: { meta_mes: number | null; vendido_mes: number; vendido_hoje: number; vendas_hoje: number; du_restantes: number; meta_dia: number | null };
-    financeiro: { vencendo_hoje_n: number; vencendo_hoje_v: number; vencendo_hoje_pago_v: number; recebido_hoje: number; recebido_hoje_n: number; a_pagar_hoje_v: number; pago_hoje: number };
+    financeiro: { vencendo_hoje_n: number; vencendo_hoje_v: number; vencendo_hoje_pago_v: number; a_receber_hoje_n?: number; a_receber_hoje_v?: number; recebido_hoje: number; recebido_hoje_n: number; a_pagar_hoje_v: number; pago_hoje: number };
     produto: { tarefas_vencem_hoje: number; tarefas_vencem_hoje_feitas: number; tarefas_atrasadas: number; tarefas_feitas_hoje: number; reunioes_cs_hoje: number; reunioes_cs_feitas: number; checkup_pendentes: number; checkup_total: number };
   };
   serie_dias?: { dia: string; vendas: number; receita: number; leads: number }[];
@@ -192,7 +192,7 @@ export default function PainelAoVivoPage() {
             p={md.financeiro.vencendo_hoje_v > 0 ? Math.min(100, pct(md.financeiro.vencendo_hoje_pago_v, md.financeiro.vencendo_hoje_v)) : md.financeiro.recebido_hoje > 0 ? 100 : 0}
             big={brl(md.financeiro.recebido_hoje)}
             de={md.financeiro.vencendo_hoje_v > 0 ? `recebido de ${brl(md.financeiro.vencendo_hoje_v)} que vencem hoje` : "recebido · nada vence hoje"}
-            itens={[["Faturas pagas", String(md.financeiro.recebido_hoje_n), () => abrirPer("faturas_pagas", "hoje", "Recebido", {}, "Pagamentos de clientes confirmados no período (faturas pagas).")], ["A pagar hoje", brl(md.financeiro.a_pagar_hoje_v), () => abrirPer("contas_a_pagar", "hoje", "A pagar com vencimento", {}, "Contas em aberto cujo vencimento cai no período.")], ["Pago hoje", brl(md.financeiro.pago_hoje), () => abrirPer("contas_pagas", "hoje", "Pago", {}, "Contas a pagar quitadas no período.")]]} />
+            itens={[["Faturas pagas", String(md.financeiro.recebido_hoje_n), () => abrirPer("faturas_pagas", "hoje", "Recebido", {}, "Pagamentos de clientes confirmados no período (faturas pagas).")], [`A receber hoje · ${md.financeiro.a_receber_hoje_n ?? 0}`, brl(md.financeiro.a_receber_hoje_v), () => abrirPer("faturas_a_receber", "hoje", "A receber com vencimento", {}, "Faturas de clientes em aberto cujo vencimento cai no período.")], ["A pagar hoje", brl(md.financeiro.a_pagar_hoje_v), () => abrirPer("contas_a_pagar", "hoje", "A pagar com vencimento", {}, "Contas em aberto cujo vencimento cai no período.")], ["Pago hoje", brl(md.financeiro.pago_hoje), () => abrirPer("contas_pagas", "hoje", "Pago", {}, "Contas a pagar quitadas no período.")]]} />
           <MetaDia onClick={() => abrir("tarefas_atrasadas", {}, "Tarefas atrasadas (entrega)")} titulo="META DO DIA · PRODUTO E ENTREGA" cor="good"
             p={md.produto.tarefas_vencem_hoje > 0 ? Math.min(100, pct(md.produto.tarefas_vencem_hoje_feitas, md.produto.tarefas_vencem_hoje)) : 100}
             big={`${md.produto.tarefas_vencem_hoje_feitas}/${md.produto.tarefas_vencem_hoje}`} de="tarefas do dia concluídas"
