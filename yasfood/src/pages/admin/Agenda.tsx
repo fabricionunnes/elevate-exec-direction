@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
-import { dayLabel, weekdayBR, todayISO, addDaysISO } from "@/lib/format";
-import type { Availability } from "@/lib/types";
-import { Button, Card, Input, Spinner, Empty, useToast } from "@/components/ui";
+import { dayLabel, weekdayBR, todayISO, addDaysISO, STATUS_COLOR, statusLabelFor } from "@/lib/format";
+import type { Availability, OrderStatus } from "@/lib/types";
+import { Button, Badge, Card, Input, Spinner, Empty, useToast } from "@/components/ui";
+
+interface DayOrder { id: string; code: string; customer_name: string; status: OrderStatus; fulfillment: "entrega" | "retirada"; scheduled_date: string; units: number }
 
 const WD = ["D", "S", "T", "Q", "Q", "S", "S"];
 
@@ -18,14 +21,36 @@ export default function Agenda() {
   const [weekdays, setWeekdays] = useState<number[]>([1, 2, 3, 4, 5, 6]);
   const [overwrite, setOverwrite] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [orders, setOrders] = useState<DayOrder[]>([]);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => { if (settings) setUnits(settings.default_daily_capacity); }, [settings]);
 
   const load = useCallback(async () => {
-    const { data } = await supabase.rpc("availability", { p_from: todayISO(), p_to: addDaysISO(60) });
+    const from = todayISO();
+    const to = addDaysISO(60);
+    const [{ data }, { data: os }] = await Promise.all([
+      supabase.rpc("availability", { p_from: from, p_to: to }),
+      supabase.from("orders").select("id, code, customer_name, status, fulfillment, scheduled_date, order_items(qty)").gte("scheduled_date", from).lte("scheduled_date", to).order("created_at"),
+    ]);
     setDays((data as Availability[]) ?? []);
+    type Row = Omit<DayOrder, "units"> & { order_items: { qty: number }[] | null };
+    setOrders(((os as Row[] | null) ?? []).map(({ order_items, ...o }) => ({ ...o, units: (order_items ?? []).reduce((a, i) => a + Number(i.qty), 0) })));
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    const ch = supabase
+      .channel("agenda-admin")
+      .on("postgres_changes", { event: "*", schema: "yasfood", table: "orders" }, () => void load())
+      .subscribe();
+    return () => { void supabase.removeChannel(ch); };
+  }, [load]);
+
+  const byDay = useMemo(() => {
+    const m = new Map<string, DayOrder[]>();
+    for (const o of orders) m.set(o.scheduled_date, [...(m.get(o.scheduled_date) ?? []), o]);
+    return m;
+  }, [orders]);
 
   const openRange = async () => {
     setBusy(true);
@@ -78,6 +103,10 @@ export default function Agenda() {
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {days.map((d) => {
               const pct = d.max_units ? Math.min(100, (d.booked_units / d.max_units) * 100) : 0;
+              const list = byDay.get(d.day) ?? [];
+              const active = list.filter((o) => o.status !== "cancelado");
+              const cancelled = list.length - active.length;
+              const open = expanded === d.day;
               return (
                 <div key={d.day} className={clsx("rounded-2xl border p-3", d.is_open ? "border-choco-100 bg-white" : "border-dashed border-choco-200 bg-choco-50 opacity-70")}>
                   <div className="flex items-center justify-between">
@@ -91,6 +120,23 @@ export default function Agenda() {
                     <span className={clsx("ml-auto text-xs font-bold", d.remaining === 0 ? "text-red-600" : "text-emerald-700")}>{d.remaining} livre(s)</span>
                   </div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-choco-100"><div className={clsx("h-full", pct >= 100 ? "bg-red-500" : "bg-vinho-500")} style={{ width: `${pct}%` }} /></div>
+                  {list.length > 0 && (
+                    <button type="button" onClick={() => setExpanded(open ? null : d.day)} className="mt-2 w-full text-left text-xs text-choco-600 underline-offset-2 hover:underline">
+                      {active.length} pedido(s) contando{cancelled > 0 && <span className="text-choco-400"> · {cancelled} cancelado(s) fora da conta</span>}{open ? " ▴" : " ▾"}
+                    </button>
+                  )}
+                  {open && (
+                    <ul className="mt-2 space-y-1 border-t border-choco-100 pt-2 text-xs">
+                      {list.map((o) => (
+                        <li key={o.id} className={clsx("flex items-center gap-2", o.status === "cancelado" && "line-through opacity-50")}>
+                          <Link to={`/admin/pedidos?abrir=${o.id}`} className="font-bold text-vinho-700">{o.code}</Link>
+                          <span className="truncate">{o.customer_name}</span>
+                          <span className="ml-auto whitespace-nowrap font-semibold">{o.units} bolo(s)</span>
+                          <Badge className={STATUS_COLOR[o.status]}>{statusLabelFor(o.status, o.fulfillment)}</Badge>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               );
             })}
