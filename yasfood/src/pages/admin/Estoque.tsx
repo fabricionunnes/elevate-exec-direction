@@ -91,7 +91,7 @@ export default function Estoque() {
         <div className="overflow-x-auto rounded-2xl border border-choco-100 bg-white shadow-card">
           <table className="w-full text-sm">
             <thead className="bg-choco-50 text-left text-xs uppercase tracking-wide text-choco-500">
-              <tr><th className="p-3">Insumo</th><th className="p-3 text-right">Em estoque</th><th className="p-3 text-right">Mínimo</th><th className="p-3 text-right">Custo/unid.</th><th className="p-3">Fornecedor</th><th className="p-3"></th></tr>
+              <tr><th className="p-3">Insumo</th><th className="p-3">Unidade</th><th className="p-3 text-right">Em estoque</th><th className="p-3 text-right">Mínimo</th><th className="p-3 text-right">Custo/unid.</th><th className="p-3">Fornecedor</th><th className="p-3"></th></tr>
             </thead>
             <tbody className="divide-y divide-choco-100">
               {ings.map((i) => {
@@ -99,6 +99,26 @@ export default function Estoque() {
                 return (
                   <tr key={i.id} className={clsx(!i.active && "opacity-50")}>
                     <td className="p-3 font-semibold">{i.name}</td>
+                    <td className="p-3">
+                      <select
+                        className="h-8 rounded-lg border border-choco-200 bg-white px-2 text-xs"
+                        value={i.unit}
+                        onChange={async (e) => {
+                          const unit = e.target.value as Ingredient["unit"];
+                          const { error } = await supabase.from("ingredients").update({ unit }).eq("id", i.id);
+                          if (error) return toast(friendlyError(error), "err");
+                          toast(`${i.name}: agora em ${unit}. Confira estoque, mínimo e receita nessa unidade.`);
+                          void load();
+                        }}
+                        title="Unidade de medida deste insumo"
+                      >
+                        <option value="g">g (gramas)</option>
+                        <option value="kg">kg</option>
+                        <option value="ml">ml</option>
+                        <option value="l">l (litros)</option>
+                        <option value="un">un (unidade)</option>
+                      </select>
+                    </td>
                     <td className={clsx("p-3 text-right font-bold", isLow ? "text-red-600" : "text-choco-900")}>{Number(i.qty_on_hand).toLocaleString("pt-BR")} {i.unit}</td>
                     <td className="p-3 text-right text-choco-500">{Number(i.min_qty).toLocaleString("pt-BR")} {i.unit}</td>
                     <td className="p-3 text-right">{brl(i.cost_per_unit)}</td>
