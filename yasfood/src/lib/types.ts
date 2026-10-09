@@ -27,6 +27,8 @@ export interface Settings {
   /** Casa da Yasmim: ponto de partida das entregas (só na tabela completa). */
   origin_lat: number | null;
   origin_lng: number | null;
+  /** Meta de faturamento do mês (R$). 0 = sem meta. */
+  monthly_goal: number;
 }
 
 export interface Product {
