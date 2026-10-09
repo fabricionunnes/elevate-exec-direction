@@ -6,7 +6,7 @@ import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, dateTimeBR, dayLong, formatPhone, nextStatus, PAYMENT_LABEL, STATUS_COLOR, STATUS_LABEL, statusLabelFor, todayISO, addDaysISO, onlyDigits } from "@/lib/format";
 import { waLink, msgs, trackingUrl } from "@/lib/whatsapp";
-import type { Availability, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
+import type { Availability, Customer, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Button, Badge, Card, Modal, Empty, Spinner, Input, Select, Textarea, useToast } from "@/components/ui";
 
@@ -247,12 +247,35 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
   const [products, setProducts] = useState<Product[]>([]);
   const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [avail, setAvail] = useState<Availability[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerQuery, setCustomerQuery] = useState("");
+  const [customerOpen, setCustomerOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [qty, setQty] = useState<Record<string, number>>({});
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [fulfillment, setFulfillment] = useState<Fulfillment>("entrega");
   const [zoneId, setZoneId] = useState("");
   const [address, setAddress] = useState("");
+  const [reference, setReference] = useState("");
+
+  const pickCustomer = (c: Customer) => {
+    setSelectedCustomer(c);
+    setCustomerQuery(c.name);
+    setCustomerOpen(false);
+    setName(c.name);
+    setPhone(formatPhone(c.phone));
+    if (c.zone_id) setZoneId(c.zone_id);
+    if (c.address) setAddress(c.address);
+    if (c.reference) setReference(c.reference);
+  };
+
+  const customerMatches = customerQuery.trim().length >= 2
+    ? customers.filter((c) => {
+        const q = customerQuery.trim().toLowerCase();
+        return c.name.toLowerCase().includes(q) || c.phone.includes(onlyDigits(q));
+      }).slice(0, 8)
+    : [];
   const [date, setDate] = useState("");
   const [payment, setPayment] = useState<PaymentMethod>("pix");
   const [notes, setNotes] = useState("");
@@ -260,12 +283,14 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
 
   useEffect(() => {
     void (async () => {
-      const [p, z, a] = await Promise.all([
+      const [p, z, a, c] = await Promise.all([
         supabase.from("products").select("*").eq("active", true).order("sort_order"),
         supabase.from("delivery_zones").select("*").eq("active", true).order("sort_order"),
         supabase.rpc("availability", { p_from: todayISO(), p_to: addDaysISO(30) }),
+        supabase.from("customers").select("*").order("name"),
       ]);
       setProducts((p.data as Product[]) ?? []);
+      setCustomers((c.data as Customer[]) ?? []);
       const zs = (z.data as DeliveryZone[]) ?? [];
       setZones(zs);
       if (zs[0]) setZoneId(zs[0].id);
@@ -279,7 +304,7 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
     if (!date) return toast("Escolha a data da encomenda.", "err");
     setBusy(true);
     const { error } = await supabase.rpc("place_order", {
-      p: { name, phone: onlyDigits(phone), fulfillment, zone_id: fulfillment === "entrega" ? zoneId : null, address, reference: "", scheduled_date: date, payment_method: payment, notes: notes ? `[manual] ${notes}` : "[manual]", items },
+      p: { name, phone: onlyDigits(phone), fulfillment, zone_id: fulfillment === "entrega" ? zoneId : null, address, reference, scheduled_date: date, payment_method: payment, notes: notes ? `[manual] ${notes}` : "[manual]", items },
     });
     setBusy(false);
     if (error) return toast(friendlyError(error), "err");
@@ -303,6 +328,29 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
           </Select>
         </div>
         <div className="space-y-2">
+          <div className="relative">
+            <Input
+              label="Cliente cadastrado"
+              placeholder="Busca por nome ou telefone…"
+              value={customerQuery}
+              onChange={(e) => { setCustomerQuery(e.target.value); setCustomerOpen(true); if (selectedCustomer) setSelectedCustomer(null); }}
+              onFocus={() => setCustomerOpen(true)}
+              onBlur={() => setTimeout(() => setCustomerOpen(false), 150)}
+              hint={selectedCustomer ? `Selecionado: ${selectedCustomer.name} · ${formatPhone(selectedCustomer.phone)}` : "Ou preencha os dados abaixo pra um cliente novo."}
+            />
+            {customerOpen && customerMatches.length > 0 && (
+              <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-choco-200 bg-white shadow-soft">
+                {customerMatches.map((c) => (
+                  <li key={c.id}>
+                    <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pickCustomer(c)} className="flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-rosa-100">
+                      <span className="font-semibold">{c.name}</span>
+                      <span className="text-xs text-choco-500">{formatPhone(c.phone)}{c.address ? ` · ${c.address}` : ""}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           <Input label="Nome" value={name} onChange={(e) => setName(e.target.value)} />
           <Input label="WhatsApp" value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} />
           <Select label="Entrega" value={fulfillment} onChange={(e) => setFulfillment(e.target.value as Fulfillment)}>
@@ -313,6 +361,7 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
             <>
               <Select label="Zona" value={zoneId} onChange={(e) => setZoneId(e.target.value)}>{zones.map((z) => <option key={z.id} value={z.id}>{z.name} · {brl(z.fee)}</option>)}</Select>
               <Input label="Endereço" value={address} onChange={(e) => setAddress(e.target.value)} />
+              <Input label="Referência" value={reference} onChange={(e) => setReference(e.target.value)} />
             </>
           )}
           <Select label="Pagamento" value={payment} onChange={(e) => setPayment(e.target.value as PaymentMethod)}>
