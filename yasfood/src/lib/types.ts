@@ -222,6 +222,7 @@ export interface ProductMedia {
   product_id: string;
   kind: "image" | "video";
   url: string;
+  poster_url?: string | null;
   sort_order: number;
 }
 

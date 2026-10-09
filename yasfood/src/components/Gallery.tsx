@@ -6,8 +6,8 @@ import type { ProductMedia } from "@/lib/types";
 /** Galeria com rolagem por toque (celular) e setas/pontinhos (computador). Fotos e vídeos. */
 export function Gallery({ media, cover, alt }: { media: ProductMedia[]; cover?: string | null; alt: string }) {
   // A capa escolhida no painel é sempre o primeiro slide; o resto segue a ordem da galeria.
-  const rest = media.filter((m) => m.url !== cover).map((m) => ({ kind: m.kind, url: m.url, id: m.id }));
-  const items: { kind: "image" | "video"; url: string; id: string }[] = cover
+  const rest = media.filter((m) => m.url !== cover).map((m) => ({ kind: m.kind, url: m.url, id: m.id, poster: m.poster_url ?? null }));
+  const items: { kind: "image" | "video"; url: string; id: string; poster?: string | null }[] = cover
     ? [{ kind: "image" as const, url: cover, id: "cover" }, ...rest]
     : rest;
   const ref = useRef<HTMLDivElement>(null);
@@ -35,7 +35,7 @@ export function Gallery({ media, cover, alt }: { media: ProductMedia[]; cover?: 
         {items.map((m) => (
           <div key={m.id} className="h-full w-full shrink-0 snap-center bg-choco-900/5">
             {m.kind === "video" ? (
-              <video src={m.url} className="h-full w-full object-cover" controls playsInline muted preload="metadata" />
+              <video src={`${m.url}#t=0.1`} poster={m.poster ?? undefined} className="h-full w-full object-cover" controls playsInline muted preload="metadata" />
             ) : (
               <img src={m.url} alt={alt} className="h-full w-full object-cover" loading="lazy" />
             )}

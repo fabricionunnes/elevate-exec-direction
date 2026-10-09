@@ -13,3 +13,34 @@ export async function uploadMedia(file: File, folder: string): Promise<{ url: st
   const { data } = supabase.storage.from("produtos").getPublicUrl(path);
   return { url: data.publicUrl, kind };
 }
+
+/** Captura um frame do vídeo (no navegador) pra servir de capa antes do play. */
+export function captureVideoPoster(file: File, at = 0.5): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    try {
+      const url = URL.createObjectURL(file);
+      const v = document.createElement("video");
+      v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = url;
+      const done = (b: Blob | null) => { URL.revokeObjectURL(url); resolve(b); };
+      const grab = () => {
+        try {
+          const c = document.createElement("canvas");
+          c.width = v.videoWidth || 1200; c.height = v.videoHeight || 900;
+          c.getContext("2d")?.drawImage(v, 0, 0, c.width, c.height);
+          c.toBlob((b) => done(b), "image/jpeg", 0.86);
+        } catch { done(null); }
+      };
+      v.onloadeddata = () => { try { v.currentTime = Math.min(at, (v.duration || 1) - 0.05); } catch { grab(); } };
+      v.onseeked = grab;
+      v.onerror = () => done(null);
+      setTimeout(() => done(null), 8000);
+    } catch { resolve(null); }
+  });
+}
+
+export async function uploadBlob(blob: Blob, folder: string, ext = "jpg"): Promise<string> {
+  const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage.from("produtos").upload(path, blob, { contentType: blob.type || "image/jpeg" });
+  if (error) throw error;
+  return supabase.storage.from("produtos").getPublicUrl(path).data.publicUrl;
+}

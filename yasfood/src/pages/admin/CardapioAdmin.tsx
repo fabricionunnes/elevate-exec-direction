@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Pencil, ImagePlus, Trash2, Film, Star } from "lucide-react";
-import { uploadMedia } from "@/lib/media";
+import { uploadMedia, captureVideoPoster, uploadBlob } from "@/lib/media";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { brl } from "@/lib/format";
 import type { Ingredient, Product, ProductCost, ProductIngredient, ProductMedia } from "@/lib/types";
@@ -217,7 +217,12 @@ function MediaManager({ productId, cover, onCover }: { productId: string; cover:
     for (const f of Array.from(files)) {
       try {
         const { url, kind } = await uploadMedia(f, `produtos/${productId}`);
-        await supabase.from("product_media").insert({ product_id: productId, kind, url, sort_order: items.length + n });
+        let poster_url: string | null = null;
+        if (kind === "video") {
+          const poster = await captureVideoPoster(f);
+          if (poster) poster_url = await uploadBlob(poster, `produtos/${productId}/posters`);
+        }
+        await supabase.from("product_media").insert({ product_id: productId, kind, url, poster_url, sort_order: items.length + n });
         if (!cover && kind === "image" && n === 0) {
           await supabase.from("products").update({ image_url: url }).eq("id", productId);
           onCover(url);
@@ -265,7 +270,7 @@ function MediaManager({ productId, cover, onCover }: { productId: string; cover:
         <div className="grid grid-cols-3 gap-2">
           {items.map((m) => (
             <div key={m.id} className="group relative overflow-hidden rounded-xl bg-choco-50">
-              {m.kind === "video" ? <video src={m.url} className="aspect-square w-full object-cover" muted playsInline preload="metadata" /> : <img src={m.url} alt="" className="aspect-square w-full object-cover" />}
+              {m.kind === "video" ? <video src={`${m.url}#t=0.1`} poster={m.poster_url ?? undefined} className="aspect-square w-full object-cover" muted playsInline preload="metadata" /> : <img src={m.url} alt="" className="aspect-square w-full object-cover" />}
               {cover === m.url && <span className="absolute left-1 top-1 rounded-full bg-vinho-600 px-1.5 py-0.5 text-[10px] font-bold text-white">capa</span>}
               <div className="absolute inset-x-0 bottom-0 flex justify-between bg-choco-900/60 p-1 text-white">
                 <button onClick={() => move(m, -1)} className="px-1 text-xs" title="Mover pra esquerda">◀</button>
