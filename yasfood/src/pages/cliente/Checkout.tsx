@@ -155,10 +155,30 @@ export default function Checkout() {
         </ul>
       </section>
 
+      {/* Entrega */}
+      <section className="rounded-2xl border border-choco-100 bg-white p-4 shadow-card">
+        <h2 className="mb-3 font-bold">Entrega ou retirada?</h2>
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={() => setFulfillment("entrega")} className={clsx("flex items-center justify-center gap-2 rounded-2xl border p-3 font-semibold", fulfillment === "entrega" ? "border-vinho-600 bg-vinho-50 ring-2 ring-vinho-300" : "border-choco-100")}><Truck size={18} /> Entregar</button>
+          <button disabled={settings ? !settings.pickup_enabled : false} onClick={() => setFulfillment("retirada")} className={clsx("flex items-center justify-center gap-2 rounded-2xl border p-3 font-semibold disabled:opacity-40", fulfillment === "retirada" ? "border-vinho-600 bg-vinho-50 ring-2 ring-vinho-300" : "border-choco-100")}><Store size={18} /> Retirar</button>
+        </div>
+        {fulfillment === "entrega" ? (
+          <div className="mt-3 space-y-3">
+            <Select label="Qual condomínio / região?" value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
+              {zones.map((z) => <option key={z.id} value={z.id}>{z.name} · {Number(z.fee) === 0 ? "frete grátis" : brl(z.fee)}</option>)}
+            </Select>
+            <Input label="Endereço (rua, número, casa ou apto)" placeholder="Ex.: Rua das Acácias, 120, casa 7" value={address} onChange={(e) => setAddress(e.target.value)} />
+            <Input label="Ponto de referência (opcional)" placeholder="Ex.: portaria principal, deixar com o porteiro" value={reference} onChange={(e) => setReference(e.target.value)} />
+          </div>
+        ) : (
+          settings?.pickup_address && <p className="mt-3 rounded-xl bg-choco-50 p-3 text-sm text-choco-700">{settings.pickup_address}</p>
+        )}
+      </section>
+
       {/* Data */}
       <section className="rounded-2xl border border-choco-100 bg-white p-4 shadow-card">
-        <h2 className="font-bold">Para qual dia?</h2>
-        <p className="mb-3 text-xs text-choco-500">Preparamos no dia da entrega. Mostramos só os dias com vaga.</p>
+        <h2 className="font-bold">{fulfillment === "entrega" ? "Para qual dia?" : "Que dia você vem buscar?"}</h2>
+        <p className="mb-3 text-xs text-choco-500">Preparamos no dia. Mostramos só os dias com vaga.</p>
         {avail.filter((d) => d.bookable).length === 0 ? (
           <Empty>Sem datas disponíveis no momento. Chama no WhatsApp que a gente dá um jeito.</Empty>
         ) : (
@@ -208,26 +228,6 @@ export default function Checkout() {
           </div>
         )}
         {date && windows && windows.length === 0 && <p className="mt-3 text-xs text-choco-500">Sem horários fixos nesse dia: a Yasmim combina o horário com você pelo WhatsApp.</p>}
-      </section>
-
-      {/* Entrega */}
-      <section className="rounded-2xl border border-choco-100 bg-white p-4 shadow-card">
-        <h2 className="mb-3 font-bold">Entrega ou retirada?</h2>
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => setFulfillment("entrega")} className={clsx("flex items-center justify-center gap-2 rounded-2xl border p-3 font-semibold", fulfillment === "entrega" ? "border-vinho-600 bg-vinho-50 ring-2 ring-vinho-300" : "border-choco-100")}><Truck size={18} /> Entregar</button>
-          <button disabled={settings ? !settings.pickup_enabled : false} onClick={() => setFulfillment("retirada")} className={clsx("flex items-center justify-center gap-2 rounded-2xl border p-3 font-semibold disabled:opacity-40", fulfillment === "retirada" ? "border-vinho-600 bg-vinho-50 ring-2 ring-vinho-300" : "border-choco-100")}><Store size={18} /> Retirar</button>
-        </div>
-        {fulfillment === "entrega" ? (
-          <div className="mt-3 space-y-3">
-            <Select label="Qual condomínio / região?" value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
-              {zones.map((z) => <option key={z.id} value={z.id}>{z.name} · {Number(z.fee) === 0 ? "frete grátis" : brl(z.fee)}</option>)}
-            </Select>
-            <Input label="Endereço (rua, número, casa ou apto)" placeholder="Ex.: Rua das Acácias, 120, casa 7" value={address} onChange={(e) => setAddress(e.target.value)} />
-            <Input label="Ponto de referência (opcional)" placeholder="Ex.: portaria principal, deixar com o porteiro" value={reference} onChange={(e) => setReference(e.target.value)} />
-          </div>
-        ) : (
-          settings?.pickup_address && <p className="mt-3 rounded-xl bg-choco-50 p-3 text-sm text-choco-700">{settings.pickup_address}</p>
-        )}
       </section>
 
       {/* Dados */}
