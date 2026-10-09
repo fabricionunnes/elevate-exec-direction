@@ -180,6 +180,7 @@ export interface StockMovement {
   unit_cost: number | null;
   total_cost: number | null;
   transaction_id: string | null;
+  supplier: string;
   note: string;
   order_id: string | null;
   created_at: string;
@@ -245,5 +246,30 @@ export interface Poll {
   closes_at: string | null;
   created_at: string;
 }
+export interface ShoppingItem {
+  id: string;
+  name: string;
+  qty_text: string;
+  note: string;
+  ingredient_id: string | null;
+  done: boolean;
+  created_at: string;
+}
+
+export interface IngredientNeed {
+  ingredient_id: string;
+  name: string;
+  unit: Ingredient["unit"];
+  qty_on_hand: number;
+  min_qty: number;
+  pack_size: number | null;
+  pack_label: string;
+  supplier: string;
+  cost_per_unit: number;
+  needed_14d: number;
+  shortage: number;
+  packs_to_buy: number | null;
+}
+
 export interface PollOption { id: string; poll_id: string; label: string; sort_order: number }
 export interface PollResult { poll_id: string; option_id: string; label: string; sort_order: number; votes: number }

@@ -119,12 +119,13 @@ export default function Estoque() {
         </div>
       )}
 
+      <datalist id="fornecedores">{[...new Set(ings?.map((i) => i.supplier).filter(Boolean))].map((s) => <option key={s} value={s} />)}</datalist>
       <Card title="Últimas movimentações">
         {moves.length === 0 ? <Empty>Sem movimentações.</Empty> : (
           <ul className="divide-y divide-choco-100 text-sm">
             {moves.map((m) => (
               <li key={m.id} className="flex items-center justify-between py-1.5">
-                <span><b>{byId[m.ingredient_id]?.name ?? "?"}</b> <span className="text-choco-500">· {m.type}{m.note ? ` · ${m.note}` : ""}</span></span>
+                <span><b>{byId[m.ingredient_id]?.name ?? "?"}</b> <span className="text-choco-500">· {m.type}{m.supplier ? ` · ${m.supplier}` : ""}{m.total_cost ? ` · ${brl(m.total_cost)}` : ""}{m.note ? ` · ${m.note}` : ""}</span></span>
                 <span className={clsx("font-bold", Number(m.qty) >= 0 ? "text-emerald-700" : "text-red-700")}>{Number(m.qty) >= 0 ? "+" : ""}{Number(m.qty).toLocaleString("pt-BR")} {byId[m.ingredient_id]?.unit} <span className="ml-2 text-xs font-normal text-choco-400">{dateTimeBR(m.created_at)}</span></span>
               </li>
             ))}
@@ -170,6 +171,7 @@ function MovementModal({ ingredient, type, onClose, onDone }: { ingredient: Ingr
   const [qty, setQty] = useState("");
   const [cost, setCost] = useState("");
   const [note, setNote] = useState("");
+  const [supplier, setSupplier] = useState(ingredient.supplier ?? "");
   const [launchExpense, setLaunchExpense] = useState(true);
   const [busy, setBusy] = useState(false);
   const title = { entrada: "Compra de", saida: "Saída de", ajuste: "Ajustar contagem de", producao: "" }[type];
@@ -188,15 +190,20 @@ function MovementModal({ ingredient, type, onClose, onDone }: { ingredient: Ingr
     if (type === "entrada" && totalCost > 0 && launchExpense) {
       const { data, error } = await supabase.from("transactions").insert({
         type: "despesa", category: "Insumos", amount: totalCost, occurred_on: todayISO(),
-        description: `${num(packs)} ${ingredient.pack_label}(s) de ${ingredient.name}${note ? ` · ${note}` : ""}`,
+        description: `${num(packs)} ${ingredient.pack_label}(s) de ${ingredient.name}${supplier ? ` · ${supplier}` : ""}${note ? ` · ${note}` : ""}`,
       }).select("id").single();
       if (error) { setBusy(false); return toast(friendlyError(error), "err"); }
       transaction_id = (data as { id: string }).id;
     }
-    const payload: Partial<StockMovement> = { ingredient_id: ingredient.id, type, qty: signed, note, unit_cost: unitCost, total_cost: type === "entrada" && totalCost > 0 ? totalCost : null, transaction_id };
+    const payload: Partial<StockMovement> = { ingredient_id: ingredient.id, type, qty: signed, note, unit_cost: unitCost, total_cost: type === "entrada" && totalCost > 0 ? totalCost : null, transaction_id, supplier: type === "entrada" ? supplier.trim() : "" };
     const { error } = await supabase.from("stock_movements").insert(payload);
-    if (!error && type === "entrada" && num(packSize) > 0 && num(packSize) !== Number(ingredient.pack_size ?? 0)) {
-      await supabase.from("ingredients").update({ pack_size: num(packSize) }).eq("id", ingredient.id);
+    if (!error && type === "entrada") {
+      const upd: Record<string, unknown> = {};
+      if (num(packSize) > 0 && num(packSize) !== Number(ingredient.pack_size ?? 0)) upd.pack_size = num(packSize);
+      if (supplier.trim() && supplier.trim() !== ingredient.supplier) upd.supplier = supplier.trim();
+      if (Object.keys(upd).length) await supabase.from("ingredients").update(upd).eq("id", ingredient.id);
+      // tira da lista de compras o item ligado a esse insumo
+      await supabase.from("shopping_items").update({ done: true }).eq("ingredient_id", ingredient.id).eq("done", false);
     }
     setBusy(false);
     if (error) return toast(friendlyError(error), "err");
@@ -214,7 +221,10 @@ function MovementModal({ ingredient, type, onClose, onDone }: { ingredient: Ingr
               <Input label={`Quantos ${ingredient.pack_label}s comprou`} inputMode="decimal" value={packs} onChange={(e) => setPacks(e.target.value)} autoFocus placeholder="Ex.: 3" />
               <Input label={`Cada ${ingredient.pack_label} tem (${ingredient.unit})`} inputMode="decimal" value={packSize} onChange={(e) => setPackSize(e.target.value)} placeholder={ingredient.unit === "un" ? "Ex.: 12" : "Ex.: 1000"} />
             </div>
-            <Input label="Valor total pago (R$)" inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Ex.: 18,90" />
+            <div className="grid grid-cols-2 gap-2">
+              <Input label="Valor total pago (R$)" inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Ex.: 18,90" />
+              <Input label="Onde comprou" value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="Ex.: Atacadão, Super Nosso" list="fornecedores" />
+            </div>
             <div className="rounded-xl bg-choco-50 p-3 text-sm">
               <div>Entra no estoque: <b>{totalQty.toLocaleString("pt-BR")} {ingredient.unit}</b></div>
               {unitCost !== null && <div>Novo custo: <b>{brl(unitCost)}</b> por {ingredient.unit} <span className="text-choco-500">(antes {brl(ingredient.cost_per_unit)})</span></div>}

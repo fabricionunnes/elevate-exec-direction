@@ -19,6 +19,7 @@ import Enquetes from "@/pages/admin/Enquetes";
 import Entregas from "@/pages/admin/Entregas";
 import Clientes from "@/pages/admin/Clientes";
 import Estoque from "@/pages/admin/Estoque";
+import Compras from "@/pages/admin/Compras";
 import Financeiro from "@/pages/admin/Financeiro";
 import Avaliacoes from "@/pages/admin/Avaliacoes";
 import Configuracoes from "@/pages/admin/Configuracoes";
@@ -48,6 +49,7 @@ export default function App() {
                 <Route path="entregas" element={<Entregas />} />
                 <Route path="clientes" element={<Clientes />} />
                 <Route path="estoque" element={<Estoque />} />
+                <Route path="compras" element={<Compras />} />
                 <Route path="financeiro" element={<Financeiro />} />
                 <Route path="avaliacoes" element={<Avaliacoes />} />
                 <Route path="configuracoes" element={<Configuracoes />} />
