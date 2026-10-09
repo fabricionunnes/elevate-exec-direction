@@ -40,7 +40,7 @@ const ORDER_SCHEMA = {
     scheduled_date: { type: ["string", "null"], description: "Data da entrega/retirada em YYYY-MM-DD, resolvida a partir de 'amanhã', 'sexta', 'dia 12' etc. usando a data de hoje informada" },
     window_label: { type: ["string", "null"], description: "Rótulo EXATO de um horário do catálogo (ex.: 14:00–17:00) que combine com o que o cliente pediu, ou null" },
     time_text: { type: ["string", "null"], description: "Horário como o cliente escreveu (ex.: 'de tarde', '15h')" },
-    payment_method: { type: ["string", "null"], enum: ["pix", "dinheiro", "cartao", null] },
+    payment_method: { anyOf: [{ type: "string", enum: ["pix", "dinheiro", "cartao"] }, { type: "null" }], description: "pix, dinheiro ou cartao; null se não aparecer" },
     change_for: { type: ["number", "null"], description: "Troco pra quanto, se pagamento em dinheiro" },
     items: {
       type: "array",
