@@ -246,7 +246,9 @@ create table if not exists yasfood.reviews (
 );
 
 -- Configurações públicas (sem webhook/mensagens internas). View do dono: ignora RLS.
-create or replace view yasfood.public_settings as
+-- (drop antes: migrations posteriores acrescentam colunas e "create or replace" não aceita remover)
+drop view if exists yasfood.public_settings;
+create view yasfood.public_settings as
 select id, business_name, whatsapp, pix_key, pix_name, min_lead_days, pickup_enabled, pickup_address,
        is_open, closed_message, logo_url, instagram, site_url
 from yasfood.settings;
