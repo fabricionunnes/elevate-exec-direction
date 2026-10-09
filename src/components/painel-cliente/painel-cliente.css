@@ -11,3 +11,8 @@
 .pc.av .av-brand .wm { font-weight: 800; font-size: 19px; letter-spacing: .05em; line-height: 1; text-align: left; }
 .pc.av .av-brand .wm small { display: block; font-size: 8.5px; letter-spacing: .3em; font-weight: 600; margin-top: 3px; color: var(--ink2); }
 .pc.av .av-tab.av-tab-sm td, .pc.av .av-tab.av-tab-sm tr.forte td { font-size: clamp(11px, .85vw, 16px); }
+/* seletor da meta: com ou sem renovações e ascensões */
+.pc .seg { display: inline-flex; flex-wrap: wrap; gap: 4px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+.pc .seg button { background: none; border: 0; color: var(--ink2); font: 600 11.5px var(--f); padding: 6px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.pc .seg button.on { background: #E9DFC9; color: #0E0E0E; }
+.pc .seg button:focus-visible { outline: 2px solid #E9DFC9; outline-offset: 2px; }

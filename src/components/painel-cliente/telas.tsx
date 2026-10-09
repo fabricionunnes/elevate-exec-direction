@@ -10,13 +10,15 @@ import { esc } from "@/components/painel-controle/util";
 import { FunilMes } from "@/components/painel-controle/funil/FunilMes";
 import type { EtapaFunil } from "@/components/painel-controle/funil/geo";
 import type { MesSerie } from "@/components/painel-controle/tipos";
-import { alertas, calcMes, linhasReunioes, linhasVendas, serieMeses, serieMeta, ym, type Bruto, type Filtro, type MesBruto } from "./modelo";
+import { alertas, calcMes, comMeta, linhasReunioes, linhasVendas, serieMeses, serieMeta, ym, type Bruto, type Filtro, type MesBruto } from "./modelo";
 
 export type NavC = { view: string; f?: Filtro; det?: string; filtro?: Record<string, string>; titulo?: string };
 export type CtxC = {
   b: Bruto; m: MesBruto; mes: string; setMes: (iso: string) => void;
   go: (n: NavC) => void; det: (bloco: string, filtro?: Record<string, string>, titulo?: string) => void;
   f: Filtro; setF: (f: Filtro) => void;
+  /** meta só de vendas novas (sem renovações e ascensões) */
+  soNovas: boolean; setSoNovas: (v: boolean) => void;
 };
 
 /** a barra mês a mês do Nexus espera MesSerie: preenche só o que o cliente tem */
@@ -29,8 +31,9 @@ const comoSerie = (b: Bruto): MesSerie[] => serieMeses(b).map((s) => ({
 export function VisaoCliente({ c }: { c: CtxC }) {
   const { b, m, mes } = c;
   const k = calcMes(b, m);
-  const s = serieMeta(k);
-  const al = alertas(b, m);
+  const km = comMeta(k, c.soNovas);
+  const s = serieMeta(km);
+  const al = alertas(b, m, c.soNovas);
   const serie = comoSerie(b);
   const prev = b.meses[b.meses.indexOf(m) - 1];
   const kp = prev ? calcMes(b, prev) : null;
@@ -46,7 +49,7 @@ export function VisaoCliente({ c }: { c: CtxC }) {
   return (
     <>
       <div className="grid k5">
-        <Tile main label="Vendido no mês" valor={brl(k.receita)} sub={k.meta ? `${fp(s?.pctMeta)} da meta de ${brl(k.meta.total)} · ${plural(k.vendas, "venda", "vendas")}` : plural(k.vendas, "venda", "vendas")} onClick={() => c.go({ view: k.meta ? "meta" : "comercial" })} />
+        <Tile main label={c.soNovas && km.meta ? "Vendas novas no mês" : "Vendido no mês"} valor={brl(km.receita)} sub={km.meta ? `${fp(s?.pctMeta)} da meta de ${brl(km.meta.total)} · ${plural(km.vendas, "venda", "vendas")}` : plural(k.vendas, "venda", "vendas")} onClick={() => c.go({ view: k.meta ? "meta" : "comercial" })} />
         <Tile label="Caixa recebido" valor={brl(k.recebido)} sub={k.recebido == null ? "sem leitura do financeiro neste mês" : <>Eduzz e Asaas{dv != null && <> · {dv >= 0 ? "+" : ""}{Math.round(dv * 100)}% vs mês anterior</>}</>} onClick={() => c.go({ view: "financeiro" })} />
         <Tile label="Ticket médio" valor={brl(k.ticket)} sub={`${plural(k.vendas, "venda", "vendas")} pela regra do contrato`} onClick={() => c.det("vendas", {}, "Vendas do mês")} />
         <Tile label="Presença nas reuniões" valor={fp(k.presenca)} cls={k.presenca != null && k.presenca < 0.5 ? "neg" : ""} sub={`${k.realizadas} de ${k.agendadas} com desfecho · ${k.no_show} no-show`} onClick={() => c.det("reunioes", { tipo: "no_show" }, "No-show")} />
@@ -163,21 +166,47 @@ export function VisaoCliente({ c }: { c: CtxC }) {
 }
 
 /* ======================= meta do mês: realizado x meta acumulado ======================= */
+/** escolha da meta: com ou sem renovações e ascensões */
+export function SeletorMeta({ c }: { c: CtxC }) {
+  const meta = calcMes(c.b, c.m).meta;
+  if (!meta || meta.novas == null) return null;
+  return (
+    <span className="seg" role="group" aria-label="Qual meta usar">
+      <button type="button" className={!c.soNovas ? "on" : ""} aria-pressed={!c.soNovas} onClick={() => c.setSoNovas(false)}>Novas + renovações e ascensões · {brl(meta.total)}</button>
+      <button type="button" className={c.soNovas ? "on" : ""} aria-pressed={c.soNovas} onClick={() => c.setSoNovas(true)}>Só vendas novas · {brl(meta.novas)}</button>
+    </span>
+  );
+}
+
 export function BlocoMeta({ c }: { c: CtxC }) {
-  const k = calcMes(c.b, c.m), s = serieMeta(k);
+  const k = comMeta(calcMes(c.b, c.m), c.soNovas), s = serieMeta(k);
   if (!s || !k.meta) return null;
   const dd = c.mes.slice(5, 7);
-  const dados = s.dias.map((x) => ({ d: `${String(x.d).padStart(2, "0")}/${dd}`, meta: Math.round(x.meta), real: x.real == null ? null : Math.round(x.real) }));
+  // projeção: o ritmo médio por dia útil até hoje, repetido nos dias úteis que faltam (linha pontilhada a partir de hoje)
+  const ritmoDia = s.du.passados ? s.vendido / s.du.passados : null;
+  let acum = s.vendido;
+  const dados = s.dias.map((x) => {
+    if (ritmoDia != null && x.d > s.du.corte && x.util) acum += ritmoDia;
+    const proj = ritmoDia != null && s.du.corte > 0 && x.d >= s.du.corte ? Math.round(acum) : null;
+    return { d: `${String(x.d).padStart(2, "0")}/${dd}`, meta: Math.round(x.meta), real: x.real == null ? null : Math.round(x.real), proj };
+  });
   const nivel = s.dif >= 0 ? "g" : s.dif >= -0.1 * k.meta.total ? "a" : "r";
+  const pProj = pct(s.projecao, k.meta.total);
+  const precisaDia = s.porDiaRestante;
   return (
     <div className="p">
-      <div className="h"><b>Meta do mês · realizado x meta acumulado</b><span>vendas pela data do contrato. Meta distribuída pelos dias úteis</span></div>
+      <div className="h"><b>Meta do mês · realizado x meta acumulado</b><SeletorMeta c={c} /></div>
       <div className="meta-g">
         <div className="kg mk">
-          <Tile label={`Meta de ${mesLabel(c.mes).split(" ")[0]}`} valor={brl(k.meta.total)} sub={k.meta.novas != null ? `${brl(k.meta.novas)} novas · ${brl(k.meta.renov)} renovações` : undefined} onClick={() => c.go({ view: "meta" })} />
+          <Tile label={`Meta de ${mesLabel(c.mes).split(" ")[0]}`} valor={brl(k.meta.total)} sub={c.soNovas ? "só vendas novas" : k.meta.novas != null ? `${brl(k.meta.novas)} novas · ${brl(k.meta.renov)} renovações e ascensões` : undefined} onClick={() => c.go({ view: "meta" })} />
           <Tile label="Realizado" valor={brl(s.vendido)} sub={`${fp(s.pctMeta)} da meta`} onClick={() => c.det("vendas", {}, "Vendas do mês")} />
           <Tile label="Esperado até hoje" valor={brl(s.esperado)} sub={<St ok={nivel === "g"} warn={nivel === "a"} tg="no ritmo" tw="pouco abaixo" tb="abaixo do ritmo" />} onClick={() => c.go({ view: "meta" })} />
           <Tile label="Falta por dia útil" valor={brl(s.porDiaRestante)} sub={`${brl(s.falta)} em ${s.du.restantes} dias úteis`} onClick={() => c.go({ view: "meta" })} />
+          <Tile label="Projeção do mês" valor={brl(s.projecao)} cls={pProj != null && pProj < 1 ? "neg" : ""}
+            sub={s.projecao == null ? "sem dia útil passado ainda" : <><St ok={(pProj ?? 0) >= 1} warn={(pProj ?? 0) >= 0.9} tg="bate a meta" tw="perto da meta" tb="não bate a meta" /> {fp(pProj)} da meta no ritmo atual</>}
+            onClick={() => c.go({ view: "meta" })} />
+          <Tile label="Ritmo por dia útil" valor={brl(ritmoDia)} cls={ritmoDia != null && precisaDia != null && ritmoDia < precisaDia ? "neg" : ""}
+            sub={precisaDia != null ? `precisa de ${brl(precisaDia)} por dia útil daqui pra frente` : undefined} onClick={() => c.go({ view: "meta" })} />
         </div>
         <div style={{ minHeight: 230 }}>
           <ResponsiveContainer width="100%" height={240}>
@@ -186,11 +215,13 @@ export function BlocoMeta({ c }: { c: CtxC }) {
               <CartesianGrid stroke="#262626" vertical={false} />
               <XAxis dataKey="d" tick={{ fill: "#8E8B84", fontSize: 10 }} axisLine={false} tickLine={false} interval={4} />
               <YAxis tick={{ fill: "#8E8B84", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => kfmt(v)} />
-              <Tooltip contentStyle={{ background: "#181818", border: "1px solid #2C2C2C", fontSize: 12 }} formatter={(v: any, n: any) => [v == null ? "-" : brl(Number(v)), n === "real" ? "Realizado acumulado" : "Meta acumulada"]} />
+              <Tooltip contentStyle={{ background: "#181818", border: "1px solid #2C2C2C", fontSize: 12 }} formatter={(v: any, n: any) => [v == null ? "-" : brl(Number(v)), n === "real" ? "Realizado acumulado" : n === "proj" ? "Projeção no ritmo atual" : "Meta acumulada"]} />
               <Line type="stepAfter" dataKey="meta" stroke="#8E8B84" strokeDasharray="6 5" strokeWidth={2} dot={false} />
               <Area type="monotone" dataKey="real" stroke="#E9DFC9" strokeWidth={2.5} fill="url(#pcMetaArea)" connectNulls={false} />
+              <Line type="monotone" dataKey="proj" stroke="#F2B544" strokeDasharray="2 4" strokeWidth={2} dot={false} connectNulls={false} />
             </ComposedChart>
           </ResponsiveContainer>
+          <div className="note" style={{ border: 0, marginTop: 4, paddingTop: 0 }}>Linha cheia: realizado. Tracejada cinza: meta acumulada. Pontilhada amarela: projeção se o ritmo de hoje continuar{s.projecao != null ? `, fechando em ${brl(s.projecao)}` : ""}.</div>
           {(k.tipo || k.fora) && (
             <div className="note">
               {k.tipo && <>Vendas novas {brl(k.tipo.novas)} · renovações e ascensões {brl(k.tipo.renov)}. </>}
@@ -205,7 +236,7 @@ export function BlocoMeta({ c }: { c: CtxC }) {
 
 /* ======================= ritmo da meta ======================= */
 export function MetaCliente({ c }: { c: CtxC }) {
-  const k = calcMes(c.b, c.m), s = serieMeta(k);
+  const k = comMeta(calcMes(c.b, c.m), c.soNovas), s = serieMeta(k);
   if (!k.meta || !s) return <div className="empty">Sem meta cadastrada pra {mesLabel(c.mes)}.</div>;
   return (
     <>
