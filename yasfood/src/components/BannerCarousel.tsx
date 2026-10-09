@@ -53,11 +53,11 @@ export function BannerCarousel({ banners, onProduct }: { banners: Banner[]; onPr
         onScroll={onScroll}
         onTouchStart={userTouched}
         onPointerDown={userTouched}
-        className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]"
+        className="flex w-full snap-x snap-mandatory gap-3 overflow-x-auto rounded-3xl [scrollbar-width:none]"
       >
         {banners.map((b) => {
           const inner = (
-            <div className="relative aspect-[16/7] w-[calc(100vw-2rem)] max-w-3xl shrink-0 snap-center overflow-hidden rounded-3xl shadow-soft sm:w-[704px]">
+            <div className="relative aspect-[16/7] w-full shrink-0 snap-center overflow-hidden rounded-3xl shadow-soft">
               {b.media_kind === "video"
                 ? <video src={b.image_url} className="h-full w-full object-cover" autoPlay muted loop playsInline />
                 : <img src={b.image_url} alt={b.title} className="h-full w-full object-cover" />}
@@ -69,9 +69,9 @@ export function BannerCarousel({ banners, onProduct }: { banners: Banner[]; onPr
               )}
             </div>
           );
-          if (b.product_id) return <button key={b.id} onClick={() => onProduct(b.product_id!)} className="text-left">{inner}</button>;
-          if (b.link_url) return <a key={b.id} href={b.link_url} target="_blank" rel="noreferrer">{inner}</a>;
-          return <div key={b.id}>{inner}</div>;
+          if (b.product_id) return <button key={b.id} onClick={() => onProduct(b.product_id!)} className="w-full shrink-0 snap-center text-left">{inner}</button>;
+          if (b.link_url) return <a key={b.id} href={b.link_url} target="_blank" rel="noreferrer" className="w-full shrink-0 snap-center">{inner}</a>;
+          return <div key={b.id} className="w-full shrink-0 snap-center">{inner}</div>;
         })}
       </div>
       {banners.length > 1 && (
