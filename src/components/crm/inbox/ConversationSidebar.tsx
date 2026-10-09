@@ -119,6 +119,7 @@ export function ConversationSidebar({
   const [defaultAgent, setDefaultAgent] = useState<{ id: string; name: string } | null>(null);
   const [pinnedAgentId, setPinnedAgentId] = useState<string | null>(null);
   const [agentEnabled, setAgentEnabled] = useState(true);
+  const [agentOptIn, setAgentOptIn] = useState(false);
   const [savingAgentToggle, setSavingAgentToggle] = useState(false);
   const [showAddDealDialog, setShowAddDealDialog] = useState(false);
   // Assistente de voz por lead: null = segue a regra do funil, true = sempre liga, false = nunca liga (22/09/2026)
@@ -188,6 +189,7 @@ export function ConversationSidebar({
     let active = true;
     setConvAgent(null);
     setAgentEnabled(true);
+    setAgentOptIn(false);
     setDefaultAgent(null);
     setPinnedAgentId(null);
     (async () => {
@@ -195,7 +197,7 @@ export function ConversationSidebar({
         (supabase as any).from("crm_ai_agents").select("id, name, is_active").eq("is_active", true).order("name"),
         agentInstanceId
           ? (supabase as any).from("crm_ai_agent_channels")
-              .select("agent:crm_ai_agents(id, name, is_active, created_at)")
+              .select("agent:crm_ai_agents(id, name, is_active, created_at, default_enabled)")
               .eq("channel", bindingChannel).eq("instance_id", agentInstanceId)
           : Promise.resolve({ data: [] }),
         (supabase as any).from("crm_ai_agent_conversation_overrides")
@@ -208,11 +210,15 @@ export function ConversationSidebar({
       const bound = ((chRows || []) as any[]).map((r) => r.agent).filter((a) => a?.is_active)
         .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
       const padrao = bound[0] ? { id: bound[0].id, name: bound[0].name } : null;
+      // Agente opt-in (default_enabled=false): sem override, a conversa começa DESLIGADA
+      const optIn = !!bound[0] && bound[0].default_enabled === false;
+      setAgentOptIn(optIn);
       setDefaultAgent(padrao);
       const fixado = ov?.agent_id ? opts.find((o) => o.id === ov.agent_id) || null : null;
       setPinnedAgentId(fixado && fixado.id !== padrao?.id ? fixado.id : null);
       setConvAgent(fixado || padrao);
       if (ov) setAgentEnabled(ov.enabled !== false);
+      else if (optIn) setAgentEnabled(false);
     })();
     return () => { active = false; };
   }, [conversation.id, agentChannel, bindingChannel, agentInstanceId]);
@@ -269,6 +275,7 @@ export function ConversationSidebar({
       toast.error("Erro ao alterar o agente nesta conversa");
     } else {
       toast.success(value ? "Agente ligado nesta conversa" : "Agente desligado nesta conversa");
+      window.dispatchEvent(new CustomEvent("crm-ia-override-changed"));
     }
   };
 
@@ -960,7 +967,7 @@ export function ConversationSidebar({
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">{convAgent?.name || "Nenhum agente nesta conversa"}</p>
                 <p className="text-[11px] text-muted-foreground">
-                  {!convAgent ? "Escolha um agente abaixo" : !agentEnabled ? "Desligado nesta conversa" : pinnedAgentId ? "Fixo nesta conversa · só ele responde" : "Respondendo esta conversa"}
+                  {!convAgent ? "Escolha um agente abaixo" : !agentEnabled ? (agentOptIn ? "Desligado · ligue aqui pra IA responder esta conversa" : "Desligado nesta conversa") : pinnedAgentId ? "Fixo nesta conversa · só ele responde" : "Respondendo esta conversa"}
                 </p>
               </div>
             </div>

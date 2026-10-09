@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, Fragment } from "react";
 import { waErrorPt } from "@/lib/whatsapp/waErrorPt";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -246,7 +247,7 @@ export const CRMInboxPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   // Redesenho 19/09/2026 (opção 2 + fila da 3): atalhos de filtro, fila por prioridade,
   // negócio no topo da conversa e painel lateral recolhível.
-  const [quick, setQuick] = useState<"all" | "unread" | "waiting" | "mine" | "automation" | "failed" | "hidden">("all");
+  const [quick, setQuick] = useState<"all" | "unread" | "waiting" | "mine" | "automation" | "failed" | "ia" | "hidden">("all");
   // Seleção múltipla e ações em massa (item 8 do benchmark Datacrazy, 30/09/2026)
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -264,6 +265,38 @@ export const CRMInboxPage = () => {
   };
   useEffect(() => { loadQuickSets(); }, []);
   useEffect(() => { if (quick === "automation" || quick === "failed") loadQuickSets(); }, [quick]);
+  // "IA ligada" (09/10/2026): em quais conversas o agente de IA responde de fato.
+  // Regra igual à do motor: override da conversa manda; sem override, vale o padrão
+  // do agente do número (default_enabled). Agente opt-in começa desligado em tudo.
+  const [iaInfo, setIaInfo] = useState<{ padrao: Map<string, boolean>; overrides: Map<string, boolean> }>({ padrao: new Map(), overrides: new Map() });
+  const loadIaInfo = async () => {
+    const [{ data: ch }, ov] = await Promise.all([
+      (supabase as any).from("crm_ai_agent_channels").select("instance_id, channel, agent:crm_ai_agents(is_active, default_enabled, created_at)"),
+      fetchAllRows<any>((f, t) => (supabase as any).from("crm_ai_agent_conversation_overrides").select("conversation_id, channel, enabled").range(f, t)),
+    ]);
+    const padrao = new Map<string, boolean>();
+    ((ch || []) as any[])
+      .filter((r) => r.agent?.is_active)
+      .sort((a, b) => (a.agent.created_at < b.agent.created_at ? -1 : 1))
+      .forEach((r) => { const k = `${r.channel}:${r.instance_id}`; if (!padrao.has(k)) padrao.set(k, r.agent.default_enabled !== false); });
+    const overrides = new Map<string, boolean>();
+    ((ov || []) as any[]).forEach((r) => overrides.set(`${r.channel}:${r.conversation_id}`, r.enabled !== false));
+    setIaInfo({ padrao, overrides });
+  };
+  useEffect(() => {
+    loadIaInfo();
+    const h = () => loadIaInfo();
+    window.addEventListener("crm-ia-override-changed", h);
+    return () => window.removeEventListener("crm-ia-override-changed", h);
+  }, []);
+  const iaLigada = (c: any) => {
+    const canal = c.channel === "instagram" ? "instagram" : "whatsapp";
+    const inst = c.channel === "instagram" ? c.instagram_instance_id : (c.instance_id || c.official_instance_id);
+    const ov = iaInfo.overrides.get(`${canal}:${c.id}`);
+    if (ov !== undefined) return ov;
+    const padrao = iaInfo.padrao.get(`${canal === "whatsapp" && !c.instance_id && c.official_instance_id ? "whatsapp_official" : canal}:${inst}`);
+    return padrao === true;
+  };
   const reexibirConversa = async (conv: any) => {
     const phone = String(conv?.contact?.phone || "");
     if (!phone) return;
@@ -872,6 +905,7 @@ export const CRMInboxPage = () => {
     if (quick === "mine" && conv.assigned_to !== staffId) return false;
     if (quick === "automation" && !automationIds.has(String(conv.id))) return false;
     if (quick === "failed" && !failedIds.has(String(conv.id))) return false;
+    if (quick === "ia" && !iaLigada(conv)) return false;
 
     // Conversation filters
     if (filters.assignedToMe && conv.assigned_to !== staffId) return false;
@@ -926,8 +960,9 @@ export const CRMInboxPage = () => {
     waiting: conversations.filter((c: any) => aguardando(c)).length,
     automation: conversations.filter((c: any) => automationIds.has(String(c.id))).length,
     failed: conversations.filter((c: any) => failedIds.has(String(c.id))).length,
+    ia: conversations.filter((c: any) => iaLigada(c)).length,
     hidden: quick === "hidden" ? conversations.length : allConversations.filter((c: any) => c.channel !== "instagram" && ignoredPhones.has(String(c.contact?.phone || ""))).length,
-  }), [conversations, stageMap, automationIds, failedIds, ignoredPhones, quick]);
+  }), [conversations, stageMap, automationIds, failedIds, ignoredPhones, quick, iaInfo]);
   // Fila: quem está esperando resposta sobe, e dentro de cada grupo vale o mais recente.
   // Ordenação (Filtros → Ordenar por): mais recente (padrão), mais antiga, mais tempo sem resposta.
   const tempoUltima = (c: any) => new Date(c.last_message_at || c.created_at || 0).getTime();
@@ -1085,6 +1120,7 @@ export const CRMInboxPage = () => {
               ["mine", "Minhas", 0],
               ["automation", "Em automação", contagens.automation],
               ["failed", "Falhas", contagens.failed],
+              ["ia", "IA ligada", contagens.ia],
               ["hidden", "Ocultas", contagens.hidden],
             ] as const).map(([k, label, n]) => (
               <button
@@ -1298,6 +1334,11 @@ export const CRMInboxPage = () => {
                     {conv.channel === "instagram" && (
                       <Badge variant="outline" className="h-4 px-1 text-[9px] shrink-0 bg-pink-500/10 text-pink-600 border-pink-500/30">
                         <Instagram className="h-2.5 w-2.5 mr-0.5" /> IG
+                      </Badge>
+                    )}
+                    {iaLigada(conv) && (
+                      <Badge variant="outline" className="h-4 px-1 text-[9px] shrink-0 bg-primary/10 text-primary border-primary/30" title="A IA está respondendo esta conversa">
+                        <Bot className="h-2.5 w-2.5 mr-0.5" /> IA
                       </Badge>
                     )}
                     {conv.channel !== "instagram" && conv.instance && (

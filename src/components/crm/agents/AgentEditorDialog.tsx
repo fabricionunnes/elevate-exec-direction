@@ -48,6 +48,7 @@ function legacyToSchedule(days: number[] | null, hs: number, he: number): Record
 const emptyForm = {
   name: "", description: "", objective: "", instructions: "", tone: "",
   greeting: "", model: "claude-sonnet-5", temperature: 0.4, reply_mode: "copilot",
+  default_enabled: true,
   handoff_keywords: "", max_messages: "",
   scheduling_enabled: false, scheduling_staff_ids: [] as string[],
   schedule_hour_start: 8, schedule_hour_end: 19,
@@ -122,6 +123,7 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
         instructions: agent.instructions || "", tone: agent.tone || "", greeting: agent.greeting || "",
         model: agent.model || "claude-sonnet-5", temperature: agent.temperature ?? 0.4,
         reply_mode: agent.reply_mode || "copilot",
+        default_enabled: (agent as any).default_enabled !== false,
         handoff_keywords: (agent.handoff_keywords || []).join(", "),
         max_messages: agent.max_messages != null ? String(agent.max_messages) : "",
         scheduling_enabled: !!agent.scheduling_enabled,
@@ -187,6 +189,7 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
       model: form.model,
       temperature: form.temperature,
       reply_mode: form.reply_mode,
+      default_enabled: form.default_enabled,
       handoff_keywords: form.handoff_keywords.trim()
         ? form.handoff_keywords.split(",").map((s) => s.trim()).filter(Boolean) : null,
       max_messages: form.max_messages.trim() ? parseInt(form.max_messages, 10) : null,
@@ -337,6 +340,17 @@ export function AgentEditorDialog({ open, onOpenChange, agent, staffId, tenantId
                   <input type="range" min={0} max={1} step={0.1} value={form.temperature}
                     onChange={(e) => set({ temperature: parseFloat(e.target.value) })} className="w-full" />
                 </div>
+              </div>
+              {/* Opt-in por conversa (09/10/2026): pensado pro número pessoal do Fabrício */}
+              <div className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
+                <div className="space-y-0.5">
+                  <Label>Só responde nas conversas que eu ligar</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Desligado: responde todo mundo do número e você desliga conversa por conversa.
+                    Ligado: fica mudo em tudo e só entra nas conversas em que você ligar o interruptor no Atendimento.
+                  </p>
+                </div>
+                <Switch checked={!form.default_enabled} onCheckedChange={(v) => set({ default_enabled: !v })} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">

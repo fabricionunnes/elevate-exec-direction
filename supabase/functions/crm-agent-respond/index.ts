@@ -24,6 +24,10 @@ async function resolveAgentMode(supabase, agent, leadId, override) {
   if (override && (override.reply_mode || override.enabled === true)) {
     return override.reply_mode || agent.reply_mode || "copilot";
   }
+  // Opt-in (09/10/2026): agente com default_enabled=false fica MUDO em toda conversa
+  // que ninguém ligou à mão (override enabled=true). Feito pro número pessoal do
+  // Fabrício: ele escolhe, conversa por conversa, onde a IA entra.
+  if (agent.default_enabled === false) return "off";
   const { data: binds } = await supabase.from("crm_ai_agent_pipelines").select("pipeline_id, reply_mode").eq("agent_id", agent.id);
   const bindList = binds || [];
   // Sem funis configurados => modo global (padrão do agente vale pra todos)
