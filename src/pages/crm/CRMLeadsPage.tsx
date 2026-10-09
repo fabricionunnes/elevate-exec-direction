@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { AddLeadDialog } from "@/components/crm/AddLeadDialog";
 import { ImportLeadsDialog } from "@/components/crm/ImportLeadsDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { dddLabel } from "@/lib/ddd";
 import { SavedViews } from "@/components/crm/views/SavedViews";
 import { LeadListsDialog } from "@/components/crm/lists/LeadListsDialog";
 import { AddToListDialog } from "@/components/crm/lists/AddToListDialog";
@@ -126,6 +127,15 @@ export const CRMLeadsPage = () => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
     return () => clearTimeout(t);
   }, [searchTerm]);
+  // Filtro por DDD: só os DDDs que existem na base, com a contagem (RPC crm_leads_ddd_counts)
+  const [filterDdd, setFilterDdd] = useState<string>("all");
+  const [dddOptions, setDddOptions] = useState<{ ddd: string; n: number }[]>([]);
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any).rpc("crm_leads_ddd_counts");
+      setDddOptions(((data || []) as { ddd: string; n: number }[]).map((r) => ({ ddd: String(r.ddd), n: Number(r.n) })));
+    })();
+  }, []);
 
   // Listas dos filtros (uma vez)
   const loadData = useCallback(async () => {
@@ -174,8 +184,9 @@ export const CRMLeadsPage = () => {
     if (filterUrgency !== "all") f.urgency = filterUrgency;
     if (filterDuplicates !== "all") f.dups = filterDuplicates;
     if (filterList !== "all") f.list = filterList;
+    if (filterDdd !== "all") f.ddd = filterDdd;
     return f;
-  }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList]);
+  }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd]);
 
   // Contagem de duplicados (em paralelo, não segura a tabela)
   const loadDupCounts = useCallback(async () => {
@@ -244,8 +255,9 @@ export const CRMLeadsPage = () => {
     urgency: filterUrgency,
     dups: filterDuplicates,
     list: filterList,
+    ddd: filterDdd,
     pageSize,
-  }), [searchTerm, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, pageSize]);
+  }), [searchTerm, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd, pageSize]);
   const applySavedView = (v: Record<string, any>) => {
     const txt = (x: unknown, d = "all") => (typeof x === "string" && x ? x : d);
     setSearchTerm(typeof v.search === "string" ? v.search : "");
@@ -255,6 +267,7 @@ export const CRMLeadsPage = () => {
     setFilterUrgency(txt(v.urgency));
     setFilterDuplicates(txt(v.dups));
     setFilterList(txt(v.list));
+    setFilterDdd(txt(v.ddd));
     if ([10, 50, 100].includes(Number(v.pageSize))) setPageSize(Number(v.pageSize));
     setSelectedLeads([]);
   };
@@ -558,7 +571,7 @@ export const CRMLeadsPage = () => {
       {/* Filters */}
       <Card>
         <CardContent className="p-3 sm:p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 sm:gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-2 sm:gap-3">
             <div className="col-span-2 sm:col-span-1 lg:col-span-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -632,6 +645,18 @@ export const CRMLeadsPage = () => {
               ]}
               placeholder="Lista"
               emptyMessage="Nenhuma lista com esse nome."
+              className="h-9 text-xs sm:text-sm"
+            />
+
+            <SearchableSelect
+              value={filterDdd}
+              onValueChange={setFilterDdd}
+              options={[
+                { value: "all", label: "Qualquer DDD" },
+                ...dddOptions.map((d) => ({ value: d.ddd, label: dddLabel(d.ddd), hint: `${nf(d.n)} leads` })),
+              ]}
+              placeholder="DDD"
+              emptyMessage="Nenhum lead com esse DDD."
               className="h-9 text-xs sm:text-sm"
             />
           </div>
