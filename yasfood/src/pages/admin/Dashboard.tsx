@@ -313,16 +313,19 @@ export default function Dashboard() {
           <H sub="pedidos no mês">Onde entregamos</H>
           <div className="h-[230px]"><Donut3D fatias={zonaFatias} vazio="Sem pedidos no mês." formato={(f) => `${f.valor}`} legendaEmbaixo /></div>
         </Card>
-        <Card title={<span className="flex items-center gap-2">Avaliações {d.reviews.length > 0 && <span className="text-sm font-medium text-choco-500">média {avg.toFixed(1)} · {d.reviews.length} avaliação(ões)</span>}</span>} action={<Link to="/admin/avaliacoes" className="text-sm font-semibold text-vinho-600">ver todas</Link>}>
+        <Card title="Avaliações" action={<Link to="/admin/avaliacoes" className="text-sm font-semibold text-vinho-600">ver todas</Link>}>
           {d.reviews.length === 0 ? <Empty>Ainda sem avaliações.</Empty> : (
-            <ul className="grid gap-2 sm:grid-cols-2">
-              {d.reviews.slice(0, 4).map((rv) => (
-                <li key={rv.id} className="rounded-xl bg-choco-50 p-2 text-sm">
-                  <div className="flex items-center justify-between"><b>{rv.customer_name}</b><Stars value={rv.rating} size={14} /></div>
-                  {rv.comment && <p className="mt-1 line-clamp-2 text-choco-700">“{rv.comment}”</p>}
-                </li>
-              ))}
-            </ul>
+            <>
+              <div className="mb-3 flex items-center gap-2 rounded-xl bg-choco-50 px-3 py-2"><Stars value={Math.round(avg)} size={16} /><b className="text-lg">{avg.toFixed(1)}</b><span className="text-xs text-choco-500">{d.reviews.length} avaliação(ões)</span></div>
+              <ul className="space-y-2">
+                {d.reviews.slice(0, 3).map((rv) => (
+                  <li key={rv.id} className="text-sm">
+                    <div className="flex items-center justify-between gap-2"><b className="truncate">{rv.customer_name}</b><Stars value={rv.rating} size={13} /></div>
+                    {rv.comment && <p className="line-clamp-2 text-xs text-choco-700">“{rv.comment}”</p>}
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </Card>
       </div>
