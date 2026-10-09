@@ -74,3 +74,7 @@ select d::date, 10, true
 from generate_series(current_date + 1, current_date + 30, interval '1 day') as d
 where extract(dow from d) between 1 and 6
 on conflict (day) do nothing;
+
+-- Chave Pix (CPF) usada no checkout e nas mensagens. Só preenche se ainda estiver vazia;
+-- depois disso a Yasmim muda pelo painel em Configurações.
+update yasfood.settings set pix_key = '12745182617', pix_name = 'Yasmim' where id = 1 and pix_key = '';
