@@ -33,6 +33,7 @@ interface Dados {
 const H = ({ children, sub }: { children: React.ReactNode; sub?: string }) => (
   <div className="mb-2 text-[10px] font-bold uppercase tracking-[1.5px] text-choco-500">{children}{sub && <span className="ml-2 font-medium normal-case tracking-normal text-choco-400">{sub}</span>}</div>
 );
+type BarShape = { x?: number; y?: number; width?: number; height?: number };
 const n0 = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
 /** Reais sem centavos quando o valor é redondo: "R$ 315" em vez de "R$ 315,00". */
 const brlC = (v: number) => (Math.abs(v - Math.round(v)) < 0.005 ? brl(v).replace(/,00$/, "") : brl(v));
@@ -193,7 +194,7 @@ export default function Dashboard() {
                 <YAxis tick={{ fontSize: 10, fill: "#8c5a2b" }} axisLine={false} tickLine={false} tickFormatter={kfmt} />
                 <Tooltip content={<Dica dinheiro={["Receita"]} />} cursor={{ fill: "#fdf2f5" }} />
                 <ReferenceLine x={String(r.diaHoje)} stroke="#d98a3a" strokeDasharray="3 3" label={{ value: "hoje", position: "top", fontSize: 10, fill: "#b86f26" }} />
-                <Bar dataKey="receita" name="Receita" maxBarSize={26} isAnimationActive={false} shape={(p: { payload?: { futuro?: boolean } }) => <Barra3D {...p} tom={p.payload?.futuro ? "cinza" : "vinho"} />}>
+                <Bar dataKey="receita" name="Receita" maxBarSize={26} isAnimationActive={false} shape={(p: unknown) => { const q = p as BarShape & { payload?: { futuro?: boolean } }; return <Barra3D {...q} tom={q.payload?.futuro ? "cinza" : "vinho"} />; }}>
                   {diasComVenda <= 12 && <LabelList dataKey="bolos" position="top" fontSize={10} fill="#8c5a2b" formatter={(v: number | null) => (v ? `${v}` : "")} />}
                 </Bar>
               </ComposedChart>
@@ -240,7 +241,7 @@ export default function Dashboard() {
                 <XAxis dataKey="n" tick={{ fontSize: 11, fill: "#8c5a2b" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: "#8c5a2b" }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<Dica />} cursor={{ fill: "#fdf2f5" }} />
-                <Bar dataKey="bolos" name="Bolos" maxBarSize={34} isAnimationActive={false} shape={(p: { payload?: { i?: number } }) => <Barra3D {...p} tom={p.payload?.i === r.melhorDia.i && r.melhorDia.bolos > 0 ? "vinho" : "caramelo"} />}>
+                <Bar dataKey="bolos" name="Bolos" maxBarSize={34} isAnimationActive={false} shape={(p: unknown) => { const q = p as BarShape & { payload?: { i?: number } }; return <Barra3D {...q} tom={q.payload?.i === r.melhorDia.i && r.melhorDia.bolos > 0 ? "vinho" : "caramelo"} />; }}>
                   <LabelList dataKey="bolos" position="top" fontSize={11} fill="#5a2a1a" formatter={(v: number) => (v > 0 ? `${v}` : "")} />
                 </Bar>
               </ComposedChart>
