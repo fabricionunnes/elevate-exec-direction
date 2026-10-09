@@ -5,7 +5,7 @@ import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useCart, rememberOrder, saveMe, loadMe } from "@/lib/cart";
 import { useSettings } from "@/lib/useSettings";
-import { brl, dayLabel, weekdayBR, todayISO, addDaysISO, onlyDigits, formatPhone, PAYMENT_LABEL, windowLabel, leadLabel } from "@/lib/format";
+import { brl, dayLabel, weekdayBR, todayISO, addDaysISO, onlyDigits, formatPhone, PAYMENT_LABEL, windowLabel } from "@/lib/format";
 import { waLink, pedidoClienteMsg } from "@/lib/whatsapp";
 import type { Availability, AvailableWindow, DeliveryZone, Fulfillment, PaymentMethod } from "@/lib/types";
 import { Button, Input, Textarea, Select, Empty, useToast } from "@/components/ui";
@@ -185,24 +185,26 @@ export default function Checkout() {
         {date && windows && windows.length > 0 && (
           <div className="mt-4">
             <h3 className="font-bold">Qual horário?</h3>
-            <p className="mb-2 text-xs text-choco-500">Horários de {fulfillment === "entrega" ? "entrega" : "retirada"} pra esse dia.</p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {windows.map((w) => {
-                const sel = windowId === w.id;
-                return (
-                  <button
-                    key={w.id}
-                    disabled={!w.bookable}
-                    onClick={() => setWindowId(w.id)}
-                    className={clsx("rounded-2xl border p-2 text-center transition disabled:opacity-40", sel ? "border-vinho-600 bg-vinho-50 ring-2 ring-vinho-300" : "border-choco-100 bg-white hover:border-choco-300")}
-                  >
-                    <div className="text-sm font-bold">{windowLabel(w)}</div>
-                    {w.label && <div className="text-[11px] text-choco-500">{w.label}</div>}
-                    <div className={clsx("text-[11px]", w.bookable ? "text-emerald-700" : "text-red-600")}>{w.bookable ? `pedir até ${leadLabel(w.min_lead_minutes)} antes` : "prazo encerrado"}</div>
-                  </button>
-                );
-              })}
-            </div>
+            <p className="mb-2 text-xs text-choco-500">Horários de {fulfillment === "entrega" ? "entrega" : "retirada"} disponíveis pra esse dia.</p>
+            {windows.some((w) => w.bookable) ? (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {windows.filter((w) => w.bookable).map((w) => {
+                  const sel = windowId === w.id;
+                  return (
+                    <button
+                      key={w.id}
+                      onClick={() => setWindowId(w.id)}
+                      className={clsx("rounded-2xl border p-3 text-center transition", sel ? "border-vinho-600 bg-vinho-50 ring-2 ring-vinho-300" : "border-choco-100 bg-white hover:border-choco-300")}
+                    >
+                      <div className="text-sm font-bold">{windowLabel(w)}</div>
+                      {w.label && <div className="text-[11px] text-choco-500">{w.label}</div>}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Os horários de hoje já fecharam. Escolha outra data.</p>
+            )}
           </div>
         )}
         {date && windows && windows.length === 0 && <p className="mt-3 text-xs text-choco-500">Sem horários fixos nesse dia: a Yasmim combina o horário com você pelo WhatsApp.</p>}
