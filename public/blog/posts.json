@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-08T21:01:09",
+ "gerado_em": "2026-10-09T10:01:15",
  "posts": [
+  {
+   "slug": "produto-certo-sem-estrutura-nao-entrega-resultado",
+   "url": "/blog/produto-certo-sem-estrutura-nao-entrega-resultado/",
+   "titulo": "Produto certo sem estrutura não entrega o resultado",
+   "resumo": "Escolher bem o caminho não adianta se você não tem o que precisa para percorrer ele. A decisão de compra é fácil, montar o mínimo que faz aquilo funcionar é o que separa quem vê resultado de quem não vê.",
+   "tags": [
+    "estrutura comercial",
+    "decisão",
+    "diagnóstico",
+    "implementação",
+    "prazo mínimo"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-09",
+   "ts": 2160
+  },
   {
    "slug": "prazo-resultado-nao-negociavel-mesmo-com-pressa",
    "url": "/blog/prazo-resultado-nao-negociavel-mesmo-com-pressa/",
