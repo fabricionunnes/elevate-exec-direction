@@ -16,17 +16,21 @@ export default function Financeiro() {
   const toast = useToast();
   const [tx, setTx] = useState<Transaction[] | null>(null);
   const [topProducts, setTopProducts] = useState<{ name: string; qty: number; total: number; cost: number }[]>([]);
+  const [monthOrders, setMonthOrders] = useState<{ total: number; payment_status: string; status: string }[]>([]);
   const [month, setMonth] = useState(todayISO().slice(0, 7));
   const [novo, setNovo] = useState<Partial<Transaction> | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     const from = format(subMonths(new Date(), 5), "yyyy-MM-01");
-    const [t, i] = await Promise.all([
+    const monthEnd = format(endOfMonth(parseISO(`${month}-01`)), "yyyy-MM-dd");
+    const [t, i, o] = await Promise.all([
       supabase.from("transactions").select("*").gte("occurred_on", from).order("occurred_on", { ascending: false }),
-      supabase.from("order_item_costs").select("*").gte("scheduled_date", `${month}-01`).lte("scheduled_date", format(endOfMonth(parseISO(`${month}-01`)), "yyyy-MM-dd")).neq("status", "cancelado"),
+      supabase.from("order_item_costs").select("*").gte("scheduled_date", `${month}-01`).lte("scheduled_date", monthEnd).neq("status", "cancelado"),
+      supabase.from("orders").select("total, payment_status, status").gte("scheduled_date", `${month}-01`).lte("scheduled_date", monthEnd).neq("status", "cancelado"),
     ]);
     setTx((t.data as Transaction[]) ?? []);
+    setMonthOrders((o.data as { total: number; payment_status: string; status: string }[]) ?? []);
     const agg = new Map<string, { name: string; qty: number; total: number; cost: number }>();
     for (const row of ((i.data as { product_name: string; qty: number; line_total: number; total_cost: number }[]) ?? [])) {
       const cur = agg.get(row.product_name) ?? { name: row.product_name, qty: 0, total: 0, cost: 0 };
@@ -38,13 +42,16 @@ export default function Financeiro() {
   useEffect(() => { void load(); }, [load]);
 
   const monthTx = useMemo(() => (tx ?? []).filter((t) => t.occurred_on.startsWith(month)), [tx, month]);
-  const receita = monthTx.filter((t) => t.type === "receita").reduce((a, t) => a + Number(t.amount), 0);
+  const receitaBruta = monthOrders.reduce((a, o) => a + Number(o.total), 0);                 // todos os pedidos do mês, menos cancelados
+  const recebido = monthOrders.filter((o) => o.payment_status === "pago").reduce((a, o) => a + Number(o.total), 0);
+  const aReceber = receitaBruta - recebido;
   const despesa = monthTx.filter((t) => t.type === "despesa").reduce((a, t) => a + Number(t.amount), 0);
   const comprasInsumos = monthTx.filter((t) => t.type === "despesa" && t.category === "Insumos").reduce((a, t) => a + Number(t.amount), 0);
   const outrasDespesas = despesa - comprasInsumos;
   const cmv = topProducts.reduce((a, p) => a + p.cost, 0);          // custo das receitas dos bolos vendidos
-  const lucroBruto = receita - cmv;
-  const lucro = receita - cmv - outrasDespesas;                      // insumos já entram pelo custo da receita
+  const lucroBruto = receitaBruta - cmv;
+  const lucro = receitaBruta - cmv - outrasDespesas;                 // insumos já entram pelo custo da receita
+  const receita = receitaBruta;
 
   const chart = useMemo(() => {
     const months: { key: string; label: string; receita: number; despesa: number }[] = [];
@@ -95,12 +102,14 @@ export default function Financeiro() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <Stat label="Receita" value={brl(receita)} tone="good" sub={`${topProducts.reduce((a, p) => a + p.qty, 0)} bolo(s) · ${monthTx.filter((t) => t.type === "receita").length} pagamento(s)`} />
-        <Stat label="Custo dos bolos (receitas)" value={brl(cmv)} tone="bad" sub="insumos usados em cada bolo vendido" />
-        <Stat label="Lucro bruto" value={brl(lucroBruto)} tone={lucroBruto >= 0 ? "good" : "bad"} sub={receita ? `margem ${Math.round((lucroBruto / receita) * 100)}%` : ""} />
+        <Stat label="Receita bruta (vendas)" value={brl(receitaBruta)} tone="good" sub={`${monthOrders.length} pedido(s) · ${topProducts.reduce((a, p) => a + p.qty, 0)} item(ns) · sem os cancelados`} />
+        <Stat label="Recebido" value={brl(recebido)} tone="good" sub={`${monthOrders.filter((o) => o.payment_status === "pago").length} pedido(s) pagos`} />
+        <Stat label="A receber" value={brl(aReceber)} tone={aReceber > 0 ? "accent" : "default"} sub={`${monthOrders.filter((o) => o.payment_status !== "pago").length} pedido(s) sem pagamento`} />
+        <Stat label="Custo dos bolos (receitas)" value={brl(cmv)} tone="bad" sub="insumos usados em cada item vendido" />
+        <Stat label="Lucro bruto" value={brl(lucroBruto)} tone={lucroBruto >= 0 ? "good" : "bad"} sub={receita ? `receita bruta − custo · margem ${Math.round((lucroBruto / receita) * 100)}%` : ""} />
+        <Stat label="Lucro do mês" value={brl(lucro)} tone={lucro >= 0 ? "good" : "bad"} sub={receita ? `− outras despesas ${brl(outrasDespesas)} · ${Math.round((lucro / receita) * 100)}%` : "receita bruta − custo − outras despesas"} />
         <Stat label="Compras de insumos" value={brl(comprasInsumos)} sub="caixa que saiu (vira estoque)" />
         <Stat label="Outras despesas" value={brl(outrasDespesas)} tone="bad" sub="embalagem, gás, entrega…" />
-        <Stat label="Lucro do mês" value={brl(lucro)} tone={lucro >= 0 ? "good" : "bad"} sub={receita ? `receita − custo dos bolos − outras despesas · ${Math.round((lucro / receita) * 100)}%` : "receita − custo dos bolos − outras despesas"} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
