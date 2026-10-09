@@ -117,6 +117,32 @@ jobs:
           VITE_SUPABASE_URL: ${{ steps.sb.outputs.url }}
           VITE_SUPABASE_ANON_KEY: ${{ steps.sb.outputs.key }}
 
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.22.6
+
+      - name: Deploy da função de leitura de prints (Edge Function)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          # a CLI resolve as funções a partir da pasta supabase/ da raiz (config.toml do Nexus):
+          # copia a função do YasFood pra lá só no momento do deploy
+          rm -rf supabase/functions/yasfood-read-order
+          cp -r yasfood/supabase/functions/yasfood-read-order supabase/functions/yasfood-read-order
+          supabase functions deploy yasfood-read-order --project-ref "$SUPABASE_PROJECT_REF"
+          # chave da IA: só grava se o secret existir no repositório (a do projeto pode já estar lá pelo Nexus)
+          if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+            supabase secrets set ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" --project-ref "$SUPABASE_PROJECT_REF"
+            echo "ANTHROPIC_API_KEY gravada no projeto"
+          else
+            echo "secret ANTHROPIC_API_KEY ausente no repositório; usando a que já existir no projeto"
+          fi
+          # a chave existe no projeto? (só o nome, nunca o valor)
+          if supabase secrets list --project-ref "$SUPABASE_PROJECT_REF" | grep -q "ANTHROPIC_API_KEY"; then echo "projeto tem ANTHROPIC_API_KEY"; else echo "::warning::projeto SEM ANTHROPIC_API_KEY: a leitura de prints vai falhar até cadastrar"; fi
+
       - name: Deploy to Cloudflare Workers
         id: wrangler
         run: |
