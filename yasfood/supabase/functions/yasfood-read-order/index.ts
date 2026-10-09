@@ -3,6 +3,9 @@
 //
 //   POST { images: [{ media_type: "image/jpeg"|"image/png"|"image/webp", data: <base64> }], hint?: string }
 //   → { order: {...}, usage: {...} }
+//   Segunda rodada (dúvidas respondidas pela Yasmim):
+//   POST { images, previous: <order da rodada anterior>, answers: [{ question, answer }] }
+//   → { order } atualizado, com as dúvidas resolvidas removidas
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk";
 
@@ -86,9 +89,11 @@ Deno.serve(async (req) => {
     if (adminErr) return j({ error: `Não consegui conferir a permissão: ${adminErr.message}` }, 500);
     if (!isAdmin) return j({ error: "Só a administradora pode ler prints." }, 403);
 
-    const body = await req.json().catch(() => null) as { images?: Img[]; hint?: string } | null;
+    const body = await req.json().catch(() => null) as { images?: Img[]; hint?: string; previous?: unknown; answers?: { question: string; answer: string }[] } | null;
     const images = (body?.images ?? []).filter((i) => i && typeof i.data === "string" && i.data.length > 0).slice(0, MAX_IMAGES);
-    if (!images.length) return j({ error: "Mande pelo menos um print." }, 400);
+    const answers = (body?.answers ?? []).filter((a) => a && typeof a.question === "string" && typeof a.answer === "string" && a.answer.trim()).slice(0, 20);
+    const previous = body?.previous && typeof body.previous === "object" ? body.previous : null;
+    if (!images.length && !previous) return j({ error: "Mande pelo menos um print." }, 400);
     for (const im of images) {
       if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(im.media_type)) return j({ error: `Formato não suportado: ${im.media_type}` }, 400);
       if (im.data.length > MAX_B64) return j({ error: "Print muito grande. O app reduz sozinho; tente de novo." }, 400);
@@ -141,9 +146,12 @@ ${(windows ?? []).map((w: { label: string; start_time: string; end_time: string;
 Retirada no local: ${settings?.pickup_enabled ? `permitida${settings?.pickup_address ? ` em ${settings.pickup_address}` : ""}` : "não oferecida"}.`;
 
     const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+    const pedido = previous && answers.length
+      ? `Você já fez uma leitura destes prints e devolveu este pedido:\n${JSON.stringify(previous)}\n\nA confeiteira respondeu às dúvidas:\n${answers.map((a) => `- Pergunta: ${a.question}\n  Resposta: ${a.answer.trim()}`).join("\n")}\n\nAtualize o pedido com as respostas (elas valem mais que os prints quando houver conflito), remova de "doubts" tudo que ficou resolvido e mantenha o resto como estava. Se uma resposta abrir uma dúvida nova, liste só ela.`
+      : `${images.length > 1 ? `São ${images.length} prints, na ordem em que foram enviados. ` : ""}Extraia o pedido.`;
     const content: Anthropic.ContentBlockParam[] = [
-      ...images.map((im, i): Anthropic.ImageBlockParam => ({ type: "image", source: { type: "base64", media_type: im.media_type, data: im.data } })),
-      { type: "text", text: `${images.length > 1 ? `São ${images.length} prints, na ordem em que foram enviados. ` : ""}Extraia o pedido.${body?.hint ? ` Observação da confeiteira: ${body.hint}` : ""}` },
+      ...images.map((im): Anthropic.ImageBlockParam => ({ type: "image", source: { type: "base64", media_type: im.media_type, data: im.data } })),
+      { type: "text", text: `${pedido}${body?.hint ? ` Observação da confeiteira: ${body.hint}` : ""}` },
     ];
 
     const response = await client.beta.messages.create({

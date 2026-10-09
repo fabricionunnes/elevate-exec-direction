@@ -7,7 +7,7 @@ import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, dateTimeBR, dayLong, formatPhone, nextStatus, PAYMENT_LABEL, STATUS_COLOR, STATUS_LABEL, statusLabelFor, todayISO, addDaysISO, onlyDigits, windowLabel } from "@/lib/format";
 import { waLink, msgs, trackingUrl } from "@/lib/whatsapp";
 import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, mapsPin, currentPosition, type RouteCtx } from "@/lib/route";
-import { readOrderFromScreenshots, type ReadOrder } from "@/lib/readOrder";
+import { readOrderFromScreenshots, shrinkAll, type ReadOrder, type ShrunkImage } from "@/lib/readOrder";
 import type { Availability, AvailableWindow, Customer, DeliveryWindow, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Button, Badge, Card, Modal, Empty, Spinner, Input, Select, Textarea, useToast } from "@/components/ui";
@@ -383,6 +383,12 @@ function LerPrints({ onClose, onRead }: { onClose: () => void; onRead: (o: ReadO
   const [files, setFiles] = useState<File[]>([]);
   const [hint, setHint] = useState("");
   const [busy, setBusy] = useState(false);
+  // rodada de dúvidas: a IA leu, mas precisa de respostas antes de montar o pedido
+  const [draft, setDraft] = useState<ReadOrder | null>(null);
+  const [images, setImages] = useState<ShrunkImage[]>([]);
+  const [answers, setAnswers] = useState<string[]>([]);
+  const [extra, setExtra] = useState("");
+  const [round, setRound] = useState(0);
   const previews = useMemo(() => files.map((f) => URL.createObjectURL(f)), [files]);
   useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
 
@@ -395,14 +401,58 @@ function LerPrints({ onClose, onRead }: { onClose: () => void; onRead: (o: ReadO
     if (!files.length) return toast("Escolha pelo menos um print.", "err");
     setBusy(true);
     try {
-      const o = await readOrderFromScreenshots(files, hint);
-      onRead(o);
+      const imgs = await shrinkAll(files);
+      setImages(imgs);
+      const o = await readOrderFromScreenshots(imgs, hint);
+      if (o.doubts.length) { setDraft(o); setAnswers(o.doubts.map(() => "")); setRound(1); }
+      else onRead(o);
     } catch (e) {
       toast((e as Error).message, "err");
     } finally {
       setBusy(false);
     }
   };
+
+  const respond = async () => {
+    if (!draft) return;
+    const qa = draft.doubts.map((q, i) => ({ question: q, answer: answers[i] ?? "" })).filter((x) => x.answer.trim());
+    if (extra.trim()) qa.push({ question: "Observação adicional da confeiteira", answer: extra.trim() });
+    if (!qa.length) return toast("Responde pelo menos uma dúvida, ou abre o pedido assim mesmo.", "err");
+    setBusy(true);
+    try {
+      const o = await readOrderFromScreenshots(images, hint, draft, qa);
+      // no máximo duas rodadas de perguntas; depois abre o pedido com o que sobrou
+      if (o.doubts.length && round < 2) { setDraft(o); setAnswers(o.doubts.map(() => "")); setExtra(""); setRound(round + 1); }
+      else onRead(o);
+    } catch (e) {
+      toast((e as Error).message, "err");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (draft) {
+    return (
+      <Modal open onClose={onClose} title="Li os prints. Só me confirma umas coisas">
+        <div className="space-y-3">
+          <div className="rounded-xl bg-choco-50 p-3 text-sm text-choco-800">
+            <div className="font-bold">Até agora entendi:</div>
+            <div className="mt-1 text-xs text-choco-700">
+              {draft.customer_name ?? "cliente sem nome"}{draft.phone ? ` · ${formatPhone(draft.phone)}` : ""} · {draft.items.length ? draft.items.map((i) => `${i.qty}x ${i.product_name ?? i.raw_text}`).join(", ") : "sem itens"}{draft.scheduled_date ? ` · ${dayLong(draft.scheduled_date)}` : ""}{draft.window_label ? ` ${draft.window_label}` : ""} · {draft.fulfillment === "indefinido" ? "entrega ou retirada?" : draft.fulfillment}{draft.payment_method ? ` · ${PAYMENT_LABEL[draft.payment_method]}` : ""}
+            </div>
+          </div>
+          {draft.doubts.map((q, i) => (
+            <Input key={i} label={q} value={answers[i] ?? ""} onChange={(e) => setAnswers((cur) => cur.map((a, k) => (k === i ? e.target.value : a)))} placeholder="Digite a resposta" autoFocus={i === 0} />
+          ))}
+          <Input label="Mais alguma coisa? (opcional)" value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="Ex.: ela mora no bloco B, entregar na portaria" />
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="ghost" onClick={() => onRead(draft)}>Abrir assim mesmo</Button>
+            <Button loading={busy} onClick={respond}><Sparkles size={16} /> {busy ? "Atualizando…" : "Responder e montar o pedido"}</Button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal open onClose={onClose} title="Ler prints do WhatsApp">

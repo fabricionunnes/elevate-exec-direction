@@ -38,9 +38,14 @@ export async function shrinkImage(file: File): Promise<{ media_type: "image/jpeg
   return { media_type: "image/jpeg", data: dataUrl.slice(dataUrl.indexOf(",") + 1) };
 }
 
-export async function readOrderFromScreenshots(files: File[], hint?: string): Promise<ReadOrder> {
-  const images = await Promise.all(files.slice(0, 6).map(shrinkImage));
-  const { data, error } = await supabase.functions.invoke<{ order?: ReadOrder; error?: string }>("yasfood-read-order", { body: { images, hint: hint || undefined } });
+export type ShrunkImage = { media_type: "image/jpeg"; data: string };
+export interface Answer { question: string; answer: string }
+
+export const shrinkAll = (files: File[]) => Promise.all(files.slice(0, 6).map(shrinkImage));
+
+/** Primeira leitura, ou segunda rodada com as respostas da Yasmim às dúvidas. */
+export async function readOrderFromScreenshots(images: ShrunkImage[], hint?: string, previous?: ReadOrder, answers?: Answer[]): Promise<ReadOrder> {
+  const { data, error } = await supabase.functions.invoke<{ order?: ReadOrder; error?: string }>("yasfood-read-order", { body: { images, hint: hint || undefined, previous, answers } });
   if (error) {
     // a função devolve { error } com status 4xx/5xx; o invoke embrulha isso em FunctionsHttpError
     const ctx = (error as { context?: Response }).context;
