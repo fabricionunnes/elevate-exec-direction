@@ -52,14 +52,6 @@ export default function Cardapio() {
   return (
     <div className="space-y-6">
       <BannerCarousel banners={banners} onProduct={goToProduct} />
-              </div>
-            );
-            if (b.product_id) return <button key={b.id} onClick={() => goToProduct(b.product_id!)} className="text-left">{inner}</button>;
-            if (b.link_url) return <a key={b.id} href={b.link_url} target="_blank" rel="noreferrer">{inner}</a>;
-            return <div key={b.id}>{inner}</div>;
-          })}
-        </section>
-      )}
       {settings && !settings.is_open && (
         <div className="rounded-2xl bg-vinho-100 p-4 text-sm font-medium text-vinho-800">{settings.closed_message}</div>
       )}
