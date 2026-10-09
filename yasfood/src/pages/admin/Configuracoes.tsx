@@ -70,6 +70,12 @@ export default function Configuracoes() {
         <div className="mt-2"><Textarea label="Mensagem quando fechada" value={form.closed_message} onChange={(e) => set("closed_message", e.target.value)} /></div>
       </Card>
 
+      <Card title="Retirada no local">
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.pickup_enabled} onChange={(e) => set("pickup_enabled", e.target.checked)} /> permitir que o cliente venha buscar</label>
+        <div className="mt-3"><Textarea label="Endereço e instruções pra retirada" value={form.pickup_address} onChange={(e) => set("pickup_address", e.target.value)} placeholder="Ex.: Rua das Acácias, 120, casa 7 · Alphaville Lagoa dos Ingleses · Retirada das 14h às 19h, me chama no WhatsApp ao chegar" /></div>
+        <p className="mt-1 text-xs text-choco-500">Aparece no checkout quando o cliente escolhe "Retirar" e na tela do pedido.</p>
+      </Card>
+
       <Card title="Pagamento e prazos">
         <div className="grid gap-3 sm:grid-cols-3">
           <Input label="Chave Pix" value={form.pix_key} onChange={(e) => set("pix_key", e.target.value)} />
