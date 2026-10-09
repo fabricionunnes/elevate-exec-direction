@@ -120,7 +120,7 @@ export default function CardapioAdmin() {
   );
 }
 
-function RecipeModal({ product, onClose }: { product: Product; onClose: () => void }) {
+export function RecipeModal({ product, onClose }: { product: Product; onClose: () => void }) {
   const toast = useToast();
   const [ings, setIngs] = useState<Ingredient[]>([]);
   const [recipe, setRecipe] = useState<Record<string, number>>({});

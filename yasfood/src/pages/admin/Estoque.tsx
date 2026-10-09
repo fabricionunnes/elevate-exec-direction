@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus, ArrowDownToLine, ArrowUpFromLine, SlidersHorizontal, AlertTriangle, Pencil } from "lucide-react";
 import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
-import { brl, dateTimeBR } from "@/lib/format";
-import type { Ingredient, StockMovement } from "@/lib/types";
+import { brl, dateTimeBR, todayISO } from "@/lib/format";
+import { RecipeModal } from "@/pages/admin/CardapioAdmin";
+import type { Ingredient, StockMovement, Product, ProductCost } from "@/lib/types";
 import { Button, Card, Input, Select, Modal, Spinner, Empty, useToast } from "@/components/ui";
 
-const emptyIng: Omit<Ingredient, "id"> = { name: "", unit: "g", qty_on_hand: 0, min_qty: 0, cost_per_unit: 0, supplier: "", active: true };
+const emptyIng: Omit<Ingredient, "id"> = { name: "", unit: "g", qty_on_hand: 0, min_qty: 0, cost_per_unit: 0, supplier: "", active: true, pack_size: null, pack_label: "pacote" };
 
 export default function Estoque() {
   const toast = useToast();
@@ -15,14 +16,21 @@ export default function Estoque() {
   const [editing, setEditing] = useState<Partial<Ingredient> | null>(null);
   const [mov, setMov] = useState<{ ingredient: Ingredient; type: StockMovement["type"] } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [costs, setCosts] = useState<ProductCost[]>([]);
+  const [recipeFor, setRecipeFor] = useState<Product | null>(null);
 
   const load = useCallback(async () => {
-    const [i, m] = await Promise.all([
+    const [i, m, p, c] = await Promise.all([
       supabase.from("ingredients").select("*").order("name"),
       supabase.from("stock_movements").select("*").order("created_at", { ascending: false }).limit(40),
+      supabase.from("products").select("*").order("sort_order"),
+      supabase.from("product_costs").select("*"),
     ]);
     setIngs((i.data as Ingredient[]) ?? []);
     setMoves((m.data as StockMovement[]) ?? []);
+    setProducts((p.data as Product[]) ?? []);
+    setCosts((c.data as ProductCost[]) ?? []);
   }, []);
   useEffect(() => { void load(); }, [load]);
 
@@ -51,6 +59,33 @@ export default function Estoque() {
       <p className="text-sm text-choco-600">Cadastre os insumos e monte a receita de cada bolo no Cardápio. Quando um pedido entra em produção, o estoque baixa sozinho. Valor em estoque: <b>{brl(stockValue)}</b>.</p>
 
       {low.length > 0 && <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-900 ring-1 ring-red-200"><AlertTriangle size={16} /> Repor: {low.map((i) => i.name).join(", ")}</div>}
+
+      <Card title="Receitas, custo e margem por produto">
+        {products.length === 0 ? <Empty>Cadastre produtos no Cardápio.</Empty> : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs uppercase tracking-wide text-choco-500"><tr><th className="py-1 pr-3">Produto</th><th className="py-1 pr-3 text-right">Preço</th><th className="py-1 pr-3 text-right">Custo</th><th className="py-1 pr-3 text-right">Margem</th><th className="py-1 text-right">%</th><th></th></tr></thead>
+              <tbody className="divide-y divide-choco-100">
+                {products.map((p) => {
+                  const c = costs.find((x) => x.product_id === p.id);
+                  const pct = Number(c?.margin_pct ?? 0);
+                  return (
+                    <tr key={p.id}>
+                      <td className="py-2 pr-3 font-semibold">{p.name}</td>
+                      <td className="py-2 pr-3 text-right">{brl(p.price)}</td>
+                      <td className="py-2 pr-3 text-right">{brl(c?.cost ?? 0)}</td>
+                      <td className={clsx("py-2 pr-3 text-right font-bold", Number(c?.margin ?? 0) >= 0 ? "text-emerald-700" : "text-red-700")}>{brl(c?.margin ?? 0)}</td>
+                      <td className={clsx("py-2 text-right font-bold", pct >= 50 ? "text-emerald-700" : pct >= 30 ? "text-amber-700" : "text-red-700")}>{pct}%</td>
+                      <td className="py-2 pl-2 text-right"><Button size="sm" variant="outline" onClick={() => setRecipeFor(p)}>Editar receita</Button></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="mt-2 text-xs text-choco-500">O custo usa o último preço pago em cada insumo. Repôs mais caro, a margem cai na hora.</p>
+      </Card>
 
       {ings === null ? <Spinner /> : ings.length === 0 ? <Empty>Nenhum insumo cadastrado.</Empty> : (
         <div className="overflow-x-auto rounded-2xl border border-choco-100 bg-white shadow-card">
@@ -111,6 +146,10 @@ export default function Estoque() {
               {!editing.id && <Input label="Quantidade inicial" type="number" step="any" value={editing.qty_on_hand ?? 0} onChange={(e) => setEditing({ ...editing, qty_on_hand: Number(e.target.value) })} />}
               <Input label="Estoque mínimo (alerta)" type="number" step="any" value={editing.min_qty ?? 0} onChange={(e) => setEditing({ ...editing, min_qty: Number(e.target.value) })} />
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Input label={`Cada embalagem tem (${editing.unit ?? "g"})`} type="number" step="any" value={editing.pack_size ?? ""} onChange={(e) => setEditing({ ...editing, pack_size: e.target.value ? Number(e.target.value) : null })} hint="Ex.: farinha 1000, ovos 12" />
+              <Input label="Nome da embalagem" value={editing.pack_label ?? "pacote"} onChange={(e) => setEditing({ ...editing, pack_label: e.target.value })} placeholder="pacote, lata, dúzia" />
+            </div>
             <Input label="Fornecedor" value={editing.supplier ?? ""} onChange={(e) => setEditing({ ...editing, supplier: e.target.value })} />
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editing.active ?? true} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> ativo</label>
             <Button className="w-full" loading={busy} onClick={save}>Salvar</Button>
@@ -119,42 +158,73 @@ export default function Estoque() {
       )}
 
       {mov && <MovementModal ingredient={mov.ingredient} type={mov.type} onClose={() => setMov(null)} onDone={() => { setMov(null); void load(); }} />}
+      {recipeFor && <RecipeModal product={recipeFor} onClose={() => { setRecipeFor(null); void load(); }} />}
     </div>
   );
 }
 
 function MovementModal({ ingredient, type, onClose, onDone }: { ingredient: Ingredient; type: StockMovement["type"]; onClose: () => void; onDone: () => void }) {
   const toast = useToast();
+  const [packs, setPacks] = useState("");
+  const [packSize, setPackSize] = useState(ingredient.pack_size ? String(ingredient.pack_size) : "");
   const [qty, setQty] = useState("");
   const [cost, setCost] = useState("");
   const [note, setNote] = useState("");
+  const [launchExpense, setLaunchExpense] = useState(true);
   const [busy, setBusy] = useState(false);
-  const title = { entrada: "Entrada de", saida: "Saída de", ajuste: "Ajustar contagem de", producao: "" }[type];
+  const title = { entrada: "Compra de", saida: "Saída de", ajuste: "Ajustar contagem de", producao: "" }[type];
+  const num = (v: string) => Number(v.replace(",", ".")) || 0;
+
+  const totalQty = type === "entrada" ? num(packs) * num(packSize) : num(qty);
+  const totalCost = num(cost);
+  const unitCost = totalQty > 0 && totalCost > 0 ? totalCost / totalQty : null;
 
   const submit = async () => {
-    const q = Number(qty.replace(",", "."));
-    if (!q && type !== "ajuste") return toast("Informe a quantidade.", "err");
-    const signed = type === "entrada" ? Math.abs(q) : type === "saida" ? -Math.abs(q) : q - Number(ingredient.qty_on_hand);
+    if (type === "entrada" && totalQty <= 0) return toast("Informe quantas embalagens e quanto vem em cada uma.", "err");
+    if (type === "saida" && totalQty <= 0) return toast("Informe a quantidade.", "err");
+    const signed = type === "entrada" ? totalQty : type === "saida" ? -totalQty : num(qty) - Number(ingredient.qty_on_hand);
     setBusy(true);
-    const payload: Partial<StockMovement> = { ingredient_id: ingredient.id, type, qty: signed, note };
-    if (type === "entrada" && cost) {
-      // custo total da compra -> custo por unidade
-      payload.unit_cost = Number(cost.replace(",", ".")) / Math.abs(q);
+    let transaction_id: string | null = null;
+    if (type === "entrada" && totalCost > 0 && launchExpense) {
+      const { data, error } = await supabase.from("transactions").insert({
+        type: "despesa", category: "Insumos", amount: totalCost, occurred_on: todayISO(),
+        description: `${num(packs)} ${ingredient.pack_label}(s) de ${ingredient.name}${note ? ` · ${note}` : ""}`,
+      }).select("id").single();
+      if (error) { setBusy(false); return toast(friendlyError(error), "err"); }
+      transaction_id = (data as { id: string }).id;
     }
+    const payload: Partial<StockMovement> = { ingredient_id: ingredient.id, type, qty: signed, note, unit_cost: unitCost, total_cost: type === "entrada" && totalCost > 0 ? totalCost : null, transaction_id };
     const { error } = await supabase.from("stock_movements").insert(payload);
+    if (!error && type === "entrada" && num(packSize) > 0 && num(packSize) !== Number(ingredient.pack_size ?? 0)) {
+      await supabase.from("ingredients").update({ pack_size: num(packSize) }).eq("id", ingredient.id);
+    }
     setBusy(false);
     if (error) return toast(friendlyError(error), "err");
-    toast("Estoque atualizado.");
+    toast(type === "entrada" ? `Entrou ${totalQty.toLocaleString("pt-BR")} ${ingredient.unit}. Custo atualizado.` : "Estoque atualizado.");
     onDone();
   };
 
   return (
     <Modal open onClose={onClose} title={`${title} ${ingredient.name}`}>
       <div className="space-y-3">
-        <p className="text-sm text-choco-600">Em estoque agora: <b>{Number(ingredient.qty_on_hand).toLocaleString("pt-BR")} {ingredient.unit}</b></p>
-        <Input label={type === "ajuste" ? `Nova contagem (${ingredient.unit})` : `Quantidade (${ingredient.unit})`} inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)} autoFocus />
-        {type === "entrada" && <Input label="Valor total pago (R$, opcional)" inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} hint="Atualiza o custo por unidade e o custo dos bolos." />}
-        <Input label="Observação" value={note} onChange={(e) => setNote(e.target.value)} placeholder={type === "entrada" ? "Ex.: compra no atacadão" : "Ex.: perda, uso em teste"} />
+        <p className="text-sm text-choco-600">Em estoque agora: <b>{Number(ingredient.qty_on_hand).toLocaleString("pt-BR")} {ingredient.unit}</b> · custo atual {brl(ingredient.cost_per_unit)}/{ingredient.unit}</p>
+        {type === "entrada" ? (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <Input label={`Quantos ${ingredient.pack_label}s comprou`} inputMode="decimal" value={packs} onChange={(e) => setPacks(e.target.value)} autoFocus placeholder="Ex.: 3" />
+              <Input label={`Cada ${ingredient.pack_label} tem (${ingredient.unit})`} inputMode="decimal" value={packSize} onChange={(e) => setPackSize(e.target.value)} placeholder={ingredient.unit === "un" ? "Ex.: 12" : "Ex.: 1000"} />
+            </div>
+            <Input label="Valor total pago (R$)" inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Ex.: 18,90" />
+            <div className="rounded-xl bg-choco-50 p-3 text-sm">
+              <div>Entra no estoque: <b>{totalQty.toLocaleString("pt-BR")} {ingredient.unit}</b></div>
+              {unitCost !== null && <div>Novo custo: <b>{brl(unitCost)}</b> por {ingredient.unit} <span className="text-choco-500">(antes {brl(ingredient.cost_per_unit)})</span></div>}
+            </div>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={launchExpense} onChange={(e) => setLaunchExpense(e.target.checked)} /> lançar como despesa no Financeiro</label>
+          </>
+        ) : (
+          <Input label={type === "ajuste" ? `Nova contagem (${ingredient.unit})` : `Quantidade (${ingredient.unit})`} inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)} autoFocus />
+        )}
+        <Input label="Observação" value={note} onChange={(e) => setNote(e.target.value)} placeholder={type === "entrada" ? "Ex.: Atacadão, promoção" : "Ex.: perda, uso em teste"} />
         <Button className="w-full" loading={busy} onClick={submit}>Confirmar</Button>
       </div>
     </Modal>

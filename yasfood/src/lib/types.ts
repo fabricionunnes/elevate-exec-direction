@@ -162,6 +162,8 @@ export interface Ingredient {
   cost_per_unit: number;
   supplier: string;
   active: boolean;
+  pack_size: number | null;   // quanto vem em cada embalagem (na unidade do insumo)
+  pack_label: string;         // pacote, lata, dúzia…
 }
 
 export interface ProductIngredient {
@@ -176,6 +178,8 @@ export interface StockMovement {
   type: "entrada" | "saida" | "ajuste" | "producao";
   qty: number;
   unit_cost: number | null;
+  total_cost: number | null;
+  transaction_id: string | null;
   note: string;
   order_id: string | null;
   created_at: string;
