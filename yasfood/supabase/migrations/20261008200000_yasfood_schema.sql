@@ -388,6 +388,9 @@ declare
   v_token uuid;
   v_payment text;
   v_admin boolean := yasfood.is_admin();   -- pedido manual da Yasmim: regras de prazo/limite não travam
+  v_window record;
+  v_window_id uuid;
+  v_window_label text;
 begin
   select * into v_settings from yasfood.settings where id = 1;
   if not v_settings.is_open and not v_admin then
@@ -428,6 +431,20 @@ begin
   end if;
   if not found or (not v_cap.is_open and not v_admin) then raise exception 'DATA: não estamos produzindo nesse dia'; end if;
 
+  -- janela de horário (obrigatória quando existe janela cadastrada pro dia)
+  v_window_id := nullif(p->>'window_id','')::uuid;
+  if v_window_id is not null then
+    select * into v_window from yasfood.available_windows(v_date, v_fulfillment) aw where aw.id = v_window_id;
+    if not found then raise exception 'HORARIO: esse horário não está disponível nesse dia'; end if;
+    if not v_window.bookable and not v_admin then
+      raise exception 'HORARIO: o prazo pra pedir nesse horário já passou (até % antes). Escolha outro horário.',
+        case when v_window.min_lead_minutes >= 60 then (v_window.min_lead_minutes/60)::text || 'h' else v_window.min_lead_minutes::text || ' min' end;
+    end if;
+    v_window_label := to_char(v_window.start_time, 'HH24:MI') || '–' || to_char(v_window.end_time, 'HH24:MI');
+  elsif not v_admin and exists (select 1 from yasfood.available_windows(v_date, v_fulfillment)) then
+    raise exception 'HORARIO: escolha um horário de %', case when v_fulfillment = 'entrega' then 'entrega' else 'retirada' end;
+  end if;
+
   v_items := p->'items';
   if v_items is null or jsonb_array_length(v_items) = 0 then raise exception 'ITENS: seu carrinho está vazio'; end if;
 
@@ -461,13 +478,13 @@ begin
   returning id into v_customer_id;
 
   insert into yasfood.orders (customer_id, customer_name, customer_phone, fulfillment, zone_id, zone_name, address, reference,
-                             delivery_fee, scheduled_date, items_total, total, payment_method, change_for, notes)
+                             delivery_fee, scheduled_date, items_total, total, payment_method, change_for, notes, window_id, window_label)
   values (v_customer_id, v_name, v_phone, v_fulfillment,
           case when v_fulfillment = 'entrega' then v_zone.id else null end,
           case when v_fulfillment = 'entrega' then v_zone.name else null end,
           coalesce(p->>'address',''), coalesce(p->>'reference',''),
           v_fee, v_date, v_items_total, v_items_total + v_fee, v_payment,
-          nullif(p->>'change_for','')::numeric, coalesce(p->>'notes',''))
+          nullif(p->>'change_for','')::numeric, coalesce(p->>'notes',''), v_window_id, v_window_label)
   returning id, code, tracking_token into v_order_id, v_code, v_token;
 
   for v_item in select * from jsonb_array_elements(v_items) loop

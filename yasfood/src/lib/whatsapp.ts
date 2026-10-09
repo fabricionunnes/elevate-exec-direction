@@ -23,6 +23,7 @@ export function pedidoClienteMsg(p: {
   address?: string;
   reference?: string;
   scheduledDate: string;
+  windowLabel?: string | null;
   paymentLabel: string;
   changeFor?: number | null;
   total: number;
@@ -36,7 +37,7 @@ export function pedidoClienteMsg(p: {
     `*Pedido ${p.code}* - ${first(p.name)}`,
     ...p.items.map((i) => `• ${i.qty}x ${i.name}`),
     ``,
-    `${p.fulfillment === "entrega" ? "Entrega" : "Retirada"}: ${dayLong(p.scheduledDate)}`,
+    `${p.fulfillment === "entrega" ? "Entrega" : "Retirada"}: ${dayLong(p.scheduledDate)}${p.windowLabel ? `, ${p.windowLabel}` : ""}`,
     p.fulfillment === "entrega" ? `Endereço: ${[p.zoneName, p.address, p.reference].filter(Boolean).join(" · ")}` : null,
     `Pagamento: ${p.paymentLabel}${p.changeFor ? ` (troco para ${brl(p.changeFor)})` : ""}`,
     `Total: *${brl(p.total)}*`,
@@ -50,7 +51,7 @@ export function pedidoClienteMsg(p: {
 /** Mensagens que a Yasmim manda pro cliente a partir do painel. */
 export const msgs = {
   confirmacao: (o: Order, items: OrderItem[], siteUrl?: string) =>
-    `Oi ${first(o.customer_name)}! Aqui é a Yasmim, da Yas Delícias.\n\nSeu pedido ${o.code} está confirmado:\n${items.map((i) => `• ${i.qty}x ${i.product_name}`).join("\n")}\n\n${o.fulfillment === "entrega" ? "Entrega" : "Retirada"}: ${dayLong(o.scheduled_date)}\nTotal: ${brl(o.total)}\n\nAcompanhe por aqui: ${trackingUrl(o.tracking_token, siteUrl)}`,
+    `Oi ${first(o.customer_name)}! Aqui é a Yasmim, da Yas Delícias.\n\nSeu pedido ${o.code} está confirmado:\n${items.map((i) => `• ${i.qty}x ${i.product_name}`).join("\n")}\n\n${o.fulfillment === "entrega" ? "Entrega" : "Retirada"}: ${dayLong(o.scheduled_date)}${o.window_label ? `, ${o.window_label}` : ""}\nTotal: ${brl(o.total)}\n\nAcompanhe por aqui: ${trackingUrl(o.tracking_token, siteUrl)}`,
 
   pix: (o: Order, pixKey: string, pixName: string) =>
     `Oi ${first(o.customer_name)}! Segue o Pix do pedido ${o.code}:\n\nChave: ${pixKey}\nNome: ${pixName}\nValor: ${brl(o.total)}\n\nMe manda o comprovante por aqui que eu confirmo.`,

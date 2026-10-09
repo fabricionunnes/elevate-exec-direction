@@ -47,6 +47,28 @@ export interface DeliveryZone {
   notes: string;
 }
 
+export interface DeliveryWindow {
+  id: string;
+  label: string;
+  start_time: string;   // "14:00:00"
+  end_time: string;
+  weekdays: number[];   // 0=dom … 6=sáb
+  min_lead_minutes: number;
+  applies_to: "ambos" | "entrega" | "retirada";
+  active: boolean;
+  sort_order: number;
+}
+export interface AvailableWindow {
+  id: string;
+  label: string;
+  start_time: string;
+  end_time: string;
+  min_lead_minutes: number;
+  applies_to: string;
+  bookable: boolean;
+  closes_at: string;
+}
+
 export interface CapacityDay {
   day: string;
   max_units: number;
@@ -101,6 +123,8 @@ export interface Order {
   reference: string;
   delivery_fee: number;
   scheduled_date: string;
+  window_id: string | null;
+  window_label: string | null;
   items_total: number;
   total: number;
   payment_method: PaymentMethod;

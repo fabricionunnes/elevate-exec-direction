@@ -4,9 +4,9 @@ import { MessageCircle, Check, ArrowRight, XCircle, Banknote, Printer, Plus, Sea
 import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
-import { brl, dayLabel, dateTimeBR, dayLong, formatPhone, nextStatus, PAYMENT_LABEL, STATUS_COLOR, STATUS_LABEL, statusLabelFor, todayISO, addDaysISO, onlyDigits } from "@/lib/format";
+import { brl, dayLabel, dateTimeBR, dayLong, formatPhone, nextStatus, PAYMENT_LABEL, STATUS_COLOR, STATUS_LABEL, statusLabelFor, todayISO, addDaysISO, onlyDigits, windowLabel } from "@/lib/format";
 import { waLink, msgs, trackingUrl } from "@/lib/whatsapp";
-import type { Availability, Customer, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
+import type { Availability, AvailableWindow, Customer, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Button, Badge, Card, Modal, Empty, Spinner, Input, Select, Textarea, useToast } from "@/components/ui";
 
@@ -101,7 +101,7 @@ export default function Pedidos() {
                     <Badge className={STATUS_COLOR[o.status]}>{statusLabelFor(o.status, o.fulfillment)}</Badge>
                   </div>
                   <div className="mt-1 flex items-center gap-2 text-xs text-choco-500">
-                    <span>{o.fulfillment === "entrega" ? `Entrega · ${o.zone_name ?? ""}` : "Retirada"}</span>
+                    <span>{o.fulfillment === "entrega" ? `Entrega · ${o.zone_name ?? ""}` : "Retirada"}{o.window_label ? ` · ${o.window_label}` : ""}</span>
                     <span>·</span>
                     <span>{PAYMENT_LABEL[o.payment_method]}</span>
                     <span className={clsx("ml-auto font-bold", o.payment_status === "pago" ? "text-emerald-700" : "text-amber-700")}>{brl(o.total)} {o.payment_status === "pago" ? "✓" : "pendente"}</span>
@@ -179,7 +179,7 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
               <div className="font-bold">{order.customer_name}</div>
               <div>{formatPhone(order.customer_phone)}</div>
               <div className="mt-1 text-choco-600">{order.fulfillment === "entrega" ? `Entrega · ${order.zone_name ?? ""} · ${order.address}${order.reference ? ` (${order.reference})` : ""}` : "Retirada"}</div>
-              <div className="mt-1 capitalize text-choco-600">Para: {dayLong(order.scheduled_date)}</div>
+              <div className="mt-1 capitalize text-choco-600">Para: {dayLong(order.scheduled_date)}{order.window_label && <span className="normal-case"> · {order.window_label}</span>}</div>
               {order.notes && <div className="mt-2 rounded-xl bg-amber-50 p-2 text-amber-900">Obs.: {order.notes}</div>}
               <div className="mt-1 text-xs text-choco-400">Pedido em {dateTimeBR(order.created_at)}</div>
             </div>
@@ -277,9 +277,17 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
       }).slice(0, 8)
     : [];
   const [date, setDate] = useState("");
+  const [windows, setWindows] = useState<AvailableWindow[]>([]);
+  const [windowId, setWindowId] = useState("");
   const [payment, setPayment] = useState<PaymentMethod>("pix");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setWindowId("");
+    if (!date) { setWindows([]); return; }
+    void supabase.rpc("available_windows", { p_date: date, p_fulfillment: fulfillment }).then(({ data }) => setWindows((data as AvailableWindow[]) ?? []));
+  }, [date, fulfillment]);
 
   useEffect(() => {
     void (async () => {
@@ -304,7 +312,7 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
     if (!date) return toast("Escolha a data da encomenda.", "err");
     setBusy(true);
     const { error } = await supabase.rpc("place_order", {
-      p: { name, phone: onlyDigits(phone), fulfillment, zone_id: fulfillment === "entrega" ? zoneId : null, address, reference, scheduled_date: date, payment_method: payment, notes: notes ? `[manual] ${notes}` : "[manual]", items },
+      p: { name, phone: onlyDigits(phone), fulfillment, zone_id: fulfillment === "entrega" ? zoneId : null, address, reference, scheduled_date: date, window_id: windowId || null, payment_method: payment, notes: notes ? `[manual] ${notes}` : "[manual]", items },
     });
     setBusy(false);
     if (error) return toast(friendlyError(error), "err");
@@ -335,6 +343,12 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
               return `${d.remaining} vaga(s) livres de ${d.max_units} nesse dia${d.remaining <= 0 ? " (vai passar do limite)" : ""}`;
             })()}
           />
+          {windows.length > 0 && (
+            <Select label="Horário" value={windowId} onChange={(e) => setWindowId(e.target.value)}>
+              <option value="">— sem horário fixo —</option>
+              {windows.map((w) => <option key={w.id} value={w.id}>{windowLabel(w)}{w.label ? ` · ${w.label}` : ""}{w.bookable ? "" : " (prazo passou, ok pra manual)"}</option>)}
+            </Select>
+          )}
         </div>
         <div className="space-y-2">
           <div className="relative">

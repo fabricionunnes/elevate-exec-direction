@@ -5,9 +5,9 @@ import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useCart, rememberOrder, saveMe, loadMe } from "@/lib/cart";
 import { useSettings } from "@/lib/useSettings";
-import { brl, dayLabel, weekdayBR, todayISO, addDaysISO, onlyDigits, formatPhone, PAYMENT_LABEL } from "@/lib/format";
+import { brl, dayLabel, weekdayBR, todayISO, addDaysISO, onlyDigits, formatPhone, PAYMENT_LABEL, windowLabel, leadLabel } from "@/lib/format";
 import { waLink, pedidoClienteMsg } from "@/lib/whatsapp";
-import type { Availability, DeliveryZone, Fulfillment, PaymentMethod } from "@/lib/types";
+import type { Availability, AvailableWindow, DeliveryZone, Fulfillment, PaymentMethod } from "@/lib/types";
 import { Button, Input, Textarea, Select, Empty, useToast } from "@/components/ui";
 
 export default function Checkout() {
@@ -27,6 +27,8 @@ export default function Checkout() {
   const [address, setAddress] = useState(me?.address ?? "");
   const [reference, setReference] = useState(me?.reference ?? "");
   const [date, setDate] = useState("");
+  const [windows, setWindows] = useState<AvailableWindow[] | null>(null);
+  const [windowId, setWindowId] = useState("");
   const [payment, setPayment] = useState<PaymentMethod>("pix");
   const [changeFor, setChangeFor] = useState("");
   const [notes, setNotes] = useState("");
@@ -49,6 +51,12 @@ export default function Checkout() {
     if (!zoneId && zones.length) setZoneId(zones[0].id);
   }, [settings, zones, zoneId]);
 
+  useEffect(() => {
+    setWindowId("");
+    if (!date) { setWindows(null); return; }
+    void supabase.rpc("available_windows", { p_date: date, p_fulfillment: fulfillment }).then(({ data }) => setWindows((data as AvailableWindow[]) ?? []));
+  }, [date, fulfillment]);
+
   const zone = zones.find((z) => z.id === zoneId);
   const fee = fulfillment === "entrega" ? Number(zone?.fee ?? 0) : 0;
   const total = cart.subtotal + fee;
@@ -59,6 +67,7 @@ export default function Checkout() {
     setError(null);
     if (!date) return setError("Escolha a data da encomenda.");
     if (notEnough) return setError(`Só temos ${selectedDay?.remaining} vaga(s) nesse dia. Reduza a quantidade ou escolha outra data.`);
+    if (windows && windows.length > 0 && !windowId) return setError(`Escolha o horário de ${fulfillment === "entrega" ? "entrega" : "retirada"}.`);
     setSending(true);
     // Abre a aba ainda dentro do clique (bloqueador de pop-up deixa) e preenche depois.
     const waWindow = settings?.whatsapp ? window.open("", "_blank") : null;
@@ -70,6 +79,7 @@ export default function Checkout() {
       address: address.trim(),
       reference: reference.trim(),
       scheduled_date: date,
+      window_id: windowId || null,
       payment_method: payment,
       change_for: payment === "dinheiro" && changeFor ? Number(changeFor.replace(",", ".")) : null,
       notes: notes.trim(),
@@ -93,6 +103,7 @@ export default function Checkout() {
         address: payload.address,
         reference: payload.reference,
         scheduledDate: date,
+        windowLabel: windows?.find((w) => w.id === windowId) ? windowLabel(windows.find((w) => w.id === windowId)!) : null,
         paymentLabel: PAYMENT_LABEL[payment],
         changeFor: payload.change_for,
         total: res.total,
@@ -170,6 +181,31 @@ export default function Checkout() {
           </div>
         )}
         {notEnough && <p className="mt-2 text-sm text-red-600">Esse dia tem só {selectedDay?.remaining} vaga(s) e você pediu {cart.count}.</p>}
+
+        {date && windows && windows.length > 0 && (
+          <div className="mt-4">
+            <h3 className="font-bold">Qual horário?</h3>
+            <p className="mb-2 text-xs text-choco-500">Horários de {fulfillment === "entrega" ? "entrega" : "retirada"} pra esse dia.</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {windows.map((w) => {
+                const sel = windowId === w.id;
+                return (
+                  <button
+                    key={w.id}
+                    disabled={!w.bookable}
+                    onClick={() => setWindowId(w.id)}
+                    className={clsx("rounded-2xl border p-2 text-center transition disabled:opacity-40", sel ? "border-vinho-600 bg-vinho-50 ring-2 ring-vinho-300" : "border-choco-100 bg-white hover:border-choco-300")}
+                  >
+                    <div className="text-sm font-bold">{windowLabel(w)}</div>
+                    {w.label && <div className="text-[11px] text-choco-500">{w.label}</div>}
+                    <div className={clsx("text-[11px]", w.bookable ? "text-emerald-700" : "text-red-600")}>{w.bookable ? `pedir até ${leadLabel(w.min_lead_minutes)} antes` : "prazo encerrado"}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {date && windows && windows.length === 0 && <p className="mt-3 text-xs text-choco-500">Sem horários fixos nesse dia: a Yasmim combina o horário com você pelo WhatsApp.</p>}
       </section>
 
       {/* Entrega */}

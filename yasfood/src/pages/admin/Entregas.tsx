@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Clock } from "lucide-react";
+import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
-import { brl } from "@/lib/format";
-import type { DeliveryZone } from "@/lib/types";
-import { Button, Card, Input, Spinner, Empty, useToast } from "@/components/ui";
+import { brl, hm, leadLabel, WEEKDAYS_SHORT } from "@/lib/format";
+import type { DeliveryZone, DeliveryWindow } from "@/lib/types";
+import { Button, Card, Input, Select, Modal, Spinner, Empty, useToast } from "@/components/ui";
 
 export default function Entregas() {
   const toast = useToast();
@@ -12,6 +13,36 @@ export default function Entregas() {
   const [zones, setZones] = useState<DeliveryZone[] | null>(null);
   const [name, setName] = useState("");
   const [fee, setFee] = useState("0");
+  const [windows, setWindows] = useState<DeliveryWindow[] | null>(null);
+  const [editingWin, setEditingWin] = useState<Partial<DeliveryWindow> | null>(null);
+  const [busyWin, setBusyWin] = useState(false);
+
+  const loadWindows = useCallback(async () => {
+    const { data } = await supabase.from("delivery_windows").select("*").order("start_time").order("sort_order");
+    setWindows((data as DeliveryWindow[]) ?? []);
+  }, []);
+  useEffect(() => { void loadWindows(); }, [loadWindows]);
+
+  const saveWindow = async () => {
+    if (!editingWin?.start_time || !editingWin.end_time) return toast("Informe início e fim.", "err");
+    if (editingWin.end_time <= editingWin.start_time) return toast("O fim precisa ser depois do início.", "err");
+    if (!editingWin.weekdays?.length) return toast("Escolha pelo menos um dia da semana.", "err");
+    setBusyWin(true);
+    const { id, ...rest } = editingWin;
+    const payload = { label: rest.label ?? "", start_time: rest.start_time, end_time: rest.end_time, weekdays: rest.weekdays, min_lead_minutes: rest.min_lead_minutes ?? 120, applies_to: rest.applies_to ?? "ambos", active: rest.active ?? true, sort_order: rest.sort_order ?? 0 };
+    const { error } = id ? await supabase.from("delivery_windows").update(payload).eq("id", id) : await supabase.from("delivery_windows").insert(payload);
+    setBusyWin(false);
+    if (error) return toast(friendlyError(error), "err");
+    toast("Horário salvo.");
+    setEditingWin(null);
+    void loadWindows();
+  };
+  const removeWindow = async (w: DeliveryWindow) => {
+    if (!confirm(`Remover o horário ${hm(w.start_time)}–${hm(w.end_time)}?`)) return;
+    await supabase.from("delivery_windows").delete().eq("id", w.id);
+    void loadWindows();
+  };
+  const toggleWindow = async (w: DeliveryWindow) => { await supabase.from("delivery_windows").update({ active: !w.active }).eq("id", w.id); void loadWindows(); };
 
   const load = useCallback(async () => {
     const { data } = await supabase.from("delivery_zones").select("*").order("sort_order").order("name");
@@ -72,6 +103,57 @@ export default function Entregas() {
         </div>
         <p className="mt-2 text-xs text-choco-500">Dica: frete 0 aparece como "frete grátis". Regiões inativas somem do checkout, mas pedidos antigos ficam.</p>
       </Card>
+
+      <Card title={<span className="flex items-center gap-2"><Clock size={18} /> Horários de entrega e retirada</span>} action={<Button size="sm" onClick={() => setEditingWin({ label: "", start_time: "14:00", end_time: "17:00", weekdays: [1, 2, 3, 4, 5, 6], min_lead_minutes: 120, applies_to: "ambos", active: true, sort_order: (windows?.length ?? 0) + 1 })}><Plus size={14} /> Novo horário</Button>}>
+        <p className="mb-3 text-sm text-choco-600">O cliente escolhe a data e depois um desses horários. Cada horário tem sua antecedência: "pedir até 2h antes" some da tela quando passa do prazo. Sem horário cadastrado pro dia, o cliente só escolhe a data.</p>
+        {windows === null ? <Spinner /> : windows.length === 0 ? <Empty>Nenhum horário. Sem horários, o cliente escolhe só a data.</Empty> : (
+          <ul className="divide-y divide-choco-100">
+            {windows.map((w) => (
+              <li key={w.id} className={clsx("flex flex-wrap items-center gap-2 py-2 text-sm", !w.active && "opacity-50")}>
+                <span className="w-28 font-bold">{hm(w.start_time)}–{hm(w.end_time)}</span>
+                <span className="text-choco-600">{w.label}</span>
+                <span className="flex gap-1">{[0, 1, 2, 3, 4, 5, 6].map((d) => <span key={d} className={clsx("rounded px-1 text-[10px] font-bold uppercase", w.weekdays.includes(d) ? "bg-vinho-600 text-white" : "bg-choco-100 text-choco-400")}>{WEEKDAYS_SHORT[d]}</span>)}</span>
+                <span className="text-xs text-choco-500">pedir até {leadLabel(w.min_lead_minutes)} antes · {w.applies_to === "ambos" ? "entrega e retirada" : w.applies_to}</span>
+                <span className="ml-auto flex gap-1">
+                  <Button size="sm" variant="outline" onClick={() => setEditingWin(w)}>Editar</Button>
+                  <Button size="sm" variant="ghost" onClick={() => toggleWindow(w)}>{w.active ? "Desativar" : "Ativar"}</Button>
+                  <button className="p-1 text-choco-400 hover:text-red-600" onClick={() => removeWindow(w)} aria-label="Remover"><Trash2 size={16} /></button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      {editingWin && (
+        <Modal open onClose={() => setEditingWin(null)} title={editingWin.id ? "Editar horário" : "Novo horário"}>
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-2">
+              <Input label="Início" type="time" value={hm(editingWin.start_time ?? "14:00")} onChange={(e) => setEditingWin({ ...editingWin, start_time: e.target.value })} />
+              <Input label="Fim" type="time" value={hm(editingWin.end_time ?? "17:00")} onChange={(e) => setEditingWin({ ...editingWin, end_time: e.target.value })} />
+              <Input label="Nome (opcional)" value={editingWin.label ?? ""} onChange={(e) => setEditingWin({ ...editingWin, label: e.target.value })} placeholder="Tarde" />
+            </div>
+            <div>
+              <span className="mb-1 block text-sm font-medium text-choco-800">Dias da semana</span>
+              <div className="flex gap-1">
+                {[0, 1, 2, 3, 4, 5, 6].map((d) => (
+                  <button key={d} type="button" onClick={() => setEditingWin({ ...editingWin, weekdays: editingWin.weekdays?.includes(d) ? editingWin.weekdays.filter((x) => x !== d) : [...(editingWin.weekdays ?? []), d] })} className={clsx("h-9 w-11 rounded-full text-xs font-bold uppercase", editingWin.weekdays?.includes(d) ? "bg-vinho-600 text-white" : "bg-choco-100 text-choco-600")}>{WEEKDAYS_SHORT[d]}</button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Select label="Pedir até… antes do início" value={String(editingWin.min_lead_minutes ?? 120)} onChange={(e) => setEditingWin({ ...editingWin, min_lead_minutes: Number(e.target.value) })}>
+                {[30, 60, 90, 120, 180, 240, 360, 720, 1440, 2880].map((m) => <option key={m} value={m}>{leadLabel(m)}</option>)}
+              </Select>
+              <Select label="Vale pra" value={editingWin.applies_to ?? "ambos"} onChange={(e) => setEditingWin({ ...editingWin, applies_to: e.target.value as DeliveryWindow["applies_to"] })}>
+                <option value="ambos">Entrega e retirada</option><option value="entrega">Só entrega</option><option value="retirada">Só retirada</option>
+              </Select>
+            </div>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editingWin.active ?? true} onChange={(e) => setEditingWin({ ...editingWin, active: e.target.checked })} /> ativo</label>
+            <Button className="w-full" loading={busyWin} onClick={saveWindow}>Salvar horário</Button>
+          </div>
+        </Modal>
+      )}
 
       {settings && (
         <Card title="Retirada">

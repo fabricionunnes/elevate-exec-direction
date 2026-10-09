@@ -73,3 +73,9 @@ export function nextStatus(s: OrderStatus, fulfillment: "entrega" | "retirada"):
 
 export const statusLabelFor = (s: OrderStatus, fulfillment: "entrega" | "retirada") =>
   s === "entregue" && fulfillment === "retirada" ? "Retirado" : STATUS_LABEL[s];
+
+/** "14:00:00" -> "14:00" */
+export const hm = (t: string) => t.slice(0, 5);
+export const windowLabel = (w: { start_time: string; end_time: string }) => `${hm(w.start_time)}–${hm(w.end_time)}`;
+export const leadLabel = (min: number) => (min % 60 === 0 ? `${min / 60}h` : `${min} min`);
+export const WEEKDAYS_SHORT = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];

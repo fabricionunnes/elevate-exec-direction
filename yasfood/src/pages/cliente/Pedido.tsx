@@ -80,6 +80,7 @@ export default function Pedido() {
     address: order.address,
     reference: order.reference,
     scheduledDate: order.scheduled_date,
+    windowLabel: order.window_label,
     paymentLabel: PAYMENT_LABEL[order.payment_method],
     changeFor: order.change_for,
     total: Number(order.total),
@@ -138,7 +139,7 @@ export default function Pedido() {
           <li className="flex justify-between py-1.5 font-black"><span>Total</span><span className="text-vinho-700">{brl(order.total)}</span></li>
         </ul>
         <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-          <dt className="text-choco-500">Data</dt><dd className="capitalize">{dayLong(order.scheduled_date)}</dd>
+          <dt className="text-choco-500">Data</dt><dd className="capitalize">{dayLong(order.scheduled_date)}{order.window_label && <span className="normal-case"> · {order.window_label}</span>}</dd>
           <dt className="text-choco-500">{order.fulfillment === "entrega" ? "Entrega" : "Retirada"}</dt>
           <dd>{order.fulfillment === "entrega" ? `${order.zone_name ?? ""} · ${order.address}` : settings.pickup_address || "Combinar pelo WhatsApp"}</dd>
           <dt className="text-choco-500">Pagamento</dt><dd>{PAYMENT_LABEL[order.payment_method]} · {order.payment_status === "pago" ? "pago" : "pendente"}</dd>
