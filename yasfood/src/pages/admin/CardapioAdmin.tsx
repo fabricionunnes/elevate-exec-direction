@@ -94,7 +94,7 @@ export default function CardapioAdmin() {
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               {editing.image_url ? <img src={editing.image_url} alt="" className="h-24 w-24 rounded-xl object-cover" /> : <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-rosa-100 text-4xl">🎂</div>}
-              <label className="cursor-pointer"><span className="inline-flex items-center gap-2 rounded-xl border border-choco-200 bg-white px-3 py-2 text-sm font-semibold"><ImagePlus size={16} /> {busy ? "Enviando…" : "Foto"}</span><input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} /></label>
+              <label className="cursor-pointer"><span className="inline-flex items-center gap-2 rounded-xl border border-choco-200 bg-white px-3 py-2 text-sm font-semibold"><ImagePlus size={16} /> {busy ? "Enviando…" : "Capa (1 foto)"}</span><input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} /></label>
             </div>
             <Input label="Nome" value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
             <Textarea label="Descrição" value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
@@ -230,10 +230,10 @@ function MediaManager({ productId, cover, onCover }: { productId: string; cover:
   return (
     <div className="rounded-2xl border border-choco-100 bg-white p-3">
       <div className="mb-2 flex items-center justify-between">
-        <h4 className="text-sm font-bold">Fotos e vídeos</h4>
-        <label className="cursor-pointer"><span className="inline-flex items-center gap-2 rounded-xl bg-vinho-600 px-3 py-1.5 text-xs font-semibold text-white"><Film size={14} /> {busy ? "Enviando…" : "Adicionar"}</span><input type="file" multiple accept="image/*,video/*" className="hidden" onChange={(e) => { void upload(e.target.files); e.target.value = ""; }} /></label>
+        <h4 className="text-sm font-bold">Galeria: várias fotos e vídeos</h4>
+        <label className="cursor-pointer"><span className="inline-flex items-center gap-2 rounded-xl bg-vinho-600 px-3 py-1.5 text-xs font-semibold text-white"><Film size={14} /> {busy ? "Enviando…" : "Adicionar fotos / vídeos"}</span><input type="file" multiple accept="image/*,video/*" className="hidden" onChange={(e) => { void upload(e.target.files); e.target.value = ""; }} /></label>
       </div>
-      {items.length === 0 ? <p className="text-xs text-choco-500">Nenhuma mídia ainda. Pode selecionar várias de uma vez (fotos até 50 MB, vídeos em MP4).</p> : (
+      {items.length === 0 ? <p className="text-xs text-choco-500">Clique em "Adicionar" e selecione várias fotos e vídeos de uma vez (até 50 MB cada, vídeo em MP4). Elas aparecem em carrossel no cardápio.</p> : (
         <div className="grid grid-cols-3 gap-2">
           {items.map((m) => (
             <div key={m.id} className="group relative overflow-hidden rounded-xl bg-choco-50">

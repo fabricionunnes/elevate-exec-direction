@@ -15,6 +15,7 @@ import Pedidos from "@/pages/admin/Pedidos";
 import Agenda from "@/pages/admin/Agenda";
 import CardapioAdmin from "@/pages/admin/CardapioAdmin";
 import Banners from "@/pages/admin/Banners";
+import Enquetes from "@/pages/admin/Enquetes";
 import Entregas from "@/pages/admin/Entregas";
 import Clientes from "@/pages/admin/Clientes";
 import Estoque from "@/pages/admin/Estoque";
@@ -43,6 +44,7 @@ export default function App() {
                 <Route path="agenda" element={<Agenda />} />
                 <Route path="cardapio" element={<CardapioAdmin />} />
                 <Route path="banners" element={<Banners />} />
+                <Route path="enquetes" element={<Enquetes />} />
                 <Route path="entregas" element={<Entregas />} />
                 <Route path="clientes" element={<Clientes />} />
                 <Route path="estoque" element={<Estoque />} />

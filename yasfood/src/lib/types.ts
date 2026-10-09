@@ -227,6 +227,7 @@ export interface Banner {
   title: string;
   subtitle: string;
   image_url: string;
+  media_kind: "image" | "video";
   product_id: string | null;
   link_url: string | null;
   active: boolean;
@@ -234,3 +235,15 @@ export interface Banner {
   starts_at: string | null;
   ends_at: string | null;
 }
+
+export interface Poll {
+  id: string;
+  question: string;
+  description: string;
+  active: boolean;
+  show_results: boolean;
+  closes_at: string | null;
+  created_at: string;
+}
+export interface PollOption { id: string; poll_id: string; label: string; sort_order: number }
+export interface PollResult { poll_id: string; option_id: string; label: string; sort_order: number; votes: number }

@@ -5,7 +5,8 @@ import { uploadMedia } from "@/lib/media";
 import type { Banner, Product } from "@/lib/types";
 import { Button, Card, Input, Select, Modal, Spinner, Empty, Badge, useToast } from "@/components/ui";
 
-const empty: Partial<Banner> = { title: "", subtitle: "", image_url: "", product_id: null, link_url: "", active: true, sort_order: 0, starts_at: null, ends_at: null };
+const empty: Partial<Banner> = { title: "", subtitle: "", image_url: "", media_kind: "image", product_id: null, link_url: "", active: true, sort_order: 0, starts_at: null, ends_at: null };
+const IDEAL = { w: 1600, h: 700 };
 
 export default function Banners() {
   const toast = useToast();
@@ -13,6 +14,7 @@ export default function Banners() {
   const [products, setProducts] = useState<Product[]>([]);
   const [editing, setEditing] = useState<Partial<Banner> | null>(null);
   const [busy, setBusy] = useState(false);
+  const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
 
   const load = useCallback(async () => {
     const [b, p] = await Promise.all([
@@ -29,8 +31,8 @@ export default function Banners() {
     setBusy(true);
     try {
       const { url, kind } = await uploadMedia(file, "banners");
-      if (kind !== "image") throw new Error("Banner precisa ser imagem (vídeo vai na galeria do produto).");
-      setEditing({ ...editing, image_url: url });
+      setEditing({ ...editing, image_url: url, media_kind: kind });
+      setDims(null);
     } catch (e) {
       toast(friendlyError(e), "err");
     }
@@ -64,13 +66,13 @@ export default function Banners() {
         <h1 className="text-2xl font-black text-choco-900">Banners</h1>
         <Button onClick={() => setEditing({ ...empty, sort_order: (banners?.length ?? 0) + 1 })}><Plus size={16} /> Novo banner</Button>
       </div>
-      <p className="text-sm text-choco-600">Aparecem no topo do cardápio, em carrossel. Ao tocar, o cliente vai direto pro produto escolhido. Tamanho ideal: 1600 x 700 px.</p>
+      <p className="text-sm text-choco-600">Aparecem no topo do cardápio, em carrossel. Ao tocar, o cliente vai direto pro produto escolhido. Pode ser foto ou vídeo curto (toca mudo, em loop). Tamanho ideal: <b>{IDEAL.w} × {IDEAL.h} px</b> (proporção 16:7).</p>
 
       {banners === null ? <Spinner /> : banners.length === 0 ? <Empty>Nenhum banner. Crie o primeiro pra destacar um bolo.</Empty> : (
         <div className="grid gap-3 md:grid-cols-2">
           {banners.map((b) => (
             <Card key={b.id} className={!b.active ? "opacity-60" : ""}>
-              <img src={b.image_url} alt={b.title} className="aspect-[16/7] w-full rounded-xl object-cover" />
+              {b.media_kind === "video" ? <video src={b.image_url} className="aspect-[16/7] w-full rounded-xl object-cover" muted playsInline preload="metadata" /> : <img src={b.image_url} alt={b.title} className="aspect-[16/7] w-full rounded-xl object-cover" />}
               <div className="mt-2 flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="truncate font-bold">{b.title || "(sem título)"}</div>
@@ -90,8 +92,22 @@ export default function Banners() {
       {editing && (
         <Modal open onClose={() => setEditing(null)} title={editing.id ? "Editar banner" : "Novo banner"}>
           <div className="space-y-3">
-            {editing.image_url ? <img src={editing.image_url} alt="" className="aspect-[16/7] w-full rounded-xl object-cover" /> : <div className="flex aspect-[16/7] w-full items-center justify-center rounded-xl bg-rosa-100 text-sm text-choco-500">Sem imagem</div>}
-            <label className="cursor-pointer"><span className="inline-flex items-center gap-2 rounded-xl border border-choco-200 bg-white px-3 py-2 text-sm font-semibold"><ImagePlus size={16} /> {busy ? "Enviando…" : "Enviar imagem"}</span><input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} /></label>
+            {editing.image_url ? (
+              editing.media_kind === "video"
+                ? <video src={editing.image_url} className="aspect-[16/7] w-full rounded-xl object-cover" muted playsInline autoPlay loop />
+                : <img src={editing.image_url} alt="" className="aspect-[16/7] w-full rounded-xl object-cover" onLoad={(e) => setDims({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} />
+            ) : (
+              <div className="flex aspect-[16/7] w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-rosa-300 bg-rosa-100 text-sm text-choco-600">
+                <span className="font-bold">Foto ou vídeo do banner</span>
+                <span className="text-xs">tamanho ideal {IDEAL.w} × {IDEAL.h} px · proporção 16:7</span>
+              </div>
+            )}
+            {dims && editing.media_kind !== "video" && (
+              <p className={`text-xs ${Math.abs(dims.w / dims.h - IDEAL.w / IDEAL.h) < 0.08 ? "text-emerald-700" : "text-amber-700"}`}>
+                Enviado: {dims.w} × {dims.h} px{Math.abs(dims.w / dims.h - IDEAL.w / IDEAL.h) < 0.08 ? " · proporção certa" : ` · proporção diferente de 16:7, vai cortar nas bordas (ideal ${IDEAL.w} × ${IDEAL.h})`}
+              </p>
+            )}
+            <label className="cursor-pointer"><span className="inline-flex items-center gap-2 rounded-xl border border-choco-200 bg-white px-3 py-2 text-sm font-semibold"><ImagePlus size={16} /> {busy ? "Enviando…" : "Enviar foto ou vídeo"}</span><input type="file" accept="image/*,video/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} /></label>
             <Input label="Título (opcional)" value={editing.title ?? ""} onChange={(e) => setEditing({ ...editing, title: e.target.value })} placeholder="Ex.: Bolo de cenoura fresquinho" />
             <Input label="Subtítulo (opcional)" value={editing.subtitle ?? ""} onChange={(e) => setEditing({ ...editing, subtitle: e.target.value })} placeholder="Ex.: Encomende pra sexta" />
             <Select label="Leva pro produto" value={editing.product_id ?? ""} onChange={(e) => setEditing({ ...editing, product_id: e.target.value || null })}>

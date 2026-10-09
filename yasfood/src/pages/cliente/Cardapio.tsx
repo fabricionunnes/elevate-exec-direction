@@ -7,6 +7,7 @@ import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, todayISO, addDaysISO, dateTimeBR } from "@/lib/format";
 import type { Availability, Banner, Product, ProductMedia, PublicReview } from "@/lib/types";
 import { Gallery } from "@/components/Gallery";
+import { PollCard } from "@/components/PollCard";
 import { Button, Spinner, Empty, Stars } from "@/components/ui";
 import { Logo } from "./Layout";
 
@@ -54,7 +55,9 @@ export default function Cardapio() {
           {banners.map((b) => {
             const inner = (
               <div className="relative aspect-[16/7] w-[88vw] max-w-3xl shrink-0 snap-center overflow-hidden rounded-3xl shadow-soft">
-                <img src={b.image_url} alt={b.title} className="h-full w-full object-cover" />
+                {b.media_kind === "video"
+                  ? <video src={b.image_url} className="h-full w-full object-cover" autoPlay muted loop playsInline />
+                  : <img src={b.image_url} alt={b.title} className="h-full w-full object-cover" />}
                 {(b.title || b.subtitle) && (
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-choco-900/80 to-transparent p-4 text-white">
                     {b.title && <div className="text-lg font-black leading-tight">{b.title}</div>}
@@ -134,6 +137,8 @@ export default function Cardapio() {
           </div>
         )}
       </section>
+
+      <PollCard />
 
       {reviews.length > 0 && (
         <section>
