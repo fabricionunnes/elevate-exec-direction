@@ -34,7 +34,7 @@ jobs:
           run_sql () {
             echo "▶ $1"
             jq -Rs '{query: .}' "$1" > /tmp/body.json
-            curl -sS --fail-with-body -X POST \
+            curl -sS --fail-with-body --retry 5 --retry-delay 3 --retry-all-errors -X POST \
               "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/query" \
               -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
               --data @/tmp/body.json -o /tmp/out.json
@@ -52,7 +52,7 @@ jobs:
           echo "::add-mask::$ADMIN_PASSWORD"
           jq -n --arg e "$ADMIN_EMAIL" --arg p "$ADMIN_PASSWORD" \
             'def q: "'"'"'" + gsub("'"'"'";"'"'"''"'"'") + "'"'"'"; {query: ("update auth.users set encrypted_password = crypt(" + ($p|q) + ", gen_salt('"'"'bf'"'"')), updated_at = now() where lower(email) = " + ($e|q) + ";")}' > /tmp/body.json
-          curl -sS --fail-with-body -X POST "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/query" \
+          curl -sS --fail-with-body --retry 5 --retry-delay 3 --retry-all-errors -X POST "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/query" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @/tmp/body.json -o /dev/null
           rm -f /tmp/body.json
           echo "senha definida para $ADMIN_EMAIL"
@@ -63,7 +63,7 @@ jobs:
         run: |
           set -euo pipefail
           # Nunca imprimir a resposta inteira: ela contém o jwt_secret do projeto.
-          curl -sS --fail-with-body "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/postgrest" \
+          curl -sS --fail-with-body --retry 5 --retry-delay 3 --retry-all-errors "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/postgrest" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -o /tmp/postgrest.json
           schemas=$(jq -r '.db_schema' /tmp/postgrest.json)
           echo "schemas expostos: $schemas"
@@ -71,7 +71,7 @@ jobs:
             echo "yasfood já exposto"
           else
             jq --arg s "$schemas, yasfood" '{db_schema: $s, max_rows: .max_rows, db_extra_search_path: .db_extra_search_path}' /tmp/postgrest.json > /tmp/pr.json
-            curl -sS --fail-with-body -X PATCH "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/postgrest" \
+            curl -sS --fail-with-body --retry 5 --retry-delay 3 --retry-all-errors -X PATCH "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/postgrest" \
               -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @/tmp/pr.json -o /dev/null
             echo "yasfood exposto"
           fi
@@ -103,7 +103,7 @@ jobs:
         run: |
           set -euo pipefail
           url="https://$SUPABASE_PROJECT_REF.supabase.co"
-          key=$(curl -sS --fail-with-body "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/api-keys?reveal=true" \
+          key=$(curl -sS --fail-with-body --retry 5 --retry-delay 3 --retry-all-errors "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/api-keys?reveal=true" \
                 -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" | jq -r '.[] | select(.name=="anon") | .api_key')
           [ -n "$key" ] && [ "$key" != "null" ] || { echo "::error::anon key não encontrada"; exit 1; }
           echo "::add-mask::$key"
@@ -136,7 +136,7 @@ jobs:
           SITE_URL: ${{ steps.wrangler.outputs.url }}
         run: |
           jq -n --arg u "$SITE_URL" 'def q: "'"'"'" + gsub("'"'"'";"'"'"''"'"'") + "'"'"'"; {query: ("update yasfood.settings set site_url = " + ($u|q) + " where id = 1 and site_url = '"'"''"'"';")}' > /tmp/body.json
-          curl -sS --fail-with-body -X POST "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/query" \
+          curl -sS --fail-with-body --retry 5 --retry-delay 3 --retry-all-errors -X POST "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/query" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @/tmp/body.json
           echo
 
@@ -147,7 +147,7 @@ jobs:
           SITE_URL: ${{ steps.wrangler.outputs.url }}
         run: |
           set -euo pipefail
-          curl -sS --fail-with-body "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
+          curl -sS --fail-with-body --retry 5 --retry-delay 3 --retry-all-errors "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -o /tmp/auth.json
           cur=$(jq -r '.uri_allow_list // ""' /tmp/auth.json)
           want="$SITE_URL/**"
@@ -156,7 +156,7 @@ jobs:
           else
             new=$([ -n "$cur" ] && echo "$cur,$want" || echo "$want")
             jq -n --arg l "$new" '{uri_allow_list: $l}' > /tmp/auth-patch.json
-            curl -sS --fail-with-body -X PATCH "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
+            curl -sS --fail-with-body --retry 5 --retry-delay 3 --retry-all-errors -X PATCH "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
               -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @/tmp/auth-patch.json -o /dev/null
             echo "redirect autorizado: $want"
           fi

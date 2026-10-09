@@ -41,6 +41,10 @@ Sempre que uma etapa depender de uma ação dele (aprovar PR, configurar conta, 
 registrar domínio, trocar conector), **mandar o link direto e o passo a passo numerado**,
 do jeito que ele clica. Nunca só "faça X no painel". Uma mensagem = uma ação. Sem emojis.
 
+**Merge de PR: autorizado sempre.** O Fabrício pediu (09/10/2026) que o Claude faça o merge dos
+PRs que ele mesmo abriu, sem pedir aprovação, assim que o deploy da branch estiver verde.
+Depois do merge, realinhar a branch de trabalho com `main` e conferir o deploy de `main`.
+
 ## YasFood (sistema da Yas Delícias) — referências operacionais
 
 - Código: `yasfood/` (projeto independente). PR de entrada: #47.

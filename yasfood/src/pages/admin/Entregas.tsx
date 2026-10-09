@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2, Clock } from "lucide-react";
+import { Plus, Trash2, Clock, MapPin } from "lucide-react";
 import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { brl, hm, leadLabel, WEEKDAYS_SHORT } from "@/lib/format";
 import type { DeliveryZone, DeliveryWindow } from "@/lib/types";
 import { Button, Card, Input, Select, Modal, Spinner, Empty, useToast } from "@/components/ui";
+import { geocodePlace, hasCoords, mapsPin } from "@/lib/route";
 
 export default function Entregas() {
   const toast = useToast();
@@ -64,6 +65,17 @@ export default function Entregas() {
     void load();
   };
 
+  const [locatingZone, setLocatingZone] = useState<string | null>(null);
+  const locateZone = async (z: DeliveryZone) => {
+    setLocatingZone(z.id);
+    const bias = settings && hasCoords({ lat: settings.origin_lat, lng: settings.origin_lng }) ? { lat: settings.origin_lat as number, lng: settings.origin_lng as number } : null;
+    const p = await geocodePlace(`${z.name}, Nova Lima, MG`, bias).catch(() => null);
+    setLocatingZone(null);
+    if (!p) return toast(`Não achei "${z.name}" no mapa. Use um nome de condomínio ou bairro reconhecível.`, "err");
+    await patch(z.id, { lat: p.lat, lng: p.lng });
+    toast("Localização da região salva.");
+  };
+
   const remove = async (z: DeliveryZone) => {
     if (!confirm(`Remover "${z.name}"?`)) return;
     const { error } = await supabase.from("delivery_zones").delete().eq("id", z.id);
@@ -91,6 +103,9 @@ export default function Entregas() {
                 <span className="text-choco-500">R$</span>
                 <input className="h-9 w-24 rounded-lg border border-choco-200 px-2 text-right" type="number" step="0.5" defaultValue={Number(z.fee)} onBlur={(e) => Number(e.target.value) !== Number(z.fee) && patch(z.id, { fee: Number(e.target.value) })} />
                 <label className="flex items-center gap-1"><input type="checkbox" checked={z.active} onChange={(e) => patch(z.id, { active: e.target.checked })} /> ativa</label>
+                {hasCoords(z)
+                  ? <a href={mapsPin(z)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700" title="Conferir no mapa"><MapPin size={14} /> no mapa</a>
+                  : <Button size="sm" variant="ghost" loading={locatingZone === z.id} onClick={() => locateZone(z)}><MapPin size={14} /> Localizar</Button>}
                 <button className="p-1 text-choco-400 hover:text-red-600" onClick={() => remove(z)} aria-label="Remover"><Trash2 size={16} /></button>
               </li>
             ))}
@@ -101,7 +116,7 @@ export default function Entregas() {
           <div className="w-28"><Input label="Frete (R$)" value={fee} onChange={(e) => setFee(e.target.value)} inputMode="decimal" /></div>
           <Button onClick={add}><Plus size={16} /> Adicionar</Button>
         </div>
-        <p className="mt-2 text-xs text-choco-500">Dica: frete 0 aparece como "frete grátis". Regiões inativas somem do checkout, mas pedidos antigos ficam.</p>
+        <p className="mt-2 text-xs text-choco-500">Dica: frete 0 aparece como "frete grátis". Regiões inativas somem do checkout, mas pedidos antigos ficam. "Localizar" marca a região no mapa: serve de referência pra rota quando o endereço exato do cliente não é encontrado.</p>
       </Card>
 
       <Card title={<span className="flex items-center gap-2"><Clock size={18} /> Horários de entrega e retirada</span>} action={<Button size="sm" onClick={() => setEditingWin({ label: "", start_time: "14:00", end_time: "17:00", weekdays: [1, 2, 3, 4, 5, 6], min_lead_minutes: 120, applies_to: "ambos", active: true, sort_order: (windows?.length ?? 0) + 1 })}><Plus size={14} /> Novo horário</Button>}>

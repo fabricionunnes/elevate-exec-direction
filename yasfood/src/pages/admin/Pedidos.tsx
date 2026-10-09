@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { MessageCircle, Check, ArrowRight, XCircle, Banknote, Printer, Plus, Search, ExternalLink, Pencil } from "lucide-react";
+import { MessageCircle, Check, ArrowRight, XCircle, Banknote, Printer, Plus, Search, ExternalLink, Pencil, Route, MapPin, LocateFixed } from "lucide-react";
 import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, dateTimeBR, dayLong, formatPhone, nextStatus, PAYMENT_LABEL, STATUS_COLOR, STATUS_LABEL, statusLabelFor, todayISO, addDaysISO, onlyDigits, windowLabel } from "@/lib/format";
 import { waLink, msgs, trackingUrl } from "@/lib/whatsapp";
-import type { Availability, AvailableWindow, Customer, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
+import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, mapsPin, currentPosition, type RouteCtx } from "@/lib/route";
+import type { Availability, AvailableWindow, Customer, DeliveryWindow, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Button, Badge, Card, Modal, Empty, Spinner, Input, Select, Textarea, useToast } from "@/components/ui";
 
@@ -22,11 +23,56 @@ export default function Pedidos() {
   const [onlyUnpaid, setOnlyUnpaid] = useState(params.get("pagamento") === "pendente");
   const [openId, setOpenId] = useState<string | null>(params.get("abrir"));
   const [novo, setNovo] = useState(false);
+  const [windows, setWindows] = useState<DeliveryWindow[]>([]);
+  const [zones, setZones] = useState<DeliveryZone[]>([]);
+  const [locating, setLocating] = useState<string | null>(null);
+  const geoBusy = useRef(false);
 
   const load = useCallback(async () => {
-    const { data } = await supabase.from("orders").select("*").order("scheduled_date").order("created_at");
+    const [{ data }, w, z] = await Promise.all([
+      supabase.from("orders").select("*").order("scheduled_date").order("created_at"),
+      supabase.from("delivery_windows").select("id, start_time"),
+      supabase.from("delivery_zones").select("id, lat, lng, sort_order"),
+    ]);
     setOrders((data as Order[]) ?? []);
+    setWindows((w.data as DeliveryWindow[]) ?? []);
+    setZones((z.data as DeliveryZone[]) ?? []);
   }, []);
+
+  const ctx = useMemo<RouteCtx>(() => ({
+    origin: settings && hasCoords({ lat: settings.origin_lat, lng: settings.origin_lng }) ? { lat: settings.origin_lat as number, lng: settings.origin_lng as number } : null,
+    windows,
+    zones,
+  }), [settings, windows, zones]);
+
+  /** Localiza no mapa os endereços de entrega que ainda não têm coordenada. */
+  const locate = useCallback(async (list: Order[], force = false) => {
+    if (geoBusy.current) return;
+    const todo = list.filter((o) => o.fulfillment === "entrega" && !["entregue", "cancelado"].includes(o.status) && !hasCoords(o) && (force || !o.geocoded_at)).slice(0, 12);
+    if (!todo.length) return;
+    geoBusy.current = true;
+    try {
+      // 1) cliente já tem localização marcada pra esse endereço? usa ela, sem consultar o mapa
+      const ids = [...new Set(todo.map((o) => o.customer_id).filter((x): x is string => !!x))];
+      const { data: known } = ids.length ? await supabase.from("customers").select("id, lat, lng, geo_address").in("id", ids) : { data: [] };
+      const byCustomer = new Map(((known as { id: string; lat: number | null; lng: number | null; geo_address: string | null }[]) ?? []).map((c) => [c.id, c]));
+      const norm = (a: string) => a.toLowerCase().replace(/\s+/g, " ").trim();
+      for (const o of todo) {
+        setLocating(o.id);
+        const c = o.customer_id ? byCustomer.get(o.customer_id) : undefined;
+        if (c && hasCoords(c) && c.geo_address && norm(c.geo_address) === norm(o.address)) {
+          await supabase.from("orders").update({ lat: c.lat, lng: c.lng, geocoded_at: new Date().toISOString() }).eq("id", o.id);
+          continue;
+        }
+        const p = await geocodeAddress(o.address, o.zone_name, ctx.origin).catch(() => null);
+        await supabase.from("orders").update({ lat: p?.lat ?? null, lng: p?.lng ?? null, geocoded_at: new Date().toISOString() }).eq("id", o.id);
+      }
+    } finally {
+      geoBusy.current = false;
+      setLocating(null);
+      void load();
+    }
+  }, [ctx.origin, load]);
 
   useEffect(() => {
     void load();
@@ -58,8 +104,15 @@ export default function Pedidos() {
   const grouped = useMemo(() => {
     const m = new Map<string, Order[]>();
     for (const o of list) m.set(o.scheduled_date, [...(m.get(o.scheduled_date) ?? []), o]);
-    return [...m.entries()];
-  }, [list]);
+    return [...m.entries()].map(([day, os]) => [day, filter === "cancelados" ? os.map((o, i) => ({ order: o, rank: i + 1, legKm: null, located: false, approx: false, windowKey: "" })) : prioritize(os, ctx)] as const);
+  }, [list, ctx, filter]);
+
+  // Endereços novos são localizados sozinhos (1 por segundo, só os dias de hoje em diante).
+  useEffect(() => {
+    if (!orders) return;
+    const today = todayISO();
+    void locate(orders.filter((o) => o.scheduled_date >= today));
+  }, [orders, locate]);
 
   const open = (id: string | null) => {
     setOpenId(id);
@@ -87,30 +140,59 @@ export default function Pedidos() {
       </div>
 
       {orders === null ? <Spinner /> : list.length === 0 ? <Empty>Nenhum pedido aqui.</Empty> : (
-        grouped.map(([day, os]) => (
-          <section key={day}>
-            <h2 className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-choco-600">
-              <span className="capitalize">{dayLabel(day)}</span>
-              <span className="text-choco-400">· {os.length} pedido(s)</span>
-            </h2>
-            <div className="grid gap-2 md:grid-cols-2">
-              {os.map((o) => (
-                <button key={o.id} onClick={() => open(o.id)} className="rounded-2xl border border-choco-100 bg-white p-3 text-left shadow-card hover:border-vinho-300">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold">{o.code} · {o.customer_name}</span>
-                    <Badge className={STATUS_COLOR[o.status]}>{statusLabelFor(o.status, o.fulfillment)}</Badge>
-                  </div>
-                  <div className="mt-1 flex items-center gap-2 text-xs text-choco-500">
-                    <span>{o.fulfillment === "entrega" ? `Entrega · ${o.zone_name ?? ""}` : "Retirada"}{o.window_label ? ` · ${o.window_label}` : ""}</span>
-                    <span>·</span>
-                    <span>{PAYMENT_LABEL[o.payment_method]}</span>
-                    <span className={clsx("ml-auto font-bold", o.payment_status === "pago" ? "text-emerald-700" : "text-amber-700")}>{brl(o.total)} {o.payment_status === "pago" ? "✓" : "pendente"}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
-        ))
+        <>
+          {filter !== "cancelados" && (
+            <p className="text-xs text-choco-500">
+              Ordem sugerida pelo sistema: horário mais cedo primeiro; dentro do horário, retiradas e depois as entregas do mais perto pro mais longe partindo da sua casa.
+              {!ctx.origin && <> Pra rota por distância, <a href="/admin/configuracoes" className="font-semibold text-vinho-600 underline">cadastre a localização da sua casa</a>.</>}
+            </p>
+          )}
+          {grouped.map(([day, ps]) => {
+            // uma rota por horário: cada horário é uma saída de casa
+            const routes = filter === "cancelados" ? [] : [...new Set(ps.filter((p) => p.order.fulfillment === "entrega" && !["entregue", "cancelado"].includes(p.order.status)).map((p) => p.windowKey))]
+              .map((k) => ({ k, url: gmapsRouteUrl(ps.filter((p) => p.windowKey === k), ctx, settings?.pickup_address ?? "") }))
+              .filter((r): r is { k: string; url: string } => !!r.url);
+            const unlocated = ps.filter((p) => p.order.fulfillment === "entrega" && !["entregue", "cancelado"].includes(p.order.status) && !hasCoords(p.order)).length;
+            return (
+              <section key={day}>
+                <h2 className="mb-2 flex flex-wrap items-center gap-2 text-sm font-bold uppercase tracking-wide text-choco-600">
+                  <span className="capitalize">{dayLabel(day)}</span>
+                  <span className="text-choco-400">· {ps.length} pedido(s)</span>
+                  <span className="ml-auto flex items-center gap-1 normal-case tracking-normal">
+                    {unlocated > 0 && filter !== "cancelados" && (
+                      <Button size="sm" variant="ghost" loading={!!locating} onClick={() => locate(ps.map((p) => p.order), true)}><MapPin size={14} /> Localizar {unlocated} endereço(s)</Button>
+                    )}
+                    {routes.map((r) => <a key={r.k} href={r.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-vinho-600 px-3 py-1 text-xs font-semibold text-white"><Route size={14} /> Rota{routes.length > 1 && r.k ? ` ${r.k}` : ""} no Maps</a>)}
+                  </span>
+                </h2>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {ps.map(({ order: o, rank, legKm, located, approx }) => (
+                    <button key={o.id} onClick={() => open(o.id)} className="rounded-2xl border border-choco-100 bg-white p-3 text-left shadow-card hover:border-vinho-300">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-2 font-bold">
+                          {filter !== "cancelados" && !["entregue", "cancelado"].includes(o.status) && <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-choco-900 px-1.5 text-xs font-black text-white">{rank}º</span>}
+                          <span>{o.code} · {o.customer_name}</span>
+                        </span>
+                        <Badge className={STATUS_COLOR[o.status]}>{statusLabelFor(o.status, o.fulfillment)}</Badge>
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-choco-500">
+                        <span>{o.fulfillment === "entrega" ? `Entrega · ${o.zone_name ?? ""}` : "Retirada"}{o.window_label ? ` · ${o.window_label}` : ""}</span>
+                        {o.fulfillment === "entrega" && !["entregue", "cancelado"].includes(o.status) && (
+                          legKm !== null ? <span className="rounded-full bg-choco-100 px-2 py-0.5 font-semibold text-choco-700">{approx ? "~" : ""}{fmtKm(legKm)} da parada anterior</span>
+                          : located ? null
+                          : <span className="rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-800">{locating === o.id ? "localizando…" : "sem localização"}</span>
+                        )}
+                        <span>·</span>
+                        <span>{PAYMENT_LABEL[o.payment_method]}</span>
+                        <span className={clsx("ml-auto font-bold", o.payment_status === "pago" ? "text-emerald-700" : "text-amber-700")}>{brl(o.total)} {o.payment_status === "pago" ? "✓" : "pendente"}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </>
       )}
 
       {openId && <OrderDetail id={openId} onClose={() => open(null)} onChanged={load} siteUrl={settings?.site_url} pix={{ key: settings?.pix_key ?? "", name: settings?.pix_name ?? "" }} reviewTemplate={settings?.review_message ?? ""} />}
@@ -129,6 +211,41 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
   const [busy, setBusy] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [geoBusy, setGeoBusy] = useState(false);
+  const { settings: full } = useSettings(true);
+
+  /** Na porta do cliente: grava o GPS no pedido e no cliente (próximos pedidos já saem certos). */
+  const markHere = async () => {
+    if (!order) return;
+    setGeoBusy(true);
+    try {
+      const p = await currentPosition();
+      const { error } = await supabase.from("orders").update({ lat: p.lat, lng: p.lng, geocoded_at: new Date().toISOString() }).eq("id", order.id);
+      if (error) throw new Error(friendlyError(error));
+      if (order.customer_id) await supabase.from("customers").update({ lat: p.lat, lng: p.lng, geo_address: order.address }).eq("id", order.customer_id);
+      toast(`Localização marcada (precisão de ${Math.round(p.accuracy)} m). Vale pros próximos pedidos deste endereço.`);
+      onChanged();
+      void load();
+    } catch (e) {
+      toast((e as Error).message, "err");
+    } finally {
+      setGeoBusy(false);
+    }
+  };
+
+  /** Tenta localizar o endereço outra vez (ex.: quando caiu no lugar errado). */
+  const relocate = async () => {
+    if (!order) return;
+    setGeoBusy(true);
+    const bias = full && hasCoords({ lat: full.origin_lat, lng: full.origin_lng }) ? { lat: full.origin_lat as number, lng: full.origin_lng as number } : null;
+    const p = await geocodeAddress(order.address, order.zone_name, bias).catch(() => null);
+    const { error } = await supabase.from("orders").update({ lat: p?.lat ?? null, lng: p?.lng ?? null, geocoded_at: new Date().toISOString() }).eq("id", order.id);
+    setGeoBusy(false);
+    if (error) return toast(friendlyError(error), "err");
+    toast(p ? `Encontrado: ${p.label}` : "Não achei esse endereço no mapa. Confira se a rua e o número estão certos.", p ? "ok" : "err");
+    onChanged();
+    void load();
+  };
 
   const load = useCallback(async () => {
     const [o, i, e] = await Promise.all([
@@ -181,6 +298,15 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
               <div className="font-bold">{order.customer_name}</div>
               <div>{formatPhone(order.customer_phone)}</div>
               <div className="mt-1 text-choco-600">{order.fulfillment === "entrega" ? `Entrega · ${order.zone_name ?? ""} · ${order.address}${order.reference ? ` (${order.reference})` : ""}` : "Retirada"}</div>
+              {order.fulfillment === "entrega" && (
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                  {hasCoords(order)
+                    ? <a href={mapsPin(order)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-emerald-700"><MapPin size={12} /> ver no mapa</a>
+                    : <span className="text-amber-800">{order.geocoded_at ? "endereço não encontrado no mapa" : "ainda não localizado"}</span>}
+                  <button type="button" disabled={geoBusy} onClick={() => void relocate()} className="font-semibold text-vinho-600 underline-offset-2 hover:underline disabled:opacity-50">{geoBusy ? "localizando…" : "localizar de novo"}</button>
+                  <button type="button" disabled={geoBusy} onClick={() => void markHere()} className="inline-flex items-center gap-1 rounded-full bg-choco-900 px-2.5 py-1 font-semibold text-white disabled:opacity-50" title="Use quando estiver na porta do cliente"><LocateFixed size={12} /> estou na porta: marcar aqui</button>
+                </div>
+              )}
               <div className="mt-1 capitalize text-choco-600">Para: {dayLong(order.scheduled_date)}{order.window_label && <span className="normal-case"> · {order.window_label}</span>}</div>
               {order.notes && <div className="mt-2 rounded-xl bg-amber-50 p-2 text-amber-900">Obs.: {order.notes}</div>}
               <div className="mt-1 text-xs text-choco-400">Pedido em {dateTimeBR(order.created_at)}</div>
@@ -193,7 +319,7 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
               {order.status === "entregue" && <a href={wa(msgs.avaliacao(order, reviewTemplate, siteUrl))} target="_blank" rel="noreferrer"><Button variant="outline" size="sm">Pedir avaliação</Button></a>}
               <a href={trackingUrl(order.tracking_token, siteUrl)} target="_blank" rel="noreferrer"><Button variant="ghost" size="sm"><ExternalLink size={14} /> Rastreio</Button></a>
               <Button variant="ghost" size="sm" onClick={print}><Printer size={14} /> Imprimir</Button>
-              {!["entregue", "cancelado"].includes(order.status) && <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}><Pencil size={14} /> Editar pedido</Button>}
+              {order.status !== "cancelado" && <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}><Pencil size={14} /> Editar pedido</Button>}
             </div>
           </Card>
 

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { ImagePlus, Save } from "lucide-react";
+import { ImagePlus, Save, MapPin, ExternalLink, LocateFixed } from "lucide-react";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { useAuth } from "@/lib/auth";
 import type { Settings } from "@/lib/types";
 import { Button, Card, Input, Textarea, Spinner, useToast } from "@/components/ui";
 import { Logo } from "@/pages/cliente/Layout";
+import { geocodePlace, cleanAddress, mapsPin, hasCoords, currentPosition } from "@/lib/route";
 
 export default function Configuracoes() {
   const toast = useToast();
@@ -14,6 +15,7 @@ export default function Configuracoes() {
   const [form, setForm] = useState<Settings | null>(null);
   const [busy, setBusy] = useState(false);
   const [pw, setPw] = useState("");
+  const [found, setFound] = useState<string | null>(null);
 
   useEffect(() => { if (settings) setForm(settings); }, [settings]);
   if (!form) return <Spinner />;
@@ -28,6 +30,32 @@ export default function Configuracoes() {
     if (error) return toast(friendlyError(error), "err");
     toast("Configurações salvas.");
     void reload();
+  };
+
+  const locateOrigin = async () => {
+    const q = (form.pickup_address.split(/retirada|me chama|das \d/i)[0] ?? form.pickup_address).trim();
+    if (!cleanAddress(q)) return toast("Preencha o endereço de retirada primeiro.", "err");
+    setBusy(true);
+    const p = await geocodePlace(q, null).catch(() => null);
+    setBusy(false);
+    if (!p) return toast("Não achei esse endereço no mapa. Cole as coordenadas do Google Maps nos campos ao lado.", "err");
+    setForm({ ...form, origin_lat: p.lat, origin_lng: p.lng });
+    setFound(p.label);
+    toast("Localização encontrada. Confira no mapa e salve.");
+  };
+
+  const useGps = async () => {
+    setBusy(true);
+    try {
+      const p = await currentPosition();
+      setForm({ ...form, origin_lat: Number(p.lat.toFixed(6)), origin_lng: Number(p.lng.toFixed(6)) });
+      setFound(`sua localização atual (precisão de ${Math.round(p.accuracy)} m)`);
+      toast("Localização pega pelo GPS. Confira no mapa e salve.");
+    } catch (e) {
+      toast((e as Error).message, "err");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const uploadLogo = async (file: File) => {
@@ -80,12 +108,41 @@ export default function Configuracoes() {
         <p className="mt-1 text-xs text-choco-500">Aparece no checkout quando o cliente escolhe "Retirar" e na tela do pedido.</p>
       </Card>
 
+      <Card title={<span className="flex items-center gap-2"><MapPin size={18} /> Ponto de partida das entregas</span>}>
+        <p className="mb-3 text-sm text-choco-600">A localização da sua casa. É daqui que o sistema monta a rota do dia, do pedido mais perto pro mais longe.</p>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <Button loading={busy} onClick={useGps}><LocateFixed size={16} /> Usar minha localização atual</Button>
+          <span className="text-xs text-choco-500">Estando em casa, no celular, é o jeito mais certeiro.</span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Input label="Latitude" value={form.origin_lat ?? ""} onChange={(e) => set("origin_lat", e.target.value === "" ? null : Number(e.target.value.replace(",", ".")))} placeholder="-20.0812" />
+          <Input label="Longitude" value={form.origin_lng ?? ""} onChange={(e) => set("origin_lng", e.target.value === "" ? null : Number(e.target.value.replace(",", ".")))} placeholder="-43.9975" />
+          <div className="flex items-end gap-2">
+            <Button variant="outline" loading={busy} onClick={locateOrigin}><MapPin size={16} /> Tentar pelo endereço</Button>
+          </div>
+        </div>
+        {found && <p className="mt-2 text-xs text-choco-700">Encontrado: <b>{found}</b></p>}
+        <p className="mt-2 text-xs text-choco-500">
+          {hasCoords({ lat: form.origin_lat, lng: form.origin_lng })
+            ? <a href={mapsPin({ lat: form.origin_lat as number, lng: form.origin_lng as number })} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-vinho-600">Conferir no Google Maps <ExternalLink size={12} /></a>
+            : "Sem localização: os pedidos ficam em ordem de horário e condomínio, sem distância."}
+          {" "}Pra pegar as coordenadas manualmente: no Google Maps, toque e segure em cima da sua casa e copie os dois números que aparecem.
+        </p>
+      </Card>
+
+      <Card title="Meta do mês">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input label="Meta de faturamento do mês (R$)" type="number" min={0} step="50" value={form.monthly_goal ?? 0} onChange={(e) => set("monthly_goal", Number(e.target.value))} hint="O painel inicial mostra quanto já fez, quanto falta e em quanto fecha no ritmo atual" />
+        </div>
+      </Card>
+
       <Card title="Pagamento e prazos">
         <div className="grid gap-3 sm:grid-cols-3">
           <Input label="Chave Pix" value={form.pix_key} onChange={(e) => set("pix_key", e.target.value)} />
           <Input label="Nome no Pix" value={form.pix_name} onChange={(e) => set("pix_name", e.target.value)} />
           <Input label="Antecedência mínima (dias)" type="number" min={0} value={form.min_lead_days} onChange={(e) => set("min_lead_days", Number(e.target.value))} hint="1 = pedido hoje pra amanhã" />
           <Input label="Capacidade padrão por dia" type="number" min={0} value={form.default_daily_capacity} onChange={(e) => set("default_daily_capacity", Number(e.target.value))} />
+
         </div>
       </Card>
 
