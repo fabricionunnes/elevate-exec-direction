@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { MessageCircle, Check, ArrowRight, XCircle, Banknote, Printer, Plus, Search, ExternalLink } from "lucide-react";
+import { MessageCircle, Check, ArrowRight, XCircle, Banknote, Printer, Plus, Search, ExternalLink, Pencil } from "lucide-react";
 import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
@@ -128,6 +128,7 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const load = useCallback(async () => {
     const [o, i, e] = await Promise.all([
@@ -168,6 +169,7 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
 
   const next = nextStatus(order.status, order.fulfillment);
   const wa = (text: string) => waLink(order.customer_phone, text);
+  if (editOpen) return <EditOrder order={order} items={items} onClose={() => setEditOpen(false)} onSaved={async () => { setEditOpen(false); await load(); onChanged(); }} />;
   const print = () => window.print();
 
   return (
@@ -191,6 +193,7 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
               {order.status === "entregue" && <a href={wa(msgs.avaliacao(order, reviewTemplate, siteUrl))} target="_blank" rel="noreferrer"><Button variant="outline" size="sm">Pedir avaliação</Button></a>}
               <a href={trackingUrl(order.tracking_token, siteUrl)} target="_blank" rel="noreferrer"><Button variant="ghost" size="sm"><ExternalLink size={14} /> Rastreio</Button></a>
               <Button variant="ghost" size="sm" onClick={print}><Printer size={14} /> Imprimir</Button>
+              {!["entregue", "cancelado"].includes(order.status) && <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}><Pencil size={14} /> Editar pedido</Button>}
             </div>
           </Card>
 
@@ -394,6 +397,119 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
         </div>
       </div>
       <Button className="mt-4 w-full" loading={busy} onClick={submit}>Criar pedido</Button>
+    </Modal>
+  );
+}
+
+/* ----------------------------- Editar pedido ----------------------------- */
+function EditOrder({ order, items, onClose, onSaved }: { order: Order; items: OrderItem[]; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [zones, setZones] = useState<DeliveryZone[]>([]);
+  const [windows, setWindows] = useState<AvailableWindow[]>([]);
+  const [qty, setQty] = useState<Record<string, number>>(() => Object.fromEntries(items.filter((i) => i.product_id).map((i) => [i.product_id as string, i.qty])));
+  const [name, setName] = useState(order.customer_name);
+  const [phone, setPhone] = useState(formatPhone(order.customer_phone));
+  const [fulfillment, setFulfillment] = useState<Fulfillment>(order.fulfillment);
+  const [zoneId, setZoneId] = useState(order.zone_id ?? "");
+  const [address, setAddress] = useState(order.address);
+  const [reference, setReference] = useState(order.reference);
+  const [date, setDate] = useState(order.scheduled_date);
+  const [windowId, setWindowId] = useState(order.window_id ?? "");
+  const [payment, setPayment] = useState<PaymentMethod>(order.payment_method);
+  const [changeFor, setChangeFor] = useState(order.change_for ? String(order.change_for) : "");
+  const [notes, setNotes] = useState(order.notes);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      const [p, z] = await Promise.all([
+        supabase.from("products").select("*").order("sort_order"),
+        supabase.from("delivery_zones").select("*").order("sort_order"),
+      ]);
+      setProducts((p.data as Product[]) ?? []);
+      const zs = (z.data as DeliveryZone[]) ?? [];
+      setZones(zs);
+      if (!order.zone_id && zs[0]) setZoneId(zs[0].id);
+    })();
+  }, [order.zone_id]);
+
+  useEffect(() => {
+    if (!date) { setWindows([]); return; }
+    void supabase.rpc("available_windows", { p_date: date, p_fulfillment: fulfillment }).then(({ data }) => {
+      const ws = (data as AvailableWindow[]) ?? [];
+      setWindows(ws);
+      if (windowId && !ws.some((w) => w.id === windowId)) setWindowId("");
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, fulfillment]);
+
+  const zone = zones.find((z) => z.id === zoneId);
+  const itemsTotal = products.reduce((a, p) => a + (qty[p.id] ?? 0) * Number(p.price), 0);
+  const fee = fulfillment === "entrega" ? Number(zone?.fee ?? 0) : 0;
+
+  const save = async () => {
+    const list = Object.entries(qty).filter(([, q]) => q > 0).map(([product_id, q]) => ({ product_id, qty: q }));
+    if (!list.length) return toast("O pedido precisa de pelo menos um item.", "err");
+    setBusy(true);
+    const { error } = await supabase.rpc("admin_update_order", {
+      p_order_id: order.id,
+      p: { name, phone: onlyDigits(phone), fulfillment, zone_id: fulfillment === "entrega" ? zoneId : null, address, reference, scheduled_date: date, window_id: windowId || null, payment_method: payment, change_for: payment === "dinheiro" && changeFor ? Number(changeFor.replace(",", ".")) : null, notes, items: list },
+    });
+    setBusy(false);
+    if (error) return toast(friendlyError(error), "err");
+    toast("Pedido atualizado. O cliente já vê a mudança no rastreio.");
+    onSaved();
+  };
+
+  return (
+    <Modal open onClose={onClose} title={`Editar ${order.code}`} wide>
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-2">
+          <h3 className="text-sm font-bold">Itens</h3>
+          {products.map((p) => (
+            <div key={p.id} className={clsx("flex items-center justify-between rounded-xl border border-choco-100 bg-white p-2 text-sm", !p.active && "opacity-60")}>
+              <span>{p.name} <span className="text-choco-500">· {brl(p.price)}</span></span>
+              <input type="number" min={0} className="h-9 w-16 rounded-lg border border-choco-200 px-2 text-center" value={qty[p.id] ?? 0} onChange={(e) => setQty({ ...qty, [p.id]: Number(e.target.value) })} />
+            </div>
+          ))}
+          <Input label="Data" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <Select label="Horário" value={windowId} onChange={(e) => setWindowId(e.target.value)}>
+            <option value="">— sem horário fixo —</option>
+            {windows.map((w) => <option key={w.id} value={w.id}>{windowLabel(w)}{w.label ? ` · ${w.label}` : ""}</option>)}
+          </Select>
+          <div className="rounded-xl bg-choco-50 p-3 text-sm">
+            <div className="flex justify-between"><span>Itens</span><span>{brl(itemsTotal)}</span></div>
+            <div className="flex justify-between"><span>Entrega</span><span>{fulfillment === "retirada" ? "Retirada" : fee === 0 ? "Grátis" : brl(fee)}</span></div>
+            <div className="mt-1 flex justify-between border-t border-choco-200 pt-1 font-black"><span>Total</span><span className="text-vinho-700">{brl(itemsTotal + fee)}</span></div>
+            {order.payment_status === "pago" && <p className="mt-1 text-xs text-amber-700">Pedido já pago: a receita no financeiro acompanha o novo total.</p>}
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Input label="Nome" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input label="WhatsApp" value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} />
+          <Select label="Entrega ou retirada" value={fulfillment} onChange={(e) => setFulfillment(e.target.value as Fulfillment)}>
+            <option value="entrega">Entregar</option>
+            <option value="retirada">Retirada</option>
+          </Select>
+          {fulfillment === "entrega" && (
+            <>
+              <Select label="Região (frete)" value={zoneId} onChange={(e) => setZoneId(e.target.value)}>{zones.map((z) => <option key={z.id} value={z.id}>{z.name} · {brl(z.fee)}</option>)}</Select>
+              <Input label="Endereço" value={address} onChange={(e) => setAddress(e.target.value)} />
+              <Input label="Referência" value={reference} onChange={(e) => setReference(e.target.value)} />
+            </>
+          )}
+          <Select label="Pagamento" value={payment} onChange={(e) => setPayment(e.target.value as PaymentMethod)}>
+            <option value="pix">Pix</option><option value="dinheiro">Dinheiro</option><option value="cartao">Cartão</option>
+          </Select>
+          {payment === "dinheiro" && <Input label="Troco para (R$)" inputMode="decimal" value={changeFor} onChange={(e) => setChangeFor(e.target.value)} />}
+          <Textarea label="Observações" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </div>
+      </div>
+      <div className="mt-4 flex gap-2">
+        <Button className="flex-1" loading={busy} onClick={save}>Salvar alterações</Button>
+        <Button variant="ghost" onClick={onClose}>Voltar</Button>
+      </div>
     </Modal>
   );
 }
