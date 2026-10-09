@@ -104,9 +104,9 @@ Deno.serve(async (req) => {
     // catálogo pra o modelo casar nomes exatos
     const [prodRes, zoneRes, winRes, setRes] = await Promise.all([
       admin.from("products").select("name, price, description").eq("active", true).order("sort_order"),
-      admin.from("delivery_zones").select("name, fee").eq("active", true).order("sort_order"),
+      admin.from("delivery_zones").select("name, fee, notes").eq("active", true).order("sort_order"),
       admin.from("delivery_windows").select("label, start_time, end_time, weekdays, applies_to").eq("active", true).order("sort_order"),
-      admin.from("settings").select("pickup_enabled, pickup_address, business_name").eq("id", 1).maybeSingle(),
+      admin.from("settings").select("pickup_enabled, pickup_address, business_name, read_order_notes").eq("id", 1).maybeSingle(),
     ]);
     const dbErr = prodRes.error ?? zoneRes.error ?? winRes.error ?? setRes.error;
     if (dbErr) return j({ error: `Não consegui ler o cardápio: ${dbErr.message}` }, 500);
@@ -132,6 +132,13 @@ Regras:
 - Vários prints podem ser a mesma conversa em sequência: junte tudo num pedido só. Se parecerem conversas diferentes, use a mais recente e avise em doubts.
 - Não inclua em notes o que já está nos outros campos.
 
+O que vale como dúvida (doubts). Pergunte SÓ quando faltar ou estiver ambíguo algo que muda o pedido: qual produto (com ou sem cobertura), quantidade, data, entrega ou retirada, endereço quando é entrega. Fora disso, decida e siga. Nunca peça pra "confirmar" o que já deu pra concluir. Em especial, NÃO pergunte sobre:
+- Região: use o condomínio citado e as observações das regiões abaixo. Se não der pra saber, deixe zone_name null sem pergunta (a confeiteira escolhe na tela).
+- Horário: se o horário pedido cai dentro de uma janela do catálogo, use a janela e pronto. Se não cai em nenhuma, use a janela mais próxima e anote o horário pedido em time_text. Sem pergunta.
+- Pagamento: Pix sem comprovante é pedido ainda não pago; não é dúvida. Comprovante na conversa: anote "comprovante enviado" em notes.
+- Data relativa: "amanhã", "sexta" contam a partir de hoje (a data de hoje está abaixo). Prints de WhatsApp quase nunca mostram a data das mensagens; assuma que são de hoje. Sem pergunta.
+- Telefone ausente ou nome incompleto: não é dúvida.
+
 Hoje é ${today} (${weekdayBR(base)}), fuso de São Paulo.
 Datas dos próximos dias:
 ${proximos}
@@ -139,13 +146,13 @@ ${proximos}
 Catálogo de produtos:
 ${(products ?? []).map((p: { name: string; price: number; description?: string }) => `- ${p.name} (R$ ${Number(p.price).toFixed(2)})${p.description ? ` — ${p.description}` : ""}`).join("\n") || "- (vazio)"}
 
-Regiões de entrega:
-${(zones ?? []).map((z: { name: string; fee: number }) => `- ${z.name} (frete R$ ${Number(z.fee).toFixed(2)})`).join("\n") || "- (vazio)"}
+Regiões de entrega (com observações que ajudam a casar o condomínio):
+${(zones ?? []).map((z: { name: string; fee: number; notes?: string | null }) => `- ${z.name} (frete R$ ${Number(z.fee).toFixed(2)})${z.notes ? ` — ${z.notes}` : ""}`).join("\n") || "- (vazio)"}
 
 Horários (rótulo exato = início–fim):
 ${(windows ?? []).map((w: { label: string; start_time: string; end_time: string; weekdays: number[]; applies_to: string }) => `- ${hm(w.start_time)}–${hm(w.end_time)}${w.label ? ` (${w.label})` : ""} · ${(w.weekdays ?? []).map((d: number) => wds[d]).join(", ")} · ${w.applies_to}`).join("\n") || "- (sem horários fixos)"}
 
-Retirada no local: ${settings?.pickup_enabled ? `permitida${settings?.pickup_address ? ` em ${settings.pickup_address}` : ""}` : "não oferecida"}.`;
+Retirada no local: ${settings?.pickup_enabled ? `permitida${settings?.pickup_address ? ` em ${settings.pickup_address}` : ""}` : "não oferecida"}.${settings?.read_order_notes?.trim() ? `\n\nO que a confeiteira já ensinou (vale mais que qualquer regra acima):\n${settings.read_order_notes.trim()}` : ""}`;
 
     const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
     const pedido = previous && answers.length

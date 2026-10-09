@@ -136,6 +136,12 @@ export default function Configuracoes() {
         </div>
       </Card>
 
+      <Card title="Leitura de prints do WhatsApp">
+        <Textarea label="O que a IA precisa saber" value={form.read_order_notes ?? ""} onChange={(e) => set("read_order_notes", e.target.value)} rows={5}
+          placeholder={"Uma frase por linha. Ex.:\nCosta Laguna é o meu condomínio.\nCliente que fala 'o de sempre' é bolo com cobertura.\nQuem diz 'passo aí' é retirada."} />
+        <p className="mt-1 text-xs text-choco-500">Toda vez que a IA fizer uma pergunta boba, escreve aqui a resposta de uma vez. Ela passa a usar nas próximas leituras.</p>
+      </Card>
+
       <Card title="Pagamento e prazos">
         <div className="grid gap-3 sm:grid-cols-3">
           <Input label="Chave Pix" value={form.pix_key} onChange={(e) => set("pix_key", e.target.value)} />
