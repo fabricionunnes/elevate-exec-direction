@@ -20,7 +20,7 @@ import { format } from "date-fns";
 import { CRMMeetingRemindersSection } from "@/components/crm/settings/CRMMeetingRemindersSection";
 import { CRMVoiceSection } from "@/components/crm/settings/CRMVoiceSection";
 
-interface Conditions { instance_ids: string[]; official_instance_ids: string[]; lead_state: "sem_lead" | "com_lead" | "qualquer"; keywords: string[]; only_new_conversations: boolean }
+interface Conditions { instance_ids: string[]; official_instance_ids: string[]; lead_state: "sem_lead" | "com_lead" | "qualquer"; keywords: string[]; only_new_conversations: boolean; pipeline_ids: string[]; stage_ids: string[] }
 interface Actions {
   create_lead: { enabled: boolean; pipeline_id: string; stage_id: string; origin_id: string };
   move_stage: { enabled: boolean; stage_id: string };
@@ -29,7 +29,7 @@ interface Actions {
 }
 interface Automation { id: string; name: string; description: string | null; is_active: boolean; conditions: Conditions; actions: Actions; position: number; stop_after: boolean; run_count: number; last_run_at: string | null }
 
-const emptyConditions = (): Conditions => ({ instance_ids: [], official_instance_ids: [], lead_state: "sem_lead", keywords: [], only_new_conversations: true });
+const emptyConditions = (): Conditions => ({ instance_ids: [], official_instance_ids: [], lead_state: "sem_lead", keywords: [], only_new_conversations: true, pipeline_ids: [], stage_ids: [] });
 const emptyActions = (): Actions => ({
   create_lead: { enabled: true, pipeline_id: "", stage_id: "", origin_id: "" }, move_stage: { enabled: false, stage_id: "" },
   assign: { mode: "none", staff_ids: [], only_if_unowned: true, assign_conversation: true }, tag_ids: [], sector_id: "", notify: { enabled: false },
@@ -114,6 +114,8 @@ export function CRMAutomationsTab() {
     partes.push(`Quando chegar mensagem ${inst.length ? `em ${inst.join(", ")}` : "em qualquer número"}`);
     partes.push(c.lead_state === "sem_lead" ? "de contato sem lead" : c.lead_state === "com_lead" ? "de contato que já tem lead" : "de qualquer contato");
     if (c.keywords.length) partes.push(`contendo "${c.keywords.join('", "')}"`);
+    if (c.pipeline_ids?.length) partes.push(`com lead em ${c.pipeline_ids.map((id) => nameOf(pipelines, id)).join(", ")}`);
+    if (c.stage_ids?.length) partes.push(`na etapa ${c.stage_ids.map((id) => nameOf(stages, id)).join(", ")}`);
     const ac: string[] = [];
     if (x.create_lead.enabled && x.create_lead.pipeline_id) ac.push(`cria lead em ${nameOf(pipelines, x.create_lead.pipeline_id)}${x.create_lead.stage_id ? ` › ${nameOf(stages, x.create_lead.stage_id)}` : ""}`);
     if (x.move_stage.enabled && x.move_stage.stage_id) ac.push(`move lead existente pra ${nameOf(stages, x.move_stage.stage_id)}`);
@@ -292,6 +294,37 @@ export function CRMAutomationsTab() {
                     <p className="text-xs text-muted-foreground">Separe por vírgula. Vazio = qualquer mensagem.</p>
                   </div>
                 </div>
+                {editing.conditions.lead_state !== "sem_lead" && (
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Lead está nestes funis (opcional)</Label>
+                      <p className="text-xs text-muted-foreground">Nenhum marcado = qualquer funil.</p>
+                      <div className="max-h-40 overflow-y-auto rounded-md border divide-y">
+                        {pipelines.map((p) => (
+                          <label key={p.id} className="flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer hover:bg-muted/50">
+                            <Checkbox checked={editing.conditions.pipeline_ids.includes(p.id)} onCheckedChange={() => upd((d) => {
+                              d.conditions.pipeline_ids = toggleIn(d.conditions.pipeline_ids, p.id);
+                              // etapa de funil desmarcado sai junto
+                              d.conditions.stage_ids = d.conditions.stage_ids.filter((sid) => { const st = stages.find((x) => x.id === sid); return !st || d.conditions.pipeline_ids.length === 0 || d.conditions.pipeline_ids.includes(st.pipeline_id); });
+                            })} />{p.name}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Lead está nestas etapas (opcional)</Label>
+                      <p className="text-xs text-muted-foreground">Nenhuma marcada = qualquer etapa.</p>
+                      <div className="max-h-40 overflow-y-auto rounded-md border divide-y">
+                        {stages.filter((st) => editing.conditions.pipeline_ids.length === 0 || editing.conditions.pipeline_ids.includes(st.pipeline_id)).map((st) => (
+                          <label key={st.id} className="flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer hover:bg-muted/50">
+                            <Checkbox checked={editing.conditions.stage_ids.includes(st.id)} onCheckedChange={() => upd((d) => { d.conditions.stage_ids = toggleIn(d.conditions.stage_ids, st.id); })} />
+                            <span className="truncate">{editing.conditions.pipeline_ids.length === 1 ? st.name : `${nameOf(pipelines, st.pipeline_id)} › ${st.name}`}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <label className="flex items-start gap-2 text-sm cursor-pointer">
                   <Checkbox className="mt-0.5" checked={editing.conditions.only_new_conversations} onCheckedChange={(v) => upd((d) => { d.conditions.only_new_conversations = v === true; })} />
                   <span>Só conversas novas (criadas depois que a regra for ligada). <span className="text-muted-foreground">Desmarque pra valer também na próxima mensagem de conversas antigas.</span></span>
