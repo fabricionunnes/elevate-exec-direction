@@ -53,7 +53,7 @@ export function Dica({ active, payload, label, dinheiro }: { active?: boolean; p
 }
 
 /* ------------------------------ meta do mês ------------------------------ */
-export function BarraMeta({ feito, meta, pTempo, ritmo }: { feito: number; meta: number; pTempo: number; ritmo: number }) {
+export function BarraMeta({ feito, meta, pTempo, ritmo, onEditar }: { feito: number; meta: number; pTempo: number; ritmo: number; onEditar?: () => void }) {
   const p = meta > 0 ? Math.min(100, Math.round((feito / meta) * 100)) : 0;
   const noRitmo = meta > 0 ? p >= pTempo : true;
   return (
@@ -64,9 +64,9 @@ export function BarraMeta({ feito, meta, pTempo, ritmo }: { feito: number; meta:
       </div>
       <div className="mt-2 text-sm text-choco-700">
         {meta > 0 ? (
-          <><b className="text-choco-900">{brl(feito)}</b> de {brl(meta)} · <b className={noRitmo ? "text-emerald-700" : "text-red-700"}>{p}%</b> da meta com {pTempo}% do mês · no ritmo fecha em <b className="text-choco-900">{brl(ritmo)}</b></>
+          <><b className="text-choco-900">{brl(feito)}</b> de {brl(meta)} · <b className={noRitmo ? "text-emerald-700" : "text-red-700"}>{p}%</b> da meta com {pTempo}% do mês · no ritmo fecha em <b className="text-choco-900">{brl(ritmo)}</b>{onEditar && <> · <button type="button" onClick={onEditar} className="font-semibold text-vinho-600 underline">mudar meta</button></>}</>
         ) : (
-          <><b className="text-choco-900">{brl(feito)}</b> no mês · no ritmo fecha em <b className="text-choco-900">{brl(ritmo)}</b> · <a href="/admin/configuracoes" className="font-semibold text-vinho-600 underline">defina a meta do mês</a></>
+          <><b className="text-choco-900">{brl(feito)}</b> no mês · no ritmo fecha em <b className="text-choco-900">{brl(ritmo)}</b> · <button type="button" onClick={onEditar} className="font-semibold text-vinho-600 underline">defina a meta do mês</button></>
         )}
       </div>
     </div>

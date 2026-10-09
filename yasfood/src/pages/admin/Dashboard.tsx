@@ -8,13 +8,13 @@ import { AlertTriangle, Star, ShoppingCart } from "lucide-react";
 import { clsx } from "clsx";
 import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { format, subMonths } from "date-fns";
-import { supabase } from "@/lib/supabase";
+import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, todayISO, addDaysISO, STATUS_COLOR, statusLabelFor, PAYMENT_LABEL } from "@/lib/format";
 import { resumo, type DashOrder, type Resumo, CORES } from "@/lib/dash";
 import { prioritize, hasCoords, fmtKm } from "@/lib/route";
 import type { Availability, Customer, DeliveryWindow, DeliveryZone, Ingredient, Review, ShoppingItem, Transaction } from "@/lib/types";
-import { Card, Badge, Spinner, Empty, Stars } from "@/components/ui";
+import { Card, Badge, Spinner, Empty, Stars, Modal, Input, Button, useToast } from "@/components/ui";
 import { Barra3D, BarraMeta, Degrades, Dica, Donut3D, MetaDia, kfmt } from "@/components/charts";
 
 interface Dados {
@@ -36,9 +36,25 @@ const H = ({ children, sub }: { children: React.ReactNode; sub?: string }) => (
 const n0 = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
 
 export default function Dashboard() {
-  const { settings } = useSettings(true);
+  const { settings, reload: reloadSettings } = useSettings(true);
+  const toast = useToast();
   const [d, setD] = useState<Dados | null>(null);
   const [agora, setAgora] = useState(new Date());
+  const [metaOpen, setMetaOpen] = useState(false);
+  const [metaInput, setMetaInput] = useState("");
+  const [salvando, setSalvando] = useState(false);
+
+  const salvarMeta = async () => {
+    const v = Number(metaInput.replace(/\./g, "").replace(",", "."));
+    if (!Number.isFinite(v) || v < 0) return toast("Informe um valor válido.", "err");
+    setSalvando(true);
+    const { error } = await supabase.from("settings").update({ monthly_goal: v }).eq("id", 1);
+    setSalvando(false);
+    if (error) return toast(friendlyError(error), "err");
+    setMetaOpen(false);
+    toast(v > 0 ? "Meta do mês salva." : "Meta removida.");
+    void reloadSettings();
+  };
 
   const load = useCallback(async () => {
     const today = todayISO();
@@ -104,9 +120,17 @@ export default function Dashboard() {
         </div>
         <Card className="!p-3">
           <H>Meta do mês · faturamento</H>
-          <BarraMeta feito={r.mes.receita} meta={meta} pTempo={r.pTempo} ritmo={r.ritmo} />
+          <BarraMeta feito={r.mes.receita} meta={meta} pTempo={r.pTempo} ritmo={r.ritmo} onEditar={() => { setMetaInput(meta ? String(meta) : ""); setMetaOpen(true); }} />
         </Card>
       </div>
+      {metaOpen && (
+        <Modal open onClose={() => setMetaOpen(false)} title="Meta de faturamento do mês">
+          <div className="space-y-3">
+            <Input label="Quanto quer faturar no mês (R$)" inputMode="decimal" autoFocus value={metaInput} onChange={(e) => setMetaInput(e.target.value)} placeholder="Ex.: 3000" hint="A barra mostra quanto já fez, quanto falta e em quanto fecha no ritmo atual. Também dá pra mudar em Configurações." />
+            <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setMetaOpen(false)}>Cancelar</Button><Button loading={salvando} onClick={salvarMeta}>Salvar meta</Button></div>
+          </div>
+        </Modal>
+      )}
 
       {/* metas do dia */}
       <div className="grid gap-3 md:grid-cols-3">
@@ -138,11 +162,11 @@ export default function Dashboard() {
         <Card>
           <H>Resultado · dia, semana e mês</H>
           <table className="w-full table-fixed border-collapse text-sm">
-            <thead><tr className="text-[10px] uppercase tracking-wide text-choco-400"><th className="w-[38%] py-1 text-left font-medium" /><th className="py-1 text-right font-medium">Hoje</th><th className="py-1 text-right font-medium">Semana</th><th className="py-1 text-right font-medium">Mês</th></tr></thead>
-            <tbody className="[&_td]:border-b [&_td]:border-choco-100 [&_td]:py-1.5 [&_td]:text-right [&_td]:font-bold [&_th]:border-b [&_th]:border-choco-100 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-medium [&_th]:text-choco-700">
+            <thead><tr className="text-[10px] uppercase tracking-wide text-choco-400"><th className="w-[28%] py-1 text-left font-medium" /><th className="py-1 text-right font-medium">Hoje</th><th className="py-1 text-right font-medium">Semana</th><th className="py-1 text-right font-medium">Mês</th></tr></thead>
+            <tbody className="[&_td]:border-b [&_td]:border-choco-100 [&_td]:py-1.5 [&_td]:pl-1 [&_td]:text-right [&_td]:text-[13px] [&_td]:font-bold [&_td]:tabular-nums [&_th]:border-b [&_th]:border-choco-100 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-medium [&_th]:text-choco-700">
               <tr><th>Pedidos</th><td>{r.hoje.pedidos}</td><td>{r.semana.pedidos}</td><td>{r.mes.pedidos}</td></tr>
               <tr><th>Bolos</th><td>{r.hoje.bolos}</td><td>{r.semana.bolos}</td><td>{r.mes.bolos}</td></tr>
-              <tr className="text-base"><th>Receita</th><td>{brl(r.hoje.receita)}</td><td>{brl(r.semana.receita)}</td><td className="text-vinho-700">{brl(r.mes.receita)}</td></tr>
+              <tr><th>Receita</th><td>{brl(r.hoje.receita)}</td><td>{brl(r.semana.receita)}</td><td className="text-vinho-700">{brl(r.mes.receita)}</td></tr>
               <tr><th>Recebido</th><td className="text-emerald-700">{brl(r.hoje.recebido)}</td><td className="text-emerald-700">{brl(r.semana.recebido)}</td><td className="text-emerald-700">{brl(r.mes.recebido)}</td></tr>
               <tr><th>Ticket médio</th><td>{brl(r.hoje.ticket)}</td><td>{brl(r.semana.ticket)}</td><td>{brl(r.mes.ticket)}</td></tr>
               <tr><th>Clientes novos</th><td>{r.hoje.clientesNovos}</td><td>{r.semana.clientesNovos}</td><td>{r.mes.clientesNovos}</td></tr>

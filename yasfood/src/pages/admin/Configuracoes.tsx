@@ -130,13 +130,19 @@ export default function Configuracoes() {
         </p>
       </Card>
 
+      <Card title="Meta do mês">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input label="Meta de faturamento do mês (R$)" type="number" min={0} step="50" value={form.monthly_goal ?? 0} onChange={(e) => set("monthly_goal", Number(e.target.value))} hint="O painel inicial mostra quanto já fez, quanto falta e em quanto fecha no ritmo atual" />
+        </div>
+      </Card>
+
       <Card title="Pagamento e prazos">
         <div className="grid gap-3 sm:grid-cols-3">
           <Input label="Chave Pix" value={form.pix_key} onChange={(e) => set("pix_key", e.target.value)} />
           <Input label="Nome no Pix" value={form.pix_name} onChange={(e) => set("pix_name", e.target.value)} />
           <Input label="Antecedência mínima (dias)" type="number" min={0} value={form.min_lead_days} onChange={(e) => set("min_lead_days", Number(e.target.value))} hint="1 = pedido hoje pra amanhã" />
           <Input label="Capacidade padrão por dia" type="number" min={0} value={form.default_daily_capacity} onChange={(e) => set("default_daily_capacity", Number(e.target.value))} />
-          <Input label="Meta de faturamento do mês (R$)" type="number" min={0} step="50" value={form.monthly_goal ?? 0} onChange={(e) => set("monthly_goal", Number(e.target.value))} hint="Aparece no painel inicial: quanto já fez, quanto falta e o ritmo" />
+
         </div>
       </Card>
 
