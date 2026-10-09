@@ -978,9 +978,18 @@ async function getOrCreateContact(supabase: any, phone: string, name?: string) {
     // 2. It's NOT a group (groups should not be renamed by pushName)
     // 3. The current name is still the default (same as phone number)
     // This preserves any manual renames done in the system
-    const shouldUpdateName = name && 
-                             !isGroup && 
-                             existingContact.name === existingContact.phone;
+    // Nome de preenchimento ("Sem nome 3", "Lead 7", só dígitos) também conta como "ainda sem
+    // nome": o disparo cria o contato com o nome do lead importado, e sem isso o perfil do
+    // WhatsApp nunca entrava (caso Lukas, 09/10/2026). Nome digitado por gente continua intacto.
+    const isPlaceholder = (v: string) => {
+      const t = (v || '').trim();
+      return t === '' || /^(sem nome|lead|contato|novo lead|cliente|desconhecido|unknown)( ?\d+)?$/i.test(t)
+        || /^\+?[\d(][\d ()-]{6,}$/.test(t) || t === existingContact.phone;
+    };
+    const shouldUpdateName = name &&
+                             !isGroup &&
+                             isPlaceholder(existingContact.name) &&
+                             !isPlaceholder(name);
     
     if (shouldUpdateName) {
       console.log(`Updating contact name from "${existingContact.name}" to "${name}"`);
