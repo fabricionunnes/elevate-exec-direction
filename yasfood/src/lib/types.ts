@@ -29,6 +29,8 @@ export interface Settings {
   origin_lng: number | null;
   /** Meta de faturamento do mês (R$). 0 = sem meta. */
   monthly_goal: number;
+  /** Fatos e regras que a IA usa ao ler prints do WhatsApp. */
+  read_order_notes: string;
 }
 
 export interface Product {
