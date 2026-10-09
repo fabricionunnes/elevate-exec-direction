@@ -6,7 +6,7 @@ import { format, parseISO, subMonths, startOfMonth, endOfMonth } from "date-fns"
 import { ptBR } from "date-fns/locale";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { brl, dateBR, todayISO } from "@/lib/format";
-import type { Transaction, OrderItem } from "@/lib/types";
+import type { Transaction } from "@/lib/types";
 import { Button, Card, Input, Select, Modal, Stat, Spinner, Empty, useToast } from "@/components/ui";
 
 const CATS_DESPESA = ["Insumos", "Embalagens", "Gás / energia", "Entrega / combustível", "Marketing", "Equipamentos", "Taxas", "Outros"];
@@ -15,7 +15,7 @@ const CATS_RECEITA = ["Vendas", "Encomenda especial", "Outros"];
 export default function Financeiro() {
   const toast = useToast();
   const [tx, setTx] = useState<Transaction[] | null>(null);
-  const [topProducts, setTopProducts] = useState<{ name: string; qty: number; total: number }[]>([]);
+  const [topProducts, setTopProducts] = useState<{ name: string; qty: number; total: number; cost: number }[]>([]);
   const [month, setMonth] = useState(todayISO().slice(0, 7));
   const [novo, setNovo] = useState<Partial<Transaction> | null>(null);
   const [busy, setBusy] = useState(false);
@@ -24,13 +24,13 @@ export default function Financeiro() {
     const from = format(subMonths(new Date(), 5), "yyyy-MM-01");
     const [t, i] = await Promise.all([
       supabase.from("transactions").select("*").gte("occurred_on", from).order("occurred_on", { ascending: false }),
-      supabase.from("order_items").select("product_name, qty, line_total, orders!inner(status, scheduled_date)").gte("orders.scheduled_date", `${month}-01`).lte("orders.scheduled_date", format(endOfMonth(parseISO(`${month}-01`)), "yyyy-MM-dd")).neq("orders.status", "cancelado"),
+      supabase.from("order_item_costs").select("*").gte("scheduled_date", `${month}-01`).lte("scheduled_date", format(endOfMonth(parseISO(`${month}-01`)), "yyyy-MM-dd")).neq("status", "cancelado"),
     ]);
     setTx((t.data as Transaction[]) ?? []);
-    const agg = new Map<string, { name: string; qty: number; total: number }>();
-    for (const row of ((i.data as unknown as (OrderItem & { orders: unknown })[]) ?? [])) {
-      const cur = agg.get(row.product_name) ?? { name: row.product_name, qty: 0, total: 0 };
-      cur.qty += row.qty; cur.total += Number(row.line_total);
+    const agg = new Map<string, { name: string; qty: number; total: number; cost: number }>();
+    for (const row of ((i.data as { product_name: string; qty: number; line_total: number; total_cost: number }[]) ?? [])) {
+      const cur = agg.get(row.product_name) ?? { name: row.product_name, qty: 0, total: 0, cost: 0 };
+      cur.qty += row.qty; cur.total += Number(row.line_total); cur.cost += Number(row.total_cost);
       agg.set(row.product_name, cur);
     }
     setTopProducts([...agg.values()].sort((a, b) => b.total - a.total));
@@ -40,7 +40,11 @@ export default function Financeiro() {
   const monthTx = useMemo(() => (tx ?? []).filter((t) => t.occurred_on.startsWith(month)), [tx, month]);
   const receita = monthTx.filter((t) => t.type === "receita").reduce((a, t) => a + Number(t.amount), 0);
   const despesa = monthTx.filter((t) => t.type === "despesa").reduce((a, t) => a + Number(t.amount), 0);
-  const lucro = receita - despesa;
+  const comprasInsumos = monthTx.filter((t) => t.type === "despesa" && t.category === "Insumos").reduce((a, t) => a + Number(t.amount), 0);
+  const outrasDespesas = despesa - comprasInsumos;
+  const cmv = topProducts.reduce((a, p) => a + p.cost, 0);          // custo das receitas dos bolos vendidos
+  const lucroBruto = receita - cmv;
+  const lucro = receita - cmv - outrasDespesas;                      // insumos já entram pelo custo da receita
 
   const chart = useMemo(() => {
     const months: { key: string; label: string; receita: number; despesa: number }[] = [];
@@ -90,11 +94,13 @@ export default function Financeiro() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Receita" value={brl(receita)} tone="good" sub={`${monthTx.filter((t) => t.type === "receita").length} lançamentos`} />
-        <Stat label="Despesas" value={brl(despesa)} tone="bad" />
-        <Stat label="Lucro" value={brl(lucro)} tone={lucro >= 0 ? "good" : "bad"} sub={receita ? `margem ${Math.round((lucro / receita) * 100)}%` : ""} />
-        <Stat label="Bolos vendidos" value={topProducts.reduce((a, p) => a + p.qty, 0)} sub="no mês selecionado" tone="accent" />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <Stat label="Receita" value={brl(receita)} tone="good" sub={`${topProducts.reduce((a, p) => a + p.qty, 0)} bolo(s) · ${monthTx.filter((t) => t.type === "receita").length} pagamento(s)`} />
+        <Stat label="Custo dos bolos (receitas)" value={brl(cmv)} tone="bad" sub="insumos usados em cada bolo vendido" />
+        <Stat label="Lucro bruto" value={brl(lucroBruto)} tone={lucroBruto >= 0 ? "good" : "bad"} sub={receita ? `margem ${Math.round((lucroBruto / receita) * 100)}%` : ""} />
+        <Stat label="Compras de insumos" value={brl(comprasInsumos)} sub="caixa que saiu (vira estoque)" />
+        <Stat label="Outras despesas" value={brl(outrasDespesas)} tone="bad" sub="embalagem, gás, entrega…" />
+        <Stat label="Lucro do mês" value={brl(lucro)} tone={lucro >= 0 ? "good" : "bad"} sub={receita ? `receita − custo dos bolos − outras despesas · ${Math.round((lucro / receita) * 100)}%` : "receita − custo dos bolos − outras despesas"} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -115,7 +121,7 @@ export default function Financeiro() {
         </Card>
         <Card title="Mais vendidos">
           {topProducts.length === 0 ? <Empty>Sem vendas no mês.</Empty> : (
-            <ul className="space-y-1 text-sm">{topProducts.map((p) => <li key={p.name} className="flex justify-between"><span>{p.qty}x {p.name}</span><b>{brl(p.total)}</b></li>)}</ul>
+            <ul className="space-y-1 text-sm">{topProducts.map((p) => <li key={p.name} className="flex justify-between gap-2"><span>{p.qty}x {p.name}</span><span className="text-right"><b>{brl(p.total)}</b><span className="block text-xs text-choco-500">custo {brl(p.cost)} · lucro {brl(p.total - p.cost)}</span></span></li>)}</ul>
           )}
           {byCat.length > 0 && (
             <>

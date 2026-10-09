@@ -4,7 +4,7 @@ import { uploadMedia } from "@/lib/media";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { brl } from "@/lib/format";
 import type { Ingredient, Product, ProductCost, ProductIngredient, ProductMedia } from "@/lib/types";
-import { Button, Card, Input, Textarea, Modal, Spinner, Empty, Badge, useToast } from "@/components/ui";
+import { Button, Card, Input, Textarea, Select, Modal, Spinner, Empty, Badge, useToast } from "@/components/ui";
 
 const empty: Omit<Product, "id"> = { name: "", description: "", price: 35, weight_g: 570, image_url: null, category: "Bolos", active: true, sort_order: 0 };
 
@@ -124,17 +124,27 @@ export function RecipeModal({ product, onClose }: { product: Product; onClose: (
   const toast = useToast();
   const [ings, setIngs] = useState<Ingredient[]>([]);
   const [recipe, setRecipe] = useState<Record<string, number>>({});
+  const [others, setOthers] = useState<Product[]>([]);
 
   useEffect(() => {
     void (async () => {
-      const [i, r] = await Promise.all([
+      const [i, r, p] = await Promise.all([
         supabase.from("ingredients").select("*").eq("active", true).order("name"),
         supabase.from("product_ingredients").select("*").eq("product_id", product.id),
+        supabase.from("products").select("*").neq("id", product.id).order("sort_order"),
       ]);
       setIngs((i.data as Ingredient[]) ?? []);
       setRecipe(Object.fromEntries(((r.data as ProductIngredient[]) ?? []).map((x) => [x.ingredient_id, Number(x.qty)])));
+      setOthers((p.data as Product[]) ?? []);
     })();
   }, [product.id]);
+
+  const copyFrom = async (otherId: string) => {
+    if (!otherId) return;
+    const { data } = await supabase.from("product_ingredients").select("*").eq("product_id", otherId);
+    setRecipe(Object.fromEntries(((data as ProductIngredient[]) ?? []).map((x) => [x.ingredient_id, Number(x.qty)])));
+    toast("Receita copiada. Ajuste o que muda (ex.: tire a cobertura) e salve.");
+  };
 
   const cost = ings.reduce((a, i) => a + (recipe[i.id] ?? 0) * Number(i.cost_per_unit), 0);
 
@@ -149,7 +159,15 @@ export function RecipeModal({ product, onClose }: { product: Product; onClose: (
 
   return (
     <Modal open onClose={onClose} title={`Receita: ${product.name}`}>
-      <p className="mb-3 text-sm text-choco-600">Quantidade de cada insumo por 1 unidade. Ao entrar em produção, o estoque é baixado automaticamente.</p>
+      <p className="mb-2 text-sm text-choco-600">Quantidade de cada insumo por 1 unidade. Ao entrar em produção, o estoque é baixado automaticamente. Deixe em branco (ou 0) o que esse produto não usa: o bolo sem cobertura não leva chocolate, leite condensado nem manteiga.</p>
+      {others.length > 0 && (
+        <div className="mb-3">
+          <Select label="Copiar receita de outro produto (depois ajuste)" defaultValue="" onChange={(e) => copyFrom(e.target.value)}>
+            <option value="">— escolher —</option>
+            {others.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </Select>
+        </div>
+      )}
       {ings.length === 0 ? <Empty>Cadastre insumos na aba Estoque primeiro.</Empty> : (
         <div className="space-y-2">
           {ings.map((i) => (
