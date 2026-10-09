@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { MessageCircle, Check, ArrowRight, XCircle, Banknote, Printer, Plus, Search, ExternalLink, Pencil, Route, MapPin, LocateFixed } from "lucide-react";
+import { MessageCircle, Check, ArrowRight, XCircle, Banknote, Printer, Plus, Search, ExternalLink, Pencil, Route, MapPin, LocateFixed, ImagePlus, Sparkles, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, dateTimeBR, dayLong, formatPhone, nextStatus, PAYMENT_LABEL, STATUS_COLOR, STATUS_LABEL, statusLabelFor, todayISO, addDaysISO, onlyDigits, windowLabel } from "@/lib/format";
 import { waLink, msgs, trackingUrl } from "@/lib/whatsapp";
 import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, mapsPin, currentPosition, type RouteCtx } from "@/lib/route";
+import { readOrderFromScreenshots, type ReadOrder } from "@/lib/readOrder";
 import type { Availability, AvailableWindow, Customer, DeliveryWindow, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Button, Badge, Card, Modal, Empty, Spinner, Input, Select, Textarea, useToast } from "@/components/ui";
@@ -22,7 +23,8 @@ export default function Pedidos() {
   const [q, setQ] = useState("");
   const [onlyUnpaid, setOnlyUnpaid] = useState(params.get("pagamento") === "pendente");
   const [openId, setOpenId] = useState<string | null>(params.get("abrir"));
-  const [novo, setNovo] = useState(false);
+  const [novo, setNovo] = useState<false | { initial?: ReadOrder }>(false);
+  const [prints, setPrints] = useState(false);
   const [windows, setWindows] = useState<DeliveryWindow[]>([]);
   const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [locating, setLocating] = useState<string | null>(null);
@@ -125,7 +127,10 @@ export default function Pedidos() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-black text-choco-900">Pedidos</h1>
-        <Button onClick={() => setNovo(true)}><Plus size={16} /> Novo pedido manual</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => setPrints(true)}><ImagePlus size={16} /> Ler prints do WhatsApp</Button>
+          <Button onClick={() => setNovo({})}><Plus size={16} /> Novo pedido manual</Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -196,7 +201,8 @@ export default function Pedidos() {
       )}
 
       {openId && <OrderDetail id={openId} onClose={() => open(null)} onChanged={load} siteUrl={settings?.site_url} pix={{ key: settings?.pix_key ?? "", name: settings?.pix_name ?? "" }} reviewTemplate={settings?.review_message ?? ""} />}
-      {novo && <NovoPedido onClose={() => setNovo(false)} onCreated={() => { setNovo(false); void load(); toast("Pedido criado."); }} />}
+      {novo && <NovoPedido initial={novo.initial} onClose={() => setNovo(false)} onCreated={() => { setNovo(false); void load(); toast("Pedido criado."); }} />}
+      {prints && <LerPrints onClose={() => setPrints(false)} onRead={(o) => { setPrints(false); setNovo({ initial: o }); }} />}
     </div>
   );
 }
@@ -371,7 +377,66 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
 }
 
 /* ----------------------------- Novo pedido manual ----------------------------- */
-function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+/* ----------------------------- Ler prints do WhatsApp ----------------------------- */
+function LerPrints({ onClose, onRead }: { onClose: () => void; onRead: (o: ReadOrder) => void }) {
+  const toast = useToast();
+  const [files, setFiles] = useState<File[]>([]);
+  const [hint, setHint] = useState("");
+  const [busy, setBusy] = useState(false);
+  const previews = useMemo(() => files.map((f) => URL.createObjectURL(f)), [files]);
+  useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
+
+  const add = (list: FileList | null) => {
+    if (!list) return;
+    const imgs = Array.from(list).filter((f) => f.type.startsWith("image/"));
+    setFiles((cur) => [...cur, ...imgs].slice(0, 6));
+  };
+  const run = async () => {
+    if (!files.length) return toast("Escolha pelo menos um print.", "err");
+    setBusy(true);
+    try {
+      const o = await readOrderFromScreenshots(files, hint);
+      onRead(o);
+    } catch (e) {
+      toast((e as Error).message, "err");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title="Ler prints do WhatsApp">
+      <div className="space-y-3">
+        <p className="text-sm text-choco-600">Tira print da conversa com o cliente (pode ser mais de um, na ordem). O sistema lê nome, itens, quantidade, data, horário, endereço e pagamento e abre o pedido preenchido pra você conferir antes de salvar.</p>
+        <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-choco-200 bg-choco-50 p-6 text-center text-sm text-choco-600 hover:border-vinho-300" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); add(e.dataTransfer.files); }}>
+          <ImagePlus size={28} className="mb-2 text-vinho-500" />
+          <span className="font-semibold text-choco-800">Toque pra escolher os prints</span>
+          <span className="text-xs">ou arraste aqui · até 6 imagens</span>
+          <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { add(e.target.files); e.target.value = ""; }} />
+        </label>
+        {files.length > 0 && (
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {files.map((f, i) => (
+              <div key={i} className="relative overflow-hidden rounded-xl border border-choco-100 bg-white">
+                <img src={previews[i]} alt="" className="h-28 w-full object-cover object-top" />
+                <span className="absolute left-1 top-1 rounded-full bg-choco-900/80 px-1.5 text-[10px] font-bold text-white">{i + 1}</span>
+                <button type="button" onClick={() => setFiles((cur) => cur.filter((_, k) => k !== i))} className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-choco-600 hover:text-red-600" aria-label="Remover"><Trash2 size={12} /></button>
+              </div>
+            ))}
+          </div>
+        )}
+        <Input label="Alguma observação pra ajudar a leitura? (opcional)" value={hint} onChange={(e) => setHint(e.target.value)} placeholder="Ex.: é pra sexta, ela vai buscar" />
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button loading={busy} onClick={run}><Sparkles size={16} /> {busy ? "Lendo os prints…" : "Ler e montar o pedido"}</Button>
+        </div>
+        {busy && <p className="text-center text-xs text-choco-500">Leva uns 10 a 20 segundos.</p>}
+      </div>
+    </Modal>
+  );
+}
+
+function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCreated: () => void; initial?: ReadOrder }) {
   const toast = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [zones, setZones] = useState<DeliveryZone[]>([]);
@@ -381,12 +446,12 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
   const [customerOpen, setCustomerOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [qty, setQty] = useState<Record<string, number>>({});
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [fulfillment, setFulfillment] = useState<Fulfillment>("entrega");
+  const [name, setName] = useState(initial?.customer_name ?? "");
+  const [phone, setPhone] = useState(initial?.phone ? formatPhone(initial.phone) : "");
+  const [fulfillment, setFulfillment] = useState<Fulfillment>(initial?.fulfillment === "retirada" ? "retirada" : "entrega");
   const [zoneId, setZoneId] = useState("");
-  const [address, setAddress] = useState("");
-  const [reference, setReference] = useState("");
+  const [address, setAddress] = useState(initial?.address ?? "");
+  const [reference, setReference] = useState(initial?.reference ?? "");
 
   const pickCustomer = (c: Customer) => {
     setSelectedCustomer(c);
@@ -405,17 +470,31 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
         return c.name.toLowerCase().includes(q) || c.phone.includes(onlyDigits(q));
       }).slice(0, 8)
     : [];
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(initial?.scheduled_date ?? "");
   const [windows, setWindows] = useState<AvailableWindow[]>([]);
   const [windowId, setWindowId] = useState("");
-  const [payment, setPayment] = useState<PaymentMethod>("pix");
-  const [notes, setNotes] = useState("");
+  const [payment, setPayment] = useState<PaymentMethod>(initial?.payment_method ?? "pix");
+  const [notes, setNotes] = useState(() => {
+    if (!initial) return "";
+    const extra = [initial.notes, initial.time_text && !initial.window_label ? `horário pedido: ${initial.time_text}` : null, initial.change_for ? `troco pra R$ ${initial.change_for}` : null].filter(Boolean);
+    return extra.join(" · ");
+  });
   const [busy, setBusy] = useState(false);
+  const wantedWindow = useRef(initial?.window_label ?? null);
 
   useEffect(() => {
     setWindowId("");
     if (!date) { setWindows([]); return; }
-    void supabase.rpc("available_windows", { p_date: date, p_fulfillment: fulfillment }).then(({ data }) => setWindows((data as AvailableWindow[]) ?? []));
+    void supabase.rpc("available_windows", { p_date: date, p_fulfillment: fulfillment }).then(({ data }) => {
+      const ws = (data as AvailableWindow[]) ?? [];
+      setWindows(ws);
+      // pedido lido dos prints: casa o horário sugerido com o do dia, uma vez só
+      if (wantedWindow.current) {
+        const w = ws.find((x) => windowLabel(x) === wantedWindow.current || (x.label && wantedWindow.current!.includes(x.label)));
+        if (w) setWindowId(w.id);
+        wantedWindow.current = null;
+      }
+    });
   }, [date, fulfillment]);
 
   useEffect(() => {
@@ -426,14 +505,37 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
         supabase.rpc("availability", { p_from: todayISO(), p_to: addDaysISO(30) }),
         supabase.from("customers").select("*").order("name"),
       ]);
-      setProducts((p.data as Product[]) ?? []);
-      setCustomers((c.data as Customer[]) ?? []);
+      const ps = (p.data as Product[]) ?? [];
+      const cs = (c.data as Customer[]) ?? [];
+      setProducts(ps);
+      setCustomers(cs);
       const zs = (z.data as DeliveryZone[]) ?? [];
       setZones(zs);
       if (zs[0]) setZoneId(zs[0].id);
       setAvail((a.data as Availability[]) ?? []);
+      if (initial) {
+        // produtos: nome exato do catálogo, senão o mais parecido
+        const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const q: Record<string, number> = {};
+        for (const it of initial.items) {
+          const alvo = it.product_name ?? it.raw_text;
+          const found = ps.find((x) => norm(x.name) === norm(alvo)) ?? ps.find((x) => norm(x.name).includes(norm(alvo)) || norm(alvo).includes(norm(x.name)));
+          if (found) q[found.id] = (q[found.id] ?? 0) + it.qty;
+        }
+        setQty(q);
+        if (initial.zone_name) { const zz = zs.find((x) => norm(x.name) === norm(initial.zone_name!)); if (zz) setZoneId(zz.id); }
+        // cliente já cadastrado pelo telefone: puxa cadastro (endereço, região)
+        const digits = (initial.phone ?? "").replace(/\D/g, "").replace(/^55/, "");
+        const known = digits ? cs.find((x) => x.phone.replace(/^55/, "") === digits) : undefined;
+        if (known) {
+          setSelectedCustomer(known); setCustomerQuery(known.name);
+          if (!initial.address && known.address) setAddress(known.address);
+          if (!initial.reference && known.reference) setReference(known.reference);
+          if (!initial.zone_name && known.zone_id) setZoneId(known.zone_id);
+        }
+      }
     })();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = async () => {
     const items = Object.entries(qty).filter(([, q]) => q > 0).map(([product_id, q]) => ({ product_id, qty: q }));
@@ -441,7 +543,7 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
     if (!date) return toast("Escolha a data da encomenda.", "err");
     setBusy(true);
     const { error } = await supabase.rpc("place_order", {
-      p: { name, phone: onlyDigits(phone), fulfillment, zone_id: fulfillment === "entrega" ? zoneId : null, address, reference, scheduled_date: date, window_id: windowId || null, payment_method: payment, notes: notes ? `[manual] ${notes}` : "[manual]", items },
+      p: { name, phone: onlyDigits(phone), fulfillment, zone_id: fulfillment === "entrega" ? zoneId : null, address, reference, scheduled_date: date, window_id: windowId || null, payment_method: payment, notes: notes ? `[${initial ? "prints" : "manual"}] ${notes}` : `[${initial ? "prints" : "manual"}]`, items },
     });
     setBusy(false);
     if (error) return toast(friendlyError(error), "err");
@@ -449,7 +551,14 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
   };
 
   return (
-    <Modal open onClose={onClose} title="Novo pedido (WhatsApp / presencial)" wide>
+    <Modal open onClose={onClose} title={initial ? "Pedido lido dos prints: confira e salve" : "Novo pedido (WhatsApp / presencial)"} wide>
+      {initial && (
+        <div className={clsx("mb-3 rounded-xl p-3 text-sm ring-1", initial.doubts.length ? "bg-amber-50 text-amber-900 ring-amber-200" : "bg-emerald-50 text-emerald-900 ring-emerald-200")}>
+          <div className="flex items-center gap-2 font-bold"><Sparkles size={16} /> Leitura {initial.confidence === "alta" ? "com confiança alta" : initial.confidence === "media" ? "com confiança média" : "com confiança baixa"}{initial.items.some((i) => !i.product_name) ? " · tem item que não casou com o cardápio" : ""}</div>
+          {initial.doubts.length > 0 && <ul className="mt-1 list-disc pl-5">{initial.doubts.map((d, i) => <li key={i}>{d}</li>)}</ul>}
+          {initial.items.some((i) => !i.product_name) && <div className="mt-1 text-xs">Itens não reconhecidos: {initial.items.filter((i) => !i.product_name).map((i) => `"${i.raw_text}" (${i.qty})`).join(", ")}. Ajuste as quantidades ao lado.</div>}
+        </div>
+      )}
       <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2">
           <h3 className="text-sm font-bold">Produtos</h3>
