@@ -184,7 +184,7 @@ export default function Estoque() {
   );
 }
 
-function MovementModal({ ingredient, type, onClose, onDone }: { ingredient: Ingredient; type: StockMovement["type"]; onClose: () => void; onDone: () => void }) {
+export function MovementModal({ ingredient, type, onClose, onDone }: { ingredient: Ingredient; type: StockMovement["type"]; onClose: () => void; onDone: () => void }) {
   const toast = useToast();
   const [packs, setPacks] = useState("");
   const [packSize, setPackSize] = useState(ingredient.pack_size ? String(ingredient.pack_size) : "");

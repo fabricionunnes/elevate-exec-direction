@@ -5,7 +5,8 @@ import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { brl } from "@/lib/format";
 import { waLink } from "@/lib/whatsapp";
-import type { IngredientNeed, ShoppingItem } from "@/lib/types";
+import type { IngredientNeed, ShoppingItem, Ingredient } from "@/lib/types";
+import { MovementModal } from "@/pages/admin/Estoque";
 import { Button, Card, Input, Spinner, Empty, useToast } from "@/components/ui";
 
 const fmtQty = (n: number, unit: string) => `${Number(n).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ${unit}`;
@@ -18,6 +19,12 @@ export default function Compras() {
   const [name, setName] = useState("");
   const [qtyText, setQtyText] = useState("");
   const [showDone, setShowDone] = useState(false);
+  const [buying, setBuying] = useState<Ingredient | null>(null);
+
+  const toIngredient = (n: IngredientNeed): Ingredient => ({
+    id: n.ingredient_id, name: n.name, unit: n.unit, qty_on_hand: Number(n.qty_on_hand), min_qty: Number(n.min_qty),
+    cost_per_unit: Number(n.cost_per_unit), supplier: n.supplier, active: true, pack_size: n.pack_size, pack_label: n.pack_label,
+  });
 
   const load = useCallback(async () => {
     const [n, i] = await Promise.all([
@@ -93,7 +100,7 @@ export default function Compras() {
                     {n.supplier && ` · ${n.supplier}`}
                   </div>
                 </div>
-                <a href="/admin/estoque" className="text-xs font-semibold text-vinho-600 hover:underline">lançar compra</a>
+                <Button size="sm" onClick={() => setBuying(toIngredient(n))}>Lançar compra</Button>
               </li>
             ))}
           </ul>
@@ -119,6 +126,8 @@ export default function Compras() {
         )}
         {doneItems.length > 0 && showDone && <Button size="sm" variant="ghost" className="mt-2" onClick={clearDone}><RotateCcw size={14} /> limpar comprados</Button>}
       </Card>
+
+      {buying && <MovementModal ingredient={buying} type="entrada" onClose={() => setBuying(null)} onDone={() => { setBuying(null); void load(); }} />}
     </div>
   );
 }
