@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#d0103f" stroke="#fdf3e6" stroke-width="3"/>
+  <!-- garfo (esquerda) -->
+  <path d="M19 14v9M23 14v9M27 14v9" stroke="#fdf3e6" stroke-width="3.2" stroke-linecap="round"/>
+  <path d="M19 23h8v3a4 4 0 0 1-4 4 4 4 0 0 1-4-4z" fill="#fdf3e6"/>
+  <!-- colher (direita) -->
+  <ellipse cx="43" cy="18" rx="5.5" ry="7" fill="#fdf3e6"/>
+  <!-- cabos formando o Y -->
+  <path d="M23 30 L32 40 M43 25 L32 40 M32 40 v10" stroke="#fdf3e6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- sorriso -->
+  <path d="M15 46q17 14 34 0" stroke="#fdf3e6" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+</svg>
