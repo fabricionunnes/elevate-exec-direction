@@ -4,8 +4,10 @@
 // (dados.sistema). Aqui viram os números que as telas usam. Tudo é calculado no navegador:
 // o volume é pequeno (uma linha por venda e por reunião) e assim o filtro é instantâneo.
 
-/** venda: [valor, entrada, closer, canal, contrato assinado (1/0), plataforma, agente, data ISO] */
-export type Venda = [number, number, string, string, number, string, string, string];
+/** venda: [valor, entrada, closer, canal, contrato assinado (1/0), plataforma, agente, data ISO, tipo?]
+ *  tipo: "nova" (padrão quando não vem), "renov" (renovação) ou "asc" (ascensão) */
+export type Venda = [number, number, string, string, number, string, string, string, string?];
+export const ehNova = (v: Venda) => !v[8] || v[8] === "nova";
 /** reunião: [canal, sdr, closer, compareceu (1/0/null), comprou (1/0), decisão pendente (1/0), dias de espera, data ISO] */
 export type Reuniao = [string, string, string, 0 | 1 | null, number, number, number | null, string];
 
@@ -131,6 +133,18 @@ export function calcMes(b: Bruto, m: MesBruto, f: Filtro = {}) {
 }
 export type Calc = ReturnType<typeof calcMes>;
 
+/** Meta "só vendas novas": tira da meta a parte de renovações e ascensões e tira do realizado
+ *  as vendas desse tipo. A escolha fica no aparelho (vale pro painel e pra Gestão à vista). */
+export function comMeta(c: Calc, soNovas: boolean): Calc {
+  if (!soNovas || !c.meta || c.meta.novas == null) return c;
+  const vd = c.vd.filter(ehNova);
+  const receita = c.vdOk ? vd.reduce((s, v) => s + v[0], 0) : c.receita;
+  return { ...c, vd, receita, vendas: c.vdOk ? vd.length : c.vendas, ticket: c.vdOk && vd.length ? (receita ?? 0) / vd.length : c.ticket, meta: { ...c.meta, total: c.meta.novas } };
+}
+const CHAVE_SO_NOVAS = "md1_meta_so_novas";
+export const lerSoNovas = (): boolean => { try { return localStorage.getItem(CHAVE_SO_NOVAS) === "1"; } catch { return false; } };
+export const gravarSoNovas = (v: boolean): void => { try { localStorage.setItem(CHAVE_SO_NOVAS, v ? "1" : "0"); } catch { /* sem storage */ } };
+
 /** meta acumulada (por dia útil) contra o realizado acumulado, dia a dia */
 export function serieMeta(c: Calc, hoje = new Date()) {
   if (!c.meta) return null;
@@ -169,9 +183,9 @@ export type Alerta = { gravidade: "alta" | "media" | "baixa"; titulo: string; de
 const brlK = (v: number) => (Math.abs(v) >= 1000 ? `R$ ${Math.round(v / 1000).toLocaleString("pt-BR")} mil` : `R$ ${Math.round(v).toLocaleString("pt-BR")}`);
 
 /** o que pede decisão do dono neste mês */
-export function alertas(b: Bruto, m: MesBruto): Alerta[] {
+export function alertas(b: Bruto, m: MesBruto, soNovas = false): Alerta[] {
   const c = calcMes(b, m), out: Alerta[] = [];
-  const s = serieMeta(c);
+  const s = serieMeta(comMeta(c, soNovas));
   if (s && s.du.passados > 0 && s.dif < 0) out.push({ gravidade: s.dif < -0.1 * (c.meta?.total ?? 0) ? "alta" : "media", titulo: `Vendas ${brlK(-s.dif)} abaixo do ritmo da meta`, detalhe: `${brlK(s.vendido)} vendidos contra ${brlK(s.esperado)} esperados até hoje. Faltam ${brlK(s.falta)}, ${s.porDiaRestante != null ? brlK(s.porDiaRestante) : "-"} por dia útil`, abre: { view: "meta" } });
   if (c.presenca != null && c.agendadas >= 5 && 1 - c.presenca >= 0.35) out.push({ gravidade: 1 - c.presenca >= 0.5 ? "alta" : "media", titulo: `No-show de ${Math.round((1 - c.presenca) * 100)}% nas reuniões`, detalhe: `${c.no_show} de ${c.agendadas} reuniões com desfecho não aconteceram`, abre: { det: "reunioes", filtro: { tipo: "no_show" } } });
   if (c.fora && c.fora.valor > 0) out.push({ gravidade: "alta", titulo: `${brlK(c.fora.valor)} em vendas fora da regra`, detalhe: `${c.fora.semContrato} sem contrato assinado e ${c.fora.dataFutura} com data de contrato no futuro. Não somam na meta até regularizar`, abre: { view: "meta" } });

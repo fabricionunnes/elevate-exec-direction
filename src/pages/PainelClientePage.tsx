@@ -10,7 +10,7 @@ import "@/components/painel-controle/painel.css";
 import "@/components/painel-cliente/painel-cliente.css";
 import { Cab, Combo } from "@/components/painel-controle/ui";
 import { mesLabel } from "@/components/painel-controle/fmt";
-import { alertas, isoMes, type Bruto, type Filtro } from "@/components/painel-cliente/modelo";
+import { alertas, gravarSoNovas, isoMes, lerSoNovas, type Bruto, type Filtro } from "@/components/painel-cliente/modelo";
 import {
   ComercialCliente, DetalheCliente, FinanceiroCliente, FontesCliente, MarketingCliente, MetaCliente, VisaoCliente,
   filtrosComercialCliente, type CtxC, type NavC,
@@ -60,6 +60,8 @@ export default function PainelClientePage() {
   const { b, atualizado, erro, carregar } = useDadosCliente(token);
   const [mesIdx, setMesIdx] = useState<number | null>(null);
   const [stack, setStack] = useState<NavC[]>([]);
+  const [soNovas, setSoNovasRaw] = useState<boolean>(lerSoNovas);
+  const setSoNovas = (v: boolean) => { gravarSoNovas(v); setSoNovasRaw(v); };
   const cur: NavC = stack[stack.length - 1] ?? { view: "visao" };
 
   useEffect(() => {
@@ -82,8 +84,8 @@ export default function PainelClientePage() {
   const go = (n: NavC) => setStack((s) => [...s, n]);
   const det = (bloco: string, filtro?: Record<string, string>, titulo?: string) => setStack((s) => [...s, { view: "detalhe", det: bloco, filtro, titulo }]);
   const setF = (f: Filtro) => setStack((s) => (s.length ? s.map((n, i) => (i === s.length - 1 ? { ...n, f } : n)) : [{ view: "comercial", f }]));
-  const c: CtxC | null = b && m ? { b, m, mes, setMes, go, det, f: cur.f ?? {}, setF } : null;
-  const nAlertas = b && m ? alertas(b, m).length : 0;
+  const c: CtxC | null = b && m ? { b, m, mes, setMes, go, det, f: cur.f ?? {}, setF, soNovas, setSoNovas } : null;
+  const nAlertas = b && m ? alertas(b, m, soNovas).length : 0;
   const crumbs = stack.map((n) => (n.view === "detalhe" ? n.titulo ?? "Registros" : TITULOS[n.view]?.[0] ?? n.view));
   const t = TITULOS[cur.view];
 

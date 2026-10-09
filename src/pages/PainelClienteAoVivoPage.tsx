@@ -10,7 +10,7 @@ import { Barra3D, Funil3DCompacto, Kpi, Linha, MetaDia } from "@/components/pain
 import "@/components/painel-controle/painel.css";
 import "@/components/painel-controle/aovivo.css";
 import "@/components/painel-cliente/painel-cliente.css";
-import { calcMes, diasUteis, isoMes, ym, ymd, type Bruto, type MesBruto } from "@/components/painel-cliente/modelo";
+import { calcMes, comMeta, diasUteis, ehNova, isoMes, lerSoNovas, ym, ymd, type Bruto, type MesBruto } from "@/components/painel-cliente/modelo";
 import { DetalheCliente, type CtxC } from "@/components/painel-cliente/telas";
 import { MarcaCliente, useDadosCliente } from "./PainelClientePage";
 
@@ -27,15 +27,17 @@ type Per = { marcadas: number; realizadas: number; no_show: number; sem_desfecho
 type Call = { quando: string; sdr: string; closer: string; comp: "sim" | "nao" | "pend"; tipo: string };
 
 /** tudo o que a TV mostra, calculado a partir dos dados crus do cliente */
-function montar(b: Bruto, agora: Date) {
+function montar(b: Bruto, agora: Date, soNovas: boolean) {
   const hoje = ymd(agora);
   const seg = new Date(agora); seg.setDate(agora.getDate() - ((agora.getDay() + 6) % 7));
   const iniSemana = ymd(seg);
   const chaveAtual = hoje.slice(0, 7);
   const m: MesBruto = b.meses.find((x) => ym(isoMes(b, x)) === chaveAtual) ?? b.meses[b.meses.length - 1];
   const iso = isoMes(b, m), chave = ym(iso);
-  const k = calcMes(b, m);
+  const k = comMeta(calcMes(b, m), soNovas);
   const sis = b.sistema ?? {};
+  // vendas que contam pra meta escolhida (sem renovações e ascensões quando a meta é só de novas)
+  const vdMeta = soNovas && k.meta ? m.vd.filter(ehNova) : m.vd;
   // agenda com horário (sistema interno) quando existe pro mês; senão, as reuniões da planilha
   const agSis = sis.agenda?.linhas?.filter((l) => l[0].slice(0, 7) === chave) ?? [];
   const calls: Call[] = agSis.length
@@ -46,7 +48,7 @@ function montar(b: Bruto, agora: Date) {
   const caixaDia = sis.caixa_dia ?? {};
   const per = (de: string, ate: string): Per => {
     const cs = passadas.filter((c) => c.quando.slice(0, 10) >= de && c.quando.slice(0, 10) <= ate);
-    const vs = m.vd.filter((v) => v[7] >= de && v[7] <= ate);
+    const vs = vdMeta.filter((v) => v[7] >= de && v[7] <= ate);
     const rec = Object.entries(caixaDia).filter(([d]) => d >= de && d <= ate).reduce((s, [, v]) => s + v, 0);
     return {
       marcadas: cs.length, realizadas: cs.filter((c) => c.comp === "sim").length, no_show: cs.filter((c) => c.comp === "nao").length, sem_desfecho: cs.filter((c) => c.comp === "pend").length,
@@ -66,9 +68,9 @@ function montar(b: Bruto, agora: Date) {
   const fim = new Date(agora.getFullYear(), agora.getMonth() + 1, 0).getDate();
   const serie = Array.from({ length: Math.min(fim, agora.getDate()) }, (_, i) => {
     const d = `${chave}-${String(i + 1).padStart(2, "0")}`;
-    return { d: String(i + 1).padStart(2, "0"), receita: m.vd.filter((v) => v[7] === d).reduce((s, v) => s + v[0], 0), reunioes: passadas.filter((c) => c.quando.slice(0, 10) === d && c.comp === "sim").length };
+    return { d: String(i + 1).padStart(2, "0"), receita: vdMeta.filter((v) => v[7] === d).reduce((s, v) => s + v[0], 0), reunioes: passadas.filter((c) => c.quando.slice(0, 10) === d && c.comp === "sim").length };
   });
-  const tend = b.meses.slice(-6).map((x) => { const c = calcMes(b, x); return { m: MESES[x.n - 1], receita: c.receita ?? 0, meta: c.meta?.total ?? null }; });
+  const tend = b.meses.slice(-6).map((x) => { const c = comMeta(calcMes(b, x), soNovas); return { m: MESES[x.n - 1], receita: c.receita ?? 0, meta: c.meta?.total ?? null }; });
   const projecao = du.passados ? (vendido / du.passados) * du.total : null;
   // agenda: o que falta hoje e as próximas
   const proximas = calls.filter((c) => c.quando > agoraIso).sort((a, b2) => (a.quando < b2.quando ? -1 : 1));
@@ -93,7 +95,7 @@ function montar(b: Bruto, agora: Date) {
   return {
     m, iso, chave, k, hoje, iniSemana, horaDado: sis.agenda?.lido_em ?? null,
     periodos: { hoje: hojeP, semana: per(iniSemana, hoje), mes: mesP },
-    meta, vendido, du, metaDia, serie, tend, projecao, proximas, deHoje,
+    meta, vendido, du, metaDia, soNovas: soNovas && !!k.meta, serie, tend, projecao, proximas, deHoje,
     funil: [["Marcadas", k.agendadas + k.sem_desfecho], ["Realizadas", k.realizadas], ["Vendas", k.vendas]] as [string, number][],
     closers: Object.values(closers).sort((a, b2) => b2.receita - a.receita || b2.calls - a.calls),
     sdrs: Object.values(sdrs).sort((a, b2) => b2.marcadas - a.marcadas),
@@ -122,7 +124,7 @@ export default function PainelClienteAoVivoPage() {
   }, []);
   // os números só mudam quando o dado muda: recalcula por minuto, não por segundo
   const minuto = Math.floor(agora.getTime() / 60000);
-  const d = useMemo(() => (b ? montar(b, new Date(minuto * 60000)) : null), [b, minuto]); // eslint-disable-line react-hooks/exhaustive-deps
+  const d = useMemo(() => (b ? montar(b, new Date(minuto * 60000), lerSoNovas()) : null), [b, minuto]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const telaCheia = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); } catch { /* sem suporte */ } };
   const sair = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); } catch { /* ok */ } navigate(`/painel/${token}`); };
@@ -146,7 +148,7 @@ export default function PainelClienteAoVivoPage() {
           <small>{agora.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}</small>
         </div>
         <div className="av-meta clk" onClick={() => setPop({ bloco: "vendas", titulo: "Vendas do mês" })} role="button" title="Ver as vendas do mês">
-          <div className="lbl">META DO MÊS · VENDAS</div>
+          <div className="lbl">META DO MÊS · {d?.soNovas ? "SÓ VENDAS NOVAS" : "VENDAS"}</div>
           <div className="bar"><i style={{ width: `${pMeta}%` }} /><em style={{ left: `${pTempo}%` }} title="onde o mês está" /></div>
           <div className="nums">{meta > 0
             ? <><b>{brl(d?.vendido)}</b> de {brl(meta)} · <b className={pMeta >= pTempo ? "ok" : "bad"}>{pMeta}%</b> da meta com {pTempo}% do mês · no ritmo fecha em {brl(d?.projecao)}</>
