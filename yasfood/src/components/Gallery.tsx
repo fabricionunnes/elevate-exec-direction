@@ -5,9 +5,11 @@ import type { ProductMedia } from "@/lib/types";
 
 /** Galeria com rolagem por toque (celular) e setas/pontinhos (computador). Fotos e vídeos. */
 export function Gallery({ media, cover, alt }: { media: ProductMedia[]; cover?: string | null; alt: string }) {
-  const items: { kind: "image" | "video"; url: string; id: string }[] = media.length
-    ? media.map((m) => ({ kind: m.kind, url: m.url, id: m.id }))
-    : cover ? [{ kind: "image", url: cover, id: "cover" }] : [];
+  // A capa escolhida no painel é sempre o primeiro slide; o resto segue a ordem da galeria.
+  const rest = media.filter((m) => m.url !== cover).map((m) => ({ kind: m.kind, url: m.url, id: m.id }));
+  const items: { kind: "image" | "video"; url: string; id: string }[] = cover
+    ? [{ kind: "image" as const, url: cover, id: "cover" }, ...rest]
+    : rest;
   const ref = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
 
