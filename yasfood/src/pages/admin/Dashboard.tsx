@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, Star } from "lucide-react";
+import { clsx } from "clsx";
 import { supabase } from "@/lib/supabase";
 import { brl, dayLabel, todayISO, addDaysISO, STATUS_COLOR, statusLabelFor } from "@/lib/format";
-import type { Availability, Ingredient, Order, Review } from "@/lib/types";
+import type { Availability, DeliveryWindow, DeliveryZone, Ingredient, Order, Review } from "@/lib/types";
+import { prioritize, hasCoords, fmtKm } from "@/lib/route";
 import { Stat, Card, Badge, Spinner, Empty, Stars } from "@/components/ui";
 
 interface Summary {
@@ -20,6 +22,9 @@ interface Summary {
   reviews: Review[];
   avgRating: number;
   reviewQueue: number;
+  windows: DeliveryWindow[];
+  zones: DeliveryZone[];
+  origin: { lat: number; lng: number } | null;
 }
 
 export default function Dashboard() {
@@ -41,6 +46,12 @@ export default function Dashboard() {
         supabase.from("reviews").select("*").order("created_at", { ascending: false }).limit(5),
         supabase.rpc("pending_review_requests"),
       ]);
+      const [winRes, zoneRes, stRes] = await Promise.all([
+        supabase.from("delivery_windows").select("id, start_time"),
+        supabase.from("delivery_zones").select("id, lat, lng, sort_order"),
+        supabase.from("settings").select("origin_lat, origin_lng").eq("id", 1).maybeSingle(),
+      ]);
+      const st = stRes.data as { origin_lat: number | null; origin_lng: number | null } | null;
       const tx = (txRes.data as { type: string; amount: number }[]) ?? [];
       const om = (ordersMonth.data as { total: number }[]) ?? [];
       const reviews = (revRes.data as Review[]) ?? [];
@@ -59,12 +70,16 @@ export default function Dashboard() {
         reviews,
         avgRating: reviews.length ? reviews.reduce((a, r) => a + r.rating, 0) / reviews.length : 0,
         reviewQueue: ((queueRes.data as unknown[]) ?? []).length,
+        windows: (winRes.data as DeliveryWindow[]) ?? [],
+        zones: (zoneRes.data as DeliveryZone[]) ?? [],
+        origin: st && hasCoords({ lat: st.origin_lat, lng: st.origin_lng }) ? { lat: st.origin_lat as number, lng: st.origin_lng as number } : null,
       });
     })();
   }, []);
 
   if (!s) return <Spinner />;
   const profit = s.monthRevenue - s.monthExpenses;
+  const todayList = prioritize(s.todayOrders, { origin: s.origin, windows: s.windows, zones: s.zones });
 
   return (
     <div className="space-y-5">
@@ -89,10 +104,12 @@ export default function Dashboard() {
         <Card title="Pedidos de hoje" action={<Link to="/admin/pedidos" className="text-sm font-semibold text-vinho-600">ver todos</Link>}>
           {s.todayOrders.length === 0 ? <Empty>Nenhum pedido pra hoje.</Empty> : (
             <ul className="divide-y divide-choco-100">
-              {s.todayOrders.map((o) => (
-                <li key={o.id} className="flex items-center justify-between py-2 text-sm">
+              {todayList.map(({ order: o, rank, legKm, approx }) => (
+                <li key={o.id} className="flex items-center gap-2 py-2 text-sm">
+                  {o.status !== "entregue" && <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-choco-900 px-1.5 text-xs font-black text-white">{rank}º</span>}
                   <Link to={`/admin/pedidos?abrir=${o.id}`} className="font-semibold hover:text-vinho-600">{o.code} · {o.customer_name}</Link>
-                  <Badge className={STATUS_COLOR[o.status]}>{statusLabelFor(o.status, o.fulfillment)}</Badge>
+                  <span className="text-xs text-choco-500">{o.fulfillment === "retirada" ? "retirada" : o.window_label ?? ""}{legKm !== null ? ` · ${approx ? "~" : ""}${fmtKm(legKm)}` : ""}</span>
+                  <Badge className={clsx("ml-auto", STATUS_COLOR[o.status])}>{statusLabelFor(o.status, o.fulfillment)}</Badge>
                 </li>
               ))}
             </ul>

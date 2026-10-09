@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { ImagePlus, Save } from "lucide-react";
+import { ImagePlus, Save, MapPin, ExternalLink } from "lucide-react";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { useAuth } from "@/lib/auth";
 import type { Settings } from "@/lib/types";
 import { Button, Card, Input, Textarea, Spinner, useToast } from "@/components/ui";
 import { Logo } from "@/pages/cliente/Layout";
+import { geocodePlace, cleanAddress, mapsPin, hasCoords } from "@/lib/route";
 
 export default function Configuracoes() {
   const toast = useToast();
@@ -28,6 +29,17 @@ export default function Configuracoes() {
     if (error) return toast(friendlyError(error), "err");
     toast("Configurações salvas.");
     void reload();
+  };
+
+  const locateOrigin = async () => {
+    const q = cleanAddress(form.pickup_address.split(/retirada|me chama|das \d/i)[0] ?? form.pickup_address);
+    if (!q) return toast("Preencha o endereço de retirada primeiro.", "err");
+    setBusy(true);
+    const p = await geocodePlace(/nova lima|belo horizonte|mg/i.test(q) ? q : `${q}, Nova Lima, MG`, null).catch(() => null);
+    setBusy(false);
+    if (!p) return toast("Não achei esse endereço no mapa. Cole as coordenadas do Google Maps nos campos ao lado.", "err");
+    setForm({ ...form, origin_lat: p.lat, origin_lng: p.lng });
+    toast("Localização encontrada. Confira no mapa e salve.");
   };
 
   const uploadLogo = async (file: File) => {
@@ -78,6 +90,23 @@ export default function Configuracoes() {
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.pickup_enabled} onChange={(e) => set("pickup_enabled", e.target.checked)} /> permitir que o cliente venha buscar</label>
         <div className="mt-3"><Textarea label="Endereço e instruções pra retirada" value={form.pickup_address} onChange={(e) => set("pickup_address", e.target.value)} placeholder="Ex.: Rua das Acácias, 120, casa 7 · Alphaville Lagoa dos Ingleses · Retirada das 14h às 19h, me chama no WhatsApp ao chegar" /></div>
         <p className="mt-1 text-xs text-choco-500">Aparece no checkout quando o cliente escolhe "Retirar" e na tela do pedido.</p>
+      </Card>
+
+      <Card title={<span className="flex items-center gap-2"><MapPin size={18} /> Ponto de partida das entregas</span>}>
+        <p className="mb-3 text-sm text-choco-600">A localização da sua casa. É daqui que o sistema monta a rota do dia, do pedido mais perto pro mais longe.</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Input label="Latitude" value={form.origin_lat ?? ""} onChange={(e) => set("origin_lat", e.target.value === "" ? null : Number(e.target.value.replace(",", ".")))} placeholder="-20.0812" />
+          <Input label="Longitude" value={form.origin_lng ?? ""} onChange={(e) => set("origin_lng", e.target.value === "" ? null : Number(e.target.value.replace(",", ".")))} placeholder="-43.9975" />
+          <div className="flex items-end gap-2">
+            <Button variant="outline" loading={busy} onClick={locateOrigin}><MapPin size={16} /> Localizar pelo endereço</Button>
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-choco-500">
+          {hasCoords({ lat: form.origin_lat, lng: form.origin_lng })
+            ? <a href={mapsPin({ lat: form.origin_lat as number, lng: form.origin_lng as number })} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-vinho-600">Conferir no Google Maps <ExternalLink size={12} /></a>
+            : "Sem localização: os pedidos ficam em ordem de horário e condomínio, sem distância."}
+          {" "}Pra pegar as coordenadas manualmente: no Google Maps, toque e segure em cima da sua casa e copie os dois números que aparecem.
+        </p>
       </Card>
 
       <Card title="Pagamento e prazos">

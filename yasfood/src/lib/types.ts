@@ -24,6 +24,9 @@ export interface Settings {
   review_webhook_url: string;
   review_message: string;
   default_daily_capacity: number;
+  /** Casa da Yasmim: ponto de partida das entregas (só na tabela completa). */
+  origin_lat: number | null;
+  origin_lng: number | null;
 }
 
 export interface Product {
@@ -45,6 +48,8 @@ export interface DeliveryZone {
   active: boolean;
   sort_order: number;
   notes: string;
+  lat: number | null;
+  lng: number | null;
 }
 
 export interface DeliveryWindow {
@@ -136,6 +141,9 @@ export interface Order {
   delivered_at: string | null;
   review_request_due_at: string | null;
   review_request_sent_at: string | null;
+  lat: number | null;
+  lng: number | null;
+  geocoded_at: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { MessageCircle, Check, ArrowRight, XCircle, Banknote, Printer, Plus, Search, ExternalLink, Pencil } from "lucide-react";
+import { MessageCircle, Check, ArrowRight, XCircle, Banknote, Printer, Plus, Search, ExternalLink, Pencil, Route, MapPin } from "lucide-react";
 import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, dateTimeBR, dayLong, formatPhone, nextStatus, PAYMENT_LABEL, STATUS_COLOR, STATUS_LABEL, statusLabelFor, todayISO, addDaysISO, onlyDigits, windowLabel } from "@/lib/format";
 import { waLink, msgs, trackingUrl } from "@/lib/whatsapp";
-import type { Availability, AvailableWindow, Customer, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
+import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, type RouteCtx } from "@/lib/route";
+import type { Availability, AvailableWindow, Customer, DeliveryWindow, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Button, Badge, Card, Modal, Empty, Spinner, Input, Select, Textarea, useToast } from "@/components/ui";
 
@@ -22,11 +23,46 @@ export default function Pedidos() {
   const [onlyUnpaid, setOnlyUnpaid] = useState(params.get("pagamento") === "pendente");
   const [openId, setOpenId] = useState<string | null>(params.get("abrir"));
   const [novo, setNovo] = useState(false);
+  const [windows, setWindows] = useState<DeliveryWindow[]>([]);
+  const [zones, setZones] = useState<DeliveryZone[]>([]);
+  const [locating, setLocating] = useState<string | null>(null);
+  const geoBusy = useRef(false);
 
   const load = useCallback(async () => {
-    const { data } = await supabase.from("orders").select("*").order("scheduled_date").order("created_at");
+    const [{ data }, w, z] = await Promise.all([
+      supabase.from("orders").select("*").order("scheduled_date").order("created_at"),
+      supabase.from("delivery_windows").select("id, start_time"),
+      supabase.from("delivery_zones").select("id, lat, lng, sort_order"),
+    ]);
     setOrders((data as Order[]) ?? []);
+    setWindows((w.data as DeliveryWindow[]) ?? []);
+    setZones((z.data as DeliveryZone[]) ?? []);
   }, []);
+
+  const ctx = useMemo<RouteCtx>(() => ({
+    origin: settings && hasCoords({ lat: settings.origin_lat, lng: settings.origin_lng }) ? { lat: settings.origin_lat as number, lng: settings.origin_lng as number } : null,
+    windows,
+    zones,
+  }), [settings, windows, zones]);
+
+  /** Localiza no mapa os endereços de entrega que ainda não têm coordenada. */
+  const locate = useCallback(async (list: Order[], force = false) => {
+    if (geoBusy.current) return;
+    const todo = list.filter((o) => o.fulfillment === "entrega" && !["entregue", "cancelado"].includes(o.status) && !hasCoords(o) && (force || !o.geocoded_at)).slice(0, 12);
+    if (!todo.length) return;
+    geoBusy.current = true;
+    try {
+      for (const o of todo) {
+        setLocating(o.id);
+        const p = await geocodeAddress(o.address, o.zone_name, ctx.origin).catch(() => null);
+        await supabase.from("orders").update({ lat: p?.lat ?? null, lng: p?.lng ?? null, geocoded_at: new Date().toISOString() }).eq("id", o.id);
+      }
+    } finally {
+      geoBusy.current = false;
+      setLocating(null);
+      void load();
+    }
+  }, [ctx.origin, load]);
 
   useEffect(() => {
     void load();
@@ -58,8 +94,15 @@ export default function Pedidos() {
   const grouped = useMemo(() => {
     const m = new Map<string, Order[]>();
     for (const o of list) m.set(o.scheduled_date, [...(m.get(o.scheduled_date) ?? []), o]);
-    return [...m.entries()];
-  }, [list]);
+    return [...m.entries()].map(([day, os]) => [day, filter === "cancelados" ? os.map((o, i) => ({ order: o, rank: i + 1, legKm: null, located: false, approx: false, windowKey: "" })) : prioritize(os, ctx)] as const);
+  }, [list, ctx, filter]);
+
+  // Endereços novos são localizados sozinhos (1 por segundo, só os dias de hoje em diante).
+  useEffect(() => {
+    if (!orders) return;
+    const today = todayISO();
+    void locate(orders.filter((o) => o.scheduled_date >= today));
+  }, [orders, locate]);
 
   const open = (id: string | null) => {
     setOpenId(id);
@@ -87,30 +130,59 @@ export default function Pedidos() {
       </div>
 
       {orders === null ? <Spinner /> : list.length === 0 ? <Empty>Nenhum pedido aqui.</Empty> : (
-        grouped.map(([day, os]) => (
-          <section key={day}>
-            <h2 className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-choco-600">
-              <span className="capitalize">{dayLabel(day)}</span>
-              <span className="text-choco-400">· {os.length} pedido(s)</span>
-            </h2>
-            <div className="grid gap-2 md:grid-cols-2">
-              {os.map((o) => (
-                <button key={o.id} onClick={() => open(o.id)} className="rounded-2xl border border-choco-100 bg-white p-3 text-left shadow-card hover:border-vinho-300">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold">{o.code} · {o.customer_name}</span>
-                    <Badge className={STATUS_COLOR[o.status]}>{statusLabelFor(o.status, o.fulfillment)}</Badge>
-                  </div>
-                  <div className="mt-1 flex items-center gap-2 text-xs text-choco-500">
-                    <span>{o.fulfillment === "entrega" ? `Entrega · ${o.zone_name ?? ""}` : "Retirada"}{o.window_label ? ` · ${o.window_label}` : ""}</span>
-                    <span>·</span>
-                    <span>{PAYMENT_LABEL[o.payment_method]}</span>
-                    <span className={clsx("ml-auto font-bold", o.payment_status === "pago" ? "text-emerald-700" : "text-amber-700")}>{brl(o.total)} {o.payment_status === "pago" ? "✓" : "pendente"}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
-        ))
+        <>
+          {filter !== "cancelados" && (
+            <p className="text-xs text-choco-500">
+              Ordem sugerida pelo sistema: horário mais cedo primeiro; dentro do horário, retiradas e depois as entregas do mais perto pro mais longe partindo da sua casa.
+              {!ctx.origin && <> Pra rota por distância, <a href="/admin/configuracoes" className="font-semibold text-vinho-600 underline">cadastre a localização da sua casa</a>.</>}
+            </p>
+          )}
+          {grouped.map(([day, ps]) => {
+            // uma rota por horário: cada horário é uma saída de casa
+            const routes = filter === "cancelados" ? [] : [...new Set(ps.filter((p) => p.order.fulfillment === "entrega" && !["entregue", "cancelado"].includes(p.order.status)).map((p) => p.windowKey))]
+              .map((k) => ({ k, url: gmapsRouteUrl(ps.filter((p) => p.windowKey === k), ctx, settings?.pickup_address ?? "") }))
+              .filter((r): r is { k: string; url: string } => !!r.url);
+            const unlocated = ps.filter((p) => p.order.fulfillment === "entrega" && !["entregue", "cancelado"].includes(p.order.status) && !hasCoords(p.order)).length;
+            return (
+              <section key={day}>
+                <h2 className="mb-2 flex flex-wrap items-center gap-2 text-sm font-bold uppercase tracking-wide text-choco-600">
+                  <span className="capitalize">{dayLabel(day)}</span>
+                  <span className="text-choco-400">· {ps.length} pedido(s)</span>
+                  <span className="ml-auto flex items-center gap-1 normal-case tracking-normal">
+                    {unlocated > 0 && filter !== "cancelados" && (
+                      <Button size="sm" variant="ghost" loading={!!locating} onClick={() => locate(ps.map((p) => p.order), true)}><MapPin size={14} /> Localizar {unlocated} endereço(s)</Button>
+                    )}
+                    {routes.map((r) => <a key={r.k} href={r.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-vinho-600 px-3 py-1 text-xs font-semibold text-white"><Route size={14} /> Rota{routes.length > 1 && r.k ? ` ${r.k}` : ""} no Maps</a>)}
+                  </span>
+                </h2>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {ps.map(({ order: o, rank, legKm, located, approx }) => (
+                    <button key={o.id} onClick={() => open(o.id)} className="rounded-2xl border border-choco-100 bg-white p-3 text-left shadow-card hover:border-vinho-300">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-2 font-bold">
+                          {filter !== "cancelados" && !["entregue", "cancelado"].includes(o.status) && <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-choco-900 px-1.5 text-xs font-black text-white">{rank}º</span>}
+                          <span>{o.code} · {o.customer_name}</span>
+                        </span>
+                        <Badge className={STATUS_COLOR[o.status]}>{statusLabelFor(o.status, o.fulfillment)}</Badge>
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-choco-500">
+                        <span>{o.fulfillment === "entrega" ? `Entrega · ${o.zone_name ?? ""}` : "Retirada"}{o.window_label ? ` · ${o.window_label}` : ""}</span>
+                        {o.fulfillment === "entrega" && !["entregue", "cancelado"].includes(o.status) && (
+                          legKm !== null ? <span className="rounded-full bg-choco-100 px-2 py-0.5 font-semibold text-choco-700">{approx ? "~" : ""}{fmtKm(legKm)} da parada anterior</span>
+                          : located ? null
+                          : <span className="rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-800">{locating === o.id ? "localizando…" : "sem localização"}</span>
+                        )}
+                        <span>·</span>
+                        <span>{PAYMENT_LABEL[o.payment_method]}</span>
+                        <span className={clsx("ml-auto font-bold", o.payment_status === "pago" ? "text-emerald-700" : "text-amber-700")}>{brl(o.total)} {o.payment_status === "pago" ? "✓" : "pendente"}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </>
       )}
 
       {openId && <OrderDetail id={openId} onClose={() => open(null)} onChanged={load} siteUrl={settings?.site_url} pix={{ key: settings?.pix_key ?? "", name: settings?.pix_name ?? "" }} reviewTemplate={settings?.review_message ?? ""} />}
