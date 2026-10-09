@@ -80,8 +80,10 @@ Deno.serve(async (req) => {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return j({ error: "Não autenticado" }, 401);
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { db: { schema: "yasfood" } });
-    const { data: isAdmin } = await admin.from("admins").select("user_id").eq("user_id", user.id).maybeSingle();
+    // Lê o banco com o login da própria Yasmim (RLS + grants do schema yasfood valem pra "authenticated").
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { db: { schema: "yasfood" }, global: { headers: { Authorization: auth } } });
+    const { data: isAdmin, error: adminErr } = await admin.from("admins").select("user_id").eq("user_id", user.id).maybeSingle();
+    if (adminErr) return j({ error: `Não consegui conferir a permissão: ${adminErr.message}` }, 500);
     if (!isAdmin) return j({ error: "Só a administradora pode ler prints." }, 403);
 
     const body = await req.json().catch(() => null) as { images?: Img[]; hint?: string } | null;
@@ -93,12 +95,15 @@ Deno.serve(async (req) => {
     }
 
     // catálogo pra o modelo casar nomes exatos
-    const [{ data: products }, { data: zones }, { data: windows }, { data: settings }] = await Promise.all([
+    const [prodRes, zoneRes, winRes, setRes] = await Promise.all([
       admin.from("products").select("name, price, description").eq("active", true).order("sort_order"),
       admin.from("delivery_zones").select("name, fee").eq("active", true).order("sort_order"),
       admin.from("delivery_windows").select("label, start_time, end_time, weekdays, applies_to").eq("active", true).order("sort_order"),
       admin.from("settings").select("pickup_enabled, pickup_address, business_name").eq("id", 1).maybeSingle(),
     ]);
+    const dbErr = prodRes.error ?? zoneRes.error ?? winRes.error ?? setRes.error;
+    if (dbErr) return j({ error: `Não consegui ler o cardápio: ${dbErr.message}` }, 500);
+    const products = prodRes.data, zones = zoneRes.data, windows = winRes.data, settings = setRes.data;
     const hm = (t: string) => String(t).slice(0, 5);
     const wds = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
     const today = todayBR();
