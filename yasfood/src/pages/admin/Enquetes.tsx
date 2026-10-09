@@ -78,7 +78,7 @@ export default function Enquetes() {
         <h1 className="text-2xl font-black text-choco-900">Enquetes</h1>
         <Button onClick={() => setEditing({ ...empty, options: [{ label: "" }, { label: "" }] })}><Plus size={16} /> Nova enquete</Button>
       </div>
-      <p className="text-sm text-choco-600">A enquete ativa mais recente aparece no cardápio. Um voto por aparelho; o cliente pode trocar o voto. Use pra testar sabor novo, dia de entrega, tamanho…</p>
+      <p className="text-sm text-choco-600">Todas as enquetes ativas aparecem no cardápio, uma embaixo da outra. Um voto por aparelho; o cliente pode trocar o voto. Use pra testar sabor novo, dia de entrega, tamanho…</p>
 
       {polls === null ? <Spinner /> : polls.length === 0 ? <Empty>Nenhuma enquete ainda.</Empty> : (
         <div className="grid gap-3 md:grid-cols-2">

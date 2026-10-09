@@ -15,31 +15,42 @@ function voterKey() {
 }
 const votedKey = (pollId: string) => `dy_voted_${pollId}`;
 
-/** Enquete ativa mais recente. Um voto por aparelho; mostra resultado após votar. */
+/** Todas as enquetes ativas, uma embaixo da outra. Um voto por aparelho em cada. */
 export function PollCard() {
-  const toast = useToast();
-  const [poll, setPoll] = useState<Poll | null>(null);
+  const [polls, setPolls] = useState<Poll[]>([]);
   const [options, setOptions] = useState<PollOption[]>([]);
   const [results, setResults] = useState<PollResult[]>([]);
-  const [voted, setVoted] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const { data: p } = await supabase.from("polls").select("*").eq("active", true).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (!p) return;
-    const poll = p as Poll;
-    setPoll(poll);
-    try { setVoted(localStorage.getItem(votedKey(poll.id))); } catch { /* ignore */ }
+    const { data: p } = await supabase.from("polls").select("*").eq("active", true).order("created_at", { ascending: false });
+    const list = (p as Poll[]) ?? [];
+    setPolls(list);
+    if (!list.length) return;
+    const ids = list.map((x) => x.id);
     const [o, r] = await Promise.all([
-      supabase.from("poll_options").select("*").eq("poll_id", poll.id).order("sort_order"),
-      supabase.from("poll_results").select("*").eq("poll_id", poll.id).order("sort_order"),
+      supabase.from("poll_options").select("*").in("poll_id", ids).order("sort_order"),
+      supabase.from("poll_results").select("*").in("poll_id", ids).order("sort_order"),
     ]);
     setOptions((o.data as PollOption[]) ?? []);
     setResults((r.data as PollResult[]) ?? []);
   }, []);
   useEffect(() => { void load(); }, [load]);
 
-  if (!poll || options.length === 0) return null;
+  if (polls.length === 0) return null;
+  return (
+    <div className="space-y-4">
+      {polls.map((poll) => (
+        <SinglePoll key={poll.id} poll={poll} options={options.filter((o) => o.poll_id === poll.id)} results={results.filter((r) => r.poll_id === poll.id)} onVoted={load} />
+      ))}
+    </div>
+  );
+}
+
+function SinglePoll({ poll, options, results, onVoted }: { poll: Poll; options: PollOption[]; results: PollResult[]; onVoted: () => void }) {
+  const toast = useToast();
+  const [voted, setVoted] = useState<string | null>(() => { try { return localStorage.getItem(votedKey(poll.id)); } catch { return null; } });
+  const [busy, setBusy] = useState(false);
+  if (options.length === 0) return null;
   const total = results.reduce((a, r) => a + r.votes, 0);
 
   const vote = async (optionId: string) => {
@@ -50,7 +61,7 @@ export function PollCard() {
     try { localStorage.setItem(votedKey(poll.id), optionId); } catch { /* ignore */ }
     setVoted(optionId);
     toast("Voto registrado. Obrigada!");
-    void load();
+    onVoted();
   };
 
   return (
