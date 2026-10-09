@@ -61,7 +61,10 @@ export function resumo(orders: DashOrder[], customers: Customer[], tx: Transacti
   const tendencia = Array.from({ length: 6 }, (_, k) => {
     const m = format(subMonths(now, 5 - k), "yyyy-MM");
     const os = orders.filter((o) => ATIVO(o) && o.scheduled_date.startsWith(m));
-    return { m: format(parseISO(`${m}-01`), "MMM", { locale: ptBR }), mes: m, receita: os.reduce((a, o) => a + Number(o.total), 0), bolos: os.reduce((a, o) => a + bolosDe(o), 0), pedidos: os.length, meta: monthlyGoal || null, projecao: m === today.slice(0, 7) ? ritmo : null };
+    const receita = os.reduce((a, o) => a + Number(o.total), 0);
+    const atual = m === today.slice(0, 7);
+    // mês atual: o que falta pra projeção no ritmo vira um bloco "fantasma" em cima do realizado
+    return { m: format(parseISO(`${m}-01`), "MMM", { locale: ptBR }), mes: m, receita, bolos: os.reduce((a, o) => a + bolosDe(o), 0), pedidos: os.length, atual, projecao: atual ? ritmo : null, projecaoExtra: atual ? Math.max(0, ritmo - receita) : 0 };
   });
 
   // dia da semana (90 dias)
@@ -71,6 +74,8 @@ export function resumo(orders: DashOrder[], customers: Customer[], tx: Transacti
     const w = parseISO(o.scheduled_date).getDay();
     semanaDias[w].bolos += bolosDe(o); semanaDias[w].pedidos += 1;
   }
+
+  const melhorDia = semanaDias.reduce((b, x) => (x.bolos > b.bolos ? x : b), semanaDias[0]);
 
   // mix de produtos no mês
   const mixMap = new Map<string, { qtd: number; receita: number }>();
@@ -119,7 +124,7 @@ export function resumo(orders: DashOrder[], customers: Customer[], tx: Transacti
 
   return {
     hoje, semana, mes, pMeta, pTempo, ritmo, diasMes, diaHoje,
-    serieDias, tendencia, semanaDias, mix, pagamento, horarios, entrega, zonas,
+    serieDias, tendencia, semanaDias, melhorDia, mix, pagamento, horarios, entrega, zonas,
     topClientes, recorrentes, clientesComPedido,
     producao: { total: osHoje.reduce((a, o) => a + bolosDe(o), 0), prontos: prontos.reduce((a, o) => a + bolosDe(o), 0), emProducao, aguardando },
     entregas: { total: entregasHoje.length, feitas: entregasHoje.filter((o) => o.status === "entregue").length, retiradas: osHoje.length - entregasHoje.length, retiradasFeitas: entreguesHoje.length - entregasHoje.filter((o) => o.status === "entregue").length, naRua: osHoje.filter((o) => o.status === "saiu_entrega").length },

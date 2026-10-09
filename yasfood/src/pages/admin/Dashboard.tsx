@@ -6,7 +6,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, Star, ShoppingCart } from "lucide-react";
 import { clsx } from "clsx";
-import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, CartesianGrid, ComposedChart, LabelList, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { format, subMonths } from "date-fns";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
@@ -15,7 +15,7 @@ import { resumo, type DashOrder, type Resumo, CORES } from "@/lib/dash";
 import { prioritize, hasCoords, fmtKm } from "@/lib/route";
 import type { Availability, Customer, DeliveryWindow, DeliveryZone, Ingredient, Review, ShoppingItem, Transaction } from "@/lib/types";
 import { Card, Badge, Spinner, Empty, Stars, Modal, Input, Button, useToast } from "@/components/ui";
-import { Barra3D, BarraMeta, Degrades, Dica, Donut3D, MetaDia, kfmt } from "@/components/charts";
+import { Barra3D, BarraMeta, Degrades, Dica, Donut3D, Faixa, MetaDia, kfmt } from "@/components/charts";
 
 interface Dados {
   orders: DashOrder[];
@@ -109,11 +109,14 @@ export default function Dashboard() {
   const saud = agora.getHours() < 12 ? "Bom dia" : agora.getHours() < 18 ? "Boa tarde" : "Boa noite";
 
   const mixFatias = r.mix.map((m) => ({ nome: m.nome, valor: m.qtd, cor: m.cor, sub: brl(m.receita) }));
-  const pagFatias = r.pagamento.map(([k, v], i) => ({ nome: PAYMENT_LABEL[k], valor: v, cor: CORES[i % CORES.length] }));
+  const diasComVenda = r.serieDias.filter((x) => (x.bolos ?? 0) > 0).length;
+  const maxTend = Math.max(1, ...r.tendencia.map((t) => Math.max(t.receita, t.projecao ?? 0)));
+  const metaNaEscala = meta > 0 && meta <= maxTend * 2.5;
   const zonaFatias = r.zonas.map(([k, v], i) => ({ nome: k, valor: v, cor: CORES[(i + 3) % CORES.length] }));
 
   return (
     <div className="space-y-4">
+      <Degrades />
       {/* topo: saudação, data e meta do mês */}
       <div className="grid gap-3 lg:grid-cols-[auto_1fr] lg:items-center">
         <div>
@@ -154,13 +157,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* linha 1: mix 3D, resultado, vendas por dia */}
+      {/* linha 1: resultado e vendas por dia */}
       <div className="grid gap-3 lg:grid-cols-3">
-        <Card className="min-h-[300px]">
-          <H sub="bolos vendidos">Mix de produtos · mês</H>
-          <div className="h-[260px]"><Donut3D fatias={mixFatias} vazio="Sem vendas no mês ainda." formato={(f) => `${f.valor} un`} /></div>
-        </Card>
-
         <Card>
           <H>Resultado · dia, semana e mês</H>
           <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,auto)] items-center text-sm">
@@ -185,58 +183,187 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card>
-          <H sub="barra = receita · linha = bolos">Vendas por dia · mês</H>
+        <Card className="lg:col-span-2">
+          <H sub="claro = encomendado pros próximos dias">Vendas por dia · mês</H>
           <div className="h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={r.serieDias} margin={{ top: 14, right: 6, left: -14, bottom: 0 }}>
-                <Degrades />
+              <ComposedChart data={r.serieDias} margin={{ top: 18, right: 6, left: -16, bottom: 0 }} barCategoryGap="22%">
                 <CartesianGrid vertical={false} stroke="#f3e7d8" />
                 <XAxis dataKey="d" tick={{ fontSize: 10, fill: "#8c5a2b" }} interval={2} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="r" tick={{ fontSize: 10, fill: "#8c5a2b" }} axisLine={false} tickLine={false} tickFormatter={kfmt} />
-                <YAxis yAxisId="b" orientation="right" hide />
-                <Tooltip content={<Dica dinheiro={["Receita"]} />} />
-                <Bar yAxisId="r" dataKey="receita" name="Receita" shape={<Barra3D />} isAnimationActive={false} />
-                <Line yAxisId="b" dataKey="bolos" name="Bolos" stroke="#d98a3a" strokeWidth={2.5} dot={{ r: 2.5, fill: "#d98a3a" }} filter="url(#brilho)" />
+                <YAxis tick={{ fontSize: 10, fill: "#8c5a2b" }} axisLine={false} tickLine={false} tickFormatter={kfmt} />
+                <Tooltip content={<Dica dinheiro={["Receita"]} />} cursor={{ fill: "#fdf2f5" }} />
+                <ReferenceLine x={String(r.diaHoje)} stroke="#d98a3a" strokeDasharray="3 3" label={{ value: "hoje", position: "top", fontSize: 10, fill: "#b86f26" }} />
+                <Bar dataKey="receita" name="Receita" maxBarSize={26} isAnimationActive={false} shape={(p: { payload?: { futuro?: boolean } }) => <Barra3D {...p} tom={p.payload?.futuro ? "cinza" : "vinho"} />}>
+                  {diasComVenda <= 12 && <LabelList dataKey="bolos" position="top" fontSize={10} fill="#8c5a2b" formatter={(v: number | null) => (v ? `${v}` : "")} />}
+                </Bar>
               </ComposedChart>
             </ResponsiveContainer>
           </div>
+          <div className="text-center text-[10px] text-choco-400">número em cima da barra = bolos do dia</div>
         </Card>
       </div>
 
-      {/* linha 2: tendência, dia da semana, horários/pagamento */}
+      {/* linha 2: mix 3D, tendência, dia da semana */}
       <div className="grid gap-3 lg:grid-cols-3">
+        <Card className="min-h-[300px]">
+          <H sub="bolos vendidos">Mix de produtos · mês</H>
+          <div className="h-[260px]"><Donut3D fatias={mixFatias} vazio="Sem vendas no mês ainda." formato={(f) => `${f.valor} un`} /></div>
+        </Card>
+
         <Card>
-          <H sub={meta > 0 ? "linha tracejada = meta · ponto = projeção" : "ponto = projeção do mês"}>Tendência · 6 meses</H>
+          <H sub={meta > 0 ? (metaNaEscala ? "tracejado = meta · claro = projeção no ritmo" : `meta ${brl(meta)} fora da escala · claro = projeção`) : "claro = projeção do mês no ritmo"}>Tendência · 6 meses</H>
           <div className="h-[230px]">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={r.tendencia} margin={{ top: 14, right: 6, left: -14, bottom: 0 }}>
-                <Degrades />
+              <ComposedChart data={r.tendencia} margin={{ top: 18, right: 6, left: -16, bottom: 0 }} barCategoryGap="28%">
                 <CartesianGrid vertical={false} stroke="#f3e7d8" />
                 <XAxis dataKey="m" tick={{ fontSize: 11, fill: "#8c5a2b" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: "#8c5a2b" }} axisLine={false} tickLine={false} tickFormatter={kfmt} />
-                <Tooltip content={<Dica dinheiro={["Receita", "Meta", "Projeção"]} />} />
-                <Area dataKey="receita" name="Receita" stroke="none" fill="url(#areaVinho)" isAnimationActive={false} />
-                <Bar dataKey="receita" name="Receita" shape={<Barra3D />} isAnimationActive={false} />
-                {meta > 0 && <Line dataKey="meta" name="Meta" stroke="#b86f26" strokeDasharray="5 4" strokeWidth={1.5} dot={false} />}
-                <Line dataKey="projecao" name="Projeção" stroke="#dc3a5c" strokeWidth={0} dot={{ r: 5, fill: "#dc3a5c", stroke: "#fff", strokeWidth: 2 }} connectNulls={false} />
+                <Tooltip content={<Dica dinheiro={["Receita", "Projeção"]} />} cursor={{ fill: "#fdf2f5" }} />
+                {meta > 0 && metaNaEscala && <ReferenceLine y={meta} ifOverflow="extendDomain" stroke="#b86f26" strokeDasharray="5 4" label={{ value: `meta ${kfmt(meta)}`, position: "insideTopRight", fontSize: 10, fill: "#b86f26" }} />}
+                <Bar dataKey="receita" name="Receita" stackId="t" maxBarSize={34} isAnimationActive={false} shape={<Barra3D />}>
+                  <LabelList dataKey="receita" position="insideTop" fontSize={10} fill="#fff" formatter={(v: number) => (v > 0 ? kfmt(v) : "")} />
+                </Bar>
+                <Bar dataKey="projecaoExtra" name="Projeção" stackId="t" maxBarSize={34} isAnimationActive={false} shape={<Barra3D tom="cinza" />}>
+                  <LabelList dataKey="projecao" position="top" fontSize={10} fill="#b86f26" formatter={(v: number | null) => (v ? `~${kfmt(v)}` : "")} />
+                </Bar>
               </ComposedChart>
             </ResponsiveContainer>
           </div>
         </Card>
 
         <Card>
-          <H sub="últimos 90 dias">Bolos por dia da semana</H>
+          <H sub={r.melhorDia.bolos > 0 ? `melhor dia: ${r.melhorDia.n} · últimos 90 dias` : "últimos 90 dias"}>Bolos por dia da semana</H>
           <div className="h-[230px]">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={r.semanaDias} margin={{ top: 14, right: 6, left: -22, bottom: 0 }}>
-                <Degrades />
+              <ComposedChart data={r.semanaDias} margin={{ top: 18, right: 6, left: -22, bottom: 0 }} barCategoryGap="26%">
                 <CartesianGrid vertical={false} stroke="#f3e7d8" />
                 <XAxis dataKey="n" tick={{ fontSize: 11, fill: "#8c5a2b" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: "#8c5a2b" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip content={<Dica />} />
-                <Bar dataKey="bolos" name="Bolos" shape={<Barra3D tom="caramelo" />} isAnimationActive={false} />
-                <Line dataKey="pedidos" name="Pedidos" stroke="#cd2345" strokeWidth={2} dot={{ r: 2.5, fill: "#cd2345" }} />
+                <Tooltip content={<Dica />} cursor={{ fill: "#fdf2f5" }} />
+                <Bar dataKey="bolos" name="Bolos" maxBarSize={34} isAnimationActive={false} shape={(p: { payload?: { i?: number } }) => <Barra3D {...p} tom={p.payload?.i === r.melhorDia.i && r.melhorDia.bolos > 0 ? "vinho" : "caramelo"} />}>
+                  <LabelList dataKey="bolos" position="top" fontSize={11} fill="#5a2a1a" formatter={(v: number) => (v > 0 ? `${v}` : "")} />
+                </Bar>
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+      </div>
+
+      {/* linha 3: como compra, pedidos de hoje, agenda */}
+      <div className="grid gap-3 lg:grid-cols-3">
+        <Card>
+          <H>Como o cliente compra · mês</H>
+          <div className="space-y-4">
+            <Faixa titulo="Pagamento" itens={r.pagamento.map(([k, v]) => [PAYMENT_LABEL[k], v])} />
+            <Faixa titulo="Entrega ou retirada" itens={r.entrega.map(([k, v]) => [k === "entrega" ? "Entrega" : "Retirada", v])} cores={["#8c5a2b", "#d98a3a"]} />
+            <Faixa titulo="Horário" itens={r.horarios.slice(0, 4)} cores={["#dc3a5c", "#e46683", "#ef9bb0", "#f7c6d2"]} />
+          </div>
+        </Card>
+        <Card title="Pedidos de hoje" action={<Link to="/admin/pedidos" className="text-sm font-semibold text-vinho-600">ver todos</Link>}>
+          {hojeLista.length === 0 ? <Empty>Nenhum pedido pra hoje.</Empty> : (
+            <ul className="divide-y divide-choco-100">
+              {hojeLista.map(({ order: o, rank, legKm, approx }) => (
+                <li key={o.id} className="flex items-center gap-2 py-2 text-sm">
+                  {o.status !== "entregue" && <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-choco-900 px-1.5 text-xs font-black text-white">{rank}º</span>}
+                  <Link to={`/admin/pedidos?abrir=${o.id}`} className="min-w-0 truncate font-semibold hover:text-vinho-600">{o.code} · {o.customer_name}</Link>
+                  <span className="hidden whitespace-nowrap text-xs text-choco-500 sm:inline">{o.fulfillment === "retirada" ? "retirada" : o.window_label ?? ""}{legKm !== null ? ` · ${approx ? "~" : ""}${fmtKm(legKm)}` : ""}</span>
+                  <Badge className={clsx("ml-auto shrink-0", STATUS_COLOR[o.status])}>{statusLabelFor(o.status, o.fulfillment)}</Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        <Card title="Agenda dos próximos 7 dias" action={<Link to="/admin/agenda" className="text-sm font-semibold text-vinho-600">gerenciar</Link>}>
+          {d.availability.length === 0 ? <Empty>Agenda fechada. Abra dias na aba Agenda pra receber pedidos.</Empty> : (
+            <ul className="space-y-1.5">
+              {d.availability.map((a) => (
+                <li key={a.day} className="flex items-center gap-3 text-sm">
+                  <span className="w-28 capitalize">{dayLabel(a.day)}</span>
+                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-choco-100"><div className={clsx("h-full", a.remaining === 0 ? "bg-red-500" : "bg-gradient-to-r from-vinho-400 to-vinho-600")} style={{ width: `${a.max_units ? Math.min(100, (a.booked_units / a.max_units) * 100) : 0}%` }} /></div>
+                  <span className="w-14 text-right text-choco-600">{a.booked_units}/{a.max_units}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+      </div>
+
+      {/* linha 4: clientes, regiões, avaliações */}
+      <div className="grid gap-3 lg:grid-cols-3">
+        <Card title="Clientes" action={<Link to="/admin/clientes" className="text-sm font-semibold text-vinho-600">ver todos</Link>}>
+          <div className="mb-3 grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl bg-choco-50 p-2"><b className="block text-xl">{d.customers.filter((c) => c.kind === "cliente").length}</b><span className="text-[10px] text-choco-500">clientes</span></div>
+            <div className="rounded-xl bg-choco-50 p-2"><b className="block text-xl text-vinho-700">{r.clientesComPedido ? Math.round((r.recorrentes / r.clientesComPedido) * 100) : 0}%</b><span className="text-[10px] text-choco-500">voltaram a comprar</span></div>
+            <div className="rounded-xl bg-choco-50 p-2"><b className="block text-xl">{d.customers.filter((c) => c.kind === "lead").length}</b><span className="text-[10px] text-choco-500">leads</span></div>
+          </div>
+          <div className="mb-1 text-[10px] uppercase tracking-wide text-choco-400">Top 5 · 6 meses</div>
+          {r.topClientes.length === 0 ? <div className="text-xs text-choco-500">Ainda sem pedidos.</div> : (
+            <ol className="space-y-1 text-sm">
+              {r.topClientes.map((c, i) => (
+                <li key={c.nome + i} className="flex items-center gap-2"><span className="w-4 text-xs font-bold text-choco-400">{i + 1}</span><span className="min-w-0 flex-1 truncate">{c.nome}</span><span className="text-xs text-choco-500">{c.bolos} bolo(s)</span><b className="whitespace-nowrap">{brl(c.gasto)}</b></li>
+              ))}
+            </ol>
+          )}
+        </Card>
+        <Card>
+          <H sub="pedidos no mês">Onde entregamos</H>
+          <div className="h-[230px]"><Donut3D fatias={zonaFatias} vazio="Sem pedidos no mês." formato={(f) => `${f.valor}`} legendaEmbaixo /></div>
+        </Card>
+        <Card title={<span className="flex items-center gap-2">Avaliações {d.reviews.length > 0 && <span className="text-sm font-medium text-choco-500">média {avg.toFixed(1)} · {d.reviews.length} avaliação(ões)</span>}</span>} action={<Link to="/admin/avaliacoes" className="text-sm font-semibold text-vinho-600">ver todas</Link>}>
+          {d.reviews.length === 0 ? <Empty>Ainda sem avaliações.</Empty> : (
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {d.reviews.slice(0, 4).map((rv) => (
+                <li key={rv.id} className="rounded-xl bg-choco-50 p-2 text-sm">
+                  <div className="flex items-center justify-between"><b>{rv.customer_name}</b><Stars value={rv.rating} size={14} /></div>
+                  {rv.comment && <p className="mt-1 line-clamp-2 text-choco-700">“{rv.comment}”</p>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
+      <div className="text-center text-[10px] text-choco-400">número em cima da barra = bolos do dia</div>
+        </Card>
+      </div>
+
+      {/* linha 2: tendência, dia da semana, como compra */}
+      <div className="grid gap-3 lg:grid-cols-3">
+        <Card>
+          <H sub={meta > 0 ? (metaNaEscala ? "tracejado = meta · claro = projeção no ritmo" : `meta ${brl(meta)} fora da escala · claro = projeção`) : "claro = projeção do mês no ritmo"}>Tendência · 6 meses</H>
+          <div className="h-[230px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={r.tendencia} margin={{ top: 18, right: 6, left: -16, bottom: 0 }} barCategoryGap="28%">
+                <CartesianGrid vertical={false} stroke="#f3e7d8" />
+                <XAxis dataKey="m" tick={{ fontSize: 11, fill: "#8c5a2b" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: "#8c5a2b" }} axisLine={false} tickLine={false} tickFormatter={kfmt} />
+                <Tooltip content={<Dica dinheiro={["Receita", "Projeção"]} />} cursor={{ fill: "#fdf2f5" }} />
+                {meta > 0 && metaNaEscala && <ReferenceLine y={meta} ifOverflow="extendDomain" stroke="#b86f26" strokeDasharray="5 4" label={{ value: `meta ${kfmt(meta)}`, position: "insideTopRight", fontSize: 10, fill: "#b86f26" }} />}
+                <Bar dataKey="receita" name="Receita" stackId="t" maxBarSize={34} isAnimationActive={false} shape={<Barra3D />}>
+                  <LabelList dataKey="receita" position="insideTop" fontSize={10} fill="#fff" formatter={(v: number) => (v > 0 ? kfmt(v) : "")} />
+                </Bar>
+                <Bar dataKey="projecaoExtra" name="Projeção" stackId="t" maxBarSize={34} isAnimationActive={false} shape={<Barra3D tom="cinza" />}>
+                  <LabelList dataKey="projecao" position="top" fontSize={10} fill="#b86f26" formatter={(v: number | null) => (v ? `~${kfmt(v)}` : "")} />
+                </Bar>
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card>
+          <H sub={r.melhorDia.bolos > 0 ? `melhor dia: ${r.melhorDia.n} · últimos 90 dias` : "últimos 90 dias"}>Bolos por dia da semana</H>
+          <div className="h-[230px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={r.semanaDias} margin={{ top: 18, right: 6, left: -22, bottom: 0 }} barCategoryGap="26%">
+                <CartesianGrid vertical={false} stroke="#f3e7d8" />
+                <XAxis dataKey="n" tick={{ fontSize: 11, fill: "#8c5a2b" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: "#8c5a2b" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip content={<Dica />} cursor={{ fill: "#fdf2f5" }} />
+                <Bar dataKey="bolos" name="Bolos" maxBarSize={34} isAnimationActive={false} shape={(p: { payload?: { i?: number } }) => <Barra3D {...p} tom={p.payload?.i === r.melhorDia.i && r.melhorDia.bolos > 0 ? "vinho" : "caramelo"} />}>
+                  <LabelList dataKey="bolos" position="top" fontSize={11} fill="#5a2a1a" formatter={(v: number) => (v > 0 ? `${v}` : "")} />
+                </Bar>
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -244,18 +371,10 @@ export default function Dashboard() {
 
         <Card>
           <H>Como o cliente compra · mês</H>
-          <div className="grid gap-3">
-            <div className="h-[200px]"><Donut3D fatias={pagFatias} vazio="Sem pedidos no mês." formato={(f) => `${f.valor} ped.`} legendaEmbaixo /></div>
-            <div>
-              <div className="mb-1 text-[10px] uppercase tracking-wide text-choco-400">Horários</div>
-              <div className="space-y-1">
-                {r.horarios.slice(0, 4).map(([k, v]) => {
-                  const max = r.horarios[0]?.[1] ?? 1;
-                  return <div key={k} className="grid grid-cols-[90px_1fr_28px] items-center gap-2 text-xs"><span className="truncate text-choco-700">{k}</span><div className="h-3 overflow-hidden rounded bg-choco-100"><div className="h-full rounded bg-gradient-to-r from-choco-300 to-vinho-500" style={{ width: `${(v / max) * 100}%` }} /></div><b className="text-right">{v}</b></div>;
-                })}
-                {r.horarios.length === 0 && <div className="text-xs text-choco-500">Sem pedidos no mês.</div>}
-              </div>
-            </div>
+          <div className="space-y-4">
+            <Faixa titulo="Pagamento" itens={r.pagamento.map(([k, v]) => [PAYMENT_LABEL[k], v])} />
+            <Faixa titulo="Entrega ou retirada" itens={r.entrega.map(([k, v]) => [k === "entrega" ? "Entrega" : "Retirada", v])} cores={["#8c5a2b", "#d98a3a"]} />
+            <Faixa titulo="Horário" itens={r.horarios.slice(0, 4)} cores={["#dc3a5c", "#e46683", "#ef9bb0", "#f7c6d2"]} />
           </div>
         </Card>
       </div>

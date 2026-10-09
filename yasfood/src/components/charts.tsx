@@ -24,16 +24,16 @@ export function Barra3D(props: { x?: number; y?: number; width?: number; height?
   );
 }
 
-/** Degradês usados pelas barras; colocar uma vez dentro de cada gráfico. */
+/** Degradês usados pelas barras. Colocar UMA vez na página (fora dos gráficos): url(#id) resolve no documento inteiro. */
 export function Degrades() {
   return (
-    <defs>
+    <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true"><defs>
       <linearGradient id="barVinho" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#e46683" /><stop offset="100%" stopColor="#a81b38" /></linearGradient>
       <linearGradient id="barCaramelo" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#e6a35a" /><stop offset="100%" stopColor="#b86f26" /></linearGradient>
       <linearGradient id="barCinza" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#e6ccae" /><stop offset="100%" stopColor="#d4a97c" /></linearGradient>
       <linearGradient id="areaVinho" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#dc3a5c" stopOpacity={0.35} /><stop offset="100%" stopColor="#dc3a5c" stopOpacity={0} /></linearGradient>
       <filter id="brilho" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
-    </defs>
+    </defs></svg>
   );
 }
 
@@ -85,6 +85,28 @@ export function MetaDia({ titulo, tom, p, big, de, itens }: { titulo: string; to
         <div className="flex shrink-0 gap-3 text-right">{itens.map(([l, v]) => <div key={l}><div className="whitespace-nowrap text-[10px] text-choco-500">{l}</div><b className="whitespace-nowrap text-sm sm:text-base">{v}</b></div>)}</div>
       </div>
       <div className="mt-3 h-3 overflow-hidden rounded-full bg-choco-100"><div className={clsx("h-full rounded-full transition-all duration-700", bar)} style={{ width: `${Math.min(100, p)}%` }} /></div>
+    </div>
+  );
+}
+
+/* --------------------------- faixa 100% segmentada --------------------------- */
+export function Faixa({ titulo, itens, cores }: { titulo: string; itens: [string, number][]; cores?: string[] }) {
+  const total = itens.reduce((a, [, v]) => a + v, 0);
+  const pal = cores ?? ["#cd2345", "#e86f8d", "#d98a3a", "#8c5a2b", "#f08ea6", "#b86f26"];
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide text-choco-400"><span>{titulo}</span><span>{total} pedido(s)</span></div>
+      {total === 0 ? <div className="h-5 rounded-lg bg-choco-100" /> : (
+        <div className="flex h-6 w-full overflow-hidden rounded-lg">
+          {itens.map(([k, v], i) => {
+            const p = (v / total) * 100;
+            return <div key={k} className="flex items-center justify-center overflow-hidden whitespace-nowrap text-[10px] font-bold text-white" style={{ width: `${p}%`, background: `linear-gradient(180deg, ${pal[i % pal.length]}, ${pal[i % pal.length]}cc)` }} title={`${k}: ${v} (${Math.round(p)}%)`}>{p >= 18 ? `${Math.round(p)}%` : ""}</div>;
+          })}
+        </div>
+      )}
+      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-choco-700">
+        {itens.map(([k, v], i) => <span key={k} className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: pal[i % pal.length] }} />{k} <b>{v}</b></span>)}
+      </div>
     </div>
   );
 }
