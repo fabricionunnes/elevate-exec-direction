@@ -2,7 +2,7 @@
 // (dia/semana/mês), gráficos em 3D (mix de produtos, vendas por dia, tendência,
 // dia da semana), clientes, pedidos de hoje na ordem de prioridade, agenda,
 // avaliações e alertas. Atualiza sozinho quando um pedido muda.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, Star, ShoppingCart } from "lucide-react";
 import { clsx } from "clsx";
@@ -34,6 +34,8 @@ const H = ({ children, sub }: { children: React.ReactNode; sub?: string }) => (
   <div className="mb-2 text-[10px] font-bold uppercase tracking-[1.5px] text-choco-500">{children}{sub && <span className="ml-2 font-medium normal-case tracking-normal text-choco-400">{sub}</span>}</div>
 );
 const n0 = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
+/** Reais sem centavos quando o valor é redondo: "R$ 315" em vez de "R$ 315,00". */
+const brlC = (v: number) => (Math.abs(v - Math.round(v)) < 0.005 ? brl(v).replace(/,00$/, "") : brl(v));
 
 export default function Dashboard() {
   const { settings, reload: reloadSettings } = useSettings(true);
@@ -161,20 +163,25 @@ export default function Dashboard() {
 
         <Card>
           <H>Resultado · dia, semana e mês</H>
-          <table className="w-full table-fixed border-collapse text-sm">
-            <thead><tr className="text-[10px] uppercase tracking-wide text-choco-400"><th className="w-[28%] py-1 text-left font-medium" /><th className="py-1 text-right font-medium">Hoje</th><th className="py-1 text-right font-medium">Semana</th><th className="py-1 text-right font-medium">Mês</th></tr></thead>
-            <tbody className="[&_td]:border-b [&_td]:border-choco-100 [&_td]:py-1.5 [&_td]:pl-1 [&_td]:text-right [&_td]:text-[13px] [&_td]:font-bold [&_td]:tabular-nums [&_th]:border-b [&_th]:border-choco-100 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-medium [&_th]:text-choco-700">
-              <tr><th>Pedidos</th><td>{r.hoje.pedidos}</td><td>{r.semana.pedidos}</td><td>{r.mes.pedidos}</td></tr>
-              <tr><th>Bolos</th><td>{r.hoje.bolos}</td><td>{r.semana.bolos}</td><td>{r.mes.bolos}</td></tr>
-              <tr><th>Receita</th><td>{brl(r.hoje.receita)}</td><td>{brl(r.semana.receita)}</td><td className="text-vinho-700">{brl(r.mes.receita)}</td></tr>
-              <tr><th>Recebido</th><td className="text-emerald-700">{brl(r.hoje.recebido)}</td><td className="text-emerald-700">{brl(r.semana.recebido)}</td><td className="text-emerald-700">{brl(r.mes.recebido)}</td></tr>
-              <tr><th>Ticket médio</th><td>{brl(r.hoje.ticket)}</td><td>{brl(r.semana.ticket)}</td><td>{brl(r.mes.ticket)}</td></tr>
-              <tr><th>Clientes novos</th><td>{r.hoje.clientesNovos}</td><td>{r.semana.clientesNovos}</td><td>{r.mes.clientesNovos}</td></tr>
-            </tbody>
-          </table>
+          <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,auto)] items-center text-sm">
+            <span /><span className="text-right text-[10px] uppercase tracking-wide text-choco-400">Hoje</span><span className="text-right text-[10px] uppercase tracking-wide text-choco-400">Semana</span><span className="text-right text-[10px] uppercase tracking-wide text-choco-400">Mês</span>
+            {([
+              ["Pedidos", [r.hoje.pedidos, r.semana.pedidos, r.mes.pedidos], ""],
+              ["Bolos", [r.hoje.bolos, r.semana.bolos, r.mes.bolos], ""],
+              ["Receita", [brlC(r.hoje.receita), brlC(r.semana.receita), brlC(r.mes.receita)], "text-vinho-700"],
+              ["Recebido", [brlC(r.hoje.recebido), brlC(r.semana.recebido), brlC(r.mes.recebido)], "text-emerald-700"],
+              ["Ticket médio", [brlC(r.hoje.ticket), brlC(r.semana.ticket), brlC(r.mes.ticket)], ""],
+              ["Clientes novos", [r.hoje.clientesNovos, r.semana.clientesNovos, r.mes.clientesNovos], ""],
+            ] as [string, (string | number)[], string][]).map(([l, vs, cor]) => (
+              <Fragment key={l}>
+                <span className="truncate border-t border-choco-100 py-2 text-choco-700">{l}</span>
+                {vs.map((v, i) => <b key={i} className={clsx("whitespace-nowrap border-t border-choco-100 py-2 pl-3 text-right tabular-nums", i === 2 ? "text-[15px]" : "text-[13px] text-choco-800", i === 2 && cor)}>{v}</b>)}
+              </Fragment>
+            ))}
+          </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            <div className="rounded-xl bg-choco-50 p-2"><div className="text-[10px] text-choco-500">Lucro do mês</div><b className={clsx("text-lg", lucroMes >= 0 ? "text-emerald-700" : "text-red-700")}>{brl(lucroMes)}</b><div className="text-[10px] text-choco-500">despesas {brl(r.despesaMes)}</div></div>
-            <div className="rounded-xl bg-choco-50 p-2"><div className="text-[10px] text-choco-500">A receber no mês</div><b className={clsx("text-lg", r.caixa.aReceberMes > 0 ? "text-amber-700" : "text-choco-900")}>{brl(r.caixa.aReceberMes)}</b><div className="text-[10px] text-choco-500">pedidos sem pagamento</div></div>
+            <div className="rounded-xl bg-choco-50 p-2"><div className="text-[10px] text-choco-500">Lucro do mês</div><b className={clsx("text-lg", lucroMes >= 0 ? "text-emerald-700" : "text-red-700")}>{brlC(lucroMes)}</b><div className="text-[10px] text-choco-500">despesas {brl(r.despesaMes)}</div></div>
+            <div className="rounded-xl bg-choco-50 p-2"><div className="text-[10px] text-choco-500">A receber no mês</div><b className={clsx("text-lg", r.caixa.aReceberMes > 0 ? "text-amber-700" : "text-choco-900")}>{brlC(r.caixa.aReceberMes)}</b><div className="text-[10px] text-choco-500">pedidos sem pagamento</div></div>
           </div>
         </Card>
 
@@ -238,7 +245,7 @@ export default function Dashboard() {
         <Card>
           <H>Como o cliente compra · mês</H>
           <div className="grid gap-3">
-            <div className="h-[110px]"><Donut3D fatias={pagFatias} vazio="Sem pedidos no mês." formato={(f) => `${f.valor} ped.`} /></div>
+            <div className="h-[200px]"><Donut3D fatias={pagFatias} vazio="Sem pedidos no mês." formato={(f) => `${f.valor} ped.`} legendaEmbaixo /></div>
             <div>
               <div className="mb-1 text-[10px] uppercase tracking-wide text-choco-400">Horários</div>
               <div className="space-y-1">
@@ -305,7 +312,7 @@ export default function Dashboard() {
       <div className="grid gap-3 lg:grid-cols-3">
         <Card>
           <H sub="pedidos no mês">Onde entregamos</H>
-          <div className="h-[170px]"><Donut3D fatias={zonaFatias} vazio="Sem pedidos no mês." formato={(f) => `${f.valor}`} /></div>
+          <div className="h-[230px]"><Donut3D fatias={zonaFatias} vazio="Sem pedidos no mês." formato={(f) => `${f.valor}`} legendaEmbaixo /></div>
         </Card>
         <Card className="lg:col-span-2" title={<span className="flex items-center gap-2">Avaliações {d.reviews.length > 0 && <span className="text-sm font-medium text-choco-500">média {avg.toFixed(1)} · {d.reviews.length} avaliação(ões)</span>}</span>} action={<Link to="/admin/avaliacoes" className="text-sm font-semibold text-vinho-600">ver todas</Link>}>
           {d.reviews.length === 0 ? <Empty>Ainda sem avaliações.</Empty> : (

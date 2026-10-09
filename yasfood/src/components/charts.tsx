@@ -120,7 +120,7 @@ function DonutSvg({ fatias, ativa, onAtiva }: { fatias: Fatia[]; ativa: number |
   );
 }
 
-export function Donut3D({ fatias, vazio, formato }: { fatias: Fatia[]; vazio: string; formato?: (f: Fatia) => string }) {
+export function Donut3D({ fatias, vazio, formato, legendaEmbaixo }: { fatias: Fatia[]; vazio: string; formato?: (f: Fatia) => string; legendaEmbaixo?: boolean }) {
   const [ativa, setAtiva] = useState<number | null>(null);
   const [webgl] = useState(temWebGL);
   const [parado] = useState(semMovimento);
@@ -128,11 +128,11 @@ export function Donut3D({ fatias, vazio, formato }: { fatias: Fatia[]; vazio: st
   if (!fatias.length || total <= 0) return <div className="flex h-full items-center justify-center text-sm text-choco-500">{vazio}</div>;
   const svg = <DonutSvg fatias={fatias} ativa={ativa} onAtiva={setAtiva} />;
   return (
-    <div className="flex h-full min-h-[220px] flex-col gap-2 sm:flex-row sm:items-center">
-      <div className="relative h-52 min-w-0 flex-1 sm:h-full">
+    <div className={clsx("flex h-full min-h-0 flex-col gap-2", legendaEmbaixo ? "" : "sm:flex-row sm:items-center")}>
+      <div className={clsx("relative min-h-0 min-w-0 flex-1", legendaEmbaixo ? "" : "h-52 sm:h-full")}>
         {webgl ? <Guarda reserva={svg}><Suspense fallback={svg}><Donut3DScene fatias={fatias} ativa={ativa} parado={parado} onAtiva={setAtiva} /></Suspense></Guarda> : svg}
       </div>
-      <ul className="w-full space-y-1 sm:w-52">
+      <ul className={clsx("w-full shrink-0 space-y-1", legendaEmbaixo ? "" : "sm:w-52")}>
         {fatias.map((f, i) => (
           <li key={f.nome} onMouseEnter={() => setAtiva(i)} onMouseLeave={() => setAtiva(null)} onClick={() => setAtiva(ativa === i ? null : i)}
             className={clsx("flex cursor-default items-center gap-2 rounded-lg px-2 py-1 text-xs transition", ativa === i ? "bg-choco-50 ring-1 ring-choco-200" : "")}>
