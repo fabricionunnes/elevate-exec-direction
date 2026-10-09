@@ -15,6 +15,8 @@ export default function CardapioAdmin() {
   const [editing, setEditing] = useState<Partial<Product> | null>(null);
   const [recipeFor, setRecipeFor] = useState<Product | null>(null);
   const [busy, setBusy] = useState(false);
+  const [coverDims, setCoverDims] = useState<{ w: number; h: number } | null>(null);
+  const IDEAL = { w: 1200, h: 900 };
 
   const load = useCallback(async () => {
     const [p, c] = await Promise.all([
@@ -93,8 +95,16 @@ export default function CardapioAdmin() {
         <Modal open onClose={() => setEditing(null)} title={editing.id ? "Editar produto" : "Novo produto"}>
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              {editing.image_url ? <img src={editing.image_url} alt="" className="h-24 w-24 rounded-xl object-cover" /> : <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-rosa-100 text-4xl">🎂</div>}
-              <label className="cursor-pointer"><span className="inline-flex items-center gap-2 rounded-xl border border-choco-200 bg-white px-3 py-2 text-sm font-semibold"><ImagePlus size={16} /> {busy ? "Enviando…" : "Capa (1 foto)"}</span><input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} /></label>
+              {editing.image_url ? <img src={editing.image_url} alt="" className="h-24 w-32 rounded-xl object-cover" onLoad={(e) => setCoverDims({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} /> : <div className="flex h-24 w-32 flex-col items-center justify-center rounded-xl border-2 border-dashed border-rosa-300 bg-rosa-100 text-[11px] text-choco-600"><span className="text-2xl">🎂</span>{IDEAL.w} × {IDEAL.h} px</div>}
+              <div className="space-y-1">
+                <label className="cursor-pointer"><span className="inline-flex items-center gap-2 rounded-xl border border-choco-200 bg-white px-3 py-2 text-sm font-semibold"><ImagePlus size={16} /> {busy ? "Enviando…" : "Capa (1 foto)"}</span><input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} /></label>
+                <p className="text-xs text-choco-500">Tamanho ideal: <b>{IDEAL.w} × {IDEAL.h} px</b> (proporção 4:3, horizontal).</p>
+                {coverDims && editing.image_url && (
+                  <p className={`text-xs ${Math.abs(coverDims.w / coverDims.h - 4 / 3) < 0.08 ? "text-emerald-700" : "text-amber-700"}`}>
+                    Capa atual: {coverDims.w} × {coverDims.h} px{Math.abs(coverDims.w / coverDims.h - 4 / 3) < 0.08 ? " · proporção certa" : " · proporção diferente de 4:3, vai cortar nas bordas"}
+                  </p>
+                )}
+              </div>
             </div>
             <Input label="Nome" value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
             <Textarea label="Descrição" value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
@@ -251,7 +261,7 @@ function MediaManager({ productId, cover, onCover }: { productId: string; cover:
         <h4 className="text-sm font-bold">Galeria: várias fotos e vídeos</h4>
         <label className="cursor-pointer"><span className="inline-flex items-center gap-2 rounded-xl bg-vinho-600 px-3 py-1.5 text-xs font-semibold text-white"><Film size={14} /> {busy ? "Enviando…" : "Adicionar fotos / vídeos"}</span><input type="file" multiple accept="image/*,video/*" className="hidden" onChange={(e) => { void upload(e.target.files); e.target.value = ""; }} /></label>
       </div>
-      {items.length === 0 ? <p className="text-xs text-choco-500">Clique em "Adicionar" e selecione várias fotos e vídeos de uma vez (até 50 MB cada, vídeo em MP4). Elas aparecem em carrossel no cardápio.</p> : (
+      {items.length === 0 ? <p className="text-xs text-choco-500">Clique em "Adicionar" e selecione várias fotos e vídeos de uma vez (até 50 MB cada, vídeo em MP4). Elas aparecem em carrossel no cardápio. Tamanho ideal das fotos: <b>1200 × 900 px</b> (4:3); vídeos na horizontal, 4:3 ou 16:9.</p> : (
         <div className="grid grid-cols-3 gap-2">
           {items.map((m) => (
             <div key={m.id} className="group relative overflow-hidden rounded-xl bg-choco-50">
