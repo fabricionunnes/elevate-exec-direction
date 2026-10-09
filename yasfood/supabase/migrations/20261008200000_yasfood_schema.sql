@@ -385,9 +385,10 @@ declare
   v_code text;
   v_token uuid;
   v_payment text;
+  v_admin boolean := yasfood.is_admin();   -- pedido manual da Yasmim: regras de prazo/limite não travam
 begin
   select * into v_settings from yasfood.settings where id = 1;
-  if not v_settings.is_open then
+  if not v_settings.is_open and not v_admin then
     raise exception 'LOJA_FECHADA: %', v_settings.closed_message;
   end if;
 
@@ -412,13 +413,18 @@ begin
 
   v_date := nullif(p->>'scheduled_date','')::date;
   if v_date is null then raise exception 'DATA: escolha a data da encomenda'; end if;
-  if v_date < yasfood.today_br() + v_settings.min_lead_days then
+  if v_date < yasfood.today_br() + v_settings.min_lead_days and not v_admin then
     raise exception 'DATA: pedidos precisam de pelo menos % dia(s) de antecedência', v_settings.min_lead_days;
   end if;
+  if v_date < yasfood.today_br() then raise exception 'DATA: a data já passou'; end if;
 
   -- trava a linha do dia para evitar overbooking em pedidos simultâneos
   select * into v_cap from yasfood.capacity_days where day = v_date for update;
-  if not found or not v_cap.is_open then raise exception 'DATA: não estamos produzindo nesse dia'; end if;
+  if not found and v_admin then
+    insert into yasfood.capacity_days (day, max_units, is_open) values (v_date, v_settings.default_daily_capacity, true)
+    returning * into v_cap;
+  end if;
+  if not found or (not v_cap.is_open and not v_admin) then raise exception 'DATA: não estamos produzindo nesse dia'; end if;
 
   v_items := p->'items';
   if v_items is null or jsonb_array_length(v_items) = 0 then raise exception 'ITENS: seu carrinho está vazio'; end if;
@@ -436,7 +442,7 @@ begin
   from yasfood.orders o join yasfood.order_items oi on oi.order_id = o.id
   where o.scheduled_date = v_date and o.status <> 'cancelado';
 
-  if v_booked + v_total_qty > v_cap.max_units then
+  if v_booked + v_total_qty > v_cap.max_units and not v_admin then
     raise exception 'CAPACIDADE: só temos % unidade(s) disponíveis para esse dia', greatest(v_cap.max_units - v_booked, 0);
   end if;
 

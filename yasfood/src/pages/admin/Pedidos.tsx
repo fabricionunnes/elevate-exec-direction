@@ -294,7 +294,7 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
       const zs = (z.data as DeliveryZone[]) ?? [];
       setZones(zs);
       if (zs[0]) setZoneId(zs[0].id);
-      setAvail(((a.data as Availability[]) ?? []).filter((d) => d.bookable));
+      setAvail((a.data as Availability[]) ?? []);
     })();
   }, []);
 
@@ -322,10 +322,19 @@ function NovoPedido({ onClose, onCreated }: { onClose: () => void; onCreated: ()
               <input type="number" min={0} className="h-9 w-16 rounded-lg border border-choco-200 px-2 text-center" value={qty[p.id] ?? 0} onChange={(e) => setQty({ ...qty, [p.id]: Number(e.target.value) })} />
             </div>
           ))}
-          <Select label="Data" value={date} onChange={(e) => setDate(e.target.value)}>
-            <option value="">Escolha…</option>
-            {avail.map((d) => <option key={d.day} value={d.day}>{dayLabel(d.day)} · {d.remaining} vaga(s)</option>)}
-          </Select>
+          <Input
+            label="Data da entrega / retirada"
+            type="date"
+            min={todayISO()}
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            hint={(() => {
+              if (!date) return "Pode ser hoje. Pedido manual não trava por prazo nem por limite do dia.";
+              const d = avail.find((x) => x.day === date);
+              if (!d) return "Dia fora da agenda: será aberto automaticamente com a capacidade padrão.";
+              return `${d.remaining} vaga(s) livres de ${d.max_units} nesse dia${d.remaining <= 0 ? " (vai passar do limite)" : ""}`;
+            })()}
+          />
         </div>
         <div className="space-y-2">
           <div className="relative">
