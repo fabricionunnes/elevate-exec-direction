@@ -29,6 +29,10 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
+  // A página pergunta qual é o cache atual pra limpar só os antigos (ver registerSW.ts).
+  if (event.data && event.data.type === 'GET_CACHE_NAME' && event.ports && event.ports[0]) {
+    event.ports[0].postMessage({ cacheName: CACHE_NAME });
+  }
 });
 
 // Fetch strategy

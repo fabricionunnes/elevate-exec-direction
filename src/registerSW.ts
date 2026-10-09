@@ -60,17 +60,23 @@ export function registerServiceWorker() {
         window.location.reload();
       });
 
-      // Safari-specific: if the SW seems stuck (old cache version), nuke and reload
-      if (isSafari()) {
+      // Safari: limpa cache de versão antiga que o SW não conseguiu apagar.
+      // A versão atual é perguntada ao próprio SW (nunca fixa aqui): em 08/10/2026 o
+      // sw.js passou de v4 pra v5 com "v4" fixo neste arquivo, e todo iPhone entrou
+      // num laço de apagar cache + recarregar sem fim ("tela piscando" no lançamento
+      // de KPIs). Sem reload: o activate do SW já cuida da troca.
+      if (isSafari() && navigator.serviceWorker.controller) {
         try {
-          const cacheKeys = await caches.keys();
-          const hasOldCache = cacheKeys.some(
-            (k) => k.startsWith('unv-nexus-') && k !== 'unv-nexus-v4'
-          );
-          if (hasOldCache) {
-            await Promise.all(cacheKeys.map((k) => caches.delete(k)));
-            window.location.reload();
-            return;
+          const current = await new Promise<string | null>((resolve) => {
+            const channel = new MessageChannel();
+            const timer = setTimeout(() => resolve(null), 1500);
+            channel.port1.onmessage = (e) => { clearTimeout(timer); resolve(e.data?.cacheName || null); };
+            navigator.serviceWorker.controller!.postMessage({ type: 'GET_CACHE_NAME' }, [channel.port2]);
+          });
+          if (current) {
+            const cacheKeys = await caches.keys();
+            const old = cacheKeys.filter((k) => k.startsWith('unv-nexus-') && k !== current);
+            if (old.length) await Promise.all(old.map((k) => caches.delete(k)));
           }
         } catch (error) {
           console.warn('[SW] Falha ao limpar cache antigo:', error);
