@@ -175,7 +175,7 @@ jobs:
           echo "site: HTTP $code"; [ "$code" = "200" ]
           grep -q 'id="root"' /tmp/index.html
           H=(-H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY")
-          echo "public_settings: $(curl -sS --fail-with-body "$SUPABASE_URL/rest/v1/public_settings?select=business_name,site_url,is_open" "${H[@]}" -H 'Accept-Profile: yasfood')"
+          echo "public_settings: $(curl -sS --fail-with-body "$SUPABASE_URL/rest/v1/public_settings?select=business_name,site_url,is_open,pix_key,whatsapp" "${H[@]}" -H 'Accept-Profile: yasfood')"
           prods=$(curl -sS --fail-with-body "$SUPABASE_URL/rest/v1/products?select=name,price" "${H[@]}" -H 'Accept-Profile: yasfood')
           echo "produtos: $prods"; [ "$(echo "$prods" | jq length)" -ge 1 ]
           avail=$(curl -sS --fail-with-body -X POST "$SUPABASE_URL/rest/v1/rpc/availability" "${H[@]}" -H 'Content-Profile: yasfood' -H 'Content-Type: application/json' \
