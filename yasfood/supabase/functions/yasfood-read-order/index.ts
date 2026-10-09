@@ -26,22 +26,24 @@ const MAX_B64 = 7_000_000; // ~5 MB por imagem (limite da API)
 type Img = { media_type: "image/jpeg" | "image/png" | "image/webp" | "image/gif"; data: string };
 
 // O que o modelo devolve. Tudo que não estiver nos prints vem null; dúvidas vão em "doubts".
+// Subconjunto conservador de JSON Schema (sem type em lista, sem minimum): nullable via anyOf.
+const nullable = (t: "string" | "number", description: string) => ({ anyOf: [{ type: t }, { type: "null" }], description });
 const ORDER_SCHEMA = {
   type: "object",
   additionalProperties: false,
   required: ["customer_name", "phone", "fulfillment", "zone_name", "address", "reference", "scheduled_date", "window_label", "time_text", "payment_method", "change_for", "items", "notes", "doubts", "confidence"],
   properties: {
-    customer_name: { type: ["string", "null"], description: "Nome do cliente como aparece no topo da conversa ou como ele se apresenta" },
-    phone: { type: ["string", "null"], description: "Telefone do cliente só com dígitos, com DDD (ex.: 31999991234). Null se não aparecer" },
+    customer_name: nullable("string", "Nome do cliente como aparece no topo da conversa ou como ele se apresenta"),
+    phone: nullable("string", "Telefone do cliente só com dígitos, com DDD (ex.: 31999991234). Null se não aparecer"),
     fulfillment: { type: "string", enum: ["entrega", "retirada", "indefinido"] },
-    zone_name: { type: ["string", "null"], description: "Nome EXATO de uma região do catálogo, ou null" },
-    address: { type: ["string", "null"], description: "Endereço de entrega como o cliente escreveu (rua, número, casa/apto, condomínio)" },
-    reference: { type: ["string", "null"], description: "Ponto de referência ou instrução de entrega" },
-    scheduled_date: { type: ["string", "null"], description: "Data da entrega/retirada em YYYY-MM-DD, resolvida a partir de 'amanhã', 'sexta', 'dia 12' etc. usando a data de hoje informada" },
-    window_label: { type: ["string", "null"], description: "Rótulo EXATO de um horário do catálogo (ex.: 14:00–17:00) que combine com o que o cliente pediu, ou null" },
-    time_text: { type: ["string", "null"], description: "Horário como o cliente escreveu (ex.: 'de tarde', '15h')" },
+    zone_name: nullable("string", "Nome EXATO de uma região do catálogo, ou null"),
+    address: nullable("string", "Endereço de entrega como o cliente escreveu (rua, número, casa/apto, condomínio)"),
+    reference: nullable("string", "Ponto de referência ou instrução de entrega"),
+    scheduled_date: nullable("string", "Data da entrega/retirada em YYYY-MM-DD, resolvida a partir de 'amanhã', 'sexta', 'dia 12' etc. usando a data de hoje informada"),
+    window_label: nullable("string", "Rótulo EXATO de um horário do catálogo (ex.: 14:00–17:00) que combine com o que o cliente pediu, ou null"),
+    time_text: nullable("string", "Horário como o cliente escreveu (ex.: 'de tarde', '15h')"),
     payment_method: { anyOf: [{ type: "string", enum: ["pix", "dinheiro", "cartao"] }, { type: "null" }], description: "pix, dinheiro ou cartao; null se não aparecer" },
-    change_for: { type: ["number", "null"], description: "Troco pra quanto, se pagamento em dinheiro" },
+    change_for: nullable("number", "Troco pra quanto, se pagamento em dinheiro"),
     items: {
       type: "array",
       items: {
@@ -49,13 +51,13 @@ const ORDER_SCHEMA = {
         additionalProperties: false,
         required: ["product_name", "raw_text", "qty"],
         properties: {
-          product_name: { type: ["string", "null"], description: "Nome EXATO de um produto do catálogo, ou null se não casar com nenhum" },
+          product_name: nullable("string", "Nome EXATO de um produto do catálogo, ou null se não casar com nenhum"),
           raw_text: { type: "string", description: "Como o cliente escreveu o item" },
-          qty: { type: "integer", minimum: 1 },
+          qty: { type: "integer", description: "Quantidade, 1 ou mais" },
         },
       },
     },
-    notes: { type: ["string", "null"], description: "Observações relevantes do cliente (sem lactose, bilhete, recado, etc.)" },
+    notes: nullable("string", "Observações relevantes do cliente (sem lactose, bilhete, recado, etc.)"),
     doubts: { type: "array", items: { type: "string" }, description: "Cada ponto que a Yasmim precisa confirmar antes de salvar, em uma frase curta" },
     confidence: { type: "string", enum: ["alta", "media", "baixa"] },
   },
@@ -154,20 +156,37 @@ Retirada no local: ${settings?.pickup_enabled ? `permitida${settings?.pickup_add
       { type: "text", text: `${pedido}${body?.hint ? ` Observação da confeiteira: ${body.hint}` : ""}` },
     ];
 
-    const response = await client.beta.messages.create({
+    const params = {
       model: MODEL,
       max_tokens: 4000,
       system,
-      messages: [{ role: "user", content }],
-      output_config: { effort: "medium", format: { type: "json_schema", schema: ORDER_SCHEMA } },
+      messages: [{ role: "user" as const, content }],
       betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-    });
+      fallbacks: "default" as const,
+    };
+    let response: Anthropic.Beta.BetaMessage;
+    let viaSchema = true;
+    try {
+      response = await client.beta.messages.create({ ...params, output_config: { effort: "medium", format: { type: "json_schema", schema: ORDER_SCHEMA } } });
+    } catch (e) {
+      // a validação do formato muda com o tempo: se a API recusar o schema, pede o JSON no texto e extrai
+      if (!(e instanceof Anthropic.BadRequestError) || !/output_config|format|schema/i.test(e.message)) throw e;
+      console.warn("[yasfood-read-order] schema recusado, caindo pra JSON no texto:", e.message.slice(0, 200));
+      viaSchema = false;
+      response = await client.beta.messages.create({
+        ...params,
+        system: `${system}\n\nResponda SOMENTE com um JSON válido (sem markdown, sem comentários) exatamente neste formato:\n${JSON.stringify(ORDER_SCHEMA)}`,
+        output_config: { effort: "medium" },
+      });
+    }
 
     if (response.stop_reason === "refusal") return j({ error: "A IA não conseguiu ler esses prints. Tente outros prints ou lance o pedido manualmente." }, 422);
     const text = response.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text).join("");
     let order: unknown;
-    try { order = JSON.parse(text); } catch { return j({ error: "A IA devolveu um formato inesperado. Tente de novo." }, 502); }
+    try {
+      const raw = viaSchema ? text : text.replace(/^[\s\S]*?(\{[\s\S]*\})[\s\S]*$/, "$1");
+      order = JSON.parse(raw);
+    } catch { return j({ error: "A IA devolveu um formato inesperado. Tente de novo." }, 502); }
 
     return j({ order, usage: { input: response.usage.input_tokens, output: response.usage.output_tokens, model: response.model } });
   } catch (e) {
