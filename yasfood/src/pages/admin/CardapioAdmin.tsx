@@ -180,13 +180,21 @@ export function RecipeModal({ product, onClose }: { product: Product; onClose: (
       )}
       {ings.length === 0 ? <Empty>Cadastre insumos na aba Estoque primeiro.</Empty> : (
         <div className="space-y-2">
-          {ings.map((i) => (
+          {ings.filter((i) => i.id in recipe).length === 0 && <p className="text-sm text-choco-500">Nenhum insumo na receita ainda. Adicione abaixo.</p>}
+          {ings.filter((i) => i.id in recipe).map((i) => (
             <div key={i.id} className="flex items-center gap-2 text-sm">
               <span className="flex-1">{i.name} <span className="text-choco-400">({i.unit})</span></span>
               <input type="number" min={0} step="any" className="h-9 w-24 rounded-lg border border-choco-200 px-2 text-right" value={recipe[i.id] ?? ""} placeholder="0" onChange={(e) => setRecipe({ ...recipe, [i.id]: Number(e.target.value) })} />
               <span className="w-16 text-right text-xs text-choco-500">{brl((recipe[i.id] ?? 0) * Number(i.cost_per_unit))}</span>
+              <button type="button" className="p-1 text-choco-300 hover:text-red-600" title="Tirar da receita" onClick={() => { const r = { ...recipe }; delete r[i.id]; setRecipe(r); }}><Trash2 size={16} /></button>
             </div>
           ))}
+          {ings.some((i) => !(i.id in recipe)) && (
+            <Select label="Adicionar insumo" value="" onChange={(e) => { if (e.target.value) setRecipe({ ...recipe, [e.target.value]: 0 }); }}>
+              <option value="">— escolher —</option>
+              {ings.filter((i) => !(i.id in recipe)).map((i) => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}
+            </Select>
+          )}
         </div>
       )}
       <div className="mt-4 flex items-center justify-between rounded-xl bg-choco-50 p-3 text-sm">
