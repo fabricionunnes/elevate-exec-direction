@@ -15,6 +15,7 @@ export default function Configuracoes() {
   const [form, setForm] = useState<Settings | null>(null);
   const [busy, setBusy] = useState(false);
   const [pw, setPw] = useState("");
+  const [found, setFound] = useState<string | null>(null);
 
   useEffect(() => { if (settings) setForm(settings); }, [settings]);
   if (!form) return <Spinner />;
@@ -32,13 +33,14 @@ export default function Configuracoes() {
   };
 
   const locateOrigin = async () => {
-    const q = cleanAddress(form.pickup_address.split(/retirada|me chama|das \d/i)[0] ?? form.pickup_address);
-    if (!q) return toast("Preencha o endereço de retirada primeiro.", "err");
+    const q = (form.pickup_address.split(/retirada|me chama|das \d/i)[0] ?? form.pickup_address).trim();
+    if (!cleanAddress(q)) return toast("Preencha o endereço de retirada primeiro.", "err");
     setBusy(true);
-    const p = await geocodePlace(/nova lima|belo horizonte|mg/i.test(q) ? q : `${q}, Nova Lima, MG`, null).catch(() => null);
+    const p = await geocodePlace(q, null).catch(() => null);
     setBusy(false);
     if (!p) return toast("Não achei esse endereço no mapa. Cole as coordenadas do Google Maps nos campos ao lado.", "err");
     setForm({ ...form, origin_lat: p.lat, origin_lng: p.lng });
+    setFound(p.label);
     toast("Localização encontrada. Confira no mapa e salve.");
   };
 
@@ -101,6 +103,7 @@ export default function Configuracoes() {
             <Button variant="outline" loading={busy} onClick={locateOrigin}><MapPin size={16} /> Localizar pelo endereço</Button>
           </div>
         </div>
+        {found && <p className="mt-2 text-xs text-choco-700">Encontrado: <b>{found}</b></p>}
         <p className="mt-2 text-xs text-choco-500">
           {hasCoords({ lat: form.origin_lat, lng: form.origin_lng })
             ? <a href={mapsPin({ lat: form.origin_lat as number, lng: form.origin_lng as number })} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-vinho-600">Conferir no Google Maps <ExternalLink size={12} /></a>

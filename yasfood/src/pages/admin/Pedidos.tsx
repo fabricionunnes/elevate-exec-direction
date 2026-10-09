@@ -6,7 +6,7 @@ import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, dateTimeBR, dayLong, formatPhone, nextStatus, PAYMENT_LABEL, STATUS_COLOR, STATUS_LABEL, statusLabelFor, todayISO, addDaysISO, onlyDigits, windowLabel } from "@/lib/format";
 import { waLink, msgs, trackingUrl } from "@/lib/whatsapp";
-import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, type RouteCtx } from "@/lib/route";
+import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, mapsPin, type RouteCtx } from "@/lib/route";
 import type { Availability, AvailableWindow, Customer, DeliveryWindow, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Button, Badge, Card, Modal, Empty, Spinner, Input, Select, Textarea, useToast } from "@/components/ui";
@@ -201,6 +201,22 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
   const [busy, setBusy] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [geoBusy, setGeoBusy] = useState(false);
+  const { settings: full } = useSettings(true);
+
+  /** Tenta localizar o endereço outra vez (ex.: quando caiu no lugar errado). */
+  const relocate = async () => {
+    if (!order) return;
+    setGeoBusy(true);
+    const bias = full && hasCoords({ lat: full.origin_lat, lng: full.origin_lng }) ? { lat: full.origin_lat as number, lng: full.origin_lng as number } : null;
+    const p = await geocodeAddress(order.address, order.zone_name, bias).catch(() => null);
+    const { error } = await supabase.from("orders").update({ lat: p?.lat ?? null, lng: p?.lng ?? null, geocoded_at: new Date().toISOString() }).eq("id", order.id);
+    setGeoBusy(false);
+    if (error) return toast(friendlyError(error), "err");
+    toast(p ? `Encontrado: ${p.label}` : "Não achei esse endereço no mapa. Confira se a rua e o número estão certos.", p ? "ok" : "err");
+    onChanged();
+    void load();
+  };
 
   const load = useCallback(async () => {
     const [o, i, e] = await Promise.all([
@@ -253,6 +269,14 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
               <div className="font-bold">{order.customer_name}</div>
               <div>{formatPhone(order.customer_phone)}</div>
               <div className="mt-1 text-choco-600">{order.fulfillment === "entrega" ? `Entrega · ${order.zone_name ?? ""} · ${order.address}${order.reference ? ` (${order.reference})` : ""}` : "Retirada"}</div>
+              {order.fulfillment === "entrega" && (
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                  {hasCoords(order)
+                    ? <a href={mapsPin(order)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-emerald-700"><MapPin size={12} /> ver no mapa</a>
+                    : <span className="text-amber-800">{order.geocoded_at ? "endereço não encontrado no mapa" : "ainda não localizado"}</span>}
+                  <button type="button" disabled={geoBusy} onClick={() => void relocate()} className="font-semibold text-vinho-600 underline-offset-2 hover:underline disabled:opacity-50">{geoBusy ? "localizando…" : "localizar de novo"}</button>
+                </div>
+              )}
               <div className="mt-1 capitalize text-choco-600">Para: {dayLong(order.scheduled_date)}{order.window_label && <span className="normal-case"> · {order.window_label}</span>}</div>
               {order.notes && <div className="mt-2 rounded-xl bg-amber-50 p-2 text-amber-900">Obs.: {order.notes}</div>}
               <div className="mt-1 text-xs text-choco-400">Pedido em {dateTimeBR(order.created_at)}</div>
@@ -265,7 +289,7 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
               {order.status === "entregue" && <a href={wa(msgs.avaliacao(order, reviewTemplate, siteUrl))} target="_blank" rel="noreferrer"><Button variant="outline" size="sm">Pedir avaliação</Button></a>}
               <a href={trackingUrl(order.tracking_token, siteUrl)} target="_blank" rel="noreferrer"><Button variant="ghost" size="sm"><ExternalLink size={14} /> Rastreio</Button></a>
               <Button variant="ghost" size="sm" onClick={print}><Printer size={14} /> Imprimir</Button>
-              {!["entregue", "cancelado"].includes(order.status) && <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}><Pencil size={14} /> Editar pedido</Button>}
+              {order.status !== "cancelado" && <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}><Pencil size={14} /> Editar pedido</Button>}
             </div>
           </Card>
 

@@ -130,9 +130,12 @@ export function gmapsRouteUrl(stops: Prioritized[], ctx: RouteCtx, originText: s
 
 /* ------------------------------ Geocodificação ------------------------------ */
 
+export interface GeoHit extends LatLng { label: string }
+
 /** Tira "casa 7", "apto 301", "bloco B"… que confundem o mapa. */
 export function cleanAddress(a: string) {
   return a
+    .replace(/\bcep:?\s*[\d.\-]+/gi, "")
     .replace(/\b(apartamento|apto|apt|ap|casa|cs|bloco|bl|torre|lote|lt|quadra|qd|unidade|un)\.?\s*[\w-]+/gi, "")
     .replace(/[·|]/g, ",")
     .replace(/\s*,\s*(,\s*)+/g, ", ")
@@ -142,46 +145,120 @@ export function cleanAddress(a: string) {
     .trim();
 }
 
+/** Partes do endereço: rua + número, CEP e cidade (padrão Nova Lima, onde a loja entrega). */
+export function parseAddress(a: string, defaultCity = "Nova Lima") {
+  const cep = a.match(/(\d{2})\.?(\d{3})-?(\d{3})/);
+  const parts = cleanAddress(a).split(",").map((x) => x.trim()).filter(Boolean);
+  let street = parts[0] ?? "";
+  if (parts[1] && /^\d+\s*[a-z]?$/i.test(parts[1])) street = `${street} ${parts[1]}`;
+  const cityMatch = a.match(/nova lima|belo horizonte|brumadinho|rio acima|sabar[aá]/i);
+  const city = cityMatch ? cityMatch[0].replace(/\b\w/g, (c) => c.toUpperCase()) : defaultCity;
+  return { street, cep: cep ? `${cep[1]}${cep[2]}-${cep[3]}` : null, city };
+}
+
 let lastCall = 0;
-async function nominatim(q: string, bias: LatLng | null): Promise<LatLng | null> {
+async function throttle() {
   // Nominatim pede no máximo 1 chamada por segundo.
   const wait = 1100 - (Date.now() - lastCall);
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   lastCall = Date.now();
+}
+
+interface NomRow { lat: string; lon: string; display_name: string; address?: Record<string, string> }
+
+/** Resultado só vale se estiver na cidade esperada ou a menos de 25 km da referência. */
+function accepted(row: NomRow, city: string, bias: LatLng | null) {
+  const a = row.address ?? {};
+  const where = [a.city, a.town, a.municipality, a.village, a.county, row.display_name].filter(Boolean).join(" | ").toLowerCase();
+  if (where.includes(city.toLowerCase())) return true;
+  if (bias) return haversineKm(bias, { lat: Number(row.lat), lng: Number(row.lon) }) < 25;
+  return false;
+}
+
+async function nominatim(params: Record<string, string>, city: string, bias: LatLng | null): Promise<GeoHit | null> {
+  await throttle();
   const u = new URL("https://nominatim.openstreetmap.org/search");
   u.searchParams.set("format", "jsonv2");
-  u.searchParams.set("limit", "1");
+  u.searchParams.set("limit", "5");
   u.searchParams.set("countrycodes", "br");
-  u.searchParams.set("q", q);
+  u.searchParams.set("addressdetails", "1");
+  for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
   if (bias) u.searchParams.set("viewbox", `${bias.lng - 0.15},${bias.lat + 0.15},${bias.lng + 0.15},${bias.lat - 0.15}`);
   const r = await fetch(u.toString(), { headers: { Accept: "application/json" } });
   if (!r.ok) return null;
-  const j = (await r.json()) as { lat: string; lon: string }[];
-  if (!j.length) return null;
-  const p = { lat: Number(j[0].lat), lng: Number(j[0].lon) };
-  return Number.isFinite(p.lat) && Number.isFinite(p.lng) ? p : null;
+  const rows = (await r.json()) as NomRow[];
+  const ok = rows.find((row) => accepted(row, city, bias));
+  if (!ok) return null;
+  const p = { lat: Number(ok.lat), lng: Number(ok.lon) };
+  return Number.isFinite(p.lat) && Number.isFinite(p.lng) ? { ...p, label: ok.display_name } : null;
 }
 
-/**
- * Localiza um endereço. Tenta com o nome da zona (condomínio) e depois só com a cidade.
- * `bias` puxa o resultado pra perto da casa da Yasmim.
- */
-export async function geocodeAddress(address: string, zoneName: string | null, bias: LatLng | null): Promise<LatLng | null> {
-  const base = cleanAddress(address);
-  if (!base) return null;
-  const tries = [
-    zoneName && !/outros|fora|combinar|meu condom/i.test(zoneName) ? `${base}, ${zoneName}, Nova Lima, MG` : null,
-    `${base}, Nova Lima, MG`,
-    /alphaville/i.test(base) ? null : `${base}, Alphaville Lagoa dos Ingleses, Nova Lima, MG`,
-  ].filter((x): x is string => !!x);
-  for (const q of tries) {
-    const p = await nominatim(q, bias);
-    if (p) return p;
+/** Photon (komoot), também OpenStreetMap, com viés pela localização. Segunda opinião. */
+async function photon(q: string, city: string, bias: LatLng | null): Promise<GeoHit | null> {
+  const u = new URL("https://photon.komoot.io/api/");
+  u.searchParams.set("q", q);
+  u.searchParams.set("limit", "5");
+  u.searchParams.set("lang", "default");
+  if (bias) { u.searchParams.set("lat", String(bias.lat)); u.searchParams.set("lon", String(bias.lng)); }
+  const r = await fetch(u.toString());
+  if (!r.ok) return null;
+  const j = (await r.json()) as { features: { geometry: { coordinates: [number, number] }; properties: Record<string, string> }[] };
+  for (const f of j.features ?? []) {
+    const pr = f.properties;
+    const row: NomRow = { lat: String(f.geometry.coordinates[1]), lon: String(f.geometry.coordinates[0]), display_name: [pr.name, pr.street, pr.housenumber, pr.district, pr.city, pr.state].filter(Boolean).join(", "), address: { city: pr.city ?? "", county: pr.county ?? "" } };
+    if (accepted(row, city, bias)) return { lat: Number(row.lat), lng: Number(row.lon), label: row.display_name };
   }
   return null;
 }
 
-export const geocodePlace = (q: string, bias: LatLng | null) => nominatim(q, bias);
+/** BrasilAPI devolve a coordenada do CEP quando existe no OpenStreetMap. */
+async function cepLookup(cep: string, bias: LatLng | null): Promise<GeoHit | null> {
+  const r = await fetch(`https://brasilapi.com.br/api/cep/v2/${cep.replace(/\D/g, "")}`);
+  if (!r.ok) return null;
+  const j = (await r.json()) as { street?: string; neighborhood?: string; city?: string; location?: { coordinates?: { latitude?: string; longitude?: string } } };
+  const lat = Number(j.location?.coordinates?.latitude);
+  const lng = Number(j.location?.coordinates?.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) return null;
+  if (bias && haversineKm(bias, { lat, lng }) > 25) return null;
+  return { lat, lng, label: [j.street, j.neighborhood, j.city].filter(Boolean).join(", ") + " (pelo CEP)" };
+}
+
+const safe = <T,>(p: Promise<T | null>) => p.catch(() => null);
+
+/**
+ * Localiza um endereço de entrega. Ordem: CEP → busca estruturada (rua, número, cidade, CEP)
+ * → texto livre com o condomínio → Photon. Só aceita resultado na cidade certa ou perto da casa.
+ */
+export async function geocodeAddress(address: string, zoneName: string | null, bias: LatLng | null): Promise<GeoHit | null> {
+  const { street, cep, city } = parseAddress(address);
+  if (!street && !cep) return null;
+  const zone = zoneName && !/outros|fora|combinar|meu condom/i.test(zoneName) ? zoneName : null;
+  const steps: (() => Promise<GeoHit | null>)[] = [];
+  if (cep) steps.push(() => safe(cepLookup(cep, bias)));
+  if (street) {
+    steps.push(() => safe(nominatim({ street, city, state: "Minas Gerais", country: "Brasil", ...(cep ? { postalcode: cep } : {}) }, city, bias)));
+    if (zone) steps.push(() => safe(nominatim({ q: `${street}, ${zone}, ${city}, MG` }, city, bias)));
+    steps.push(() => safe(nominatim({ q: `${street}, ${city}, MG` }, city, bias)));
+    steps.push(() => safe(photon(`${street}, ${zone ?? ""} ${city} MG`, city, bias)));
+    // sem número: ao menos a rua
+    const noNumber = street.replace(/\s+\d+\s*[a-z]?$/i, "");
+    if (noNumber !== street) steps.push(() => safe(nominatim({ street: noNumber, city, state: "Minas Gerais", country: "Brasil" }, city, bias)));
+  }
+  for (const step of steps) {
+    const hit = await step();
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** Localiza um lugar (condomínio, bairro, endereço da casa). Mesmas regras de aceitação. */
+export async function geocodePlace(q: string, bias: LatLng | null): Promise<GeoHit | null> {
+  const { city } = parseAddress(q);
+  const byAddress = await geocodeAddress(q, null, bias);
+  if (byAddress) return byAddress;
+  const text = /nova lima|mg\b/i.test(q) ? cleanAddress(q) : `${cleanAddress(q)}, ${city}, MG`;
+  return safe(nominatim({ q: text }, city, bias));
+}
 
 export const mapsPin = (p: LatLng) => `https://www.google.com/maps?q=${p.lat},${p.lng}`;
 export const fmtKm = (km: number) => (km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1).replace(".", ",")} km`);
