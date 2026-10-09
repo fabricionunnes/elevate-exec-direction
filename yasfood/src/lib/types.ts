@@ -209,3 +209,24 @@ export interface TrackedOrder {
   review: { rating: number; comment: string; reply: string } | null;
   settings: { business_name: string; whatsapp: string; pix_key: string; pix_name: string; pickup_address: string };
 }
+
+export interface ProductMedia {
+  id: string;
+  product_id: string;
+  kind: "image" | "video";
+  url: string;
+  sort_order: number;
+}
+
+export interface Banner {
+  id: string;
+  title: string;
+  subtitle: string;
+  image_url: string;
+  product_id: string | null;
+  link_url: string | null;
+  active: boolean;
+  sort_order: number;
+  starts_at: string | null;
+  ends_at: string | null;
+}

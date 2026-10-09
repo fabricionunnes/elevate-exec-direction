@@ -5,7 +5,8 @@ import { supabase } from "@/lib/supabase";
 import { useCart } from "@/lib/cart";
 import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, todayISO, addDaysISO, dateTimeBR } from "@/lib/format";
-import type { Availability, Product, PublicReview } from "@/lib/types";
+import type { Availability, Banner, Product, ProductMedia, PublicReview } from "@/lib/types";
+import { Gallery } from "@/components/Gallery";
 import { Button, Spinner, Empty, Stars } from "@/components/ui";
 import { Logo } from "./Layout";
 
@@ -15,15 +16,23 @@ export default function Cardapio() {
   const [products, setProducts] = useState<Product[] | null>(null);
   const [avail, setAvail] = useState<Availability[]>([]);
   const [reviews, setReviews] = useState<PublicReview[]>([]);
+  const [media, setMedia] = useState<Record<string, ProductMedia[]>>({});
+  const [banners, setBanners] = useState<Banner[]>([]);
 
   useEffect(() => {
     void (async () => {
-      const [p, a, r] = await Promise.all([
+      const [p, a, r, m, b] = await Promise.all([
         supabase.from("products").select("*").eq("active", true).order("sort_order").order("name"),
         supabase.rpc("availability", { p_from: todayISO(), p_to: addDaysISO(14) }),
         supabase.from("public_reviews").select("*").order("created_at", { ascending: false }).limit(12),
+        supabase.from("product_media").select("*").order("sort_order"),
+        supabase.from("banners").select("*").eq("active", true).order("sort_order"),
       ]);
       setProducts((p.data as Product[]) ?? []);
+      const grouped: Record<string, ProductMedia[]> = {};
+      for (const row of ((m.data as ProductMedia[]) ?? [])) (grouped[row.product_id] ??= []).push(row);
+      setMedia(grouped);
+      setBanners((b.data as Banner[]) ?? []);
       setAvail(((a.data as Availability[]) ?? []).filter((d) => d.bookable).slice(0, 7));
       setReviews((r.data as PublicReview[]) ?? []);
     })();
@@ -31,8 +40,35 @@ export default function Cardapio() {
 
   const avg = reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
 
+  const goToProduct = (id: string) => {
+    const el = document.getElementById(`produto-${id}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    el?.classList.add("ring-4", "ring-vinho-300");
+    setTimeout(() => el?.classList.remove("ring-4", "ring-vinho-300"), 1600);
+  };
+
   return (
     <div className="space-y-6">
+      {banners.length > 0 && (
+        <section className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+          {banners.map((b) => {
+            const inner = (
+              <div className="relative aspect-[16/7] w-[88vw] max-w-3xl shrink-0 snap-center overflow-hidden rounded-3xl shadow-soft">
+                <img src={b.image_url} alt={b.title} className="h-full w-full object-cover" />
+                {(b.title || b.subtitle) && (
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-choco-900/80 to-transparent p-4 text-white">
+                    {b.title && <div className="text-lg font-black leading-tight">{b.title}</div>}
+                    {b.subtitle && <div className="text-sm text-rosa-100">{b.subtitle}</div>}
+                  </div>
+                )}
+              </div>
+            );
+            if (b.product_id) return <button key={b.id} onClick={() => goToProduct(b.product_id!)} className="text-left">{inner}</button>;
+            if (b.link_url) return <a key={b.id} href={b.link_url} target="_blank" rel="noreferrer">{inner}</a>;
+            return <div key={b.id}>{inner}</div>;
+          })}
+        </section>
+      )}
       {settings && !settings.is_open && (
         <div className="rounded-2xl bg-vinho-100 p-4 text-sm font-medium text-vinho-800">{settings.closed_message}</div>
       )}
@@ -71,12 +107,8 @@ export default function Cardapio() {
             {products.map((p) => {
               const line = cart.lines.find((l) => l.product.id === p.id);
               return (
-                <article key={p.id} className="overflow-hidden rounded-3xl border border-choco-100 bg-white shadow-card">
-                  {p.image_url ? (
-                    <img src={p.image_url} alt={p.name} className="aspect-[4/3] w-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="flex aspect-[4/3] w-full items-center justify-center bg-gradient-to-br from-rosa-100 to-caramelo-400/30 text-6xl">🎂</div>
-                  )}
+                <article key={p.id} id={`produto-${p.id}`} className="overflow-hidden rounded-3xl border border-choco-100 bg-white shadow-card transition">
+                  <Gallery media={media[p.id] ?? []} cover={p.image_url} alt={p.name} />
                   <div className="p-4">
                     <h3 className="text-lg font-bold leading-tight text-choco-900">{p.name}</h3>
                     {p.description && <p className="mt-1 text-sm text-choco-600">{p.description}</p>}

@@ -14,6 +14,7 @@ import Dashboard from "@/pages/admin/Dashboard";
 import Pedidos from "@/pages/admin/Pedidos";
 import Agenda from "@/pages/admin/Agenda";
 import CardapioAdmin from "@/pages/admin/CardapioAdmin";
+import Banners from "@/pages/admin/Banners";
 import Entregas from "@/pages/admin/Entregas";
 import Clientes from "@/pages/admin/Clientes";
 import Estoque from "@/pages/admin/Estoque";
@@ -41,6 +42,7 @@ export default function App() {
                 <Route path="pedidos" element={<Pedidos />} />
                 <Route path="agenda" element={<Agenda />} />
                 <Route path="cardapio" element={<CardapioAdmin />} />
+                <Route path="banners" element={<Banners />} />
                 <Route path="entregas" element={<Entregas />} />
                 <Route path="clientes" element={<Clientes />} />
                 <Route path="estoque" element={<Estoque />} />

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, ImagePlus, Trash2 } from "lucide-react";
+import { Plus, Pencil, ImagePlus, Trash2, Film, Star } from "lucide-react";
+import { uploadMedia } from "@/lib/media";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { brl } from "@/lib/format";
-import type { Ingredient, Product, ProductCost, ProductIngredient } from "@/lib/types";
+import type { Ingredient, Product, ProductCost, ProductIngredient, ProductMedia } from "@/lib/types";
 import { Button, Card, Input, Textarea, Modal, Spinner, Empty, Badge, useToast } from "@/components/ui";
 
 const empty: Omit<Product, "id"> = { name: "", description: "", price: 35, weight_g: 570, image_url: null, category: "Bolos", active: true, sort_order: 0 };
@@ -105,6 +106,11 @@ export default function CardapioAdmin() {
             <Input label="Categoria" value={editing.category ?? "Bolos"} onChange={(e) => setEditing({ ...editing, category: e.target.value })} />
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editing.active ?? true} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> ativo no cardápio</label>
             <Button className="w-full" loading={busy} onClick={save}>Salvar</Button>
+            {editing.id ? (
+              <MediaManager productId={editing.id} cover={editing.image_url ?? null} onCover={(url) => setEditing({ ...editing, image_url: url })} />
+            ) : (
+              <p className="text-xs text-choco-500">Salve o produto pra adicionar mais fotos e vídeos.</p>
+            )}
           </div>
         </Modal>
       )}
@@ -161,5 +167,88 @@ function RecipeModal({ product, onClose }: { product: Product; onClose: () => vo
       </div>
       <Button className="mt-3 w-full" onClick={save}>Salvar receita</Button>
     </Modal>
+  );
+}
+
+/** Galeria do produto: várias fotos e vídeos, com capa. */
+function MediaManager({ productId, cover, onCover }: { productId: string; cover: string | null; onCover: (url: string) => void }) {
+  const toast = useToast();
+  const [items, setItems] = useState<ProductMedia[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    const { data } = await supabase.from("product_media").select("*").eq("product_id", productId).order("sort_order");
+    setItems((data as ProductMedia[]) ?? []);
+  }, [productId]);
+  useEffect(() => { void load(); }, [load]);
+
+  const upload = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setBusy(true);
+    let n = 0;
+    for (const f of Array.from(files)) {
+      try {
+        const { url, kind } = await uploadMedia(f, `produtos/${productId}`);
+        await supabase.from("product_media").insert({ product_id: productId, kind, url, sort_order: items.length + n });
+        if (!cover && kind === "image" && n === 0) {
+          await supabase.from("products").update({ image_url: url }).eq("id", productId);
+          onCover(url);
+        }
+        n++;
+      } catch (e) {
+        toast(friendlyError(e), "err");
+      }
+    }
+    setBusy(false);
+    if (n) toast(`${n} arquivo(s) adicionado(s).`);
+    void load();
+  };
+
+  const remove = async (m: ProductMedia) => {
+    await supabase.from("product_media").delete().eq("id", m.id);
+    void load();
+  };
+
+  const setCover = async (m: ProductMedia) => {
+    await supabase.from("products").update({ image_url: m.url }).eq("id", productId);
+    onCover(m.url);
+    toast("Capa atualizada.");
+  };
+
+  const move = async (m: ProductMedia, dir: -1 | 1) => {
+    const i = items.findIndex((x) => x.id === m.id);
+    const j = i + dir;
+    if (j < 0 || j >= items.length) return;
+    const a = items[i], b = items[j];
+    await Promise.all([
+      supabase.from("product_media").update({ sort_order: j }).eq("id", a.id),
+      supabase.from("product_media").update({ sort_order: i }).eq("id", b.id),
+    ]);
+    void load();
+  };
+
+  return (
+    <div className="rounded-2xl border border-choco-100 bg-white p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <h4 className="text-sm font-bold">Fotos e vídeos</h4>
+        <label className="cursor-pointer"><span className="inline-flex items-center gap-2 rounded-xl bg-vinho-600 px-3 py-1.5 text-xs font-semibold text-white"><Film size={14} /> {busy ? "Enviando…" : "Adicionar"}</span><input type="file" multiple accept="image/*,video/*" className="hidden" onChange={(e) => { void upload(e.target.files); e.target.value = ""; }} /></label>
+      </div>
+      {items.length === 0 ? <p className="text-xs text-choco-500">Nenhuma mídia ainda. Pode selecionar várias de uma vez (fotos até 50 MB, vídeos em MP4).</p> : (
+        <div className="grid grid-cols-3 gap-2">
+          {items.map((m) => (
+            <div key={m.id} className="group relative overflow-hidden rounded-xl bg-choco-50">
+              {m.kind === "video" ? <video src={m.url} className="aspect-square w-full object-cover" muted playsInline preload="metadata" /> : <img src={m.url} alt="" className="aspect-square w-full object-cover" />}
+              {cover === m.url && <span className="absolute left-1 top-1 rounded-full bg-vinho-600 px-1.5 py-0.5 text-[10px] font-bold text-white">capa</span>}
+              <div className="absolute inset-x-0 bottom-0 flex justify-between bg-choco-900/60 p-1 text-white">
+                <button onClick={() => move(m, -1)} className="px-1 text-xs" title="Mover pra esquerda">◀</button>
+                {m.kind === "image" && <button onClick={() => setCover(m)} className="px-1" title="Usar como capa"><Star size={14} /></button>}
+                <button onClick={() => remove(m)} className="px-1" title="Remover"><Trash2 size={14} /></button>
+                <button onClick={() => move(m, 1)} className="px-1 text-xs" title="Mover pra direita">▶</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
