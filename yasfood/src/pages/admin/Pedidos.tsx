@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { MessageCircle, Check, ArrowRight, XCircle, Banknote, Printer, Plus, Search, ExternalLink, Pencil, Route, MapPin } from "lucide-react";
+import { MessageCircle, Check, ArrowRight, XCircle, Banknote, Printer, Plus, Search, ExternalLink, Pencil, Route, MapPin, LocateFixed } from "lucide-react";
 import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, dateTimeBR, dayLong, formatPhone, nextStatus, PAYMENT_LABEL, STATUS_COLOR, STATUS_LABEL, statusLabelFor, todayISO, addDaysISO, onlyDigits, windowLabel } from "@/lib/format";
 import { waLink, msgs, trackingUrl } from "@/lib/whatsapp";
-import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, mapsPin, type RouteCtx } from "@/lib/route";
+import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, mapsPin, currentPosition, type RouteCtx } from "@/lib/route";
 import type { Availability, AvailableWindow, Customer, DeliveryWindow, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Button, Badge, Card, Modal, Empty, Spinner, Input, Select, Textarea, useToast } from "@/components/ui";
@@ -52,8 +52,18 @@ export default function Pedidos() {
     if (!todo.length) return;
     geoBusy.current = true;
     try {
+      // 1) cliente já tem localização marcada pra esse endereço? usa ela, sem consultar o mapa
+      const ids = [...new Set(todo.map((o) => o.customer_id).filter((x): x is string => !!x))];
+      const { data: known } = ids.length ? await supabase.from("customers").select("id, lat, lng, geo_address").in("id", ids) : { data: [] };
+      const byCustomer = new Map(((known as { id: string; lat: number | null; lng: number | null; geo_address: string | null }[]) ?? []).map((c) => [c.id, c]));
+      const norm = (a: string) => a.toLowerCase().replace(/\s+/g, " ").trim();
       for (const o of todo) {
         setLocating(o.id);
+        const c = o.customer_id ? byCustomer.get(o.customer_id) : undefined;
+        if (c && hasCoords(c) && c.geo_address && norm(c.geo_address) === norm(o.address)) {
+          await supabase.from("orders").update({ lat: c.lat, lng: c.lng, geocoded_at: new Date().toISOString() }).eq("id", o.id);
+          continue;
+        }
         const p = await geocodeAddress(o.address, o.zone_name, ctx.origin).catch(() => null);
         await supabase.from("orders").update({ lat: p?.lat ?? null, lng: p?.lng ?? null, geocoded_at: new Date().toISOString() }).eq("id", o.id);
       }
@@ -204,6 +214,25 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
   const [geoBusy, setGeoBusy] = useState(false);
   const { settings: full } = useSettings(true);
 
+  /** Na porta do cliente: grava o GPS no pedido e no cliente (próximos pedidos já saem certos). */
+  const markHere = async () => {
+    if (!order) return;
+    setGeoBusy(true);
+    try {
+      const p = await currentPosition();
+      const { error } = await supabase.from("orders").update({ lat: p.lat, lng: p.lng, geocoded_at: new Date().toISOString() }).eq("id", order.id);
+      if (error) throw new Error(friendlyError(error));
+      if (order.customer_id) await supabase.from("customers").update({ lat: p.lat, lng: p.lng, geo_address: order.address }).eq("id", order.customer_id);
+      toast(`Localização marcada (precisão de ${Math.round(p.accuracy)} m). Vale pros próximos pedidos deste endereço.`);
+      onChanged();
+      void load();
+    } catch (e) {
+      toast((e as Error).message, "err");
+    } finally {
+      setGeoBusy(false);
+    }
+  };
+
   /** Tenta localizar o endereço outra vez (ex.: quando caiu no lugar errado). */
   const relocate = async () => {
     if (!order) return;
@@ -275,6 +304,7 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
                     ? <a href={mapsPin(order)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-emerald-700"><MapPin size={12} /> ver no mapa</a>
                     : <span className="text-amber-800">{order.geocoded_at ? "endereço não encontrado no mapa" : "ainda não localizado"}</span>}
                   <button type="button" disabled={geoBusy} onClick={() => void relocate()} className="font-semibold text-vinho-600 underline-offset-2 hover:underline disabled:opacity-50">{geoBusy ? "localizando…" : "localizar de novo"}</button>
+                  <button type="button" disabled={geoBusy} onClick={() => void markHere()} className="inline-flex items-center gap-1 rounded-full bg-choco-900 px-2.5 py-1 font-semibold text-white disabled:opacity-50" title="Use quando estiver na porta do cliente"><LocateFixed size={12} /> estou na porta: marcar aqui</button>
                 </div>
               )}
               <div className="mt-1 capitalize text-choco-600">Para: {dayLong(order.scheduled_date)}{order.window_label && <span className="normal-case"> · {order.window_label}</span>}</div>

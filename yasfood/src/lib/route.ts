@@ -164,10 +164,14 @@ async function throttle() {
   lastCall = Date.now();
 }
 
-interface NomRow { lat: string; lon: string; display_name: string; address?: Record<string, string> }
+interface NomRow { lat: string; lon: string; display_name: string; address?: Record<string, string>; type?: string; addresstype?: string }
 
-/** Resultado só vale se estiver na cidade esperada ou a menos de 25 km da referência. */
+// Resultado grosso demais (centro da cidade, município, estado) não serve pra rota.
+const COARSE = new Set(["city", "town", "municipality", "administrative", "county", "state", "region", "country", "village", "city_district"]);
+
+/** Resultado só vale se for mais fino que "cidade" e estiver na cidade esperada ou a menos de 25 km da referência. */
 function accepted(row: NomRow, city: string, bias: LatLng | null) {
+  if (COARSE.has(row.type ?? "") || COARSE.has(row.addresstype ?? "")) return false;
   const a = row.address ?? {};
   const where = [a.city, a.town, a.municipality, a.village, a.county, row.display_name].filter(Boolean).join(" | ").toLowerCase();
   if (where.includes(city.toLowerCase())) return true;
@@ -205,7 +209,7 @@ async function photon(q: string, city: string, bias: LatLng | null): Promise<Geo
   const j = (await r.json()) as { features: { geometry: { coordinates: [number, number] }; properties: Record<string, string> }[] };
   for (const f of j.features ?? []) {
     const pr = f.properties;
-    const row: NomRow = { lat: String(f.geometry.coordinates[1]), lon: String(f.geometry.coordinates[0]), display_name: [pr.name, pr.street, pr.housenumber, pr.district, pr.city, pr.state].filter(Boolean).join(", "), address: { city: pr.city ?? "", county: pr.county ?? "" } };
+    const row: NomRow = { lat: String(f.geometry.coordinates[1]), lon: String(f.geometry.coordinates[0]), display_name: [pr.name, pr.street, pr.housenumber, pr.district, pr.city, pr.state].filter(Boolean).join(", "), address: { city: pr.city ?? "", county: pr.county ?? "" }, type: pr.type };
     if (accepted(row, city, bias)) return { lat: Number(row.lat), lng: Number(row.lon), label: row.display_name };
   }
   return null;
@@ -258,6 +262,18 @@ export async function geocodePlace(q: string, bias: LatLng | null): Promise<GeoH
   if (byAddress) return byAddress;
   const text = /nova lima|mg\b/i.test(q) ? cleanAddress(q) : `${cleanAddress(q)}, ${city}, MG`;
   return safe(nominatim({ q: text }, city, bias));
+}
+
+/** Posição atual pelo GPS do aparelho (precisa de HTTPS e da permissão do navegador). */
+export function currentPosition(): Promise<LatLng & { accuracy: number }> {
+  return new Promise((resolve, reject) => {
+    if (!("geolocation" in navigator)) return reject(new Error("Este navegador não tem localização."));
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+      (err) => reject(new Error(err.code === 1 ? "Permissão de localização negada. Libere nas configurações do navegador." : "Não consegui pegar a localização agora. Tente de novo ao ar livre.")),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    );
+  });
 }
 
 export const mapsPin = (p: LatLng) => `https://www.google.com/maps?q=${p.lat},${p.lng}`;

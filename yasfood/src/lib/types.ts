@@ -102,6 +102,9 @@ export interface Customer {
   source: string;
   tags: string[];
   created_at: string;
+  lat: number | null;
+  lng: number | null;
+  geo_address: string | null;
 }
 
 export interface CustomerStats {

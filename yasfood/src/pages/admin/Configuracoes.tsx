@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { ImagePlus, Save, MapPin, ExternalLink } from "lucide-react";
+import { ImagePlus, Save, MapPin, ExternalLink, LocateFixed } from "lucide-react";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { useAuth } from "@/lib/auth";
 import type { Settings } from "@/lib/types";
 import { Button, Card, Input, Textarea, Spinner, useToast } from "@/components/ui";
 import { Logo } from "@/pages/cliente/Layout";
-import { geocodePlace, cleanAddress, mapsPin, hasCoords } from "@/lib/route";
+import { geocodePlace, cleanAddress, mapsPin, hasCoords, currentPosition } from "@/lib/route";
 
 export default function Configuracoes() {
   const toast = useToast();
@@ -42,6 +42,20 @@ export default function Configuracoes() {
     setForm({ ...form, origin_lat: p.lat, origin_lng: p.lng });
     setFound(p.label);
     toast("Localização encontrada. Confira no mapa e salve.");
+  };
+
+  const useGps = async () => {
+    setBusy(true);
+    try {
+      const p = await currentPosition();
+      setForm({ ...form, origin_lat: Number(p.lat.toFixed(6)), origin_lng: Number(p.lng.toFixed(6)) });
+      setFound(`sua localização atual (precisão de ${Math.round(p.accuracy)} m)`);
+      toast("Localização pega pelo GPS. Confira no mapa e salve.");
+    } catch (e) {
+      toast((e as Error).message, "err");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const uploadLogo = async (file: File) => {
@@ -96,11 +110,15 @@ export default function Configuracoes() {
 
       <Card title={<span className="flex items-center gap-2"><MapPin size={18} /> Ponto de partida das entregas</span>}>
         <p className="mb-3 text-sm text-choco-600">A localização da sua casa. É daqui que o sistema monta a rota do dia, do pedido mais perto pro mais longe.</p>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <Button loading={busy} onClick={useGps}><LocateFixed size={16} /> Usar minha localização atual</Button>
+          <span className="text-xs text-choco-500">Estando em casa, no celular, é o jeito mais certeiro.</span>
+        </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <Input label="Latitude" value={form.origin_lat ?? ""} onChange={(e) => set("origin_lat", e.target.value === "" ? null : Number(e.target.value.replace(",", ".")))} placeholder="-20.0812" />
           <Input label="Longitude" value={form.origin_lng ?? ""} onChange={(e) => set("origin_lng", e.target.value === "" ? null : Number(e.target.value.replace(",", ".")))} placeholder="-43.9975" />
           <div className="flex items-end gap-2">
-            <Button variant="outline" loading={busy} onClick={locateOrigin}><MapPin size={16} /> Localizar pelo endereço</Button>
+            <Button variant="outline" loading={busy} onClick={locateOrigin}><MapPin size={16} /> Tentar pelo endereço</Button>
           </div>
         </div>
         {found && <p className="mt-2 text-xs text-choco-700">Encontrado: <b>{found}</b></p>}
