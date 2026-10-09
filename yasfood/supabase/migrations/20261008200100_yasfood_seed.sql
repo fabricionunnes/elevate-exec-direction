@@ -78,3 +78,6 @@ on conflict (day) do nothing;
 -- Chave Pix (CPF) usada no checkout e nas mensagens. Só preenche se ainda estiver vazia;
 -- depois disso a Yasmim muda pelo painel em Configurações.
 update yasfood.settings set pix_key = '12745182617', pix_name = 'Yasmim' where id = 1 and pix_key = '';
+
+-- Mensagem de avaliação genérica (não só bolo)
+update yasfood.settings set review_message = replace(review_message, 'gostado do bolo!', 'gostado!') where review_message like '%gostado do bolo!%';

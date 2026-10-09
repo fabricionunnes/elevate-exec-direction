@@ -56,10 +56,10 @@ export const msgs = {
     `Oi ${first(o.customer_name)}! Segue o Pix do pedido ${o.code}:\n\nChave: ${pixKey}\nNome: ${pixName}\nValor: ${brl(o.total)}\n\nMe manda o comprovante por aqui que eu confirmo.`,
 
   saiu: (o: Order, siteUrl?: string) =>
-    `Oi ${first(o.customer_name)}! Seu bolo (${o.code}) saiu para entrega. Fica de olho no interfone!\n\nRastreio: ${trackingUrl(o.tracking_token, siteUrl)}`,
+    `Oi ${first(o.customer_name)}! Seu pedido (${o.code}) saiu para entrega. Fica de olho no interfone!\n\nRastreio: ${trackingUrl(o.tracking_token, siteUrl)}`,
 
   pronto: (o: Order) =>
-    `Oi ${first(o.customer_name)}! Seu bolo (${o.code}) está pronto pra retirada. Me chama quando vier buscar.`,
+    `Oi ${first(o.customer_name)}! Seu pedido (${o.code}) está pronto pra retirada. Me chama quando vier buscar.`,
 
   status: (o: Order, siteUrl?: string) =>
     `Oi ${first(o.customer_name)}! Atualização do pedido ${o.code}: ${STATUS_LABEL[o.status]}.\n\nAcompanhe: ${trackingUrl(o.tracking_token, siteUrl)}`,

@@ -63,7 +63,7 @@ create table if not exists yasfood.settings (
   review_auto_enabled boolean not null default true,  -- pedir avaliação automaticamente após a entrega
   review_delay_hours int not null default 3,          -- quantas horas depois de entregue
   review_webhook_url text not null default '',        -- N8N / WhatsApp API: recebe {phone,name,code,link,message}
-  review_message text not null default 'Oi {nome}! Aqui é a Yasmim, da Yas Delícias. Espero que tenha gostado do bolo! Pode me contar o que achou? É rapidinho, de 1 a 5 estrelas: {link}',
+  review_message text not null default 'Oi {nome}! Aqui é a Yasmim, da Yas Delícias. Espero que tenha gostado! Pode me contar o que achou? É rapidinho, de 1 a 5 estrelas: {link}',
   updated_at timestamptz not null default now()
 );
 insert into yasfood.settings (id) values (1) on conflict (id) do nothing;
@@ -547,8 +547,8 @@ begin
 
   v_default_note := case p_status
     when 'confirmado' then 'Pedido confirmado. Entra na fila de produção.'
-    when 'em_producao' then 'Seu bolo está sendo preparado com carinho.'
-    when 'pronto' then 'Bolo pronto e embalado.'
+    when 'em_producao' then 'Seu pedido está sendo preparado com carinho.'
+    when 'pronto' then 'Pedido pronto e embalado.'
     when 'saiu_entrega' then 'Saiu para entrega. Fica de olho no interfone!'
     when 'entregue' then case when v_order.fulfillment = 'retirada' then 'Retirado. Bom apetite!' else 'Entregue. Bom apetite!' end
     when 'cancelado' then 'Pedido cancelado.'

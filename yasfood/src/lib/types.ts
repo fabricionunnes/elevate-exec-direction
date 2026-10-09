@@ -16,6 +16,8 @@ export interface Settings {
   logo_url: string;
   instagram: string;
   site_url: string;
+  hero_title: string;
+  hero_subtitle: string;
   /** Só na tabela completa (useSettings(true)); a view pública não traz. */
   review_auto_enabled: boolean;
   review_delay_hours: number;

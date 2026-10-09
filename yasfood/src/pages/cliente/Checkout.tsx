@@ -147,7 +147,7 @@ export default function Checkout() {
       {/* Data */}
       <section className="rounded-2xl border border-choco-100 bg-white p-4 shadow-card">
         <h2 className="font-bold">Para qual dia?</h2>
-        <p className="mb-3 text-xs text-choco-500">Assamos no dia da entrega. Mostramos só os dias com vaga.</p>
+        <p className="mb-3 text-xs text-choco-500">Preparamos no dia da entrega. Mostramos só os dias com vaga.</p>
         {avail.filter((d) => d.bookable).length === 0 ? (
           <Empty>Sem datas disponíveis no momento. Chama no WhatsApp que a gente dá um jeito.</Empty>
         ) : (
@@ -196,7 +196,7 @@ export default function Checkout() {
       <section className="space-y-3 rounded-2xl border border-choco-100 bg-white p-4 shadow-card">
         <h2 className="font-bold">Seus dados</h2>
         <Input label="Nome" placeholder="Como quer ser chamado(a)" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
-        <Input label="WhatsApp" placeholder="(31) 99999-9999" inputMode="tel" value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} autoComplete="tel" hint="A gente avisa por aqui quando o bolo sair." />
+        <Input label="WhatsApp" placeholder="(31) 99999-9999" inputMode="tel" value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} autoComplete="tel" hint="A gente avisa por aqui quando o pedido sair." />
       </section>
 
       {/* Pagamento */}

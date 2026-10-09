@@ -66,6 +66,10 @@ export default function Configuracoes() {
           <Input label="Instagram" value={form.instagram} onChange={(e) => set("instagram", e.target.value)} placeholder="@yasdelicias" />
           <Input label="Endereço do site" value={form.site_url} onChange={(e) => set("site_url", e.target.value)} placeholder="https://yasdelicias.com.br" hint="Usado nos links de rastreio enviados por WhatsApp" />
         </div>
+        <div className="mt-3 grid gap-3">
+          <Input label="Frase de destaque no topo do cardápio" value={form.hero_title ?? ""} onChange={(e) => set("hero_title", e.target.value)} placeholder="Feito em casa, com carinho de verdade." />
+          <Textarea label="Texto de apoio (embaixo da frase)" value={form.hero_subtitle ?? ""} onChange={(e) => set("hero_subtitle", e.target.value)} placeholder="Bolos, biscoitos e outras delícias preparadas no dia…" />
+        </div>
         <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={form.is_open} onChange={(e) => set("is_open", e.target.checked)} /> loja aberta pra pedidos</label>
         <div className="mt-2"><Textarea label="Mensagem quando fechada" value={form.closed_message} onChange={(e) => set("closed_message", e.target.value)} /></div>
       </Card>
