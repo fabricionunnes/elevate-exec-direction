@@ -152,7 +152,7 @@ export default function Dashboard() {
       {(d.lowStock.length > 0 || r.caixa.aReceberMes > 0 || d.reviewQueue > 0 || d.compras > 0) && (
         <div className="flex flex-wrap gap-2">
           {r.caixa.aReceberMes > 0 && <Link to="/admin/pedidos?pagamento=pendente" className="flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200"><AlertTriangle size={16} /> {brl(r.caixa.aReceberMes)} a receber no mês</Link>}
-          {d.lowStock.length > 0 && <Link to="/admin/estoque" className="flex items-center gap-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-900 ring-1 ring-red-200"><AlertTriangle size={16} /> Estoque baixo: {d.lowStock.map((i) => i.name).join(", ")}</Link>}
+          {d.lowStock.length > 0 && <Link to="/admin/estoque" className="flex items-center gap-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-900 ring-1 ring-red-200"><AlertTriangle size={16} /> Estoque baixo: {d.lowStock.map((i) => `${i.name} ${Number(i.qty_on_hand).toLocaleString("pt-BR")} ${i.unit} (mín. ${Number(i.min_qty).toLocaleString("pt-BR")})`).join(" · ")}</Link>}
           {d.compras > 0 && <Link to="/admin/compras" className="flex items-center gap-2 rounded-xl bg-choco-50 px-3 py-2 text-sm text-choco-900 ring-1 ring-choco-200"><ShoppingCart size={16} /> {d.compras} item(ns) na lista de compras</Link>}
           {d.reviewQueue > 0 && <Link to="/admin/avaliacoes" className="flex items-center gap-2 rounded-xl bg-sky-50 px-3 py-2 text-sm text-sky-900 ring-1 ring-sky-200"><Star size={16} /> {d.reviewQueue} cliente(s) pra pedir avaliação</Link>}
         </div>
