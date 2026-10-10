@@ -5,6 +5,7 @@ import { supabase, friendlyError } from "@/lib/supabase";
 import { brl, dateTimeBR, todayISO } from "@/lib/format";
 import { RecipeModal } from "@/pages/admin/CardapioAdmin";
 import type { Ingredient, StockMovement, Product, ProductCost } from "@/lib/types";
+import { costProblem } from "@/lib/costGuard";
 import { Button, Card, Input, Select, Modal, Spinner, Empty, useToast } from "@/components/ui";
 
 const emptyIng: Omit<Ingredient, "id"> = { name: "", unit: "g", qty_on_hand: 0, min_qty: 0, cost_per_unit: 0, supplier: "", active: true, pack_size: null, pack_label: "pacote" };
@@ -204,6 +205,10 @@ export function MovementModal({ ingredient, type, onClose, onDone }: { ingredien
   const submit = async () => {
     if (type === "entrada" && totalQty <= 0) return toast("Informe quantas embalagens e quanto vem em cada uma.", "err");
     if (type === "saida" && totalQty <= 0) return toast("Informe a quantidade.", "err");
+    if (type === "entrada") {
+      const bad = costProblem(ingredient.name, ingredient.unit, unitCost, ingredient.cost_per_unit);
+      if (bad) return toast(bad, "err");
+    }
     const signed = type === "entrada" ? totalQty : type === "saida" ? -totalQty : num(qty) - Number(ingredient.qty_on_hand);
     setBusy(true);
     let transaction_id: string | null = null;
