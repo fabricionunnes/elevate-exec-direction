@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-10T15:01:03",
+ "gerado_em": "2026-10-10T21:01:08",
  "posts": [
+  {
+   "slug": "assessoria-nao-garante-execucao-comercial",
+   "url": "/blog/assessoria-nao-garante-execucao-comercial/",
+   "titulo": "Assessoria não garante que a execução vai acontecer",
+   "resumo": "Tem empresa que contrata e deixa tudo parado porque ninguém senta do lado para fazer junto. A diferença entre ensinar e executar define se o mês fecha ou não.",
+   "tags": [
+    "assessoria",
+    "execução",
+    "implementação",
+    "estrutura comercial",
+    "acompanhamento"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-10",
+   "ts": 2165
+  },
   {
    "slug": "prazo-minimo-contrato-protege-quem-estrutura",
    "url": "/blog/prazo-minimo-contrato-protege-quem-estrutura/",
