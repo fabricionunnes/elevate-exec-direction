@@ -6,19 +6,45 @@ import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, dateTimeBR, dayLong, formatPhone, nextStatus, PAYMENT_LABEL, STATUS_COLOR, STATUS_LABEL, statusLabelFor, todayISO, addDaysISO, onlyDigits, windowLabel } from "@/lib/format";
 import { waLink, msgs, trackingUrl } from "@/lib/whatsapp";
-import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, mapsPin, currentPosition, type RouteCtx } from "@/lib/route";
+import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, mapsPin, currentPosition, isHomeZone, ZONE_RADIUS_KM, type RouteCtx } from "@/lib/route";
 import { readOrderFromScreenshots, shrinkAll, type ReadOrder, type ShrunkImage } from "@/lib/readOrder";
 import type { Availability, AvailableWindow, Customer, DeliveryWindow, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Button, Badge, Card, Modal, Empty, Spinner, Input, Select, Textarea, useToast } from "@/components/ui";
 
 type Filter = "abertos" | "hoje" | "amanha" | "todos" | "cancelados";
+type OrderRow = Order & { order_items: { product_id: string | null; product_name: string; qty: number }[] | null };
+
+// Etiquetas por produto: tira o prefixo comum dos nomes ("Bolo de Cenoura ") e colore cada um.
+const CORES_PRODUTO = [
+  "bg-vinho-100 text-vinho-800 ring-vinho-300",
+  "bg-caramelo-400/20 text-caramelo-600 ring-caramelo-400/50",
+  "bg-choco-100 text-choco-800 ring-choco-300",
+  "bg-rosa-100 text-rosa-500 ring-rosa-300",
+  "bg-emerald-50 text-emerald-800 ring-emerald-300",
+  "bg-sky-50 text-sky-800 ring-sky-300",
+];
+function etiquetas(nomes: string[]) {
+  const sorted = [...new Set(nomes)].sort();
+  let prefix = sorted[0] ?? "";
+  for (const n of sorted) { let i = 0; while (i < prefix.length && i < n.length && prefix[i].toLowerCase() === n[i].toLowerCase()) i++; prefix = prefix.slice(0, i); }
+  // só corta em limite de palavra e se sobrar algo
+  prefix = sorted.length > 1 ? prefix.replace(/\S*$/, "") : "";
+  const m = new Map<string, { short: string; cor: string }>();
+  sorted.forEach((n, i) => {
+    let short = prefix && n.length > prefix.length ? n.slice(prefix.length) : n.replace(/^bolo de /i, "");
+    short = short.replace(/\s+de chocolate$/i, "").trim();
+    m.set(n, { short: short.charAt(0).toUpperCase() + short.slice(1), cor: CORES_PRODUTO[i % CORES_PRODUTO.length] });
+  });
+  return m;
+}
 
 export default function Pedidos() {
   const toast = useToast();
   const { settings } = useSettings(true);
   const [params, setParams] = useSearchParams();
-  const [orders, setOrders] = useState<Order[] | null>(null);
+  const [orders, setOrders] = useState<OrderRow[] | null>(null);
+  const [prod, setProd] = useState("");
   const [filter, setFilter] = useState<Filter>("abertos");
   const [q, setQ] = useState("");
   const [onlyUnpaid, setOnlyUnpaid] = useState(params.get("pagamento") === "pendente");
@@ -32,11 +58,11 @@ export default function Pedidos() {
 
   const load = useCallback(async () => {
     const [{ data }, w, z] = await Promise.all([
-      supabase.from("orders").select("*").order("scheduled_date").order("created_at"),
+      supabase.from("orders").select("*, order_items(product_id, product_name, qty)").order("scheduled_date").order("created_at"),
       supabase.from("delivery_windows").select("id, start_time"),
       supabase.from("delivery_zones").select("id, lat, lng, sort_order"),
     ]);
-    setOrders((data as Order[]) ?? []);
+    setOrders((data as OrderRow[]) ?? []);
     setWindows((w.data as DeliveryWindow[]) ?? []);
     setZones((z.data as DeliveryZone[]) ?? []);
   }, []);
@@ -46,6 +72,14 @@ export default function Pedidos() {
     windows,
     zones,
   }), [settings, windows, zones]);
+
+  /** Referência da região do pedido: ponto da região, ou a casa quando é "meu condomínio". Endereço fora do raio é descartado. */
+  const anchorFor = useCallback((o: Order) => {
+    const z = o.zone_id ? zones.find((x) => x.id === o.zone_id) : undefined;
+    if (z && hasCoords(z)) return { p: { lat: z.lat, lng: z.lng }, maxKm: ZONE_RADIUS_KM };
+    if (ctx.origin && isHomeZone(o.zone_name)) return { p: ctx.origin, maxKm: ZONE_RADIUS_KM };
+    return null;
+  }, [zones, ctx.origin]);
 
   /** Localiza no mapa os endereços de entrega que ainda não têm coordenada. */
   const locate = useCallback(async (list: Order[], force = false) => {
@@ -66,7 +100,7 @@ export default function Pedidos() {
           await supabase.from("orders").update({ lat: c.lat, lng: c.lng, geocoded_at: new Date().toISOString() }).eq("id", o.id);
           continue;
         }
-        const p = await geocodeAddress(o.address, o.zone_name, ctx.origin).catch(() => null);
+        const p = await geocodeAddress(o.address, o.zone_name, ctx.origin, anchorFor(o)).catch(() => null);
         await supabase.from("orders").update({ lat: p?.lat ?? null, lng: p?.lng ?? null, geocoded_at: new Date().toISOString() }).eq("id", o.id);
       }
     } finally {
@@ -95,13 +129,22 @@ export default function Pedidos() {
     if (filter === "amanha") l = l.filter((o) => o.scheduled_date === tomorrow && o.status !== "cancelado");
     if (filter === "cancelados") l = l.filter((o) => o.status === "cancelado");
     if (onlyUnpaid) l = l.filter((o) => o.payment_status === "pendente" && o.status !== "cancelado");
+    if (prod) l = l.filter((o) => (o.order_items ?? []).some((i) => i.product_name === prod));
     if (q.trim()) {
       const s = q.trim().toLowerCase();
       l = l.filter((o) => o.code.toLowerCase().includes(s) || o.customer_name.toLowerCase().includes(s) || o.customer_phone.includes(onlyDigits(s)));
     }
     if (filter === "todos" || filter === "cancelados") l = [...l].sort((a, b) => b.created_at.localeCompare(a.created_at));
     return l;
-  }, [orders, filter, q, onlyUnpaid]);
+  }, [orders, filter, q, onlyUnpaid, prod]);
+
+  // produtos que aparecem nos pedidos (nome gravado no item) → etiqueta curta e cor
+  const tags = useMemo(() => etiquetas((orders ?? []).flatMap((o) => (o.order_items ?? []).map((i) => i.product_name))), [orders]);
+  const itensDe = (o: OrderRow) => {
+    const m = new Map<string, number>();
+    for (const i of o.order_items ?? []) m.set(i.product_name, (m.get(i.product_name) ?? 0) + Number(i.qty));
+    return [...m.entries()];
+  };
 
   const grouped = useMemo(() => {
     const m = new Map<string, Order[]>();
@@ -138,6 +181,15 @@ export default function Pedidos() {
           <button key={f} onClick={() => setFilter(f)} className={clsx("rounded-full px-3 py-1.5 text-sm font-semibold capitalize", filter === f ? "bg-vinho-600 text-white" : "bg-white text-choco-700 ring-1 ring-choco-200")}>{f === "amanha" ? "amanhã" : f}</button>
         ))}
         <label className="ml-1 flex items-center gap-1 text-sm text-choco-700"><input type="checkbox" checked={onlyUnpaid} onChange={(e) => setOnlyUnpaid(e.target.checked)} /> só não pagos</label>
+        {tags.size > 0 && (
+          <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
+            <span className="text-xs text-choco-500">Produto:</span>
+            <button onClick={() => setProd("")} className={clsx("rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset", !prod ? "bg-choco-900 text-white ring-choco-900" : "bg-white text-choco-700 ring-choco-200")}>todos</button>
+            {[...tags.entries()].map(([name, t]) => (
+              <button key={name} onClick={() => setProd(prod === name ? "" : name)} title={name} className={clsx("rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset", t.cor, prod === name && "outline outline-2 outline-offset-1 outline-choco-900")}>{t.short}</button>
+            ))}
+          </div>
+        )}
         <div className="relative ml-auto">
           <Search size={16} className="absolute left-3 top-3 text-choco-400" />
           <input className="h-10 rounded-xl border border-choco-200 bg-white pl-9 pr-3 text-sm" placeholder="código, nome, telefone" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -163,6 +215,11 @@ export default function Pedidos() {
                 <h2 className="mb-2 flex flex-wrap items-center gap-2 text-sm font-bold uppercase tracking-wide text-choco-600">
                   <span className="capitalize">{dayLabel(day)}</span>
                   <span className="text-choco-400">· {ps.length} pedido(s)</span>
+                  {(() => {
+                    const tot = new Map<string, number>();
+                    for (const p of ps) if (p.order.status !== "cancelado") for (const [n, qn] of itensDe(p.order as OrderRow)) tot.set(n, (tot.get(n) ?? 0) + qn);
+                    return [...tot.entries()].map(([n, qn]) => <span key={n} className={clsx("rounded-full px-2 py-0.5 text-[10px] font-bold normal-case tracking-normal ring-1 ring-inset", tags.get(n)?.cor)}>{qn}x {tags.get(n)?.short ?? n}</span>);
+                  })()}
                   <span className="ml-auto flex items-center gap-1 normal-case tracking-normal">
                     {unlocated > 0 && filter !== "cancelados" && (
                       <Button size="sm" variant="ghost" loading={!!locating} onClick={() => locate(ps.map((p) => p.order), true)}><MapPin size={14} /> Localizar {unlocated} endereço(s)</Button>
@@ -179,6 +236,9 @@ export default function Pedidos() {
                           <span>{o.code} · {o.customer_name}</span>
                         </span>
                         <Badge className={STATUS_COLOR[o.status]}>{statusLabelFor(o.status, o.fulfillment)}</Badge>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {itensDe(o as OrderRow).map(([n, qn]) => <span key={n} className={clsx("rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ring-inset", tags.get(n)?.cor)} title={n}>{qn}x {tags.get(n)?.short ?? n}</span>)}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-choco-500">
                         <span>{o.fulfillment === "entrega" ? `Entrega · ${o.zone_name ?? ""}` : "Retirada"}{o.window_label ? ` · ${o.window_label}` : ""}</span>
@@ -244,7 +304,8 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
     if (!order) return;
     setGeoBusy(true);
     const bias = full && hasCoords({ lat: full.origin_lat, lng: full.origin_lng }) ? { lat: full.origin_lat as number, lng: full.origin_lng as number } : null;
-    const p = await geocodeAddress(order.address, order.zone_name, bias).catch(() => null);
+    const anchor = bias && isHomeZone(order.zone_name) ? { p: bias, maxKm: ZONE_RADIUS_KM } : null;
+    const p = await geocodeAddress(order.address, order.zone_name, bias, anchor).catch(() => null);
     const { error } = await supabase.from("orders").update({ lat: p?.lat ?? null, lng: p?.lng ?? null, geocoded_at: new Date().toISOString() }).eq("id", order.id);
     setGeoBusy(false);
     if (error) return toast(friendlyError(error), "err");
