@@ -45,6 +45,8 @@ export default function Pedidos() {
   const [params, setParams] = useSearchParams();
   const [orders, setOrders] = useState<OrderRow[] | null>(null);
   const [prod, setProd] = useState("");
+  const [dFrom, setDFrom] = useState("");
+  const [dTo, setDTo] = useState("");
   const [filter, setFilter] = useState<Filter>("abertos");
   const [q, setQ] = useState("");
   const [onlyUnpaid, setOnlyUnpaid] = useState(params.get("pagamento") === "pendente");
@@ -130,13 +132,15 @@ export default function Pedidos() {
     if (filter === "cancelados") l = l.filter((o) => o.status === "cancelado");
     if (onlyUnpaid) l = l.filter((o) => o.payment_status === "pendente" && o.status !== "cancelado");
     if (prod) l = l.filter((o) => (o.order_items ?? []).some((i) => i.product_name === prod));
+    if (dFrom) l = l.filter((o) => o.scheduled_date >= dFrom);
+    if (dTo) l = l.filter((o) => o.scheduled_date <= dTo);
     if (q.trim()) {
       const s = q.trim().toLowerCase();
       l = l.filter((o) => o.code.toLowerCase().includes(s) || o.customer_name.toLowerCase().includes(s) || o.customer_phone.includes(onlyDigits(s)));
     }
     if (filter === "todos" || filter === "cancelados") l = [...l].sort((a, b) => b.created_at.localeCompare(a.created_at));
     return l;
-  }, [orders, filter, q, onlyUnpaid, prod]);
+  }, [orders, filter, q, onlyUnpaid, prod, dFrom, dTo]);
 
   // produtos que aparecem nos pedidos (nome gravado no item) → etiqueta curta e cor
   const tags = useMemo(() => etiquetas((orders ?? []).flatMap((o) => (o.order_items ?? []).map((i) => i.product_name))), [orders]);
@@ -178,9 +182,16 @@ export default function Pedidos() {
 
       <div className="flex flex-wrap items-center gap-2">
         {(["abertos", "hoje", "amanha", "todos", "cancelados"] as Filter[]).map((f) => (
-          <button key={f} onClick={() => setFilter(f)} className={clsx("rounded-full px-3 py-1.5 text-sm font-semibold capitalize", filter === f ? "bg-vinho-600 text-white" : "bg-white text-choco-700 ring-1 ring-choco-200")}>{f === "amanha" ? "amanhã" : f}</button>
+          <button key={f} onClick={() => { setFilter(f); if (f === "hoje" || f === "amanha") { setDFrom(""); setDTo(""); } }} className={clsx("rounded-full px-3 py-1.5 text-sm font-semibold capitalize", filter === f ? "bg-vinho-600 text-white" : "bg-white text-choco-700 ring-1 ring-choco-200")}>{f === "amanha" ? "amanhã" : f}</button>
         ))}
         <label className="ml-1 flex items-center gap-1 text-sm text-choco-700"><input type="checkbox" checked={onlyUnpaid} onChange={(e) => setOnlyUnpaid(e.target.checked)} /> só não pagos</label>
+        <div className="flex items-center gap-1 text-xs text-choco-500">
+          <span>Data:</span>
+          <input type="date" value={dFrom} onChange={(e) => { setDFrom(e.target.value); if (e.target.value && (filter === "hoje" || filter === "amanha")) setFilter("todos"); }} className="h-8 rounded-lg border border-choco-200 bg-white px-2 text-xs text-choco-800" />
+          <span>até</span>
+          <input type="date" value={dTo} min={dFrom || undefined} onChange={(e) => { setDTo(e.target.value); if (e.target.value && (filter === "hoje" || filter === "amanha")) setFilter("todos"); }} className="h-8 rounded-lg border border-choco-200 bg-white px-2 text-xs text-choco-800" />
+          {(dFrom || dTo) && <button type="button" onClick={() => { setDFrom(""); setDTo(""); }} className="rounded-full bg-choco-100 px-2 py-0.5 font-semibold text-choco-700">limpar</button>}
+        </div>
         {tags.size > 0 && (
           <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
             <span className="text-xs text-choco-500">Produto:</span>
