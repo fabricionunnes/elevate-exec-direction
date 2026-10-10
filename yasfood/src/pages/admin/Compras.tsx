@@ -85,10 +85,10 @@ export default function Compras() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-black text-choco-900">Lista de compras</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button onClick={() => setNota(true)}><Receipt size={16} /> Lançar nota (foto)</Button>
           <Button variant="outline" onClick={copy}><Copy size={16} /> Copiar</Button>
-          <a href={waLink(settings?.whatsapp ?? "", listText)} target="_blank" rel="noreferrer"><Button variant="wa"><MessageCircle size={16} /> Mandar pro meu WhatsApp</Button></a>
+          <a href={waLink(settings?.whatsapp ?? "", listText)} target="_blank" rel="noreferrer"><Button variant="wa"><MessageCircle size={16} /> Mandar pro WhatsApp</Button></a>
         </div>
       </div>
       <p className="text-sm text-choco-600">A parte automática olha o estoque mínimo e o que os pedidos dos próximos 14 dias vão consumir. Quando você lança a compra no Estoque, o item sai da lista sozinho.</p>

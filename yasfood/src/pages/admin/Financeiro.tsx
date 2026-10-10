@@ -95,7 +95,7 @@ export default function Financeiro() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-black text-choco-900">Financeiro</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Select value={month} onChange={(e) => setMonth(e.target.value)} className="!h-10 capitalize">{monthOptions.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}</Select>
           <Button onClick={() => setNovo({ type: "despesa", category: "Insumos", occurred_on: todayISO() })}><Plus size={16} /> Lançar</Button>
         </div>

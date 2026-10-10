@@ -6,7 +6,7 @@ import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, dateTimeBR, dayLong, formatPhone, nextStatus, PAYMENT_LABEL, STATUS_COLOR, STATUS_LABEL, statusLabelFor, todayISO, addDaysISO, onlyDigits, windowLabel } from "@/lib/format";
 import { waLink, msgs, trackingUrl } from "@/lib/whatsapp";
-import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, mapsPin, currentPosition, isHomeZone, ZONE_RADIUS_KM, type RouteCtx } from "@/lib/route";
+import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, mapsPin, currentPosition, usableOrigin, anchorFor as anchorOf, isCityCenter, type RouteCtx } from "@/lib/route";
 import { readOrderFromScreenshots, shrinkAll, type ReadOrder, type ShrunkImage } from "@/lib/readOrder";
 import type { Availability, AvailableWindow, Customer, DeliveryWindow, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
 import { StatusTimeline } from "@/components/StatusTimeline";
@@ -45,6 +45,8 @@ export default function Pedidos() {
   const [params, setParams] = useSearchParams();
   const [orders, setOrders] = useState<OrderRow[] | null>(null);
   const [prod, setProd] = useState("");
+  const [dFrom, setDFrom] = useState("");
+  const [dTo, setDTo] = useState("");
   const [filter, setFilter] = useState<Filter>("abertos");
   const [q, setQ] = useState("");
   const [onlyUnpaid, setOnlyUnpaid] = useState(params.get("pagamento") === "pendente");
@@ -68,18 +70,13 @@ export default function Pedidos() {
   }, []);
 
   const ctx = useMemo<RouteCtx>(() => ({
-    origin: settings && hasCoords({ lat: settings.origin_lat, lng: settings.origin_lng }) ? { lat: settings.origin_lat as number, lng: settings.origin_lng as number } : null,
+    origin: usableOrigin(settings),
     windows,
     zones,
   }), [settings, windows, zones]);
 
-  /** Referência da região do pedido: ponto da região, ou a casa quando é "meu condomínio". Endereço fora do raio é descartado. */
-  const anchorFor = useCallback((o: Order) => {
-    const z = o.zone_id ? zones.find((x) => x.id === o.zone_id) : undefined;
-    if (z && hasCoords(z)) return { p: { lat: z.lat, lng: z.lng }, maxKm: ZONE_RADIUS_KM };
-    if (ctx.origin && isHomeZone(o.zone_name)) return { p: ctx.origin, maxKm: ZONE_RADIUS_KM };
-    return null;
-  }, [zones, ctx.origin]);
+  /** Referência da região do pedido: ponto da região, a casa quando é "meu condomínio", senão o Alphaville. Endereço fora do raio é descartado. */
+  const anchorFor = useCallback((o: Order) => anchorOf(o, ctx.origin, zones), [zones, ctx.origin]);
 
   /** Localiza no mapa os endereços de entrega que ainda não têm coordenada. */
   const locate = useCallback(async (list: Order[], force = false) => {
@@ -130,13 +127,15 @@ export default function Pedidos() {
     if (filter === "cancelados") l = l.filter((o) => o.status === "cancelado");
     if (onlyUnpaid) l = l.filter((o) => o.payment_status === "pendente" && o.status !== "cancelado");
     if (prod) l = l.filter((o) => (o.order_items ?? []).some((i) => i.product_name === prod));
+    if (dFrom) l = l.filter((o) => o.scheduled_date >= dFrom);
+    if (dTo) l = l.filter((o) => o.scheduled_date <= dTo);
     if (q.trim()) {
       const s = q.trim().toLowerCase();
       l = l.filter((o) => o.code.toLowerCase().includes(s) || o.customer_name.toLowerCase().includes(s) || o.customer_phone.includes(onlyDigits(s)));
     }
     if (filter === "todos" || filter === "cancelados") l = [...l].sort((a, b) => b.created_at.localeCompare(a.created_at));
     return l;
-  }, [orders, filter, q, onlyUnpaid, prod]);
+  }, [orders, filter, q, onlyUnpaid, prod, dFrom, dTo]);
 
   // produtos que aparecem nos pedidos (nome gravado no item) → etiqueta curta e cor
   const tags = useMemo(() => etiquetas((orders ?? []).flatMap((o) => (o.order_items ?? []).map((i) => i.product_name))), [orders]);
@@ -178,9 +177,16 @@ export default function Pedidos() {
 
       <div className="flex flex-wrap items-center gap-2">
         {(["abertos", "hoje", "amanha", "todos", "cancelados"] as Filter[]).map((f) => (
-          <button key={f} onClick={() => setFilter(f)} className={clsx("rounded-full px-3 py-1.5 text-sm font-semibold capitalize", filter === f ? "bg-vinho-600 text-white" : "bg-white text-choco-700 ring-1 ring-choco-200")}>{f === "amanha" ? "amanhã" : f}</button>
+          <button key={f} onClick={() => { setFilter(f); if (f === "hoje" || f === "amanha") { setDFrom(""); setDTo(""); } }} className={clsx("rounded-full px-3 py-1.5 text-sm font-semibold capitalize", filter === f ? "bg-vinho-600 text-white" : "bg-white text-choco-700 ring-1 ring-choco-200")}>{f === "amanha" ? "amanhã" : f}</button>
         ))}
         <label className="ml-1 flex items-center gap-1 text-sm text-choco-700"><input type="checkbox" checked={onlyUnpaid} onChange={(e) => setOnlyUnpaid(e.target.checked)} /> só não pagos</label>
+        <div className="flex items-center gap-1 text-xs text-choco-500">
+          <span>Data:</span>
+          <input type="date" value={dFrom} onChange={(e) => { setDFrom(e.target.value); if (e.target.value && (filter === "hoje" || filter === "amanha")) setFilter("todos"); }} className="h-8 rounded-lg border border-choco-200 bg-white px-2 text-xs text-choco-800" />
+          <span>até</span>
+          <input type="date" value={dTo} min={dFrom || undefined} onChange={(e) => { setDTo(e.target.value); if (e.target.value && (filter === "hoje" || filter === "amanha")) setFilter("todos"); }} className="h-8 rounded-lg border border-choco-200 bg-white px-2 text-xs text-choco-800" />
+          {(dFrom || dTo) && <button type="button" onClick={() => { setDFrom(""); setDTo(""); }} className="rounded-full bg-choco-100 px-2 py-0.5 font-semibold text-choco-700">limpar</button>}
+        </div>
         {tags.size > 0 && (
           <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
             <span className="text-xs text-choco-500">Produto:</span>
@@ -201,7 +207,9 @@ export default function Pedidos() {
           {filter !== "cancelados" && (
             <p className="text-xs text-choco-500">
               Ordem sugerida pelo sistema: horário mais cedo primeiro; dentro do horário, retiradas e depois as entregas do mais perto pro mais longe partindo da sua casa.
-              {!ctx.origin && <> Pra rota por distância, <a href="/admin/configuracoes" className="font-semibold text-vinho-600 underline">cadastre a localização da sua casa</a>.</>}
+              {!ctx.origin && (settings && hasCoords({ lat: settings.origin_lat, lng: settings.origin_lng })
+                ? <> <b className="text-vinho-700">A localização da sua casa está marcada no centro de Nova Lima, errada.</b> <a href="/admin/configuracoes" className="font-semibold text-vinho-600 underline">Vá em Configurações</a> e toque em "Usar minha localização atual" estando em casa.</>
+                : <> Pra rota por distância, <a href="/admin/configuracoes" className="font-semibold text-vinho-600 underline">cadastre a localização da sua casa</a>.</>)}
             </p>
           )}
           {grouped.map(([day, ps]) => {
@@ -303,9 +311,8 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
   const relocate = async () => {
     if (!order) return;
     setGeoBusy(true);
-    const bias = full && hasCoords({ lat: full.origin_lat, lng: full.origin_lng }) ? { lat: full.origin_lat as number, lng: full.origin_lng as number } : null;
-    const anchor = bias && isHomeZone(order.zone_name) ? { p: bias, maxKm: ZONE_RADIUS_KM } : null;
-    const p = await geocodeAddress(order.address, order.zone_name, bias, anchor).catch(() => null);
+    const bias = usableOrigin(full);
+    const p = await geocodeAddress(order.address, order.zone_name, bias, anchorOf(order, bias)).catch(() => null);
     const { error } = await supabase.from("orders").update({ lat: p?.lat ?? null, lng: p?.lng ?? null, geocoded_at: new Date().toISOString() }).eq("id", order.id);
     setGeoBusy(false);
     if (error) return toast(friendlyError(error), "err");
