@@ -44,8 +44,15 @@ function pointOf(o: Order, ctx: RouteCtx): { p: LatLng | null; approx: boolean }
   if (hasCoords(o)) return { p: { lat: o.lat, lng: o.lng }, approx: false };
   const z = o.zone_id ? ctx.zones.find((x) => x.id === o.zone_id) : undefined;
   if (z && hasCoords(z)) return { p: { lat: z.lat, lng: z.lng }, approx: true };
+  // região "meu condomínio" sem ponto marcado: a casa da Yasmim é a referência
+  if (ctx.origin && isHomeZone(o.zone_name)) return { p: ctx.origin, approx: true };
   return { p: null, approx: false };
 }
+
+/** Região da casa da Yasmim ("Meu condomínio (Alphaville)"). */
+export const isHomeZone = (zoneName: string | null | undefined) => /meu condom/i.test(zoneName ?? "");
+/** Raio (km) em que um endereço precisa cair em relação à referência da região. */
+export const ZONE_RADIUS_KM = 3;
 
 const DONE = new Set(["entregue", "cancelado"]);
 
@@ -233,9 +240,11 @@ const safe = <T,>(p: Promise<T | null>) => p.catch(() => null);
  * Localiza um endereço de entrega. Ordem: CEP → busca estruturada (rua, número, cidade, CEP)
  * → texto livre com o condomínio → Photon. Só aceita resultado na cidade certa ou perto da casa.
  */
-export async function geocodeAddress(address: string, zoneName: string | null, bias: LatLng | null): Promise<GeoHit | null> {
+export async function geocodeAddress(address: string, zoneName: string | null, bias: LatLng | null, anchor?: { p: LatLng; maxKm: number } | null): Promise<GeoHit | null> {
   const { street, cep, city } = parseAddress(address);
   if (!street && !cep) return null;
+  // a referência da região (condomínio) manda na busca e na aceitação
+  if (anchor) bias = anchor.p;
   const zone = zoneName && !/outros|fora|combinar|meu condom/i.test(zoneName) ? zoneName : null;
   const steps: (() => Promise<GeoHit | null>)[] = [];
   if (cep) steps.push(() => safe(cepLookup(cep, bias)));
@@ -250,7 +259,10 @@ export async function geocodeAddress(address: string, zoneName: string | null, b
   }
   for (const step of steps) {
     const hit = await step();
-    if (hit) return hit;
+    if (!hit) continue;
+    // achou algo, mas longe demais da região? é outra rua com o mesmo nome: segue tentando
+    if (anchor && haversineKm(anchor.p, hit) > anchor.maxKm) continue;
+    return hit;
   }
   return null;
 }

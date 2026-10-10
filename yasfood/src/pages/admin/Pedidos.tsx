@@ -6,7 +6,7 @@ import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, dateTimeBR, dayLong, formatPhone, nextStatus, PAYMENT_LABEL, STATUS_COLOR, STATUS_LABEL, statusLabelFor, todayISO, addDaysISO, onlyDigits, windowLabel } from "@/lib/format";
 import { waLink, msgs, trackingUrl } from "@/lib/whatsapp";
-import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, mapsPin, currentPosition, type RouteCtx } from "@/lib/route";
+import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, mapsPin, currentPosition, isHomeZone, ZONE_RADIUS_KM, type RouteCtx } from "@/lib/route";
 import { readOrderFromScreenshots, shrinkAll, type ReadOrder, type ShrunkImage } from "@/lib/readOrder";
 import type { Availability, AvailableWindow, Customer, DeliveryWindow, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
 import { StatusTimeline } from "@/components/StatusTimeline";
@@ -73,6 +73,14 @@ export default function Pedidos() {
     zones,
   }), [settings, windows, zones]);
 
+  /** Referência da região do pedido: ponto da região, ou a casa quando é "meu condomínio". Endereço fora do raio é descartado. */
+  const anchorFor = useCallback((o: Order) => {
+    const z = o.zone_id ? zones.find((x) => x.id === o.zone_id) : undefined;
+    if (z && hasCoords(z)) return { p: { lat: z.lat, lng: z.lng }, maxKm: ZONE_RADIUS_KM };
+    if (ctx.origin && isHomeZone(o.zone_name)) return { p: ctx.origin, maxKm: ZONE_RADIUS_KM };
+    return null;
+  }, [zones, ctx.origin]);
+
   /** Localiza no mapa os endereços de entrega que ainda não têm coordenada. */
   const locate = useCallback(async (list: Order[], force = false) => {
     if (geoBusy.current) return;
@@ -92,7 +100,7 @@ export default function Pedidos() {
           await supabase.from("orders").update({ lat: c.lat, lng: c.lng, geocoded_at: new Date().toISOString() }).eq("id", o.id);
           continue;
         }
-        const p = await geocodeAddress(o.address, o.zone_name, ctx.origin).catch(() => null);
+        const p = await geocodeAddress(o.address, o.zone_name, ctx.origin, anchorFor(o)).catch(() => null);
         await supabase.from("orders").update({ lat: p?.lat ?? null, lng: p?.lng ?? null, geocoded_at: new Date().toISOString() }).eq("id", o.id);
       }
     } finally {
@@ -296,7 +304,8 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
     if (!order) return;
     setGeoBusy(true);
     const bias = full && hasCoords({ lat: full.origin_lat, lng: full.origin_lng }) ? { lat: full.origin_lat as number, lng: full.origin_lng as number } : null;
-    const p = await geocodeAddress(order.address, order.zone_name, bias).catch(() => null);
+    const anchor = bias && isHomeZone(order.zone_name) ? { p: bias, maxKm: ZONE_RADIUS_KM } : null;
+    const p = await geocodeAddress(order.address, order.zone_name, bias, anchor).catch(() => null);
     const { error } = await supabase.from("orders").update({ lat: p?.lat ?? null, lng: p?.lng ?? null, geocoded_at: new Date().toISOString() }).eq("id", order.id);
     setGeoBusy(false);
     if (error) return toast(friendlyError(error), "err");
