@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, MessageCircle, Copy, ShoppingCart, RotateCcw } from "lucide-react";
+import { Plus, Trash2, MessageCircle, Copy, ShoppingCart, RotateCcw, Receipt } from "lucide-react";
 import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
@@ -7,6 +7,7 @@ import { brl } from "@/lib/format";
 import { waLink } from "@/lib/whatsapp";
 import type { IngredientNeed, ShoppingItem, Ingredient } from "@/lib/types";
 import { MovementModal } from "@/pages/admin/Estoque";
+import { LancarNota } from "@/pages/admin/LancarNota";
 import { Button, Card, Input, Spinner, Empty, useToast } from "@/components/ui";
 
 const fmtQty = (n: number, unit: string) => `${Number(n).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} ${unit}`;
@@ -20,6 +21,8 @@ export default function Compras() {
   const [qtyText, setQtyText] = useState("");
   const [showDone, setShowDone] = useState(false);
   const [buying, setBuying] = useState<Ingredient | null>(null);
+  const [nota, setNota] = useState(false);
+  const [allIngredients, setAllIngredients] = useState<Ingredient[]>([]);
 
   const toIngredient = (n: IngredientNeed): Ingredient => ({
     id: n.ingredient_id, name: n.name, unit: n.unit, qty_on_hand: Number(n.qty_on_hand), min_qty: Number(n.min_qty),
@@ -27,12 +30,14 @@ export default function Compras() {
   });
 
   const load = useCallback(async () => {
-    const [n, i] = await Promise.all([
+    const [n, i, g] = await Promise.all([
       supabase.from("ingredient_needs").select("*").order("name"),
       supabase.from("shopping_items").select("*").order("done").order("created_at"),
+      supabase.from("ingredients").select("*").eq("active", true).order("name"),
     ]);
     setNeeds((n.data as IngredientNeed[]) ?? []);
     setItems((i.data as ShoppingItem[]) ?? []);
+    setAllIngredients((g.data as Ingredient[]) ?? []);
   }, []);
   useEffect(() => { void load(); }, [load]);
 
@@ -81,6 +86,7 @@ export default function Compras() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-black text-choco-900">Lista de compras</h1>
         <div className="flex gap-2">
+          <Button onClick={() => setNota(true)}><Receipt size={16} /> Lançar nota (foto)</Button>
           <Button variant="outline" onClick={copy}><Copy size={16} /> Copiar</Button>
           <a href={waLink(settings?.whatsapp ?? "", listText)} target="_blank" rel="noreferrer"><Button variant="wa"><MessageCircle size={16} /> Mandar pro meu WhatsApp</Button></a>
         </div>
@@ -128,6 +134,7 @@ export default function Compras() {
       </Card>
 
       {buying && <MovementModal ingredient={buying} type="entrada" onClose={() => setBuying(null)} onDone={() => { setBuying(null); void load(); }} />}
+      {nota && <LancarNota ingredients={allIngredients} onClose={() => setNota(false)} onDone={() => { setNota(false); void load(); }} />}
     </div>
   );
 }

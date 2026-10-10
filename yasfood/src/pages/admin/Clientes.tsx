@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, MessageCircle, Search, Pencil, UserPlus } from "lucide-react";
 import { clsx } from "clsx";
+import { Link } from "react-router-dom";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { brl, dateBR, formatPhone, onlyDigits, dayLabel, STATUS_COLOR, statusLabelFor } from "@/lib/format";
@@ -86,7 +87,13 @@ export default function Clientes() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-black text-choco-900">Clientes e leads</h1>
-        <Button onClick={() => setEditing({ kind: "lead", source: "whatsapp" })}><UserPlus size={16} /> Cadastrar</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <nav className="flex gap-1 rounded-full bg-white p-1 text-sm font-semibold ring-1 ring-choco-200">
+            <span className="rounded-full bg-vinho-600 px-3 py-1 text-white">Clientes</span>
+            <Link to="/admin/clientes/recompras" className="rounded-full px-3 py-1 text-choco-700">Recompras</Link>
+          </nav>
+          <Button onClick={() => setEditing({ kind: "lead", source: "whatsapp" })}><UserPlus size={16} /> Cadastrar</Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
