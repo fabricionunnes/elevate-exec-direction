@@ -115,13 +115,21 @@ const DONE = new Set(["entregue", "cancelado"]);
  * 3. pedidos sem localização entram depois, na ordem das zonas;
  * 4. entregues e cancelados ficam por último.
  */
-export function prioritize(orders: Order[], ctx: RouteCtx): Prioritized[] {
+export interface PrioritizeOpts {
+  /** Ignora o horário: tudo numa rota só, do mais perto pro mais longe. */
+  byDistance?: boolean;
+  /** De onde a rota começa (posição atual da Yasmim); sem isso, a casa. */
+  start?: LatLng | null;
+}
+
+export function prioritize(orders: Order[], ctx: RouteCtx, opts: PrioritizeOpts = {}): Prioritized[] {
   const active = orders.filter((o) => !DONE.has(o.status));
   const done = orders.filter((o) => DONE.has(o.status));
+  const start = opts.start ?? ctx.origin;
 
   const groups = new Map<string, Order[]>();
   for (const o of active) {
-    const k = windowStart(o, ctx.windows);
+    const k = opts.byDistance ? "" : windowStart(o, ctx.windows);
     groups.set(k, [...(groups.get(k) ?? []), o]);
   }
   const keys = [...groups.keys()].sort((a, b) => (a === "" ? 1 : b === "" ? -1 : a.localeCompare(b)));
@@ -129,8 +137,8 @@ export function prioritize(orders: Order[], ctx: RouteCtx): Prioritized[] {
   const out: Prioritized[] = [];
   for (const k of keys) {
     const g = groups.get(k)!;
-    // cada horário é uma saída nova a partir de casa
-    let cursor: LatLng | null = ctx.origin;
+    // cada horário é uma saída nova a partir de casa (ou de onde ela está agora)
+    let cursor: LatLng | null = start;
     const pickups = g.filter((o) => o.fulfillment === "retirada");
     const deliveries = g.filter((o) => o.fulfillment === "entrega");
     for (const o of pickups) out.push({ order: o, rank: 0, legKm: null, located: true, approx: false, windowKey: k });
@@ -167,7 +175,7 @@ function zoneOrder(o: Order, ctx: RouteCtx) {
 }
 
 /** Link do Google Maps com a rota na ordem sugerida (até 10 paradas). */
-export function gmapsRouteUrl(stops: Prioritized[], ctx: RouteCtx, originText: string) {
+export function gmapsRouteUrl(stops: Prioritized[], ctx: RouteCtx, originText: string, start?: LatLng | null) {
   const route = stops.filter((s) => s.order.fulfillment === "entrega" && !DONE.has(s.order.status)).slice(0, 10);
   if (!route.length) return null;
   // coordenada só quando é do endereço mesmo; senão vai o texto amarrado na região, pro Google não cair em outro bairro
@@ -175,7 +183,8 @@ export function gmapsRouteUrl(stops: Prioritized[], ctx: RouteCtx, originText: s
     const { p } = pointOf(s.order, ctx);
     return p && !s.approx && !isCityCenter(p) ? `${p.lat},${p.lng}` : stopText(s.order);
   };
-  const origin = ctx.origin && !isCityCenter(ctx.origin) ? `${ctx.origin.lat},${ctx.origin.lng}` : originQuery(originText);
+  const from = start ?? ctx.origin;
+  const origin = from && !isCityCenter(from) ? `${from.lat},${from.lng}` : originQuery(originText);
   const dest = pt(route[route.length - 1]);
   const way = route.slice(0, -1).map(pt).join("|");
   const u = new URL("https://www.google.com/maps/dir/");
@@ -341,6 +350,15 @@ export function currentPosition(): Promise<LatLng & { accuracy: number }> {
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
   });
+}
+
+/** Navegar no Waze até a parada (o Waze só aceita um destino por vez). */
+export function wazeUrl(o: Pick<Order, "address" | "zone_name" | "lat" | "lng">) {
+  const u = new URL("https://waze.com/ul");
+  if (hasCoords(o) && !isCityCenter(o)) u.searchParams.set("ll", `${o.lat},${o.lng}`);
+  else u.searchParams.set("q", stopText(o));
+  u.searchParams.set("navigate", "yes");
+  return u.toString();
 }
 
 export const mapsPin = (p: LatLng) => `https://www.google.com/maps?q=${p.lat},${p.lng}`;
