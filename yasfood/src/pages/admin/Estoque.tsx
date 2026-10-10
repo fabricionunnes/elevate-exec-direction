@@ -111,12 +111,10 @@ export default function Estoque() {
                           toast(`${i.name}: agora em ${unit}. Confira estoque, mínimo e receita nessa unidade.`);
                           void load();
                         }}
-                        title="Unidade de medida deste insumo"
+                        title="Unidade de medida deste insumo. Estoque, receita e custo usam a mesma unidade: compra em kg ou litro é convertida na entrada."
                       >
                         <option value="g">g (gramas)</option>
-                        <option value="kg">kg</option>
                         <option value="ml">ml</option>
-                        <option value="l">l (litros)</option>
                         <option value="un">un (unidade)</option>
                       </select>
                     </td>
@@ -160,7 +158,7 @@ export default function Estoque() {
             <Input label="Nome" value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
             <div className="grid grid-cols-2 gap-2">
               <Select label="Unidade" value={editing.unit ?? "g"} onChange={(e) => setEditing({ ...editing, unit: e.target.value as Ingredient["unit"] })}>
-                <option value="g">gramas (g)</option><option value="kg">quilos (kg)</option><option value="ml">mililitros (ml)</option><option value="l">litros (l)</option><option value="un">unidade (un)</option>
+                <option value="g">gramas (g)</option><option value="ml">mililitros (ml)</option><option value="un">unidade (un)</option>
               </Select>
               <Input label="Custo por unidade (R$)" type="number" step="0.0001" value={editing.cost_per_unit ?? 0} onChange={(e) => setEditing({ ...editing, cost_per_unit: Number(e.target.value) })} hint="Ex.: farinha a R$ 5/kg = 0,005 por g" />
             </div>
