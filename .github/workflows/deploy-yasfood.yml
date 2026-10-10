@@ -130,9 +130,12 @@ jobs:
           set -euo pipefail
           # a CLI resolve as funções a partir da pasta supabase/ da raiz (config.toml do Nexus):
           # copia a função do YasFood pra lá só no momento do deploy
-          rm -rf supabase/functions/yasfood-read-order
-          cp -r yasfood/supabase/functions/yasfood-read-order supabase/functions/yasfood-read-order
-          supabase functions deploy yasfood-read-order --project-ref "$SUPABASE_PROJECT_REF"
+          for fn in yasfood/supabase/functions/*/; do
+            name=$(basename "$fn")
+            rm -rf "supabase/functions/$name"
+            cp -r "$fn" "supabase/functions/$name"
+            supabase functions deploy "$name" --project-ref "$SUPABASE_PROJECT_REF"
+          done
           # chave da IA: só grava se o secret existir no repositório (a do projeto pode já estar lá pelo Nexus)
           if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
             supabase secrets set ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" --project-ref "$SUPABASE_PROJECT_REF"
