@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-10T10:01:19",
+ "gerado_em": "2026-10-10T15:01:03",
  "posts": [
+  {
+   "slug": "prazo-minimo-contrato-protege-quem-estrutura",
+   "url": "/blog/prazo-minimo-contrato-protege-quem-estrutura/",
+   "titulo": "Prazo mínimo de contrato protege quem está estruturando",
+   "resumo": "Começar a estruturar comercial sem prazo mínimo de contrato transfere o risco todo para quem vai executar. Quem cobra resultado em 90 dias precisa garantir tempo para implementar.",
+   "tags": [
+    "contrato",
+    "prazo mínimo",
+    "implementação",
+    "estrutura comercial",
+    "risco"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-10",
+   "ts": 2164
+  },
   {
    "slug": "aviso-previo-cliente-nao-resolve-estrutura-conversao",
    "url": "/blog/aviso-previo-cliente-nao-resolve-estrutura-conversao/",
