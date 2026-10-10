@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import type { Settings } from "@/lib/types";
 import { Button, Card, Input, Textarea, Spinner, useToast } from "@/components/ui";
 import { Logo } from "@/pages/cliente/Layout";
-import { geocodePlace, cleanAddress, mapsPin, hasCoords, currentPosition } from "@/lib/route";
+import { geocodePlace, originQuery, mapsPin, hasCoords, currentPosition, isCityCenter } from "@/lib/route";
 
 export default function Configuracoes() {
   const toast = useToast();
@@ -33,8 +33,8 @@ export default function Configuracoes() {
   };
 
   const locateOrigin = async () => {
-    const q = (form.pickup_address.split(/retirada|me chama|das \d/i)[0] ?? form.pickup_address).trim();
-    if (!cleanAddress(q)) return toast("Preencha o endereço de retirada primeiro.", "err");
+    const q = originQuery(form.pickup_address);
+    if (!q) return toast("Preencha o endereço de retirada primeiro.", "err");
     setBusy(true);
     const p = await geocodePlace(q, null).catch(() => null);
     setBusy(false);
@@ -122,6 +122,9 @@ export default function Configuracoes() {
           </div>
         </div>
         {found && <p className="mt-2 text-xs text-choco-700">Encontrado: <b>{found}</b></p>}
+        {hasCoords({ lat: form.origin_lat, lng: form.origin_lng }) && isCityCenter({ lat: form.origin_lat as number, lng: form.origin_lng as number }) && (
+          <p className="mt-2 rounded-xl bg-rosa-50 px-3 py-2 text-xs font-semibold text-vinho-700">Essa localização é o centro de Nova Lima, não a sua casa. A rota sai errada com ela. Estando em casa, toque em "Usar minha localização atual" e salve.</p>
+        )}
         <p className="mt-2 text-xs text-choco-500">
           {hasCoords({ lat: form.origin_lat, lng: form.origin_lng })
             ? <a href={mapsPin({ lat: form.origin_lat as number, lng: form.origin_lng as number })} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-vinho-600">Conferir no Google Maps <ExternalLink size={12} /></a>

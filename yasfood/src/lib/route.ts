@@ -51,8 +51,59 @@ function pointOf(o: Order, ctx: RouteCtx): { p: LatLng | null; approx: boolean }
 
 /** Região da casa da Yasmim ("Meu condomínio (Alphaville)"). */
 export const isHomeZone = (zoneName: string | null | undefined) => /meu condom/i.test(zoneName ?? "");
+/** Região "fora do Alphaville (combinar)": pode ser mais longe. */
+export const isOutsideZone = (zoneName: string | null | undefined) => /fora|combinar/i.test(zoneName ?? "");
 /** Raio (km) em que um endereço precisa cair em relação à referência da região. */
 export const ZONE_RADIUS_KM = 3;
+
+/** Onde a loja entrega: Alphaville Lagoa dos Ingleses (Nova Lima). Tudo que o mapa achar fora daqui é outra rua com o mesmo nome. */
+export const REGION = { name: "Alphaville Lagoa dos Ingleses", p: { lat: -20.0812, lng: -43.9975 } as LatLng, radiusKm: 12, outsideRadiusKm: 40 };
+/** Centro de Nova Lima: é pra onde o mapa manda quando não acha o endereço. Nunca é a casa nem uma entrega. */
+const NOVA_LIMA_CENTER: LatLng = { lat: -19.98556, lng: -43.84667 };
+const CENTER_RADIUS_KM = 1.5;
+
+/** Coordenada que caiu no centro de Nova Lima: geocodificação errada, não vale. */
+export const isCityCenter = (p: LatLng) => haversineKm(p, NOVA_LIMA_CENTER) < CENTER_RADIUS_KM;
+
+/** Casa da Yasmim, só se tiver coordenada válida (não aceita o centro da cidade). */
+export function usableOrigin(s: { origin_lat: number | null; origin_lng: number | null } | null | undefined): LatLng | null {
+  if (!s || !hasCoords({ lat: s.origin_lat, lng: s.origin_lng })) return null;
+  const p = { lat: s.origin_lat as number, lng: s.origin_lng as number };
+  return isCityCenter(p) ? null : p;
+}
+
+/**
+ * Referência pra localizar o endereço de um pedido: ponto da região (3 km), a casa quando é
+ * "meu condomínio" (3 km), senão o Alphaville inteiro (12 km; 40 km se for "fora do Alphaville").
+ */
+export function anchorFor(o: Pick<Order, "zone_id" | "zone_name">, origin: LatLng | null, zones: RouteCtx["zones"] = []): { p: LatLng; maxKm: number } {
+  const z = o.zone_id ? zones.find((x) => x.id === o.zone_id) : undefined;
+  if (z && hasCoords(z)) return { p: { lat: z.lat, lng: z.lng }, maxKm: ZONE_RADIUS_KM };
+  if (origin && isHomeZone(o.zone_name)) return { p: origin, maxKm: ZONE_RADIUS_KM };
+  return { p: origin ?? REGION.p, maxKm: isOutsideZone(o.zone_name) ? REGION.outsideRadiusKm : REGION.radiusKm };
+}
+
+/** Texto do endereço pro Google Maps: tira "casa 7", mantém o CEP e amarra na região certa. */
+export function stopText(o: Pick<Order, "address" | "zone_name">) {
+  const { cep, city } = parseAddress(o.address);
+  const parts = [cleanAddress(o.address)];
+  const zone = o.zone_name && !isHomeZone(o.zone_name) && !isOutsideZone(o.zone_name) && !/outros/i.test(o.zone_name) ? o.zone_name : null;
+  if (zone) parts.push(zone);
+  if (!isOutsideZone(o.zone_name) && !/alphaville/i.test(o.address)) parts.push(REGION.name);
+  if (!new RegExp(city, "i").test(o.address)) parts.push(`${city} - MG`);
+  if (cep) parts.push(`CEP ${cep}`);
+  return parts.join(", ");
+}
+
+/** Endereço da casa a partir do texto de retirada (corta as instruções: "retirada das 14h…"). */
+export function originQuery(pickupAddress: string) {
+  const q = cleanAddress((pickupAddress.split(/retirada|me chama|das \d/i)[0] ?? pickupAddress).trim());
+  if (!q) return "";
+  const parts = [q];
+  if (!/alphaville/i.test(q)) parts.push(REGION.name);
+  if (!/nova lima/i.test(q)) parts.push("Nova Lima - MG");
+  return parts.join(", ");
+}
 
 const DONE = new Set(["entregue", "cancelado"]);
 
@@ -119,11 +170,12 @@ function zoneOrder(o: Order, ctx: RouteCtx) {
 export function gmapsRouteUrl(stops: Prioritized[], ctx: RouteCtx, originText: string) {
   const route = stops.filter((s) => s.order.fulfillment === "entrega" && !DONE.has(s.order.status)).slice(0, 10);
   if (!route.length) return null;
+  // coordenada só quando é do endereço mesmo; senão vai o texto amarrado na região, pro Google não cair em outro bairro
   const pt = (s: Prioritized) => {
     const { p } = pointOf(s.order, ctx);
-    return p && !s.approx ? `${p.lat},${p.lng}` : `${s.order.address}, ${s.order.zone_name ?? ""}, Nova Lima - MG`;
+    return p && !s.approx && !isCityCenter(p) ? `${p.lat},${p.lng}` : stopText(s.order);
   };
-  const origin = ctx.origin ? `${ctx.origin.lat},${ctx.origin.lng}` : originText;
+  const origin = ctx.origin && !isCityCenter(ctx.origin) ? `${ctx.origin.lat},${ctx.origin.lng}` : originQuery(originText);
   const dest = pt(route[route.length - 1]);
   const way = route.slice(0, -1).map(pt).join("|");
   const u = new URL("https://www.google.com/maps/dir/");
@@ -243,8 +295,9 @@ const safe = <T,>(p: Promise<T | null>) => p.catch(() => null);
 export async function geocodeAddress(address: string, zoneName: string | null, bias: LatLng | null, anchor?: { p: LatLng; maxKm: number } | null): Promise<GeoHit | null> {
   const { street, cep, city } = parseAddress(address);
   if (!street && !cep) return null;
-  // a referência da região (condomínio) manda na busca e na aceitação
-  if (anchor) bias = anchor.p;
+  // a referência da região (condomínio, ou o Alphaville inteiro) manda na busca e na aceitação
+  anchor = anchor ?? anchorFor({ zone_id: null, zone_name: zoneName }, bias);
+  bias = anchor.p;
   const zone = zoneName && !/outros|fora|combinar|meu condom/i.test(zoneName) ? zoneName : null;
   const steps: (() => Promise<GeoHit | null>)[] = [];
   if (cep) steps.push(() => safe(cepLookup(cep, bias)));
@@ -260,8 +313,8 @@ export async function geocodeAddress(address: string, zoneName: string | null, b
   for (const step of steps) {
     const hit = await step();
     if (!hit) continue;
-    // achou algo, mas longe demais da região? é outra rua com o mesmo nome: segue tentando
-    if (anchor && haversineKm(anchor.p, hit) > anchor.maxKm) continue;
+    // achou algo, mas longe demais da região (ou no centro da cidade)? é outra rua com o mesmo nome: segue tentando
+    if (haversineKm(anchor.p, hit) > anchor.maxKm || isCityCenter(hit)) continue;
     return hit;
   }
   return null;
@@ -273,7 +326,9 @@ export async function geocodePlace(q: string, bias: LatLng | null): Promise<GeoH
   const byAddress = await geocodeAddress(q, null, bias);
   if (byAddress) return byAddress;
   const text = /nova lima|mg\b/i.test(q) ? cleanAddress(q) : `${cleanAddress(q)}, ${city}, MG`;
-  return safe(nominatim({ q: text }, city, bias));
+  const hit = await safe(nominatim({ q: text }, city, bias ?? REGION.p));
+  if (!hit || isCityCenter(hit) || haversineKm(bias ?? REGION.p, hit) > REGION.radiusKm) return null;
+  return hit;
 }
 
 /** Posição atual pelo GPS do aparelho (precisa de HTTPS e da permissão do navegador). */
