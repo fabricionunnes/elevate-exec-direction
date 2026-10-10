@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { MessageCircle, Check, ArrowRight, XCircle, Banknote, Printer, Plus, Search, ExternalLink, Pencil, Route, MapPin, LocateFixed, ImagePlus, Sparkles, Trash2 } from "lucide-react";
+import { MessageCircle, Check, ArrowRight, XCircle, Banknote, Printer, Plus, Search, ExternalLink, Pencil, Route, MapPin, LocateFixed, Navigation, ImagePlus, Sparkles, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, dateTimeBR, dayLong, formatPhone, nextStatus, PAYMENT_LABEL, STATUS_COLOR, STATUS_LABEL, statusLabelFor, todayISO, addDaysISO, onlyDigits, windowLabel } from "@/lib/format";
 import { waLink, msgs, trackingUrl } from "@/lib/whatsapp";
-import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, mapsPin, currentPosition, usableOrigin, anchorFor as anchorOf, isCityCenter, type RouteCtx } from "@/lib/route";
+import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, mapsPin, currentPosition, usableOrigin, anchorFor as anchorOf, isCityCenter, wazeUrl, type RouteCtx, type LatLng } from "@/lib/route";
 import { readOrderFromScreenshots, shrinkAll, type ReadOrder, type ShrunkImage } from "@/lib/readOrder";
 import type { Availability, AvailableWindow, Customer, DeliveryWindow, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
 import { StatusTimeline } from "@/components/StatusTimeline";
@@ -48,6 +48,9 @@ export default function Pedidos() {
   const [dFrom, setDFrom] = useState("");
   const [dTo, setDTo] = useState("");
   const [filter, setFilter] = useState<Filter>("abertos");
+  const [ordem, setOrdem] = useState<"horario" | "distancia">("horario");
+  const [here, setHere] = useState<LatLng | null>(null);   // posição atual (ordem por distância)
+  const [hereBusy, setHereBusy] = useState(false);
   const [q, setQ] = useState("");
   const [onlyUnpaid, setOnlyUnpaid] = useState(params.get("pagamento") === "pendente");
   const [openId, setOpenId] = useState<string | null>(params.get("abrir"));
@@ -148,8 +151,24 @@ export default function Pedidos() {
   const grouped = useMemo(() => {
     const m = new Map<string, Order[]>();
     for (const o of list) m.set(o.scheduled_date, [...(m.get(o.scheduled_date) ?? []), o]);
-    return [...m.entries()].map(([day, os]) => [day, filter === "cancelados" ? os.map((o, i) => ({ order: o, rank: i + 1, legKm: null, located: false, approx: false, windowKey: "" })) : prioritize(os, ctx)] as const);
-  }, [list, ctx, filter]);
+    const opts = ordem === "distancia" ? { byDistance: true, start: here } : {};
+    return [...m.entries()].map(([day, os]) => [day, filter === "cancelados" ? os.map((o, i) => ({ order: o, rank: i + 1, legKm: null, located: false, approx: false, windowKey: "" })) : prioritize(os, ctx, opts)] as const);
+  }, [list, ctx, filter, ordem, here]);
+
+  /** Ordem por distância: parte de onde ela está agora (GPS); sem GPS, parte de casa. */
+  const usarMinhaPosicao = async () => {
+    setHereBusy(true);
+    try {
+      const p = await currentPosition();
+      setHere({ lat: p.lat, lng: p.lng });
+      setOrdem("distancia");
+    } catch (e) {
+      setOrdem("distancia");
+      toast(`${(e as Error).message} Partindo da sua casa.`, "err");
+    } finally {
+      setHereBusy(false);
+    }
+  };
 
   // Endereços novos são localizados sozinhos (1 por segundo, só os dias de hoje em diante).
   useEffect(() => {
@@ -180,6 +199,13 @@ export default function Pedidos() {
           <button key={f} onClick={() => { setFilter(f); if (f === "hoje" || f === "amanha") { setDFrom(""); setDTo(""); } }} className={clsx("rounded-full px-3 py-1.5 text-sm font-semibold capitalize", filter === f ? "bg-vinho-600 text-white" : "bg-white text-choco-700 ring-1 ring-choco-200")}>{f === "amanha" ? "amanhã" : f}</button>
         ))}
         <label className="ml-1 flex items-center gap-1 text-sm text-choco-700"><input type="checkbox" checked={onlyUnpaid} onChange={(e) => setOnlyUnpaid(e.target.checked)} /> só não pagos</label>
+        {filter !== "cancelados" && (
+          <div className="flex items-center gap-1 text-xs text-choco-500">
+            <span>Ordem:</span>
+            <button type="button" onClick={() => setOrdem("horario")} className={clsx("rounded-full px-2.5 py-1 font-semibold", ordem === "horario" ? "bg-choco-900 text-white" : "bg-white text-choco-700 ring-1 ring-choco-200")}>por horário</button>
+            <button type="button" disabled={hereBusy} onClick={() => void usarMinhaPosicao()} className={clsx("inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold disabled:opacity-50", ordem === "distancia" ? "bg-choco-900 text-white" : "bg-white text-choco-700 ring-1 ring-choco-200")}><LocateFixed size={12} /> {hereBusy ? "pegando posição…" : ordem === "distancia" && here ? "mais perto de mim (atualizar)" : "mais perto de mim"}</button>
+          </div>
+        )}
         <div className="flex items-center gap-1 text-xs text-choco-500">
           <span>Data:</span>
           <input type="date" value={dFrom} onChange={(e) => { setDFrom(e.target.value); if (e.target.value && (filter === "hoje" || filter === "amanha")) setFilter("todos"); }} className="h-8 rounded-lg border border-choco-200 bg-white px-2 text-xs text-choco-800" />
@@ -206,7 +232,9 @@ export default function Pedidos() {
         <>
           {filter !== "cancelados" && (
             <p className="text-xs text-choco-500">
-              Ordem sugerida pelo sistema: horário mais cedo primeiro; dentro do horário, retiradas e depois as entregas do mais perto pro mais longe partindo da sua casa.
+              {ordem === "distancia"
+                ? <>Ordem por distância: todas as entregas do dia numa rota só, da mais perta pra mais longe, partindo {here ? "de onde você está agora" : "da sua casa"}. Sem olhar o horário.</>
+                : <>Ordem sugerida pelo sistema: horário mais cedo primeiro; dentro do horário, retiradas e depois as entregas do mais perto pro mais longe partindo da sua casa.</>}
               {!ctx.origin && (settings && hasCoords({ lat: settings.origin_lat, lng: settings.origin_lng })
                 ? <> <b className="text-vinho-700">A localização da sua casa está marcada no centro de Nova Lima, errada.</b> <a href="/admin/configuracoes" className="font-semibold text-vinho-600 underline">Vá em Configurações</a> e toque em "Usar minha localização atual" estando em casa.</>
                 : <> Pra rota por distância, <a href="/admin/configuracoes" className="font-semibold text-vinho-600 underline">cadastre a localização da sua casa</a>.</>)}
@@ -215,9 +243,11 @@ export default function Pedidos() {
           {grouped.map(([day, ps]) => {
             // uma rota por horário: cada horário é uma saída de casa
             const routes = filter === "cancelados" ? [] : [...new Set(ps.filter((p) => p.order.fulfillment === "entrega" && !["entregue", "cancelado"].includes(p.order.status)).map((p) => p.windowKey))]
-              .map((k) => ({ k, url: gmapsRouteUrl(ps.filter((p) => p.windowKey === k), ctx, settings?.pickup_address ?? "") }))
+              .map((k) => ({ k, url: gmapsRouteUrl(ps.filter((p) => p.windowKey === k), ctx, settings?.pickup_address ?? "", ordem === "distancia" ? here : null) }))
               .filter((r): r is { k: string; url: string } => !!r.url);
             const unlocated = ps.filter((p) => p.order.fulfillment === "entrega" && !["entregue", "cancelado"].includes(p.order.status) && !hasCoords(p.order)).length;
+            // Waze não aceita rota com várias paradas: vai pra próxima entrega na ordem sugerida
+            const next = filter === "cancelados" ? undefined : ps.find((p) => p.order.fulfillment === "entrega" && !["entregue", "cancelado"].includes(p.order.status));
             return (
               <section key={day}>
                 <h2 className="mb-2 flex flex-wrap items-center gap-2 text-sm font-bold uppercase tracking-wide text-choco-600">
@@ -233,6 +263,7 @@ export default function Pedidos() {
                       <Button size="sm" variant="ghost" loading={!!locating} onClick={() => locate(ps.map((p) => p.order), true)}><MapPin size={14} /> Localizar {unlocated} endereço(s)</Button>
                     )}
                     {routes.map((r) => <a key={r.k} href={r.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-vinho-600 px-3 py-1 text-xs font-semibold text-white"><Route size={14} /> Rota{routes.length > 1 && r.k ? ` ${r.k}` : ""} no Maps</a>)}
+                    {next && <a href={wazeUrl(next.order)} target="_blank" rel="noreferrer" title={`Próxima entrega: ${next.order.code} · ${next.order.customer_name}`} className="inline-flex items-center gap-1 rounded-full bg-[#33ccff] px-3 py-1 text-xs font-semibold text-choco-900"><Navigation size={14} /> Próxima no Waze</a>}
                   </span>
                 </h2>
                 <div className="grid gap-2 md:grid-cols-2">
@@ -377,6 +408,7 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
                   {hasCoords(order)
                     ? <a href={mapsPin(order)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-emerald-700"><MapPin size={12} /> ver no mapa</a>
                     : <span className="text-amber-800">{order.geocoded_at ? "endereço não encontrado no mapa" : "ainda não localizado"}</span>}
+                  {!["entregue", "cancelado"].includes(order.status) && <a href={wazeUrl(order)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full bg-[#33ccff] px-2.5 py-1 font-semibold text-choco-900"><Navigation size={12} /> ir no Waze</a>}
                   <button type="button" disabled={geoBusy} onClick={() => void relocate()} className="font-semibold text-vinho-600 underline-offset-2 hover:underline disabled:opacity-50">{geoBusy ? "localizando…" : "localizar de novo"}</button>
                   <button type="button" disabled={geoBusy} onClick={() => void markHere()} className="inline-flex items-center gap-1 rounded-full bg-choco-900 px-2.5 py-1 font-semibold text-white disabled:opacity-50" title="Use quando estiver na porta do cliente"><LocateFixed size={12} /> estou na porta: marcar aqui</button>
                 </div>
