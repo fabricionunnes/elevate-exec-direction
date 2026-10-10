@@ -9,6 +9,7 @@ import { brl, todayISO } from "@/lib/format";
 import { shrinkAll, type ShrunkImage } from "@/lib/readOrder";
 import { readReceipt, type Receipt as ReceiptData } from "@/lib/readReceipt";
 import type { Ingredient } from "@/lib/types";
+import { costProblem, toStockUnit } from "@/lib/costGuard";
 import { Button, Input, Modal, Select, useToast } from "@/components/ui";
 
 const NOVO = "__novo__";
@@ -61,12 +62,15 @@ export function LancarNota({ ingredients, onClose, onDone }: { ingredients: Ingr
       if (r.purchased_on) setDate(r.purchased_on);
       setLines(r.items.map((it) => {
         const ing = it.ingredient_name ? byName.get(it.ingredient_name.toLowerCase()) : undefined;
+        const newUnit: Ingredient["unit"] = it.unit === "kg" || it.unit === "g" ? "g" : it.unit === "l" || it.unit === "ml" ? "ml" : it.unit === "un" ? "un" : "g";
+        // tamanho da embalagem sempre na unidade do estoque (cupom "1 KG" com insumo em g → 1000)
+        const packSize = toStockUnit(it.pack_size, it.unit, ing ? ing.unit : newUnit);
         return {
           description: it.description,
           ingredientId: ing ? ing.id : it.relevant ? NOVO : IGNORAR,
-          newName: it.description, newUnit: it.unit && it.unit !== "kg" && it.unit !== "l" ? it.unit : "g",
+          newName: it.description, newUnit,
           packs: String(it.packs || 1),
-          packSize: it.pack_size != null ? String(it.pack_size) : ing?.pack_size ? String(ing.pack_size) : "",
+          packSize: packSize != null ? String(packSize) : ing?.pack_size ? String(ing.pack_size) : "",
           total: it.total_price != null ? String(it.total_price) : "",
           relevant: it.relevant,
         };
@@ -86,6 +90,13 @@ export function LancarNota({ ingredients, onClose, onDone }: { ingredients: Ingr
     const problems = active.filter((l) => num(l.packs) <= 0 || num(l.packSize) <= 0 || (l.ingredientId === NOVO && !l.newName.trim()));
     if (!active.length) return toast("Nenhum item marcado pra lançar.", "err");
     if (problems.length) return toast("Tem item sem quantidade, sem tamanho da embalagem ou sem nome.", "err");
+    // custo por unidade absurdo (ex.: 1 kg lido como 1 g) não entra: estouraria o custo do bolo no Financeiro
+    for (const l of active) {
+      const ing = l.ingredientId === NOVO ? undefined : byId.get(l.ingredientId);
+      const qty = num(l.packs) * num(l.packSize);
+      const bad = costProblem(ing?.name ?? l.newName, ing?.unit ?? l.newUnit, num(l.total) > 0 && qty > 0 ? num(l.total) / qty : null, ing?.cost_per_unit);
+      if (bad) return toast(bad, "err");
+    }
     setBusy(true);
     try {
       // 1) despesa única com o total da nota
