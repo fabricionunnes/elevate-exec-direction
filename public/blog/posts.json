@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-11T15:01:05",
+ "gerado_em": "2026-10-11T21:00:56",
  "posts": [
+  {
+   "slug": "decisao-comercial-nao-se-toma-reuniao",
+   "url": "/blog/decisao-comercial-nao-se-toma-reuniao/",
+   "titulo": "Decisão comercial não se toma dentro da reunião",
+   "resumo": "Dono que decide na hora não tem critério montado. A reunião serve para apresentar o cenário e deixar ele processar com o próprio tempo.",
+   "tags": [
+    "decisão comercial",
+    "diagnóstico",
+    "qualificação",
+    "conversão",
+    "estrutura comercial"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-11",
+   "ts": 2168
+  },
   {
    "slug": "meta-diaria-depende-frequencia-venda",
    "url": "/blog/meta-diaria-depende-frequencia-venda/",
