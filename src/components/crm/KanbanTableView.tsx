@@ -146,10 +146,10 @@ export const KanbanTableView = ({ leads, stages, selectedLeads, isMaster, onSele
               )}
               <Head k="name">Nome</Head>
               <Head k="phone">Telefone</Head>
+              <Head k="origin">Origem</Head>
               <Head k="stage">Etapa</Head>
               <Head k="owner">Responsável</Head>
               <Head k="value" className="text-right">Valor</Head>
-              <Head k="origin">Origem</Head>
               <Head k="open_days" className="text-right">Dias em aberto</Head>
               <Head k="stage_days" className="text-right">Parado na etapa</Head>
               <Head k="last_activity">Última atividade</Head>
@@ -179,6 +179,7 @@ export const KanbanTableView = ({ leads, stages, selectedLeads, isMaster, onSele
                   )}
                   <TableCell className="py-1.5 font-medium max-w-[220px] truncate" title={lead.name}>{lead.name}</TableCell>
                   <TableCell className="py-1.5 whitespace-nowrap tabular-nums">{lead.phone || ""}</TableCell>
+                  <TableCell className="py-1.5 whitespace-nowrap max-w-[160px] truncate">{lead.origin?.name || ""}</TableCell>
                   <TableCell className="py-1.5 whitespace-nowrap">
                     <span className="inline-flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: stageColor }} />
@@ -187,7 +188,6 @@ export const KanbanTableView = ({ leads, stages, selectedLeads, isMaster, onSele
                   </TableCell>
                   <TableCell className="py-1.5 whitespace-nowrap">{lead.owner?.name || <span className="text-muted-foreground">Sem responsável</span>}</TableCell>
                   <TableCell className="py-1.5 text-right tabular-nums whitespace-nowrap">{formatCurrency(lead.opportunity_value)}</TableCell>
-                  <TableCell className="py-1.5 whitespace-nowrap max-w-[160px] truncate">{lead.origin?.name || ""}</TableCell>
                   <TableCell className="py-1.5 text-right tabular-nums">{openDays ?? ""}</TableCell>
                   <TableCell className="py-1.5 text-right tabular-nums">{stageDays ?? ""}</TableCell>
                   <TableCell className="py-1.5 whitespace-nowrap text-muted-foreground">

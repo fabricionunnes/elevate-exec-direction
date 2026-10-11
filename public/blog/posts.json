@@ -1,6 +1,54 @@
 {
- "gerado_em": "2026-10-10T10:01:19",
+ "gerado_em": "2026-10-11T10:02:12",
  "posts": [
+  {
+   "slug": "planejamento-anual-nao-substitui-cobranca-semanal",
+   "url": "/blog/planejamento-anual-nao-substitui-cobranca-semanal/",
+   "titulo": "Planejamento anual não substitui a cobrança semanal",
+   "resumo": "Montar a meta do ano inteiro em novembro não garante que ela vai ser batida em janeiro. O que separa quem bate de quem não bate é quem senta toda semana para cobrar o número.",
+   "tags": [
+    "planejamento anual",
+    "rotina de cobrança",
+    "meta mensal",
+    "acompanhamento",
+    "estrutura comercial"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-11",
+   "ts": 2166
+  },
+  {
+   "slug": "assessoria-nao-garante-execucao-comercial",
+   "url": "/blog/assessoria-nao-garante-execucao-comercial/",
+   "titulo": "Assessoria não garante que a execução vai acontecer",
+   "resumo": "Tem empresa que contrata e deixa tudo parado porque ninguém senta do lado para fazer junto. A diferença entre ensinar e executar define se o mês fecha ou não.",
+   "tags": [
+    "assessoria",
+    "execução",
+    "implementação",
+    "estrutura comercial",
+    "acompanhamento"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-10",
+   "ts": 2165
+  },
+  {
+   "slug": "prazo-minimo-contrato-protege-quem-estrutura",
+   "url": "/blog/prazo-minimo-contrato-protege-quem-estrutura/",
+   "titulo": "Prazo mínimo de contrato protege quem está estruturando",
+   "resumo": "Começar a estruturar comercial sem prazo mínimo de contrato transfere o risco todo para quem vai executar. Quem cobra resultado em 90 dias precisa garantir tempo para implementar.",
+   "tags": [
+    "contrato",
+    "prazo mínimo",
+    "implementação",
+    "estrutura comercial",
+    "risco"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-10",
+   "ts": 2164
+  },
   {
    "slug": "aviso-previo-cliente-nao-resolve-estrutura-conversao",
    "url": "/blog/aviso-previo-cliente-nao-resolve-estrutura-conversao/",

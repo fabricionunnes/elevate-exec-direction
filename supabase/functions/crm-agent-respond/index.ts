@@ -984,16 +984,68 @@ function diasDeReuniao(agent) {
     5
   ];
 }
+// Feriados nacionais (sem agenda). Fixos + móveis de 2026/2027. Fabrício, 11/10/2026: o agente
+// ofereceu "hoje" num domingo e pulou a terça 13/10 porque não sabia que a segunda 12/10 era feriado.
+const FERIADOS_FIXOS = ["01-01", "04-21", "05-01", "09-07", "10-12", "11-02", "11-15", "11-20", "12-25"];
+const FERIADOS_MOVEIS = new Set([
+  "2026-02-16", "2026-02-17", "2026-04-03", "2026-06-04",
+  "2027-02-08", "2027-02-09", "2027-03-26", "2027-05-27",
+]);
+function feriadoBR(ymd) {
+  return FERIADOS_FIXOS.includes(ymd.slice(5)) || FERIADOS_MOVEIS.has(ymd);
+}
+function hojeYmdBR() {
+  return new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+}
+function dowDeYmd(ymd) {
+  return new Date(`${ymd}T12:00:00Z`).getUTCDay();
+}
+function somaDias(ymd, n) {
+  return new Date(new Date(`${ymd}T12:00:00Z`).getTime() + n * 86400000).toISOString().slice(0, 10);
+}
+function ddmm(ymd) { return `${ymd.slice(8, 10)}/${ymd.slice(5, 7)}`; }
+function diaPermitido(agent, ymd) {
+  return diasDeReuniao(agent).includes(dowDeYmd(ymd)) && !feriadoBR(ymd);
+}
+/** Próximos N dias com agenda a partir de hoje (hoje entra se ainda der tempo na janela). */
+function proximosDiasAgenda(agent, n) {
+  const hoje = hojeYmdBR();
+  const horaAgora = new Date(Date.now() - 3 * 3600000).getUTCHours();
+  const he = agent?.schedule_hour_end ?? 19;
+  const out = [];
+  for (let i = 0; i <= 21 && out.length < n; i++) {
+    const d = somaDias(hoje, i);
+    if (i === 0 && horaAgora >= he - 1) continue;
+    if (diaPermitido(agent, d)) out.push(d);
+  }
+  return out;
+}
+/** Bloco de calendário pro prompt: datas já calculadas pra IA não errar "hoje"/"amanhã". */
+function calendarioPrompt(agent) {
+  const hoje = hojeYmdBR(), amanha = somaDias(hoje, 1);
+  const dias = diasDeReuniao(agent).map((x) => DIAS_PT[x]).join(", ");
+  const hs = agent?.schedule_hour_start ?? 8, he = agent?.schedule_hour_end ?? 19;
+  const prox = proximosDiasAgenda(agent, 3);
+  const rot = (d) => `${DIAS_PT[dowDeYmd(d)]} ${ddmm(d)}` + (feriadoBR(d) ? " (FERIADO, sem agenda)" : (!diaPermitido(agent, d) ? " (sem agenda)" : ""));
+  const linhas = [
+    `\n\nCALENDÁRIO (use estas datas, não calcule de cabeça): hoje é ${rot(hoje)}. Amanhã é ${rot(amanha)}.`,
+    `Reunião só de ${dias}, das ${hs}h às ${he}h, nunca em feriado.`,
+    prox.length ? `Próximos dias com agenda, NESTA ORDEM: ${prox.map(rot).join("; ")}.` : "",
+    `REGRAS: (a) ${diaPermitido(agent, hoje) ? "hoje tem agenda, mas só ofereça horário depois de consultar_horarios" : "HOJE NÃO TEM AGENDA: nunca diga \"pode ser hoje\""}; (b) ao propor um dia, comece SEMPRE pelo primeiro da lista acima e só passe pro seguinte se o lead recusar ou se consultar_horarios não tiver horário; (c) nunca escreva "amanhã" quando amanhã não tem agenda, diga o dia da semana e a data; (d) nunca afirme que uma reunião "já está marcada" ou "já está na agenda" sem que agendar_reuniao tenha confirmado nesta conversa; (e) se o lead pedir um dia sem agenda (fim de semana, feriado, hoje fora da janela), diga que não atende nesse dia e proponha o primeiro dia da lista.`,
+  ];
+  return linhas.filter(Boolean).join(" ");
+}
 /** null = dia permitido; senão devolve a mensagem de recusa com o próximo dia que atende */ function recusaDia(agent, ymd) {
+  const hoje = hojeYmdBR();
+  if (ymd < hoje) return `Erro: ${ymd} já passou (hoje é ${DIAS_PT[dowDeYmd(hoje)]} ${ddmm(hoje)}). Use uma data a partir de hoje.`;
+  if (diaPermitido(agent, ymd)) return null;
+  const dow = dowDeYmd(ymd);
+  const motivo = feriadoBR(ymd) ? `${DIAS_PT[dow]} e FERIADO` : DIAS_PT[dow];
   const dias = diasDeReuniao(agent);
-  const d = new Date(`${ymd}T12:00:00-03:00`);
-  const dow = new Date(d.getTime() - 3 * 3600000).getUTCDay();
-  if (dias.includes(dow)) return null;
-  for(let i = 1; i <= 7; i++){
-    const n = new Date(d.getTime() + i * 86400000);
-    const nd = new Date(n.getTime() - 3 * 3600000);
-    if (dias.includes(nd.getUTCDay())) {
-      return `Erro: ${ymd} é ${DIAS_PT[dow]} e NÃO fazemos reunião nesse dia. Dias de reunião: ${dias.map((x)=>DIAS_PT[x]).join(", ")}. O próximo dia possível é ${nd.toISOString().slice(0, 10)} (${DIAS_PT[nd.getUTCDay()]}): chame consultar_horarios pra essa data e ofereça de lá. Nunca ofereça ${DIAS_PT[dow]}.`;
+  for (let i = 1; i <= 21; i++) {
+    const n = somaDias(ymd, i);
+    if (diaPermitido(agent, n)) {
+      return `Erro: ${ymd} é ${motivo} e NÃO fazemos reunião nesse dia. Dias de reunião: ${dias.map((x) => DIAS_PT[x]).join(", ")}, nunca em feriado. O próximo dia possível é ${n} (${DIAS_PT[dowDeYmd(n)]} ${ddmm(n)}): chame consultar_horarios pra essa data e ofereça de lá. Nunca ofereça ${DIAS_PT[dow]}.`;
     }
   }
   return `Erro: ${ymd} não é dia de reunião.`;
@@ -3344,7 +3396,7 @@ Deno.serve(async (req)=>{
         }
       } catch  {}
       const leadName = conv.contact?.name || conv.contact?.username || conv.contact?.phone || "o lead";
-      const nowBR = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 16).replace("T", " ");
+      const nowBR = `${DIAS_PT[new Date(Date.now() - 3 * 3600000).getUTCDay()]}, ` + new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 16).replace("T", " ");
       const mtgCtxMain = await reunioesDoLead(supabase, conv.lead_id);
       // Lead confirmou um horário? ("pode ser as 11", "as 10", "11h", "10:30"...)
       // Vira instrução explícita — o modelo tende a ancorar no histórico e reofertar.
@@ -3504,7 +3556,7 @@ Deno.serve(async (req)=>{
         agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
         knowledge ? `\n\nBASE DE CONHECIMENTO (use quando relevante, não invente):${knowledge}` : "",
         equipeTexto,
-        `\n\nHoje é ${DIAS_PT[new Date(Date.now() - 3 * 3600000).getUTCDay()]}. Reunião só pode ser marcada em: ${diasDeReuniao(agent).map((x)=>DIAS_PT[x]).join(", ")}. Se "amanhã" cair fora desses dias, ofereça o próximo dia permitido e diga o dia da semana (ex: "segunda"), nunca "amanhã".`,
+        calendarioPrompt(agent),
         `\n\nData/hora atual (Brasília): ${nowBR}. A saudação (bom dia/boa tarde/boa noite) segue ESTA hora — nunca repita a saudação do lead se ela não bater com o horário.`,
         qtdFerramentasBase ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou; (5) ANTES de chamar agendar_reuniao, você precisa do NOME, do E-MAIL e do TELEFONE/WhatsApp do lead — peça numa única mensagem curta SOMENTE o que faltar e não estiver em DADOS JÁ CADASTRADOS (se nada faltar, agende direto, sem pedir confirmação de dados) e só chame a ferramenta quando tiver tudo; se você já sabe o nome dele pela conversa, não pergunte de novo — pergunte só o que falta; (6) passe email, telefone e nome_completo nos parâmetros de agendar_reuniao — eles vão pro cadastro do lead no CRM.` : "",
         tools.some((t)=>t.name === "marcar_fora_do_perfil") ? `\nFORA DO PERFIL: se durante a conversa ficar claro que o lead não é do nosso perfil (outro segmento, sem time comercial, pessoa procurando emprego, curioso, concorrente), chame marcar_fora_do_perfil com o motivo e encerre com educação — sem insistir e sem agendar. Falta de orçamento agora ou "vou pensar" NÃO é fora de perfil: isso você trabalha como objeção.` : "",
