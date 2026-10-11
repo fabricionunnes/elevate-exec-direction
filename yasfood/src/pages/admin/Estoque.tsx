@@ -35,11 +35,31 @@ export default function Estoque() {
   }, []);
   useEffect(() => { void load(); }, [load]);
 
+  /** Mudar a unidade de um insumo que está em receita faz a receita mudar de escala (200 g vira 200 un). Avisa antes. */
+  const confirmUnitChange = async (ing: Ingredient, unit: Ingredient["unit"]) => {
+    if (unit === ing.unit) return true;
+    const { data } = await supabase.from("product_ingredients").select("qty, product_id").eq("ingredient_id", ing.id);
+    const uses = (data ?? []) as { qty: number; product_id: string }[];
+    if (!uses.length) return true;
+    const ex = uses[0];
+    const pname = products.find((p) => p.id === ex.product_id)?.name ?? "um produto";
+    return window.confirm(
+      `A receita de ${pname} usa ${Number(ex.qty).toLocaleString("pt-BR")} ${ing.unit} de ${ing.name}. Se mudar pra "${unit}", a receita passa a valer ${Number(ex.qty).toLocaleString("pt-BR")} ${unit} e o custo do bolo sai errado.\n\nSó mude a unidade se for ajustar a receita no Cardápio também. Continuar mesmo assim?`,
+    );
+  };
+
   const save = async () => {
     if (!editing?.name) return toast("Nome do insumo.", "err");
-    setBusy(true);
     const { id, ...rest } = editing;
     const payload = { ...emptyIng, ...rest };
+    const orig = id ? (ings ?? []).find((x) => x.id === id) : undefined;
+    if (orig) {
+      // custo 20x diferente do anterior (ou acima do teto) é erro de unidade, não de preço
+      const bad = payload.unit === orig.unit ? costProblem(payload.name, payload.unit, Number(payload.cost_per_unit), orig.cost_per_unit) : null;
+      if (bad) return toast(bad, "err");
+      if (!(await confirmUnitChange(orig, payload.unit))) return;
+    }
+    setBusy(true);
     const { error } = id ? await supabase.from("ingredients").update(payload).eq("id", id) : await supabase.from("ingredients").insert(payload);
     setBusy(false);
     if (error) return toast(friendlyError(error), "err");
@@ -106,6 +126,7 @@ export default function Estoque() {
                         value={i.unit}
                         onChange={async (e) => {
                           const unit = e.target.value as Ingredient["unit"];
+                          if (!(await confirmUnitChange(i, unit))) return void load();
                           const { error } = await supabase.from("ingredients").update({ unit }).eq("id", i.id);
                           if (error) return toast(friendlyError(error), "err");
                           toast(`${i.name}: agora em ${unit}. Confira estoque, mínimo e receita nessa unidade.`);
