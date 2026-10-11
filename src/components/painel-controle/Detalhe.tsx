@@ -74,11 +74,11 @@ const str = (v: unknown): string => (v == null ? "" : String(v));
 /* ---------- colunas base dos blocos que mudam com o filtro ---------- */
 const C_REUNIOES: ColSpec[] = [
   { h: "Lead", k: "nome", link: "lead", idk: "lead_id", tl: true }, { h: "Empresa", k: "empresa", tl: true }, { h: "Evento", k: "tipo", t: "evento" }, { h: "Data", k: "data", t: "datahora" },
-  { h: "Marcada para", k: "marcada_para", t: "datahora" }, { h: "Resultado", k: "resultado" }, { h: "SDR", k: "sdr" }, { h: "Closer", k: "closer" }, { h: "Funil", k: "funil" }, { h: "Etapa atual", k: "etapa_atual" }, { h: "Desfecho", k: "desfecho" }, { h: "Valor", k: "valor", t: "brl" },
+  { h: "Marcada para", k: "marcada_para", t: "datahora" }, { h: "Resultado", k: "resultado" }, { h: "SDR", k: "sdr" }, { h: "Closer", k: "closer" }, { h: "Funil", k: "funil" }, { h: "Etapa atual", k: "etapa_atual" }, { h: "Desfecho", k: "desfecho" }, { h: "Valor", k: "valor", t: "brl" }, { h: "Agendada em", k: "agendada_em", t: "datahora" }, { h: "Remarcada", k: "remarcada", t: "bool" },
 ];
 const C_CLIENTES: ColSpec[] = [
   { h: "Empresa", k: "empresa", link: "empresa", idk: "company_id", tl: true }, { h: "Consultor", k: "consultor" }, { h: "Mensalidade", k: "mensalidade", t: "brlfull" }, { h: "Produto", k: "produto", tl: true }, { h: "Projeto", k: "projeto_status", t: "proj" }, { h: "Início", k: "inicio", t: "data" }, { h: "Fim", k: "fim", t: "data" }, { h: "Plano", k: "plano" },
-  { h: "Health", k: "score", t: "num" }, { h: "Nível", k: "nivel", t: "nivel" }, { h: "Tendência", k: "tendencia", t: "tend" }, { h: "NPS", k: "nps", t: "int" }, { h: "Tarefas atrasadas", k: "tarefas_atrasadas", t: "int" }, { h: "Vencido", k: "vencido", t: "brl" }, { h: "Churn em", k: "churn_em", t: "data" }, { h: "Motivo", k: "churn_motivo", tl: true },
+  { h: "Health", k: "score", t: "num" }, { h: "Nível", k: "nivel", t: "nivel" }, { h: "Tendência", k: "tendencia", t: "tend" }, { h: "NPS", k: "nps", t: "int" }, { h: "Tarefas atrasadas", k: "tarefas_atrasadas", t: "int" }, { h: "Vencido", k: "vencido", t: "brl" }, { h: "Churn em", k: "churn_em", t: "data" }, { h: "Motivo", k: "churn_motivo", tl: true }, { h: "Mensalidade perdida", k: "mensalidade_perdida", t: "brlfull" }, { h: "Aviso até", k: "aviso_ate", t: "data" },
 ];
 const C_CAIXA: ColSpec[] = [
   { h: "Tipo", k: "tipo", map: { entrada: "Entra", saida: "Sai" } }, { h: "Quem", k: "nome", link: "empresa", idk: "company_id", tl: true }, { h: "Descrição", k: "descricao", tl: true }, { h: "Vencimento", k: "vencimento", t: "data" }, { h: "Valor", k: "valor", t: "brlfull" },
@@ -95,6 +95,7 @@ const C_VENDAS: ColSpec[] = [
 ];
 const C_LEADS: ColSpec[] = [
   { h: "Lead", k: "nome", link: "lead", idk: "lead_id", tl: true }, { h: "Empresa", k: "empresa", tl: true }, { h: "Origem", k: "origem" }, { h: "Funil", k: "funil" }, { h: "Etapa", k: "etapa" }, { h: "Dono", k: "dono" }, { h: "Criado", k: "criado_em", t: "data" }, { h: "Parado há", k: "dias_parado", t: "dias" }, { h: "Valor", k: "valor", t: "brl" }, { h: "Campanha", k: "campanha", tl: true },
+  { h: "Pago", k: "pago", t: "bool" },
 ];
 const C_LEADS_AT: ColSpec[] = [
   { h: "Lead", k: "nome", link: "lead", idk: "lead_id", tl: true }, { h: "Empresa", k: "empresa", tl: true }, { h: "Funil", k: "funil" }, { h: "Etapa", k: "etapa" }, { h: "Dono", k: "dono" }, { h: "Criado", k: "criado_em", t: "data" }, { h: "Há", k: "dias", t: "dias" },
@@ -102,7 +103,7 @@ const C_LEADS_AT: ColSpec[] = [
 ];
 const C_PROD_CLI: ColSpec[] = [
   { h: "Cliente", k: "empresa", link: "empresa", idk: "company_id", tl: true }, { h: "Produto", k: "produto" }, { h: "Projeto", k: "projeto_status", t: "proj" }, { h: "Consultor", k: "consultor" }, { h: "Mensalidade que fatura", k: "mensalidade", t: "brlfull" },
-  { h: "Início", k: "inicio", t: "data" }, { h: "Fim", k: "fim", t: "data" }, { h: "Churn em", k: "churn_em", t: "data" }, { h: "Motivo", k: "churn_motivo", tl: true },
+  { h: "Início", k: "inicio", t: "data" }, { h: "Fim", k: "fim", t: "data" }, { h: "Churn em", k: "churn_em", t: "data" }, { h: "Motivo", k: "churn_motivo", tl: true }, { h: "Mensalidade perdida", k: "mensalidade_perdida", t: "brlfull" },
 ];
 const ROT_MOV: Record<string, string> = { novo: "Novos", reativacao: "Reativações", expansao: "Expansões", contracao: "Contrações", churn: "Churn", mantido: "Mantiveram" };
 const EM_AVISO = ["notice_period", "cancellation_signaled"];
@@ -160,19 +161,19 @@ const SPECS: Record<string, Spec> = {
         return [T("Agendadas", d.total), T("Realizadas", r("Realizada"), fp(L.length ? r("Realizada") / L.length : null)), T("No-show", r("No-show")), T("Ainda marcadas", r("Marcada"), r("Cancelada") ? `${r("Cancelada")} cancelada(s)` : undefined), T("Viraram venda", won)];
       }
       if (f.tipo === "realizadas") return [T("Realizadas", d.total), T("Viraram venda", won, fp(L.length ? won / L.length : null)), T("Fora do ICP", n((l) => l.tipo === "realized_out_of_icp")), T("Perdidas", lost), quem];
-      if (f.tipo === "no_show") return [T("No-show", d.total), T("Viraram venda depois", won), T("Perdidos", lost), quem, por("Por funil", L, "funil")];
+      if (f.tipo === "no_show") return [T("No-show", d.total), T("Remarcadas", n((l) => l.remarcada)), T("Viraram venda depois", won), T("Perdidos", lost), quem, por("Por funil", L, "funil")];
       if (f.tipo === "fora_icp") return [T("Fora do ICP", d.total), T("Realizadas mesmo assim", n((l) => l.tipo === "realized_out_of_icp")), quem, por("Por funil", L, "funil")];
       return [T("Eventos", d.total), T("Agendadas", n((l) => l.tipo === "scheduled")), T("Realizadas", n((l) => str(l.tipo).startsWith("realized"))), T("No-show", n((l) => l.tipo === "no_show")), T("Fora do ICP", n((l) => str(l.tipo).endsWith("out_of_icp"))), T("Viraram venda", won)];
     },
     colsF: (f) => {
       const semQuem = f.sdr_id ? ["sdr"] : f.closer_id ? ["closer"] : [];
-      if (f.tipo === "scheduled") return fim(ord(C_REUNIOES.map((c) => (c.k === "data" ? { ...c, h: "Agendada em" } : c)), ["nome", "empresa", "marcada_para", "resultado", "data"], ["tipo"]), semQuem);
-      if (f.tipo) return fim(ord(C_REUNIOES, ["nome", "empresa", "data"], ["marcada_para", "resultado", ...(f.tipo === "no_show" ? ["tipo"] : [])]), f.tipo === "realizadas" || f.tipo === "fora_icp" ? [...semQuem, "tipo"] : semQuem);
-      return fim(C_REUNIOES, semQuem);
+      if (f.tipo === "scheduled") return fim(ord(C_REUNIOES.map((c) => (c.k === "data" ? { ...c, h: "Agendada em" } : c)), ["nome", "empresa", "marcada_para", "resultado", "data"], ["tipo", "agendada_em", "remarcada"]), semQuem);
+      if (f.tipo) return fim(ord(C_REUNIOES, ["nome", "empresa", "data", "agendada_em", ...(f.tipo === "no_show" ? ["remarcada"] : [])], ["marcada_para", "resultado", ...(f.tipo === "no_show" ? ["tipo"] : ["remarcada"])]), f.tipo === "realizadas" || f.tipo === "fora_icp" ? [...semQuem, "tipo"] : semQuem);
+      return fim(ord(C_REUNIOES, [], ["agendada_em", "remarcada"]), semQuem);
     },
     nexus: LINK.reunioes }),
   leads: S("Leads do mês", "Leads criados no mês, com etapa atual e tempo parado.", C_LEADS, {
-    resumo: (d, f) => { const L = d.linhas; const won = L.filter((l) => l.desfecho === "won").length; return [T(f.pago ? "Leads de origem paga" : f.pipeline_id ? "Leads do funil" : "Leads", d.total, subLimite(d)), T("Ganhos", won, fp(L.length ? won / L.length : null)), T("Perdidos", L.filter((l) => l.desfecho === "lost").length), T("Parados +7 dias", L.filter((l) => !l.desfecho && l.dias_parado > 7).length, "ainda abertos"), T("Sem dono", L.filter((l) => !l.dono).length), f.pago ? por("Por campanha", L, "campanha") : f.pipeline_id ? por("Por etapa", L, "etapa") : por("Por origem", L, "origem")]; },
+    resumo: (d, f) => { const L = d.linhas; const won = L.filter((l) => l.desfecho === "won").length; return [T(f.pago ? "Leads de origem paga" : f.pipeline_id ? "Leads do funil" : "Leads", d.total, subLimite(d)), ...(f.pago ? [] : [T("De origem paga", L.filter((l) => l.pago).length)]), T("Ganhos", won, fp(L.length ? won / L.length : null)), T("Perdidos", L.filter((l) => l.desfecho === "lost").length), T("Parados +7 dias", L.filter((l) => !l.desfecho && l.dias_parado > 7).length, "ainda abertos"), T("Sem dono", L.filter((l) => !l.dono).length), f.pago ? por("Por campanha", L, "campanha") : f.pipeline_id ? por("Por etapa", L, "etapa") : por("Por origem", L, "origem")]; },
     colsF: (f) => (f.pago ? ord(C_LEADS, ["nome", "empresa", "campanha", "origem", "funil", "etapa"]) : f.pipeline_id ? fim(C_LEADS, ["funil"]) : C_LEADS),
     nexus: LINK.leads }),
   campanhas: S("Campanhas", "Gasto e leads da Meta por campanha, mais o que virou lead e venda no CRM.", [
@@ -297,12 +298,12 @@ const SPECS: Record<string, Spec> = {
   produto_clientes: S("Clientes por produto", "Projetos de cada produto, com consultor e a mensalidade que fatura.", C_PROD_CLI, { rpc: "painel_frente_detalhe", nexus: LINK.empresas,
     resumo: (d, f) => {
       const L = d.linhas; const cli = T("Clientes", uniq(L, "company_id"));
-      if (f.grupo === "churn") return [T("Churn do mês", d.total), cli, por("Por motivo", L, "churn_motivo"), por("Por consultor", L, "consultor"), ...(f.produto ? [T("Tempo médio de casa", mesesTxt(media(L.map((l) => ({ m: mesesEntre(l.inicio, l.churn_em) })), "m")))] : [por("Por produto", L, "produto")])];
+      if (f.grupo === "churn") return [T("Churn do mês", d.total), T("Mensalidade perdida", brl(soma(L, (l) => l.mensalidade_perdida))), cli, por("Por motivo", L, "churn_motivo"), por("Por consultor", L, "consultor"), ...(f.produto ? [T("Tempo médio de casa", mesesTxt(media(L.map((l) => ({ m: mesesEntre(l.inicio, l.churn_em) })), "m")))] : [por("Por produto", L, "produto")])];
       if (f.produto) return [T("Projetos do produto", d.total), cli, T("Mensalidades", brl(d.soma)), T("Sem mensalidade no MRR", L.filter((l) => !Number(l.mensalidade)).length, "projeto ativo que não fatura recorrente"), porValor("Por consultor", L, "consultor", "mensalidade")];
       return [T("Projetos", d.total), cli, T("Mensalidades", brl(d.soma)), T("Consultores", uniq(L, "consultor")), porValor("Por produto", L, "produto", "mensalidade")];
     },
-    colsF: (f) => (f.grupo === "churn" ? ord(C_PROD_CLI, ["empresa", "churn_em", "churn_motivo", "consultor", "produto", "inicio", "fim", "projeto_status"], ["mensalidade", ...(f.produto ? ["produto"] : [])])
-      : fim(ord(C_PROD_CLI, [], ["churn_em", "churn_motivo"]), f.produto ? ["produto"] : [])) }),
+    colsF: (f) => (f.grupo === "churn" ? ord(C_PROD_CLI, ["empresa", "churn_em", "churn_motivo", "mensalidade_perdida", "consultor", "produto", "inicio", "fim", "projeto_status"], ["mensalidade", ...(f.produto ? ["produto"] : [])])
+      : fim(ord(C_PROD_CLI, [], ["churn_em", "churn_motivo", "mensalidade_perdida"]), f.produto ? ["produto"] : [])) }),
   produto_receita: S("Faturas pagas por produto", "Cada fatura paga no mês e o produto a que foi atribuída.", [
     { h: "Cliente", k: "empresa", link: "empresa", idk: "company_id", tl: true }, { h: "Produto atribuído", k: "produto" }, { h: "Descrição da fatura", k: "descricao", tl: true }, { h: "Valor", k: "valor", t: "brlfull" }, { h: "Pago em", k: "pago_em", t: "data" }, { h: "Vencia em", k: "vencimento", t: "data" }, { h: "Recorrente", k: "recorrente", t: "bool" },
   ], { rpc: "painel_frente_detalhe", nexus: LINK.financeiro,
@@ -324,17 +325,17 @@ const SPECS: Record<string, Spec> = {
       const venc = L.filter((l) => l.vencido > 0); const comVenc = T("Com vencido", venc.length, brl(soma(venc, (l) => l.vencido)));
       const cons = f.consultant_id ? [] : [por("Por consultor", L, "consultor")];
       if (t === "novos") return [T("Clientes novos", d.total), T("Mensalidades", brl(d.soma)), T("Média de mensalidade", brl(mediaDe(d))), por("Por produto", L, "produto"), ...cons];
-      if (t === "churn") return [T("Churn", d.total), por("Por motivo", L, "churn_motivo"), por("Por produto", L, "produto"), T("Tempo médio de casa", mesesTxt(media(L.map((l) => ({ m: mesesEntre(l.inicio, l.churn_em) })), "m"))), comVenc, ...cons];
+      if (t === "churn") return [T("Churn", d.total), T("Mensalidade perdida", brl(soma(L, (l) => l.mensalidade_perdida))), por("Por motivo", L, "churn_motivo"), por("Por produto", L, "produto"), T("Tempo médio de casa", mesesTxt(media(L.map((l) => ({ m: mesesEntre(l.inicio, l.churn_em) })), "m"))), comVenc, ...cons];
       if (t === "em_aviso") return [T("Em aviso de saída", d.total), T("Mensalidade em risco", brl(d.soma)), hm, comVenc, por("Por produto", L, "produto"), ...cons];
       if (t === "vencendo") { const s7 = L.filter((l) => { const n = emDias(l.fim); return n != null && n <= 7; }); return [T("Contratos vencendo", d.total), T("Mensalidades", brl(d.soma)), T("Em até 7 dias", s7.length, brl(soma(s7, (l) => l.mensalidade))), hm, por("Por plano", L, "plano"), ...cons]; }
       if (t === "health_baixo") return [T("Health baixo", d.total), T("Críticos", L.filter((l) => l.nivel === "critical").length), T("Em risco", L.filter((l) => l.nivel === "at_risk").length), T("Piorando", L.filter((l) => PIORANDO.includes(str(l.tendencia))).length), T("Mensalidade em risco", brl(d.soma)), ...cons];
       return [T(f.nivel ? `Clientes ${nivelLabel(str(f.nivel)).toLowerCase()}` : "Clientes ativos", d.total), T("Mensalidades", brl(d.soma)), ...(f.nivel ? [] : [hm]), T("Em aviso de saída", L.filter((l) => EM_AVISO.includes(str(l.projeto_status))).length), comVenc, ...cons];
     },
     colsF: (f) => {
-      const t = str(f.tipo) || "ativos"; const semChurn = ["churn_em", "churn_motivo"]; const semCons = f.consultant_id ? ["consultor"] : [];
+      const t = str(f.tipo) || "ativos"; const semChurn = ["churn_em", "churn_motivo", "mensalidade_perdida", "aviso_ate"]; const semCons = f.consultant_id ? ["consultor"] : [];
       if (t === "novos") return fim(ord(C_CLIENTES, ["empresa", "inicio", "produto", "plano", "mensalidade", "consultor", "fim"], semChurn), semCons);
-      if (t === "churn") return fim(ord(C_CLIENTES, ["empresa", "churn_em", "churn_motivo", "produto", "consultor", "inicio", "plano", "vencido"], ["mensalidade", "score", "nivel", "tendencia", "tarefas_atrasadas"]), semCons);
-      if (t === "em_aviso") return fim(ord(C_CLIENTES, ["empresa", "projeto_status", "mensalidade", "consultor", "produto", "fim", "score", "nivel"], semChurn), semCons);
+      if (t === "churn") return fim(ord(C_CLIENTES, ["empresa", "churn_em", "churn_motivo", "mensalidade_perdida", "produto", "consultor", "inicio", "plano", "vencido"], ["mensalidade", "score", "nivel", "tendencia", "tarefas_atrasadas", "aviso_ate"]), semCons);
+      if (t === "em_aviso") return fim(ord(C_CLIENTES, ["empresa", "projeto_status", "aviso_ate", "mensalidade", "consultor", "produto", "fim", "score", "nivel"], ["churn_em", "churn_motivo", "mensalidade_perdida"]), semCons);
       if (t === "vencendo") return fim(ord(C_CLIENTES, ["empresa", "fim", "plano", "mensalidade", "consultor", "produto", "score"], semChurn), semCons);
       if (t === "health_baixo") return fim(ord(C_CLIENTES, ["empresa", "score", "nivel", "tendencia", "consultor", "mensalidade", "tarefas_atrasadas", "nps", "vencido"], semChurn), semCons);
       return fim(ord(C_CLIENTES, [], semChurn), [...semCons, ...(f.nivel ? ["nivel"] : [])]);
