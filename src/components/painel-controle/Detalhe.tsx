@@ -49,9 +49,18 @@ const SPECS: Record<string, Spec> = {
   vendas: S("Vendas", "Leads em estágio ganho com fechamento no mês.", [
     { h: "Lead", k: "nome", link: "lead", idk: "lead_id", tl: true }, { h: "Empresa", k: "empresa", tl: true }, { h: "Valor", k: "valor", t: "brlfull" }, { h: "Data", k: "data", t: "data" }, { h: "Closer", k: "closer" }, { h: "SDR", k: "sdr" }, { h: "Funil", k: "funil" }, { h: "Origem", k: "origem" }, { h: "Pago", k: "pago", t: "bool" }, { h: "Produto", k: "produto", tl: true },
   ], { resumo: (d) => [{ label: "Vendas", valor: num(d.total, 0) }, { label: "Receita vendida", valor: brl(d.soma) }, { label: "Ticket médio", valor: brl(d.total ? (d.soma ?? 0) / d.total : null) }, { label: "Sem valor", valor: num(d.linhas.filter((l) => !l.valor).length, 0), sub: "cadastro incompleto" }], nexus: LINK.leads }),
-  reunioes: S("Reuniões", "Eventos de reunião do CRM no mês.", [
-    { h: "Lead", k: "nome", link: "lead", idk: "lead_id", tl: true }, { h: "Empresa", k: "empresa", tl: true }, { h: "Evento", k: "tipo", t: "evento" }, { h: "Data", k: "data", t: "datahora" }, { h: "SDR", k: "sdr" }, { h: "Closer", k: "closer" }, { h: "Funil", k: "funil" }, { h: "Etapa atual", k: "etapa_atual" }, { h: "Desfecho", k: "desfecho" }, { h: "Valor", k: "valor", t: "brl" },
-  ], { resumo: (d) => [{ label: "Eventos", valor: num(d.total, 0) }, { label: "Realizadas", valor: num(d.linhas.filter((l) => String(l.tipo).startsWith("realized")).length, 0) }, { label: "No-show", valor: num(d.linhas.filter((l) => l.tipo === "no_show").length, 0) }, { label: "Viraram venda", valor: num(d.linhas.filter((l) => l.desfecho === "won").length, 0) }], nexus: LINK.reunioes }),
+  reunioes: S("Reuniões", "Eventos de reunião do CRM no mês. Pra reunião agendada: a data marcada e o resultado dela.", [
+    { h: "Lead", k: "nome", link: "lead", idk: "lead_id", tl: true }, { h: "Empresa", k: "empresa", tl: true }, { h: "Evento", k: "tipo", t: "evento" }, { h: "Agendada em", k: "data", t: "datahora" },
+    { h: "Marcada para", k: "marcada_para", t: "datahora" }, { h: "Resultado", k: "resultado" }, { h: "SDR", k: "sdr" }, { h: "Closer", k: "closer" }, { h: "Funil", k: "funil" }, { h: "Etapa atual", k: "etapa_atual" }, { h: "Desfecho", k: "desfecho" }, { h: "Valor", k: "valor", t: "brl" },
+  ], { resumo: (d) => {
+    // lista de "agendadas": cards pelo resultado de cada reunião, não pelo tipo do evento
+    const ag = d.linhas.filter((l) => l.tipo === "scheduled");
+    if (ag.length && ag.length === d.linhas.length) {
+      const r = (x: string) => ag.filter((l) => l.resultado === x).length;
+      return [{ label: "Agendadas", valor: num(d.total, 0) }, { label: "Realizadas", valor: num(r("Realizada"), 0), sub: fp(ag.length ? r("Realizada") / ag.length : null) }, { label: "No-show", valor: num(r("No-show"), 0) }, { label: "Ainda marcadas", valor: num(r("Marcada"), 0), sub: r("Cancelada") ? `${r("Cancelada")} cancelada(s)` : undefined }, { label: "Viraram venda", valor: num(ag.filter((l) => l.desfecho === "won").length, 0) }];
+    }
+    return [{ label: "Eventos", valor: num(d.total, 0) }, { label: "Realizadas", valor: num(d.linhas.filter((l) => String(l.tipo).startsWith("realized")).length, 0) }, { label: "No-show", valor: num(d.linhas.filter((l) => l.tipo === "no_show").length, 0) }, { label: "Viraram venda", valor: num(d.linhas.filter((l) => l.desfecho === "won").length, 0) }];
+  }, nexus: LINK.reunioes }),
   leads: S("Leads do mês", "Leads criados no mês, com etapa atual e tempo parado.", [
     { h: "Lead", k: "nome", link: "lead", idk: "lead_id", tl: true }, { h: "Empresa", k: "empresa", tl: true }, { h: "Origem", k: "origem" }, { h: "Funil", k: "funil" }, { h: "Etapa", k: "etapa" }, { h: "Dono", k: "dono" }, { h: "Criado", k: "criado_em", t: "data" }, { h: "Parado há", k: "dias_parado", t: "dias" }, { h: "Valor", k: "valor", t: "brl" }, { h: "Campanha", k: "campanha", tl: true },
   ], { resumo: (d) => [{ label: "Leads", valor: num(d.total, 0), sub: d.total > d.limite ? `mostrando ${d.limite}` : undefined }, { label: "Ganhos", valor: num(d.linhas.filter((l) => l.desfecho === "won").length, 0) }, { label: "Perdidos", valor: num(d.linhas.filter((l) => l.desfecho === "lost").length, 0) }, { label: "Parados +7 dias", valor: num(d.linhas.filter((l) => !l.desfecho && l.dias_parado > 7).length, 0) }], nexus: LINK.leads }),
