@@ -7,6 +7,7 @@ import { useSettings } from "@/lib/useSettings";
 import { Spinner } from "@/components/ui";
 import { YasFoodMark, YasFoodWord } from "@/components/Brand";
 import { Logo } from "@/pages/cliente/Layout";
+import { NovoPedidoAlerta } from "@/components/NovoPedidoAlerta";
 
 const NAV = [
   { to: "/admin", label: "Início", icon: LayoutDashboard, end: true },
@@ -81,6 +82,7 @@ export default function AdminLayout() {
             </div>
           </div>
         )}
+        <NovoPedidoAlerta />
         <main className="mx-auto max-w-6xl p-4 lg:p-6">
           <Outlet />
         </main>
