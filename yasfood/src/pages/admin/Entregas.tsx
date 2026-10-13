@@ -30,7 +30,7 @@ export default function Entregas() {
     if (!editingWin.weekdays?.length) return toast("Escolha pelo menos um dia da semana.", "err");
     setBusyWin(true);
     const { id, ...rest } = editingWin;
-    const payload = { label: rest.label ?? "", start_time: rest.start_time, end_time: rest.end_time, weekdays: rest.weekdays, min_lead_minutes: rest.min_lead_minutes ?? 120, applies_to: rest.applies_to ?? "ambos", active: rest.active ?? true, sort_order: rest.sort_order ?? 0 };
+    const payload = { label: rest.label ?? "", start_time: rest.start_time, end_time: rest.end_time, weekdays: rest.weekdays, min_lead_minutes: rest.min_lead_minutes ?? 120, applies_to: rest.applies_to ?? "ambos", active: rest.active ?? true, sort_order: rest.sort_order ?? 0, max_orders: rest.max_orders && rest.max_orders > 0 ? rest.max_orders : null };
     const { error } = id ? await supabase.from("delivery_windows").update(payload).eq("id", id) : await supabase.from("delivery_windows").insert(payload);
     setBusyWin(false);
     if (error) return toast(friendlyError(error), "err");
@@ -128,7 +128,7 @@ export default function Entregas() {
                 <span className="w-28 font-bold">{hm(w.start_time)}–{hm(w.end_time)}</span>
                 <span className="text-choco-600">{w.label}</span>
                 <span className="flex gap-1">{[0, 1, 2, 3, 4, 5, 6].map((d) => <span key={d} className={clsx("rounded px-1 text-[10px] font-bold uppercase", w.weekdays.includes(d) ? "bg-vinho-600 text-white" : "bg-choco-100 text-choco-400")}>{WEEKDAYS_SHORT[d]}</span>)}</span>
-                <span className="text-xs text-choco-500">pedir até {leadLabel(w.min_lead_minutes)} antes · {w.applies_to === "ambos" ? "entrega e retirada" : w.applies_to}</span>
+                <span className="text-xs text-choco-500">pedir até {leadLabel(w.min_lead_minutes)} antes · {w.applies_to === "ambos" ? "entrega e retirada" : w.applies_to} · {w.max_orders ? `até ${w.max_orders} pedido(s)` : "sem limite de pedidos"}</span>
                 <span className="ml-auto flex gap-1">
                   <Button size="sm" variant="outline" onClick={() => setEditingWin(w)}>Editar</Button>
                   <Button size="sm" variant="ghost" onClick={() => toggleWindow(w)}>{w.active ? "Desativar" : "Ativar"}</Button>
@@ -164,6 +164,7 @@ export default function Entregas() {
                 <option value="ambos">Entrega e retirada</option><option value="entrega">Só entrega</option><option value="retirada">Só retirada</option>
               </Select>
             </div>
+            <Input label="Limite de pedidos nesse horário (por dia)" type="number" min={1} inputMode="numeric" value={editingWin.max_orders ?? ""} onChange={(e) => setEditingWin({ ...editingWin, max_orders: e.target.value ? Number(e.target.value) : null })} hint="Vazio = sem limite. Cheio, o horário some do site; a vaga por dia continua valendo." />
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editingWin.active ?? true} onChange={(e) => setEditingWin({ ...editingWin, active: e.target.checked })} /> ativo</label>
             <Button className="w-full" loading={busyWin} onClick={saveWindow}>Salvar horário</Button>
           </div>

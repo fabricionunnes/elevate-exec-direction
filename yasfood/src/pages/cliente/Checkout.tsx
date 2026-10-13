@@ -220,12 +220,13 @@ export default function Checkout() {
                     >
                       <div className="text-sm font-bold">{windowLabel(w)}</div>
                       {w.label && <div className="text-[11px] text-choco-500">{w.label}</div>}
+                      {w.remaining !== null && w.remaining <= 3 && <div className="text-[11px] font-semibold text-vinho-600">{w.remaining === 1 ? "última vaga" : `${w.remaining} vagas`}</div>}
                     </button>
                   );
                 })}
               </div>
             ) : (
-              <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Os horários de hoje já fecharam. Escolha outra data.</p>
+              <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{windows.some((w) => w.remaining === 0) ? "Os horários desse dia já estão cheios. Escolha outra data." : "Os horários de hoje já fecharam. Escolha outra data."}</p>
             )}
           </div>
         )}
