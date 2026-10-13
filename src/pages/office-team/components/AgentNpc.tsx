@@ -17,7 +17,7 @@ import * as THREE from 'three'
 import { useTeamStore } from '../store/useTeamStore'
 import { OFFICE_AGENTS, OfficeAgent } from '../lib/agents'
 import { findPath } from '../lib/pathfinding'
-import { npcObstacles, personAvoidance } from '../lib/npcNav'
+import { npcObstacles, personAvoidance, npcBounds } from '../lib/npcNav'
 import { cafeDialogueLine, summonLine, getCafeNames, getCafeFacts, CafeFact } from '../lib/cafeDialogues'
 import { bistroSeatsFor, BistroSeat, CoffeeSip, SpeechBubble } from './CoffeeChat'
 import { ELEVATOR_FRONT } from '../lib/floors'
@@ -168,7 +168,7 @@ function AgentFigure({
       phaseRef.current = key
       // Obstáculos completos: paredes + mobília + pessoas (não atravessa mais)
       const walls = npcObstacles(g.position.x, g.position.z)
-      const pts = findPath(g.position.x, g.position.z, tx, tz, walls)
+      const pts = findPath(g.position.x, g.position.z, tx, tz, walls, npcBounds())
       pathRef.current = pts ? { pts, i: 0 } : null
     }
 

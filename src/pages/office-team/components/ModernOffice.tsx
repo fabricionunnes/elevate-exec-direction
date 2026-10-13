@@ -5,7 +5,8 @@ import { useFrame } from '@react-three/fiber'
 import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import { useTeamStore, playerFloor } from '../store/useTeamStore'
-import { BUILDING, OfficeRoom, isEffectivelyLocked, roomWalls } from '../lib/rooms'
+import { BUILDING, OfficeRoom, isEffectivelyLocked, roomWalls, floorBounds, sectorIslands, loungeExtraSets } from '../lib/rooms'
+import { ELEVATOR } from '../lib/floors'
 import { Elevator, Reception, UpperFacade } from './Elevator'
 import { woodTexture, floorTexture, carpetTexture, artTexture, officialLogoTexture } from '../lib/textures'
 import { doorProximity } from '../lib/door'
@@ -408,6 +409,16 @@ function LoungeFurniture({ room }: { room: OfficeRoom }) {
       <Sofa x={room.x - 0.5} z={room.z + 2.5} rotation={Math.PI} color="#5a6b7d" />
       <Sofa x={room.x - 0.5} z={room.z + 0.3} rotation={0} color="#5a6b7d" />
       <CoffeeTable x={room.x - 0.5} z={room.z + 1.4} />
+
+      {/* Lounge largo (> 12): repete sofá + mesa de centro nos vãos */}
+      {loungeExtraSets(room).map((sx) => (
+        <group key={sx}>
+          <Rug x={sx} z={room.z + 1.4} color="#6b5a7d" />
+          <Sofa x={sx} z={room.z + 2.5} rotation={Math.PI} color="#6b5a7d" />
+          <Sofa x={sx} z={room.z + 0.3} rotation={0} color="#6b5a7d" />
+          <CoffeeTable x={sx} z={room.z + 1.4} />
+        </group>
+      ))}
 
       {/* Mesas bistrô (leste) */}
       <BistroTable x={right - 3} z={room.z + 0.6} />
@@ -822,17 +833,46 @@ function PersonalFurniture({ room }: { room: OfficeRoom }) {
   )
 }
 
+/** Sala de setor: ilhas de mesas duplas proporcionais ao tamanho da sala
+ * (uma a cada ~3.4 de largura, até 2 fileiras). Cada ilha = duas mesas
+ * encostadas, uma cadeira ao sul (olha pro norte) e uma ao norte (olha pro
+ * sul), todas clicáveis. Mesmo cálculo do collider (sectorIslands). */
+function SectorFurniture({ room }: { room: OfficeRoom }) {
+  const islands = useMemo(() => sectorIslands(room), [room])
+  const backZ = room.doorSide === 'S' ? room.z - room.depth / 2 : room.z + room.depth / 2
+  return (
+    <group>
+      {islands.map((isl, i) => (
+        <group key={i}>
+          <Desk x={isl.x} z={isl.z + 0.45} rotation={0} chair={false} />
+          <Desk x={isl.x} z={isl.z - 0.45} rotation={Math.PI} chair={false} />
+          <OfficeChair x={isl.x} z={isl.z + 1.12} rotation={0} color="#37404d" />
+          <OfficeChair x={isl.x} z={isl.z - 1.12} rotation={Math.PI} color="#37404d" />
+        </group>
+      ))}
+      {/* TV na parede do fundo (as TVs de dados do DataTvs ficam por cima nas salas que têm) */}
+      <group position={[room.x, 0, backZ + (room.doorSide === 'S' ? 0.25 : -0.25)]}>
+        <mesh position={[0, 1.7, 0]} castShadow>
+          <boxGeometry args={[2.2, 1.15, 0.08]} />
+          <meshStandardMaterial color="#0d0f13" roughness={0.3} />
+        </mesh>
+        <mesh position={[0, 1.7, room.doorSide === 'S' ? 0.045 : -0.045]}>
+          <boxGeometry args={[2.05, 1.0, 0.005]} />
+          <meshStandardMaterial color="#1e3a5f" emissive="#16304f" emissiveIntensity={0.5} />
+        </mesh>
+      </group>
+      {/* Plantas nas pontas do fundo */}
+      <Plant x={room.x + room.width / 2 - 0.8} z={backZ + (room.doorSide === 'S' ? 0.8 : -0.8)} />
+      <Plant x={room.x - room.width / 2 + 0.8} z={backZ + (room.doorSide === 'S' ? 0.8 : -0.8)} />
+    </group>
+  )
+}
+
 function RoomFurniture({ room }: { room: OfficeRoom }) {
   if (room.roomType === 'meeting') return <MeetingTable room={room} />
   if (room.roomType === 'lounge') return <LoungeFurniture room={room} />
   if (room.roomType === 'personal') return <PersonalFurniture room={room} />
-  // sector: mesa de reunião grande (time trabalha junto)
-  return (
-    <group>
-      <MeetingTable room={room} />
-      <Plant x={room.x + room.width / 2 - 0.8} z={room.z - room.depth / 2 + 0.8} />
-    </group>
-  )
+  return <SectorFurniture room={room} />
 }
 
 function Room({ room, locked }: { room: OfficeRoom; locked: boolean }) {
@@ -977,10 +1017,54 @@ export default function ModernOffice() {
     return ids
   }, [remotePlayers, me])
 
-  const W = BUILDING.maxX - BUILDING.minX
-  const D = BUILDING.maxZ - BUILDING.minZ
-  const cx = (BUILDING.minX + BUILDING.maxX) / 2
-  const cz = (BUILDING.minZ + BUILDING.maxZ) / 2
+  // Laje do andar: térreo = BUILDING (igual ao que sempre foi); andares de
+  // cima = retângulo proporcional às salas + elevador + corredor
+  const bounds = useMemo(() => floorBounds(floor, rooms), [floor, rooms])
+  const W = bounds.maxX - bounds.minX
+  const D = bounds.maxZ - bounds.minZ
+  const cx = (bounds.minX + bounds.maxX) / 2
+  const cz = (bounds.minZ + bounds.maxZ) / 2
+
+  // Faixas de corredor geradas a partir das salas/bounds (andares de cima):
+  // uma horizontal entre a fileira norte (z<0) e a sul (z>0), pelas portas,
+  // e uma vertical no eixo do elevador até a parede sul.
+  const corridor = useMemo(() => {
+    let northEdge = -Infinity
+    let southEdge = Infinity
+    for (const r of rooms) {
+      if (r.z < 0) northEdge = Math.max(northEdge, r.z + r.depth / 2)
+      else southEdge = Math.min(southEdge, r.z - r.depth / 2)
+    }
+    if (!Number.isFinite(northEdge)) northEdge = -2.5
+    if (!Number.isFinite(southEdge)) southEdge = 2.5
+    const width = Math.max(3, Math.min(6, southEdge - northEdge))
+    return { z: (northEdge + southEdge) / 2, width }
+  }, [rooms])
+
+  // Janelas da fachada norte: a cada 7, a partir de minX + 4.5 (no térreo dá
+  // exatamente as 8 de sempre)
+  const windowsX = useMemo(() => {
+    const out: number[] = []
+    for (let wx = bounds.minX + 4.5; wx + 1.8 < bounds.maxX - 1; wx += 7) out.push(wx)
+    return out
+  }, [bounds])
+
+  // Plantas do corredor: térreo mantém as posições de sempre
+  const plantsX = useMemo(() => {
+    if (floor === 0) return [-26, -14, -2, 10, 22]
+    const out: number[] = []
+    for (let px = bounds.minX + 4; px < bounds.maxX - 3; px += 12) {
+      if (Math.abs(px) < 3) continue // não tapa o eixo do elevador
+      out.push(px)
+    }
+    return out
+  }, [floor, bounds])
+
+  const carpet = (rep: number) => {
+    const t = carpetTexture()
+    t.repeat.set(rep, 1.6)
+    return t
+  }
 
   return (
     <group>
@@ -1014,60 +1098,55 @@ export default function ModernOffice() {
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
 
-      {/* Faixas de corredor (carpete azul-petróleo) */}
-      <mesh position={[cx, 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[W, 5]} />
-        <meshStandardMaterial
-          map={(() => {
-            const t = carpetTexture()
-            t.repeat.set(12, 1.6)
-            return t
-          })()}
-          roughness={1}
-        />
-      </mesh>
-      <mesh position={[cx, 0.004, 13]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[W, 3]} />
-        <meshStandardMaterial
-          map={(() => {
-            const t = carpetTexture()
-            t.repeat.set(12, 1.6)
-            return t
-          })()}
-          roughness={1}
-        />
-      </mesh>
-      {/* Corredor entre as duas fileiras da ala privada */}
-      <mesh position={[cx, 0.004, 21.2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[W, 1.6]} />
-        <meshStandardMaterial
-          map={(() => {
-            const t = carpetTexture()
-            t.repeat.set(12, 1.6)
-            return t
-          })()}
-          roughness={1}
-        />
-      </mesh>
-      {/* Passagem vertical central da ala privada */}
-      <mesh position={[0, 0.005, 21.2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[10.2, 13.6]} />
-        <meshStandardMaterial
-          map={(() => {
-            const t = carpetTexture()
-            t.repeat.set(12, 1.6)
-            return t
-          })()}
-          roughness={1}
-        />
-      </mesh>
+      {/* Faixas de corredor (carpete azul-petróleo). Térreo: as de sempre
+          (corredor central, corredor do elevador e ala privada). Andares de
+          cima: geradas dos bounds/salas. */}
+      {floor === 0 ? (
+        <>
+          <mesh position={[cx, 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[W, 5]} />
+            <meshStandardMaterial map={carpet(12)} roughness={1} />
+          </mesh>
+          <mesh position={[cx, 0.004, 13]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[W, 3]} />
+            <meshStandardMaterial map={carpet(12)} roughness={1} />
+          </mesh>
+          {/* Corredor entre as duas fileiras da ala privada */}
+          <mesh position={[cx, 0.004, 21.2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[W, 1.6]} />
+            <meshStandardMaterial map={carpet(12)} roughness={1} />
+          </mesh>
+          {/* Passagem vertical central da ala privada */}
+          <mesh position={[0, 0.005, 21.2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[10.2, 13.6]} />
+            <meshStandardMaterial map={carpet(12)} roughness={1} />
+          </mesh>
+        </>
+      ) : (
+        <>
+          {/* Horizontal: entre a fileira norte e a sul, passando pelas portas */}
+          <mesh position={[cx, 0.004, corridor.z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[W, corridor.width]} />
+            <meshStandardMaterial map={carpet(Math.max(2, Math.round(W / 5)))} roughness={1} />
+          </mesh>
+          {/* Vertical: eixo do elevador, do corredor até a parede sul */}
+          <mesh
+            position={[(ELEVATOR.minX + ELEVATOR.maxX) / 2, 0.005, (corridor.z + bounds.maxZ - 0.3) / 2]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            receiveShadow
+          >
+            <planeGeometry args={[3.2, bounds.maxZ - 0.3 - corridor.z]} />
+            <meshStandardMaterial map={carpet(2)} roughness={1} />
+          </mesh>
+        </>
+      )}
 
-      {/* Perímetro do prédio */}
+      {/* Perímetro do andar (laje) */}
       {/* Paredes externas (norte/leste/oeste claras) */}
       {[
-        { x: cx, z: BUILDING.minZ, w: W + 0.4, d: 0.4 },
-        { x: BUILDING.minX, z: cz, w: 0.4, d: D + 0.4 },
-        { x: BUILDING.maxX, z: cz, w: 0.4, d: D + 0.4 },
+        { x: cx, z: bounds.minZ, w: W + 0.4, d: 0.4 },
+        { x: bounds.minX, z: cz, w: 0.4, d: D + 0.4 },
+        { x: bounds.maxX, z: cz, w: 0.4, d: D + 0.4 },
       ].map((p, i) => (
         <mesh key={i} position={[p.x, 1.3, p.z]} castShadow receiveShadow>
           <boxGeometry args={[p.w, 2.6, p.d]} />
@@ -1079,7 +1158,7 @@ export default function ModernOffice() {
           automática (portaria). Andares de cima: parede clara com janelões
           e a placa do andar; não dá pra sair do prédio por ali (colisão do
           perímetro vale em todos os andares). */}
-      <mesh position={[cx, 1.6, BUILDING.maxZ]} castShadow receiveShadow>
+      <mesh position={[cx, 1.6, bounds.maxZ]} castShadow receiveShadow>
         <boxGeometry args={[W + 0.4, 3.2, 0.4]} />
         <meshStandardMaterial color={floor === 0 ? '#0D2B5E' : '#ece8df'} roughness={0.65} />
       </mesh>
@@ -1101,24 +1180,24 @@ export default function ModernOffice() {
           <Reception />
         </>
       )}
-      {floor !== 0 && <UpperFacade floor={floor} />}
+      {floor !== 0 && <UpperFacade floor={floor} bounds={bounds} />}
 
       {/* Elevador: mesmo lugar em todos os andares */}
       <Elevator />
 
-      {/* Janelas com luz de dia na fachada norte */}
-      {Array.from({ length: 8 }, (_, i) => BUILDING.minX + 4.5 + i * 7).map((wx) => (
+      {/* Janelas com luz de dia na fachada norte (geradas da largura da laje) */}
+      {windowsX.map((wx) => (
         <group key={`win${wx}`}>
-          <mesh position={[wx, 1.55, BUILDING.minZ + 0.22]}>
+          <mesh position={[wx, 1.55, bounds.minZ + 0.22]}>
             <boxGeometry args={[3.6, 1.35, 0.05]} />
             <meshStandardMaterial color="#bcd8f0" emissive="#a8cdef" emissiveIntensity={0.55} roughness={0.1} />
           </mesh>
           {/* Caixilho */}
-          <mesh position={[wx, 1.55, BUILDING.minZ + 0.25]}>
+          <mesh position={[wx, 1.55, bounds.minZ + 0.25]}>
             <boxGeometry args={[0.06, 1.35, 0.03]} />
             <meshStandardMaterial color="#6b737d" metalness={0.5} roughness={0.4} />
           </mesh>
-          <mesh position={[wx, 1.55, BUILDING.minZ + 0.25]} rotation={[0, 0, Math.PI / 2]}>
+          <mesh position={[wx, 1.55, bounds.minZ + 0.25]} rotation={[0, 0, Math.PI / 2]}>
             <boxGeometry args={[0.06, 3.6, 0.03]} />
             <meshStandardMaterial color="#6b737d" metalness={0.5} roughness={0.4} />
           </mesh>
@@ -1126,8 +1205,8 @@ export default function ModernOffice() {
       ))}
 
       {/* Plantas no corredor central */}
-      {[-26, -14, -2, 10, 22].map((x) => (
-        <Plant key={x} x={x} z={0} />
+      {plantsX.map((x) => (
+        <Plant key={x} x={x} z={floor === 0 ? 0 : corridor.z} />
       ))}
 
       {/* Salas */}

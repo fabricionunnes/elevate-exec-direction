@@ -2,9 +2,15 @@
 // (paredes + mobília + pessoas paradas) e repulsão local de pessoas durante
 // a caminhada — robô não atravessa mais mesa nem gente.
 import { useTeamStore, playerFloor } from '../store/useTeamStore'
-import { buildCollisionWalls, furnitureColliders, Wall } from './rooms'
+import { buildCollisionWalls, furnitureColliders, floorBounds, Bounds, Wall } from './rooms'
 
 const PERSON_R = 0.3
+
+/** Laje do andar atual (pra grade do A* dos NPCs). */
+export function npcBounds(): Bounds {
+  const state = useTeamStore.getState()
+  return floorBounds(state.floor, state.roomsOnFloor)
+}
 
 /** Paredes + mobília + pessoas (ignora quem está colado no ponto de partida,
  * senão o A* nasce bloqueado e o path falha). */

@@ -12,7 +12,7 @@ import { useTeamStore } from '../store/useTeamStore'
 import { personalOwnerSeat } from '../lib/rooms'
 import { ELEVATOR_FRONT } from '../lib/floors'
 import { findPath } from '../lib/pathfinding'
-import { npcObstacles, personAvoidance } from '../lib/npcNav'
+import { npcObstacles, personAvoidance, npcBounds } from '../lib/npcNav'
 import { agentPosState } from './AgentNpc'
 import { CoffeeSip } from './CoffeeChat'
 import type { OfficeRoom } from '../lib/rooms'
@@ -116,7 +116,7 @@ export default function MarceloNpc() {
       if (key !== phaseRef.current) {
         phaseRef.current = key
         const walls = npcObstacles(g.position.x, g.position.z)
-        const pts = findPath(g.position.x, g.position.z, tx, tz, walls)
+        const pts = findPath(g.position.x, g.position.z, tx, tz, walls, npcBounds())
         pathRef.current = pts ? { pts, i: 0 } : null
       }
       const path = pathRef.current
@@ -207,10 +207,10 @@ export default function MarceloNpc() {
       // Obstáculos completos: paredes + mobília + pessoas
       const walls = npcObstacles(g.position.x, g.position.z)
       if (phase === 'go') {
-        const pts = findPath(g.position.x, g.position.z, dest[0], dest[1], walls)
+        const pts = findPath(g.position.x, g.position.z, dest[0], dest[1], walls, npcBounds())
         pathRef.current = pts ? { pts, i: 0 } : null
       } else if (phase === 'back') {
-        const pts = findPath(g.position.x, g.position.z, seat.x, seat.z, walls)
+        const pts = findPath(g.position.x, g.position.z, seat.x, seat.z, walls, npcBounds())
         pathRef.current = pts ? { pts, i: 0 } : null
       } else {
         pathRef.current = null

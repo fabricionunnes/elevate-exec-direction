@@ -1,23 +1,32 @@
 // A* sobre as paredes dinâmicas do escritório — usado pelo auto-walk
 // ("ir andando até minha sala"). Grid de 0.5u com suavização por
 // linha-de-visão, mesma abordagem do escritório de agentes.
-import { BUILDING, Wall, checkWallCollision } from './rooms'
+import { BUILDING, Bounds, Wall, checkWallCollision } from './rooms'
 
 const CELL = 0.5
 const RADIUS = 0.36
 
-const COLS = Math.round((BUILDING.maxX - BUILDING.minX) / CELL)
-const ROWS = Math.round((BUILDING.maxZ - BUILDING.minZ) / CELL)
+// A grade é da laje do andar (bounds): o térreo usa BUILDING, os andares de
+// cima a laje proporcional. Dimensões calculadas por chamada.
+let B: Bounds = BUILDING
+let COLS = Math.round((B.maxX - B.minX) / CELL)
+let ROWS = Math.round((B.maxZ - B.minZ) / CELL)
+
+function useBounds(b: Bounds) {
+  B = b
+  COLS = Math.max(2, Math.round((B.maxX - B.minX) / CELL))
+  ROWS = Math.max(2, Math.round((B.maxZ - B.minZ) / CELL))
+}
 
 function toCell(x: number, z: number): [number, number] {
   return [
-    Math.min(COLS - 1, Math.max(0, Math.round((x - BUILDING.minX) / CELL))),
-    Math.min(ROWS - 1, Math.max(0, Math.round((z - BUILDING.minZ) / CELL))),
+    Math.min(COLS - 1, Math.max(0, Math.round((x - B.minX) / CELL))),
+    Math.min(ROWS - 1, Math.max(0, Math.round((z - B.minZ) / CELL))),
   ]
 }
 
 function toWorld(cx: number, cz: number): [number, number] {
-  return [BUILDING.minX + cx * CELL, BUILDING.minZ + cz * CELL]
+  return [B.minX + cx * CELL, B.minZ + cz * CELL]
 }
 
 function buildBlockedGrid(walls: Wall[]): Uint8Array {
@@ -26,10 +35,10 @@ function buildBlockedGrid(walls: Wall[]): Uint8Array {
     for (let cx = 0; cx < COLS; cx++) {
       const [wx, wz] = toWorld(cx, cz)
       if (
-        wx < BUILDING.minX + RADIUS ||
-        wx > BUILDING.maxX - RADIUS ||
-        wz < BUILDING.minZ + RADIUS ||
-        wz > BUILDING.maxZ - RADIUS ||
+        wx < B.minX + RADIUS ||
+        wx > B.maxX - RADIUS ||
+        wz < B.minZ + RADIUS ||
+        wz > B.maxZ - RADIUS ||
         checkWallCollision(wx, wz, RADIUS, walls)
       ) {
         grid[cz * COLS + cx] = 1
@@ -68,14 +77,17 @@ function lineOfSight(ax: number, az: number, bx: number, bz: number, walls: Wall
 /**
  * Caminho de (sx,sz) até (ex,ez) desviando das paredes.
  * Retorna waypoints [x,z][] (sem o ponto inicial) ou null se não há rota.
+ * `bounds` = laje do andar (padrão: térreo/BUILDING).
  */
 export function findPath(
   sx: number,
   sz: number,
   ex: number,
   ez: number,
-  walls: Wall[]
+  walls: Wall[],
+  bounds: Bounds = BUILDING
 ): [number, number][] | null {
+  useBounds(bounds)
   const grid = buildBlockedGrid(walls)
   const startCell = nearestFree(grid, ...toCell(sx, sz))
   const endCell = nearestFree(grid, ...toCell(ex, ez))

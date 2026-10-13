@@ -7,7 +7,7 @@ import { useFrame } from '@react-three/fiber'
 import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import { useTeamStore } from '../store/useTeamStore'
-import { BUILDING } from '../lib/rooms'
+import type { Bounds } from '../lib/rooms'
 import { ELEVATOR, ELEVATOR_ZONE, RECEPTION_DESK, floorShort, floorLabel } from '../lib/floors'
 
 const EL_W = ELEVATOR.maxX - ELEVATOR.minX
@@ -257,14 +257,19 @@ function skyTexture(): THREE.CanvasTexture {
 }
 
 /** Andares de cima: no lugar da entrada, parede com janelões e a placa do andar. */
-export function UpperFacade({ floor }: { floor: number }) {
+export function UpperFacade({ floor, bounds }: { floor: number; bounds: Bounds }) {
   const tex = useMemo(() => skyTexture(), [])
-  const z = BUILDING.maxZ - 0.22
+  // Parede sul da laje DESTE andar (proporcional às salas)
+  const z = bounds.maxZ - 0.22
+  const cx = (bounds.minX + bounds.maxX) / 2
   const panes = useMemo(() => {
     const out: number[] = []
-    for (let x = BUILDING.minX + 3; x <= BUILDING.maxX - 3; x += 4.5) out.push(x)
+    const w = bounds.maxX - bounds.minX
+    const n = Math.max(1, Math.floor((w - 2) / 4.5))
+    const span = n * 4.5
+    for (let i = 0; i < n; i++) out.push(cx - span / 2 + 2.25 + i * 4.5)
     return out
-  }, [])
+  }, [bounds.minX, bounds.maxX, cx])
   return (
     <group>
       {/* Janelões contínuos (plano de céu com gradiente) */}
@@ -286,12 +291,12 @@ export function UpperFacade({ floor }: { floor: number }) {
         </group>
       ))}
       {/* Peitoril */}
-      <mesh position={[(BUILDING.minX + BUILDING.maxX) / 2, 0.58, z - 0.04]}>
-        <boxGeometry args={[BUILDING.maxX - BUILDING.minX - 0.4, 0.08, 0.16]} />
+      <mesh position={[cx, 0.58, z - 0.04]}>
+        <boxGeometry args={[bounds.maxX - bounds.minX - 0.4, 0.08, 0.16]} />
         <meshStandardMaterial color="#d9d4c8" roughness={0.6} />
       </mesh>
       {/* Placa do andar (no meio da parede, de frente pro escritório) */}
-      <group position={[0, 2.05, z - 0.06]} rotation={[0, Math.PI, 0]}>
+      <group position={[cx, 2.05, z - 0.06]} rotation={[0, Math.PI, 0]}>
         <mesh>
           <boxGeometry args={[4.2, 0.6, 0.05]} />
           <meshStandardMaterial color="#0D2B5E" roughness={0.5} />

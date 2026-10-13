@@ -7,7 +7,7 @@ import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import { useKeyboard } from '../../office/hooks/useKeyboard'
 import HumanBody from './HumanBody'
-import { BUILDING, buildCollisionWalls, checkWallCollision, roomAt, setRoomLock, isEffectivelyLocked, personalOwnerSeat, furnitureColliders } from '../lib/rooms'
+import { BUILDING, buildCollisionWalls, checkWallCollision, roomAt, setRoomLock, isEffectivelyLocked, personalOwnerSeat, furnitureColliders, floorBounds } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
 import { useTeamStore, playerFloor } from '../store/useTeamStore'
 import { travelToFloor } from '../lib/floorTravel'
@@ -101,6 +101,12 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
   }, [rooms, remotePlayers, me, myRoomId, floor])
   const wallsRef = useRef(walls)
   wallsRef.current = walls
+
+  // Laje do andar atual (clamp do jogador + grade do A*). O spawn inicial é
+  // sempre no térreo (BUILDING).
+  const bounds = useMemo(() => floorBounds(floor, rooms), [floor, rooms])
+  const boundsRef = useRef(bounds)
+  boundsRef.current = bounds
 
   // Mobília colide também (mesa, sofá, balcão) — exceto quando indo sentar
   const furniture = useMemo(() => furnitureColliders(rooms), [rooms])
@@ -258,7 +264,7 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       travelToFloor(walkTo.floor, realtime)
     } else if (walkTo && !useTeamStore.getState().pendingTeleport) {
       useTeamStore.getState().setPendingWalkTo(null)
-      const path = findPath(pos.x, pos.z, walkTo.x, walkTo.z, [...wallsRef.current, ...furnitureRef.current])
+      const path = findPath(pos.x, pos.z, walkTo.x, walkTo.z, [...wallsRef.current, ...furnitureRef.current], boundsRef.current)
       if (path && path.length > 0) {
         autoPathRef.current = { points: path, idx: 0 }
       } else if (walkTo.teleportFallback) {
@@ -330,8 +336,9 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       dz /= len
 
       const RADIUS = 0.32
-      const tryX = Math.max(BUILDING.minX + 0.5, Math.min(BUILDING.maxX - 0.5, pos.x + dx * SPEED * delta))
-      const tryZ = Math.max(BUILDING.minZ + 0.5, Math.min(BUILDING.maxZ - 0.5, pos.z + dz * SPEED * delta))
+      const b = boundsRef.current
+      const tryX = Math.max(b.minX + 0.5, Math.min(b.maxX - 0.5, pos.x + dx * SPEED * delta))
+      const tryZ = Math.max(b.minZ + 0.5, Math.min(b.maxZ - 0.5, pos.z + dz * SPEED * delta))
       // Mobília colide, exceto: (a) aproximação final do assento (encaixe)
       // e (b) quando JÁ está encostado/dentro dela — deixa escapar
       // (ex: levantando da cadeira atrás da mesa)

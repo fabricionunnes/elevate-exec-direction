@@ -10,7 +10,7 @@ import * as THREE from 'three'
 import HumanBody from './HumanBody'
 import { SpeechBubble } from './CoffeeChat'
 import { useTeamStore, AvatarConfig, playerFloor } from '../store/useTeamStore'
-import { roomAt, BUILDING } from '../lib/rooms'
+import { roomAt, floorBounds } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
 import { cleaningObstacles, personAvoidance } from '../lib/npcNav'
 import { gossipLine, farewellLine, speakGossip } from '../lib/gossip'
@@ -201,7 +201,7 @@ export default function CleaningLady() {
       if (!prev || Math.hypot(prev[0] - dest[0], prev[1] - dest[1]) > 1) {
         destRef.current = dest
         const walls = cleaningObstacles(g.position.x, g.position.z)
-        const pts = findPath(g.position.x, g.position.z, dest[0], dest[1], walls)
+        const pts = findPath(g.position.x, g.position.z, dest[0], dest[1], walls, floorBounds(st.floor, st.roomsOnFloor))
         pathRef.current = pts ? { pts, i: 0 } : null
       }
     }
@@ -244,8 +244,9 @@ export default function CleaningLady() {
       pathRef.current = null
       destRef.current = null
     } else {
-      g.position.x = Math.min(BUILDING.maxX - 1, Math.max(BUILDING.minX + 1, g.position.x))
-      g.position.z = Math.min(BUILDING.maxZ - 1, Math.max(BUILDING.minZ + 1, g.position.z))
+      const b = floorBounds(st.floor, st.roomsOnFloor)
+      g.position.x = Math.min(b.maxX - 1, Math.max(b.minX + 1, g.position.x))
+      g.position.z = Math.min(b.maxZ - 1, Math.max(b.minZ + 1, g.position.z))
     }
 
     if (think) {

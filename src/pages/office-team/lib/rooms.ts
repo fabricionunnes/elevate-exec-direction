@@ -2,7 +2,7 @@
 // Gera paredes/colisão/portas a partir das salas; sala trancada fecha a porta
 // para quem está fora (lock só vale enquanto quem trancou estiver online).
 import { supabase } from '@/integrations/supabase/client'
-import { ELEVATOR, RECEPTION_DESK } from './floors'
+import { ELEVATOR, ELEVATOR_ZONE, ELEVATOR_FRONT, RECEPTION_DESK } from './floors'
 
 export type RoomType = 'sector' | 'meeting' | 'personal' | 'lounge'
 
@@ -34,8 +34,59 @@ export interface Wall {
   maxZ: number
 }
 
-// Limites do prédio (perímetro com colisão)
+// Limites do prédio (perímetro com colisão) — laje do TÉRREO.
 export const BUILDING = { minX: -30, maxX: 30, minZ: -20, maxZ: 29 }
+
+export interface Bounds {
+  minX: number
+  maxX: number
+  minZ: number
+  maxZ: number
+}
+
+const FLOOR_PAD = 3.5 // corredor em volta das salas nos andares de cima
+const FLOOR_MIN_W = 24
+const FLOOR_MIN_D = 22
+
+/**
+ * Laje do andar, proporcional ao conteúdo. Térreo = BUILDING (portaria,
+ * estacionamento, ala pessoal). Andares de cima = retângulo que envolve as
+ * salas do andar + o elevador (caixa e zona da frente) + margem de corredor,
+ * nunca menor que 24 x 22 e sempre com espaço ao sul do elevador (o jogador
+ * chega em ELEVATOR_FRONT).
+ */
+export function floorBounds(floor: number, roomsOnFloor: OfficeRoom[]): Bounds {
+  if (floor === 0) return BUILDING
+  let minX = Math.min(ELEVATOR.minX, ELEVATOR_ZONE.minX)
+  let maxX = Math.max(ELEVATOR.maxX, ELEVATOR_ZONE.maxX)
+  let minZ = Math.min(ELEVATOR.minZ, ELEVATOR_ZONE.minZ)
+  let maxZ = Math.max(ELEVATOR.maxZ, ELEVATOR_ZONE.maxZ)
+  for (const r of roomsOnFloor) {
+    if (r.floor !== floor) continue
+    minX = Math.min(minX, r.x - r.width / 2)
+    maxX = Math.max(maxX, r.x + r.width / 2)
+    minZ = Math.min(minZ, r.z - r.depth / 2)
+    maxZ = Math.max(maxZ, r.z + r.depth / 2)
+  }
+  minX -= FLOOR_PAD
+  maxX += FLOOR_PAD
+  minZ -= FLOOR_PAD
+  maxZ += FLOOR_PAD
+  maxZ = Math.max(maxZ, ELEVATOR_FRONT.z + 4)
+  // Mínimo 24 x 22 (expande dos dois lados em volta do centro)
+  if (maxX - minX < FLOOR_MIN_W) {
+    const c = (minX + maxX) / 2
+    minX = c - FLOOR_MIN_W / 2
+    maxX = c + FLOOR_MIN_W / 2
+  }
+  if (maxZ - minZ < FLOOR_MIN_D) {
+    const extra = FLOOR_MIN_D - (maxZ - minZ)
+    minZ -= extra / 2
+    maxZ += extra / 2
+  }
+  const round = (v: number) => Math.round(v * 10) / 10
+  return { minX: round(minX), maxX: round(maxX), minZ: round(minZ), maxZ: round(maxZ) }
+}
 
 const WALL_T = 0.32 // espessura
 const DOOR_W = 2.6 // vão da porta
@@ -207,11 +258,13 @@ export function buildCollisionWalls(
   meId?: string,
   floor = 0
 ): Wall[] {
+  // Perímetro = laje do andar (térreo: BUILDING; cima: proporcional às salas)
+  const b = floorBounds(floor, rooms)
   const walls: Wall[] = [
-    { minX: BUILDING.minX - 1, maxX: BUILDING.minX, minZ: BUILDING.minZ - 1, maxZ: BUILDING.maxZ + 1 },
-    { minX: BUILDING.maxX, maxX: BUILDING.maxX + 1, minZ: BUILDING.minZ - 1, maxZ: BUILDING.maxZ + 1 },
-    { minX: BUILDING.minX - 1, maxX: BUILDING.maxX + 1, minZ: BUILDING.minZ - 1, maxZ: BUILDING.minZ },
-    { minX: BUILDING.minX - 1, maxX: BUILDING.maxX + 1, minZ: BUILDING.maxZ, maxZ: BUILDING.maxZ + 1 },
+    { minX: b.minX - 1, maxX: b.minX, minZ: b.minZ - 1, maxZ: b.maxZ + 1 },
+    { minX: b.maxX, maxX: b.maxX + 1, minZ: b.minZ - 1, maxZ: b.maxZ + 1 },
+    { minX: b.minX - 1, maxX: b.maxX + 1, minZ: b.minZ - 1, maxZ: b.minZ },
+    { minX: b.minX - 1, maxX: b.maxX + 1, minZ: b.maxZ, maxZ: b.maxZ + 1 },
     ...fixtureColliders(floor),
   ]
   for (const room of rooms) {
@@ -314,6 +367,59 @@ export async function setRoomLock(roomId: string, locked: boolean, userId: strin
   return !error
 }
 
+/** Ilha de mesas da sala de setor: mesa dupla (duas cadeiras frente a
+ * frente, uma ao norte e outra ao sul). */
+export interface DeskIsland {
+  x: number
+  z: number
+}
+
+/**
+ * Ilhas de mesas da sala de setor, proporcionais ao tamanho da sala:
+ * uma mesa dupla a cada ~3.4 de largura, em até 2 fileiras se a profundidade
+ * permitir, deixando 2 de corredor na frente da porta e 1 no fundo.
+ * (Mesma fonte pro ModernOffice desenhar e pro collider da mobília.)
+ */
+export function sectorIslands(room: OfficeRoom): DeskIsland[] {
+  const usableW = room.width - 2
+  const cols = Math.max(1, Math.floor(usableW / 3.4))
+  const pitch = usableW / cols
+  const x0 = room.x - usableW / 2 + pitch / 2
+  // Faixa útil em z: 2 na frente da porta, 1 no fundo
+  const front = room.doorSide === 'S' ? room.z + room.depth / 2 - 2 : room.z - room.depth / 2 + 2
+  const back = room.doorSide === 'S' ? room.z - room.depth / 2 + 1 : room.z + room.depth / 2 - 1
+  const zStart = Math.min(front, back)
+  const zLen = Math.abs(front - back)
+  const rows = zLen >= 5.6 ? 2 : 1
+  const out: DeskIsland[] = []
+  for (let r = 0; r < rows; r++) {
+    const z = zStart + (r + 0.5) * (zLen / rows)
+    for (let c = 0; c < cols; c++) out.push({ x: x0 + c * pitch, z })
+  }
+  return out
+}
+
+/** Lounge largo (> 12): conjuntos extras de sofá + mesa de centro entre o
+ * núcleo oeste e o central, e entre o central e as mesas bistrô. Devolve os
+ * centros x dos conjuntos. Lounge de 10 (térreo) não ganha nenhum. */
+export function loungeExtraSets(room: OfficeRoom): number[] {
+  if (room.width <= 12) return []
+  const left = room.x - room.width / 2
+  const right = room.x + room.width / 2
+  const out: number[] = []
+  // Entre o núcleo oeste (até left + 5.3) e o central (a partir de x - 2.15)
+  const westGapStart = left + 5.3
+  const westGapEnd = room.x - 2.15
+  const nWest = Math.floor((westGapEnd - westGapStart) / 4.2)
+  for (let i = 0; i < nWest; i++) out.push(westGapStart + 2.1 + i * 4.2)
+  // Entre o central (até x + 1.2) e os bistrôs (a partir de right - 6.15)
+  const eastGapStart = room.x + 1.2
+  const eastGapEnd = right - 6.15
+  const nEast = Math.floor((eastGapEnd - eastGapStart) / 4.2)
+  for (let i = 0; i < nEast; i++) out.push(eastGapStart + 2.1 + i * 4.2)
+  return out
+}
+
 /**
  * Colliders aproximados (AABB) da mobília — espelham as posições renderizadas
  * no ModernOffice. Usados na colisão de movimento e no pathfinding pra
@@ -330,9 +436,12 @@ export function furnitureColliders(rooms: OfficeRoom[]): Wall[] {
       // Collider justo: precisa sobrar passagem entre a mesa e a parede
       // do fundo (onde fica a cadeira do dono)
       box(r.x, deskZ, 0.8, 0.28) // mesa
-    } else if (r.roomType === 'meeting' || r.roomType === 'sector') {
+    } else if (r.roomType === 'meeting') {
       const len = Math.max(3, r.width - 4.5)
       box(r.x, r.z, len / 2, 0.8) // mesa de reunião
+    } else if (r.roomType === 'sector') {
+      // Ilhas de mesas duplas (as cadeiras ficam fora do collider)
+      for (const isl of sectorIslands(r)) box(isl.x, isl.z, 0.85, 0.45)
     } else if (r.roomType === 'lounge') {
       const left = r.x - r.width / 2
       const right = r.x + r.width / 2
@@ -345,6 +454,10 @@ export function furnitureColliders(rooms: OfficeRoom[]): Wall[] {
       box(right - 3, r.z + 0.6, 0.28, 0.28) // bistrôs
       box(right - 5.4, r.z + 2.2, 0.28, 0.28)
       box(right - 1.8, r.z + 2.8, 0.28, 0.28)
+      for (const sx of loungeExtraSets(r)) {
+        box(sx, r.z + 2.5, 0.85, 0.4) // conjuntos extras (lounge largo)
+        box(sx, r.z + 0.3, 0.85, 0.4)
+      }
     }
   }
   return out
