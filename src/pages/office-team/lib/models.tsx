@@ -494,12 +494,15 @@ class ModelErrorBoundary extends Component<{ fallback: ReactNode; children: Reac
   }
 }
 
-/** Enquanto o glb carrega (Suspense) ou se falhar (404, rede, parse), renderiza
- * o fallback = a peça procedural. Nunca fica buraco e nunca trava a cena. */
+/** Se o glb falhar (404, rede, parse), renderiza o fallback = a peça procedural.
+ * Enquanto carrega NÃO renderiza nada: montar a mobília procedural inteira só pra
+ * trocar pelos modelos um segundo depois dobrava o trabalho da entrada (13/10/2026,
+ * "demora muito carregar"). Os modelos somam ~350 KB e já vêm sendo baixados
+ * desde que a página do escritório abre (preload no fim deste arquivo). */
 export function Modeled({ fallback, children }: { fallback: ReactNode; children: ReactNode }) {
   return (
     <ModelErrorBoundary fallback={fallback}>
-      <Suspense fallback={fallback}>{children}</Suspense>
+      <Suspense fallback={null}>{children}</Suspense>
     </ModelErrorBoundary>
   )
 }
@@ -558,3 +561,7 @@ export function ModelsProbe() {
     </>
   )
 }
+
+// Adianta o download: começa quando o código do escritório carrega, em paralelo
+// com o login e a conexão, em vez de esperar a cena montar.
+if (typeof window !== 'undefined') preloadFloorModels()

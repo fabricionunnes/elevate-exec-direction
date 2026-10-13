@@ -24,6 +24,16 @@ export function initialGraphics(): GraphicsLevel {
   return cores < 6 || isMobile() ? 'medio' : 'alto'
 }
 
+/** A pessoa já escolheu o nível à mão? (aí a queda automática não mexe) */
+export function hasSavedGraphics(): boolean {
+  try {
+    const saved = localStorage.getItem(KEY)
+    return saved === 'alto' || saved === 'medio'
+  } catch {
+    return false
+  }
+}
+
 export function persistGraphics(level: GraphicsLevel): void {
   try {
     localStorage.setItem(KEY, level)

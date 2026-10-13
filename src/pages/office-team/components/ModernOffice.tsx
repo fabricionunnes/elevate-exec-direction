@@ -1510,14 +1510,18 @@ export default function ModernOffice() {
   // Só as salas do andar atual são renderizadas (a planta é a mesma em todos)
   const rooms = useTeamStore((s) => s.roomsOnFloor)
   const floor = useTeamStore((s) => s.floor)
-  const remotePlayers = useTeamStore((s) => s.remotePlayers)
+  // Só interessa QUEM está online. O store troca a identidade de remotePlayers a
+  // cada 500ms enquanto alguém anda; assinar o objeto inteiro redesenhava o andar
+  // todo duas vezes por segundo (engasgo). A chave em texto só muda quando alguém
+  // entra ou sai.
+  const onlineKey = useTeamStore((s) => Object.keys(s.remotePlayers).sort().join('|'))
   const me = useTeamStore((s) => s.me)
 
   const onlineIds = useMemo(() => {
-    const ids = new Set(Object.keys(remotePlayers))
+    const ids = new Set(onlineKey ? onlineKey.split('|') : [])
     if (me) ids.add(me.id)
     return ids
-  }, [remotePlayers, me])
+  }, [onlineKey, me])
 
   // Laje do andar: térreo = BUILDING (igual ao que sempre foi); andares de
   // cima = retângulo proporcional às salas + elevador + corredor
