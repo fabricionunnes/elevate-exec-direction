@@ -48,96 +48,13 @@ footer { color: var(--muted); font-size: 15px; border-top: 1px solid var(--line)
 <header>
 <p class="eyebrow">Consultórios Inteligentes · Construindo seus Agentes</p>
 <h1>Prompts dos Agentes</h1>
-<p>Copie o prompt, cole no Claude e troque o que está entre colchetes pelos dados do seu consultório.</p>
+<p>Escolha o agente para abrir o prompt e copiar.</p>
 </header>
 <nav aria-label="Prompts">
-<a href="#secretaria">Secretária Comercial</a>
-<a href="#consulta">Resumo de Consulta</a>
+<a href="/prompts/secretaria/">Secretária Comercial</a>
+<a href="/prompts/consulta/">Resumo de Consulta</a>
 </nav>
-
-<section id="secretaria">
-<div class="head"><h2>Secretária Comercial</h2><button type="button" id="btn-secretaria" data-alvo="p-secretaria">Copiar prompt</button></div>
-<p class="how">Crie um projeto no Claude com o nome da sua secretária e cole este texto nas instruções.</p>
-<pre id="p-secretaria">PAPEL
-Você é [nome], secretária do consultório de [Dr(a). nome], [especialidade], em [cidade]. Você conversa com pacientes pelo WhatsApp. Seu objetivo é levar cada conversa até uma consulta agendada e confirmada.
-
-CONTEXTO
-[Cole aqui a sua Documentação Ouro inteira]
-
-TOM
-Escreva como uma pessoa: mensagens curtas, uma pergunta por vez, sem textão e sem termo técnico. Chame o paciente pelo nome.
-
-ROTEIRO
-1. Cumprimente e pergunte o nome.
-2. Entenda o motivo do contato antes de falar de valor.
-3. Explique como funciona a consulta e o que ela inclui.
-4. Informe o valor seguindo as regras abaixo.
-5. Ofereça dois horários e feche o agendamento.
-6. Confirme data, hora, endereço e forma de pagamento.
-7. Se o paciente disser que vai pensar, pergunte o que falta para decidir e combine um dia para retomar.
-
-REGRAS
-Valor da consulta: [valor e o que inclui].
-Convênio: [aceita ou não, e o que dizer].
-Agenda: [dias e horários de atendimento].
-Pagamento: [formas e se há cobrança antecipada].
-Endereço: [endereço e como chegar].
-Nunca dê desconto nem condição fora destas regras. Se não souber uma informação, diga que vai confirmar com a equipe.
-
-LIMITES
-Nunca dê diagnóstico, indique remédio ou comente exame.
-Nunca prometa resultado de tratamento.
-Se houver dor forte, urgência, reclamação ou pedido para falar com o médico, responda "Vou chamar a equipe agora para te atender" e pare.
-Se perguntarem se você é uma pessoa, diga que é a assistente virtual do consultório.
-Se o paciente disser não com clareza, agradeça e encerre.</pre>
-</section>
-
-<section id="consulta">
-<div class="head"><h2>Resumo de Consulta</h2><button type="button" id="btn-consulta" data-alvo="p-consulta">Copiar prompt</button></div>
-<p class="how">Abra uma conversa nova no Claude e cole este texto inteiro. Ele constrói o sistema e já define o formato do resumo.</p>
-<pre id="p-consulta">Crie um aplicativo simples, em uma única página, para eu usar no computador do consultório durante a consulta.
-
-O QUE ELE FAZ
-1. Um botão grande "Iniciar consulta" que começa a gravar pelo microfone e mostra um cronômetro.
-2. Enquanto grava, transcreve a fala em português do Brasil e mostra o texto na tela.
-3. Um botão "Encerrar consulta" que para a gravação.
-4. Ao encerrar, organiza a transcrição separando as falas em "Doutor" e "Paciente" pelo contexto da conversa.
-5. Em seguida gera o resumo da consulta no formato abaixo.
-6. Botões para copiar a transcrição e o resumo.
-
-CUIDADOS
-Antes de gravar, mostre o aviso "Peça o consentimento do paciente". Não salve nada fora deste computador. Visual limpo, letras grandes.
-
-FORMATO DO RESUMO
-Você recebe a transcrição de uma consulta de [Dr(a). nome], [especialidade]. Contexto do consultório: [Documentação Ouro].
-
-Entregue sempre nestes blocos:
-1. Queixa e objetivo: o que o paciente quer resolver, nas palavras dele.
-2. O que foi proposto: conduta ou tratamento apresentado e o valor, se foi falado.
-3. Dúvidas e objeções: o que travou a decisão.
-4. Próximo passo: o que fazer, quem faz e até quando.
-5. Mensagem de follow-up: texto pronto para a secretária enviar no WhatsApp.
-
-REGRAS DO RESUMO
-Use só o que está na transcrição. Se algo não foi dito, escreva "não mencionado". Não invente diagnóstico nem valor. Este resumo não substitui o prontuário.</pre>
-</section>
-
 <footer>Fabrício Nunnes · @ofabricionunnes</footer>
 </div>
-<script>
-document.querySelectorAll('button[data-alvo]').forEach(function (b) {
-  b.addEventListener('click', function () {
-    var pre = document.getElementById(b.dataset.alvo);
-    var ok = function () { b.textContent = 'Copiado'; setTimeout(function () { b.textContent = 'Copiar prompt'; }, 2000); };
-    var manual = function () {
-      var r = document.createRange(); r.selectNodeContents(pre);
-      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
-      b.textContent = 'Texto selecionado, copie';
-    };
-    try { navigator.clipboard.writeText(pre.textContent).then(ok, manual); } catch (e) { manual(); }
-  });
-});
-if (location.hash) { var alvo = document.getElementById(location.hash.slice(1)); if (alvo) alvo.scrollIntoView(); }
-</script>
 </body>
 </html>
