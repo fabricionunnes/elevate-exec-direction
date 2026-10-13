@@ -1,5 +1,5 @@
 import { NavLink, Navigate, Outlet, Link } from "react-router-dom";
-import { LayoutDashboard, ClipboardList, CalendarDays, CakeSlice, Truck, Users, Boxes, Wallet, Star, Settings as SettingsIcon, LogOut, ExternalLink, Menu, Image, BarChart3, ShoppingCart } from "lucide-react";
+import { LayoutDashboard, ClipboardList, CalendarDays, CakeSlice, Truck, Users, Boxes, Wallet, Star, Settings as SettingsIcon, LogOut, ExternalLink, Menu, Image, BarChart3, ShoppingCart, MessageSquareHeart } from "lucide-react";
 import { clsx } from "clsx";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
@@ -22,6 +22,7 @@ const NAV = [
   { to: "/admin/compras", label: "Lista de compras", icon: ShoppingCart },
   { to: "/admin/financeiro", label: "Financeiro", icon: Wallet },
   { to: "/admin/avaliacoes", label: "Avaliações", icon: Star },
+  { to: "/admin/sugestoes", label: "Sugestões", icon: MessageSquareHeart },
   { to: "/admin/configuracoes", label: "Configurações", icon: SettingsIcon },
 ];
 

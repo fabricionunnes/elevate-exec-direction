@@ -139,6 +139,12 @@ export default function Cardapio() {
         </section>
       )}
 
+      <section className="rounded-2xl border border-rosa-200 bg-rosa-50 p-4 text-center">
+        <div className="font-bold text-choco-900">Tem uma sugestão, reclamação ou elogio?</div>
+        <p className="text-sm text-choco-600">A Yas lê tudo. Pode mandar com seu nome ou anônimo.</p>
+        <Link to="/fale" className="mt-2 inline-block rounded-full bg-vinho-600 px-4 py-2 text-sm font-semibold text-white">Fale com a Yas</Link>
+      </section>
+
       {cart.count > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-40 p-4">
           <Link to="/carrinho" className="mx-auto flex max-w-3xl items-center justify-between rounded-2xl bg-vinho-600 px-5 py-3 text-white shadow-soft">
