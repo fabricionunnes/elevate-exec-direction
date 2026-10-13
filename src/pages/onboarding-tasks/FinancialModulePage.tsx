@@ -38,6 +38,7 @@ import { FinancialPlanningPanel } from "@/components/financial/FinancialPlanning
 import { CFOInsightsPanel } from "@/components/financial/CFOInsightsPanel";
 import { IntegrationsPanel } from "@/components/financial/IntegrationsPanel";
 import { BillingRulesPanel } from "@/components/financial/BillingRulesPanel";
+import { BillingAgentPanel } from "@/components/financial/BillingAgentPanel";
 import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
 import { WhatsAppInstancePanel } from "@/components/financial/WhatsAppInstancePanel";
 import { FinancialInboxPanel } from "@/components/financial/FinancialInboxPanel";
@@ -251,7 +252,10 @@ export default function FinancialModulePage() {
             <IntegrationsPanel />
           </TabsContent>
           <TabsContent value="billing-rules" className="mt-0">
-            <BillingRulesPanel />
+            <div className="space-y-6">
+              <BillingAgentPanel />
+              <BillingRulesPanel />
+            </div>
           </TabsContent>
           <TabsContent value="suppliers" className="mt-0">
             <SuppliersPanel />
