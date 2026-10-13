@@ -21,6 +21,8 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
+import { MediaUploadButton } from "@/components/crm/inbox/MediaUploadButton";
+import { AudioRecorder } from "@/components/crm/inbox/AudioRecorder";
 
 interface Props {
   leadId: string;
@@ -471,6 +473,18 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
     };
   }, [activeConv, fetchMessages]);
 
+  // O botão flutuante de Ajuda fica no canto inferior direito, exatamente em cima do
+  // botão de enviar. Enquanto há conversa aberta aqui, o CRMLayout esconde o botão
+  // (a Ajuda continua no menu do usuário), igual já acontece no Atendimento.
+  const temBarraDeEnvio = !!activeConv;
+  useEffect(() => {
+    if (!temBarraDeEnvio) return;
+    window.dispatchEvent(new CustomEvent("crm-chat-composer", { detail: true }));
+    return () => {
+      window.dispatchEvent(new CustomEvent("crm-chat-composer", { detail: false }));
+    };
+  }, [temBarraDeEnvio]);
+
   // Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
@@ -567,6 +581,145 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
     } catch (e: any) {
       console.error("Send error:", e);
       toast.error(e?.message || "Erro ao enviar mensagem");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Envio de imagem, vídeo, áudio e documento (pedido do Fabrício, 13/10/2026).
+  // Mesmo caminho do Atendimento: sobe o arquivo no bucket whatsapp-media, grava a
+  // mensagem como pendente e manda pelo número da conversa. Devolve true se enviou.
+  const sendMedia = async (file: File, type: "image" | "video" | "audio" | "document"): Promise<boolean> => {
+    if (!activeConv) return false;
+    if (activeConv.channel === "instagram") {
+      toast.error("Pelo Instagram só dá pra enviar texto por aqui.");
+      return false;
+    }
+    if (!activeConv.instance_id) {
+      toast.error("Essa conversa está sem número conectado. Não dá pra enviar por ela.");
+      return false;
+    }
+    const oficial = activeConv.channel === "whatsapp_official";
+    const bruto = activeConv.raw.contact_phone || leadPhone || "";
+    const phone = oficial ? bruto.replace(/\D/g, "") : normalizePhoneDigits(bruto);
+    if (!phone) {
+      toast.error("Telefone inválido");
+      return false;
+    }
+    // O bucket whatsapp-media (e o próprio WhatsApp) só aceitam estes formatos. Conferir
+    // antes evita o erro genérico de upload. Documento fora da lista (docx, xlsx...)
+    // sobe como arquivo binário e chega com o nome original.
+    const apelidos: Record<string, string> = { "image/jpg": "image/jpeg", "audio/mp3": "audio/mpeg", "audio/x-m4a": "audio/mp4", "audio/m4a": "audio/mp4", "audio/aac": "audio/mp4" };
+    const aceitos = ["image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4", "video/3gpp", "audio/ogg", "audio/mpeg", "audio/mp4", "application/pdf"];
+    let mime = (file.type || "").split(";")[0].trim().toLowerCase();
+    mime = apelidos[mime] || mime;
+    if (!aceitos.includes(mime) || (type !== "document" && !mime.startsWith(type))) {
+      if (type === "document") {
+        mime = "application/octet-stream";
+      } else {
+        toast.error(
+          type === "image" ? "Formato de imagem não aceito. Use JPG, PNG, WEBP ou GIF."
+            : type === "video" ? "Formato de vídeo não aceito pelo WhatsApp. Use MP4."
+            : "Formato de áudio não aceito. Use MP3, M4A ou OGG."
+        );
+        return false;
+      }
+    }
+    if (file.size > 16 * 1024 * 1024) {
+      toast.error("Arquivo muito grande. O WhatsApp aceita até 16 MB.");
+      return false;
+    }
+
+    setSending(true);
+    let messageId: string | null = null;
+    try {
+      const ext = (file.name.includes(".") ? file.name.split(".").pop() : "") || "bin";
+      const storagePath = `outbound/${type}/${crypto.randomUUID()}.${ext.toLowerCase()}`;
+      const { error: upErr } = await supabase.storage
+        .from("whatsapp-media")
+        .upload(storagePath, file, { contentType: mime, upsert: false });
+      if (upErr) throw upErr;
+      const mediaUrl = supabase.storage.from("whatsapp-media").getPublicUrl(storagePath).data.publicUrl;
+
+      const rotulos: Record<string, string> = { image: "[Imagem]", video: "[Vídeo]", audio: "[Áudio]", document: file.name };
+      const content = rotulos[type];
+
+      const { data: inserted, error: insErr } = await (supabase as any)
+        .from("crm_whatsapp_messages")
+        .insert({
+          conversation_id: activeConv.id,
+          content,
+          type,
+          direction: "outbound",
+          status: "pending",
+          sent_by: staffId,
+          media_url: mediaUrl,
+          media_mimetype: mime,
+        })
+        .select("id")
+        .single();
+      if (insErr) throw insErr;
+      messageId = inserted.id;
+      await fetchMessages();
+
+      const { data: sendData, error: sendErr } = await supabase.functions.invoke(
+        oficial ? "whatsapp-official-api" : "evolution-api",
+        {
+          body: {
+            action: "sendMedia",
+            instanceId: activeConv.instance_id,
+            phone,
+            mediaType: type,
+            mediaUrl,
+            caption: "",
+            fileName: file.name,
+          },
+        }
+      );
+      // o servidor do WhatsApp às vezes responde 200 com o erro dentro do corpo
+      const falha = sendErr || (sendData as any)?.error || ((sendData as any)?.status === 400 ? (sendData as any)?.response?.message || "Erro ao enviar" : null);
+      if (falha) {
+        let motivo: any = typeof falha === "string" ? falha : (falha as any)?.message || "Erro ao enviar";
+        try {
+          const corpo = await (sendErr as any)?.context?.json?.();
+          motivo = corpo?.response?.message || corpo?.error || corpo?.detail || motivo;
+        } catch { /* corpo não era JSON */ }
+        let texto = Array.isArray(motivo) ? motivo.map((x) => (typeof x === "string" ? x : JSON.stringify(x))).join(" ") : String(motivo);
+        if (/re-engagement|24 hours|outside.*window/i.test(texto)) {
+          texto = "Fora da janela de 24h da API oficial. Só dá pra mandar template até o cliente responder.";
+        } else if (/"exists":\s*false/i.test(texto)) {
+          texto = "Esse número não tem WhatsApp.";
+        } else if (/connection closed|not connected|instance.*(does not exist|not found)/i.test(texto)) {
+          texto = "O número desta conversa está desconectado. Reconecte em Dispositivos e tente de novo.";
+        }
+        throw new Error(texto);
+      }
+
+      await (supabase as any)
+        .from("crm_whatsapp_messages")
+        .update(
+          oficial
+            ? { status: "sent", whatsapp_message_id: (sendData as any)?.messageId ?? null }
+            : { status: "sent", remote_id: (sendData as any)?.key?.id ?? null }
+        )
+        .eq("id", messageId);
+      await (supabase as any)
+        .from("crm_whatsapp_conversations")
+        .update({ last_message: content.substring(0, 255), last_message_at: new Date().toISOString() })
+        .eq("id", activeConv.id);
+
+      await fetchMessages();
+      await fetchConversations();
+      return true;
+    } catch (e: any) {
+      console.error("Send media error:", e);
+      if (messageId) {
+        await (supabase as any).from("crm_whatsapp_messages").update({ status: "failed" }).eq("id", messageId);
+        await fetchMessages();
+      }
+      const msg = String(e?.message || "");
+      toast.error(/non-2xx/i.test(msg) || !msg ? "Não foi possível enviar o arquivo. Confira se o número está conectado." : msg);
+      return false;
     } finally {
       setSending(false);
     }
@@ -770,7 +923,14 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
               )}
             </div>
 
-            <div className="border-t border-border p-2 flex items-center gap-2 bg-card">
+            {/* Barra de envio: anexo (imagem, vídeo, áudio, documento), texto, gravar áudio e enviar */}
+            <div className="border-t border-border p-2 flex items-center gap-1.5 bg-card shrink-0">
+              {activeConv.channel !== "instagram" && (
+                <MediaUploadButton
+                  onUpload={async (file, type) => { await sendMedia(file, type); }}
+                  disabled={sending}
+                />
+              )}
               <Input
                 placeholder="Digite uma mensagem..."
                 value={newMessage}
@@ -782,9 +942,18 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
                   }
                 }}
                 disabled={sending}
-                className="flex-1"
+                className="flex-1 min-w-0"
               />
-              <Button onClick={handleSend} disabled={sending || !newMessage.trim()} size="icon">
+              {activeConv.channel !== "instagram" && (
+                <AudioRecorder
+                  disabled={sending}
+                  onSend={async (file) => {
+                    // se não enviar, o erro mantém a gravação na tela pra tentar de novo
+                    if (!(await sendMedia(file, "audio"))) throw new Error("audio_nao_enviado");
+                  }}
+                />
+              )}
+              <Button onClick={handleSend} disabled={sending || !newMessage.trim()} size="icon" className="shrink-0" title="Enviar mensagem">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>

@@ -136,6 +136,15 @@ const MAIN_TAB_HREFS = [
 ];
 
 export const CRMLayout = () => {
+  // (fica no topo: tem return antecipado mais abaixo e hook não pode vir depois dele)
+  // A aba Conversas do lead avisa quando tem a barra de envio na tela: o botão
+  // flutuante de Ajuda ficava em cima do botão de enviar (13/10/2026).
+  const [chatComposerOnScreen, setChatComposerOnScreen] = useState(false);
+  useEffect(() => {
+    const onComposer = (e: Event) => setChatComposerOnScreen(!!(e as CustomEvent).detail);
+    window.addEventListener("crm-chat-composer", onComposer);
+    return () => window.removeEventListener("crm-chat-composer", onComposer);
+  }, []);
   const [isLoading, setIsLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [staffRole, setStaffRole] = useState<string | null>(null);
@@ -601,7 +610,7 @@ export const CRMLayout = () => {
         isAdmin={staffRole === "master" || staffRole === "admin"}
         canSettings={canSettings}
         isSupportTeam={tenantId === null && (staffRole === "master" || staffRole === "admin")}
-        hideLauncher={isInboxRoute}
+        hideLauncher={isInboxRoute || chatComposerOnScreen}
       />
       <StaffSettingsSheet
         open={accountOpen}
