@@ -1,9 +1,9 @@
 // Jogador remoto — recebe posição via Realtime e interpola suavemente.
 import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import HumanBody from './HumanBody'
+import NameBadge from './NameBadge'
 import { useTeamStore, type RemotePlayerState } from '../store/useTeamStore'
 import { stageAt, STAGE_H } from '../lib/rooms'
 
@@ -13,6 +13,7 @@ export default function RemotePlayer({ player }: { player: RemotePlayerState }) 
   const groupRef = useRef<THREE.Group>(null!)
   const initializedRef = useRef(false)
   const [isWalking, setIsWalking] = useState(false)
+  const stream = useTeamStore((s) => s.call.remoteStreams[player.id] ?? null)
 
   useFrame((_, delta) => {
     if (!groupRef.current) return
@@ -59,47 +60,15 @@ export default function RemotePlayer({ player }: { player: RemotePlayerState }) 
     <group ref={groupRef}>
       <HumanBody avatar={player.avatar} isWalking={isWalking && !player.sitting} isSitting={player.sitting} />
 
-      <Billboard position={[0, 2.25, 0]} follow={true}>
-        <Text
-          fontSize={0.25}
-          color="#ffffff"
-          anchorX="center"
-          anchorY="middle"
-          outlineWidth={0.025}
-          outlineColor="#000000"
-        >
-          {player.name}
-        </Text>
-      </Billboard>
+      {/* Crachá (nome + cargo) com indicador de fala */}
+      <NameBadge name={player.name} role={player.role} accent="#ffffff" y={2.12} micOn={player.inCall && player.micOn} stream={stream} />
 
-      {player.role ? (
-        <Billboard position={[0, 2.01, 0]} follow={true}>
-          <Text
-            fontSize={0.145}
-            color="#c8d4e8"
-            anchorX="center"
-            anchorY="middle"
-            outlineWidth={0.015}
-            outlineColor="#000000"
-          >
-            {player.role}
-          </Text>
-        </Billboard>
-      ) : null}
-
-      {/* Indicador de chamada: anel + ícone de mic */}
+      {/* Indicador de chamada: anel no chão (verde = mic aberto, vermelho = mudo) */}
       {player.inCall && (
-        <>
-          <mesh position={[0, 0.014, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.38, 0.5, 16]} />
-            <meshBasicMaterial color={player.micOn ? '#4CAF50' : '#e53935'} transparent opacity={0.7} />
-          </mesh>
-          <Billboard position={[0, 2.55, 0]} follow={true}>
-            <Text fontSize={0.22} anchorX="center" anchorY="middle">
-              {player.micOn ? '🎙️' : '🔇'}
-            </Text>
-          </Billboard>
-        </>
+        <mesh position={[0, 0.014, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.38, 0.5, 16]} />
+          <meshBasicMaterial color={player.micOn ? '#4CAF50' : '#e53935'} transparent opacity={0.7} />
+        </mesh>
       )}
     </group>
   )

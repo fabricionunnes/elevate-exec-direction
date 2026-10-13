@@ -31,6 +31,10 @@ import TourGuide from './components/TourGuide'
 import CleaningLady from './components/CleaningLady'
 import ElevatorPanel from './components/ElevatorPanel'
 import AuditoriumPanel from './components/AuditoriumPanel'
+import Skyline, { useDaylight } from './components/Skyline'
+import BuildingExterior from './components/BuildingExterior'
+import { graphicsParams } from './lib/graphics'
+import type { Daylight } from './lib/daylight'
 import { findMarceloRoom } from './components/MarceloNpc'
 import { FLOOR_FADE_MS } from './lib/floorTravel'
 import { fetchInMeetingNow, fetchAgendaToday, AgendaItem } from './lib/agenda'
@@ -48,12 +52,22 @@ import { TeamRealtime } from './lib/realtime'
 import { CallManager } from './lib/webrtc'
 import { ensurePersonalRoom, personalOwnerSeat, roomAt, isEffectivelyLocked, setRoomLock } from './lib/rooms'
 
-function SceneLights() {
+/** Luzes da cena (fase 3): hemisfério céu/chão + ambiente que seguem a hora
+ * real, UMA direcional com sombra suave (PCFSoft, 2048 no alto / 1024 no
+ * médio) e o ambiente procedural pra reflexos. As luminárias (pointLights)
+ * ficam no ModernOffice, com orçamento por nível gráfico. */
+function SceneLights({ daylight }: { daylight: Daylight }) {
+  const graphics = useTeamStore((s) => s.graphics)
+  const size = graphicsParams(graphics).shadowMapSize
+  // À noite o interior continua iluminado (luz artificial do escritório):
+  // o ambiente não cai junto com o sol
+  const interior = 0.55 + daylight.ambient * 0.45
   return (
     <>
-      <ambientLight intensity={0.9} color="#fff6ea" />
-      {/* Ambiente procedural: dá reflexo real em metais, vidros e telas
-          (gerado em código — nenhum asset externo) */}
+      <ambientLight intensity={interior} color="#fff6ea" />
+      <hemisphereLight args={[daylight.hemiSky, daylight.hemiGround, 0.6]} />
+      {/* Ambiente procedural: dá reflexo real em metais, vidros, telas e no
+          piso (gerado em código — nenhum asset externo) */}
       <Environment resolution={64} frames={1}>
         <Lightformer
           intensity={1.1}
@@ -72,21 +86,35 @@ function SceneLights() {
         />
       </Environment>
       <directionalLight
+        key={size}
         position={[8, 22, 10]}
-        intensity={1.9}
-        color="#fff3dd"
+        intensity={Math.max(0.9, daylight.sunIntensity)}
+        color={daylight.sun}
         castShadow
-        // 1024 com PCFSoft fica visualmente quase igual a 2048 e corta 4x o
-        // custo da passada de sombra (a cena inteira re-renderiza pra ela)
-        shadow-mapSize={[1024, 1024]}
+        shadow-mapSize={[size, size]}
         shadow-camera-left={-38}
         shadow-camera-right={38}
         shadow-camera-top={30}
         shadow-camera-bottom={-30}
-        shadow-bias={-0.001}
+        shadow-camera-near={1}
+        shadow-camera-far={80}
+        shadow-bias={-0.0006}
+        shadow-normalBias={0.02}
+        shadow-radius={4}
       />
-      <directionalLight position={[-10, 14, -8]} intensity={0.75} color="#e8f0ff" />
-      <hemisphereLight args={['#ffeed8', '#2a2e3a', 0.55]} />
+      {/* Contraluz fria sem sombra: só pra não deixar o lado oposto chapado */}
+      <directionalLight position={[-10, 14, -8]} intensity={0.45} color="#e8f0ff" />
+    </>
+  )
+}
+
+/** Hora real → luzes, névoa e vista (um hook só, dentro do Canvas). */
+function SceneEnvironment() {
+  const daylight = useDaylight()
+  return (
+    <>
+      <SceneLights daylight={daylight} />
+      <Skyline daylight={daylight} />
     </>
   )
 }
@@ -658,15 +686,16 @@ export default function TeamOfficePage() {
             antialias: true,
             powerPreference: 'high-performance',
             toneMapping: THREE.ACESFilmicToneMapping,
-            toneMappingExposure: 1.12,
+            toneMappingExposure: 1.12, // ajustada por hora em Skyline (daylight.exposure)
           }}
           onCreated={({ gl }) => {
             gl.shadowMap.type = THREE.PCFSoftShadowMap // sombras suaves
           }}
           style={{ width: '100%', height: '100%' }}
         >
-          <SceneLights />
-          <fog attach="fog" args={['#9fb0c2', 55, 140]} />
+          <SceneEnvironment />
+          {/* Névoa sutil: dá profundidade na vista; a cor segue a hora (Skyline) */}
+          <fog attach="fog" args={['#9fb0c2', 60, 170]} />
           <ModernOffice />
           {/* Térreo = portaria: estacionamento, carros, faxineira e o que é
               "mundo" só existem lá. NPCs ligados a sala seguem o andar dela. */}
@@ -698,6 +727,8 @@ export default function TeamOfficePage() {
       {!me.isGuest && <ElevatorPanel />}
       <AuditoriumPanel realtime={managers.realtime} />
       <FloorFade />
+      {/* Cutscene do prédio por fora na troca de andar (gráficos alto) */}
+      <BuildingExterior />
     </div>
   )
 }

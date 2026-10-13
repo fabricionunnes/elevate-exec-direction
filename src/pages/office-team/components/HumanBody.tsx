@@ -1,6 +1,10 @@
 // Avatar humano low-poly realista — pele, cabelo, camisa e calça
 // personalizáveis. Pés no y=0 (origem do grupo no chão). Altura ~1.75.
 // Pernas articuladas (coxa+canela com joelho) e braços com manga e pele.
+// Animação (fase 3): ciclo de caminhada proporcional à velocidade real do
+// grupo pai, idle com respiração e microajustes, pose sentada de verdade e
+// cabeça que acompanha a direção do movimento. Só rotações de grupos (sem
+// skinned mesh), tudo num único useFrame por avatar.
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -20,7 +24,7 @@ function Hair({ avatar }: { avatar: AvatarConfig }) {
   // Raspado (máquina): só uma calota rasa, sem laterais — visual masculino
   if (hairStyle === 'buzz') {
     return (
-      <group position={[0, 1.56, 0]}>
+      <group position={[0, 0.09, 0]}>
         <mesh position={[0, 0.05, -0.02]} castShadow scale={[1, 0.72, 1]}>
           <sphereGeometry args={[0.158, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
           {mat}
@@ -32,7 +36,7 @@ function Hair({ avatar }: { avatar: AvatarConfig }) {
   // Cacheado volumoso
   if (hairStyle === 'curly') {
     return (
-      <group position={[0, 1.56, 0]}>
+      <group position={[0, 0.09, 0]}>
         {[
           [0, 0.12, -0.02, 0.115],
           [-0.09, 0.08, -0.03, 0.085],
@@ -56,7 +60,7 @@ function Hair({ avatar }: { avatar: AvatarConfig }) {
   }
 
   return (
-    <group position={[0, 1.56, 0]}>
+    <group position={[0, 0.09, 0]}>
       {/* Topo com volume */}
       <mesh position={[0, 0.06, -0.02]} castShadow>
         <sphereGeometry args={[0.168, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.52]} />
@@ -111,7 +115,7 @@ function FacialHair({ avatar }: { avatar: AvatarConfig }) {
   if (style === 'none') return null
   const color = avatar.hairColor
   return (
-    <group position={[0, 1.56, 0]}>
+    <group position={[0, 0.09, 0]}>
       {(style === 'beard' || style === 'stubble') && (
         // Queixo + bochechas (barba cheia é mais grossa que a por fazer)
         <>
@@ -147,41 +151,108 @@ export default function HumanBody({ avatar, isWalking, isSitting = false }: Huma
   const leftArmRef = useRef<THREE.Group>(null!)
   const rightArmRef = useRef<THREE.Group>(null!)
   const bodyRef = useRef<THREE.Group>(null!)
+  const torsoRef = useRef<THREE.Group>(null!)
+  const headRef = useRef<THREE.Group>(null!)
+  // Estado da animação (sem re-render): velocidade medida no grupo pai
+  const lastPos = useRef<{ x: number; z: number; rot: number; init: boolean }>({ x: 0, z: 0, rot: 0, init: false })
+  const speedRef = useRef(0)
+  const yawVelRef = useRef(0)
+  const phaseRef = useRef(0)
+  const blendRef = useRef(0) // 0 = parado, 1 = andando (suaviza a troca)
+  const sitBlendRef = useRef(0)
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, delta) => {
     const t = clock.getElapsedTime()
-    if (isSitting) {
-      // Sentado: corpo desce até o assento, coxa horizontal e JOELHO
-      // dobrado 90° (canela vertical pro chão)
-      const breathe = Math.sin(t * 1.5) * 0.01
-      if (bodyRef.current) bodyRef.current.position.y = -0.31 + breathe
-      if (leftLegRef.current) leftLegRef.current.rotation.x = -1.5
-      if (rightLegRef.current) rightLegRef.current.rotation.x = -1.5
-      if (leftShinRef.current) leftShinRef.current.rotation.x = 1.5
-      if (rightShinRef.current) rightShinRef.current.rotation.x = 1.5
-      if (leftArmRef.current) leftArmRef.current.rotation.x = -0.35
-      if (rightArmRef.current) rightArmRef.current.rotation.x = -0.35
-      return
+    const dt = Math.min(0.05, Math.max(0.001, delta))
+    const body = bodyRef.current
+    if (!body) return
+
+    // Velocidade e giro reais (do grupo pai, que LocalPlayer/RemotePlayer movem)
+    const parent = body.parent
+    if (parent) {
+      const lp = lastPos.current
+      if (!lp.init) {
+        lp.x = parent.position.x
+        lp.z = parent.position.z
+        lp.rot = parent.rotation.y
+        lp.init = true
+      }
+      const d = Math.hypot(parent.position.x - lp.x, parent.position.z - lp.z)
+      const sp = d > 3 ? 0 : d / dt // teleporte não conta como velocidade
+      speedRef.current += (sp - speedRef.current) * Math.min(1, 10 * dt)
+      let dr = parent.rotation.y - lp.rot
+      while (dr > Math.PI) dr -= Math.PI * 2
+      while (dr < -Math.PI) dr += Math.PI * 2
+      yawVelRef.current += (dr / dt - yawVelRef.current) * Math.min(1, 8 * dt)
+      lp.x = parent.position.x
+      lp.z = parent.position.z
+      lp.rot = parent.rotation.y
     }
-    if (isWalking) {
-      const swing = Math.sin(t * 8) * 0.55
-      if (leftLegRef.current) leftLegRef.current.rotation.x = swing
-      if (rightLegRef.current) rightLegRef.current.rotation.x = -swing
-      // Joelho flexiona quando a perna vai pra trás (passada natural)
-      if (leftShinRef.current) leftShinRef.current.rotation.x = Math.max(0, swing) * 0.9
-      if (rightShinRef.current) rightShinRef.current.rotation.x = Math.max(0, -swing) * 0.9
-      if (leftArmRef.current) leftArmRef.current.rotation.x = -swing * 0.75
-      if (rightArmRef.current) rightArmRef.current.rotation.x = swing * 0.75
-      if (bodyRef.current) bodyRef.current.position.y = Math.abs(Math.sin(t * 8)) * 0.035
-    } else {
-      const breathe = Math.sin(t * 1.5) * 0.012
-      if (bodyRef.current) bodyRef.current.position.y = breathe
-      if (leftLegRef.current) leftLegRef.current.rotation.x = 0
-      if (rightLegRef.current) rightLegRef.current.rotation.x = 0
-      if (leftShinRef.current) leftShinRef.current.rotation.x = 0
-      if (rightShinRef.current) rightShinRef.current.rotation.x = 0
-      if (leftArmRef.current) leftArmRef.current.rotation.x = 0
-      if (rightArmRef.current) rightArmRef.current.rotation.x = 0
+
+    const L = leftLegRef.current
+    const R = rightLegRef.current
+    const LS = leftShinRef.current
+    const RS = rightShinRef.current
+    const LA = leftArmRef.current
+    const RA = rightArmRef.current
+    const torso = torsoRef.current
+    const head = headRef.current
+
+    // Blends suaves entre os estados
+    const walking = !isSitting && (isWalking || speedRef.current > 0.35)
+    blendRef.current += ((walking ? 1 : 0) - blendRef.current) * Math.min(1, 8 * dt)
+    sitBlendRef.current += ((isSitting ? 1 : 0) - sitBlendRef.current) * Math.min(1, 10 * dt)
+    const wb = blendRef.current
+    const sb = sitBlendRef.current
+
+    // Fase do passo cresce com a velocidade (parado de pé = fase congelada)
+    const speedNorm = Math.min(1.4, Math.max(0.45, speedRef.current / 5)) // 5 = velocidade padrão
+    if (walking) phaseRef.current += dt * (6.5 + 3.5 * speedNorm)
+    const ph = phaseRef.current
+    const amp = 0.5 * speedNorm * wb
+
+    // Passada: coxas alternadas, joelho dobra na perna que vai pra trás
+    const swing = Math.sin(ph) * amp
+    const legL = swing
+    const legR = -swing
+    const shinL = Math.max(0, swing) * 1.1 * wb
+    const shinR = Math.max(0, -swing) * 1.1 * wb
+    const armL = -swing * 0.8
+    const armR = swing * 0.8
+
+    // Idle: respiração + microajustes (peso de um pé pro outro, braço mexe)
+    const breathe = Math.sin(t * 1.5) * 0.012
+    const idleArm = Math.sin(t * 0.9) * 0.03
+    const idleWeight = Math.sin(t * 0.45) * 0.02
+
+    // Sentado: coxa horizontal (-90º), canela pra baixo (+90º), braços à frente
+    if (L) L.rotation.x = THREE.MathUtils.lerp(legL * (1 - sb), -1.5, sb)
+    if (R) R.rotation.x = THREE.MathUtils.lerp(legR * (1 - sb), -1.5, sb)
+    if (LS) LS.rotation.x = THREE.MathUtils.lerp(shinL * (1 - sb), 1.5, sb)
+    if (RS) RS.rotation.x = THREE.MathUtils.lerp(shinR * (1 - sb), 1.5, sb)
+    if (LA) LA.rotation.x = THREE.MathUtils.lerp(armL + idleArm * (1 - wb), -0.55, sb)
+    if (RA) RA.rotation.x = THREE.MathUtils.lerp(armR - idleArm * (1 - wb), -0.55, sb)
+    if (LA) LA.rotation.z = THREE.MathUtils.lerp(0.06, 0.12, sb)
+    if (RA) RA.rotation.z = THREE.MathUtils.lerp(-0.06, -0.12, sb)
+
+    // Corpo: sobe e desce com o passo, desce até o assento quando sentado
+    const bob = Math.abs(Math.sin(ph)) * 0.035 * wb
+    body.position.y = THREE.MathUtils.lerp(bob + breathe, -0.31 + breathe * 0.8, sb)
+
+    // Tronco: inclina pra frente ao andar, balança de leve com o passo,
+    // e um leve "ajeitar" quando parado
+    if (torso) {
+      torso.rotation.x = THREE.MathUtils.lerp(0.06 * wb + idleWeight * 0.3, 0.1, sb)
+      torso.rotation.z = Math.sin(ph) * 0.035 * wb + idleWeight * (1 - wb)
+    }
+
+    // Cabeça: vira levemente pra onde o corpo está girando (antecipa a
+    // curva), olha um pouco pra baixo sentado, e passeia o olhar no idle
+    if (head) {
+      const lead = Math.max(-0.45, Math.min(0.45, yawVelRef.current * 0.12))
+      const idleLook = Math.sin(t * 0.35) * 0.18 * (1 - wb) * (1 - sb)
+      head.rotation.y += (lead * wb + idleLook - head.rotation.y) * Math.min(1, 6 * dt)
+      head.rotation.x = THREE.MathUtils.lerp(Math.sin(ph * 0.5) * 0.02 * wb, 0.08, sb)
     }
   })
 
@@ -192,7 +263,7 @@ export default function HumanBody({ avatar, isWalking, isSitting = false }: Huma
       {/* Sombra no chão */}
       <mesh position={[0, 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.34, 16]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.22} />
+        <meshBasicMaterial color="#000000" transparent opacity={0.16} depthWrite={false} />
       </mesh>
 
       {/* Perna esquerda: coxa (pivô no quadril) + canela (pivô no joelho) */}
@@ -242,6 +313,9 @@ export default function HumanBody({ avatar, isWalking, isSitting = false }: Huma
         <meshStandardMaterial color="#2a2118" roughness={0.55} />
       </mesh>
 
+      {/* Tronco (pivô no quadril, inclina e balança ao andar) */}
+      <group ref={torsoRef} position={[0, 0.94, 0]}>
+      <group position={[0, -0.94, 0]}>
       {/* Tronco afunilado (camisa) */}
       <mesh position={[0, 1.1, 0]} castShadow>
         <cylinderGeometry args={[0.19, 0.165, 0.32, 14]} />
@@ -306,7 +380,9 @@ export default function HumanBody({ avatar, isWalking, isSitting = false }: Huma
         <meshStandardMaterial color={skin} roughness={0.62} />
       </mesh>
 
-      {/* Cabeça */}
+      {/* Cabeça (pivô no pescoço: vira pra direção do movimento) */}
+      <group ref={headRef} position={[0, 1.47, 0]}>
+      <group position={[0, -1.47, 0]}>
       <mesh position={[0, 1.565, 0]} scale={[1, 1.14, 1.04]} castShadow>
         <sphereGeometry args={[0.148, 20, 16]} />
         <meshStandardMaterial color={skin} roughness={0.55} />
@@ -365,8 +441,14 @@ export default function HumanBody({ avatar, isWalking, isSitting = false }: Huma
         <meshStandardMaterial color="#9c5a4a" roughness={0.6} />
       </mesh>
 
-      <Hair avatar={avatar} />
-      <FacialHair avatar={avatar} />
+      <group position={[0, 1.47, 0]}>
+        <Hair avatar={avatar} />
+        <FacialHair avatar={avatar} />
+      </group>
+      </group>
+      </group>
+      </group>
+      </group>
     </group>
   )
 }

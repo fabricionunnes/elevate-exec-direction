@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/integrations/supabase/client'
 import { useTeamStore, playerFloor } from '../store/useTeamStore'
 import { floorShort } from '../lib/floors'
+import { GRAPHICS_LABEL } from '../lib/graphics'
+import { BuildingCut } from './ElevatorPanel'
 import type { TeamRealtime } from '../lib/realtime'
 
 interface TeamMember {
@@ -25,6 +27,8 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
   const myFocus = useTeamStore((s) => s.focused)
   const floor = useTeamStore((s) => s.floor)
   const setElevatorOpen = useTeamStore((s) => s.setElevatorOpen)
+  const graphics = useTeamStore((s) => s.graphics)
+  const setGraphics = useTeamStore((s) => s.setGraphics)
   const canUseElevator = !!me && !me.isGuest
 
   // Status: Em reunião (agenda) > Focado (modo foco) > Disponível
@@ -70,6 +74,10 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
 
   const others = Object.values(remotePlayers)
   const onlineCount = others.length + 1
+  // Pessoas por andar (pontinhos do prédio em corte na pílula)
+  const floorCounts = new Map<number, number>()
+  floorCounts.set(floor, 1)
+  for (const p of others) floorCounts.set(playerFloor(p), (floorCounts.get(playerFloor(p)) ?? 0) + 1)
   const onlineIds = new Set([me?.id, ...others.map((p) => p.id)])
   const offline = directory.filter((m) => !onlineIds.has(m.user_id))
 
@@ -151,9 +159,34 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
               cursor: canUseElevator ? 'pointer' : 'default',
               whiteSpace: 'nowrap',
               fontFamily: font,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
             }}
           >
-            🏢 {floorShort(floor)}
+            <BuildingCut floor={floor} counts={floorCounts} mini />
+            {floorShort(floor)}
+          </button>
+          {/* Qualidade gráfica: alto/médio (persistida; médio desliga reflexo,
+              sombras de contato e metade das luminárias) */}
+          <button
+            onClick={() => setGraphics(graphics === 'alto' ? 'medio' : 'alto')}
+            title="Alternar qualidade gráfica (médio = mais leve pra máquinas fracas)"
+            style={{
+              background: 'rgba(10,10,20,0.85)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              borderRadius: '999px',
+              padding: '7px 12px',
+              color: 'rgba(255,255,255,0.85)',
+              fontSize: '11px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              fontFamily: font,
+            }}
+          >
+            Gráficos: {GRAPHICS_LABEL[graphics]}
           </button>
         </div>
 

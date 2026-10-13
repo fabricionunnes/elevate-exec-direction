@@ -2,101 +2,62 @@
 // (paredes meia-altura + vidro), portas trancadas e mobília por tipo de sala.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Text, Billboard } from '@react-three/drei'
+import { Text, Billboard, RoundedBox, ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
 import { useTeamStore, playerFloor } from '../store/useTeamStore'
 import { BUILDING, OfficeRoom, isEffectivelyLocked, roomWalls, floorBounds, sectorIslands, loungeExtraSets, auditoriumLayout, STAGE_H } from '../lib/rooms'
 import { currentReservation, hourLabel } from '../lib/clientRooms'
 import { ELEVATOR } from '../lib/floors'
-import { Elevator, Reception, UpperFacade } from './Elevator'
-import { woodTexture, floorTexture, carpetTexture, artTexture, officialLogoTexture } from '../lib/textures'
+import { Elevator, Reception, UpperFacade, upperFacadePanes, UPPER_PANE_W, UPPER_PANE_Y0, UPPER_PANE_Y1 } from './Elevator'
+import { woodTexture, floorTexture, carpetTexture, artTexture, officialLogoTexture, ceilingTexture } from '../lib/textures'
 import { doorProximity } from '../lib/door'
-import { marceloState } from './MarceloNpc'
+import { sitAt, localToWorld } from '../lib/sit'
+import { graphicsParams } from '../lib/graphics'
+import { mats, geos, fabricMaterial, CeilingLamp, Whiteboard, Poster, TrashBin, RealPlant, Curtain } from './Decor'
 
+/** Layer só das sombras de contato: a câmera do ContactShadows enxerga
+ * apenas o que está nela (a mobília do andar), nunca os avatares — senão o
+ * boneco parado no spawn ficaria "carimbado" no piso (a sombra é estática). */
+const CONTACT_LAYER = 2
+
+/** ContactShadows do drei calculada UMA vez por andar (frames=1), olhando
+ * só pra layer da mobília. Custo: 1 render de profundidade + 2 blur na
+ * montagem; zero por frame depois. */
+function StaticContactShadows({ cx, cz, w, d }: { cx: number; cz: number; w: number; d: number }) {
+  const ref = useRef<THREE.Group>(null!)
+  useEffect(() => {
+    const cam = ref.current?.children.find((c) => (c as THREE.Camera).isCamera) as THREE.Camera | undefined
+    if (cam) cam.layers.set(CONTACT_LAYER)
+  }, [])
+  return (
+    <ContactShadows
+      ref={ref}
+      position={[cx, 0.015, cz]}
+      width={w}
+      height={d}
+      far={3}
+      resolution={512}
+      blur={1.6}
+      opacity={0.42}
+      frames={1}
+      color="#1a1d2a"
+    />
+  )
+}
+
+const CEILING_H = 3.2 // laje de teto (altura real do pé-direito)
 const WALL_H = 1.15 // parede sólida (meia-altura, estilo maquete)
 const GLASS_H = 1.0 // vidro acima da parede
 const DOOR_W = 2.6
 
+/** Planta decorativa (folhas de verdade em planos com alpha, ver Decor). */
 function Plant({ x, z }: { x: number; z: number }) {
-  // Duas espécies, escolhidas pela posição (determinístico)
-  const palm = Math.abs(Math.round(x * 7 + z * 13)) % 2 === 0
-  return (
-    <group position={[x, 0, z]}>
-      {/* Vaso cerâmica */}
-      <mesh position={[0, 0.2, 0]} castShadow>
-        <cylinderGeometry args={[0.17, 0.13, 0.4, 12]} />
-        <meshStandardMaterial color={palm ? '#b0682f' : '#9aa3ad'} roughness={0.55} />
-      </mesh>
-      <mesh position={[0, 0.41, 0]}>
-        <cylinderGeometry args={[0.15, 0.15, 0.04, 12]} />
-        <meshStandardMaterial color="#4a3424" roughness={0.95} />
-      </mesh>
-      {palm ? (
-        <>
-          {/* Palmeira: caule + folhas inclinadas */}
-          <mesh position={[0, 0.62, 0]} castShadow>
-            <cylinderGeometry args={[0.025, 0.04, 0.45, 8]} />
-            <meshStandardMaterial color="#6b4f2f" roughness={0.9} />
-          </mesh>
-          {[0, 1.2, 2.4, 3.7, 5].map((a) => (
-            <mesh
-              key={a}
-              position={[Math.sin(a) * 0.16, 0.9, Math.cos(a) * 0.16]}
-              rotation={[Math.cos(a) * 0.9, a, Math.sin(a) * 0.9]}
-              castShadow
-            >
-              <coneGeometry args={[0.07, 0.5, 5]} />
-              <meshStandardMaterial color="#3f8a4f" roughness={0.85} />
-            </mesh>
-          ))}
-        </>
-      ) : (
-        <>
-          {/* Arbusto denso em camadas */}
-          <mesh position={[0, 0.6, 0]} castShadow>
-            <sphereGeometry args={[0.26, 10, 8]} />
-            <meshStandardMaterial color="#2e7d46" roughness={0.95} />
-          </mesh>
-          <mesh position={[0.12, 0.74, 0.06]} castShadow>
-            <sphereGeometry args={[0.17, 9, 7]} />
-            <meshStandardMaterial color="#3c9457" roughness={0.95} />
-          </mesh>
-          <mesh position={[-0.12, 0.72, -0.05]} castShadow>
-            <sphereGeometry args={[0.15, 9, 7]} />
-            <meshStandardMaterial color="#27693b" roughness={0.95} />
-          </mesh>
-        </>
-      )}
-    </group>
-  )
-}
-
-/** Clicar numa cadeira manda o boneco andar até ela e sentar —
- * se ninguém estiver sentado nela. */
-function sitAt(x: number, z: number, rot: number) {
-  const st = useTeamStore.getState()
-  const occupied =
-    Object.values(st.remotePlayers).some(
-      (p) => p.sitting && Math.hypot(p.position[0] - x, p.position[2] - z) < 0.5
-    ) ||
-    (marceloState.active && marceloState.sitting && Math.hypot(marceloState.x - x, marceloState.z - z) < 0.5)
-  if (occupied) {
-    st.addToast('Essa cadeira já está ocupada', 'out')
-    return
-  }
-  st.setPendingWalkTo({ x, z })
-  st.setPendingSeat({ x, z, rot })
-}
-
-/** Converte um ponto local de um móvel rotacionado pra coordenada de mundo. */
-function localToWorld(x: number, z: number, rotation: number, lx: number, lz: number): [number, number] {
-  const c = Math.cos(rotation)
-  const s = Math.sin(rotation)
-  return [x + lx * c + lz * s, z - lx * s + lz * c]
+  return <RealPlant x={x} z={z} />
 }
 
 /** Cadeira de escritório clicável. `rotation` = direção do ENCOSTO (+z local);
- * o jogador senta olhando pro lado oposto. */
+ * o jogador senta olhando pro lado oposto. Encosto curvo (setor de cilindro),
+ * assento com borda arredondada, braços, coluna a gás e base com rodízios. */
 function OfficeChair({
   x,
   z,
@@ -109,6 +70,9 @@ function OfficeChair({
   color?: string
 }) {
   const sitRot = rotation + Math.PI // sentado olhando pro lado oposto ao encosto
+  const m = mats()
+  const g = geos()
+  const fabric = fabricMaterial(color)
   return (
     <group
       position={[x, 0, z]}
@@ -121,41 +85,50 @@ function OfficeChair({
       onPointerOver={() => (document.body.style.cursor = 'pointer')}
       onPointerOut={() => (document.body.style.cursor = 'default')}
     >
-      {/* Assento e encosto levemente arredondados */}
-      <mesh position={[0, 0.42, 0]} castShadow>
-        <boxGeometry args={[0.42, 0.07, 0.42]} />
-        <meshStandardMaterial color={color} roughness={0.75} />
+      {/* Assento arredondado */}
+      <RoundedBox args={[0.44, 0.08, 0.44]} radius={0.03} smoothness={2} position={[0, 0.43, 0]} material={fabric} castShadow />
+      {/* Encosto curvo: setor de cilindro aberto, concavidade virada pra frente */}
+      <mesh position={[0, 0.72, -0.11]} material={fabric} castShadow>
+        <cylinderGeometry args={[0.3, 0.3, 0.52, 14, 1, true, -0.85, 1.7]} />
       </mesh>
-      <mesh position={[0, 0.68, 0.19]} castShadow>
-        <boxGeometry args={[0.42, 0.5, 0.06]} />
-        <meshStandardMaterial color={color} roughness={0.75} />
-      </mesh>
+      {/* Haste do encosto */}
+      <mesh geometry={g.box} material={m.metalDark} position={[0, 0.5, 0.19]} scale={[0.06, 0.2, 0.03]} />
       {/* Braços */}
-      <mesh position={[-0.22, 0.55, 0.02]} castShadow>
-        <boxGeometry args={[0.04, 0.04, 0.3]} />
-        <meshStandardMaterial color="#3a3d44" metalness={0.4} roughness={0.5} />
-      </mesh>
-      <mesh position={[0.22, 0.55, 0.02]} castShadow>
-        <boxGeometry args={[0.04, 0.04, 0.3]} />
-        <meshStandardMaterial color="#3a3d44" metalness={0.4} roughness={0.5} />
-      </mesh>
-      {/* Coluna a gás + base 5 hastes com rodízios */}
-      <mesh position={[0, 0.25, 0]}>
-        <cylinderGeometry args={[0.03, 0.035, 0.3, 8]} />
-        <meshStandardMaterial color="#6b737d" metalness={0.6} roughness={0.35} />
-      </mesh>
-      {[0, 1.257, 2.513, 3.77, 5.027].map((a) => (
-        <group key={a} rotation={[0, a, 0]}>
-          <mesh position={[0, 0.075, 0.13]} rotation={[0.25, 0, 0]}>
-            <boxGeometry args={[0.035, 0.03, 0.26]} />
-            <meshStandardMaterial color="#3a3d44" metalness={0.55} roughness={0.4} />
-          </mesh>
-          <mesh position={[0, 0.03, 0.25]}>
-            <sphereGeometry args={[0.03, 8, 6]} />
-            <meshStandardMaterial color="#1d1f24" roughness={0.5} />
-          </mesh>
+      {[-0.23, 0.23].map((ax) => (
+        <group key={ax}>
+          <mesh geometry={g.box} material={m.plasticDark} position={[ax, 0.6, 0.02]} scale={[0.05, 0.03, 0.3]} castShadow />
+          <mesh geometry={g.box} material={m.metalDark} position={[ax, 0.52, 0.1]} scale={[0.03, 0.14, 0.03]} />
         </group>
       ))}
+      {/* Coluna a gás + base 5 hastes com rodízios */}
+      <mesh geometry={g.cyl8} material={m.metalLight} position={[0, 0.25, 0]} scale={[0.03, 0.3, 0.03]} />
+      {[0, 1.257, 2.513, 3.77, 5.027].map((a) => (
+        <group key={a} rotation={[0, a, 0]}>
+          <mesh geometry={g.box} material={m.metalDark} position={[0, 0.075, 0.13]} rotation={[0.25, 0, 0]} scale={[0.035, 0.03, 0.26]} />
+          <mesh geometry={g.sphere8} material={m.rubber} position={[0, 0.03, 0.25]} scale={[0.03, 0.03, 0.03]} />
+        </group>
+      ))}
+    </group>
+  )
+}
+
+/** Monitor de borda fina com tela de CRM (textura) e leve reflexo. */
+function Monitor({ x, z, yaw = 0, w = 0.6, h = 0.36 }: { x: number; z: number; yaw?: number; w?: number; h?: number }) {
+  const m = mats()
+  const g = geos()
+  return (
+    <group position={[x, 0, z]} rotation={[0, yaw, 0]}>
+      <mesh geometry={g.box} material={m.bezel} position={[0, 1.04, 0]} scale={[w + 0.02, h + 0.02, 0.018]} castShadow />
+      <mesh position={[0, 1.04, 0.011]} material={m.screen}>
+        <planeGeometry args={[w, h]} />
+      </mesh>
+      {/* Vidro da tela: reflexo sutil por cima do conteúdo */}
+      <mesh position={[0, 1.04, 0.013]} material={m.glassDark}>
+        <planeGeometry args={[w, h]} />
+      </mesh>
+      {/* Braço + base disco (alumínio) */}
+      <mesh geometry={g.box} material={m.metalLight} position={[0, 0.875, -0.04]} rotation={[0.28, 0, 0]} scale={[0.05, 0.16, 0.018]} />
+      <mesh geometry={g.cyl8} material={m.metalLight} position={[0, 0.775, -0.06]} scale={[0.08, 0.014, 0.08]} />
     </group>
   )
 }
@@ -177,6 +150,8 @@ function Desk({
 }) {
   const me = useTeamStore((s) => s.me)
   const clickable = !!noteTarget && noteTarget.userId !== me?.id
+  const m = mats()
+  const g = geos()
   return (
     <group
       position={[x, 0, z]}
@@ -193,70 +168,39 @@ function Desk({
       onPointerOver={clickable ? () => (document.body.style.cursor = 'pointer') : undefined}
       onPointerOut={clickable ? () => (document.body.style.cursor = 'default') : undefined}
     >
-      {/* Tampo de madeira com borda */}
-      <mesh position={[0, 0.74, 0]} castShadow>
-        <boxGeometry args={[1.7, 0.05, 0.8]} />
-        <meshStandardMaterial map={woodTexture()} color="#caa06a" roughness={0.42} />
-      </mesh>
-      <mesh position={[0, 0.708, 0]}>
-        <boxGeometry args={[1.7, 0.02, 0.8]} />
-        <meshStandardMaterial color="#8a6238" roughness={0.6} />
-      </mesh>
-      {/* Painéis laterais metálicos */}
-      <mesh position={[-0.78, 0.37, 0]}>
-        <boxGeometry args={[0.05, 0.72, 0.7]} />
-        <meshStandardMaterial color="#7c828c" metalness={0.55} roughness={0.4} />
-      </mesh>
-      <mesh position={[0.78, 0.37, 0]}>
-        <boxGeometry args={[0.05, 0.72, 0.7]} />
-        <meshStandardMaterial color="#7c828c" metalness={0.55} roughness={0.4} />
-      </mesh>
-      {/* Dois monitores estilo Apple (alumínio, borda fina, braço central) */}
-      {[-0.36, 0.36].map((mx) => (
-        <group key={mx} position={[mx, 0, -0.17]} rotation={[0, mx < 0 ? 0.2 : -0.2, 0]}>
-          <mesh position={[0, 1.04, 0]} castShadow>
-            <boxGeometry args={[0.6, 0.38, 0.022]} />
-            <meshStandardMaterial color="#d3d6da" metalness={0.75} roughness={0.25} />
-          </mesh>
-          <mesh position={[0, 1.04, 0.013]}>
-            <boxGeometry args={[0.565, 0.345, 0.004]} />
-            <meshStandardMaterial color="#5b7fb5" emissive="#4a6fa5" emissiveIntensity={0.55} />
-          </mesh>
-          {/* Braço inclinado + base disco (alumínio) */}
-          <mesh position={[0, 0.875, -0.04]} rotation={[0.28, 0, 0]}>
-            <boxGeometry args={[0.05, 0.16, 0.018]} />
-            <meshStandardMaterial color="#c9ccd1" metalness={0.75} roughness={0.25} />
-          </mesh>
-          <mesh position={[0, 0.775, -0.06]}>
-            <cylinderGeometry args={[0.075, 0.085, 0.014, 16]} />
-            <meshStandardMaterial color="#c9ccd1" metalness={0.75} roughness={0.25} />
-          </mesh>
-        </group>
+      {/* Tampo de madeira com borda arredondada */}
+      <RoundedBox args={[1.7, 0.05, 0.8]} radius={0.02} smoothness={2} position={[0, 0.74, 0]} material={m.wood} castShadow receiveShadow />
+      {/* Pés metálicos (4 tubos) + travessa */}
+      {[-0.78, 0.78].map((px) =>
+        [-0.32, 0.32].map((pz) => (
+          <mesh key={`${px}${pz}`} geometry={g.cyl8} material={m.metalDark} position={[px, 0.36, pz]} scale={[0.022, 0.72, 0.022]} />
+        ))
+      )}
+      <mesh geometry={g.box} material={m.metalDark} position={[0, 0.12, -0.32]} scale={[1.5, 0.03, 0.03]} />
+      {/* Gaveteiro */}
+      <mesh geometry={g.box} material={m.plasticLight} position={[0.55, 0.36, 0.05]} scale={[0.4, 0.62, 0.55]} castShadow />
+      {[0.5, 0.3, 0.1].map((dy) => (
+        <mesh key={dy} geometry={g.box} material={m.metalLight} position={[0.55, dy + 0.1, 0.33]} scale={[0.14, 0.012, 0.012]} />
       ))}
-      {/* Teclado e caneca */}
-      <mesh position={[0, 0.775, 0.08]}>
-        <boxGeometry args={[0.4, 0.02, 0.14]} />
-        <meshStandardMaterial color="#d8d5cf" roughness={0.6} />
-      </mesh>
-      <mesh position={[0.55, 0.795, 0.05]} castShadow>
-        <cylinderGeometry args={[0.04, 0.035, 0.09, 10]} />
+      {/* Dois monitores com tela de CRM */}
+      <Monitor x={-0.36} z={-0.17} yaw={0.2} />
+      <Monitor x={0.36} z={-0.17} yaw={-0.2} />
+      {/* Teclado com teclas, mouse e caneca */}
+      <mesh geometry={g.box} material={m.plasticLight} position={[-0.05, 0.775, 0.1]} scale={[0.42, 0.02, 0.15]} castShadow />
+      <mesh geometry={g.box} material={m.plasticDark} position={[-0.05, 0.787, 0.1]} scale={[0.38, 0.006, 0.11]} />
+      <mesh geometry={g.sphere8} material={m.plasticDark} position={[0.26, 0.785, 0.12]} scale={[0.03, 0.018, 0.05]} castShadow />
+      <mesh geometry={g.cyl8} position={[-0.6, 0.805, 0.08]} scale={[0.04, 0.09, 0.04]} castShadow>
         <meshStandardMaterial color="#CC1B1B" roughness={0.45} />
       </mesh>
+      <TrashBin x={-0.95} z={0.25} />
       {/* Cadeira (opcional — salas pessoais usam OfficeChair clicável) */}
       {chair && (
         <group position={[0, 0, 0.65]}>
-          <mesh position={[0, 0.42, 0]} castShadow>
-            <boxGeometry args={[0.42, 0.07, 0.42]} />
-            <meshStandardMaterial color="#2f3640" roughness={0.7} />
+          <mesh geometry={g.box} material={m.chairSeat} position={[0, 0.42, 0]} scale={[0.42, 0.07, 0.42]} castShadow />
+          <mesh position={[0, 0.7, -0.11]} material={m.chairSeat} castShadow>
+            <cylinderGeometry args={[0.3, 0.3, 0.5, 14, 1, true, -0.85, 1.7]} />
           </mesh>
-          <mesh position={[0, 0.68, 0.19]} castShadow>
-            <boxGeometry args={[0.42, 0.5, 0.06]} />
-            <meshStandardMaterial color="#2f3640" roughness={0.7} />
-          </mesh>
-          <mesh position={[0, 0.2, 0]}>
-            <cylinderGeometry args={[0.04, 0.04, 0.4, 8]} />
-            <meshStandardMaterial color="#5a5f6a" />
-          </mesh>
+          <mesh geometry={g.cyl8} material={m.metalLight} position={[0, 0.2, 0]} scale={[0.04, 0.4, 0.04]} />
         </group>
       )}
     </group>
@@ -284,11 +228,10 @@ function MeetingTable({ room }: { room: OfficeRoom }) {
   return (
     <group>
       <group position={[room.x, 0, room.z]}>
-        {/* Tampo nobre com folha de madeira */}
-        <mesh position={[0, 0.76, 0]} castShadow>
-          <boxGeometry args={[len, 0.06, 1.7]} />
-          <meshStandardMaterial map={woodTexture()} color="#9a6a40" roughness={0.32} />
-        </mesh>
+        {/* Tampo nobre com folha de madeira e borda arredondada */}
+        <RoundedBox args={[len, 0.06, 1.7]} radius={0.025} smoothness={2} position={[0, 0.76, 0]} castShadow receiveShadow>
+          <meshStandardMaterial map={woodTexture()} color="#9a6a40" roughness={0.3} />
+        </RoundedBox>
         <mesh position={[0, 0.722, 0]}>
           <boxGeometry args={[len, 0.025, 1.7]} />
           <meshStandardMaterial color="#5f3f26" roughness={0.55} />
@@ -302,13 +245,11 @@ function MeetingTable({ room }: { room: OfficeRoom }) {
           <meshStandardMaterial color="#4f3a28" roughness={0.6} />
         </mesh>
         {/* TV na parede do fundo (tela acesa) */}
-        <mesh position={[0, 1.7, -room.depth / 2 + 0.25]} castShadow>
+        <mesh position={[0, 1.7, -room.depth / 2 + 0.25]} castShadow material={mats().bezel}>
           <boxGeometry args={[2.2, 1.15, 0.08]} />
-          <meshStandardMaterial color="#0d0f13" roughness={0.3} />
         </mesh>
-        <mesh position={[0, 1.7, -room.depth / 2 + 0.295]}>
+        <mesh position={[0, 1.7, -room.depth / 2 + 0.295]} material={mats().screenOff}>
           <boxGeometry args={[2.05, 1.0, 0.005]} />
-          <meshStandardMaterial color="#1e3a5f" emissive="#16304f" emissiveIntensity={0.5} />
         </mesh>
         {/* Luminárias pendentes sobre a mesa */}
         {[-len / 4, len / 4].map((lx) => (
@@ -331,6 +272,8 @@ function MeetingTable({ room }: { room: OfficeRoom }) {
       {chairs.map((c, i) => (
         <OfficeChair key={i} x={c.x} z={c.z} rotation={c.backRot} color="#37404d" />
       ))}
+      {/* Quadro branco na parede leste, virado pra mesa */}
+      <Whiteboard x={room.x + room.width / 2 - 0.22} z={room.z} rotation={-Math.PI / 2} y={1.35} />
     </group>
   )
 }
@@ -853,15 +796,21 @@ function SectorFurniture({ room }: { room: OfficeRoom }) {
       ))}
       {/* TV na parede do fundo (as TVs de dados do DataTvs ficam por cima nas salas que têm) */}
       <group position={[room.x, 0, backZ + (room.doorSide === 'S' ? 0.25 : -0.25)]}>
-        <mesh position={[0, 1.7, 0]} castShadow>
+        <mesh position={[0, 1.7, 0]} castShadow material={mats().bezel}>
           <boxGeometry args={[2.2, 1.15, 0.08]} />
-          <meshStandardMaterial color="#0d0f13" roughness={0.3} />
         </mesh>
-        <mesh position={[0, 1.7, room.doorSide === 'S' ? 0.045 : -0.045]}>
+        <mesh position={[0, 1.7, room.doorSide === 'S' ? 0.045 : -0.045]} material={mats().screenOff}>
           <boxGeometry args={[2.05, 1.0, 0.005]} />
-          <meshStandardMaterial color="#1e3a5f" emissive="#16304f" emissiveIntensity={0.5} />
         </mesh>
       </group>
+      {/* Quadro branco ao lado da TV (fundo da sala) */}
+      <Whiteboard
+        x={room.x - room.width / 2 + 2.4}
+        z={backZ + (room.doorSide === 'S' ? 0.2 : -0.2)}
+        rotation={room.doorSide === 'S' ? 0 : Math.PI}
+        w={1.7}
+        h={1.05}
+      />
       {/* Plantas nas pontas do fundo */}
       <Plant x={room.x + room.width / 2 - 0.8} z={backZ + (room.doorSide === 'S' ? 0.8 : -0.8)} />
       <Plant x={room.x - room.width / 2 + 0.8} z={backZ + (room.doorSide === 'S' ? 0.8 : -0.8)} />
@@ -869,33 +818,68 @@ function SectorFurniture({ room }: { room: OfficeRoom }) {
   )
 }
 
-/** Poltrona de auditório (leve: 3 malhas), clicável pra sentar.
- * `rot` = direção do encosto; o sentado olha pro lado oposto (palco). */
-function TheaterSeat({ x, z, rot }: { x: number; z: number; rot: number }) {
+/** Plateia do auditório em 4 InstancedMesh (assento, encosto, base,
+ * braços): dezenas de poltronas = 4 draw calls. Clique no assento/encosto
+ * → senta na poltrona daquele instanceId. `rot` = direção do encosto. */
+function TheaterSeats({ seats }: { seats: { x: number; z: number; rot: number }[] }) {
+  const seatRef = useRef<THREE.InstancedMesh>(null!)
+  const backRef = useRef<THREE.InstancedMesh>(null!)
+  const baseRef = useRef<THREE.InstancedMesh>(null!)
+  const armRef = useRef<THREE.InstancedMesh>(null!)
+  const m = mats()
+  const n = seats.length
+  const geo = useMemo(
+    () => ({
+      seat: new THREE.BoxGeometry(0.66, 0.12, 0.5),
+      back: new THREE.CylinderGeometry(0.42, 0.42, 0.58, 12, 1, true, -0.95, 1.9),
+      base: new THREE.BoxGeometry(0.6, 0.36, 0.42),
+      arm: new THREE.BoxGeometry(0.72, 0.05, 0.42),
+    }),
+    []
+  )
+  useEffect(() => {
+    const mat = new THREE.Matrix4()
+    const pos = new THREE.Vector3()
+    const q = new THREE.Quaternion()
+    const one = new THREE.Vector3(1, 1, 1)
+    const axis = new THREE.Vector3(0, 1, 0)
+    const place = (mesh: THREE.InstancedMesh | null, i: number, s: { x: number; z: number; rot: number }, lx: number, ly: number, lz: number) => {
+      if (!mesh) return
+      q.setFromAxisAngle(axis, s.rot)
+      const c = Math.cos(s.rot)
+      const sn = Math.sin(s.rot)
+      pos.set(s.x + lx * c + lz * sn, ly, s.z - lx * sn + lz * c)
+      mat.compose(pos, q, one)
+      mesh.setMatrixAt(i, mat)
+    }
+    seats.forEach((st, i) => {
+      place(seatRef.current, i, st, 0, 0.42, 0.02)
+      // Encosto curvo: centro do cilindro atrás do assento, concavidade pra frente
+      place(backRef.current, i, st, 0, 0.78, -0.16)
+      place(baseRef.current, i, st, 0, 0.18, 0.02)
+      place(armRef.current, i, st, 0, 0.58, 0.04)
+    })
+    for (const r of [seatRef, backRef, baseRef, armRef]) if (r.current) r.current.instanceMatrix.needsUpdate = true
+  }, [seats])
+  const onClick = (e: { stopPropagation: () => void; delta: number; instanceId?: number }) => {
+    e.stopPropagation()
+    if (e.delta > 6) return
+    const i = e.instanceId
+    if (i == null || !seats[i]) return
+    const st = seats[i]
+    sitAt(st.x, st.z, st.rot + Math.PI)
+  }
+  const hover = {
+    onPointerOver: () => (document.body.style.cursor = 'pointer'),
+    onPointerOut: () => (document.body.style.cursor = 'default'),
+  }
+  if (n === 0) return null
   return (
-    <group
-      position={[x, 0, z]}
-      rotation={[0, rot, 0]}
-      onClick={(e) => {
-        e.stopPropagation()
-        if (e.delta > 6) return
-        sitAt(x, z, rot + Math.PI)
-      }}
-      onPointerOver={() => (document.body.style.cursor = 'pointer')}
-      onPointerOut={() => (document.body.style.cursor = 'default')}
-    >
-      <mesh position={[0, 0.4, 0.02]} castShadow>
-        <boxGeometry args={[0.72, 0.1, 0.5]} />
-        <meshStandardMaterial color="#8c1d1d" roughness={0.85} />
-      </mesh>
-      <mesh position={[0, 0.72, 0.24]} castShadow>
-        <boxGeometry args={[0.72, 0.56, 0.1]} />
-        <meshStandardMaterial color="#a32424" roughness={0.85} />
-      </mesh>
-      <mesh position={[0, 0.18, 0.02]}>
-        <boxGeometry args={[0.6, 0.36, 0.42]} />
-        <meshStandardMaterial color="#23262c" roughness={0.6} />
-      </mesh>
+    <group>
+      <instancedMesh ref={seatRef} args={[geo.seat, m.theaterSeat, n]} castShadow onClick={onClick} {...hover} />
+      <instancedMesh ref={backRef} args={[geo.back, m.theaterBack, n]} castShadow onClick={onClick} {...hover} />
+      <instancedMesh ref={baseRef} args={[geo.base, m.theaterBase, n]} />
+      <instancedMesh ref={armRef} args={[geo.arm, m.theaterBase, n]} />
     </group>
   )
 }
@@ -969,6 +953,8 @@ function AuditoriumFurniture({ room }: { room: OfficeRoom }) {
           <meshStandardMaterial color="#1d1f24" roughness={0.5} />
         </mesh>
       </group>
+      {/* Cortina pregueada no fundo do palco (atrás do telão) */}
+      <Curtain x={stageX} y={STAGE_H + 1.9} z={st.minZ + 0.08} w={stageW - 0.4} h={3.8} />
       {/* Telão no fundo do palco: moldura + tela acesa (a tela compartilhada cobre) */}
       <group position={[a.screen.x, a.screen.y, a.screen.z]}>
         <mesh position={[0, 0, -0.12]} castShadow>
@@ -1012,10 +998,8 @@ function AuditoriumFurniture({ room }: { room: OfficeRoom }) {
         <planeGeometry args={[a.aisle.w, a.aisle.zMax - a.aisle.zMin]} />
         <meshStandardMaterial color="#7a1a1a" roughness={1} />
       </mesh>
-      {/* Plateia em arco */}
-      {a.seats.map((seat, i) => (
-        <TheaterSeat key={i} x={seat.x} z={seat.z} rot={seat.rot} />
-      ))}
+      {/* Plateia em arco (instanciada) */}
+      <TheaterSeats seats={a.seats} />
       {/* Plantas nos cantos do fundo */}
       <Plant x={room.x - room.width / 2 + 0.8} z={room.z - room.depth / 2 + 0.9} />
       <Plant x={room.x + room.width / 2 - 0.8} z={room.z - room.depth / 2 + 0.9} />
@@ -1073,6 +1057,32 @@ function ClientFurniture({ room }: { room: OfficeRoom }) {
   )
 }
 
+/** Luminárias pendentes da sala: uma fileira ao longo da largura (a cada
+ * ~4 m). Sem luz real (só emissivo): a luz vem da direcional, do ambiente e
+ * das luminárias do corredor. Modo médio renderiza metade. */
+function RoomLamps({ room }: { room: OfficeRoom }) {
+  const graphics = useTeamStore((s) => s.graphics)
+  const frac = graphicsParams(graphics).lampFraction
+  const lamps = useMemo(() => {
+    const n = Math.max(1, Math.round(room.width / 4.2))
+    const pitch = room.width / n
+    const out: number[] = []
+    for (let i = 0; i < n; i++) {
+      if (frac < 1 && i % 2 === 1) continue
+      out.push(room.x - room.width / 2 + pitch * (i + 0.5))
+    }
+    return out
+  }, [room.x, room.width, frac])
+  const y = room.roomType === 'auditorium' ? 3.2 : 2.5
+  return (
+    <group>
+      {lamps.map((lx) => (
+        <CeilingLamp key={lx} x={lx} z={room.z} y={y} len={Math.min(2.6, room.depth * 0.4)} rotation={Math.PI / 2} />
+      ))}
+    </group>
+  )
+}
+
 function RoomFurniture({ room }: { room: OfficeRoom }) {
   if (room.roomType === 'meeting') return <MeetingTable room={room} />
   if (room.roomType === 'auditorium') return <AuditoriumFurniture room={room} />
@@ -1110,9 +1120,8 @@ function Room({ room, locked }: { room: OfficeRoom; locked: boolean }) {
         const sz = Math.max(0.12, w.maxZ - w.minZ)
         return (
           <group key={i}>
-            <mesh position={[cx, WALL_H / 2, cz]} castShadow receiveShadow>
+            <mesh position={[cx, WALL_H / 2, cz]} castShadow receiveShadow material={mats().wall}>
               <boxGeometry args={[sx, WALL_H, sz]} />
-              <meshStandardMaterial color="#f6f2ea" roughness={0.88} />
             </mesh>
             {/* Rodapé */}
             <mesh position={[cx, 0.05, cz]}>
@@ -1124,10 +1133,13 @@ function Room({ room, locked }: { room: OfficeRoom; locked: boolean }) {
               <boxGeometry args={[sx + 0.01, 0.1, sz + 0.01]} />
               <meshStandardMaterial color={room.color} roughness={0.55} />
             </mesh>
-            {/* Vidro */}
-            <mesh position={[cx, WALL_H + GLASS_H / 2, cz]}>
+            {/* Vidro (MeshPhysicalMaterial com clearcoat: reflexo do ambiente) */}
+            <mesh position={[cx, WALL_H + GLASS_H / 2, cz]} material={mats().glass}>
               <boxGeometry args={[sx, GLASS_H, Math.min(sz, 0.08)]} />
-              <meshStandardMaterial color="#aaccee" transparent opacity={0.18} roughness={0.08} metalness={0.25} />
+            </mesh>
+            {/* Perfil superior da esquadria */}
+            <mesh position={[cx, WALL_H + GLASS_H, cz]} material={mats().metalDark}>
+              <boxGeometry args={[sx + 0.02, 0.04, Math.min(sz + 0.02, 0.1)]} />
             </mesh>
           </group>
         )
@@ -1180,9 +1192,8 @@ function Room({ room, locked }: { room: OfficeRoom; locked: boolean }) {
             <meshStandardMaterial color="#c9a84c" metalness={0.85} roughness={0.3} />
           </mesh>
           {/* Travessa de vidro acima da porta (alinha com o vidro das paredes) */}
-          <mesh position={[0, (2.0 + WALL_H + GLASS_H) / 2, 0]}>
+          <mesh position={[0, (2.0 + WALL_H + GLASS_H) / 2, 0]} material={mats().glass}>
             <boxGeometry args={[DOOR_W, WALL_H + GLASS_H - 2.0, 0.08]} />
-            <meshStandardMaterial color="#aaccee" transparent opacity={0.18} roughness={0.08} metalness={0.25} />
           </mesh>
         </group>
       )}
@@ -1191,6 +1202,11 @@ function Room({ room, locked }: { room: OfficeRoom; locked: boolean }) {
       {(room.roomType === 'sector' || room.roomType === 'meeting' || room.roomType === 'client') && (
         <WallClock x={room.x + room.width / 2 - 1.1} z={room.z - room.depth / 2 + 0.28} />
       )}
+      {/* Pôster UNV na parede oeste (frase da marca) e luminárias pendentes */}
+      {room.roomType !== 'auditorium' && room.roomType !== 'lounge' && (
+        <Poster x={room.x - room.width / 2 + 0.2} z={room.z + (room.doorSide === 'N' ? 0.9 : -0.9)} rotation={Math.PI / 2} idx={hashRoom(room.id) % 4} y={1.25} />
+      )}
+      <RoomLamps room={room} />
 
       {/* Nome da sala */}
       <Billboard position={[room.x, WALL_H + GLASS_H + (room.roomType === 'auditorium' ? 2.4 : 0.55), room.z]} follow={true}>
@@ -1273,23 +1289,121 @@ export default function ModernOffice() {
     return t
   }
 
+  // Qualidade gráfica (fase 3): reflexo do piso, ContactShadows e orçamento
+  // de luzes pontuais nas luminárias do corredor
+  const graphics = useTeamStore((s) => s.graphics)
+  const gp = graphicsParams(graphics)
+  const floorMap = useMemo(() => {
+    const t = floorTexture().clone()
+    t.repeat.set(W / 4, D / 4)
+    t.needsUpdate = true
+    return t
+  }, [W, D])
+  const ceilingMap = useMemo(() => {
+    const t = ceilingTexture().clone()
+    t.repeat.set(W / 2.4, D / 2.4)
+    t.needsUpdate = true
+    return t
+  }, [W, D])
+
+  // Luminárias do corredor: as primeiras `maxPointLights` ganham luz real
+  // (pointLight); as demais só o difusor emissivo. Ordenadas do centro pra
+  // fora pra iluminar primeiro onde o jogador mais passa.
+  const corridorLamps = useMemo(() => {
+    const out: { x: number; z: number; rot: number; len: number }[] = []
+    if (floor === 0) {
+      for (const lx of [0, -12, 12, -24, 24]) out.push({ x: lx, z: 0, rot: 0, len: 3 })
+      for (const lx of [0, -14, 14]) out.push({ x: lx, z: 13, rot: 0, len: 2.6 })
+      out.push({ x: 0, z: 20.6, rot: Math.PI / 2, len: 2.6 })
+    } else {
+      const xs: number[] = []
+      const pitch = 8
+      for (let lx = 0; cx + lx < bounds.maxX - 2; lx += pitch) {
+        xs.push(cx + lx)
+        if (lx > 0) xs.push(cx - lx)
+      }
+      for (const lx of xs) out.push({ x: lx, z: corridor.z, rot: 0, len: 3 })
+      out.push({ x: (ELEVATOR.minX + ELEVATOR.maxX) / 2, z: (corridor.z + bounds.maxZ - 0.3) / 2, rot: Math.PI / 2, len: 2.6 })
+    }
+    return out
+  }, [floor, cx, bounds, corridor])
+
+  // Janelas da fachada norte: vão real na parede (pilares entre elas, verga
+  // em cima e parapeito embaixo), vidro de verdade com esquadria e peitoril.
+  // A colisão continua sendo o clamp em bounds (não muda).
+  const WIN_W = 3.6
+  const WIN_Y0 = 0.9
+  const WIN_Y1 = 2.25
+  const northPillars = useMemo(() => {
+    const out: { x: number; w: number }[] = []
+    let x0 = bounds.minX
+    for (const wx of windowsX) {
+      const left = wx - WIN_W / 2
+      out.push({ x: (x0 + left) / 2, w: left - x0 })
+      x0 = wx + WIN_W / 2
+    }
+    out.push({ x: (x0 + bounds.maxX) / 2, w: bounds.maxX - x0 })
+    return out.filter((p) => p.w > 0.05)
+  }, [bounds, windowsX])
+
+  // Tudo que está dentro do grupo do escritório entra na layer das sombras
+  // de contato (mobília, paredes); avatares ficam fora (são irmãos no Canvas)
+  const officeRef = useRef<THREE.Group>(null!)
+  useEffect(() => {
+    officeRef.current?.traverse((o) => o.layers.enable(CONTACT_LAYER))
+  }, [rooms, floor, graphics])
+
+  // Pilares entre os janelões da fachada sul (andares de cima)
+  const southPillars = useMemo(() => {
+    if (floor === 0) return []
+    const out: { x: number; w: number }[] = []
+    let x0 = bounds.minX
+    for (const wx of upperFacadePanes(bounds)) {
+      const left = wx - UPPER_PANE_W / 2
+      out.push({ x: (x0 + left) / 2, w: left - x0 })
+      x0 = wx + UPPER_PANE_W / 2
+    }
+    out.push({ x: (x0 + bounds.maxX) / 2, w: bounds.maxX - x0 })
+    return out.filter((p) => p.w > 0.05)
+  }, [floor, bounds])
+
   return (
-    <group>
-      {/* Piso geral: porcelanato texturizado */}
+    <>
+    {/* Sombras de contato sob a mobília (estáticas: calculadas uma vez por
+        andar; os avatares usam a sombra da direcional + disco). Só no alto. */}
+    {gp.contactShadows && <StaticContactShadows key={`cs-${floor}-${rooms.length}`} cx={cx} cz={cz} w={W} d={D} />}
+    <group ref={officeRef}>
+      {/* Piso geral: porcelanato com leve reflexo do ambiente (sem segunda
+          passada de render: roughness baixa + envMap do Environment) */}
       <mesh position={[cx, 0, cz]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[W, D]} />
-        <meshStandardMaterial
-          map={(() => {
-            const t = floorTexture()
-            t.repeat.set(W / 4, D / 4)
-            return t
-          })()}
-          roughness={0.62}
-        />
+        <meshStandardMaterial map={floorMap} roughness={gp.floorRoughness} metalness={0.04} envMapIntensity={gp.floorEnvIntensity} />
       </mesh>
 
       {/* Logomarca oficial UNV no piso do hall central (só no térreo) */}
       {floor === 0 && <FloorLogo />}
+
+      {/* Laje de teto (casca do prédio): forro com luminárias e grelhas a
+          3.2 m, plano virado pra BAIXO (FrontSide). Câmera acima dele (o
+          caso de hoje: altura mínima da câmera é ~7) → backface culling o
+          descarta sozinho, sem tampar nada; câmera baixa (abaixo de 3.2) →
+          vê o forro por dentro. Sem transparência, custo zero. */}
+      <mesh position={[cx, CEILING_H, cz]} rotation={[Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[W, D]} />
+        <meshStandardMaterial map={ceilingMap} roughness={0.9} side={THREE.FrontSide} />
+      </mesh>
+      {/* Borda da laje de teto (vista de cima: a moldura do andar) */}
+      {[
+        { x: cx, z: bounds.minZ, w: W + 0.6, d: 0.6 },
+        { x: cx, z: bounds.maxZ, w: W + 0.6, d: 0.6 },
+        { x: bounds.minX, z: cz, w: 0.6, d: D + 0.6 },
+        { x: bounds.maxX, z: cz, w: 0.6, d: D + 0.6 },
+      ].map((p, i) => (
+        <mesh key={`rim${i}`} position={[p.x, CEILING_H + 0.1, p.z]}>
+          <boxGeometry args={[p.w, 0.2, p.d]} />
+          <meshStandardMaterial color="#cfcac0" roughness={0.85} />
+        </mesh>
+      ))}
 
       {/* Plano invisível de clique: duplo clique = andar até o ponto */}
       <mesh
@@ -1349,26 +1463,88 @@ export default function ModernOffice() {
       )}
 
       {/* Perímetro do andar (laje) */}
-      {/* Paredes externas (norte/leste/oeste claras) */}
+      {/* Paredes externas leste/oeste (claras, mate) */}
       {[
-        { x: cx, z: bounds.minZ, w: W + 0.4, d: 0.4 },
         { x: bounds.minX, z: cz, w: 0.4, d: D + 0.4 },
         { x: bounds.maxX, z: cz, w: 0.4, d: D + 0.4 },
       ].map((p, i) => (
-        <mesh key={i} position={[p.x, 1.3, p.z]} castShadow receiveShadow>
-          <boxGeometry args={[p.w, 2.6, p.d]} />
-          <meshStandardMaterial color="#ece8df" roughness={0.88} />
+        <mesh key={i} position={[p.x, CEILING_H / 2, p.z]} castShadow receiveShadow>
+          <boxGeometry args={[p.w, CEILING_H, p.d]} />
+          <meshStandardMaterial color="#ece8df" roughness={0.92} />
         </mesh>
       ))}
+      {/* Parede norte com vãos de janela: parapeito, verga e pilares */}
+      <mesh position={[cx, WIN_Y0 / 2, bounds.minZ]} castShadow receiveShadow>
+        <boxGeometry args={[W + 0.4, WIN_Y0, 0.4]} />
+        <meshStandardMaterial color="#ece8df" roughness={0.92} />
+      </mesh>
+      <mesh position={[cx, (WIN_Y1 + CEILING_H) / 2, bounds.minZ]} castShadow receiveShadow>
+        <boxGeometry args={[W + 0.4, CEILING_H - WIN_Y1, 0.4]} />
+        <meshStandardMaterial color="#ece8df" roughness={0.92} />
+      </mesh>
+      {northPillars.map((p, i) => (
+        <mesh key={`np${i}`} position={[p.x, (WIN_Y0 + WIN_Y1) / 2, bounds.minZ]} castShadow receiveShadow>
+          <boxGeometry args={[p.w, WIN_Y1 - WIN_Y0, 0.4]} />
+          <meshStandardMaterial color="#ece8df" roughness={0.92} />
+        </mesh>
+      ))}
+      {/* Janelas: vidro de verdade (vê-se a cidade atrás), esquadria e peitoril */}
+      {windowsX.map((wx) => (
+        <group key={`win${wx}`} position={[wx, 0, bounds.minZ]}>
+          <mesh position={[0, (WIN_Y0 + WIN_Y1) / 2, 0]} material={mats().glass}>
+            <boxGeometry args={[WIN_W, WIN_Y1 - WIN_Y0, 0.03]} />
+          </mesh>
+          {/* Esquadria: moldura + montante central + travessa */}
+          {[-WIN_W / 2, 0, WIN_W / 2].map((mx) => (
+            <mesh key={mx} geometry={geos().box} material={mats().metalDark} position={[mx, (WIN_Y0 + WIN_Y1) / 2, 0]} scale={[0.07, WIN_Y1 - WIN_Y0 + 0.06, 0.46]} />
+          ))}
+          {[WIN_Y0, (WIN_Y0 + WIN_Y1) / 2, WIN_Y1].map((my) => (
+            <mesh key={my} geometry={geos().box} material={mats().metalDark} position={[0, my, 0]} scale={[WIN_W + 0.07, 0.06, 0.46]} />
+          ))}
+          {/* Peitoril (pedra clara) dos dois lados */}
+          <mesh geometry={geos().box} position={[0, WIN_Y0 - 0.04, 0.3]} scale={[WIN_W + 0.3, 0.06, 0.3]} castShadow>
+            <meshStandardMaterial color="#d9d4c8" roughness={0.5} />
+          </mesh>
+          <mesh geometry={geos().box} position={[0, WIN_Y0 - 0.04, -0.3]} scale={[WIN_W + 0.3, 0.06, 0.3]}>
+            <meshStandardMaterial color="#d9d4c8" roughness={0.5} />
+          </mesh>
+        </group>
+      ))}
+      {/* Pôsteres UNV entre as janelas (lado de dentro da parede norte) */}
+      {northPillars
+        .filter((p) => p.w > 2.2)
+        .map((p, i) => (
+          <Poster key={`po${i}`} x={p.x} z={bounds.minZ + 0.22} rotation={0} idx={i} y={1.55} />
+        ))}
 
       {/* FACHADA SUL — térreo: navy com faixa vermelha, letreiro e porta
           automática (portaria). Andares de cima: parede clara com janelões
           e a placa do andar; não dá pra sair do prédio por ali (colisão do
           perímetro vale em todos os andares). */}
-      <mesh position={[cx, 1.6, bounds.maxZ]} castShadow receiveShadow>
-        <boxGeometry args={[W + 0.4, 3.2, 0.4]} />
-        <meshStandardMaterial color={floor === 0 ? '#0D2B5E' : '#ece8df'} roughness={0.65} />
-      </mesh>
+      {floor === 0 ? (
+        <mesh position={[cx, 1.6, bounds.maxZ]} castShadow receiveShadow>
+          <boxGeometry args={[W + 0.4, 3.2, 0.4]} />
+          <meshStandardMaterial color="#0D2B5E" roughness={0.55} />
+        </mesh>
+      ) : (
+        <>
+          {/* Parede sul dos andares de cima com vãos de janelão */}
+          <mesh position={[cx, UPPER_PANE_Y0 / 2, bounds.maxZ]} castShadow receiveShadow>
+            <boxGeometry args={[W + 0.4, UPPER_PANE_Y0, 0.4]} />
+            <meshStandardMaterial color="#ece8df" roughness={0.92} />
+          </mesh>
+          <mesh position={[cx, (UPPER_PANE_Y1 + 3.2) / 2, bounds.maxZ]} castShadow receiveShadow>
+            <boxGeometry args={[W + 0.4, 3.2 - UPPER_PANE_Y1, 0.4]} />
+            <meshStandardMaterial color="#ece8df" roughness={0.92} />
+          </mesh>
+          {southPillars.map((p, i) => (
+            <mesh key={`sp${i}`} position={[p.x, (UPPER_PANE_Y0 + UPPER_PANE_Y1) / 2, bounds.maxZ]} castShadow receiveShadow>
+              <boxGeometry args={[p.w, UPPER_PANE_Y1 - UPPER_PANE_Y0, 0.4]} />
+              <meshStandardMaterial color="#ece8df" roughness={0.92} />
+            </mesh>
+          ))}
+        </>
+      )}
       {floor === 0 && (
         <>
           <mesh position={[cx, 0.45, BUILDING.maxZ + 0.21]}>
@@ -1392,23 +1568,9 @@ export default function ModernOffice() {
       {/* Elevador: mesmo lugar em todos os andares */}
       <Elevator />
 
-      {/* Janelas com luz de dia na fachada norte (geradas da largura da laje) */}
-      {windowsX.map((wx) => (
-        <group key={`win${wx}`}>
-          <mesh position={[wx, 1.55, bounds.minZ + 0.22]}>
-            <boxGeometry args={[3.6, 1.35, 0.05]} />
-            <meshStandardMaterial color="#bcd8f0" emissive="#a8cdef" emissiveIntensity={0.55} roughness={0.1} />
-          </mesh>
-          {/* Caixilho */}
-          <mesh position={[wx, 1.55, bounds.minZ + 0.25]}>
-            <boxGeometry args={[0.06, 1.35, 0.03]} />
-            <meshStandardMaterial color="#6b737d" metalness={0.5} roughness={0.4} />
-          </mesh>
-          <mesh position={[wx, 1.55, bounds.minZ + 0.25]} rotation={[0, 0, Math.PI / 2]}>
-            <boxGeometry args={[0.06, 3.6, 0.03]} />
-            <meshStandardMaterial color="#6b737d" metalness={0.5} roughness={0.4} />
-          </mesh>
-        </group>
+      {/* Luminárias pendentes do corredor (as primeiras ganham luz real) */}
+      {corridorLamps.map((l, i) => (
+        <CeilingLamp key={`cl${i}`} x={l.x} z={l.z} rotation={l.rot} len={l.len} y={2.55} light={i < gp.maxPointLights} intensity={7} />
       ))}
 
       {/* Plantas no corredor central */}
@@ -1421,5 +1583,6 @@ export default function ModernOffice() {
         <Room key={room.id} room={room} locked={isEffectivelyLocked(room, onlineIds)} />
       ))}
     </group>
+    </>
   )
 }

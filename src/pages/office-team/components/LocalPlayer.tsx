@@ -3,10 +3,10 @@
 // detecção da sala atual e avatar humano personalizado.
 import { useRef, useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import { useKeyboard } from '../../office/hooks/useKeyboard'
 import HumanBody from './HumanBody'
+import NameBadge from './NameBadge'
 import { BUILDING, buildCollisionWalls, checkWallCollision, roomAt, setRoomLock, isEffectivelyLocked, personalOwnerSeat, furnitureColliders, floorBounds, stageAt, STAGE_H } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
 import { useTeamStore, playerFloor } from '../store/useTeamStore'
@@ -83,6 +83,8 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
   const remotePlayers = useTeamStore((s) => s.remotePlayers)
   const myRoomId = useTeamStore((s) => s.myRoomId)
   const seated = useTeamStore((s) => s.seated)
+  const micOn = useTeamStore((s) => s.call.micOn)
+  const localStream = useTeamStore((s) => s.call.localStream)
   const setMyRoomId = useTeamStore((s) => s.setMyRoomId)
   const setPlayerPosition = useTeamStore((s) => s.setPlayerPosition)
   const setPlayerRotation = useTeamStore((s) => s.setPlayerRotation)
@@ -451,33 +453,8 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
     <group ref={groupRef} position={START_POSITION}>
       <HumanBody avatar={me.avatar} isWalking={isMovingRef.current} isSitting={seated} />
 
-      <Billboard position={[0, 2.25, 0]} follow={true}>
-        <Text
-          fontSize={0.27}
-          color="#FFD700"
-          anchorX="center"
-          anchorY="middle"
-          outlineWidth={0.025}
-          outlineColor="#000000"
-        >
-          {me.name}
-        </Text>
-      </Billboard>
-
-      {me.role ? (
-        <Billboard position={[0, 2.0, 0]} follow={true}>
-          <Text
-            fontSize={0.155}
-            color="#FFD700"
-            anchorX="center"
-            anchorY="middle"
-            outlineWidth={0.015}
-            outlineColor="#000000"
-          >
-            {me.role}
-          </Text>
-        </Billboard>
-      ) : null}
+      {/* Crachá (nome + cargo) com indicador de fala */}
+      <NameBadge name={me.name} role={me.role} accent="#FFD700" y={2.12} micOn={micOn} stream={localStream} />
 
       {/* Anel de identificação do jogador local */}
       <mesh position={[0, 0.014, 0]} rotation={[-Math.PI / 2, 0, 0]}>

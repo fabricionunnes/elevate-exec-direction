@@ -4,6 +4,7 @@
 import { create } from 'zustand'
 import type { OfficeRoom } from '../lib/rooms'
 import { roomsOnFloor as filterFloor } from '../lib/rooms'
+import { initialGraphics, persistGraphics, type GraphicsLevel } from '../lib/graphics'
 
 export interface AvatarConfig {
   skin: string
@@ -148,6 +149,8 @@ interface TeamState {
   floor: number
   /** trocando de andar (fade pra preto do elevador) */
   floorChanging: boolean
+  /** cutscene do prédio por fora (fase 3, gráficos alto): de/para e início */
+  floorCutscene: { from: number; to: number; startedAt: number } | null
   /** painel "Andares" do elevador aberto */
   elevatorOpen: boolean
   /** sala em que o jogador local está (null = corredor/área aberta) */
@@ -194,6 +197,8 @@ interface TeamState {
 
   /** modo foco local (F): silencia cutucadas com auto-resposta */
   focused: boolean
+  /** qualidade gráfica (fase 3): alto/médio, persistida em localStorage */
+  graphics: GraphicsLevel
   /** deep-link de sala de reunião pediu pra abrir o modo reunião ao chegar */
   meetingViewRequested: boolean
   /** modo reunião fullscreen aberto → o 3D congela (perf) */
@@ -250,6 +255,7 @@ interface TeamState {
   setRooms: (rooms: OfficeRoom[]) => void
   setFloor: (floor: number) => void
   setFloorChanging: (on: boolean) => void
+  setFloorCutscene: (c: { from: number; to: number; startedAt: number } | null) => void
   setElevatorOpen: (open: boolean) => void
   setMyRoomId: (id: string | null) => void
   setAvatarEditorOpen: (open: boolean) => void
@@ -277,6 +283,7 @@ interface TeamState {
   removeCutscene: (id: string) => void
   setVoiceBlocked: (blocked: boolean) => void
   setFocused: (on: boolean) => void
+  setGraphics: (level: GraphicsLevel) => void
   setMeetingViewRequested: (on: boolean) => void
   setMeetingExpanded: (on: boolean) => void
   setTour: (t: { x: number; z: number; text: string } | null) => void
@@ -308,6 +315,7 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   roomsOnFloor: [],
   floor: 0,
   floorChanging: false,
+  floorCutscene: null,
   elevatorOpen: false,
   myRoomId: null,
   avatarEditorOpen: false,
@@ -330,6 +338,7 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   cutscenes: [],
   voiceBlocked: false,
   focused: false,
+  graphics: initialGraphics(),
   meetingViewRequested: false,
   meetingExpanded: false,
   tour: null,
@@ -465,6 +474,7 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   setFloor: (floor) =>
     set((prev) => (prev.floor === floor ? prev : { floor, roomsOnFloor: filterFloor(prev.rooms, floor) })),
   setFloorChanging: (on) => set({ floorChanging: on }),
+  setFloorCutscene: (c) => set({ floorCutscene: c }),
   setElevatorOpen: (open) => set({ elevatorOpen: open }),
   setMyRoomId: (id) => set({ myRoomId: id }),
   setAvatarEditorOpen: (open) => set({ avatarEditorOpen: open }),
@@ -520,6 +530,10 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     set((prev) => ({ cutscenes: prev.cutscenes.filter((c) => c.id !== id) })),
   setVoiceBlocked: (blocked) => set({ voiceBlocked: blocked }),
   setFocused: (on) => set({ focused: on }),
+  setGraphics: (level) => {
+    persistGraphics(level)
+    set({ graphics: level })
+  },
   setMeetingViewRequested: (on) => set({ meetingViewRequested: on }),
   setMeetingExpanded: (on) => set({ meetingExpanded: on }),
   setTour: (t) => set({ tour: t }),

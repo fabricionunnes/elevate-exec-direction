@@ -10,8 +10,25 @@ import { ELEVATOR_FRONT, floorLabel } from './floors'
 import { playElevatorDing } from './sfx'
 
 export const FLOOR_FADE_MS = 400
+/** Duração da cutscene do prédio por fora (gráficos "alto"). */
+export const FLOOR_CUTSCENE_MS = 3000
 
 let traveling = false
+let cutsceneTimer: number | null = null
+let cutsceneFinish: (() => void) | null = null
+
+/** Pula a cutscene do prédio (Esc ou botão): troca o andar na hora. */
+export function skipFloorCutscene(): void {
+  if (cutsceneTimer != null) {
+    window.clearTimeout(cutsceneTimer)
+    cutsceneTimer = null
+  }
+  if (cutsceneFinish) {
+    const f = cutsceneFinish
+    cutsceneFinish = null
+    f()
+  }
+}
 
 export function isTraveling(): boolean {
   return traveling
@@ -22,10 +39,12 @@ export function travelToFloor(floor: number, realtime: TeamRealtime): boolean {
   const st = useTeamStore.getState()
   if (traveling || floor === st.floor) return false
   traveling = true
+  const from = st.floor
   st.setElevatorOpen(false)
   st.setFloorChanging(true)
 
-  window.setTimeout(() => {
+  // Troca de fato (depois do fade curto ou no fim da cutscene)
+  const switchFloor = () => {
     const s = useTeamStore.getState()
     s.setFloor(floor)
     s.setMyRoomId(null)
@@ -38,11 +57,28 @@ export function travelToFloor(floor: number, realtime: TeamRealtime): boolean {
     void realtime.updateFloor(floor)
     playElevatorDing()
     s.addToast(`Você está no ${floorLabel(floor)}`, 'in')
+    s.setFloorCutscene(null)
     window.setTimeout(() => {
       useTeamStore.getState().setFloorChanging(false)
       traveling = false
     }, 140)
-  }, FLOOR_FADE_MS)
+  }
+
+  // Gráficos "alto": cutscene do prédio por fora (BuildingExterior) por
+  // cima do fade preto; Esc/botão pula (skipFloorCutscene). "Médio" e
+  // visitante: só o fade curto de sempre.
+  if (st.graphics === 'alto' && !st.me?.isGuest) {
+    st.setFloorCutscene({ from, to: floor, startedAt: Date.now() })
+    cutsceneFinish = switchFloor
+    cutsceneTimer = window.setTimeout(() => {
+      cutsceneTimer = null
+      cutsceneFinish = null
+      switchFloor()
+    }, FLOOR_CUTSCENE_MS)
+    return true
+  }
+
+  window.setTimeout(switchFloor, FLOOR_FADE_MS)
   return true
 }
 
