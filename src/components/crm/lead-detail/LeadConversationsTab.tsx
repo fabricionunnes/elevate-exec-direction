@@ -253,7 +253,8 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
           instance_id: c.instance_id || c.official_instance_id,
           instance_label: isOfficial
             ? (c as any).official_instance?.display_name || "WhatsApp Oficial"
-            : (c as any).instance?.display_name || (c as any).instance?.instance_name || "WhatsApp",
+            : (c as any).instance?.display_name || (c as any).instance?.instance_name
+              || (c.orphan_instance_name ? `${c.orphan_instance_name} (número desconectado)` : "Número não identificado"),
           contact_label: contact?.name || contact?.phone || "Contato",
           last_message: c.last_message,
           last_message_at: c.last_message_at,
@@ -287,7 +288,8 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
               instance_id: c.instance_id || c.official_instance_id,
               instance_label: isOfficial
                 ? (c as any).official_instance?.display_name || "WhatsApp Oficial"
-                : (c as any).instance?.display_name || (c as any).instance?.instance_name || "WhatsApp",
+                : (c as any).instance?.display_name || (c as any).instance?.instance_name
+                  || (c.orphan_instance_name ? `${c.orphan_instance_name} (número desconectado)` : "Número não identificado"),
               contact_label: contact?.name || contact?.phone || "Contato",
               last_message: c.last_message,
               last_message_at: c.last_message_at,
