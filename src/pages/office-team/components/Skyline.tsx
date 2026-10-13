@@ -7,12 +7,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useTeamStore } from '../store/useTeamStore'
-import { floorBounds } from '../lib/rooms'
+import { BUILDING } from '../lib/rooms'
+import { FLOOR_HEIGHT } from '../lib/floors'
 import { cityFacadeTextures } from '../lib/textures'
 import { daylightAt, currentHour, type Daylight } from '../lib/daylight'
 
-/** Altura real de um andar do prédio (quanto a vista sobe por andar). */
-const FLOOR_RISE = 3.4
 
 /** Paleta do momento, atualizada a cada minuto (compartilhada pela cena). */
 export function useDaylight(): Daylight {
@@ -374,10 +373,11 @@ function CityLayer({ blds, repeatY, yBase, lit, far }: { blds: Bld[]; repeatY: n
 
 export default function Skyline({ daylight }: { daylight: Daylight }) {
   const floor = useTeamStore((s) => s.floor)
-  const rooms = useTeamStore((s) => s.roomsOnFloor)
-  const bounds = useMemo(() => floorBounds(floor, rooms), [floor, rooms])
+  // A cidade se organiza em volta da TORRE (BUILDING), não da laje útil do
+  // andar: o casco do prédio (TowerShell) tem a largura do térreo em todos
+  const bounds = BUILDING
   const city = useMemo(() => buildCity(bounds), [bounds])
-  const yBase = -floor * FLOOR_RISE
+  const yBase = -floor * FLOOR_HEIGHT
   const { scene, gl } = useThree()
 
   // Céu: textura regenerada quando a paleta muda (1x por minuto no máximo)

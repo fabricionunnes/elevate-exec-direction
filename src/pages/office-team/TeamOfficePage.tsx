@@ -33,6 +33,7 @@ import ElevatorPanel from './components/ElevatorPanel'
 import AuditoriumPanel from './components/AuditoriumPanel'
 import Skyline, { useDaylight } from './components/Skyline'
 import BuildingExterior from './components/BuildingExterior'
+import TowerShell from './components/TowerShell'
 import { graphicsParams } from './lib/graphics'
 import type { Daylight } from './lib/daylight'
 import { findMarceloRoom } from './components/MarceloNpc'
@@ -115,6 +116,9 @@ function SceneEnvironment() {
     <>
       <SceneLights daylight={daylight} />
       <Skyline daylight={daylight} />
+      {/* Casco do prédio em volta do andar atual (corpo embaixo, anel da
+          fachada no andar, fantasma em cima) */}
+      <TowerShell daylight={daylight} />
     </>
   )
 }

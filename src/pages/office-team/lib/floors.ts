@@ -18,6 +18,10 @@ export const FLOORS: FloorInfo[] = [
   { n: 5, name: 'Diretoria', sub: 'Cobertura' },
 ]
 
+/** Pé-direito real de um andar (altura de cada laje na torre): usado pela
+ * cutscene, pelo casco do prédio na cena e pela vista das janelas. */
+export const FLOOR_HEIGHT = 3.4
+
 export function floorInfo(n: number): FloorInfo {
   return FLOORS.find((f) => f.n === n) ?? { n, name: `Andar ${n}` }
 }

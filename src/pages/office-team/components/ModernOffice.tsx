@@ -8,7 +8,7 @@ import { useTeamStore, playerFloor } from '../store/useTeamStore'
 import { BUILDING, OfficeRoom, isEffectivelyLocked, roomWalls, floorBounds, sectorIslands, loungeExtraSets, auditoriumLayout, STAGE_H } from '../lib/rooms'
 import { currentReservation, hourLabel } from '../lib/clientRooms'
 import { ELEVATOR } from '../lib/floors'
-import { Elevator, Reception, UpperFacade, upperFacadePanes, UPPER_PANE_W, UPPER_PANE_Y0, UPPER_PANE_Y1 } from './Elevator'
+import { Elevator, Reception } from './Elevator'
 import { woodTexture, floorTexture, carpetTexture, artTexture, officialLogoTexture, ceilingTexture } from '../lib/textures'
 import { doorProximity } from '../lib/door'
 import { sitAt, localToWorld } from '../lib/sit'
@@ -1353,20 +1353,6 @@ export default function ModernOffice() {
     officeRef.current?.traverse((o) => o.layers.enable(CONTACT_LAYER))
   }, [rooms, floor, graphics])
 
-  // Pilares entre os janelões da fachada sul (andares de cima)
-  const southPillars = useMemo(() => {
-    if (floor === 0) return []
-    const out: { x: number; w: number }[] = []
-    let x0 = bounds.minX
-    for (const wx of upperFacadePanes(bounds)) {
-      const left = wx - UPPER_PANE_W / 2
-      out.push({ x: (x0 + left) / 2, w: left - x0 })
-      x0 = wx + UPPER_PANE_W / 2
-    }
-    out.push({ x: (x0 + bounds.maxX) / 2, w: bounds.maxX - x0 })
-    return out.filter((p) => p.w > 0.05)
-  }, [floor, bounds])
-
   return (
     <>
     {/* Sombras de contato sob a mobília (estáticas: calculadas uma vez por
@@ -1388,12 +1374,14 @@ export default function ModernOffice() {
           caso de hoje: altura mínima da câmera é ~7) → backface culling o
           descarta sozinho, sem tampar nada; câmera baixa (abaixo de 3.2) →
           vê o forro por dentro. Sem transparência, custo zero. */}
+      {floor === 0 && (
       <mesh position={[cx, CEILING_H, cz]} rotation={[Math.PI / 2, 0, 0]}>
         <planeGeometry args={[W, D]} />
         <meshStandardMaterial map={ceilingMap} roughness={0.9} side={THREE.FrontSide} />
       </mesh>
+      )}
       {/* Borda da laje de teto (vista de cima: a moldura do andar) */}
-      {[
+      {floor === 0 && [
         { x: cx, z: bounds.minZ, w: W + 0.6, d: 0.6 },
         { x: cx, z: bounds.maxZ, w: W + 0.6, d: 0.6 },
         { x: bounds.minX, z: cz, w: 0.6, d: D + 0.6 },
@@ -1462,7 +1450,11 @@ export default function ModernOffice() {
         </>
       )}
 
-      {/* Perímetro do andar (laje) */}
+      {/* Perímetro do andar: no térreo a laje É o prédio (paredes, janelas e
+          pôsteres aqui). Nos andares de cima a laje útil é menor que a torre:
+          o TowerShell desenha a fachada do andar na borda do BUILDING. */}
+      {floor === 0 && (
+        <>
       {/* Paredes externas leste/oeste (claras, mate) */}
       {[
         { x: bounds.minX, z: cz, w: 0.4, d: D + 0.4 },
@@ -1517,33 +1509,17 @@ export default function ModernOffice() {
           <Poster key={`po${i}`} x={p.x} z={bounds.minZ + 0.22} rotation={0} idx={i} y={1.55} />
         ))}
 
+        </>
+      )}
       {/* FACHADA SUL — térreo: navy com faixa vermelha, letreiro e porta
           automática (portaria). Andares de cima: parede clara com janelões
           e a placa do andar; não dá pra sair do prédio por ali (colisão do
           perímetro vale em todos os andares). */}
-      {floor === 0 ? (
+      {floor === 0 && (
         <mesh position={[cx, 1.6, bounds.maxZ]} castShadow receiveShadow>
           <boxGeometry args={[W + 0.4, 3.2, 0.4]} />
           <meshStandardMaterial color="#0D2B5E" roughness={0.55} />
         </mesh>
-      ) : (
-        <>
-          {/* Parede sul dos andares de cima com vãos de janelão */}
-          <mesh position={[cx, UPPER_PANE_Y0 / 2, bounds.maxZ]} castShadow receiveShadow>
-            <boxGeometry args={[W + 0.4, UPPER_PANE_Y0, 0.4]} />
-            <meshStandardMaterial color="#ece8df" roughness={0.92} />
-          </mesh>
-          <mesh position={[cx, (UPPER_PANE_Y1 + 3.2) / 2, bounds.maxZ]} castShadow receiveShadow>
-            <boxGeometry args={[W + 0.4, 3.2 - UPPER_PANE_Y1, 0.4]} />
-            <meshStandardMaterial color="#ece8df" roughness={0.92} />
-          </mesh>
-          {southPillars.map((p, i) => (
-            <mesh key={`sp${i}`} position={[p.x, (UPPER_PANE_Y0 + UPPER_PANE_Y1) / 2, bounds.maxZ]} castShadow receiveShadow>
-              <boxGeometry args={[p.w, UPPER_PANE_Y1 - UPPER_PANE_Y0, 0.4]} />
-              <meshStandardMaterial color="#ece8df" roughness={0.92} />
-            </mesh>
-          ))}
-        </>
       )}
       {floor === 0 && (
         <>
@@ -1563,7 +1539,6 @@ export default function ModernOffice() {
           <Reception />
         </>
       )}
-      {floor !== 0 && <UpperFacade floor={floor} bounds={bounds} />}
 
       {/* Elevador: mesmo lugar em todos os andares */}
       <Elevator />

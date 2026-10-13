@@ -13,12 +13,12 @@ import { Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { useTeamStore } from '../store/useTeamStore'
 import { BUILDING } from '../lib/rooms'
-import { FLOORS } from '../lib/floors'
+import { FLOORS, FLOOR_HEIGHT } from '../lib/floors'
 import { FLOOR_CUTSCENE_MS, skipFloorCutscene } from '../lib/floorTravel'
 import { daylightAt, currentHour } from '../lib/daylight'
 import { skyTexture } from './Skyline'
 
-const FLOOR_H = 3.4
+const FLOOR_H = FLOOR_HEIGHT
 const N_FLOORS = FLOORS.length
 const W = BUILDING.maxX - BUILDING.minX + 0.4
 const D = BUILDING.maxZ - BUILDING.minZ + 0.4
@@ -32,75 +32,38 @@ const smooth = (t: number) => {
   return c * c * (3 - 2 * c)
 }
 
-/** Torre: corpo, fitas de janela por andar, montantes, térreo navy com
- * entrada, cobertura com letreiro e o estacionamento. */
-function Tower({ lit, ribbonRefs }: { lit: number; ribbonRefs: React.MutableRefObject<(THREE.MeshStandardMaterial | null)[]> }) {
-  // Montantes verticais das fitas de janela (um InstancedMesh)
-  const mullions = useMemo(() => {
-    const out: THREE.Matrix4[] = []
-    const m = new THREE.Matrix4()
-    const q = new THREE.Quaternion()
-    const s = new THREE.Vector3(0.12, 1.5, 0.16)
-    const p = new THREE.Vector3()
-    for (let f = 1; f < N_FLOORS; f++) {
-      const y = f * FLOOR_H + 1.65
-      for (let x = BUILDING.minX + 1.8; x < BUILDING.maxX; x += 3.6) {
-        p.set(x, y, FRONT_Z + 0.02)
-        out.push(m.clone().compose(p, q, s))
-        p.set(x, y, BUILDING.minZ - 0.22)
-        out.push(m.clone().compose(p, q, s))
-      }
-      const sq = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
-      for (let z = BUILDING.minZ + 1.8; z < BUILDING.maxZ; z += 3.6) {
-        p.set(BUILDING.maxX + 0.22, y, z)
-        out.push(m.clone().compose(p, sq, s))
-        p.set(BUILDING.minX - 0.22, y, z)
-        out.push(m.clone().compose(p, sq, s))
-      }
-    }
-    return out
-  }, [])
-  const mullionRef = useRef<THREE.InstancedMesh>(null!)
-  useEffect(() => {
-    const mesh = mullionRef.current
-    if (!mesh) return
-    mullions.forEach((mat, i) => mesh.setMatrixAt(i, mat))
-    mesh.instanceMatrix.needsUpdate = true
-  }, [mullions])
+// ── Peças da torre (compartilhadas com o TowerShell da cena principal) ──
+export const TOWER = { FLOOR_H, N_FLOORS, W, D, CX, CZ, H, FRONT_Z }
 
-  const warm = new THREE.Color('#ffd27a')
-  const cool = new THREE.Color('#9fc3e0')
-  const ribbonColor = cool.clone().lerp(warm, lit * 0.8)
-
+/** Fitas de janela dos andares pedidos (4 faces; térreo sem a face sul,
+ * que é a fachada navy). `refs` recebe o material da face sul por andar. */
+export function TowerRibbons({
+  floors,
+  lit,
+  refs,
+}: {
+  floors: number[]
+  lit: number
+  refs?: React.MutableRefObject<(THREE.MeshStandardMaterial | null)[]>
+}) {
+  const warm = useMemo(() => new THREE.Color('#ffd27a'), [])
+  const ribbonColor = useMemo(() => new THREE.Color('#9fc3e0').lerp(warm, lit * 0.8), [lit, warm])
   return (
     <group>
-      {/* Corpo da torre */}
-      <mesh position={[CX, H / 2, CZ]} castShadow receiveShadow>
-        <boxGeometry args={[W, H, D]} />
-        <meshStandardMaterial color="#e6e2d8" roughness={0.85} />
-      </mesh>
-      {/* Lajes marcadas (friso escuro entre andares) */}
-      {FLOORS.map((f) => (
-        <mesh key={`slab${f.n}`} position={[CX, f.n * FLOOR_H + FLOOR_H - 0.08, CZ]}>
-          <boxGeometry args={[W + 0.3, 0.16, D + 0.3]} />
-          <meshStandardMaterial color="#b9b3a6" roughness={0.8} />
-        </mesh>
-      ))}
-      {/* Fitas de janela por andar (4 faces); térreo só ao norte/leste/oeste */}
-      {FLOORS.map((f) => {
-        const y = f.n * FLOOR_H + 1.65
+      {floors.map((n) => {
+        const y = n * FLOOR_H + 1.65
         const faces: { pos: [number, number, number]; size: [number, number, number] }[] = [
           { pos: [CX, y, BUILDING.minZ - 0.1], size: [W - 1.5, 1.5, 0.1] },
           { pos: [BUILDING.maxX + 0.1, y, CZ], size: [0.1, 1.5, D - 1.5] },
           { pos: [BUILDING.minX - 0.1, y, CZ], size: [0.1, 1.5, D - 1.5] },
         ]
-        if (f.n > 0) faces.unshift({ pos: [CX, y, FRONT_Z - 0.1], size: [W - 1.5, 1.5, 0.1] })
+        if (n > 0) faces.unshift({ pos: [CX, y, FRONT_Z - 0.1], size: [W - 1.5, 1.5, 0.1] })
         return faces.map((face, i) => (
-          <mesh key={`rib${f.n}-${i}`} position={face.pos}>
+          <mesh key={`rib${n}-${i}`} position={face.pos}>
             <boxGeometry args={face.size} />
             <meshStandardMaterial
               ref={(el) => {
-                if (i === 0 && f.n > 0) ribbonRefs.current[f.n] = el
+                if (refs && i === 0 && n > 0) refs.current[n] = el
               }}
               color={ribbonColor}
               emissive={warm}
@@ -111,11 +74,59 @@ function Tower({ lit, ribbonRefs }: { lit: number; ribbonRefs: React.MutableRefO
           </mesh>
         ))
       })}
-      <instancedMesh ref={mullionRef} args={[undefined, undefined, mullions.length]}>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="#3a3d44" metalness={0.6} roughness={0.4} />
-      </instancedMesh>
-      {/* Térreo: fachada navy com faixa vermelha, letreiro e porta de vidro */}
+    </group>
+  )
+}
+
+/** Montantes verticais das fitas (um InstancedMesh pros andares pedidos). */
+export function TowerMullions({ floors }: { floors: number[] }) {
+  const mullions = useMemo(() => {
+    const out: THREE.Matrix4[] = []
+    const m = new THREE.Matrix4()
+    const q = new THREE.Quaternion()
+    const sq = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2)
+    const s = new THREE.Vector3(0.12, 1.5, 0.16)
+    const p = new THREE.Vector3()
+    for (const f of floors) {
+      const y = f * FLOOR_H + 1.65
+      for (let x = BUILDING.minX + 1.8; x < BUILDING.maxX; x += 3.6) {
+        if (f > 0) {
+          p.set(x, y, FRONT_Z + 0.02)
+          out.push(m.clone().compose(p, q, s))
+        }
+        p.set(x, y, BUILDING.minZ - 0.22)
+        out.push(m.clone().compose(p, q, s))
+      }
+      for (let z = BUILDING.minZ + 1.8; z < BUILDING.maxZ; z += 3.6) {
+        p.set(BUILDING.maxX + 0.22, y, z)
+        out.push(m.clone().compose(p, sq, s))
+        p.set(BUILDING.minX - 0.22, y, z)
+        out.push(m.clone().compose(p, sq, s))
+      }
+    }
+    return out
+  }, [floors])
+  const ref = useRef<THREE.InstancedMesh>(null!)
+  useEffect(() => {
+    const mesh = ref.current
+    if (!mesh) return
+    mullions.forEach((mat, i) => mesh.setMatrixAt(i, mat))
+    mesh.instanceMatrix.needsUpdate = true
+  }, [mullions])
+  if (mullions.length === 0) return null
+  return (
+    <instancedMesh key={mullions.length} ref={ref} args={[undefined, undefined, mullions.length]}>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshStandardMaterial color="#3a3d44" metalness={0.6} roughness={0.4} />
+    </instancedMesh>
+  )
+}
+
+/** Térreo por fora: fachada navy com faixas vermelhas, porta de vidro e o
+ * letreiro retroiluminado. */
+export function GroundFacade({ lit }: { lit: number }) {
+  return (
+    <group>
       <mesh position={[CX, FLOOR_H / 2 - 0.05, FRONT_Z]}>
         <boxGeometry args={[W + 0.1, FLOOR_H - 0.3, 0.2]} />
         <meshStandardMaterial color="#0D2B5E" roughness={0.55} />
@@ -130,7 +141,6 @@ function Tower({ lit, ribbonRefs }: { lit: number; ribbonRefs: React.MutableRefO
         <boxGeometry args={[3.7, 2.5, 0.06]} />
         <meshStandardMaterial color="#aaccee" transparent opacity={0.55} roughness={0.05} metalness={0.3} emissive="#dfe9ff" emissiveIntensity={0.3 + lit * 0.5} />
       </mesh>
-      {/* Letreiro do térreo (como o FacadeSign) */}
       <group position={[0, 4.05, FRONT_Z + 0.3]}>
         <mesh>
           <boxGeometry args={[8.4, 2.1, 0.35]} />
@@ -147,47 +157,65 @@ function Tower({ lit, ribbonRefs }: { lit: number; ribbonRefs: React.MutableRefO
           UNIVERSIDADE NACIONAL DE VENDAS
         </Text>
       </group>
-      {/* Cobertura: platibanda, casa de máquinas e letreiro UNV iluminado */}
-      <mesh position={[CX, H + 0.35, CZ]}>
+    </group>
+  )
+}
+
+/** Cobertura: platibanda, piso, casa de máquinas, letreiro UNV iluminado e
+ * guarda-corpo do terraço. `opacity` < 1 = versão fantasma (sem luz). */
+export function TowerRoof({ lit, opacity = 1 }: { lit: number; opacity?: number }) {
+  const ghost = opacity < 1
+  const tp = ghost ? { transparent: true, opacity, depthWrite: false } : {}
+  const noRay = ghost ? { raycast: () => null } : {}
+  return (
+    <group>
+      <mesh position={[CX, H + 0.35, CZ]} {...noRay}>
         <boxGeometry args={[W + 0.4, 0.7, D + 0.4]} />
-        <meshStandardMaterial color="#d8d3c8" roughness={0.85} />
+        <meshStandardMaterial color="#d8d3c8" roughness={0.85} {...tp} />
       </mesh>
-      <mesh position={[CX, H + 0.7, CZ]}>
-        <boxGeometry args={[W - 0.8, 0.02, D - 0.8]} />
-        <meshStandardMaterial color="#8d8a84" roughness={0.95} />
-      </mesh>
-      <mesh position={[0, H + 1.9, CZ - 8]}>
+      {!ghost && (
+        <mesh position={[CX, H + 0.7, CZ]}>
+          <boxGeometry args={[W - 0.8, 0.02, D - 0.8]} />
+          <meshStandardMaterial color="#8d8a84" roughness={0.95} />
+        </mesh>
+      )}
+      <mesh position={[0, H + 1.9, CZ - 8]} {...noRay}>
         <boxGeometry args={[8, 2.4, 6]} />
-        <meshStandardMaterial color="#cfcac0" roughness={0.9} />
+        <meshStandardMaterial color="#cfcac0" roughness={0.9} {...tp} />
       </mesh>
       <group position={[0, H + 3.4, FRONT_Z - 6]}>
-        <mesh>
+        <mesh {...noRay}>
           <boxGeometry args={[14, 4.2, 0.6]} />
-          <meshStandardMaterial color="#0D2B5E" roughness={0.5} />
+          <meshStandardMaterial color="#0D2B5E" roughness={0.5} {...(ghost ? { transparent: true, opacity: Math.min(1, opacity * 3), depthWrite: false } : {})} />
         </mesh>
-        <Text position={[0, 0.3, 0.35]} fontSize={2.6} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.06} outlineColor="#ffffff">
+        <Text position={[0, 0.3, 0.35]} fontSize={2.6} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.06} outlineColor="#ffffff" fillOpacity={ghost ? 0.75 : 1} raycast={() => null}>
           UNV
         </Text>
-        <mesh position={[0, -1.5, 0.33]}>
+        <mesh position={[0, -1.5, 0.33]} {...noRay}>
           <boxGeometry args={[12, 0.25, 0.04]} />
-          <meshStandardMaterial color="#CC1B1B" emissive="#CC1B1B" emissiveIntensity={0.4 + lit * 1.2} />
+          <meshStandardMaterial color="#CC1B1B" emissive="#CC1B1B" emissiveIntensity={0.4 + lit * 1.2} {...tp} />
         </mesh>
-        <pointLight position={[0, 0, 4]} intensity={6 + lit * 14} distance={30} decay={2} color="#dfe9ff" />
+        {!ghost && <pointLight position={[0, 0, 4]} intensity={6 + lit * 14} distance={30} decay={2} color="#dfe9ff" />}
       </group>
-      {/* Terraço da cobertura (guarda-corpo de vidro no lado sul) */}
-      <mesh position={[CX, H + 1.3, FRONT_Z - 0.6]}>
+      <mesh position={[CX, H + 1.3, FRONT_Z - 0.6]} {...noRay}>
         <boxGeometry args={[W - 4, 1.1, 0.05]} />
-        <meshStandardMaterial color="#cfe4f5" transparent opacity={0.35} roughness={0.05} />
+        <meshStandardMaterial color="#cfe4f5" transparent opacity={ghost ? opacity : 0.35} roughness={0.05} depthWrite={false} />
       </mesh>
-      {/* Chão: asfalto, calçada em volta e estacionamento ao sul */}
-      <mesh position={[CX, -0.05, CZ]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[320, 320]} />
-        <meshStandardMaterial color="#3a3e44" roughness={0.95} />
-      </mesh>
-      <mesh position={[CX, -0.02, CZ]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[W + 8, D + 8]} />
-        <meshStandardMaterial color="#b9b3a6" roughness={0.85} />
-      </mesh>
+    </group>
+  )
+}
+
+/** Rua e estacionamento ao sul (vista de cima): asfalto, vagas, carros,
+ * calçada em volta e árvores na calçada norte. */
+export function TowerParking({ sidewalk = true }: { sidewalk?: boolean }) {
+  return (
+    <group>
+      {sidewalk && (
+        <mesh position={[CX, -0.02, CZ]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <planeGeometry args={[W + 8, D + 8]} />
+          <meshStandardMaterial color="#b9b3a6" roughness={0.85} />
+        </mesh>
+      )}
       <group position={[0, 0, BUILDING.maxZ + 6.8]}>
         <mesh position={[1, 0.0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[62, 12.4]} />
@@ -199,7 +227,6 @@ function Tower({ lit, ribbonRefs }: { lit: number; ribbonRefs: React.MutableRefO
             <meshStandardMaterial color="#e8e4da" roughness={0.9} />
           </mesh>
         ))}
-        {/* Carros estacionados (caixas simples) */}
         {[-27, -18.2, -9.4, 4, 17.2, 26].map((x, i) => (
           <group key={x} position={[x, 0, 0.8]}>
             <mesh position={[0, 0.45, 0]} castShadow>
@@ -213,7 +240,6 @@ function Tower({ lit, ribbonRefs }: { lit: number; ribbonRefs: React.MutableRefO
           </group>
         ))}
       </group>
-      {/* Árvores na calçada norte */}
       {[-22, -8, 8, 22].map((x) => (
         <group key={x} position={[x, 0, BUILDING.minZ - 3]}>
           <mesh position={[0, 1.5, 0]}>
@@ -226,6 +252,34 @@ function Tower({ lit, ribbonRefs }: { lit: number; ribbonRefs: React.MutableRefO
           </mesh>
         </group>
       ))}
+    </group>
+  )
+}
+
+/** Torre inteira da cutscene (corpo sólido + todas as peças). */
+function Tower({ lit, ribbonRefs }: { lit: number; ribbonRefs: React.MutableRefObject<(THREE.MeshStandardMaterial | null)[]> }) {
+  const all = useMemo(() => FLOORS.map((f) => f.n), [])
+  return (
+    <group>
+      <mesh position={[CX, H / 2, CZ]} castShadow receiveShadow>
+        <boxGeometry args={[W, H, D]} />
+        <meshStandardMaterial color="#e6e2d8" roughness={0.85} />
+      </mesh>
+      {FLOORS.map((f) => (
+        <mesh key={`slab${f.n}`} position={[CX, f.n * FLOOR_H + FLOOR_H - 0.08, CZ]}>
+          <boxGeometry args={[W + 0.3, 0.16, D + 0.3]} />
+          <meshStandardMaterial color="#b9b3a6" roughness={0.8} />
+        </mesh>
+      ))}
+      <TowerRibbons floors={all} lit={lit} refs={ribbonRefs} />
+      <TowerMullions floors={all} />
+      <GroundFacade lit={lit} />
+      <TowerRoof lit={lit} />
+      <mesh position={[CX, -0.05, CZ]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[320, 320]} />
+        <meshStandardMaterial color="#3a3e44" roughness={0.95} />
+      </mesh>
+      <TowerParking />
     </group>
   )
 }
