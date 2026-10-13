@@ -10,6 +10,21 @@ import type { OfficeRoom } from '../lib/rooms'
 import { fetchTvComercial, fetchTvProduto, formatBRL, TvComercial, TvProduto } from '../lib/tvdata'
 import type { AgendaItem } from '../lib/agenda'
 import { currentReservation, fetchClientPanelSummary, hourLabel, type ClientPanelSummary } from '../lib/clientRooms'
+import { Modeled } from '../lib/models'
+import { TvFrameModel } from './KenneyFurniture'
+
+/** Setores cuja sala ganha telão de dados na parede norte (Financeiro: apagado). */
+const DATA_TV_SECTORS = ['comercial', 'produto', 'financeiro']
+
+/** A sala tem telão de dados (BigTv) na parede norte? Mesma regra do render
+ * lá embaixo: toda sala de cliente e a primeira sala de cada setor da lista.
+ * O ModernOffice usa pra não montar a TV pequena atrás do telão. */
+export function roomHasDataTv(room: OfficeRoom, rooms: OfficeRoom[]): boolean {
+  if (room.roomType === 'client') return true
+  if (room.roomType !== 'sector' || !room.sector) return false
+  if (!DATA_TV_SECTORS.includes(room.sector)) return false
+  return rooms.find((r) => r.roomType === 'sector' && r.sector === room.sector)?.id === room.id
+}
 
 const REFRESH_MS = 5 * 60_000
 const NAVY = '#0D2B5E'
@@ -341,7 +356,7 @@ function ClientTv({ room, isGuest }: { room: OfficeRoom; isGuest: boolean }) {
   }
   return (
     <group>
-      <BigTv x={room.x} y={TV_Y + 0.1} z={z} w={TV_W} h={h} texture={tex} />
+      <BigTv x={room.x} y={TV_Y + 0.1} z={z} w={TV_W} h={h} texture={tex} cabinet />
       {token && panel && panel !== 'loading' && (
         <Html position={[room.x + TV_W / 2 + 1.0, TV_Y + 0.1, z + 0.2]} center zIndexRange={[60, 0]} style={{ pointerEvents: 'auto' }}>
           <button
@@ -368,20 +383,47 @@ function ClientTv({ room, isGuest }: { room: OfficeRoom; isGuest: boolean }) {
   )
 }
 
-/** Telão de parede: moldura fina + tela grande (cobre a TV pequena original). */
-function BigTv({ x, y, z, w, h, texture }: { x: number; y: number; z: number; w: number; h: number; texture?: THREE.CanvasTexture }) {
+/** Telão de parede: moldura (modelo televisionModern sem o pé, encostado na
+ * parede; com `cabinet`, de pé num aparador) + a tela de conteúdo (canvas)
+ * na frente do painel. Se o modelo não carregar, vale a moldura procedural. */
+function BigTv({
+  x,
+  y,
+  z,
+  w,
+  h,
+  texture,
+  cabinet = false,
+}: {
+  x: number
+  y: number
+  z: number
+  w: number
+  h: number
+  texture?: THREE.CanvasTexture
+  /** aparador embaixo (sala de cliente); precisa do grupo na altura real (y a partir do chão) */
+  cabinet?: boolean
+}) {
   return (
     <group position={[x, y, z]}>
-      {/* Moldura profunda: encosta na parede e engole a TV antiga atrás */}
-      <mesh position={[0, 0, -0.15]} castShadow>
-        <boxGeometry args={[w + 0.18, h + 0.18, 0.3]} />
-        <meshStandardMaterial color="#0d0f13" metalness={0.4} roughness={0.35} />
-      </mesh>
-      {/* Barra de apoio na parede */}
-      <mesh position={[0, -h / 2 - 0.14, -0.2]}>
-        <boxGeometry args={[w * 0.5, 0.06, 0.12]} />
-        <meshStandardMaterial color="#23262c" metalness={0.5} roughness={0.4} />
-      </mesh>
+      <Modeled
+        fallback={
+          <>
+            {/* Moldura profunda: encosta na parede */}
+            <mesh position={[0, 0, -0.15]} castShadow>
+              <boxGeometry args={[w + 0.18, h + 0.18, 0.3]} />
+              <meshStandardMaterial color="#0d0f13" metalness={0.4} roughness={0.35} />
+            </mesh>
+            {/* Barra de apoio na parede */}
+            <mesh position={[0, -h / 2 - 0.14, -0.2]}>
+              <boxGeometry args={[w * 0.5, 0.06, 0.12]} />
+              <meshStandardMaterial color="#23262c" metalness={0.5} roughness={0.4} />
+            </mesh>
+          </>
+        }
+      >
+        <TvFrameModel y={0} z={0.003} w={w} h={h} wallGap={0.2} cabinet={cabinet} floorY={-y} />
+      </Modeled>
       {texture ? (
         <mesh position={[0, 0, 0.003]}>
           <planeGeometry args={[w, h]} />
@@ -459,6 +501,7 @@ export default function DataTvs({ agendaToday }: { agendaToday: AgendaItem[] }) 
     return tex
   }, [comercial])
 
+  // (roomHasDataTv espelha esta escolha: mexeu aqui, mexa lá)
   const comercialRoom = rooms.find((r) => r.roomType === 'sector' && r.sector === 'comercial')
   const produtoRoom = rooms.find((r) => r.roomType === 'sector' && r.sector === 'produto')
   const financeiroRoom = rooms.find((r) => r.roomType === 'sector' && r.sector === 'financeiro')

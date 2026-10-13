@@ -9,8 +9,10 @@ import * as THREE from 'three'
 import { useTeamStore } from '../store/useTeamStore'
 import type { Bounds } from '../lib/rooms'
 import { ELEVATOR, ELEVATOR_ZONE, RECEPTION_DESK, floorShort, floorLabel } from '../lib/floors'
-import { mats, geos, RealPlant, CeilingLamp } from './Decor'
+import { mats, geos, CeilingLamp } from './Decor'
 import { sitAt, localToWorld } from '../lib/sit'
+import { Modeled } from '../lib/models'
+import { ReceptionDeskModel, SofaModel, CoatRackModel } from './KenneyFurniture'
 
 const EL_W = ELEVATOR.maxX - ELEVATOR.minX
 const EL_D = ELEVATOR.maxZ - ELEVATOR.minZ
@@ -197,6 +199,15 @@ export function Elevator() {
 
 /** Sofá de espera da recepção (dois lugares, clicável pra sentar). */
 function WaitingSofa({ x, z, rotation }: { x: number; z: number; rotation: number }) {
+  return (
+    <Modeled fallback={<WaitingSofaProc x={x} z={z} rotation={rotation} />}>
+      <SofaModel x={x} z={z} rotation={rotation} color="#2f3a4a" variant={0} />
+    </Modeled>
+  )
+}
+
+/** Sofá de espera procedural (fallback). */
+function WaitingSofaProc({ x, z, rotation }: { x: number; z: number; rotation: number }) {
   const g = geos()
   const onSit = (px: number, pz: number) => {
     const seats: [number, number][] = [localToWorld(x, z, rotation, -0.42, 0.08), localToWorld(x, z, rotation, 0.42, 0.08)]
@@ -247,47 +258,74 @@ function WaitingSofa({ x, z, rotation }: { x: number; z: number; rotation: numbe
   )
 }
 
-/** Recepção do térreo: balcão com frente curva, painel com a logo UNV
- * iluminada atrás, monitor, sofá de espera, plantas e luminária. O collider
- * continua o retângulo RECEPTION_DESK (a curva fica dentro dele). */
-export function Reception() {
-  const { x, z, w, d } = RECEPTION_DESK
+/** Plantas de vaso da recepção (entram na lista de plantas do andar, que o
+ * ModernOffice desenha instanciada). */
+export const RECEPTION_PLANTS = [
+  { x: -3.6, z: 27.4 },
+  { x: 4.4, z: 27.6 },
+]
+
+/** Balcão procedural da recepção (fallback): frente curva, friso vermelho,
+ * tampo claro, monitor e a cadeira de quem atende. */
+function ReceptionDeskProc() {
+  const { w, d } = RECEPTION_DESK
   const m = mats()
   const g = geos()
   return (
     <group>
+      {/* Corpo do balcão: caixa navy + frente curva (setor de cilindro) */}
+      <mesh geometry={g.box} position={[0, 0.52, -0.08]} scale={[w, 1.04, d - 0.16]} castShadow receiveShadow>
+        <meshStandardMaterial color="#0D2B5E" roughness={0.6} />
+      </mesh>
+      <mesh position={[0, 0.52, -d / 2 - 0.9]} castShadow>
+        <cylinderGeometry args={[w / 2 + 0.25, w / 2 + 0.25, 1.04, 28, 1, true, -0.62, 1.24]} />
+        <meshStandardMaterial color="#0D2B5E" roughness={0.6} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Friso vermelho acompanhando a curva */}
+      <mesh position={[0, 0.3, -d / 2 - 0.9]}>
+        <cylinderGeometry args={[w / 2 + 0.26, w / 2 + 0.26, 0.06, 28, 1, true, -0.62, 1.24]} />
+        <meshStandardMaterial color="#CC1B1B" roughness={0.5} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Tampo curvo: setor de anel plano (sem a "fatia" até o centro) */}
+      <mesh position={[0, 1.09, -d / 2 - 0.9]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[w / 2 - 0.3, w / 2 + 0.34, 28, 1, -Math.PI / 2 - 0.66, 1.32]} />
+        <meshStandardMaterial color="#e9e3d6" roughness={0.35} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh geometry={g.box} position={[0, 1.06, -0.12]} scale={[w + 0.16, 0.06, d - 0.1]} castShadow>
+        <meshStandardMaterial color="#e9e3d6" roughness={0.35} />
+      </mesh>
+      {/* Monitor fino */}
+      <group position={[-0.6, 1.09, -0.15]} rotation={[0, 0.25, 0]}>
+        <mesh geometry={g.box} material={m.bezel} position={[0, 0.3, 0]} scale={[0.5, 0.32, 0.018]} />
+        <mesh position={[0, 0.3, 0.01]} material={m.screen}>
+          <planeGeometry args={[0.47, 0.29]} />
+        </mesh>
+        <mesh geometry={g.cyl8} material={m.metalLight} position={[0, 0.07, -0.04]} scale={[0.07, 0.012, 0.07]} />
+        <mesh geometry={g.box} material={m.metalLight} position={[0, 0.16, -0.04]} scale={[0.04, 0.16, 0.015]} />
+      </group>
+      {/* Cadeira da recepção (atrás do balcão) */}
+      <mesh geometry={g.box} material={m.chairSeat} position={[0, 0.45, -0.75]} scale={[0.44, 0.08, 0.44]} castShadow />
+      <mesh position={[0, 0.72, -1.21]} material={m.chairSeat} castShadow>
+        <cylinderGeometry args={[0.26, 0.26, 0.5, 12, 1, true, -0.75, 1.5]} />
+      </mesh>
+    </group>
+  )
+}
+
+/** Recepção do térreo: balcão (módulos de bancada com as pontas
+ * arredondadas, nas cores da marca), painel com a logo UNV iluminada atrás,
+ * monitor, banqueta de quem atende, sofá de espera, cabideiro e luminária.
+ * O collider continua o retângulo RECEPTION_DESK (o balcão cabe nele). */
+export function Reception() {
+  const { x, z, w, d } = RECEPTION_DESK
+  const g = geos()
+  return (
+    <group>
       <group position={[x, 0, z]}>
-        {/* Corpo do balcão: caixa navy + frente curva (setor de cilindro) */}
-        <mesh geometry={g.box} position={[0, 0.52, -0.08]} scale={[w, 1.04, d - 0.16]} castShadow receiveShadow>
-          <meshStandardMaterial color="#0D2B5E" roughness={0.6} />
-        </mesh>
-        <mesh position={[0, 0.52, -d / 2 - 0.9]} castShadow>
-          <cylinderGeometry args={[w / 2 + 0.25, w / 2 + 0.25, 1.04, 28, 1, true, -0.62, 1.24]} />
-          <meshStandardMaterial color="#0D2B5E" roughness={0.6} side={THREE.DoubleSide} />
-        </mesh>
-        {/* Friso vermelho acompanhando a curva */}
-        <mesh position={[0, 0.3, -d / 2 - 0.9]}>
-          <cylinderGeometry args={[w / 2 + 0.26, w / 2 + 0.26, 0.06, 28, 1, true, -0.62, 1.24]} />
-          <meshStandardMaterial color="#CC1B1B" roughness={0.5} side={THREE.DoubleSide} />
-        </mesh>
-        {/* Tampo claro (segue a curva) */}
-        {/* Tampo curvo: setor de anel plano (sem a "fatia" até o centro) */}
-        <mesh position={[0, 1.09, -d / 2 - 0.9]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[w / 2 - 0.3, w / 2 + 0.34, 28, 1, -Math.PI / 2 - 0.66, 1.32]} />
-          <meshStandardMaterial color="#e9e3d6" roughness={0.35} side={THREE.DoubleSide} />
-        </mesh>
-        <mesh geometry={g.box} position={[0, 1.06, -0.12]} scale={[w + 0.16, 0.06, d - 0.1]} castShadow>
-          <meshStandardMaterial color="#e9e3d6" roughness={0.35} />
-        </mesh>
-        {/* Monitor fino + campainha */}
-        <group position={[-0.6, 1.09, -0.15]} rotation={[0, 0.25, 0]}>
-          <mesh geometry={g.box} material={m.bezel} position={[0, 0.3, 0]} scale={[0.5, 0.32, 0.018]} />
-          <mesh position={[0, 0.3, 0.01]} material={m.screen}>
-            <planeGeometry args={[0.47, 0.29]} />
-          </mesh>
-          <mesh geometry={g.cyl8} material={m.metalLight} position={[0, 0.07, -0.04]} scale={[0.07, 0.012, 0.07]} />
-          <mesh geometry={g.box} material={m.metalLight} position={[0, 0.16, -0.04]} scale={[0.04, 0.16, 0.015]} />
-        </group>
+        <Modeled fallback={<ReceptionDeskProc />}>
+          <ReceptionDeskModel w={w} d={d} />
+        </Modeled>
+        {/* Campainha */}
         <mesh position={[0.7, 1.12, 0.12]}>
           <sphereGeometry args={[0.05, 10, 8]} />
           <meshStandardMaterial color="#c9a84c" metalness={0.85} roughness={0.25} />
@@ -314,11 +352,6 @@ export function Reception() {
           </mesh>
           <pointLight position={[0, 0.6, 0.6]} intensity={2.5} distance={4} decay={2} color="#dfe9ff" />
         </group>
-        {/* Cadeira da recepção (atrás do balcão) */}
-        <mesh geometry={g.box} material={m.chairSeat} position={[0, 0.45, -0.75]} scale={[0.44, 0.08, 0.44]} castShadow />
-        <mesh position={[0, 0.72, -1.21]} material={m.chairSeat} castShadow>
-          <cylinderGeometry args={[0.26, 0.26, 0.5, 12, 1, true, -0.75, 1.5]} />
-        </mesh>
         {/* Placa */}
         <Billboard position={[0, 2.75, 0]} follow={true}>
           <Text fontSize={0.34} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#0D2B5E">
@@ -326,10 +359,12 @@ export function Reception() {
           </Text>
         </Billboard>
       </group>
-      <RealPlant x={-3.6} z={27.4} variant={1} />
-      <RealPlant x={4.4} z={27.6} variant={0} />
       {/* Sofá de espera encostado na fachada, do lado oeste da porta */}
       <WaitingSofa x={-3.3} z={28.1} rotation={Math.PI} />
+      {/* Cabideiro de pé do lado leste da porta (só com o modelo; sem fallback) */}
+      <Modeled fallback={null}>
+        <CoatRackModel x={4.7} z={28.35} />
+      </Modeled>
       <CeilingLamp x={0} z={24.5} rotation={0} len={3.2} light intensity={5} />
     </group>
   )

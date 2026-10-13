@@ -5,20 +5,42 @@ import { useFrame } from '@react-three/fiber'
 import { Text, Billboard, RoundedBox, ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
 import { useTeamStore, playerFloor } from '../store/useTeamStore'
-import { BUILDING, OfficeRoom, isEffectivelyLocked, roomWalls, floorBounds, sectorIslands, loungeExtraSets, auditoriumLayout, STAGE_H } from '../lib/rooms'
+import { BUILDING, OfficeRoom, isEffectivelyLocked, roomWalls, floorBounds, sectorIslands, loungeExtraSets, auditoriumLayout, furnitureColliders, STAGE_H } from '../lib/rooms'
 import { currentReservation, hourLabel } from '../lib/clientRooms'
 import { ELEVATOR } from '../lib/floors'
-import { Elevator, Reception } from './Elevator'
+import { Elevator, Reception, RECEPTION_PLANTS } from './Elevator'
 import { woodTexture, floorTexture, carpetTexture, artTexture, officialLogoTexture, ceilingTexture } from '../lib/textures'
 import { doorProximity } from '../lib/door'
 import { sitAt, localToWorld } from '../lib/sit'
 import { graphicsParams } from '../lib/graphics'
 import { mats, geos, fabricMaterial, CeilingLamp, Whiteboard, Poster, TrashBin, RealPlant, Curtain } from './Decor'
+import { Modeled, ModelsProbe, useModelsReady, FURNITURE_LAYER } from '../lib/models'
+import {
+  ChairModel,
+  ChairsModel,
+  TheaterSeatsModel,
+  DeskModel,
+  SectorIslandsModel,
+  MeetingTableModel,
+  TvFrameModel,
+  SofaModel,
+  ArmchairModel,
+  CoffeeTableModel,
+  RugModel,
+  BookshelfModel,
+  FloorLampModel,
+  SpeakerModel,
+  BistroSetModel,
+  CopaModel,
+  PlantsModel,
+  type SeatSpot,
+} from './KenneyFurniture'
+import { roomHasDataTv } from './DataTvs'
 
 /** Layer só das sombras de contato: a câmera do ContactShadows enxerga
  * apenas o que está nela (a mobília do andar), nunca os avatares — senão o
  * boneco parado no spawn ficaria "carimbado" no piso (a sombra é estática). */
-const CONTACT_LAYER = 2
+const CONTACT_LAYER = FURNITURE_LAYER
 
 /** ContactShadows do drei calculada UMA vez por andar (frames=1), olhando
  * só pra layer da mobília. Custo: 1 render de profundidade + 2 blur na
@@ -50,15 +72,41 @@ const WALL_H = 1.15 // parede sólida (meia-altura, estilo maquete)
 const GLASS_H = 1.0 // vidro acima da parede
 const DOOR_W = 2.6
 
-/** Planta decorativa (folhas de verdade em planos com alpha, ver Decor). */
-function Plant({ x, z }: { x: number; z: number }) {
-  return <RealPlant x={x} z={z} />
+// ─────────────────────────────────────────────────────────────────────────
+// Mobília: cada peça tem a versão com modelo 3D (KenneyFurniture) e a
+// procedural antiga (sufixo Proc), que vira o fallback do <Modeled>: aparece
+// enquanto o glb carrega e fica de vez se o arquivo falhar (404, parse).
+// Posições, rotações, assentos e footprints são os mesmos nas duas.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Cadeira clicável. `rotation` = direção do ENCOSTO; o jogador senta
+ * olhando pro lado oposto. `kind`: 'desk' = cadeira de escritório com
+ * rodízios, 'cushion' = cadeira de visita. O tecido recebe `color`. */
+function OfficeChair({
+  x,
+  z,
+  rotation = 0,
+  color = '#2f3640',
+  kind = 'desk',
+}: {
+  x: number
+  z: number
+  rotation?: number
+  color?: string
+  kind?: 'desk' | 'cushion'
+}) {
+  return (
+    <Modeled fallback={<OfficeChairProc x={x} z={z} rotation={rotation} color={color} />}>
+      <ChairModel x={x} z={z} rotation={rotation} color={color} kind={kind} />
+    </Modeled>
+  )
 }
 
-/** Cadeira de escritório clicável. `rotation` = direção do ENCOSTO (+z local);
- * o jogador senta olhando pro lado oposto. Encosto curvo (setor de cilindro),
- * assento com borda arredondada, braços, coluna a gás e base com rodízios. */
-function OfficeChair({
+/** Cadeira de escritório procedural (fallback). `rotation` = direção do
+ * ENCOSTO (+z local); o jogador senta olhando pro lado oposto. Encosto curvo
+ * (setor de cilindro), assento com borda arredondada, braços, coluna a gás e
+ * base com rodízios. */
+function OfficeChairProc({
   x,
   z,
   rotation = 0,
@@ -133,7 +181,33 @@ function Monitor({ x, z, yaw = 0, w = 0.6, h = 0.36 }: { x: number; z: number; y
   )
 }
 
+/** Mesa de trabalho: desk + monitor/teclado/mouse (ou notebook) + lixeira.
+ * Mesa de outro usuário: clicar deixa recado pra ele. */
 function Desk({
+  x,
+  z,
+  rotation = 0,
+  noteTarget,
+  laptop = false,
+  lamp = false,
+}: {
+  x: number
+  z: number
+  rotation?: number
+  noteTarget?: { userId: string; name: string }
+  /** notebook no lugar do monitor + teclado + mouse */
+  laptop?: boolean
+  /** luminária de mesa acesa */
+  lamp?: boolean
+}) {
+  return (
+    <Modeled fallback={<DeskProc x={x} z={z} rotation={rotation} chair={false} noteTarget={noteTarget} />}>
+      <DeskModel x={x} z={z} rotation={rotation} noteTarget={noteTarget} laptop={laptop} lamp={lamp} />
+    </Modeled>
+  )
+}
+
+function DeskProc({
   x,
   z,
   rotation = 0,
@@ -207,13 +281,39 @@ function Desk({
   )
 }
 
-function MeetingTable({ room }: { room: OfficeRoom }) {
+/** TV de parede pequena (reunião e setor): moldura (televisionModern sem o
+ * pé) e a tela apagada azulada na frente. Tudo local, virado pra +z: o grupo
+ * pai posiciona e vira a TV. `wallGap` = distância da tela até a parede de
+ * trás (a moldura engrossa até encostar); fina quando não há parede atrás. */
+function WallTv({ wallGap = 0.135 }: { wallGap?: number }) {
+  return (
+    <group>
+      <Modeled
+        fallback={
+          <mesh position={[0, 1.7, 0]} castShadow material={mats().bezel}>
+            <boxGeometry args={[2.2, 1.15, 0.08]} />
+          </mesh>
+        }
+      >
+        <TvFrameModel y={1.7} z={0.045} w={2.05} h={1.0} wallGap={wallGap} />
+      </Modeled>
+      <mesh position={[0, 1.7, 0.045]} material={mats().screenOff}>
+        <boxGeometry args={[2.05, 1.0, 0.005]} />
+      </mesh>
+    </group>
+  )
+}
+
+/** Mesa de reunião com as cadeiras em volta, TV no fundo, luminárias
+ * pendentes e quadro branco. `tv={false}` quando a sala já tem o telão de
+ * dados (DataTvs) no mesmo lugar. */
+function MeetingTable({ room, tv = true }: { room: OfficeRoom; tv?: boolean }) {
   const len = Math.max(3, room.width - 4.5)
   // Cadeiras em coordenadas de mundo (clicáveis → sentar). Encosto sempre
   // pro lado oposto da mesa (sentado olhando pra mesa).
   const chairs = useMemo(() => {
     const perSide = Math.max(2, Math.floor(len / 1.3))
-    const out: { x: number; z: number; backRot: number }[] = []
+    const out: SeatSpot[] = []
     for (let i = 0; i < perSide; i++) {
       const cx = room.x - len / 2 + (i + 0.5) * (len / perSide)
       out.push({ x: cx, z: room.z - 1.15, backRot: Math.PI }) // lado norte: olha pro sul
@@ -227,30 +327,17 @@ function MeetingTable({ room }: { room: OfficeRoom }) {
 
   return (
     <group>
+      <Modeled fallback={<MeetingTableProc room={room} len={len} />}>
+        <MeetingTableModel x={room.x} z={room.z} len={len} />
+      </Modeled>
       <group position={[room.x, 0, room.z]}>
-        {/* Tampo nobre com folha de madeira e borda arredondada */}
-        <RoundedBox args={[len, 0.06, 1.7]} radius={0.025} smoothness={2} position={[0, 0.76, 0]} castShadow receiveShadow>
-          <meshStandardMaterial map={woodTexture()} color="#9a6a40" roughness={0.3} />
-        </RoundedBox>
-        <mesh position={[0, 0.722, 0]}>
-          <boxGeometry args={[len, 0.025, 1.7]} />
-          <meshStandardMaterial color="#5f3f26" roughness={0.55} />
-        </mesh>
-        <mesh position={[-len / 2 + 0.5, 0.38, 0]}>
-          <boxGeometry args={[0.12, 0.74, 1.3]} />
-          <meshStandardMaterial color="#4f3a28" roughness={0.6} />
-        </mesh>
-        <mesh position={[len / 2 - 0.5, 0.38, 0]}>
-          <boxGeometry args={[0.12, 0.74, 1.3]} />
-          <meshStandardMaterial color="#4f3a28" roughness={0.6} />
-        </mesh>
         {/* TV na parede do fundo (tela acesa) */}
-        <mesh position={[0, 1.7, -room.depth / 2 + 0.25]} castShadow material={mats().bezel}>
-          <boxGeometry args={[2.2, 1.15, 0.08]} />
-        </mesh>
-        <mesh position={[0, 1.7, -room.depth / 2 + 0.295]} material={mats().screenOff}>
-          <boxGeometry args={[2.05, 1.0, 0.005]} />
-        </mesh>
+        {tv && (
+          <group position={[0, 0, -room.depth / 2 + 0.25]}>
+            {/* porta ao norte: a TV fica no vão da porta, sem parede atrás */}
+            <WallTv wallGap={room.doorSide === 'N' ? 0.06 : 0.135} />
+          </group>
+        )}
         {/* Luminárias pendentes sobre a mesa */}
         {[-len / 4, len / 4].map((lx) => (
           <group key={lx} position={[lx, 0, 0]}>
@@ -269,16 +356,50 @@ function MeetingTable({ room }: { room: OfficeRoom }) {
           </group>
         ))}
       </group>
-      {chairs.map((c, i) => (
-        <OfficeChair key={i} x={c.x} z={c.z} rotation={c.backRot} color="#37404d" />
-      ))}
+      {/* Cadeiras: uma InstancedMesh por primitiva, tecido na cor da sala */}
+      <Modeled
+        fallback={
+          <>
+            {chairs.map((c, i) => (
+              <OfficeChairProc key={i} x={c.x} z={c.z} rotation={c.backRot} color="#37404d" />
+            ))}
+          </>
+        }
+      >
+        <ChairsModel seats={chairs} color={room.color} kind="cushion" dark />
+      </Modeled>
       {/* Quadro branco na parede leste, virado pra mesa */}
       <Whiteboard x={room.x + room.width / 2 - 0.22} z={room.z} rotation={-Math.PI / 2} y={1.35} />
     </group>
   )
 }
 
-function BistroTable({ x, z }: { x: number; z: number }) {
+/** Tampo e pés da mesa de reunião procedural (fallback). */
+function MeetingTableProc({ room, len }: { room: OfficeRoom; len: number }) {
+  return (
+    <group position={[room.x, 0, room.z]}>
+      {/* Tampo nobre com folha de madeira e borda arredondada */}
+      <RoundedBox args={[len, 0.06, 1.7]} radius={0.025} smoothness={2} position={[0, 0.76, 0]} castShadow receiveShadow>
+        <meshStandardMaterial map={woodTexture()} color="#9a6a40" roughness={0.3} />
+      </RoundedBox>
+      <mesh position={[0, 0.722, 0]}>
+        <boxGeometry args={[len, 0.025, 1.7]} />
+        <meshStandardMaterial color="#5f3f26" roughness={0.55} />
+      </mesh>
+      <mesh position={[-len / 2 + 0.5, 0.38, 0]}>
+        <boxGeometry args={[0.12, 0.74, 1.3]} />
+        <meshStandardMaterial color="#4f3a28" roughness={0.6} />
+      </mesh>
+      <mesh position={[len / 2 - 0.5, 0.38, 0]}>
+        <boxGeometry args={[0.12, 0.74, 1.3]} />
+        <meshStandardMaterial color="#4f3a28" roughness={0.6} />
+      </mesh>
+    </group>
+  )
+}
+
+/** Mesa bistrô procedural com 4 banquetas clicáveis (fallback do BistroSetModel). */
+function BistroTableProc({ x, z }: { x: number; z: number }) {
   return (
     <group position={[x, 0, z]}>
       {/* Mesa alta */}
@@ -317,68 +438,135 @@ function BistroTable({ x, z }: { x: number; z: number }) {
   )
 }
 
-/** Lounge aberto — praça de convivência com vários núcleos de conversa. */
+/** Lounge aberto: praça de convivência com vários núcleos de conversa,
+ * mesas bistrô e o canto de copa no fundo. (As plantas saem na lista do
+ * andar: roomPlantSpots.) */
 function LoungeFurniture({ room }: { room: OfficeRoom }) {
   const left = room.x - room.width / 2
   const right = room.x + room.width / 2
   const backZ = room.z - room.depth / 2
+  const bistros = useMemo(
+    () => [
+      { x: right - 3, z: room.z + 0.6 },
+      { x: right - 5.4, z: room.z + 2.2 },
+      { x: right - 1.8, z: room.z + 2.8 },
+    ],
+    [right, room.z]
+  )
 
   return (
     <group>
-      {/* Balcão de café (fundo, lado leste) */}
-      <group position={[right - 2.4, 0, backZ + 1.1]}>
-        <mesh position={[0, 0.55, 0]} castShadow>
-          <boxGeometry args={[3, 1.1, 0.8]} />
-          <meshStandardMaterial color="#3e4450" roughness={0.5} />
-        </mesh>
-        <mesh position={[-0.9, 1.32, 0]} castShadow>
-          <boxGeometry args={[0.35, 0.45, 0.35]} />
-          <meshStandardMaterial color="#15171c" roughness={0.4} />
-        </mesh>
-        <mesh position={[0.5, 1.16, 0]}>
-          <boxGeometry args={[0.6, 0.1, 0.45]} />
-          <meshStandardMaterial color="#d9d2c5" roughness={0.4} />
-        </mesh>
-      </group>
+      {/* Canto de copa no lugar do balcão de café (fundo, lado leste) */}
+      <Modeled
+        fallback={
+          <group position={[right - 2.4, 0, backZ + 1.1]}>
+            <mesh position={[0, 0.55, 0]} castShadow>
+              <boxGeometry args={[3, 1.1, 0.8]} />
+              <meshStandardMaterial color="#3e4450" roughness={0.5} />
+            </mesh>
+            <mesh position={[-0.9, 1.32, 0]} castShadow>
+              <boxGeometry args={[0.35, 0.45, 0.35]} />
+              <meshStandardMaterial color="#15171c" roughness={0.4} />
+            </mesh>
+            <mesh position={[0.5, 1.16, 0]}>
+              <boxGeometry args={[0.6, 0.1, 0.45]} />
+              <meshStandardMaterial color="#d9d2c5" roughness={0.4} />
+            </mesh>
+          </group>
+        }
+      >
+        <CopaModel x={right - 2.4} z={backZ + 1.1} />
+      </Modeled>
 
-      {/* Núcleo oeste: sofás em L + mesa de centro */}
+      {/* Núcleo oeste: sofás em L + mesa de centro + luminária de piso no canto */}
       <Rug x={left + 3.2} z={room.z - 0.2} color="#8B6F47" />
-      <Sofa x={left + 3.2} z={room.z - 1.7} rotation={0} color="#7a5c3e" />
-      <Sofa x={left + 1.6} z={room.z - 0.2} rotation={Math.PI / 2} color="#7a5c3e" />
+      <Sofa x={left + 3.2} z={room.z - 1.7} rotation={0} color="#7a5c3e" variant={0} />
+      <Sofa x={left + 1.6} z={room.z - 0.2} rotation={Math.PI / 2} color="#7a5c3e" variant={0} />
       <CoffeeTable x={left + 3.4} z={room.z - 0.3} />
       <Armchair x={left + 4.9} z={room.z - 0.3} rotation={-Math.PI / 2} color="#8a6248" />
+      {/* Só com os modelos (sem fallback): luminária de piso no canto e caixa de som */}
+      <Modeled fallback={null}>
+        <FloorLampModel x={left + 1.55} z={room.z - 1.75} rotation={Math.PI / 4} />
+        <SpeakerModel x={left + 4.55} z={room.z - 1.9} />
+      </Modeled>
 
       {/* Núcleo central: sofás frente a frente */}
-      <Rug x={room.x - 0.5} z={room.z + 1.4} color="#5a6b7d" />
-      <Sofa x={room.x - 0.5} z={room.z + 2.5} rotation={Math.PI} color="#5a6b7d" />
-      <Sofa x={room.x - 0.5} z={room.z + 0.3} rotation={0} color="#5a6b7d" />
+      <Rug x={room.x - 0.5} z={room.z + 1.4} color="#5a6b7d" shape="rect" />
+      <Sofa x={room.x - 0.5} z={room.z + 2.5} rotation={Math.PI} color="#5a6b7d" variant={1} />
+      <Sofa x={room.x - 0.5} z={room.z + 0.3} rotation={0} color="#5a6b7d" variant={1} />
       <CoffeeTable x={room.x - 0.5} z={room.z + 1.4} />
 
       {/* Lounge largo (> 12): repete sofá + mesa de centro nos vãos */}
-      {loungeExtraSets(room).map((sx) => (
+      {loungeExtraSets(room).map((sx, i) => (
         <group key={sx}>
-          <Rug x={sx} z={room.z + 1.4} color="#6b5a7d" />
-          <Sofa x={sx} z={room.z + 2.5} rotation={Math.PI} color="#6b5a7d" />
-          <Sofa x={sx} z={room.z + 0.3} rotation={0} color="#6b5a7d" />
+          <Rug x={sx} z={room.z + 1.4} color="#6b5a7d" shape="rect" />
+          <Sofa x={sx} z={room.z + 2.5} rotation={Math.PI} color="#6b5a7d" variant={i} />
+          <Sofa x={sx} z={room.z + 0.3} rotation={0} color="#6b5a7d" variant={i} />
           <CoffeeTable x={sx} z={room.z + 1.4} />
         </group>
       ))}
 
       {/* Mesas bistrô (leste) */}
-      <BistroTable x={right - 3} z={room.z + 0.6} />
-      <BistroTable x={right - 5.4} z={room.z + 2.2} />
-      <BistroTable x={right - 1.8} z={room.z + 2.8} />
-
-      {/* Verde espalhado */}
-      <Plant x={left + 0.8} z={backZ + 0.9} />
-      <Plant x={left + 0.8} z={room.z + room.depth / 2 - 0.9} />
-      <Plant x={room.x + 1.5} z={backZ + 0.8} />
-      <Plant x={right - 0.8} z={room.z + room.depth / 2 - 0.9} />
+      <Modeled
+        fallback={
+          <>
+            {bistros.map((b) => (
+              <BistroTableProc key={`${b.x}:${b.z}`} x={b.x} z={b.z} />
+            ))}
+          </>
+        }
+      >
+        <BistroSetModel tables={bistros} />
+      </Modeled>
     </group>
   )
 }
 
-function Sofa({ x, z, rotation = 0, color = '#5a6b7d' }: { x: number; z: number; rotation?: number; color?: string }) {
+/** Sofá de dois lugares; clique escolhe o assento mais próximo do ponto
+ * clicado. `variant` alterna o modelo (loungeSofa / loungeDesignSofa). */
+function Sofa({ x, z, rotation = 0, color = '#5a6b7d', variant = 0 }: { x: number; z: number; rotation?: number; color?: string; variant?: number }) {
+  return (
+    <Modeled fallback={<SofaProc x={x} z={z} rotation={rotation} color={color} />}>
+      <SofaModel x={x} z={z} rotation={rotation} color={color} variant={variant} />
+    </Modeled>
+  )
+}
+
+function Armchair({ x, z, rotation = 0, color = '#7d6b5a' }: { x: number; z: number; rotation?: number; color?: string }) {
+  return (
+    <Modeled fallback={<ArmchairProc x={x} z={z} rotation={rotation} color={color} />}>
+      <ArmchairModel x={x} z={z} rotation={rotation} color={color} />
+    </Modeled>
+  )
+}
+
+function Bookshelf({ x, z, rotation = 0 }: { x: number; z: number; rotation?: number }) {
+  return (
+    <Modeled fallback={<BookshelfProc x={x} z={z} rotation={rotation} />}>
+      <BookshelfModel x={x} z={z} rotation={rotation} />
+    </Modeled>
+  )
+}
+
+/** Tapete: redondo (2 m, como sempre) ou retangular entre sofás frente a frente. */
+function Rug({ x, z, color, shape = 'round' }: { x: number; z: number; color: string; shape?: 'round' | 'rect' }) {
+  return (
+    <Modeled fallback={<RugProc x={x} z={z} color={color} />}>
+      <RugModel x={x} z={z} color={color} shape={shape} />
+    </Modeled>
+  )
+}
+
+/** Mesa de centro. `rotation` só vale pro modelo (a procedural é redonda). */
+function CoffeeTable({ x, z, rotation = 0 }: { x: number; z: number; rotation?: number }) {
+  return (
+    <Modeled fallback={<CoffeeTableProc x={x} z={z} />}>
+      <CoffeeTableModel x={x} z={z} rotation={rotation} />
+    </Modeled>
+  )
+}
+
+function SofaProc({ x, z, rotation = 0, color = '#5a6b7d' }: { x: number; z: number; rotation?: number; color?: string }) {
   // Dois lugares; clique escolhe o assento mais próximo do ponto clicado.
   // Sentado olhando pra fora do encosto (+z local).
   const onSit = (px: number, pz: number) => {
@@ -432,7 +620,7 @@ function Sofa({ x, z, rotation = 0, color = '#5a6b7d' }: { x: number; z: number;
   )
 }
 
-function Armchair({ x, z, rotation = 0, color = '#7d6b5a' }: { x: number; z: number; rotation?: number; color?: string }) {
+function ArmchairProc({ x, z, rotation = 0, color = '#7d6b5a' }: { x: number; z: number; rotation?: number; color?: string }) {
   const seat = localToWorld(x, z, rotation, 0, 0.06)
   return (
     <group
@@ -458,7 +646,7 @@ function Armchair({ x, z, rotation = 0, color = '#7d6b5a' }: { x: number; z: num
   )
 }
 
-function Bookshelf({ x, z, rotation = 0 }: { x: number; z: number; rotation?: number }) {
+function BookshelfProc({ x, z, rotation = 0 }: { x: number; z: number; rotation?: number }) {
   return (
     <group position={[x, 0, z]} rotation={[0, rotation, 0]}>
       <mesh position={[0, 0.9, 0]} castShadow>
@@ -482,7 +670,7 @@ function Bookshelf({ x, z, rotation = 0 }: { x: number; z: number; rotation?: nu
   )
 }
 
-function Rug({ x, z, color }: { x: number; z: number; color: string }) {
+function RugProc({ x, z, color }: { x: number; z: number; color: string }) {
   return (
     <mesh position={[x, 0.009, z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
       <circleGeometry args={[1, 24]} />
@@ -491,7 +679,7 @@ function Rug({ x, z, color }: { x: number; z: number; color: string }) {
   )
 }
 
-function CoffeeTable({ x, z }: { x: number; z: number }) {
+function CoffeeTableProc({ x, z }: { x: number; z: number }) {
   return (
     <group position={[x, 0, z]}>
       <mesh position={[0, 0.3, 0]} castShadow>
@@ -718,19 +906,30 @@ function hashRoom(id: string): number {
 
 /** Salas individuais: mesa de trabalho + decoração variada por sala.
  * Layout executivo: dono senta ATRÁS da mesa olhando pra porta, com duas
- * cadeiras de visita na frente. Todas as cadeiras são clicáveis (sentar). */
+ * cadeiras de visita na frente. Todas as cadeiras são clicáveis (sentar).
+ * O tecido das cadeiras leva a cor da sala. (A planta sai na lista do
+ * andar: roomPlantSpots.) */
 function PersonalFurniture({ room }: { room: OfficeRoom }) {
   // door é sempre N nas pessoais: fundo = z + depth/2
   const backZ = room.z + room.depth / 2
   const deskZ = backZ - 1.3
-  const variant = hashRoom(room.id) % 4
+  const h = hashRoom(room.id)
+  const variant = h % 4
+  const visitors = useMemo<SeatSpot[]>(
+    () => [
+      { x: room.x - 0.55, z: deskZ - 1.4, backRot: Math.PI },
+      { x: room.x + 0.55, z: deskZ - 1.4, backRot: Math.PI },
+    ],
+    [room.x, deskZ]
+  )
   return (
     <group>
       <Desk
         x={room.x}
         z={deskZ}
         rotation={0}
-        chair={false}
+        laptop={(h >> 2) % 3 === 0}
+        lamp
         noteTarget={
           room.ownerUserId
             ? { userId: room.ownerUserId, name: room.name.replace(/^Sala\s+/i, '') }
@@ -738,30 +937,36 @@ function PersonalFurniture({ room }: { room: OfficeRoom }) {
         }
       />
       {/* Cadeira do dono: atrás da mesa, de frente pra porta */}
-      <OfficeChair x={room.x} z={deskZ + 0.7} rotation={0} />
+      <OfficeChair x={room.x} z={deskZ + 0.7} rotation={0} color={room.color} />
       {/* Cadeiras de visita: na frente da mesa, de frente pro dono */}
-      <OfficeChair x={room.x - 0.55} z={deskZ - 1.4} rotation={Math.PI} color="#6b4f34" />
-      <OfficeChair x={room.x + 0.55} z={deskZ - 1.4} rotation={Math.PI} color="#6b4f34" />
+      <Modeled
+        fallback={
+          <>
+            {visitors.map((v) => (
+              <OfficeChairProc key={v.x} x={v.x} z={v.z} rotation={v.backRot} color="#6b4f34" />
+            ))}
+          </>
+        }
+      >
+        <ChairsModel seats={visitors} color={room.color} kind="cushion" />
+      </Modeled>
       <WallArt x={room.x + (variant % 2 === 0 ? 1.6 : -1.6)} z={backZ - 0.25} color={room.color} />
       {variant === 0 && (
         <>
-          <Plant x={room.x - room.width / 2 + 0.7} z={deskZ} />
           <Rug x={room.x} z={room.z - 0.6} color={room.color} />
           <Armchair x={room.x + room.width / 2 - 0.85} z={room.z - 0.7} rotation={-Math.PI / 2} />
         </>
       )}
       {variant === 1 && (
         <>
-          <Sofa x={room.x - room.width / 2 + 1.05} z={room.z - 0.5} rotation={Math.PI / 2} color="#6b5a7d" />
-          <CoffeeTable x={room.x + 0.3} z={room.z - 0.5} />
-          <Plant x={room.x + room.width / 2 - 0.7} z={backZ - 0.8} />
+          <Sofa x={room.x - room.width / 2 + 1.05} z={room.z - 0.5} rotation={Math.PI / 2} color="#6b5a7d" variant={h >> 4} />
+          <CoffeeTable x={room.x + 0.3} z={room.z - 0.5} rotation={Math.PI / 2} />
         </>
       )}
       {variant === 2 && (
         <>
           <Bookshelf x={room.x - room.width / 2 + 0.35} z={room.z - 0.4} rotation={Math.PI / 2} />
           <Armchair x={room.x + 0.9} z={room.z - 1} rotation={Math.PI} color="#5a7d6b" />
-          <Plant x={room.x + room.width / 2 - 0.7} z={deskZ} />
         </>
       )}
       {variant === 3 && (
@@ -770,7 +975,6 @@ function PersonalFurniture({ room }: { room: OfficeRoom }) {
           <Armchair x={room.x + 0.9} z={room.z - 1} rotation={-Math.PI / 4} color="#8a6248" />
           <CoffeeTable x={room.x} z={room.z - 1.4} />
           <Rug x={room.x} z={room.z - 1.2} color={room.color} />
-          <Plant x={room.x - room.width / 2 + 0.7} z={backZ - 0.8} />
         </>
       )}
     </group>
@@ -780,48 +984,63 @@ function PersonalFurniture({ room }: { room: OfficeRoom }) {
 /** Sala de setor: ilhas de mesas duplas proporcionais ao tamanho da sala
  * (uma a cada ~3.4 de largura, até 2 fileiras). Cada ilha = duas mesas
  * encostadas, uma cadeira ao sul (olha pro norte) e uma ao norte (olha pro
- * sul), todas clicáveis. Mesmo cálculo do collider (sectorIslands). */
+ * sul), todas clicáveis. Mesmo cálculo do collider (sectorIslands). Com os
+ * modelos, a sala inteira sai instanciada (SectorIslandsModel). */
 function SectorFurniture({ room }: { room: OfficeRoom }) {
   const islands = useMemo(() => sectorIslands(room), [room])
-  const backZ = room.doorSide === 'S' ? room.z - room.depth / 2 : room.z + room.depth / 2
+  const rooms = useTeamStore((s) => s.roomsOnFloor)
+  const south = room.doorSide === 'S'
+  const backZ = south ? room.z - room.depth / 2 : room.z + room.depth / 2
   return (
     <group>
-      {islands.map((isl, i) => (
-        <group key={i}>
-          <Desk x={isl.x} z={isl.z + 0.45} rotation={0} chair={false} />
-          <Desk x={isl.x} z={isl.z - 0.45} rotation={Math.PI} chair={false} />
-          <OfficeChair x={isl.x} z={isl.z + 1.12} rotation={0} color="#37404d" />
-          <OfficeChair x={isl.x} z={isl.z - 1.12} rotation={Math.PI} color="#37404d" />
+      <Modeled
+        fallback={
+          <>
+            {islands.map((isl, i) => (
+              <group key={i}>
+                <DeskProc x={isl.x} z={isl.z + 0.45} rotation={0} chair={false} />
+                <DeskProc x={isl.x} z={isl.z - 0.45} rotation={Math.PI} chair={false} />
+                <OfficeChairProc x={isl.x} z={isl.z + 1.12} rotation={0} color="#37404d" />
+                <OfficeChairProc x={isl.x} z={isl.z - 1.12} rotation={Math.PI} color="#37404d" />
+              </group>
+            ))}
+          </>
+        }
+      >
+        <SectorIslandsModel islands={islands} color={room.color} />
+      </Modeled>
+      {/* TV na parede do fundo (nas salas com telão de dados, o DataTvs ocupa o lugar) */}
+      {!(south && roomHasDataTv(room, rooms)) && (
+        <group position={[room.x, 0, backZ + (south ? 0.25 : -0.25)]} rotation={[0, south ? 0 : Math.PI, 0]}>
+          <WallTv />
         </group>
-      ))}
-      {/* TV na parede do fundo (as TVs de dados do DataTvs ficam por cima nas salas que têm) */}
-      <group position={[room.x, 0, backZ + (room.doorSide === 'S' ? 0.25 : -0.25)]}>
-        <mesh position={[0, 1.7, 0]} castShadow material={mats().bezel}>
-          <boxGeometry args={[2.2, 1.15, 0.08]} />
-        </mesh>
-        <mesh position={[0, 1.7, room.doorSide === 'S' ? 0.045 : -0.045]} material={mats().screenOff}>
-          <boxGeometry args={[2.05, 1.0, 0.005]} />
-        </mesh>
-      </group>
+      )}
       {/* Quadro branco ao lado da TV (fundo da sala) */}
       <Whiteboard
         x={room.x - room.width / 2 + 2.4}
-        z={backZ + (room.doorSide === 'S' ? 0.2 : -0.2)}
-        rotation={room.doorSide === 'S' ? 0 : Math.PI}
+        z={backZ + (south ? 0.2 : -0.2)}
+        rotation={south ? 0 : Math.PI}
         w={1.7}
         h={1.05}
       />
-      {/* Plantas nas pontas do fundo */}
-      <Plant x={room.x + room.width / 2 - 0.8} z={backZ + (room.doorSide === 'S' ? 0.8 : -0.8)} />
-      <Plant x={room.x - room.width / 2 + 0.8} z={backZ + (room.doorSide === 'S' ? 0.8 : -0.8)} />
     </group>
   )
 }
 
-/** Plateia do auditório em 4 InstancedMesh (assento, encosto, base,
+/** Plateia do auditório: poltronas instanciadas nas posições do
+ * auditoriumLayout; clicar numa senta nela. `rot` = direção do encosto. */
+function TheaterSeats({ seats }: { seats: { x: number; z: number; rot: number }[] }) {
+  return (
+    <Modeled fallback={<TheaterSeatsProc seats={seats} />}>
+      <TheaterSeatsModel seats={seats} />
+    </Modeled>
+  )
+}
+
+/** Plateia procedural (fallback) em 4 InstancedMesh (assento, encosto, base,
  * braços): dezenas de poltronas = 4 draw calls. Clique no assento/encosto
  * → senta na poltrona daquele instanceId. `rot` = direção do encosto. */
-function TheaterSeats({ seats }: { seats: { x: number; z: number; rot: number }[] }) {
+function TheaterSeatsProc({ seats }: { seats: { x: number; z: number; rot: number }[] }) {
   const seatRef = useRef<THREE.InstancedMesh>(null!)
   const backRef = useRef<THREE.InstancedMesh>(null!)
   const baseRef = useRef<THREE.InstancedMesh>(null!)
@@ -1000,9 +1219,6 @@ function AuditoriumFurniture({ room }: { room: OfficeRoom }) {
       </mesh>
       {/* Plateia em arco (instanciada) */}
       <TheaterSeats seats={a.seats} />
-      {/* Plantas nos cantos do fundo */}
-      <Plant x={room.x - room.width / 2 + 0.8} z={room.z - room.depth / 2 + 0.9} />
-      <Plant x={room.x + room.width / 2 - 0.8} z={room.z - room.depth / 2 + 0.9} />
       {/* Placa na porta (lado do corredor) */}
       <group position={[room.x, 2.45, frontZ + 0.22]}>
         <mesh castShadow>
@@ -1038,8 +1254,8 @@ function ClientFurniture({ room }: { room: OfficeRoom }) {
   const busy = !!res || !!guestHere
   return (
     <group>
-      <MeetingTable room={room} />
-      <Plant x={room.x - room.width / 2 + 0.8} z={room.z - room.depth / 2 + 0.9} />
+      {/* a TV daqui é o telão do painel do cliente (DataTvs), sobre um aparador */}
+      <MeetingTable room={room} tv={false} />
       {/* Placa de reserva ao lado da porta, virada pro corredor */}
       <group position={[room.x + 2.9, 1.55, frontZ + 0.2]}>
         <mesh castShadow>
@@ -1080,6 +1296,69 @@ function RoomLamps({ room }: { room: OfficeRoom }) {
         <CeilingLamp key={lx} x={lx} z={room.z} y={y} len={Math.min(2.6, room.depth * 0.4)} rotation={Math.PI / 2} />
       ))}
     </group>
+  )
+}
+
+/** Onde ficam as plantas de vaso de uma sala (as mesmas posições de sempre,
+ * por tipo de sala). Planta que cairia dentro de um móvel com colisão (o
+ * balcão no lounge de 10 m) fica de fora. */
+function roomPlantSpots(room: OfficeRoom): { x: number; z: number }[] {
+  const left = room.x - room.width / 2
+  const right = room.x + room.width / 2
+  const north = room.z - room.depth / 2
+  const south = room.z + room.depth / 2
+  let out: { x: number; z: number }[] = []
+  if (room.roomType === 'lounge') {
+    out = [
+      { x: left + 0.8, z: north + 0.9 },
+      { x: left + 0.8, z: south - 0.9 },
+      { x: room.x + 1.5, z: north + 0.8 },
+      { x: right - 0.8, z: south - 0.9 },
+    ]
+  } else if (room.roomType === 'personal') {
+    // door é sempre N nas pessoais: fundo = sul
+    const deskZ = south - 1.3
+    const variant = hashRoom(room.id) % 4
+    if (variant === 0) out = [{ x: left + 0.7, z: deskZ }]
+    else if (variant === 1) out = [{ x: right - 0.7, z: south - 0.8 }]
+    else if (variant === 2) out = [{ x: right - 0.7, z: deskZ }]
+    else out = [{ x: left + 0.7, z: south - 0.8 }]
+  } else if (room.roomType === 'sector') {
+    // pontas do fundo
+    const z = room.doorSide === 'S' ? north + 0.8 : south - 0.8
+    out = [
+      { x: right - 0.8, z },
+      { x: left + 0.8, z },
+    ]
+  } else if (room.roomType === 'auditorium') {
+    out = [
+      { x: left + 0.8, z: north + 0.9 },
+      { x: right - 0.8, z: north + 0.9 },
+    ]
+  } else if (room.roomType === 'client') {
+    out = [{ x: left + 0.8, z: north + 0.9 }]
+  }
+  const blocks = furnitureColliders([room])
+  const pad = 0.15
+  return out.filter((p) => !blocks.some((b) => p.x > b.minX - pad && p.x < b.maxX + pad && p.z > b.minZ - pad && p.z < b.maxZ + pad))
+}
+
+/** Todas as plantas de vaso do andar (salas + corredor + recepção) numa
+ * InstancedMesh por primitiva. Fallback: as plantas procedurais de sempre. */
+function FloorPlants({ rooms, extra }: { rooms: OfficeRoom[]; extra: { x: number; z: number }[] }) {
+  const spots = useMemo(() => [...extra, ...rooms.flatMap(roomPlantSpots)], [rooms, extra])
+  return (
+    <Modeled
+      fallback={
+        <>
+          {spots.map((p) => (
+            <RealPlant key={`${p.x}:${p.z}`} x={p.x} z={p.z} />
+          ))}
+        </>
+      }
+    >
+      <PlantsModel spots={spots} />
+    </Modeled>
   )
 }
 
@@ -1346,18 +1625,30 @@ export default function ModernOffice() {
     return out.filter((p) => p.w > 0.05)
   }, [bounds, windowsX])
 
+  // Plantas de vaso fora das salas: corredor central e, no térreo, a recepção
+  const loosePlants = useMemo(() => {
+    const out = plantsX.map((x) => ({ x, z: floor === 0 ? 0 : corridor.z }))
+    if (floor === 0) out.push(...RECEPTION_PLANTS)
+    return out
+  }, [plantsX, floor, corridor.z])
+
   // Tudo que está dentro do grupo do escritório entra na layer das sombras
-  // de contato (mobília, paredes); avatares ficam fora (são irmãos no Canvas)
+  // de contato (mobília, paredes); avatares ficam fora (são irmãos no Canvas).
+  // Os modelos 3D já nascem na layer; `modelsReady` refaz a varredura (e a
+  // sombra de contato, pela key) quando eles terminam de carregar.
+  const modelsReady = useModelsReady()
   const officeRef = useRef<THREE.Group>(null!)
   useEffect(() => {
     officeRef.current?.traverse((o) => o.layers.enable(CONTACT_LAYER))
-  }, [rooms, floor, graphics])
+  }, [rooms, floor, graphics, modelsReady])
 
   return (
     <>
     {/* Sombras de contato sob a mobília (estáticas: calculadas uma vez por
         andar; os avatares usam a sombra da direcional + disco). Só no alto. */}
-    {gp.contactShadows && <StaticContactShadows key={`cs-${floor}-${rooms.length}`} cx={cx} cz={cz} w={W} d={D} />}
+    {gp.contactShadows && <StaticContactShadows key={`cs-${floor}-${rooms.length}-${modelsReady ? 1 : 0}`} cx={cx} cz={cz} w={W} d={D} />}
+    {/* Preload dos modelos 3D da mobília (cada peça cai na procedural enquanto carrega) */}
+    <ModelsProbe />
     <group ref={officeRef}>
       {/* Piso geral: porcelanato com leve reflexo do ambiente (sem segunda
           passada de render: roughness baixa + envMap do Environment) */}
@@ -1548,10 +1839,8 @@ export default function ModernOffice() {
         <CeilingLamp key={`cl${i}`} x={l.x} z={l.z} rotation={l.rot} len={l.len} y={2.55} light={i < gp.maxPointLights} intensity={7} />
       ))}
 
-      {/* Plantas no corredor central */}
-      {plantsX.map((x) => (
-        <Plant key={x} x={x} z={floor === 0 ? 0 : corridor.z} />
-      ))}
+      {/* Plantas de vaso do andar inteiro (corredor, recepção e salas) */}
+      <FloorPlants rooms={rooms} extra={loosePlants} />
 
       {/* Salas */}
       {rooms.map((room) => (
