@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { AddLeadDialog } from "@/components/crm/AddLeadDialog";
 import { ImportLeadsDialog } from "@/components/crm/ImportLeadsDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { MultiSearchableSelect } from "@/components/ui/multi-searchable-select";
 import { dddLabel } from "@/lib/ddd";
 import { SavedViews } from "@/components/crm/views/SavedViews";
 import { LeadListsDialog } from "@/components/crm/lists/LeadListsDialog";
@@ -90,11 +91,12 @@ export const CRMLeadsPage = () => {
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterPipeline, setFilterPipeline] = useState("all");
-  const [filterStage, setFilterStage] = useState("all");
-  const [filterOwner, setFilterOwner] = useState("all");
-  const [filterUrgency, setFilterUrgency] = useState("all");
-  const [filterList, setFilterList] = useState("all");
+  // Filtros aceitam vários valores (Fabrício, 13/10/2026); vazio = qualquer
+  const [filterPipeline, setFilterPipeline] = useState<string[]>([]);
+  const [filterStage, setFilterStage] = useState<string[]>([]);
+  const [filterOwner, setFilterOwner] = useState<string[]>([]);
+  const [filterUrgency, setFilterUrgency] = useState<string[]>([]);
+  const [filterList, setFilterList] = useState<string[]>([]);
   const [leadLists, setLeadLists] = useState<LeadList[]>([]);
   const [filterDuplicates, setFilterDuplicates] = useState("all"); // "all" | "phone" | "email"
 
@@ -128,7 +130,7 @@ export const CRMLeadsPage = () => {
     return () => clearTimeout(t);
   }, [searchTerm]);
   // Filtro por DDD: só os DDDs que existem na base, com a contagem (RPC crm_leads_ddd_counts)
-  const [filterDdd, setFilterDdd] = useState<string>("all");
+  const [filterDdd, setFilterDdd] = useState<string[]>([]);
   const [dddOptions, setDddOptions] = useState<{ ddd: string; n: number }[]>([]);
   useEffect(() => {
     (async () => {
@@ -176,15 +178,15 @@ export const CRMLeadsPage = () => {
 
   // Filtro atual no formato do banco (crm_leads_page_v2 e crm_leads_bulk leem o mesmo JSON)
   const rpcFilters = useMemo(() => {
-    const f: Record<string, string> = {};
+    const f: Record<string, string | string[]> = {};
     if (debouncedSearch) f.search = debouncedSearch;
-    if (filterPipeline !== "all") f.pipeline = filterPipeline;
-    if (filterStage !== "all") f.stage = filterStage;
-    if (filterOwner !== "all") f.owner = filterOwner;
-    if (filterUrgency !== "all") f.urgency = filterUrgency;
+    if (filterPipeline.length) f.pipelines = filterPipeline;
+    if (filterStage.length) f.stages = filterStage;
+    if (filterOwner.length) f.owners = filterOwner;
+    if (filterUrgency.length) f.urgencies = filterUrgency;
     if (filterDuplicates !== "all") f.dups = filterDuplicates;
-    if (filterList !== "all") f.list = filterList;
-    if (filterDdd !== "all") f.ddd = filterDdd;
+    if (filterList.length) f.lists = filterList;
+    if (filterDdd.length) f.ddds = filterDdd;
     return f;
   }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd]);
 
@@ -260,14 +262,16 @@ export const CRMLeadsPage = () => {
   }), [searchTerm, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd, pageSize]);
   const applySavedView = (v: Record<string, any>) => {
     const txt = (x: unknown, d = "all") => (typeof x === "string" && x ? x : d);
+    // visão salva antes de 13/10 guarda um valor só ("all" = nenhum); as novas guardam lista
+    const arr = (x: unknown): string[] => Array.isArray(x) ? x.filter((y) => typeof y === "string" && y && y !== "all") : (typeof x === "string" && x && x !== "all" ? [x] : []);
     setSearchTerm(typeof v.search === "string" ? v.search : "");
-    setFilterPipeline(txt(v.pipeline));
-    setFilterStage(txt(v.stage));
-    setFilterOwner(isAdmin ? txt(v.owner) : "all");
-    setFilterUrgency(txt(v.urgency));
+    setFilterPipeline(arr(v.pipeline));
+    setFilterStage(arr(v.stage));
+    setFilterOwner(isAdmin ? arr(v.owner) : []);
+    setFilterUrgency(arr(v.urgency));
     setFilterDuplicates(txt(v.dups));
-    setFilterList(txt(v.list));
-    setFilterDdd(txt(v.ddd));
+    setFilterList(arr(v.list));
+    setFilterDdd(arr(v.ddd));
     if ([10, 50, 100].includes(Number(v.pageSize))) setPageSize(Number(v.pageSize));
     setSelectedLeads([]);
   };
@@ -359,7 +363,7 @@ export const CRMLeadsPage = () => {
     if (kind === "assign") return { staff_id: value };
     if (kind === "tag") return { tag_id: value };
     if (kind === "lost") return { loss_reason_id: value };
-    if (kind === "remove_from_list") return { list_id: filterList };
+    if (kind === "remove_from_list") return { list_id: filterList.length === 1 ? filterList[0] : "" };
     return { key: filterDuplicates };
   }, [filterList, filterDuplicates]);
 
@@ -488,7 +492,7 @@ export const CRMLeadsPage = () => {
     remove_from_list: { title: "Tirar da lista", label: "", placeholder: "", empty: "", cta: "Tirar da lista" },
     merge_dups: { title: "Mesclar duplicados do filtro", label: "", placeholder: "", empty: "", cta: "Mesclar" },
   };
-  const activeList = leadLists.find((l) => l.id === filterList) || null;
+  const activeList = filterList.length === 1 ? (leadLists.find((l) => l.id === filterList[0]) || null) : null;
   const bulkNeedsValue = !!bulkKind && BULK_NEEDS_VALUE.includes(bulkKind);
   const bulkPending = Number(bulkPreview?.pending ?? 0);
   const bulkReady = !!bulkPreview && !bulkPreviewLoading && (!bulkNeedsValue || !!bulkValue);
@@ -584,49 +588,44 @@ export const CRMLeadsPage = () => {
               </div>
             </div>
 
-            <SearchableSelect
-              value={filterPipeline}
-              onValueChange={(v) => { setFilterPipeline(v); setFilterStage("all"); }}
-              options={[{ value: "all", label: "Todos os funis" }, ...pipelines.map((p) => ({ value: p.id, label: p.name }))]}
-              placeholder="Funil"
+            <MultiSearchableSelect
+              values={filterPipeline}
+              onChange={(v) => { setFilterPipeline(v); setFilterStage((st) => st.filter((id) => !v.length || v.includes(stages.find((x) => x.id === id)?.pipeline_id || ""))); }}
+              options={pipelines.map((p) => ({ value: p.id, label: p.name }))}
+              placeholder="Todos os funis"
               emptyMessage="Nenhum funil com esse nome."
               className="h-9 text-xs sm:text-sm"
             />
 
-            <SearchableSelect
-              value={filterStage}
-              onValueChange={setFilterStage}
-              options={[
-                { value: "all", label: "Todas as etapas" },
-                ...stages
-                  .filter((st) => filterPipeline === "all" || st.pipeline_id === filterPipeline)
-                  .map((st) => ({
-                    value: st.id,
-                    label: st.name,
-                    hint: filterPipeline === "all" ? pipelines.find((p) => p.id === st.pipeline_id)?.name : undefined,
-                  })),
-              ]}
-              placeholder="Etapa"
+            <MultiSearchableSelect
+              values={filterStage}
+              onChange={setFilterStage}
+              options={stages
+                .filter((st) => !filterPipeline.length || filterPipeline.includes(st.pipeline_id))
+                .map((st) => ({
+                  value: st.id,
+                  label: filterPipeline.length === 1 ? st.name : `${st.name} · ${pipelines.find((p) => p.id === st.pipeline_id)?.name || ""}`,
+                }))}
+              placeholder="Todas as etapas"
               emptyMessage="Nenhuma etapa com esse nome."
               className="h-9 text-xs sm:text-sm"
             />
 
             {isAdmin && (
-              <SearchableSelect
-                value={filterOwner}
-                onValueChange={setFilterOwner}
-                options={[{ value: "all", label: "Todos os responsáveis" }, ...staff.map((st) => ({ value: st.id, label: st.name }))]}
-                placeholder="Responsável"
+              <MultiSearchableSelect
+                values={filterOwner}
+                onChange={setFilterOwner}
+                options={staff.map((st) => ({ value: st.id, label: st.name }))}
+                placeholder="Todos os responsáveis"
                 emptyMessage="Ninguém com esse nome."
                 className="h-9 text-xs sm:text-sm"
               />
             )}
 
-            <SearchableSelect
-              value={filterUrgency}
-              onValueChange={setFilterUrgency}
+            <MultiSearchableSelect
+              values={filterUrgency}
+              onChange={setFilterUrgency}
               options={[
-                { value: "all", label: "Qualquer urgência" },
                 { value: "low", label: "Urgência baixa" },
                 { value: "medium", label: "Urgência média" },
                 { value: "high", label: "Urgência alta" },
@@ -636,26 +635,20 @@ export const CRMLeadsPage = () => {
               className="h-9 text-xs sm:text-sm"
             />
 
-            <SearchableSelect
-              value={filterList}
-              onValueChange={setFilterList}
-              options={[
-                { value: "all", label: "Qualquer lista" },
-                ...leadLists.map((l) => ({ value: l.id, label: l.name, hint: `${nf(l.lead_count)} leads` })),
-              ]}
-              placeholder="Lista"
+            <MultiSearchableSelect
+              values={filterList}
+              onChange={setFilterList}
+              options={leadLists.map((l) => ({ value: l.id, label: `${l.name} (${nf(l.lead_count)})` }))}
+              placeholder="Qualquer lista"
               emptyMessage="Nenhuma lista com esse nome."
               className="h-9 text-xs sm:text-sm"
             />
 
-            <SearchableSelect
-              value={filterDdd}
-              onValueChange={setFilterDdd}
-              options={[
-                { value: "all", label: "Qualquer DDD" },
-                ...dddOptions.map((d) => ({ value: d.ddd, label: dddLabel(d.ddd), hint: `${nf(d.n)} leads` })),
-              ]}
-              placeholder="DDD"
+            <MultiSearchableSelect
+              values={filterDdd}
+              onChange={setFilterDdd}
+              options={dddOptions.map((d) => ({ value: d.ddd, label: `${dddLabel(d.ddd)} (${nf(d.n)})` }))}
+              placeholder="Qualquer DDD"
               emptyMessage="Nenhum lead com esse DDD."
               className="h-9 text-xs sm:text-sm"
             />
