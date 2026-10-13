@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { ShoppingBag, ClipboardList, Instagram } from "lucide-react";
+import { ShoppingBag, ClipboardList, Instagram, MessageSquareHeart } from "lucide-react";
 import { clsx } from "clsx";
 import { useCart } from "@/lib/cart";
 import { useSettings } from "@/lib/useSettings";
@@ -34,6 +34,9 @@ export default function ClienteLayout() {
             </div>
           </Link>
           <nav className="flex items-center gap-1">
+            <NavLink to="/fale" className={({ isActive }) => clsx("rounded-full p-2 text-choco-700 hover:bg-rosa-100", isActive && "bg-rosa-100")} aria-label="Fale com a Yas" title="Sugestão ou reclamação">
+              <MessageSquareHeart size={22} />
+            </NavLink>
             <NavLink to="/meus-pedidos" className={({ isActive }) => clsx("rounded-full p-2 text-choco-700 hover:bg-rosa-100", isActive && "bg-rosa-100")} aria-label="Meus pedidos">
               <ClipboardList size={22} />
             </NavLink>
@@ -51,6 +54,7 @@ export default function ClienteLayout() {
         <div className="flex items-center justify-center gap-3">
           {settings?.whatsapp && <a className="underline" href={waLink(settings.whatsapp, "Oi Yasmim! Vi o cardápio da Yas Delícias e quero fazer um pedido.")} target="_blank" rel="noreferrer">WhatsApp</a>}
           {settings?.instagram && <a className="inline-flex items-center gap-1 underline" href={`https://instagram.com/${settings.instagram.replace("@", "")}`} target="_blank" rel="noreferrer"><Instagram size={12} />{settings.instagram}</a>}
+          <Link to="/fale" className="underline">Sugestões e reclamações</Link>
           <Link to="/admin" className="text-choco-300 hover:text-choco-500">Painel</Link>
         </div>
         <div className="mt-2 text-[10px] text-choco-300">feito com <b><span className="text-vinho-400">Yas</span><span className="text-choco-400">Food</span></b></div>

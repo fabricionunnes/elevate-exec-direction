@@ -7,6 +7,7 @@ import Cardapio from "@/pages/cliente/Cardapio";
 import Checkout from "@/pages/cliente/Checkout";
 import Pedido from "@/pages/cliente/Pedido";
 import MeusPedidos from "@/pages/cliente/MeusPedidos";
+import Fale from "@/pages/cliente/Fale";
 import AdminLayout from "@/pages/admin/Layout";
 import Login from "@/pages/admin/Login";
 import Recuperar from "@/pages/admin/Recuperar";
@@ -23,6 +24,7 @@ import Estoque from "@/pages/admin/Estoque";
 import Compras from "@/pages/admin/Compras";
 import Financeiro from "@/pages/admin/Financeiro";
 import Avaliacoes from "@/pages/admin/Avaliacoes";
+import Sugestoes from "@/pages/admin/Sugestoes";
 import Configuracoes from "@/pages/admin/Configuracoes";
 
 export default function App() {
@@ -37,6 +39,7 @@ export default function App() {
                 <Route path="/carrinho" element={<Checkout />} />
                 <Route path="/pedido/:token" element={<Pedido />} />
                 <Route path="/meus-pedidos" element={<MeusPedidos />} />
+                <Route path="/fale" element={<Fale />} />
               </Route>
               <Route path="/admin/login" element={<Login />} />
               <Route path="/admin/recuperar" element={<Recuperar />} />
@@ -54,6 +57,7 @@ export default function App() {
                 <Route path="compras" element={<Compras />} />
                 <Route path="financeiro" element={<Financeiro />} />
                 <Route path="avaliacoes" element={<Avaliacoes />} />
+                <Route path="sugestoes" element={<Sugestoes />} />
                 <Route path="configuracoes" element={<Configuracoes />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />

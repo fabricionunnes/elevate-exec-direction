@@ -320,3 +320,18 @@ export interface IngredientNeed {
 
 export interface PollOption { id: string; poll_id: string; label: string; sort_order: number }
 export interface PollResult { poll_id: string; option_id: string; label: string; sort_order: number; votes: number }
+
+/** Sugestão, reclamação ou elogio enviado pelo site ("Fale com a Yas"). */
+export interface Feedback {
+  id: string;
+  kind: "sugestao" | "reclamacao" | "elogio";
+  message: string;
+  name: string;
+  phone: string;
+  anonymous: boolean;
+  status: "novo" | "lido" | "resolvido";
+  notes: string;
+  created_at: string;
+  read_at: string | null;
+  resolved_at: string | null;
+}

@@ -4,7 +4,7 @@
 // avaliações e alertas. Atualiza sozinho quando um pedido muda.
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, Star, ShoppingCart } from "lucide-react";
+import { AlertTriangle, Star, ShoppingCart, MessageSquareHeart } from "lucide-react";
 import { clsx } from "clsx";
 import { Bar, CartesianGrid, ComposedChart, LabelList, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { format, subMonths } from "date-fns";
@@ -26,6 +26,8 @@ interface Dados {
   compras: number;
   reviews: Review[];
   reviewQueue: number;
+  feedbackNovos: number;
+  feedbackReclamacoes: number;
   windows: DeliveryWindow[];
   zones: DeliveryZone[];
 }
@@ -62,7 +64,7 @@ export default function Dashboard() {
   const load = useCallback(async () => {
     const today = todayISO();
     const from6 = format(subMonths(new Date(), 5), "yyyy-MM-01");
-    const [o, c, t, av, ing, comp, rev, queue, win, zon] = await Promise.all([
+    const [o, c, t, av, ing, comp, rev, queue, win, zon, fb] = await Promise.all([
       supabase.from("orders").select("*, order_items(product_name, qty, line_total)").gte("scheduled_date", from6).order("scheduled_date").order("created_at"),
       supabase.from("customers").select("*"),
       supabase.from("transactions").select("*").gte("occurred_on", from6),
@@ -73,7 +75,9 @@ export default function Dashboard() {
       supabase.rpc("pending_review_requests"),
       supabase.from("delivery_windows").select("id, start_time"),
       supabase.from("delivery_zones").select("id, lat, lng, sort_order"),
+      supabase.from("feedback").select("kind, status").neq("status", "resolvido"),
     ]);
+    const fbRows = (fb.data as { kind: string; status: string }[]) ?? [];
     setD({
       orders: (o.data as DashOrder[]) ?? [],
       customers: (c.data as Customer[]) ?? [],
@@ -83,6 +87,8 @@ export default function Dashboard() {
       compras: comp.count ?? 0,
       reviews: (rev.data as Review[]) ?? [],
       reviewQueue: ((queue.data as unknown[]) ?? []).length,
+      feedbackNovos: fbRows.filter((f) => f.status === "novo").length,
+      feedbackReclamacoes: fbRows.filter((f) => f.kind === "reclamacao").length,
       windows: (win.data as DeliveryWindow[]) ?? [],
       zones: (zon.data as DeliveryZone[]) ?? [],
     });
@@ -149,11 +155,13 @@ export default function Dashboard() {
       </div>
 
       {/* alertas */}
-      {(d.lowStock.length > 0 || r.caixa.aReceberMes > 0 || d.reviewQueue > 0 || d.compras > 0) && (
+      {(d.lowStock.length > 0 || r.caixa.aReceberMes > 0 || d.reviewQueue > 0 || d.compras > 0 || d.feedbackNovos > 0 || d.feedbackReclamacoes > 0) && (
         <div className="flex flex-wrap gap-2">
           {r.caixa.aReceberMes > 0 && <Link to="/admin/pedidos?pagamento=pendente" className="flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200"><AlertTriangle size={16} /> {brl(r.caixa.aReceberMes)} a receber no mês</Link>}
           {d.lowStock.length > 0 && <Link to="/admin/estoque" className="flex items-center gap-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-900 ring-1 ring-red-200"><AlertTriangle size={16} /> Estoque baixo: {d.lowStock.map((i) => `${i.name} ${Number(i.qty_on_hand).toLocaleString("pt-BR")} ${i.unit} (mín. ${Number(i.min_qty).toLocaleString("pt-BR")})`).join(" · ")}</Link>}
           {d.compras > 0 && <Link to="/admin/compras" className="flex items-center gap-2 rounded-xl bg-choco-50 px-3 py-2 text-sm text-choco-900 ring-1 ring-choco-200"><ShoppingCart size={16} /> {d.compras} item(ns) na lista de compras</Link>}
+          {d.feedbackReclamacoes > 0 && <Link to="/admin/sugestoes" className="flex items-center gap-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-900 ring-1 ring-red-200"><MessageSquareHeart size={16} /> {d.feedbackReclamacoes} reclamação(ões) aberta(s)</Link>}
+          {d.feedbackNovos > 0 && <Link to="/admin/sugestoes" className="flex items-center gap-2 rounded-xl bg-rosa-100 px-3 py-2 text-sm text-vinho-800 ring-1 ring-rosa-300"><MessageSquareHeart size={16} /> {d.feedbackNovos} mensagem(ns) nova(s) do site</Link>}
           {d.reviewQueue > 0 && <Link to="/admin/avaliacoes" className="flex items-center gap-2 rounded-xl bg-sky-50 px-3 py-2 text-sm text-sky-900 ring-1 ring-sky-200"><Star size={16} /> {d.reviewQueue} cliente(s) pra pedir avaliação</Link>}
         </div>
       )}
