@@ -624,7 +624,7 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
   const [date, setDate] = useState(initial?.scheduled_date ?? "");
   const [windows, setWindows] = useState<AvailableWindow[]>([]);
   const [windowId, setWindowId] = useState("");
-  const [payment, setPayment] = useState<PaymentMethod>(initial?.payment_method ?? "pix");
+  const [payment, setPayment] = useState<PaymentMethod>(initial?.payment_method ?? "pix");   // pedido manual: qualquer forma vale
   const [notes, setNotes] = useState(() => {
     if (!initial) return "";
     const extra = [initial.notes, initial.time_text && !initial.window_label ? `horário pedido: ${initial.time_text}` : null, initial.change_for ? `troco pra R$ ${initial.change_for}` : null].filter(Boolean);

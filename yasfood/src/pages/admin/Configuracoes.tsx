@@ -133,6 +133,25 @@ export default function Configuracoes() {
         </p>
       </Card>
 
+      <Card title="Formas de pagamento no site">
+        <p className="mb-2 text-sm text-choco-600">O cliente só vê as formas marcadas. Nos pedidos que você lança pelo painel, qualquer forma continua valendo.</p>
+        <div className="flex flex-wrap gap-4">
+          {(["pix", "dinheiro", "cartao"] as const).map((m) => {
+            const on = (form.payment_methods ?? []).includes(m);
+            return (
+              <label key={m} className="flex items-center gap-2 text-sm font-semibold">
+                <input type="checkbox" checked={on} onChange={(e) => {
+                  const cur = form.payment_methods ?? [];
+                  set("payment_methods", e.target.checked ? [...cur.filter((x) => x !== m), m] : cur.filter((x) => x !== m));
+                }} />
+                {m === "pix" ? "Pix" : m === "dinheiro" ? "Dinheiro" : "Cartão na entrega"}
+              </label>
+            );
+          })}
+        </div>
+        {(form.payment_methods ?? []).length === 0 && <p className="mt-2 text-xs font-semibold text-red-700">Marque pelo menos uma, senão ninguém consegue fechar pedido.</p>}
+      </Card>
+
       <Card title="Meta do mês">
         <div className="grid gap-3 sm:grid-cols-2">
           <Input label="Meta de faturamento do mês (R$)" type="number" min={0} step="50" value={form.monthly_goal ?? 0} onChange={(e) => set("monthly_goal", Number(e.target.value))} hint="O painel inicial mostra quanto já fez, quanto falta e em quanto fecha no ritmo atual" />

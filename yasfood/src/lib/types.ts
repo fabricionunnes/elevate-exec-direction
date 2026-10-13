@@ -11,6 +11,7 @@ export interface Settings {
   min_lead_days: number;
   pickup_enabled: boolean;
   pickup_address: string;
+  payment_methods: PaymentMethod[];   // formas ligadas no site (Configurações)
   is_open: boolean;
   closed_message: string;
   logo_url: string;
