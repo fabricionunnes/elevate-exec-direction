@@ -53,7 +53,6 @@ import { ThemeToggle } from "@/components/settings/ThemeToggle";
 
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
 import { GoalProjectionAlertDialog } from "@/components/onboarding-tasks/GoalProjectionAlertDialog";
-import { ClientSupportButton } from "@/components/client-portal/ClientSupportButton";
 import { SupportHistoryPanel } from "@/components/onboarding-tasks/SupportHistoryPanel";
 import { ClientMeetingsView } from "@/components/client-portal/ClientMeetingsView";
 import { ClientAssessmentsView } from "@/components/client-portal/ClientAssessmentsView";
@@ -1422,15 +1421,7 @@ const ClientOnboardingPage = () => {
         canManageUsers={hasPermission(CLIENT_MENU_KEYS.gestao_usuarios)}
       />
 
-      {/* Support Button */}
-      {currentUser && projectId && (
-        <ClientSupportButton
-          projectId={projectId}
-          userId={currentUser.id}
-          userName={currentUser.name}
-          companyName={company?.name || project?.product_name || ""}
-        />
-      )}
+      {/* Botão "pedir suporte" retirado do portal do cliente (Fabrício, 13/10/2026) */}
       {activeView === "trail" && progressPercent === 0 && (
         <motion.div
           initial={{ opacity: 0, y: 50 }}
