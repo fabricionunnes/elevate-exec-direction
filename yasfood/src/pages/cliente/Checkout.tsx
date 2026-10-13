@@ -48,6 +48,8 @@ export default function Checkout() {
 
   useEffect(() => {
     if (settings && !settings.pickup_enabled) setFulfillment("entrega");
+    // forma de pagamento desligada no site: cai pra primeira ligada
+    if (settings?.payment_methods?.length && !settings.payment_methods.includes(payment)) setPayment(settings.payment_methods[0]);
     if (!zoneId && zones.length) setZoneId(zones[0].id);
   }, [settings, zones, zoneId]);
 
@@ -241,7 +243,7 @@ export default function Checkout() {
       <section className="space-y-3 rounded-2xl border border-choco-100 bg-white p-4 shadow-card">
         <h2 className="font-bold">Pagamento</h2>
         <div className="grid grid-cols-3 gap-2">
-          {(["pix", "dinheiro", "cartao"] as PaymentMethod[]).map((m) => (
+          {(["pix", "dinheiro", "cartao"] as PaymentMethod[]).filter((m) => !settings?.payment_methods?.length || settings.payment_methods.includes(m)).map((m) => (
             <button key={m} onClick={() => setPayment(m)} className={clsx("rounded-2xl border p-3 text-sm font-semibold", payment === m ? "border-vinho-600 bg-vinho-50 ring-2 ring-vinho-300" : "border-choco-100")}>
               {m === "pix" ? "Pix" : m === "dinheiro" ? "Dinheiro" : "Cartão"}
             </button>
