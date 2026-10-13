@@ -241,6 +241,19 @@ export const CRMInboxPage = () => {
   const [allowedIgInstanceIds, setAllowedIgInstanceIds] = useState<string[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [loadingAccess, setLoadingAccess] = useState(true);
+  // O filtro de número fica guardado no navegador. Se o número guardado saiu do
+  // Atendimento (Dispositivos > Atendimento desligado) ou o usuário perdeu o acesso,
+  // a lista ficava vazia e o seletor mostrava "Todos os números", sem pista do motivo
+  // (aconteceu com o Fabrício em 13/10/2026). Filtro que não existe mais volta pra "todos".
+  useEffect(() => {
+    if (loadingAccess || instanceFilter === "all") return;
+    const [tipo, id] = instanceFilter.split(":");
+    const existe = tipo === "evo" ? allowedInstanceIds.includes(id)
+      : tipo === "off" ? allowedOfficialInstanceIds.includes(id)
+      : tipo === "ig" ? allowedIgInstanceIds.includes(id)
+      : false;
+    if (!existe) setInstanceFilter("all");
+  }, [loadingAccess, instanceFilter, allowedInstanceIds, allowedOfficialInstanceIds, allowedIgInstanceIds]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingConversation, setDeletingConversation] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
