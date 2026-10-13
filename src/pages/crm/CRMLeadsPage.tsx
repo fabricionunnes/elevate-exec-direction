@@ -16,8 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Plus, Search, Phone, Mail, ExternalLink, UserPlus, Tag, XCircle, Upload,
-  Copy, Loader2, AlertTriangle, Merge, ListChecks, ListPlus, ListMinus
-} from "lucide-react";
+  Copy, Loader2, AlertTriangle, Merge, ListChecks, ListPlus, ListMinus, Send } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -25,6 +24,7 @@ import { AddLeadDialog } from "@/components/crm/AddLeadDialog";
 import { ImportLeadsDialog } from "@/components/crm/ImportLeadsDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { MultiSearchableSelect } from "@/components/ui/multi-searchable-select";
+import { OfficialTemplateSendDialog } from "@/components/crm/OfficialTemplateSendDialog";
 import { dddLabel } from "@/lib/ddd";
 import { SavedViews } from "@/components/crm/views/SavedViews";
 import { LeadListsDialog } from "@/components/crm/lists/LeadListsDialog";
@@ -86,6 +86,10 @@ export const CRMLeadsPage = () => {
   const [importLeadsOpen, setImportLeadsOpen] = useState(false);
   const [listsOpen, setListsOpen] = useState(false);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  // Disparo de template pela API oficial a partir daqui (Fabrício, 13/10/2026): nos marcados ou em todo o filtro
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [templateIds, setTemplateIds] = useState<string[]>([]);
+  const [templateLoading, setTemplateLoading] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -354,6 +358,27 @@ export const CRMLeadsPage = () => {
   // ----------------------------------------------------------------- ações em massa
   // Sem seleção, o alvo é o filtro inteiro.
   const bulkOnFilter = selectedLeads.length === 0;
+  const TEMPLATE_MAX = 3000;
+  const openTemplateSend = async () => {
+    if (selectedLeads.length) { setTemplateIds(selectedLeads); setTemplateOpen(true); return; }
+    if (total > TEMPLATE_MAX) { toast.error(`O filtro tem ${nf(total)} leads. Pra disparar de uma vez o limite é ${nf(TEMPLATE_MAX)}: aperte mais o filtro.`); return; }
+    setTemplateLoading(true);
+    try {
+      // ids de todo o filtro, em páginas de 200 (limite da RPC)
+      const ids: string[] = [];
+      for (let off = 0; off < total; off += 200) {
+        const { data, error } = await (supabase as any).rpc("crm_leads_page_v2", { p_filters: rpcFilters, p_limit: 200, p_offset: off });
+        if (error) throw error;
+        const rows = (data || []) as { id: string }[];
+        if (!rows.length) break;
+        ids.push(...rows.map((r) => r.id));
+      }
+      if (!ids.length) { toast.error("Nenhum lead no filtro"); return; }
+      setTemplateIds(ids); setTemplateOpen(true);
+    } catch (e: any) {
+      toast.error("Erro ao reunir os leads do filtro: " + (e?.message || ""));
+    } finally { setTemplateLoading(false); }
+  };
   const bulkTarget = useCallback(() => ({
     p_filters: bulkOnFilter ? rpcFilters : {},
     p_ids: bulkOnFilter ? null : selectedLeads,
@@ -726,6 +751,10 @@ export const CRMLeadsPage = () => {
                 Mesclar duplicados
               </Button>
             )}
+            <Button variant="outline" size="sm" onClick={openTemplateSend} disabled={bulkLoading || templateLoading} title={bulkOnFilter ? "Dispara um template da API oficial pra todos os leads do filtro" : "Dispara um template da API oficial pros leads marcados"}>
+              <Send className="h-4 w-4 mr-2" />
+              {templateLoading ? "Reunindo leads..." : "Enviar template"}
+            </Button>
             <Button variant="outline" size="sm" className="text-destructive" onClick={() => openBulk("lost")} disabled={bulkLoading}>
               <XCircle className="h-4 w-4 mr-2" />
               Marcar Perdido
@@ -733,6 +762,13 @@ export const CRMLeadsPage = () => {
           </CardContent>
         </Card>
       )}
+
+      <OfficialTemplateSendDialog
+        open={templateOpen}
+        onOpenChange={setTemplateOpen}
+        leadIds={templateIds}
+        onSent={() => { setSelectedLeads([]); loadPage(); }}
+      />
 
       {/* Leads Table */}
       <Card>
