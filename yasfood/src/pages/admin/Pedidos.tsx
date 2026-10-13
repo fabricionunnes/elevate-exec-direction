@@ -735,7 +735,7 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
           {windows.length > 0 && (
             <Select label="Horário" value={windowId} onChange={(e) => setWindowId(e.target.value)}>
               <option value="">— sem horário fixo —</option>
-              {windows.map((w) => <option key={w.id} value={w.id}>{windowLabel(w)}{w.label ? ` · ${w.label}` : ""}{w.bookable ? "" : " (prazo passou, ok pra manual)"}</option>)}
+              {windows.map((w) => <option key={w.id} value={w.id}>{windowLabel(w)}{w.label ? ` · ${w.label}` : ""}{w.bookable ? "" : w.remaining === 0 ? " (cheio, ok pra manual)" : " (prazo passou, ok pra manual)"}</option>)}
             </Select>
           )}
         </div>

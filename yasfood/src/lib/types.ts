@@ -67,6 +67,7 @@ export interface DeliveryWindow {
   applies_to: "ambos" | "entrega" | "retirada";
   active: boolean;
   sort_order: number;
+  max_orders: number | null;   // limite de pedidos nesse horário por dia (null = sem limite)
 }
 export interface AvailableWindow {
   id: string;
@@ -77,6 +78,9 @@ export interface AvailableWindow {
   applies_to: string;
   bookable: boolean;
   closes_at: string;
+  max_orders: number | null;
+  booked: number;
+  remaining: number | null;
 }
 
 export interface CapacityDay {

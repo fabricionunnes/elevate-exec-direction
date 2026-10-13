@@ -168,7 +168,7 @@ export default function Configuracoes() {
         <div className="grid gap-3 sm:grid-cols-3">
           <Input label="Chave Pix" value={form.pix_key} onChange={(e) => set("pix_key", e.target.value)} />
           <Input label="Nome no Pix" value={form.pix_name} onChange={(e) => set("pix_name", e.target.value)} />
-          <Input label="Antecedência mínima (dias)" type="number" min={0} value={form.min_lead_days} onChange={(e) => set("min_lead_days", Number(e.target.value))} hint="1 = pedido hoje pra amanhã" />
+          <Input label="Antecedência mínima (dias)" type="number" min={0} value={form.min_lead_days} onChange={(e) => set("min_lead_days", Number(e.target.value))} hint="0 = aceita pedido pra hoje enquanto algum horário ainda estiver aberto (cada horário tem o seu 'pedir até X antes'). 1 = só a partir de amanhã." />
           <Input label="Capacidade padrão por dia" type="number" min={0} value={form.default_daily_capacity} onChange={(e) => set("default_daily_capacity", Number(e.target.value))} />
 
         </div>
