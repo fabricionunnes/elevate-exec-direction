@@ -92,6 +92,19 @@ export const CRMProspectPage = () => {
     return () => clearTimeout(t);
   }, [cnaeBusca, cnaes]);
 
+  // Cidades do estado escolhido (a lista vem do UNV Sales, dono da base)
+  useEffect(() => {
+    if (!uf || cidadeBusca.trim().length < 2) { setCidadeOpcoes([]); return; }
+    const t = setTimeout(async () => {
+      const { data } = await (supabase as any).functions.invoke("crm-prospect-search", { body: { action: "municipios", uf, texto: cidadeBusca.trim() } });
+      // as já escolhidas continuam na lista, marcadas: dá pra marcar várias de uma vez
+      setCidadeOpcoes(((data?.opcoes ?? []) as any[]).slice(0, 60));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [cidadeBusca, uf]);
+  // trocou de estado: as cidades do estado anterior não valem mais
+  useEffect(() => { setCidades([]); setCidadeBusca(""); setCidadeOpcoes([]); }, [uf]);
+
   // Quando a edge responde com erro (400, 500), o supabase-js só diz "non-2xx" e
   // esconde o motivo. O motivo de verdade vem no corpo, em error.context.
   const motivoDoErro = async (data: any, error: any, padrao: string) => {
@@ -121,6 +134,7 @@ export const CRMProspectPage = () => {
   };
 
   const executar = async () => {
+    if (cnaes.length === 0) { toast.error("Escolha o segmento (atividade da empresa) antes de buscar."); setConfirmar(false); return; }
     setExecutando(true);
     try {
       const { data, error } = await supabase.functions.invoke("crm-prospect-search", {
@@ -137,7 +151,11 @@ export const CRMProspectPage = () => {
 
   // 25/09/2026 (ideia do Fabrício): contar a base inteira é o que demora. A entrega não
   // depende mais disso, basta escolher o funil e a quantidade. Contar virou informação.
-  const podeExecutar = !!pipelineId && quantidade > 0;
+  // Segmento é obrigatório (Fabrício, 13/10/2026): sem atividade escolhida a busca traz empresa
+  // de todo nicho. Só digitar não filtra, tem que clicar em uma atividade da lista.
+  const semSegmento = cnaes.length === 0;
+  const digitouSemEscolher = semSegmento && cnaeBusca.trim().length > 0;
+  const podeExecutar = !semSegmento && !!pipelineId && quantidade > 0;
 
   return (
     <div className="p-4 sm:p-6 space-y-4 max-w-6xl mx-auto">
@@ -169,9 +187,22 @@ export const CRMProspectPage = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Segmento (atividade da empresa)</Label>
+              <Label>Segmento (atividade da empresa) <span className="text-destructive">*</span></Label>
               <Input placeholder="Digite pra buscar: contabilidade, clínica, restaurante…"
+                className={digitouSemEscolher ? "border-destructive focus-visible:ring-destructive" : undefined}
                 value={cnaeBusca} onChange={(e) => setCnaeBusca(e.target.value)} />
+              {digitouSemEscolher && (
+                <p className="text-xs text-destructive">
+                  {cnaeBusca.trim().length < 3
+                    ? "Digite pelo menos 3 letras e clique em uma atividade da lista."
+                    : cnaeOpcoes.length > 0
+                      ? "Só digitar não filtra: clique em uma atividade da lista abaixo pra ela entrar na busca."
+                      : "Nenhuma atividade com esse nome. Tente outra palavra (ex.: estética, cabeleireiro, clínica)."}
+                </p>
+              )}
+              {semSegmento && !digitouSemEscolher && (
+                <p className="text-xs text-muted-foreground">Obrigatório: escolha pelo menos uma atividade, senão vêm empresas de todos os nichos.</p>
+              )}
               {cnaeOpcoes.length > 0 && (
                 <div className="border rounded-md max-h-48 overflow-auto text-sm">
                   {cnaeOpcoes.map((c) => (
@@ -213,6 +244,44 @@ export const CRMProspectPage = () => {
                 <Label>Nome contém (opcional)</Label>
                 <Input placeholder="Ex.: clínica, advocacia" value={texto} onChange={(e) => setTexto(e.target.value)} />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Cidade {uf ? `(${uf})` : ""}</Label>
+              <Input placeholder={uf ? "Digite o nome da cidade" : "Escolha o estado primeiro"} disabled={!uf}
+                value={cidadeBusca} onChange={(e) => setCidadeBusca(e.target.value)} />
+              {cidadeOpcoes.length > 0 && (
+                <div className="border rounded-md text-sm">
+                  <div className="max-h-48 overflow-auto">
+                    {cidadeOpcoes.map((m) => {
+                      const marcada = !!cidades.find((x) => x.codigo === m.codigo);
+                      return (
+                        <label key={m.codigo} className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted cursor-pointer">
+                          <input type="checkbox" className="h-4 w-4 accent-primary" checked={marcada}
+                            onChange={() => setCidades(marcada ? cidades.filter((x) => x.codigo !== m.codigo) : [...cidades, m])} />
+                          {m.nome}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center justify-between border-t px-3 py-1.5 text-xs text-muted-foreground">
+                    <span>Marque quantas quiser. {cidades.length ? `${cidades.length} escolhida(s).` : ""}</span>
+                    <button type="button" className="font-medium text-foreground hover:underline"
+                      onClick={() => { setCidadeBusca(""); setCidadeOpcoes([]); }}>Pronto</button>
+                  </div>
+                </div>
+              )}
+              {cidades.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {cidades.map((m) => (
+                    <Badge key={m.codigo} variant="secondary" className="gap-1 pr-1">
+                      {m.nome}
+                      <button type="button" onClick={() => setCidades(cidades.filter((x) => x.codigo !== m.codigo))}><X className="h-3 w-3" /></button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              {!uf && <p className="text-xs text-muted-foreground">Sem cidade marcada, a busca vale pro estado inteiro (ou pro Brasil).</p>}
             </div>
 
             <div className="space-y-1.5">
@@ -326,6 +395,9 @@ export const CRMProspectPage = () => {
               />
             </div>
 
+            {semSegmento && (
+              <p className="text-xs text-destructive">Escolha o segmento (atividade da empresa) pra liberar a busca.</p>
+            )}
             <Button className="w-full" disabled={!podeExecutar || executando} onClick={() => setConfirmar(true)}>
               <Building2 className="h-4 w-4 mr-2" /> Buscar e enviar pro funil
             </Button>
