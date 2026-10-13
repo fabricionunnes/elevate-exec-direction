@@ -108,6 +108,21 @@ insert into public.app_secrets (key, value)
 select 'billing_agent_secret', encode(gen_random_bytes(24), 'hex')
 where not exists (select 1 from public.app_secrets where key = 'billing_agent_secret');
 
+-- app_secrets só é lida pelo postgres. A edge confere o segredo por esta RPC (mesmo padrão
+-- de crm_webhook_dispatch_auth), sem abrir a tabela pra service_role.
+create or replace function public.billing_agent_auth(p_secret text)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select coalesce(length(p_secret) >= 20 and exists (
+    select 1 from public.app_secrets where key = 'billing_agent_secret' and value = p_secret
+  ), false);
+$$;
+revoke all on function public.billing_agent_auth(text) from public, anon, authenticated;
+grant execute on function public.billing_agent_auth(text) to service_role;
+
 -- Mensagem recebida no número do financeiro chama o agente.
 create or replace function public.billing_agent_on_wa_inbound()
 returns trigger
