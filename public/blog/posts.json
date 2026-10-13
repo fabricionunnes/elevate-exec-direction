@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-13T10:01:06",
+ "gerado_em": "2026-10-13T15:01:03",
  "posts": [
+  {
+   "slug": "crm-sem-criterio-cobranca-vira-gaveta",
+   "url": "/blog/crm-sem-criterio-cobranca-vira-gaveta/",
+   "titulo": "CRM sem critério de cobrança vira gaveta de contato parado",
+   "resumo": "Ter o contato no sistema não garante conversão. O que converte é a rotina de cobrança estruturada em cima do que está cadastrado.",
+   "tags": [
+    "crm",
+    "conversão",
+    "rotina de cobrança",
+    "estrutura comercial",
+    "acompanhamento"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-13",
+   "ts": 2173
+  },
   {
    "slug": "meta-diaria-precisa-combinar-frequencia-venda",
    "url": "/blog/meta-diaria-precisa-combinar-frequencia-venda/",
