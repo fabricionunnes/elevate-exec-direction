@@ -3,7 +3,7 @@
 // (corredores), o volume cai com a distância; salas diferentes = silêncio.
 import { useEffect, useRef, useState } from 'react'
 import { useTeamStore, RemotePlayerState } from '../store/useTeamStore'
-import { roomAt, OfficeRoom } from '../lib/rooms'
+import { roomAt, OfficeRoom, stageAt } from '../lib/rooms'
 import { playerFloor } from '../store/useTeamStore'
 import { MeetingRecorder, saveRecording } from '../lib/recording'
 import { useStaffPermissions } from '@/hooks/useStaffPermissions'
@@ -116,6 +116,9 @@ function BackgroundPicker({
 
 const HEAR_NEAR = 2.5 // até aqui, volume 1 em área aberta
 const HEAR_FAR = 11 // a partir daqui, silêncio em área aberta
+// Auditório: cochicho na plateia — vizinho até 2.5 ouve, depois cai rápido
+const WHISPER_NEAR = 2.5
+const WHISPER_FAR = 4
 
 // Chave de "sala" pra área aberta/corredor (gravação e indicador por sala)
 const OFFICE_KEY = '__office__'
@@ -155,12 +158,22 @@ function spatialVolume(
   const myEffId = myRoom && myRoom.roomType !== 'lounge' ? myRoom.id : null
   const peerRoom = roomAt(peer.position[0], peer.position[2], rooms)
   const peerRoomId = peerRoom && peerRoom.roomType !== 'lounge' ? peerRoom.id : null
-  if (myEffId || peerRoomId) {
-    return myEffId === peerRoomId ? 1 : 0
-  }
   const dx = peer.position[0] - myPos[0]
   const dz = peer.position[2] - myPos[2]
   const d = Math.sqrt(dx * dx + dz * dz)
+  // AUDITÓRIO: quem está NO PALCO é ouvido por toda a sala; quem está na
+  // plateia só é ouvido pelo palco e pelo vizinho do lado (cochicho).
+  if (myRoom && myRoom.roomType === 'auditorium' && peerRoomId === myRoom.id) {
+    const peerOnStage = !!stageAt(peer.position[0], peer.position[2], rooms)
+    const meOnStage = !!stageAt(myPos[0], myPos[2], rooms)
+    if (peerOnStage || meOnStage) return 1
+    if (d <= WHISPER_NEAR) return 1
+    if (d >= WHISPER_FAR) return 0
+    return 1 - (d - WHISPER_NEAR) / (WHISPER_FAR - WHISPER_NEAR)
+  }
+  if (myEffId || peerRoomId) {
+    return myEffId === peerRoomId ? 1 : 0
+  }
   if (d <= HEAR_NEAR) return 1
   if (d >= HEAR_FAR) return 0
   return 1 - (d - HEAR_NEAR) / (HEAR_FAR - HEAR_NEAR)
@@ -805,6 +818,53 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [call.joined, me])
 
+  // AUDITÓRIO: entrou na plateia (sala auditório, fora do palco) → microfone
+  // fecha sozinho; subiu ao palco → abre. Só reage à MUDANÇA de zona.
+  const stageZoneRef = useRef<'none' | 'audience' | 'stage'>('none')
+  const autoMutedRef = useRef(false) // fui eu (plateia) que fechei o mic → devolvo ao sair
+  useEffect(() => {
+    if (!call.joined) return
+    const tick = () => {
+      const st = useTeamStore.getState()
+      const [px, , pz] = st.playerPosition
+      const room = roomAt(px, pz, st.roomsOnFloor)
+      const zone: 'none' | 'audience' | 'stage' =
+        room?.roomType === 'auditorium' ? (stageAt(px, pz, st.roomsOnFloor) ? 'stage' : 'audience') : 'none'
+      if (zone === stageZoneRef.current) return
+      const prev = stageZoneRef.current
+      stageZoneRef.current = zone
+      if (zone === 'audience' && st.call.micOn) {
+        callManager.setMic(false)
+        autoMutedRef.current = true
+        st.addToast('🔇 Plateia: microfone fechado. Levante a mão (✋) pra pedir a palavra', 'out')
+      } else if (zone === 'stage') {
+        callManager.setMic(true)
+        callManager.lowerHand()
+        autoMutedRef.current = false
+        if (prev === 'audience') st.addToast('🎤 Você está no palco: todo mundo te ouve', 'in')
+      } else if (zone === 'none' && prev === 'audience' && autoMutedRef.current) {
+        // Saiu do auditório: devolve o microfone que a plateia fechou
+        autoMutedRef.current = false
+        callManager.setMic(true)
+      }
+    }
+    tick()
+    const iv = setInterval(tick, 400)
+    return () => clearInterval(iv)
+  }, [call.joined, callManager])
+
+  // Palestrante me chamou (broadcast 'stage-call') → mic liga + toast
+  const stageCall = useTeamStore((s) => s.stageCall)
+  const setStageCall = useTeamStore((s) => s.setStageCall)
+  useEffect(() => {
+    if (!stageCall) return
+    callManager.setMic(true)
+    callManager.lowerHand()
+    void playRingSound()
+    useTeamStore.getState().addToast(`🎤 Você tem a palavra (chamado por ${stageCall.fromName})`, 'in')
+    setStageCall(null)
+  }, [stageCall, callManager, setStageCall])
+
   // Aceitar o chamado: anda automaticamente até quem chamou
   const goToCaller = () => {
     if (!incomingRing) return
@@ -1187,7 +1247,13 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
               border: '1px solid rgba(255,255,255,0.1)',
             }}
           >
-            {myRoomName ? `Voz na sala: ${myRoomName}` : 'Voz por proximidade (corredor)'}
+            {myRoomName
+              ? rooms.find((r) => r.id === myRoomId)?.roomType === 'auditorium'
+                ? stageZoneRef.current === 'stage'
+                  ? `No palco · ${myRoomName} (todos te ouvem)`
+                  : `Plateia · ${myRoomName} (cochicho com o vizinho)`
+                : `Voz na sala: ${myRoomName}`
+              : 'Voz por proximidade (corredor)'}
           </div>
         )}
 

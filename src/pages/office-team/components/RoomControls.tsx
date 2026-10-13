@@ -7,6 +7,7 @@ import { useTeamStore } from '../store/useTeamStore'
 import { createRoom, setRoomLock, setRoomFloor, isEffectivelyLocked, personalOwnerSeat, RoomType } from '../lib/rooms'
 import { FLOORS, floorShort } from '../lib/floors'
 import RecordingsPanel from './RecordingsPanel'
+import ClientInviteDialog from './ClientInviteDialog'
 import type { TeamRealtime } from '../lib/realtime'
 
 const ROOM_COLORS = ['#CC1B1B', '#1A4A8A', '#1B6B3A', '#6B2FA0', '#B85C00', '#C2185B', '#0D2B5E', '#006B6B']
@@ -44,6 +45,8 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
   const setAvatarEditorOpen = useTeamStore((s) => s.setAvatarEditorOpen)
   const { isMaster } = useStaffPermissions()
   const [inviteBusy, setInviteBusy] = useState(false)
+  // Sala de cliente: o convite vira um dialog (empresa/lead + horário = reserva)
+  const [clientInviteOpen, setClientInviteOpen] = useState(false)
 
   // Link público da sala de reunião atual (cola no Google Agenda → cai dentro)
   const copyMeetingLink = async () => {
@@ -57,9 +60,14 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
     }
   }
 
-  // Convite de visitante: gera token de 24h e copia o link
+  // Convite de visitante: gera token de 24h e copia o link.
+  // Numa sala de cliente abre o dialog de reserva (empresa + horário).
   const inviteGuest = async () => {
     if (!me || inviteBusy) return
+    if (currentRoom?.roomType === 'client') {
+      setClientInviteOpen(true)
+      return
+    }
     setInviteBusy(true)
     const { data, error } = await supabase
       .from('office_guest_invites' as never)
@@ -192,7 +200,7 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
           {currentRoom ? `${currentLocked ? '🔒 ' : ''}${currentRoom.name}` : 'Corredor'}
         </div>
         <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)', marginTop: '2px' }}>{floorShort(floor)}</div>
-        {currentRoom && currentRoom.roomType !== 'lounge' && (
+        {currentRoom && currentRoom.roomType !== 'lounge' && currentRoom.roomType !== 'auditorium' && (
           <button
             onClick={toggleLock}
             disabled={busy || (currentLocked && !canUnlock)}
@@ -267,7 +275,7 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
             🎞️ Gravações
           </button>
         )}
-        {(currentRoom?.roomType === 'meeting' || currentRoom?.roomType === 'sector') && (
+        {(currentRoom?.roomType === 'meeting' || currentRoom?.roomType === 'sector' || currentRoom?.roomType === 'client') && (
           <button
             onClick={() => void copyMeetingLink()}
             style={btnStyle}
@@ -280,12 +288,20 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
           <button
             onClick={() => void inviteGuest()}
             style={btnStyle}
-            title="Gera um link de 24h pra um convidado entrar direto na Reunião Principal"
+            title={
+              currentRoom?.roomType === 'client'
+                ? 'Convida um cliente pra esta sala: escolhe a empresa e o horário, reserva a sala e gera o link'
+                : 'Gera um link de 24h pra um convidado entrar direto na Reunião Principal'
+            }
           >
-            {inviteBusy ? '⏳ Gerando link...' : '✉️ Convidar visitante'}
+            {inviteBusy ? '⏳ Gerando link...' : currentRoom?.roomType === 'client' ? '✉️ Convidar cliente' : '✉️ Convidar visitante'}
           </button>
         )}
       </div>
+
+      {clientInviteOpen && currentRoom?.roomType === 'client' && (
+        <ClientInviteDialog room={currentRoom} onClose={() => setClientInviteOpen(false)} />
+      )}
 
       <RecordingsPanel open={recordingsOpen} onClose={() => setRecordingsOpen(false)} />
 

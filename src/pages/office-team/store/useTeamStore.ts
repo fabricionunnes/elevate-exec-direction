@@ -37,6 +37,20 @@ export interface TeamProfile {
   canHavePersonalRoom?: boolean
   /** visitante convidado (login anônimo): UI reduzida, sem dados de negócio */
   isGuest?: boolean
+  /** convite de sala de cliente (fase 2): sala onde o visitante entra e o
+   * token do painel do cliente que a TV da sala mostra pra ele */
+  invite?: { roomId: string | null; company: string | null; dashboardToken: string | null; projectId: string | null }
+}
+
+/** Reserva de sala de cliente (convite com scheduled_at hoje). */
+export interface ClientReservation {
+  roomId: string
+  company: string
+  scheduledAt: string
+  projectId: string | null
+  /** token público do painel do cliente (project_custom_dashboards) */
+  dashboardToken: string | null
+  leadId: string | null
 }
 
 export interface RemotePlayerState extends TeamProfile {
@@ -209,6 +223,10 @@ interface TeamState {
   inMeetingIds: string[]
   /** agente IA com painel de chat aberto (key: ceo, financeiro, crm...) */
   agentChatFor: string | null
+  /** auditório: o palestrante me chamou pra falar (broadcast 'stage-call') */
+  stageCall: { fromName: string; ts: number } | null
+  /** reservas das salas de cliente de HOJE (convites com scheduled_at hoje) */
+  clientReservations: ClientReservation[]
 
   call: CallState
 
@@ -266,6 +284,8 @@ interface TeamState {
   setSaleEvent: (s: { lead: string; value: number; by: string; ts: number } | null) => void
   setInMeetingIds: (ids: string[]) => void
   setAgentChatFor: (key: string | null) => void
+  setStageCall: (c: { fromName: string; ts: number } | null) => void
+  setClientReservations: (list: ClientReservation[]) => void
 
   setCall: (patch: Partial<CallState>) => void
   setRemoteStream: (id: string, stream: MediaStream | null) => void
@@ -317,6 +337,8 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   saleEvent: null,
   inMeetingIds: [],
   agentChatFor: null,
+  stageCall: null,
+  clientReservations: [],
 
   call: {
     joined: false,
@@ -505,6 +527,8 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   setSaleEvent: (s) => set({ saleEvent: s }),
   setInMeetingIds: (ids) => set({ inMeetingIds: ids }),
   setAgentChatFor: (key) => set({ agentChatFor: key }),
+  setStageCall: (c) => set({ stageCall: c }),
+  setClientReservations: (list) => set({ clientReservations: list }),
 
   setCall: (patch) => set((prev) => ({ call: { ...prev.call, ...patch } })),
 

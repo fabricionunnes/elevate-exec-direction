@@ -30,12 +30,19 @@ export default function TeamChatPanel({ realtime }: { realtime: TeamRealtime }) 
     return () => window.removeEventListener('keydown', onKey)
   }, [chatOpen, toggleChat])
 
+  // Chat do auditório = o chat global com prefixo [Auditório] nas mensagens
+  // enviadas de dentro dele (decisão da fase 2: um canal só, sem fork do
+  // histórico; o título do painel muda enquanto você está lá dentro).
+  const myRoomId = useTeamStore((s) => s.myRoomId)
+  const roomsHere = useTeamStore((s) => s.roomsOnFloor)
+  const inAuditorium = !!myRoomId && roomsHere.find((r) => r.id === myRoomId)?.roomType === 'auditorium'
+
   const sendMessage = useCallback(() => {
     const text = input.trim()
     if (!text) return
     setInput('')
-    void realtime.sendChat(text)
-  }, [input, realtime])
+    void realtime.sendChat(inAuditorium ? `[Auditório] ${text}` : text)
+  }, [input, realtime, inAuditorium])
 
   if (!chatOpen) return null
 
@@ -77,9 +84,11 @@ export default function TeamChatPanel({ realtime }: { realtime: TeamRealtime }) 
       >
         <div style={{ fontSize: '22px' }}>💬</div>
         <div style={{ flex: 1 }}>
-          <div style={{ color: '#fff', fontWeight: 700, fontSize: '15px' }}>Chat do Escritório</div>
+          <div style={{ color: '#fff', fontWeight: 700, fontSize: '15px' }}>
+            {inAuditorium ? 'Chat do auditório' : 'Chat do Escritório'}
+          </div>
           <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', marginTop: '2px' }}>
-            Visível para todos que estão online
+            {inAuditorium ? 'Suas mensagens saem com [Auditório] e todos online veem' : 'Visível para todos que estão online'}
           </div>
         </div>
         <button

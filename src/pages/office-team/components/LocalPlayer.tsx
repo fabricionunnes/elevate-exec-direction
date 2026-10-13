@@ -7,7 +7,7 @@ import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import { useKeyboard } from '../../office/hooks/useKeyboard'
 import HumanBody from './HumanBody'
-import { BUILDING, buildCollisionWalls, checkWallCollision, roomAt, setRoomLock, isEffectivelyLocked, personalOwnerSeat, furnitureColliders, floorBounds } from '../lib/rooms'
+import { BUILDING, buildCollisionWalls, checkWallCollision, roomAt, setRoomLock, isEffectivelyLocked, personalOwnerSeat, furnitureColliders, floorBounds, stageAt, STAGE_H } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
 import { useTeamStore, playerFloor } from '../store/useTeamStore'
 import { travelToFloor } from '../lib/floorTravel'
@@ -163,7 +163,7 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       const meId = state.me?.id
       if (!meId || !state.myRoomId) return
       const room = state.roomsOnFloor.find((r) => r.id === state.myRoomId)
-      if (!room || room.roomType === 'lounge') return
+      if (!room || room.roomType === 'lounge' || room.roomType === 'auditorium') return
       const onlineIds = new Set([meId, ...Object.keys(state.remotePlayers)])
       const locked = isEffectivelyLocked(room, onlineIds)
       if (locked && room.lockedBy !== meId) return // trancada por outra pessoa
@@ -430,6 +430,10 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       }
     }
 
+    // Palco do auditório: o boneco sobe o degrau (altura suavizada)
+    const stageY = stageAt(pos.x, pos.z, useTeamStore.getState().roomsOnFloor) ? STAGE_H : 0
+    pos.y += (stageY - pos.y) * Math.min(1, 10 * delta)
+
     // Câmera com lag + zoom
     const camDist = cameraDistRef.current
     const camHeight = camDist * 0.88
@@ -438,7 +442,7 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
     cameraTargetRef.current.x += (idealCamX - cameraTargetRef.current.x) * CAMERA_LAG
     cameraTargetRef.current.z += (idealCamZ - cameraTargetRef.current.z) * CAMERA_LAG
     camera.position.set(cameraTargetRef.current.x, camHeight, cameraTargetRef.current.z)
-    camera.lookAt(pos.x, 0.5, pos.z)
+    camera.lookAt(pos.x, 0.5 + pos.y, pos.z)
   })
 
   if (!me) return null

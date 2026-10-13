@@ -320,6 +320,13 @@ export class TeamRealtime {
         useTeamStore.getState().setAgentSummon(s)
         useTeamStore.getState().addToast(`👋 ${s.byName} chamou um agente pro café`, 'in')
       })
+      .on('broadcast', { event: 'stage-call' }, ({ payload }) => {
+        // Auditório: o palestrante (no palco) chamou quem levantou a mão.
+        // O CallDock liga o microfone e mostra "Você tem a palavra".
+        const c = payload as { to: string; fromName: string }
+        if (!c || c.to !== this.me.id) return
+        useTeamStore.getState().setStageCall({ fromName: c.fromName, ts: Date.now() })
+      })
       .on('broadcast', { event: 'focus-reply' }, ({ payload }) => {
         const r = payload as { to: string; name: string }
         if (!r || r.to !== this.me.id) return
@@ -416,6 +423,15 @@ export class TeamRealtime {
         z: Number(z.toFixed(2)),
         floor: st.floor,
       },
+    })
+  }
+
+  /** Auditório: palestrante dá a palavra a alguém da plateia (liga o mic dele). */
+  sendStageCall(toUserId: string) {
+    void this.channel?.send({
+      type: 'broadcast',
+      event: 'stage-call',
+      payload: { to: toUserId, fromName: this.me.name },
     })
   }
 

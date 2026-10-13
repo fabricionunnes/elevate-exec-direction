@@ -4,7 +4,7 @@
 import { supabase } from '@/integrations/supabase/client'
 import { ELEVATOR, ELEVATOR_ZONE, ELEVATOR_FRONT, RECEPTION_DESK } from './floors'
 
-export type RoomType = 'sector' | 'meeting' | 'personal' | 'lounge'
+export type RoomType = 'sector' | 'meeting' | 'personal' | 'lounge' | 'auditorium' | 'client'
 
 export interface OfficeRoom {
   id: string
@@ -116,6 +116,10 @@ const SLOTS: Record<RoomType, { x: number; z: number; w: number; d: number; door
     { x: 14, z: 7, w: 10, d: 9, door: 'N' },
     { x: 24, z: 7, w: 10, d: 9, door: 'N' },
   ],
+  // Auditório e salas de cliente têm lugar fixo no térreo (criadas por SQL,
+  // fase 2) — não entram na criação pelo painel.
+  auditorium: [],
+  client: [],
   // Ala privada: duas fileiras de 8 salas com vão central de passagem
   // (x -5.1..5.1 livre) e corredor entre fileiras em z 20.4–22
   personal: Array.from({ length: 16 }, (_, i) => {
@@ -242,7 +246,7 @@ export function roomAt(x: number, z: number, rooms: OfficeRoom[]): OfficeRoom | 
  * (evita sala trancada "órfã" quando a pessoa cai/sai).
  */
 export function isEffectivelyLocked(room: OfficeRoom, onlineUserIds: Set<string>): boolean {
-  if (room.roomType === 'lounge') return false // área aberta não tranca
+  if (room.roomType === 'lounge' || room.roomType === 'auditorium') return false // área aberta/auditório não tranca
   return room.isLocked && !!room.lockedBy && onlineUserIds.has(room.lockedBy)
 }
 
@@ -306,8 +310,11 @@ export function findFreeSlot(
   rooms: OfficeRoom[],
   floor = 0
 ): { x: number; z: number; w: number; d: number; door: 'N' | 'S' } | null {
+  // Térreo: a fileira norte virou auditório + salas de cliente (fase 2);
+  // sala de setor só nos andares de cima.
+  if (type === 'sector' && floor === 0) return null
   const sameFloor = roomsOnFloor(rooms, floor)
-  for (const slot of SLOTS[type]) {
+  for (const slot of SLOTS[type] ?? []) {
     const overlapping = sameFloor.some(
       (r) =>
         Math.abs(r.x - slot.x) < (r.width + slot.w) / 2 - 0.1 &&
@@ -436,9 +443,16 @@ export function furnitureColliders(rooms: OfficeRoom[]): Wall[] {
       // Collider justo: precisa sobrar passagem entre a mesa e a parede
       // do fundo (onde fica a cadeira do dono)
       box(r.x, deskZ, 0.8, 0.28) // mesa
-    } else if (r.roomType === 'meeting') {
+    } else if (r.roomType === 'meeting' || r.roomType === 'client') {
       const len = Math.max(3, r.width - 4.5)
       box(r.x, r.z, len / 2, 0.8) // mesa de reunião
+    } else if (r.roomType === 'auditorium') {
+      // Palco NÃO colide (degrau baixo, o boneco sobe). Púlpito e cada
+      // poltrona da plateia colidem (o assento fica dentro do collider: o
+      // LocalPlayer ignora mobília na aproximação final da cadeira).
+      const a = auditoriumLayout(r)
+      box(a.podium.x, a.podium.z, 0.5, 0.32)
+      for (const seat of a.seats) box(seat.x, seat.z, 0.3, 0.3)
     } else if (r.roomType === 'sector') {
       // Ilhas de mesas duplas (as cadeiras ficam fora do collider)
       for (const isl of sectorIslands(r)) box(isl.x, isl.z, 0.85, 0.45)
@@ -461,6 +475,92 @@ export function furnitureColliders(rooms: OfficeRoom[]): Wall[] {
     }
   }
   return out
+}
+
+// ── Auditório ────────────────────────────────────────────────────────────
+/** Altura do palco (o boneco "sobe" visualmente quando está na zona). */
+export const STAGE_H = 0.32
+
+export interface AuditoriumLayout {
+  /** zona do palco (AABB): quem está aqui é palestrante */
+  stage: Wall
+  /** púlpito (o palestrante fica atrás, olhando pro sul) */
+  podium: { x: number; z: number }
+  /** telão no fundo do palco */
+  screen: { x: number; y: number; z: number; w: number; h: number }
+  /** poltronas da plateia em arco, viradas pro palco (rot = direção do encosto) */
+  seats: { x: number; z: number; rot: number; row: number }[]
+  /** onde "Subir ao palco" e "Voltar pra plateia" teleportam */
+  stageSpot: { x: number; z: number }
+  audienceSpot: { x: number; z: number }
+  /** corredor central (faixa de carpete) */
+  aisle: { x: number; zMin: number; zMax: number; w: number }
+}
+
+/**
+ * Layout do auditório a partir da sala (porta S): palco no fundo (norte)
+ * ocupando ~4 de profundidade, 4 fileiras de poltronas em arco de frente
+ * pro palco com corredor central de 2.4 e as laterais livres. Mesma fonte
+ * pro ModernOffice desenhar, pro collider e pras regras de áudio.
+ */
+export function auditoriumLayout(room: OfficeRoom): AuditoriumLayout {
+  const backZ = room.z - room.depth / 2 // parede norte
+  const frontZ = room.z + room.depth / 2 // parede sul (porta)
+  const stageDepth = 4
+  const stageW = Math.min(room.width - 6, 20)
+  const stage: Wall = {
+    minX: room.x - stageW / 2,
+    maxX: room.x + stageW / 2,
+    minZ: backZ + 0.3,
+    maxZ: backZ + 0.3 + stageDepth,
+  }
+  const podium = { x: room.x - 3.2, z: stage.maxZ - 1.1 }
+  const screen = { x: room.x, y: 2.15, z: backZ + 0.34, w: Math.min(8.5, stageW * 0.42), h: 3.3 }
+  const seats: AuditoriumLayout['seats'] = []
+  const rows = 4
+  const pitch = 1.75
+  const firstRowZ = stage.maxZ + 2.1
+  const arcCenterZ = backZ - 12.5 // centro do arco bem atrás do palco (curva suave)
+  const aisleHalf = 1.2
+  const seatPitch = 0.95
+  for (let i = 0; i < rows; i++) {
+    const rowZ = firstRowZ + i * pitch
+    if (rowZ > frontZ - 2.2) break
+    const R = rowZ - arcCenterZ
+    const half = Math.min(room.width / 2 - 2.2, 5.5 + i * 1.4)
+    // Simétrico: do corredor central pra fora, dos dois lados
+    const offsets: number[] = []
+    for (let k = aisleHalf + 0.5; k <= half + 1e-6; k += seatPitch) offsets.push(-k, k)
+    offsets.sort((p, q) => p - q)
+    for (const dx of offsets) {
+      const sag = R - Math.sqrt(Math.max(0, R * R - dx * dx))
+      const x = room.x + dx
+      const z = rowZ + sag
+      // encosto aponta pra fora do arco (o sentado olha pro centro/palco)
+      const rot = Math.atan2(dx, z - arcCenterZ)
+      seats.push({ x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, rot, row: i })
+    }
+  }
+  const lastRowZ = seats.length ? Math.max(...seats.map((s) => s.z)) : firstRowZ
+  return {
+    stage,
+    podium,
+    screen,
+    seats,
+    stageSpot: { x: podium.x + 1.4, z: stage.maxZ - 1.2 },
+    audienceSpot: { x: room.x, z: Math.min(frontZ - 1.6, lastRowZ + 1.4) },
+    aisle: { x: room.x, zMin: stage.maxZ, zMax: frontZ - 0.4, w: aisleHalf * 2 },
+  }
+}
+
+/** O ponto está na zona do palco de ALGUM auditório do andar? */
+export function stageAt(x: number, z: number, rooms: OfficeRoom[]): OfficeRoom | null {
+  for (const r of rooms) {
+    if (r.roomType !== 'auditorium') continue
+    const s = auditoriumLayout(r).stage
+    if (x > s.minX && x < s.maxX && z > s.minZ && z < s.maxZ) return r
+  }
+  return null
 }
 
 /** Assento do dono na sala pessoal: cadeira atrás da mesa, olhando pra porta. */

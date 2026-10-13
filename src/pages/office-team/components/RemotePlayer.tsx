@@ -4,7 +4,8 @@ import { useFrame } from '@react-three/fiber'
 import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import HumanBody from './HumanBody'
-import type { RemotePlayerState } from '../store/useTeamStore'
+import { useTeamStore, type RemotePlayerState } from '../store/useTeamStore'
+import { stageAt, STAGE_H } from '../lib/rooms'
 
 const LERP_SPEED = 10
 
@@ -37,6 +38,10 @@ export default function RemotePlayer({ player }: { player: RemotePlayerState }) 
       g.position.x += dx * t
       g.position.z += dz * t
     }
+
+    // Palco do auditório: sobe o degrau
+    const stageY = stageAt(g.position.x, g.position.z, useTeamStore.getState().roomsOnFloor) ? STAGE_H : 0
+    g.position.y += (stageY - g.position.y) * Math.min(1, 10 * delta)
 
     let angleDiff = player.rotation - g.rotation.y
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2

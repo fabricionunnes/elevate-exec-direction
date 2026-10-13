@@ -30,9 +30,11 @@ import ScreenShareTvs from './components/ScreenShareTv'
 import TourGuide from './components/TourGuide'
 import CleaningLady from './components/CleaningLady'
 import ElevatorPanel from './components/ElevatorPanel'
+import AuditoriumPanel from './components/AuditoriumPanel'
 import { findMarceloRoom } from './components/MarceloNpc'
 import { FLOOR_FADE_MS } from './lib/floorTravel'
 import { fetchInMeetingNow, fetchAgendaToday, AgendaItem } from './lib/agenda'
+import { fetchClientReservationsToday } from './lib/clientRooms'
 import { playMeetingPing } from './lib/sfx'
 import {
   useTeamStore,
@@ -187,15 +189,41 @@ async function loadProfile(): Promise<TeamProfile | null> {
     const meta = user.user_metadata as Record<string, unknown> | null
     const gname = ((meta?.guest_name as string) || 'Visitante').slice(0, 32)
     const colors = avatarColorsFor(user.id)
+    // Convite de sala de cliente (fase 2): o RPC devolve a sala, a empresa e
+    // o token do painel do cliente → entra direto na sala, crachá "Nome · Empresa"
+    const inviteToken = (meta?.invite_token as string | undefined) ?? null
+    let invite: TeamProfile['invite'] = undefined
+    let spawn: [number, number, number] = [-21, 8.6, 0] // Reunião Principal
+    if (inviteToken) {
+      const { data } = await supabase.rpc('office_invite_info' as never, { p_token: inviteToken } as never)
+      const info = data as {
+        room_id?: string | null
+        guest_company?: string | null
+        dashboard_token?: string | null
+        project_id?: string | null
+        x?: number | null
+        z?: number | null
+      } | null
+      if (info && info.room_id) {
+        invite = {
+          roomId: info.room_id,
+          company: info.guest_company ?? null,
+          dashboardToken: info.dashboard_token ?? null,
+          projectId: info.project_id ?? null,
+        }
+        if (typeof info.x === 'number' && typeof info.z === 'number') spawn = [Number(info.x), Number(info.z) + 1.6, 0]
+      }
+    }
     return {
       id: user.id,
-      name: gname,
+      name: invite?.company ? `${gname} · ${invite.company}`.slice(0, 48) : gname,
       role: 'Visitante',
       ...colors,
       avatar: { ...DEFAULT_AVATAR, shirt: colors.color, pants: colors.pantsColor },
-      spawn: [-21, 8.6, 0], // Reunião Principal
+      spawn,
       canHavePersonalRoom: false,
       isGuest: true,
+      invite,
     }
   }
 
@@ -489,7 +517,11 @@ export default function TeamOfficePage() {
     if (!me || rooms.length === 0 || roomDeepLinkDone.current) return
     const hashSearch = window.location.hash.split('?')[1] ?? ''
     const roomId =
-      new URLSearchParams(hashSearch).get('room') ?? new URLSearchParams(window.location.search).get('room')
+      new URLSearchParams(hashSearch).get('room') ??
+      new URLSearchParams(window.location.search).get('room') ??
+      // Visitante com convite de sala de cliente: a sala vem do convite
+      me.invite?.roomId ??
+      null
     if (!roomId) return
     const room = rooms.find((r) => r.id === roomId)
     if (!room) return
@@ -498,8 +530,10 @@ export default function TeamOfficePage() {
     st.setPendingSeat(null)
     // Centro da sala de reunião; se a sala é de outro andar, o LocalPlayer
     // troca de andar antes (visitante entra direto no andar do convite)
-    st.setPendingTeleport({ x: room.x, z: room.z, floor: room.floor })
-    st.setMeetingViewRequested(true) // CallDock abre o modo reunião ao conectar
+    st.setPendingTeleport({ x: room.x, z: room.z + (room.roomType === 'client' ? 1.9 : 0), floor: room.floor })
+    // Sala de cliente: fica no 3D (a TV mostra o painel); o modo reunião
+    // continua a um clique no dock. Demais deep-links abrem o modo reunião.
+    if (room.roomType !== 'client') st.setMeetingViewRequested(true) // CallDock abre o modo reunião ao conectar
   }, [me, rooms])
 
   // Auto-cura de trava presa: se EU sou quem trancou uma sala mas não estou
@@ -555,10 +589,16 @@ export default function TeamOfficePage() {
     if (!me) return
     let cancelled = false
     const poll = async () => {
-      const [inMeeting, agenda] = await Promise.all([fetchInMeetingNow(), fetchAgendaToday()])
+      const [inMeeting, agenda, reservations] = await Promise.all([
+        fetchInMeetingNow(),
+        fetchAgendaToday(),
+        // Reservas das salas de cliente (RLS do staff; visitante não lê)
+        me.isGuest ? Promise.resolve([]) : fetchClientReservationsToday(),
+      ])
       if (cancelled) return
       const st = useTeamStore.getState()
       st.setInMeetingIds(inMeeting)
+      st.setClientReservations(reservations)
       setAgendaToday(agenda)
 
       // Reunião MINHA começando agora (janela de ±90s) → ping + toast
@@ -656,6 +696,7 @@ export default function TeamOfficePage() {
       {!me.isGuest && <DeskNotes realtime={managers.realtime} />}
       {floor === 0 && <TourGuide />}
       {!me.isGuest && <ElevatorPanel />}
+      <AuditoriumPanel realtime={managers.realtime} />
       <FloorFade />
     </div>
   )

@@ -3,10 +3,13 @@
 // Financeiro = tela apagada de propósito (dados sigilosos).
 // + Placa de agenda do dia na parede da Reunião Principal.
 import { useEffect, useMemo, useState } from 'react'
+import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { useTeamStore } from '../store/useTeamStore'
+import type { OfficeRoom } from '../lib/rooms'
 import { fetchTvComercial, fetchTvProduto, formatBRL, TvComercial, TvProduto } from '../lib/tvdata'
 import type { AgendaItem } from '../lib/agenda'
+import { currentReservation, fetchClientPanelSummary, hourLabel, type ClientPanelSummary } from '../lib/clientRooms'
 
 const REFRESH_MS = 5 * 60_000
 const NAVY = '#0D2B5E'
@@ -231,6 +234,140 @@ function drawTermometro(ctx: CanvasRenderingContext2D, w: number, h: number, d: 
   }
 }
 
+/** TV da sala de cliente: resumo do painel público do cliente (reserva do
+ * dia com project_id) ou "Sala disponível" + próxima reserva. */
+function drawClientTv(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  roomName: string,
+  res: { company: string; scheduledAt: string | null } | null,
+  panel: ClientPanelSummary | null | 'loading'
+) {
+  if (!res) {
+    drawHeader(ctx, w, h, roomName.toUpperCase())
+    ctx.fillStyle = '#4CAF50'
+    ctx.font = '800 40px -apple-system, "Segoe UI", sans-serif'
+    ctx.fillText('Sala disponível', 22, 150)
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'
+    ctx.font = '600 19px -apple-system, "Segoe UI", sans-serif'
+    ctx.fillText('Sem reserva pra hoje. Reserve pelo convite de visitante.', 22, 192)
+    return
+  }
+  const when = res.scheduledAt ? ` · ${hourLabel(res.scheduledAt)}` : ''
+  drawHeader(ctx, w, h, `${res.company.toUpperCase()}${when}`)
+  if (panel === 'loading') {
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'
+    ctx.font = '600 22px sans-serif'
+    ctx.fillText('Carregando painel do cliente...', 22, 140)
+    return
+  }
+  if (!panel) {
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '800 34px -apple-system, "Segoe UI", sans-serif'
+    ctx.fillText(`Reunião com ${res.company}`, 22, 140)
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'
+    ctx.font = '600 18px -apple-system, "Segoe UI", sans-serif'
+    ctx.fillText('Este cliente ainda não tem painel público vinculado.', 22, 180)
+    return
+  }
+  const colW = (w - 66) / 2
+  const pres = panel.presenca == null ? '—' : `${Math.round(panel.presenca * 100)}%`
+  drawKpi(ctx, 22, 78, colW, `Vendas (${panel.mesLabel})`, String(panel.vendas), '#4CAF50')
+  drawKpi(ctx, 44 + colW, 78, colW, 'Receita', panel.receita == null ? '—' : formatBRL(panel.receita), '#FFD700')
+  drawKpi(ctx, 22, 190, colW, 'Reuniões realizadas', `${panel.realizadas}/${panel.agendadas}`, '#81D4FA')
+  drawKpi(ctx, 44 + colW, 190, colW, 'Presença · conversão', `${pres} · ${panel.conv == null ? '—' : Math.round(panel.conv * 100) + '%'}`, '#CE93D8')
+  // Pendências (alertas do painel)
+  let y = 330
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'
+  ctx.font = '600 15px -apple-system, "Segoe UI", sans-serif'
+  ctx.fillText(panel.pendencias.length ? 'PEDE DECISÃO' : 'NADA FORA DO PADRÃO', 22, y)
+  y += 24
+  ctx.fillStyle = '#ffffff'
+  ctx.font = '600 16px -apple-system, "Segoe UI", sans-serif'
+  for (const t of panel.pendencias) {
+    ctx.fillText(`• ${t.slice(0, 54)}`, 22, y)
+    y += 22
+  }
+}
+
+/** TV da sala de cliente + botão flutuante "Abrir painel completo". */
+function ClientTv({ room, isGuest }: { room: OfficeRoom; isGuest: boolean }) {
+  const reservations = useTeamStore((s) => s.clientReservations)
+  const invite = useTeamStore((s) => s.me?.invite)
+  const res = isGuest
+    ? invite?.roomId === room.id
+      ? { company: invite.company ?? 'Visitante', scheduledAt: null, token: invite.dashboardToken }
+      : null
+    : (() => {
+        const r = currentReservation(room.id, reservations)
+        return r ? { company: r.company, scheduledAt: r.scheduledAt, token: r.dashboardToken } : null
+      })()
+  const token = res?.token ?? null
+  const [panel, setPanel] = useState<ClientPanelSummary | null | 'loading'>(null)
+  useEffect(() => {
+    if (!token) {
+      setPanel(null)
+      return
+    }
+    let cancelled = false
+    setPanel('loading')
+    const load = async () => {
+      const p = await fetchClientPanelSummary(token)
+      if (!cancelled) setPanel(p)
+    }
+    void load()
+    const iv = setInterval(load, REFRESH_MS)
+    return () => {
+      cancelled = true
+      clearInterval(iv)
+    }
+  }, [token])
+
+  const tex = useMemo(() => {
+    const { canvas, ctx, w, h } = makeCanvas(660, 430)
+    drawClientTv(ctx, w, h, room.name, res ? { company: res.company, scheduledAt: res.scheduledAt } : null, token ? panel : null)
+    const t = new THREE.CanvasTexture(canvas)
+    t.colorSpace = THREE.SRGBColorSpace
+    return t
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room.name, res?.company, res?.scheduledAt, token, panel])
+
+  const z = room.z - room.depth / 2 + 0.36
+  const h = TV_W * (430 / 660)
+  const openPanel = () => {
+    if (!token) return
+    window.open(`${window.location.origin}/#/painel/${token}`, '_blank', 'noopener')
+  }
+  return (
+    <group>
+      <BigTv x={room.x} y={TV_Y + 0.1} z={z} w={TV_W} h={h} texture={tex} />
+      {token && panel && panel !== 'loading' && (
+        <Html position={[room.x + TV_W / 2 + 1.0, TV_Y + 0.1, z + 0.2]} center zIndexRange={[60, 0]} style={{ pointerEvents: 'auto' }}>
+          <button
+            onClick={openPanel}
+            style={{
+              background: '#CC1B1B',
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: '#fff',
+              borderRadius: '999px',
+              padding: '6px 14px',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.45)',
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            }}
+          >
+            Abrir painel completo
+          </button>
+        </Html>
+      )}
+    </group>
+  )
+}
+
 /** Telão de parede: moldura fina + tela grande (cobre a TV pequena original). */
 function BigTv({ x, y, z, w, h, texture }: { x: number; y: number; z: number; w: number; h: number; texture?: THREE.CanvasTexture }) {
   return (
@@ -326,9 +463,15 @@ export default function DataTvs({ agendaToday }: { agendaToday: AgendaItem[] }) 
   const produtoRoom = rooms.find((r) => r.roomType === 'sector' && r.sector === 'produto')
   const financeiroRoom = rooms.find((r) => r.roomType === 'sector' && r.sector === 'financeiro')
   const mainMeeting = rooms.find((r) => r.roomType === 'meeting' && /principal/i.test(r.name))
+  const clientRooms = rooms.filter((r) => r.roomType === 'client')
 
   return (
     <>
+      {/* Salas de cliente: painel do cliente da reserva do dia (o visitante vê
+          o painel do PRÓPRIO convite, nunca o de outra empresa) */}
+      {clientRooms.map((r) => (
+        <ClientTv key={r.id} room={r} isGuest={isGuest} />
+      ))}
       {comercialRoom && (
         <BigTv
           x={comercialRoom.x}

@@ -379,6 +379,24 @@ export class CallManager {
     void this.realtime.updateCallState({ micOn: next })
   }
 
+  /** Liga/desliga o microfone num estado definido (auditório: plateia entra
+   * com o mic fechado; "chamado ao palco" abre). */
+  setMic(on: boolean) {
+    const { call } = useTeamStore.getState()
+    if (!this.localStream || !call.joined || call.micOn === on) return
+    for (const track of this.localStream.getAudioTracks()) track.enabled = on
+    useTeamStore.getState().setCall({ micOn: on })
+    void this.realtime.updateCallState({ micOn: on })
+  }
+
+  /** Baixa a mão (sem alternar). */
+  lowerHand() {
+    const { call } = useTeamStore.getState()
+    if (!call.joined || !call.handRaised) return
+    useTeamStore.getState().setCall({ handRaised: false })
+    void this.realtime.updateCallState({ handRaised: false })
+  }
+
   /** Levanta/baixa a mão (pedir pra falar) — todos veem no presence. */
   toggleHandRaise() {
     const { call } = useTeamStore.getState()

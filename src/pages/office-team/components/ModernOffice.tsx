@@ -5,7 +5,8 @@ import { useFrame } from '@react-three/fiber'
 import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import { useTeamStore, playerFloor } from '../store/useTeamStore'
-import { BUILDING, OfficeRoom, isEffectivelyLocked, roomWalls, floorBounds, sectorIslands, loungeExtraSets } from '../lib/rooms'
+import { BUILDING, OfficeRoom, isEffectivelyLocked, roomWalls, floorBounds, sectorIslands, loungeExtraSets, auditoriumLayout, STAGE_H } from '../lib/rooms'
+import { currentReservation, hourLabel } from '../lib/clientRooms'
 import { ELEVATOR } from '../lib/floors'
 import { Elevator, Reception, UpperFacade } from './Elevator'
 import { woodTexture, floorTexture, carpetTexture, artTexture, officialLogoTexture } from '../lib/textures'
@@ -868,8 +869,214 @@ function SectorFurniture({ room }: { room: OfficeRoom }) {
   )
 }
 
+/** Poltrona de auditório (leve: 3 malhas), clicável pra sentar.
+ * `rot` = direção do encosto; o sentado olha pro lado oposto (palco). */
+function TheaterSeat({ x, z, rot }: { x: number; z: number; rot: number }) {
+  return (
+    <group
+      position={[x, 0, z]}
+      rotation={[0, rot, 0]}
+      onClick={(e) => {
+        e.stopPropagation()
+        if (e.delta > 6) return
+        sitAt(x, z, rot + Math.PI)
+      }}
+      onPointerOver={() => (document.body.style.cursor = 'pointer')}
+      onPointerOut={() => (document.body.style.cursor = 'default')}
+    >
+      <mesh position={[0, 0.4, 0.02]} castShadow>
+        <boxGeometry args={[0.72, 0.1, 0.5]} />
+        <meshStandardMaterial color="#8c1d1d" roughness={0.85} />
+      </mesh>
+      <mesh position={[0, 0.72, 0.24]} castShadow>
+        <boxGeometry args={[0.72, 0.56, 0.1]} />
+        <meshStandardMaterial color="#a32424" roughness={0.85} />
+      </mesh>
+      <mesh position={[0, 0.18, 0.02]}>
+        <boxGeometry args={[0.6, 0.36, 0.42]} />
+        <meshStandardMaterial color="#23262c" roughness={0.6} />
+      </mesh>
+    </group>
+  )
+}
+
+/** Spot de palco apontando pro tablado. O alvo do spotLight precisa estar na
+ * cena (senão o three aponta pra origem do mundo): usamos um ref e atualizamos
+ * a matriz do alvo na mão. */
+function StageSpot({ targetX, targetZ, intensity }: { targetX: number; targetZ: number; intensity: number }) {
+  const ref = useRef<THREE.SpotLight>(null!)
+  useEffect(() => {
+    const light = ref.current
+    if (!light) return
+    light.target.position.set(targetX, 0, targetZ)
+    light.target.updateMatrixWorld()
+  }, [targetX, targetZ])
+  return <spotLight ref={ref} angle={0.55} penumbra={0.6} intensity={intensity} distance={9} color="#fff0cc" />
+}
+
+/** Auditório UNV: palco elevado no fundo com púlpito e telão, 4 fileiras de
+ * poltronas em arco viradas pro palco, corredor central, spots de palco e
+ * placa na porta. (Layout = auditoriumLayout, mesma fonte do collider e das
+ * regras de áudio.) O telão vira a tela compartilhada de quem está no palco
+ * (ScreenShareTvs cobre este painel). */
+function AuditoriumFurniture({ room }: { room: OfficeRoom }) {
+  const a = useMemo(() => auditoriumLayout(room), [room])
+  const st = a.stage
+  const stageW = st.maxX - st.minX
+  const stageD = st.maxZ - st.minZ
+  const stageX = (st.minX + st.maxX) / 2
+  const stageZ = (st.minZ + st.maxZ) / 2
+  const frontZ = room.z + room.depth / 2
+  return (
+    <group>
+      {/* Palco: tablado de madeira escura com frente em navy */}
+      <mesh position={[stageX, STAGE_H / 2, stageZ]} castShadow receiveShadow>
+        <boxGeometry args={[stageW, STAGE_H, stageD]} />
+        <meshStandardMaterial map={woodTexture()} color="#6b4a2e" roughness={0.6} />
+      </mesh>
+      <mesh position={[stageX, STAGE_H / 2, st.maxZ + 0.01]}>
+        <boxGeometry args={[stageW, STAGE_H - 0.02, 0.02]} />
+        <meshStandardMaterial color="#0D2B5E" roughness={0.6} />
+      </mesh>
+      {/* Rampas laterais (visual: o palco não colide, o boneco sobe por qualquer lado) */}
+      {[st.minX - 0.6, st.maxX + 0.6].map((rx) => (
+        <mesh key={rx} position={[rx, STAGE_H / 2, stageZ]} rotation={[0, 0, rx < stageX ? 0.26 : -0.26]} receiveShadow>
+          <boxGeometry args={[1.3, 0.04, stageD * 0.5]} />
+          <meshStandardMaterial color="#4f3a28" roughness={0.7} />
+        </mesh>
+      ))}
+      {/* Púlpito */}
+      <group position={[a.podium.x, STAGE_H, a.podium.z]}>
+        <mesh position={[0, 0.55, 0]} castShadow>
+          <boxGeometry args={[0.9, 1.1, 0.5]} />
+          <meshStandardMaterial color="#0D2B5E" roughness={0.55} />
+        </mesh>
+        <mesh position={[0, 1.12, -0.05]} rotation={[-0.35, 0, 0]} castShadow>
+          <boxGeometry args={[0.95, 0.04, 0.5]} />
+          <meshStandardMaterial map={woodTexture()} color="#caa06a" roughness={0.45} />
+        </mesh>
+        <mesh position={[0, 0.7, 0.26]}>
+          <boxGeometry args={[0.5, 0.3, 0.01]} />
+          <meshStandardMaterial color="#CC1B1B" roughness={0.5} />
+        </mesh>
+        {/* Microfone de haste */}
+        <mesh position={[0.25, 1.4, -0.1]} rotation={[0.3, 0, 0]}>
+          <cylinderGeometry args={[0.008, 0.008, 0.45, 6]} />
+          <meshStandardMaterial color="#23262c" metalness={0.6} roughness={0.3} />
+        </mesh>
+        <mesh position={[0.25, 1.62, -0.17]}>
+          <sphereGeometry args={[0.035, 8, 6]} />
+          <meshStandardMaterial color="#1d1f24" roughness={0.5} />
+        </mesh>
+      </group>
+      {/* Telão no fundo do palco: moldura + tela acesa (a tela compartilhada cobre) */}
+      <group position={[a.screen.x, a.screen.y, a.screen.z]}>
+        <mesh position={[0, 0, -0.12]} castShadow>
+          <boxGeometry args={[a.screen.w + 0.3, a.screen.h + 0.3, 0.24]} />
+          <meshStandardMaterial color="#0d0f13" metalness={0.4} roughness={0.35} />
+        </mesh>
+        <mesh position={[0, 0, 0.003]}>
+          <planeGeometry args={[a.screen.w, a.screen.h]} />
+          <meshStandardMaterial color="#13294a" emissive="#0D2B5E" emissiveIntensity={0.7} />
+        </mesh>
+        <Text position={[0, 0.25, 0.01]} fontSize={0.6} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.02} outlineColor="#0D2B5E">
+          Auditório UNV
+        </Text>
+        <Text position={[0, -0.45, 0.01]} fontSize={0.22} color="#FFD700" anchorX="center" anchorY="middle">
+          suba ao palco e compartilhe a tela pra projetar aqui
+        </Text>
+      </group>
+      {/* Treliça com spots de palco (luz real sem sombra: barata) */}
+      <mesh position={[stageX, 3.6, st.maxZ + 0.6]}>
+        <boxGeometry args={[stageW * 0.8, 0.08, 0.08]} />
+        <meshStandardMaterial color="#23262c" metalness={0.6} roughness={0.4} />
+      </mesh>
+      {[-0.3, 0, 0.3].map((f) => {
+        const lx = stageX + f * stageW * 0.8
+        return (
+          <group key={f} position={[lx, 3.56, st.maxZ + 0.6]}>
+            <mesh rotation={[0.9, 0, 0]}>
+              <cylinderGeometry args={[0.1, 0.14, 0.3, 10]} />
+              <meshStandardMaterial color="#1d1f24" metalness={0.6} roughness={0.35} />
+            </mesh>
+            <mesh position={[0, -0.12, -0.12]} rotation={[0.9, 0, 0]}>
+              <cylinderGeometry args={[0.09, 0.09, 0.02, 10]} />
+              <meshStandardMaterial color="#fff2cc" emissive="#ffe8a8" emissiveIntensity={1.6} />
+            </mesh>
+            <StageSpot targetX={lx} targetZ={stageZ} intensity={f === 0 ? 14 : 9} />
+          </group>
+        )
+      })}
+      {/* Corredor central (carpete vermelho) até o palco */}
+      <mesh position={[a.aisle.x, 0.007, (a.aisle.zMin + a.aisle.zMax) / 2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[a.aisle.w, a.aisle.zMax - a.aisle.zMin]} />
+        <meshStandardMaterial color="#7a1a1a" roughness={1} />
+      </mesh>
+      {/* Plateia em arco */}
+      {a.seats.map((seat, i) => (
+        <TheaterSeat key={i} x={seat.x} z={seat.z} rot={seat.rot} />
+      ))}
+      {/* Plantas nos cantos do fundo */}
+      <Plant x={room.x - room.width / 2 + 0.8} z={room.z - room.depth / 2 + 0.9} />
+      <Plant x={room.x + room.width / 2 - 0.8} z={room.z - room.depth / 2 + 0.9} />
+      {/* Placa na porta (lado do corredor) */}
+      <group position={[room.x, 2.45, frontZ + 0.22]}>
+        <mesh castShadow>
+          <boxGeometry args={[4.2, 0.62, 0.1]} />
+          <meshStandardMaterial color="#0D2B5E" roughness={0.55} />
+        </mesh>
+        <mesh position={[0, -0.27, 0.051]}>
+          <boxGeometry args={[4.2, 0.07, 0.01]} />
+          <meshStandardMaterial color="#CC1B1B" roughness={0.5} />
+        </mesh>
+        <Text position={[0, 0.03, 0.06]} fontSize={0.36} color="#ffffff" anchorX="center" anchorY="middle" outlineWidth={0.012} outlineColor="#0D2B5E">
+          Auditório UNV
+        </Text>
+      </group>
+    </group>
+  )
+}
+
+/** Sala de reunião com cliente: mesa de reunião (com TV no fundo, que o
+ * DataTvs cobre com o painel do cliente) + placa de reserva na porta. */
+function ClientFurniture({ room }: { room: OfficeRoom }) {
+  const reservations = useTeamStore((s) => s.clientReservations)
+  const me = useTeamStore((s) => s.me)
+  const res = currentReservation(room.id, reservations)
+  // Visitante não lê as reservas: a placa mostra o convite dele quando é desta sala
+  const guestHere = me?.isGuest && me.invite?.roomId === room.id
+  const label = res
+    ? `Reservada · ${res.company} · ${hourLabel(res.scheduledAt)}`
+    : guestHere
+      ? `Reservada · ${me?.invite?.company ?? 'Visitante'}`
+      : 'Disponível'
+  const frontZ = room.z + room.depth / 2
+  const busy = !!res || !!guestHere
+  return (
+    <group>
+      <MeetingTable room={room} />
+      <Plant x={room.x - room.width / 2 + 0.8} z={room.z - room.depth / 2 + 0.9} />
+      {/* Placa de reserva ao lado da porta, virada pro corredor */}
+      <group position={[room.x + 2.9, 1.55, frontZ + 0.2]}>
+        <mesh castShadow>
+          <boxGeometry args={[2.6, 0.5, 0.08]} />
+          <meshStandardMaterial color={busy ? '#7a1414' : '#1B6B3A'} roughness={0.55} />
+        </mesh>
+        <Text position={[0, 0.08, 0.05]} fontSize={0.15} color="#ffffff" anchorX="center" anchorY="middle" maxWidth={2.4}>
+          {label}
+        </Text>
+        <Text position={[0, -0.14, 0.05]} fontSize={0.1} color="rgba(255,255,255,0.75)" anchorX="center" anchorY="middle">
+          {room.name}
+        </Text>
+      </group>
+    </group>
+  )
+}
+
 function RoomFurniture({ room }: { room: OfficeRoom }) {
   if (room.roomType === 'meeting') return <MeetingTable room={room} />
+  if (room.roomType === 'auditorium') return <AuditoriumFurniture room={room} />
+  if (room.roomType === 'client') return <ClientFurniture room={room} />
   if (room.roomType === 'lounge') return <LoungeFurniture room={room} />
   if (room.roomType === 'personal') return <PersonalFurniture room={room} />
   return <SectorFurniture room={room} />
@@ -981,14 +1188,14 @@ function Room({ room, locked }: { room: OfficeRoom; locked: boolean }) {
       )}
 
       {/* Relógio de parede nas salas de trabalho/reunião */}
-      {(room.roomType === 'sector' || room.roomType === 'meeting') && (
+      {(room.roomType === 'sector' || room.roomType === 'meeting' || room.roomType === 'client') && (
         <WallClock x={room.x + room.width / 2 - 1.1} z={room.z - room.depth / 2 + 0.28} />
       )}
 
       {/* Nome da sala */}
-      <Billboard position={[room.x, WALL_H + GLASS_H + 0.55, room.z]} follow={true}>
+      <Billboard position={[room.x, WALL_H + GLASS_H + (room.roomType === 'auditorium' ? 2.4 : 0.55), room.z]} follow={true}>
         <Text
-          fontSize={0.42}
+          fontSize={room.roomType === 'auditorium' ? 0.6 : 0.42}
           color={locked ? '#ff8a80' : '#ffffff'}
           anchorX="center"
           anchorY="middle"
