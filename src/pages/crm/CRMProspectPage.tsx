@@ -13,6 +13,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Search, Radar, MessageCircle, ListChecks, X, Building2 } from "lucide-react";
 import { toast } from "sonner";
+import { ProspeccaoPainel } from "@/components/crm/prospeccao/ProspeccaoPainel";
 
 /**
  * Prospecção B2B (UNV Nexus) — mesma base de CNPJs da Receita Federal e mesma
@@ -31,6 +32,7 @@ const PORTES = [
 export const CRMProspectPage = () => {
   const navigate = useNavigate();
   const { setSelectedOrigin, setSelectedPipeline } = useCRMContext();
+  const [aba, setAba] = useState<"buscar" | "painel">("buscar");
   const [cnaeBusca, setCnaeBusca] = useState("");
   const [cnaeOpcoes, setCnaeOpcoes] = useState<{ codigo: string; descricao: string }[]>([]);
   const [cnaes, setCnaes] = useState<{ codigo: string; descricao: string }[]>([]);
@@ -148,7 +150,18 @@ export const CRMProspectPage = () => {
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+      {/* Buscar empresas | Painel (o que a prospecção virou em resposta, reunião e venda) */}
+      <div className="flex gap-1 border-b">
+        {([["buscar", "Buscar empresas"], ["painel", "Painel"]] as const).map(([k, rotulo]) => (
+          <button key={k} type="button" onClick={() => setAba(k)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${aba === k ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+            {rotulo}
+          </button>
+        ))}
+      </div>
+      {aba === "painel" && <ProspeccaoPainel />}
+
+      <div className={`grid gap-4 lg:grid-cols-[1fr_360px] ${aba === "painel" ? "hidden" : ""}`}>
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Quem você quer encontrar</CardTitle>
@@ -165,7 +178,10 @@ export const CRMProspectPage = () => {
                     <button key={c.codigo} type="button" className="w-full text-left px-3 py-1.5 hover:bg-muted flex gap-2"
                       onClick={() => { if (!cnaes.find((x) => x.codigo === c.codigo)) setCnaes([...cnaes, c]); setCnaeBusca(""); setCnaeOpcoes([]); }}>
                       <span className="text-muted-foreground tabular-nums w-16 shrink-0">{c.codigo}</span>
-                      <span>{c.descricao}</span>
+                      <span className="flex-1">{c.descricao}</span>
+                      {typeof (c as any).qtd === "number" && (
+                        <span className="text-xs text-muted-foreground shrink-0">{((c as any).qtd as number).toLocaleString("pt-BR")} empresas</span>
+                      )}
                     </button>
                   ))}
                 </div>
