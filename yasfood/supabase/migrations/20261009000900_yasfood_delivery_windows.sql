@@ -28,7 +28,10 @@ create or replace function yasfood.now_br()
 returns timestamp language sql stable as $$ select (now() at time zone 'America/Sao_Paulo')::timestamp $$;
 
 -- Janelas de um dia, com flag se ainda dá tempo de pedir (público)
-create or replace function yasfood.available_windows(p_date date, p_fulfillment text default 'ambos')
+-- (a migração 20261013000200 redefine com mais colunas; como as migrations rodam toda vez,
+--  derruba antes pra não bater em "cannot change return type")
+drop function if exists yasfood.available_windows(date, text);
+create function yasfood.available_windows(p_date date, p_fulfillment text default 'ambos')
 returns table (id uuid, label text, start_time time, end_time time, min_lead_minutes int, applies_to text, bookable boolean, closes_at timestamp)
 language sql stable security definer set search_path = yasfood, public as $$
   select w.id, w.label, w.start_time, w.end_time, w.min_lead_minutes, w.applies_to,
