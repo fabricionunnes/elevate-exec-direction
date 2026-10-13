@@ -134,7 +134,8 @@ export default function Pedidos() {
     if (dTo) l = l.filter((o) => o.scheduled_date <= dTo);
     if (q.trim()) {
       const s = q.trim().toLowerCase();
-      l = l.filter((o) => o.code.toLowerCase().includes(s) || o.customer_name.toLowerCase().includes(s) || o.customer_phone.includes(onlyDigits(s)));
+      const d = onlyDigits(s);
+      l = l.filter((o) => o.code.toLowerCase().includes(s) || o.customer_name.toLowerCase().includes(s) || (d.length > 0 && o.customer_phone.includes(d)));
     }
     if (filter === "todos" || filter === "cancelados") l = [...l].sort((a, b) => b.created_at.localeCompare(a.created_at));
     return l;
@@ -617,7 +618,7 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
   const customerMatches = customerQuery.trim().length >= 2
     ? customers.filter((c) => {
         const q = customerQuery.trim().toLowerCase();
-        return c.name.toLowerCase().includes(q) || c.phone.includes(onlyDigits(q));
+        return c.name.toLowerCase().includes(q) || (onlyDigits(q).length > 0 && c.phone.includes(onlyDigits(q)));
       }).slice(0, 8)
     : [];
   const [date, setDate] = useState(initial?.scheduled_date ?? "");
