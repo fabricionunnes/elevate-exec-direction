@@ -12,3 +12,9 @@
 # Arquivos com hash no nome são imutáveis — cache eterno é seguro e rápido.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+
+# Modelos 3D do UNV Office: mudam raramente. Sem isso o navegador revalidava os
+# 34 arquivos a cada entrada no escritório.
+/office/models/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000

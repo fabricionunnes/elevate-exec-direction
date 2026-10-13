@@ -4,7 +4,7 @@
 // personalizáveis. Salas vêm do banco (office_team_rooms).
 import { Suspense, useEffect, useRef, useState, useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Environment, Lightformer } from '@react-three/drei'
+import { Environment, Lightformer, PerformanceMonitor } from '@react-three/drei'
 import * as THREE from 'three'
 import { supabase } from '@/integrations/supabase/client'
 import ModernOffice from './components/ModernOffice'
@@ -34,7 +34,7 @@ import AuditoriumPanel from './components/AuditoriumPanel'
 import Skyline, { useDaylight } from './components/Skyline'
 import BuildingExterior from './components/BuildingExterior'
 import TowerShell from './components/TowerShell'
-import { graphicsParams } from './lib/graphics'
+import { graphicsParams, hasSavedGraphics } from './lib/graphics'
 import type { Daylight } from './lib/daylight'
 import { findMarceloRoom } from './components/MarceloNpc'
 import { FLOOR_FADE_MS } from './lib/floorTravel'
@@ -467,6 +467,9 @@ export default function TeamOfficePage() {
   // Poll de 2s de propósito: um selector reativo sobre remotePlayers
   // re-renderizaria a página a ~9Hz (posições mudam o tempo todo).
   const [callHeavy, setCallHeavy] = useState(false)
+  // Resolução adaptativa: começa em 1.5x e cai até 0.8x se a máquina não segura
+  // 30 quadros por segundo (ver <PerformanceMonitor> dentro do Canvas).
+  const [perfDpr, setPerfDpr] = useState(1.5)
   useEffect(() => {
     const iv = setInterval(() => {
       const st = useTeamStore.getState()
@@ -684,7 +687,7 @@ export default function TeamOfficePage() {
           // Telas retina renderizam a 2-3x de DPR nativo = 4-9x mais pixels
           // por frame. Cap em 1.5 mantém nitidez e devolve a fluidez no
           // zoom/movimento (o maior ganho de performance da cena).
-          dpr={callHeavy ? 1 : [1, 1.5]}
+          dpr={callHeavy ? 1 : Math.min(perfDpr, typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1)}
           camera={{ position: [0, 16, 18], fov: 60, near: 0.1, far: 320 }}
           gl={{
             antialias: true,
@@ -697,6 +700,22 @@ export default function TeamOfficePage() {
           }}
           style={{ width: '100%', height: '100%' }}
         >
+          {/* Máquina com pouca memória ou placa fraca (ex.: M1 de 8 GB com muita
+              coisa aberta) engasgava no nível alto (13/10/2026). Mede os quadros por
+              segundo: abaixo de 30 baixa a resolução aos poucos; se nem assim segurar
+              e a pessoa nunca escolheu o nível à mão, passa pra gráficos médio. */}
+          <PerformanceMonitor
+            factor={1}
+            step={0.25}
+            flipflops={4}
+            bounds={() => [30, 50]}
+            onChange={({ factor }) => setPerfDpr(Math.round((0.8 + 0.7 * factor) * 10) / 10)}
+            onDecline={({ factor }) => {
+              if (factor > 0.3 || hasSavedGraphics()) return
+              if (useTeamStore.getState().graphics === 'alto') useTeamStore.setState({ graphics: 'medio' })
+            }}
+            onFallback={() => setPerfDpr(1)}
+          />
           <SceneEnvironment />
           {/* Névoa sutil: dá profundidade na vista; a cor segue a hora (Skyline) */}
           <fog attach="fog" args={['#9fb0c2', 60, 170]} />
