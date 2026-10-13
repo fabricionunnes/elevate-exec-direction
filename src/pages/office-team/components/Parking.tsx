@@ -8,7 +8,7 @@ import { Text } from '@react-three/drei'
 import * as THREE from 'three'
 import HumanBody from './HumanBody'
 import { CarMesh, carForUser, MARCELO_CAR, CarSpec } from './Cars'
-import { useTeamStore, Cutscene } from '../store/useTeamStore'
+import { useTeamStore, Cutscene, playerFloor } from '../store/useTeamStore'
 import { BUILDING, buildCollisionWalls, furnitureColliders } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
 import { doorProximity } from '../lib/door'
@@ -72,7 +72,11 @@ function CutsceneActor({ cutscene, spot }: { cutscene: Cutscene; spot: Spot }) {
     const st = useTeamStore.getState()
     const onlineIds = new Set(Object.keys(st.remotePlayers))
     if (st.me) onlineIds.add(st.me.id)
-    const solids = [...buildCollisionWalls(st.rooms, onlineIds, null), ...furnitureColliders(st.rooms)]
+    // O estacionamento só existe no térreo: colisão da planta do térreo
+    const solids = [
+      ...buildCollisionWalls(st.roomsOnFloor, onlineIds, null, undefined, st.floor),
+      ...furnitureColliders(st.roomsOnFloor),
+    ]
     if (!viaDoor) {
       return [to]
     }
@@ -163,8 +167,11 @@ function CutsceneActor({ cutscene, spot }: { cutscene: Cutscene; spot: Spot }) {
           person.position.set(spot.x + 1.4, 0, SPOT_Z - 0.5)
           setPersonVisible(true)
           setWalking(true)
+          // Quem chegou direto em outro andar: o boneco da cutscene anda só até
+          // o hall (o jogador real está no andar dele)
           const real = st.remotePlayers[cutscene.userId]
-          const target: [number, number] = real ? [real.position[0], real.position[2]] : [DOOR_X, BUILDING.maxZ - 2]
+          const target: [number, number] =
+            real && playerFloor(real) === st.floor ? [real.position[0], real.position[2]] : [DOOR_X, BUILDING.maxZ - 2]
           pathRef.current = { pts: buildWalkPath([spot.x + 1.4, SPOT_Z - 0.5], target, true), i: 0 }
           phaseRef.current = 'walk'
         }

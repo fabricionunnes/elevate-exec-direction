@@ -9,7 +9,7 @@ import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
 import HumanBody from './HumanBody'
 import { SpeechBubble } from './CoffeeChat'
-import { useTeamStore, AvatarConfig } from '../store/useTeamStore'
+import { useTeamStore, AvatarConfig, playerFloor } from '../store/useTeamStore'
 import { roomAt, BUILDING } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
 import { cleaningObstacles, personAvoidance } from '../lib/npcNav'
@@ -114,7 +114,10 @@ export default function CleaningLady() {
     }
     const [mx, , mz] = st.playerPosition
     check(mx, mz)
-    for (const p of Object.values(st.remotePlayers)) check(p.position[0], p.position[2])
+    for (const p of Object.values(st.remotePlayers)) {
+      if (playerFloor(p) !== st.floor) continue
+      check(p.position[0], p.position[2])
+    }
     return best
   }
 
@@ -122,7 +125,7 @@ export default function CleaningLady() {
     const g = groupRef.current
     if (!g) return
     const st = useTeamStore.getState()
-    if (st.rooms.length === 0) return
+    if (st.roomsOnFloor.length === 0) return
 
     try {
     // Vassoura SEMPRE varrendo (vai-e-vem), trabalhe parada ou andando
@@ -138,14 +141,14 @@ export default function CleaningLady() {
 
     if (think) {
       // Tem gente no café/lounge?
-      const lounge = st.rooms.find((r) => r.roomType === 'lounge')
+      const lounge = st.roomsOnFloor.find((r) => r.roomType === 'lounge')
       let cafeTarget: [number, number] | null = null
       let cafePeople = 0
       if (lounge) {
         let sx = 0
         let sz = 0
         const consider = (px: number, pz: number) => {
-          if (roomAt(px, pz, st.rooms)?.id === lounge.id) {
+          if (roomAt(px, pz, st.roomsOnFloor)?.id === lounge.id) {
             sx += px
             sz += pz
             cafePeople++
@@ -153,7 +156,10 @@ export default function CleaningLady() {
         }
         const [mx0, , mz0] = st.playerPosition
         consider(mx0, mz0)
-        for (const p of Object.values(st.remotePlayers)) consider(p.position[0], p.position[2])
+        for (const p of Object.values(st.remotePlayers)) {
+          if (playerFloor(p) !== st.floor) continue
+          consider(p.position[0], p.position[2])
+        }
         if (cafePeople > 0) cafeTarget = [sx / cafePeople, sz / cafePeople]
       }
 
@@ -254,8 +260,8 @@ export default function CleaningLady() {
       // Vale se o jogador local está na MESMA sala aberta que a Tia (ex.: café)
       // OU perto dela no corredor. Quem está em sala/reunião fechada não ouve.
       const [mx, , mz] = st.playerPosition
-      const meRoom = roomAt(mx, mz, st.rooms)
-      const herRoom = roomAt(g.position.x, g.position.z, st.rooms)
+      const meRoom = roomAt(mx, mz, st.roomsOnFloor)
+      const herRoom = roomAt(g.position.x, g.position.z, st.roomsOnFloor)
       const meInOpen = !meRoom || meRoom.roomType === 'lounge'
       const distToMe = Math.hypot(mx - g.position.x, mz - g.position.z)
       const sameOpenRoom = !!herRoom && herRoom.roomType === 'lounge' && meRoom?.id === herRoom.id

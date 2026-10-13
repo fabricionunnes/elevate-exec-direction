@@ -1,7 +1,7 @@
 // Navegação dos NPCs (Marcelo e agentes): obstáculos completos pro A*
 // (paredes + mobília + pessoas paradas) e repulsão local de pessoas durante
 // a caminhada — robô não atravessa mais mesa nem gente.
-import { useTeamStore } from '../store/useTeamStore'
+import { useTeamStore, playerFloor } from '../store/useTeamStore'
 import { buildCollisionWalls, furnitureColliders, Wall } from './rooms'
 
 const PERSON_R = 0.3
@@ -12,8 +12,9 @@ export function npcObstacles(fromX: number, fromZ: number): Wall[] {
   const state = useTeamStore.getState()
   const onlineIds = new Set(Object.keys(state.remotePlayers))
   if (state.me) onlineIds.add(state.me.id)
-  const walls = buildCollisionWalls(state.rooms, onlineIds, null)
-  const furniture = furnitureColliders(state.rooms)
+  // NPCs navegam na planta do andar em que estão sendo renderizados (o atual)
+  const walls = buildCollisionWalls(state.roomsOnFloor, onlineIds, null, undefined, state.floor)
+  const furniture = furnitureColliders(state.roomsOnFloor)
 
   const people: Wall[] = []
   const addPerson = (px: number, pz: number) => {
@@ -22,7 +23,10 @@ export function npcObstacles(fromX: number, fromZ: number): Wall[] {
   }
   const [mx, , mz] = state.playerPosition
   addPerson(mx, mz)
-  for (const p of Object.values(state.remotePlayers)) addPerson(p.position[0], p.position[2])
+  for (const p of Object.values(state.remotePlayers)) {
+    if (playerFloor(p) !== state.floor) continue
+    addPerson(p.position[0], p.position[2])
+  }
 
   return walls.concat(furniture, people)
 }
@@ -34,7 +38,7 @@ export function cleaningObstacles(fromX: number, fromZ: number): Wall[] {
   const state = useTeamStore.getState()
   const base = npcObstacles(fromX, fromZ)
   const roomBoxes: Wall[] = []
-  for (const r of state.rooms) {
+  for (const r of state.roomsOnFloor) {
     if (r.roomType === 'lounge') continue // lounge é aberto, ela pode passar
     const hw = r.width / 2 + 0.2
     const hd = r.depth / 2 + 0.2
@@ -59,6 +63,9 @@ export function personAvoidance(x: number, z: number): [number, number] {
   }
   const [mx, , mz] = state.playerPosition
   repel(mx, mz)
-  for (const p of Object.values(state.remotePlayers)) repel(p.position[0], p.position[2])
+  for (const p of Object.values(state.remotePlayers)) {
+    if (playerFloor(p) !== state.floor) continue
+    repel(p.position[0], p.position[2])
+  }
   return [ax, az]
 }

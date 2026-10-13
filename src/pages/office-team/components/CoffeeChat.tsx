@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Billboard, Text } from '@react-three/drei'
 import * as THREE from 'three'
-import { useTeamStore } from '../store/useTeamStore'
+import { useTeamStore, playerFloor } from '../store/useTeamStore'
 import type { OfficeRoom } from '../lib/rooms'
 
 const SEAT_DIST = 0.75 // banqueta fica a 0.75 do centro da mesa (LoungeFurniture)
@@ -251,7 +251,8 @@ export function SpeechBubble({ x, z, y = 2.05, text: raw, isDots }: { x: number;
 }
 
 export default function CoffeeChat() {
-  const rooms = useTeamStore((s) => s.rooms)
+  const rooms = useTeamStore((s) => s.roomsOnFloor)
+  const floor = useTeamStore((s) => s.floor)
   const remotePlayers = useTeamStore((s) => s.remotePlayers)
   const me = useTeamStore((s) => s.me)
   const seated = useTeamStore((s) => s.seated)
@@ -284,6 +285,7 @@ export default function CoffeeChat() {
   }
   if (me && seated) tryMatch(me.id, me.name, playerPosition[0], playerPosition[2])
   for (const p of Object.values(remotePlayers)) {
+    if (playerFloor(p) !== floor) continue
     if (p.sitting) tryMatch(p.id, p.name, p.position[0], p.position[2])
   }
 

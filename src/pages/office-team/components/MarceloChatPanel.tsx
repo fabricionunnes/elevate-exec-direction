@@ -32,9 +32,9 @@ export default function MarceloChatPanel({ realtime }: { realtime: TeamRealtime 
     let seat: NonNullable<typeof st.agentSummon>['seat'] = null
     let context: 'cafe' | 'office' = 'office'
     const myRoom = st.rooms.find((r) => r.roomType === 'personal' && r.ownerUserId === me.id)
-    const inMyRoom = myRoom && roomAt(px, pz, st.rooms)?.id === myRoom.id
+    const inMyRoom = myRoom && roomAt(px, pz, st.roomsOnFloor)?.id === myRoom.id
     if (st.seated) {
-      const table = bistroTablesFor(st.rooms).find((t) => Math.hypot(px - t.x, pz - t.z) < 1.35)
+      const table = bistroTablesFor(st.roomsOnFloor).find((t) => Math.hypot(px - t.x, pz - t.z) < 1.35)
       if (table) {
         const taken = (sx: number, sz: number) => {
           if (Math.hypot(px - sx, pz - sz) < 0.5) return true
@@ -43,7 +43,7 @@ export default function MarceloChatPanel({ realtime }: { realtime: TeamRealtime 
           }
           return false
         }
-        const free = bistroSeatsFor(st.rooms).find((s) => s.tableKey === table.key && !taken(s.x, s.z))
+        const free = bistroSeatsFor(st.roomsOnFloor).find((s) => s.tableKey === table.key && !taken(s.x, s.z))
         if (free) {
           seat = { x: free.x, z: free.z, tableX: free.tableX, tableZ: free.tableZ, tableKey: free.tableKey }
           context = 'cafe'
@@ -62,6 +62,7 @@ export default function MarceloChatPanel({ realtime }: { realtime: TeamRealtime 
       seat,
       byId: me.id,
       byName: me.name,
+      floor: st.floor,
       allowed: true, // Marcelo é o consultor sempre disponível
       context,
       ts: Date.now(),

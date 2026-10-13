@@ -10,6 +10,7 @@ import * as THREE from 'three'
 import RobotBody from './RobotBody'
 import { useTeamStore } from '../store/useTeamStore'
 import { personalOwnerSeat } from '../lib/rooms'
+import { ELEVATOR_FRONT } from '../lib/floors'
 import { findPath } from '../lib/pathfinding'
 import { npcObstacles, personAvoidance } from '../lib/npcNav'
 import { agentPosState } from './AgentNpc'
@@ -38,7 +39,10 @@ function slotHash(slot: number): number {
 type Pose = 'sit' | 'stand' | 'walk'
 
 export default function MarceloNpc() {
+  // A sala dele pode estar em qualquer andar (todas); passeios usam o andar atual
   const rooms = useTeamStore((s) => s.rooms)
+  const roomsHere = useTeamStore((s) => s.roomsOnFloor)
+  const floor = useTeamStore((s) => s.floor)
   const setNpcChatOpen = useTeamStore((s) => s.setNpcChatOpen)
   const groupRef = useRef<THREE.Group>(null!)
   const hintRef = useRef<THREE.Group>(null!)
@@ -52,9 +56,21 @@ export default function MarceloNpc() {
   const room = findMarceloRoom(rooms)
   const seat = room ? personalOwnerSeat(room) : null
 
-  // Destinos dos passeios (café/lounge/corredor), calculados das salas
+  // Montado fora do andar da sala dele (atendendo um aceno de outro andar):
+  // entra pelo elevador, não "nasce" na cadeira. Ao desmontar, some da colisão.
+  useEffect(() => {
+    if (room && room.floor !== floor && groupRef.current) {
+      groupRef.current.position.set(ELEVATOR_FRONT.x - 0.8, 0, ELEVATOR_FRONT.z + 0.6)
+    }
+    return () => {
+      marceloState.active = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Destinos dos passeios (café/lounge/corredor), calculados das salas do andar
   const dests = useMemo(() => {
-    const lounge = rooms.find((r) => r.roomType === 'lounge')
+    const lounge = roomsHere.find((r) => r.roomType === 'lounge')
     const out: [number, number][] = [
       [0, 0],
       [-10, 0.5],
@@ -67,7 +83,7 @@ export default function MarceloNpc() {
       )
     }
     return out
-  }, [rooms])
+  }, [roomsHere])
 
   const setPoseIfChanged = (p: Pose) => {
     if (poseRef.current !== p) {
@@ -142,8 +158,15 @@ export default function MarceloNpc() {
     }
 
     // ── Aceno: alguém chamou o Marcelo (mesmo sistema dos outros agentes) ──
-    const summon = useTeamStore.getState().agentSummon
-    if (summon && summon.agentKey === 'marcelo' && Date.now() - summon.ts < SUMMON_TTL) {
+    // Só vale no andar de quem chamou (coordenadas são da planta daquele andar)
+    const stNow = useTeamStore.getState()
+    const summon = stNow.agentSummon
+    if (
+      summon &&
+      summon.agentKey === 'marcelo' &&
+      (summon.floor ?? 0) === stNow.floor &&
+      Date.now() - summon.ts < SUMMON_TTL
+    ) {
       const target = summon.seat ?? { x: summon.x + 0.9, z: summon.z + 0.4 }
       if (!walkStep(target.x, target.z, `summon:${summon.ts}`)) {
         if (Math.hypot(g.position.x - target.x, g.position.z - target.z) > 0.6) {

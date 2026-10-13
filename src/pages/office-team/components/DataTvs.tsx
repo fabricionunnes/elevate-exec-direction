@@ -267,7 +267,8 @@ const TV_H = 1.76
 const TV_Y = 1.85
 
 export default function DataTvs({ agendaToday }: { agendaToday: AgendaItem[] }) {
-  const rooms = useTeamStore((s) => s.rooms)
+  // TVs seguem as salas do andar atual
+  const rooms = useTeamStore((s) => s.roomsOnFloor)
   // Visitante convidado: TVs apagadas (sem dados de negócio; o banco também bloqueia)
   const isGuest = useTeamStore((s) => s.me?.isGuest === true)
   const [comercial, setComercial] = useState<TvComercial | null>(null)

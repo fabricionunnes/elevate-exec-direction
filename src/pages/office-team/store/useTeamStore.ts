@@ -3,6 +3,7 @@
 // + salas dinâmicas (banco) + avatar personalizado.
 import { create } from 'zustand'
 import type { OfficeRoom } from '../lib/rooms'
+import { roomsOnFloor as filterFloor } from '../lib/rooms'
 
 export interface AvatarConfig {
   skin: string
@@ -56,6 +57,13 @@ export interface RemotePlayerState extends TeamProfile {
   focused: boolean
   /** mão levantada na call (pediu pra falar) */
   handRaised?: boolean
+  /** andar em que está (presence; payloads antigos não têm = térreo) */
+  floor?: number
+}
+
+/** Andar de um jogador remoto (payload antigo sem floor = térreo). */
+export function playerFloor(p: { floor?: number }): number {
+  return p.floor ?? 0
 }
 
 /** Assento alvo: clicar numa cadeira anda até lá e senta */
@@ -118,15 +126,26 @@ interface TeamState {
   playerRotation: number
   remotePlayers: Record<string, RemotePlayerState>
 
+  /** TODAS as salas do prédio (todos os andares) */
   rooms: OfficeRoom[]
+  /** salas do andar atual: é isso que render/colisão/TV/café/NPC consomem */
+  roomsOnFloor: OfficeRoom[]
+  /** andar em que o jogador local está (0 = térreo) */
+  floor: number
+  /** trocando de andar (fade pra preto do elevador) */
+  floorChanging: boolean
+  /** painel "Andares" do elevador aberto */
+  elevatorOpen: boolean
   /** sala em que o jogador local está (null = corredor/área aberta) */
   myRoomId: string | null
   avatarEditorOpen: boolean
-  /** teleporte pendente (consumido pelo LocalPlayer no próximo frame) */
-  pendingTeleport: [number, number] | null
+  /** teleporte pendente (consumido pelo LocalPlayer no próximo frame).
+   * floor: se for outro andar, o LocalPlayer troca de andar antes (fade). */
+  pendingTeleport: { x: number; z: number; floor?: number } | null
   /** destino de auto-walk (anda sozinho até lá; WASD cancela).
-   * teleportFallback: se não houver rota, teleporta (usado pelo "minha sala") */
-  pendingWalkTo: { x: number; z: number; teleportFallback?: boolean } | null
+   * teleportFallback: se não houver rota, teleporta (usado pelo "minha sala").
+   * floor: destino em outro andar → troca de andar primeiro, depois anda. */
+  pendingWalkTo: { x: number; z: number; teleportFallback?: boolean; floor?: number } | null
   /** assento pendente: ao chegar no destino, senta */
   pendingSeat: Seat | null
   /** jogador local está sentado */
@@ -140,7 +159,7 @@ interface TeamState {
   npcChatOpen: boolean
 
   /** campainha recebida (alguém me chamando/cutucando) */
-  incomingRing: { fromId: string; fromName: string; x: number; z: number; ts: number } | null
+  incomingRing: { fromId: string; fromName: string; x: number; z: number; floor?: number; ts: number } | null
   /** notificações pequenas (entrou/saiu do escritório) */
   toasts: { id: string; text: string; kind: 'in' | 'out' }[]
   /** gravações de reunião em andamento POR SALA (roomKey -> quem grava).
@@ -180,6 +199,8 @@ interface TeamState {
     allowed: boolean
     /** 'cafe' = papo informal no lounge · 'office' = negócios na sala privada */
     context: 'cafe' | 'office'
+    /** andar de quem chamou (o agente atende nesse andar) */
+    floor?: number
     ts: number
   } | null
   /** venda ganha no CRM (sino + confete pra todo o escritório) */
@@ -197,15 +218,25 @@ interface TeamState {
   setPlayerPosition: (pos: [number, number, number]) => void
   setPlayerRotation: (rot: number) => void
   upsertRemotePlayer: (player: Partial<RemotePlayerState> & { id: string }) => void
-  setRemotePlayerPos: (id: string, pos: [number, number, number], rot: number, moving: boolean, sitting: boolean) => void
+  setRemotePlayerPos: (
+    id: string,
+    pos: [number, number, number],
+    rot: number,
+    moving: boolean,
+    sitting: boolean,
+    floor?: number
+  ) => void
   removeRemotePlayer: (id: string) => void
   setRemotePlayers: (players: Record<string, RemotePlayerState>) => void
 
   setRooms: (rooms: OfficeRoom[]) => void
+  setFloor: (floor: number) => void
+  setFloorChanging: (on: boolean) => void
+  setElevatorOpen: (open: boolean) => void
   setMyRoomId: (id: string | null) => void
   setAvatarEditorOpen: (open: boolean) => void
-  setPendingTeleport: (target: [number, number] | null) => void
-  setPendingWalkTo: (target: { x: number; z: number; teleportFallback?: boolean } | null) => void
+  setPendingTeleport: (target: { x: number; z: number; floor?: number } | null) => void
+  setPendingWalkTo: (target: { x: number; z: number; teleportFallback?: boolean; floor?: number } | null) => void
   setPendingSeat: (seat: Seat | null) => void
   setSeated: (seated: boolean) => void
 
@@ -213,7 +244,9 @@ interface TeamState {
   addChatMessage: (msg: TeamMessage) => void
   setChatHistory: (msgs: TeamMessage[]) => void
   setNpcChatOpen: (open: boolean) => void
-  setIncomingRing: (ring: { fromId: string; fromName: string; x: number; z: number; ts: number } | null) => void
+  setIncomingRing: (
+    ring: { fromId: string; fromName: string; x: number; z: number; floor?: number; ts: number } | null
+  ) => void
   addToast: (text: string, kind: 'in' | 'out') => void
   removeToast: (id: string) => void
   setRoomRecording: (roomKey: string, rec: { byId: string; byName: string } | null) => void
@@ -252,6 +285,10 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   remotePlayers: {},
 
   rooms: [],
+  roomsOnFloor: [],
+  floor: 0,
+  floorChanging: false,
+  elevatorOpen: false,
   myRoomId: null,
   avatarEditorOpen: false,
   pendingTeleport: null,
@@ -334,18 +371,20 @@ export const useTeamStore = create<TeamState>((set, get) => ({
       }
     }),
 
-  setRemotePlayerPos: (id, pos, rot, moving, sitting) => {
+  setRemotePlayerPos: (id, pos, rot, moving, sitting, floor) => {
     // Caminho QUENTE (broadcast 'pos', ~9x/s por jogador andando): muta o
     // objeto do jogador in place — o RemotePlayer lê position/rotation dentro
     // do useFrame, então o movimento fica fluido SEM re-render de React.
     // A UI derivada (listas, salas, café) é notificada em lote (500ms).
     const existing = get().remotePlayers[id]
     if (!existing) return
-    const satChanged = existing.sitting !== sitting
+    const floorChanged = typeof floor === 'number' && (existing.floor ?? 0) !== floor
+    const satChanged = existing.sitting !== sitting || floorChanged
     existing.position = pos
     existing.rotation = rot
     existing.moving = moving
     existing.sitting = sitting
+    if (typeof floor === 'number') existing.floor = floor
     existing.lastPosAt = Date.now()
     if (satChanged) {
       // sentar/levantar é raro e muda UI (balões do café) → notifica na hora
@@ -387,6 +426,7 @@ export const useTeamStore = create<TeamState>((set, get) => ({
         ex.focused === p.focused &&
         ex.handRaised === p.handRaised &&
         ex.sitting === p.sitting &&
+        (ex.floor ?? 0) === (p.floor ?? 0) &&
         JSON.stringify(ex.avatar) === JSON.stringify(p.avatar)
       ) {
         next[id] = ex // mantém a ref (posição segue fluindo por mutação)
@@ -399,7 +439,11 @@ export const useTeamStore = create<TeamState>((set, get) => ({
     if (changed) set({ remotePlayers: next })
   },
 
-  setRooms: (rooms) => set({ rooms }),
+  setRooms: (rooms) => set((prev) => ({ rooms, roomsOnFloor: filterFloor(rooms, prev.floor) })),
+  setFloor: (floor) =>
+    set((prev) => (prev.floor === floor ? prev : { floor, roomsOnFloor: filterFloor(prev.rooms, floor) })),
+  setFloorChanging: (on) => set({ floorChanging: on }),
+  setElevatorOpen: (open) => set({ elevatorOpen: open }),
   setMyRoomId: (id) => set({ myRoomId: id }),
   setAvatarEditorOpen: (open) => set({ avatarEditorOpen: open }),
   setPendingTeleport: (target) => set({ pendingTeleport: target }),

@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTeamStore, RemotePlayerState } from '../store/useTeamStore'
 import { roomAt, OfficeRoom } from '../lib/rooms'
+import { playerFloor } from '../store/useTeamStore'
 import { MeetingRecorder, saveRecording } from '../lib/recording'
 import { useStaffPermissions } from '@/hooks/useStaffPermissions'
 import { preloadCameraFx } from '../lib/cameraFx'
@@ -132,7 +133,8 @@ function streamsInRoom(roomKey: string): Record<string, MediaStream> {
   const out: Record<string, MediaStream> = {}
   for (const p of Object.values(st.remotePlayers)) {
     if (!p.inCall) continue
-    if (roomKeyAt(p.position[0], p.position[2], st.rooms) !== roomKey) continue
+    if (playerFloor(p) !== st.floor) continue // outro andar nunca entra na gravação
+    if (roomKeyAt(p.position[0], p.position[2], st.roomsOnFloor) !== roomKey) continue
     const s = st.call.remoteStreams[p.id]
     if (s) out[p.id] = s
   }
@@ -143,8 +145,11 @@ function spatialVolume(
   myPos: [number, number, number],
   myRoomId: string | null,
   peer: RemotePlayerState,
-  rooms: OfficeRoom[]
+  rooms: OfficeRoom[],
+  myFloor = 0
 ): number {
+  // Outro andar = equivale a sala diferente: volume 0 e sem tile de vídeo
+  if (playerFloor(peer) !== myFloor) return 0
   // Lounge é área aberta: conta como corredor (voz por proximidade)
   const myRoom = myRoomId ? rooms.find((r) => r.id === myRoomId) ?? null : null
   const myEffId = myRoom && myRoom.roomType !== 'lounge' ? myRoom.id : null
@@ -486,7 +491,7 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
   const remotePlayers = useTeamStore((s) => s.remotePlayers)
   const me = useTeamStore((s) => s.me)
   const myRoomId = useTeamStore((s) => s.myRoomId)
-  const rooms = useTeamStore((s) => s.rooms)
+  const rooms = useTeamStore((s) => s.roomsOnFloor)
   const incomingRing = useTeamStore((s) => s.incomingRing)
   const setIncomingRing = useTeamStore((s) => s.setIncomingRing)
   const voiceBlocked = useTeamStore((s) => s.voiceBlocked)
@@ -649,8 +654,9 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
       ]
       for (const p of Object.values(st.remotePlayers)) {
         if (!p.inCall) continue
+        if (playerFloor(p) !== st.floor) continue
         // grade do vídeo = só quem está na sala gravada
-        if (roomKeyAt(p.position[0], p.position[2], st.rooms) !== roomKey) continue
+        if (roomKeyAt(p.position[0], p.position[2], st.roomsOnFloor) !== roomKey) continue
         list.push({
           id: p.id,
           name: p.name,
@@ -679,7 +685,7 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
       return
     }
     const st = useTeamStore.getState()
-    const roomKey = roomKeyAt(st.playerPosition[0], st.playerPosition[2], st.rooms)
+    const roomKey = roomKeyAt(st.playerPosition[0], st.playerPosition[2], st.roomsOnFloor)
     if (st.recordings[roomKey]) {
       // Outra pessoa grava ESTA sala: master pode mandar parar
       if (isMaster) realtime.sendStopRecording(roomKey)
@@ -717,7 +723,7 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
       const meNow = st.me
       if (!meNow) return
       const [px, , pz] = st.playerPosition
-      const myRoom = roomAt(px, pz, st.rooms)
+      const myRoom = roomAt(px, pz, st.roomsOnFloor)
       const auto = !!myRoom && (myRoom.roomType === 'meeting' || myRoom.roomType === 'sector')
 
       // Quem está na MINHA sala, na call
@@ -728,7 +734,8 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
         if (!meNow.isGuest) staff.push(meNow.id)
         for (const p of Object.values(st.remotePlayers)) {
           if (!p.inCall) continue
-          const pr = roomAt(p.position[0], p.position[2], st.rooms)
+          if (playerFloor(p) !== st.floor) continue
+          const pr = roomAt(p.position[0], p.position[2], st.roomsOnFloor)
           if (pr?.id === myRoom!.id) {
             present++
             if (p.role !== 'Visitante') staff.push(p.id)
@@ -776,7 +783,7 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
           const s2 = useTeamStore.getState()
           if (s2.recordings[roomKey] || recorderRef.current?.active) return
           // confere que ainda estou na mesma sala antes de gravar
-          if (roomKeyAt(s2.playerPosition[0], s2.playerPosition[2], s2.rooms) !== roomKey) return
+          if (roomKeyAt(s2.playerPosition[0], s2.playerPosition[2], s2.roomsOnFloor) !== roomKey) return
           autoRecRoomRef.current = roomKey
           startRecording(roomKey)
           s2.addToast('🔴 Gravação automática iniciada', 'in')
@@ -803,10 +810,12 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
     if (!incomingRing) return
     const st = useTeamStore.getState()
     // usa a posição ATUAL de quem chamou, se ainda estiver online
+    // (andar incluso: se for outro andar, o LocalPlayer pega o elevador antes)
     const caller = st.remotePlayers[incomingRing.fromId]
     const target = caller
-      ? { x: caller.position[0], z: caller.position[2] }
-      : { x: incomingRing.x, z: incomingRing.z }
+      ? { x: caller.position[0], z: caller.position[2], floor: playerFloor(caller) }
+      : { x: incomingRing.x, z: incomingRing.z, floor: incomingRing.floor ?? 0 }
+    st.setPendingSeat(null)
     st.setPendingWalkTo(target)
     setIncomingRing(null)
   }
@@ -825,7 +834,7 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
   useEffect(() => {
     const tick = () => {
       const st = useTeamStore.getState()
-      setMyRoomKey(roomKeyAt(st.playerPosition[0], st.playerPosition[2], st.rooms))
+      setMyRoomKey(roomKeyAt(st.playerPosition[0], st.playerPosition[2], st.roomsOnFloor))
     }
     tick()
     const iv = setInterval(tick, 1000)
@@ -840,7 +849,7 @@ export default function CallDock({ callManager, realtime }: { callManager: CallM
       const next: Record<string, number> = {}
       for (const peer of Object.values(state.remotePlayers)) {
         if (!peer.inCall) continue
-        next[peer.id] = spatialVolume(state.playerPosition, state.myRoomId, peer, state.rooms)
+        next[peer.id] = spatialVolume(state.playerPosition, state.myRoomId, peer, state.roomsOnFloor, state.floor)
       }
       setVolumes((prev) => {
         const keys = new Set([...Object.keys(prev), ...Object.keys(next)])

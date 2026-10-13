@@ -49,6 +49,9 @@ interface PresencePayload {
   z: number
   rot: number
   sit: boolean
+  /** andar do prédio (0 = térreo). Quem está em outro andar não é
+   * renderizado nem ouvido; o chat de texto segue global. */
+  floor: number
 }
 
 export class TeamRealtime {
@@ -86,6 +89,7 @@ export class TeamRealtime {
       z: me.spawn?.[1] ?? 0.5,
       rot: me.spawn?.[2] ?? 0,
       sit: false,
+      floor: 0,
     }
   }
 
@@ -152,6 +156,10 @@ export class TeamRealtime {
               existing.sitting = sitting
             }
           }
+          // Andar vem do presence (fonte de verdade); o 'pos' só confirma
+          if (existing && typeof meta.floor === 'number' && (existing.floor ?? 0) !== meta.floor) {
+            existing.floor = meta.floor
+          }
 
           next[key] = {
             id: key,
@@ -170,6 +178,7 @@ export class TeamRealtime {
             rotation,
             moving: existing?.moving ?? false,
             sitting,
+            floor: typeof meta.floor === 'number' ? meta.floor : 0,
           }
         }
 
@@ -218,9 +227,19 @@ export class TeamRealtime {
         useTeamStore.getState().setRemotePlayers(next)
       })
       .on('broadcast', { event: 'pos' }, ({ payload }) => {
-        const p = payload as { id: string; x: number; z: number; rot: number; moving: boolean; sit?: boolean }
+        const p = payload as {
+          id: string
+          x: number
+          z: number
+          rot: number
+          moving: boolean
+          sit?: boolean
+          floor?: number
+        }
         if (!p || p.id === this.me.id) return
-        useTeamStore.getState().setRemotePlayerPos(p.id, [p.x, 0, p.z], p.rot, p.moving, p.sit ?? false)
+        useTeamStore
+          .getState()
+          .setRemotePlayerPos(p.id, [p.x, 0, p.z], p.rot, p.moving, p.sit ?? false, p.floor)
       })
       .on('broadcast', { event: 'chat' }, ({ payload }) => {
         const m = payload as TeamMessage
@@ -274,7 +293,7 @@ export class TeamRealtime {
         })
       })
       .on('broadcast', { event: 'ring' }, ({ payload }) => {
-        const r = payload as { to: string; fromId: string; fromName: string; x?: number; z?: number }
+        const r = payload as { to: string; fromId: string; fromName: string; x?: number; z?: number; floor?: number }
         if (!r || r.to !== this.me.id) return
         // Modo foco: não toca — responde sozinho pra quem chamou
         if (useTeamStore.getState().focused) {
@@ -290,6 +309,7 @@ export class TeamRealtime {
           fromName: r.fromName,
           x: r.x ?? 0,
           z: r.z ?? 0.5,
+          floor: typeof r.floor === 'number' ? r.floor : 0,
           ts: Date.now(),
         })
       })
@@ -383,7 +403,8 @@ export class TeamRealtime {
   /** Toca a campainha/cutuca outro usuário online (leva minha posição
    * pra ele poder aceitar e vir andando até mim). */
   sendRing(toUserId: string) {
-    const [x, , z] = useTeamStore.getState().playerPosition
+    const st = useTeamStore.getState()
+    const [x, , z] = st.playerPosition
     void this.channel?.send({
       type: 'broadcast',
       event: 'ring',
@@ -393,8 +414,15 @@ export class TeamRealtime {
         fromName: this.me.name,
         x: Number(x.toFixed(2)),
         z: Number(z.toFixed(2)),
+        floor: st.floor,
       },
     })
+  }
+
+  /** Troquei de andar (elevador): atualiza o presence pra todo mundo. */
+  async updateFloor(floor: number) {
+    this.presenceState = { ...this.presenceState, floor }
+    await this.channel?.track(this.presenceState)
   }
 
   async refreshRooms() {
@@ -440,7 +468,8 @@ export class TeamRealtime {
   sendPosition(x: number, z: number, rot: number, moving: boolean, sitting = false) {
     if (!this.channel) return
     const now = performance.now()
-    const payload = `${x.toFixed(2)}|${z.toFixed(2)}|${rot.toFixed(2)}|${moving}|${sitting}`
+    const floor = useTeamStore.getState().floor
+    const payload = `${x.toFixed(2)}|${z.toFixed(2)}|${rot.toFixed(2)}|${moving}|${sitting}|${floor}`
     if (payload === this.lastPosPayload) return
     if (now - this.lastPosSent < POS_INTERVAL_MS && moving) return
     this.lastPosSent = now
@@ -455,6 +484,7 @@ export class TeamRealtime {
         rot: Number(rot.toFixed(2)),
         moving,
         sit: sitting,
+        floor,
       },
     })
     // Parou de andar → grava a posição no presence (pra quem entrar depois)
@@ -466,6 +496,7 @@ export class TeamRealtime {
         z: Number(z.toFixed(2)),
         rot: Number(rot.toFixed(2)),
         sit: sitting,
+        floor,
       }
       void this.channel.track(this.presenceState)
       this.schedulePositionSave()

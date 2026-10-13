@@ -2,6 +2,7 @@
 // Gera paredes/colisão/portas a partir das salas; sala trancada fecha a porta
 // para quem está fora (lock só vale enquanto quem trancou estiver online).
 import { supabase } from '@/integrations/supabase/client'
+import { ELEVATOR, RECEPTION_DESK } from './floors'
 
 export type RoomType = 'sector' | 'meeting' | 'personal' | 'lounge'
 
@@ -22,6 +23,8 @@ export interface OfficeRoom {
   /** música lofi tocando na sala (todo mundo dentro ouve) */
   musicOn: boolean
   musicVideoId: string
+  /** andar do prédio (0 = térreo). Todos os andares têm a mesma planta. */
+  floor: number
 }
 
 export interface Wall {
@@ -93,7 +96,22 @@ function mapRow(row: Record<string, unknown>): OfficeRoom {
     lockedBy: (row.locked_by as string) ?? null,
     musicOn: Boolean(row.music_on),
     musicVideoId: (row.music_video_id as string) || 'X4VbdwhkE10',
+    floor: Number(row.floor ?? 0),
   }
+}
+
+/** Salas de um andar (a planta é a mesma; o que muda é o conjunto). */
+export function roomsOnFloor(rooms: OfficeRoom[], floor: number): OfficeRoom[] {
+  return rooms.filter((r) => r.floor === floor)
+}
+
+/** Master move uma sala de andar (o slot x/z é o mesmo na planta de todos). */
+export async function setRoomFloor(roomId: string, floor: number): Promise<boolean> {
+  const { error } = await supabase
+    .from('office_team_rooms' as never)
+    .update({ floor } as never)
+    .eq('id', roomId)
+  return !error
 }
 
 /** Liga/desliga a música lofi da sala (só o dono usa — o front garante). */
@@ -186,13 +204,15 @@ export function buildCollisionWalls(
   rooms: OfficeRoom[],
   onlineUserIds: Set<string>,
   insideRoomId: string | null,
-  meId?: string
+  meId?: string,
+  floor = 0
 ): Wall[] {
   const walls: Wall[] = [
     { minX: BUILDING.minX - 1, maxX: BUILDING.minX, minZ: BUILDING.minZ - 1, maxZ: BUILDING.maxZ + 1 },
     { minX: BUILDING.maxX, maxX: BUILDING.maxX + 1, minZ: BUILDING.minZ - 1, maxZ: BUILDING.maxZ + 1 },
     { minX: BUILDING.minX - 1, maxX: BUILDING.maxX + 1, minZ: BUILDING.minZ - 1, maxZ: BUILDING.minZ },
     { minX: BUILDING.minX - 1, maxX: BUILDING.maxX + 1, minZ: BUILDING.maxZ, maxZ: BUILDING.maxZ + 1 },
+    ...fixtureColliders(floor),
   ]
   for (const room of rooms) {
     const locked = isEffectivelyLocked(room, onlineUserIds)
@@ -200,6 +220,21 @@ export function buildCollisionWalls(
     walls.push(...roomWalls(room, doorOpen))
   }
   return walls
+}
+
+/** Mobiliário fixo da planta (não vem do banco): caixa do elevador em todos
+ * os andares + balcão da recepção no térreo. Entra na colisão e no A*. */
+export function fixtureColliders(floor: number): Wall[] {
+  const out: Wall[] = [{ minX: ELEVATOR.minX, maxX: ELEVATOR.maxX, minZ: ELEVATOR.minZ, maxZ: ELEVATOR.maxZ }]
+  if (floor === 0) {
+    out.push({
+      minX: RECEPTION_DESK.x - RECEPTION_DESK.w / 2,
+      maxX: RECEPTION_DESK.x + RECEPTION_DESK.w / 2,
+      minZ: RECEPTION_DESK.z - RECEPTION_DESK.d / 2,
+      maxZ: RECEPTION_DESK.z + RECEPTION_DESK.d / 2,
+    })
+  }
+  return out
 }
 
 export function checkWallCollision(x: number, z: number, radius: number, walls: Wall[]): boolean {
@@ -211,13 +246,16 @@ export function checkWallCollision(x: number, z: number, radius: number, walls: 
   return false
 }
 
-/** Acha o próximo slot livre para uma sala nova do tipo dado. */
+/** Acha o próximo slot livre para uma sala nova do tipo dado NUM andar
+ * (um slot ocupado no 1º continua livre no 2º). */
 export function findFreeSlot(
   type: RoomType,
-  rooms: OfficeRoom[]
+  rooms: OfficeRoom[],
+  floor = 0
 ): { x: number; z: number; w: number; d: number; door: 'N' | 'S' } | null {
+  const sameFloor = roomsOnFloor(rooms, floor)
   for (const slot of SLOTS[type]) {
-    const overlapping = rooms.some(
+    const overlapping = sameFloor.some(
       (r) =>
         Math.abs(r.x - slot.x) < (r.width + slot.w) / 2 - 0.1 &&
         Math.abs(r.z - slot.z) < (r.depth + slot.d) / 2 - 0.1
@@ -237,8 +275,11 @@ export async function createRoom(opts: {
   ownerUserId?: string | null
   createdBy: string
   rooms: OfficeRoom[]
+  /** andar da sala nova (padrão: térreo) */
+  floor?: number
 }): Promise<CreateRoomResult> {
-  const slot = findFreeSlot(opts.type, opts.rooms)
+  const floor = opts.floor ?? 0
+  const slot = findFreeSlot(opts.type, opts.rooms, floor)
   if (!slot) return { ok: false, reason: 'no_slot' }
   const { data, error } = await supabase
     .from('office_team_rooms' as never)
@@ -254,6 +295,7 @@ export async function createRoom(opts: {
       door_side: slot.door,
       owner_user_id: opts.ownerUserId ?? null,
       created_by: opts.createdBy,
+      floor,
     } as never)
     .select('*')
     .single()
@@ -355,6 +397,7 @@ export async function ensurePersonalRoom(
   }
 
   // 2) Sem sala vazia disponível → cria nova num slot livre (raro).
+  //    Salas pessoais ficam na ala do térreo.
   const result = await createRoom({
     name: `Sala ${firstName}`,
     type: 'personal',
@@ -362,6 +405,7 @@ export async function ensurePersonalRoom(
     ownerUserId: userId,
     createdBy: userId,
     rooms,
+    floor: 0,
   })
   return result.ok ? result.room : null
 }

@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/integrations/supabase/client'
-import { useTeamStore } from '../store/useTeamStore'
+import { useTeamStore, playerFloor } from '../store/useTeamStore'
+import { floorShort } from '../lib/floors'
 import type { TeamRealtime } from '../lib/realtime'
 
 interface TeamMember {
@@ -22,6 +23,9 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
   const inMeetingIds = useTeamStore((s) => s.inMeetingIds)
   const inMeeting = new Set(inMeetingIds)
   const myFocus = useTeamStore((s) => s.focused)
+  const floor = useTeamStore((s) => s.floor)
+  const setElevatorOpen = useTeamStore((s) => s.setElevatorOpen)
+  const canUseElevator = !!me && !me.isGuest
 
   // Status: Em reunião (agenda) > Focado (modo foco) > Disponível
   const StatusBadge = ({ userId, focused }: { userId: string; focused?: boolean }) => {
@@ -131,6 +135,26 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
               </span>
             </div>
           </div>
+          {/* Pílula do andar atual: clica pra abrir o elevador (F) */}
+          <button
+            onClick={() => canUseElevator && setElevatorOpen(true)}
+            title={canUseElevator ? 'Elevador: trocar de andar (F)' : 'Visitante fica neste andar'}
+            style={{
+              background: 'rgba(10,10,20,0.85)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,215,0,0.45)',
+              borderRadius: '999px',
+              padding: '7px 12px',
+              color: '#FFD700',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: canUseElevator ? 'pointer' : 'default',
+              whiteSpace: 'nowrap',
+              fontFamily: font,
+            }}
+          >
+            🏢 {floorShort(floor)}
+          </button>
         </div>
 
         {/* Lista de quem está no escritório */}
@@ -161,7 +185,10 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
                   </div>
                   <StatusBadge userId={me.id} focused={myFocus} />
                 </div>
-                {me.role && <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>{me.role}</div>}
+                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>
+                  {me.role ? `${me.role} · ` : ''}
+                  {floorShort(floor)}
+                </div>
               </div>
             </div>
           )}
@@ -175,7 +202,10 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
                   </div>
                   <StatusBadge userId={p.id} focused={p.focused} />
                 </div>
-                {p.role && <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)' }}>{p.role}</div>}
+                <div style={{ fontSize: '10px', color: playerFloor(p) === floor ? 'rgba(255,255,255,0.45)' : 'rgba(255,215,0,0.6)' }}>
+                  {p.role ? `${p.role} · ` : ''}
+                  {floorShort(playerFloor(p))}
+                </div>
               </div>
               {p.inCall && <span style={{ fontSize: '11px' }}>{p.micOn ? '🎙️' : '🔇'}</span>}
               <button
@@ -297,7 +327,7 @@ export default function TeamHUD({ realtime }: { realtime: TeamRealtime }) {
           fontFamily: font,
         }}
       >
-        WASD / duplo clique = andar · Arrastar = olhar · X = minha sala · C = café · Z = trancar · F = foco · Scroll = zoom
+        WASD / duplo clique = andar · Arrastar = olhar · X = minha sala · C = café · Z = trancar · F = elevador · G = foco · Scroll = zoom
       </div>
     </>
   )

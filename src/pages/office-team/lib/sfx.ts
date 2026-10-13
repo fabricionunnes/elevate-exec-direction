@@ -56,3 +56,12 @@ export function playMeetingPing() {
   tone(c, 880, 0, 0.35, 0.16)
   tone(c, 1174.7, 0.18, 0.45, 0.16)
 }
+
+/** "Ding" do elevador ao chegar no andar (duas notas curtas, timbre de sino). */
+export function playElevatorDing() {
+  const c = ensureCtx()
+  if (!c) return
+  tone(c, 1046.5, 0, 0.5, 0.14)
+  tone(c, 1568, 0.16, 0.6, 0.12)
+  tone(c, 3136, 0.16, 0.3, 0.03)
+}

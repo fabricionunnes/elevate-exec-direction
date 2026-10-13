@@ -9,7 +9,8 @@ import { useKeyboard } from '../../office/hooks/useKeyboard'
 import HumanBody from './HumanBody'
 import { BUILDING, buildCollisionWalls, checkWallCollision, roomAt, setRoomLock, isEffectivelyLocked, personalOwnerSeat, furnitureColliders } from '../lib/rooms'
 import { findPath } from '../lib/pathfinding'
-import { useTeamStore } from '../store/useTeamStore'
+import { useTeamStore, playerFloor } from '../store/useTeamStore'
+import { travelToFloor } from '../lib/floorTravel'
 import { marceloState } from './MarceloNpc'
 import type { TeamRealtime } from '../lib/realtime'
 
@@ -17,8 +18,10 @@ const PLAYER_BLOCK_DIST = 0.6 // raio de colisão entre pessoas
 
 /** Bloqueia o passo se APROXIMA de outra pessoa (afastar é sempre permitido). */
 function blockedByPeople(curX: number, curZ: number, nx: number, nz: number): boolean {
-  const players = useTeamStore.getState().remotePlayers
+  const st = useTeamStore.getState()
+  const players = st.remotePlayers
   for (const p of Object.values(players)) {
+    if (playerFloor(p) !== st.floor) continue // outro andar não bloqueia
     const dNew = Math.hypot(p.position[0] - nx, p.position[2] - nz)
     if (dNew < PLAYER_BLOCK_DIST) {
       const dOld = Math.hypot(p.position[0] - curX, p.position[2] - curZ)
@@ -37,8 +40,10 @@ function blockedByPeople(curX: number, curZ: number, nx: number, nz: number): bo
 
 /** A cadeira/assento alvo já está ocupado por alguém sentado? */
 function seatOccupied(x: number, z: number): boolean {
-  const players = useTeamStore.getState().remotePlayers
+  const st = useTeamStore.getState()
+  const players = st.remotePlayers
   for (const p of Object.values(players)) {
+    if (playerFloor(p) !== st.floor) continue
     if (p.sitting && Math.hypot(p.position[0] - x, p.position[2] - z) < 0.5) return true
   }
   if (marceloState.active && marceloState.sitting && Math.hypot(marceloState.x - x, marceloState.z - z) < 0.5) {
@@ -72,7 +77,9 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
   const { camera, gl } = useThree()
 
   const me = useTeamStore((s) => s.me)
-  const rooms = useTeamStore((s) => s.rooms)
+  // Só as salas do andar atual entram na colisão/detecção de sala
+  const rooms = useTeamStore((s) => s.roomsOnFloor)
+  const floor = useTeamStore((s) => s.floor)
   const remotePlayers = useTeamStore((s) => s.remotePlayers)
   const myRoomId = useTeamStore((s) => s.myRoomId)
   const seated = useTeamStore((s) => s.seated)
@@ -90,8 +97,8 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
   const walls = useMemo(() => {
     const onlineIds = new Set(Object.keys(remotePlayers))
     if (me) onlineIds.add(me.id)
-    return buildCollisionWalls(rooms, onlineIds, myRoomId, me?.id)
-  }, [rooms, remotePlayers, me, myRoomId])
+    return buildCollisionWalls(rooms, onlineIds, myRoomId, me?.id, floor)
+  }, [rooms, remotePlayers, me, myRoomId, floor])
   const wallsRef = useRef(walls)
   wallsRef.current = walls
 
@@ -109,13 +116,14 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== 'KeyX' || isTypingInField()) return
       const state = useTeamStore.getState()
+      // Minha sala pode estar em outro andar: o auto-walk troca de andar antes
       const myRoom = state.rooms.find(
         (r) => r.roomType === 'personal' && r.ownerUserId === state.me?.id
       )
       if (myRoom) {
         // Vai até a sala E senta na própria cadeira
         const seat = personalOwnerSeat(myRoom)
-        state.setPendingWalkTo({ x: seat.x, z: seat.z, teleportFallback: true })
+        state.setPendingWalkTo({ x: seat.x, z: seat.z, teleportFallback: true, floor: myRoom.floor })
         state.setPendingSeat(seat)
       }
     }
@@ -128,11 +136,13 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== 'KeyC' || isTypingInField()) return
       const state = useTeamStore.getState()
-      const lounge = state.rooms.find((r) => r.roomType === 'lounge')
+      // Lounge deste andar; senão o do prédio (troca de andar no caminho)
+      const lounge =
+        state.roomsOnFloor.find((r) => r.roomType === 'lounge') ?? state.rooms.find((r) => r.roomType === 'lounge')
       if (lounge) {
         state.setPendingSeat(null)
         // Vai pra parte aberta do lounge (perto das mesinhas), não pra parede
-        state.setPendingWalkTo({ x: lounge.x - 1, z: lounge.z + 1, teleportFallback: true })
+        state.setPendingWalkTo({ x: lounge.x - 1, z: lounge.z + 1, teleportFallback: true, floor: lounge.floor })
       }
     }
     window.addEventListener('keydown', onKey)
@@ -146,7 +156,7 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
       const state = useTeamStore.getState()
       const meId = state.me?.id
       if (!meId || !state.myRoomId) return
-      const room = state.rooms.find((r) => r.id === state.myRoomId)
+      const room = state.roomsOnFloor.find((r) => r.id === state.myRoomId)
       if (!room || room.roomType === 'lounge') return
       const onlineIds = new Set([meId, ...Object.keys(state.remotePlayers)])
       const locked = isEffectivelyLocked(room, onlineIds)
@@ -223,20 +233,30 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
 
     const pos = groupRef.current.position
 
-    // Teleporte pendente
+    // Teleporte pendente. Destino em outro andar → troca de andar primeiro
+    // (fade do elevador); o teleporte fica pendente até o andar novo carregar.
     const teleport = useTeamStore.getState().pendingTeleport
     if (teleport) {
-      pos.x = teleport[0]
-      pos.z = teleport[1]
-      useTeamStore.getState().setPendingTeleport(null)
-      autoPathRef.current = null
-      setPlayerPosition([pos.x, 0, pos.z])
-      realtime.sendPosition(pos.x, pos.z, rotationRef.current, false)
+      const curFloor = useTeamStore.getState().floor
+      if (teleport.floor != null && teleport.floor !== curFloor) {
+        travelToFloor(teleport.floor, realtime)
+      } else {
+        pos.x = teleport.x
+        pos.z = teleport.z
+        useTeamStore.getState().setPendingTeleport(null)
+        autoPathRef.current = null
+        setPlayerPosition([pos.x, 0, pos.z])
+        realtime.sendPosition(pos.x, pos.z, rotationRef.current, false)
+      }
     }
 
-    // Novo destino de auto-walk (tecla X / "Ir pra minha sala" / duplo clique)
+    // Novo destino de auto-walk (tecla X / "Ir pra minha sala" / duplo clique).
+    // Em outro andar: sobe/desce primeiro (aparece na frente do elevador) e
+    // só então calcula a rota.
     const walkTo = useTeamStore.getState().pendingWalkTo
-    if (walkTo) {
+    if (walkTo && walkTo.floor != null && walkTo.floor !== useTeamStore.getState().floor) {
+      travelToFloor(walkTo.floor, realtime)
+    } else if (walkTo && !useTeamStore.getState().pendingTeleport) {
       useTeamStore.getState().setPendingWalkTo(null)
       const path = findPath(pos.x, pos.z, walkTo.x, walkTo.z, [...wallsRef.current, ...furnitureRef.current])
       if (path && path.length > 0) {
@@ -390,7 +410,7 @@ export default function LocalPlayer({ realtime }: { realtime: TeamRealtime }) {
     if (roomCheckRef.current > 0.15) {
       roomCheckRef.current = 0
       const state = useTeamStore.getState()
-      const room = roomAt(pos.x, pos.z, state.rooms)
+      const room = roomAt(pos.x, pos.z, state.roomsOnFloor)
       const current = state.myRoomId
       if ((room?.id ?? null) !== current) {
         // Saí de uma sala que EU tranquei → destranca automaticamente

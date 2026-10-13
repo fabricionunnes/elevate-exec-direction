@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
-import { useTeamStore } from '../store/useTeamStore'
+import { useTeamStore, playerFloor } from '../store/useTeamStore'
 import { BUILDING, OfficeRoom, isEffectivelyLocked, roomWalls } from '../lib/rooms'
+import { Elevator, Reception, UpperFacade } from './Elevator'
 import { woodTexture, floorTexture, carpetTexture, artTexture, officialLogoTexture } from '../lib/textures'
 import { doorProximity } from '../lib/door'
 import { marceloState } from './MarceloNpc'
@@ -678,7 +679,10 @@ function AutoDoor() {
       if (Math.hypot(x - doorX, z - doorZ) < 3.4) near = true
     }
     check(st.playerPosition[0], st.playerPosition[2])
-    for (const p of Object.values(st.remotePlayers)) check(p.position[0], p.position[2])
+    for (const p of Object.values(st.remotePlayers)) {
+      if (playerFloor(p) !== st.floor) continue // quem está em outro andar não abre a porta
+      check(p.position[0], p.position[2])
+    }
     for (const a of doorProximity.values()) check(a.x, a.z)
 
     const target = near ? 1 : 0
@@ -961,7 +965,9 @@ function Room({ room, locked }: { room: OfficeRoom; locked: boolean }) {
 }
 
 export default function ModernOffice() {
-  const rooms = useTeamStore((s) => s.rooms)
+  // Só as salas do andar atual são renderizadas (a planta é a mesma em todos)
+  const rooms = useTeamStore((s) => s.roomsOnFloor)
+  const floor = useTeamStore((s) => s.floor)
   const remotePlayers = useTeamStore((s) => s.remotePlayers)
   const me = useTeamStore((s) => s.me)
 
@@ -991,8 +997,8 @@ export default function ModernOffice() {
         />
       </mesh>
 
-      {/* Logomarca oficial UNV no piso do hall central */}
-      <FloorLogo />
+      {/* Logomarca oficial UNV no piso do hall central (só no térreo) */}
+      {floor === 0 && <FloorLogo />}
 
       {/* Plano invisível de clique: duplo clique = andar até o ponto */}
       <mesh
@@ -1069,25 +1075,36 @@ export default function ModernOffice() {
         </mesh>
       ))}
 
-      {/* FACHADA SUL — cores da marca: navy com faixa vermelha, mais alta */}
+      {/* FACHADA SUL — térreo: navy com faixa vermelha, letreiro e porta
+          automática (portaria). Andares de cima: parede clara com janelões
+          e a placa do andar; não dá pra sair do prédio por ali (colisão do
+          perímetro vale em todos os andares). */}
       <mesh position={[cx, 1.6, BUILDING.maxZ]} castShadow receiveShadow>
         <boxGeometry args={[W + 0.4, 3.2, 0.4]} />
-        <meshStandardMaterial color="#0D2B5E" roughness={0.65} />
+        <meshStandardMaterial color={floor === 0 ? '#0D2B5E' : '#ece8df'} roughness={0.65} />
       </mesh>
-      <mesh position={[cx, 0.45, BUILDING.maxZ + 0.21]}>
-        <boxGeometry args={[W + 0.42, 0.22, 0.02]} />
-        <meshStandardMaterial color="#CC1B1B" roughness={0.5} />
-      </mesh>
-      <mesh position={[cx, 3.05, BUILDING.maxZ + 0.21]}>
-        <boxGeometry args={[W + 0.42, 0.12, 0.02]} />
-        <meshStandardMaterial color="#CC1B1B" roughness={0.5} />
-      </mesh>
+      {floor === 0 && (
+        <>
+          <mesh position={[cx, 0.45, BUILDING.maxZ + 0.21]}>
+            <boxGeometry args={[W + 0.42, 0.22, 0.02]} />
+            <meshStandardMaterial color="#CC1B1B" roughness={0.5} />
+          </mesh>
+          <mesh position={[cx, 3.05, BUILDING.maxZ + 0.21]}>
+            <boxGeometry args={[W + 0.42, 0.12, 0.02]} />
+            <meshStandardMaterial color="#CC1B1B" roughness={0.5} />
+          </mesh>
+          {/* Letreiro 3D iluminado com a logomarca */}
+          <FacadeSign />
+          {/* Porta automática de vidro (abre por proximidade, como em shopping) */}
+          <AutoDoor />
+          {/* Recepção no vão central, perto da entrada */}
+          <Reception />
+        </>
+      )}
+      {floor !== 0 && <UpperFacade floor={floor} />}
 
-      {/* Letreiro 3D iluminado com a logomarca */}
-      <FacadeSign />
-
-      {/* Porta automática de vidro (abre por proximidade, como em shopping) */}
-      <AutoDoor />
+      {/* Elevador: mesmo lugar em todos os andares */}
+      <Elevator />
 
       {/* Janelas com luz de dia na fachada norte */}
       {Array.from({ length: 8 }, (_, i) => BUILDING.minX + 4.5 + i * 7).map((wx) => (

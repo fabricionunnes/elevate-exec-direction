@@ -19,15 +19,15 @@ interface TourStep {
 const STEPS: TourStep[] = [
   {
     x: 0,
-    z: 12,
+    z: 10.6,
     bubble: 'Bem-vindo ao UNV Office! Vem comigo.',
     text: 'Eu sou o MAX, o CEO dos agentes IA. Esse é o escritório virtual da UNV: aqui o time trabalha junto, se encontra e fecha negócio — de qualquer lugar. Anda comigo que eu te mostro tudo (WASD ou duplo clique pra andar).',
   },
   {
-    x: -2,
-    z: 0.5,
-    bubble: 'Aqui ficam os setores e os agentes IA.',
-    text: 'Comercial, Produto, Marketing, Financeiro e Liderança. As TVs mostram dados REAIS ao vivo, e o termômetro do Comercial acompanha a meta do mês. Os robôs são os agentes IA — clica neles pra conversar (o acesso é liberado pelo Fabrício).',
+    x: -1.4,
+    z: 18.4,
+    bubble: 'Esse é o elevador: os setores ficam lá em cima.',
+    text: 'O prédio tem andares por setor: 1º Comercial, 2º Entrega e CS, 3º Marketing e Conteúdo, 4º Financeiro e Admin e a Diretoria na cobertura. Chega perto do elevador (ou aperta F) e escolhe o andar. Lá em cima as TVs mostram dados REAIS ao vivo e os robôs são os agentes IA, clica neles pra conversar (o acesso é liberado pelo Fabrício).',
   },
   {
     x: -21,
@@ -45,13 +45,13 @@ const STEPS: TourStep[] = [
     x: 0,
     z: 21,
     bubble: 'Ala das salas privadas.',
-    text: 'Sua sala tem seu nome. Aperta X pra ir direto e sentar na sua cadeira. Z tranca a sala (ninguém de fora vê nem ouve). Dá até pra ligar uma lofi no painel de música. E F ativa o modo foco — cutucadas são respondidas sozinhas.',
+    text: 'Sua sala tem seu nome. Aperta X pra ir direto e sentar na sua cadeira (de qualquer andar). Z tranca a sala (ninguém de fora vê nem ouve). Dá até pra ligar uma lofi no painel de música. E G ativa o modo foco — cutucadas são respondidas sozinhas.',
   },
   {
     x: 0,
-    z: 12,
+    z: 10.6,
     bubble: 'É isso. Bora pra cima!',
-    text: 'Qualquer dúvida, me chama na sala da Liderança ou cutuca alguém do time pelo painel Equipe (🔔). Bom trabalho — e bora pra cima.',
+    text: 'Qualquer dúvida, me chama na sala da Liderança (cobertura) ou cutuca alguém do time pelo painel Equipe (🔔). Bom trabalho — e bora pra cima.',
   },
 ]
 

@@ -29,11 +29,15 @@ import CoffeeChat from './components/CoffeeChat'
 import ScreenShareTvs from './components/ScreenShareTv'
 import TourGuide from './components/TourGuide'
 import CleaningLady from './components/CleaningLady'
+import ElevatorPanel from './components/ElevatorPanel'
+import { findMarceloRoom } from './components/MarceloNpc'
+import { FLOOR_FADE_MS } from './lib/floorTravel'
 import { fetchInMeetingNow, fetchAgendaToday, AgendaItem } from './lib/agenda'
 import { playMeetingPing } from './lib/sfx'
 import {
   useTeamStore,
   avatarColorsFor,
+  playerFloor,
   TeamProfile,
   AvatarConfig,
   DEFAULT_AVATAR,
@@ -85,6 +89,24 @@ function SceneLights() {
   )
 }
 
+/** Fade preto do elevador (troca de andar): escurece, troca o andar, acende. */
+function FloorFade() {
+  const changing = useTeamStore((s) => s.floorChanging)
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: '#000',
+        opacity: changing ? 1 : 0,
+        transition: `opacity ${FLOOR_FADE_MS}ms ease`,
+        pointerEvents: 'none',
+        zIndex: 200,
+      }}
+    />
+  )
+}
+
 function LoadingScreen({ label = 'Carregando escritório...' }: { label?: string }) {
   return (
     <div
@@ -113,7 +135,8 @@ function LoadingScreen({ label = 'Carregando escritório...' }: { label?: string
 
 function RemotePlayers() {
   const remotePlayers = useTeamStore((s) => s.remotePlayers)
-  const rooms = useTeamStore((s) => s.rooms)
+  const rooms = useTeamStore((s) => s.roomsOnFloor)
+  const floor = useTeamStore((s) => s.floor)
   const myRoomId = useTeamStore((s) => s.myRoomId)
   const me = useTeamStore((s) => s.me)
   const cutscenes = useTeamStore((s) => s.cutscenes)
@@ -128,6 +151,7 @@ function RemotePlayers() {
 
   const visible = Object.values(remotePlayers).filter((p) => {
     if (arriving.has(p.id)) return false
+    if (playerFloor(p) !== floor) return false // só quem está no MESMO andar
     const room = roomAt(p.position[0], p.position[2], rooms)
     if (
       room &&
@@ -370,6 +394,14 @@ export default function TeamOfficePage() {
   const [agendaToday, setAgendaToday] = useState<AgendaItem[]>([])
   const notifiedMeetings = useRef<Set<string>>(new Set())
   const meetingExpanded = useTeamStore((s) => s.meetingExpanded)
+  const floor = useTeamStore((s) => s.floor)
+  const agentSummon = useTeamStore((s) => s.agentSummon)
+  // O Marcelo (NPC) mora na sala dele; aparece no andar da sala — ou no
+  // andar de quem o chamou (aceno), enquanto o aceno vale
+  const marceloFloor = findMarceloRoom(rooms)?.floor ?? 0
+  const marceloHere =
+    floor === marceloFloor ||
+    (!!agentSummon && agentSummon.agentKey === 'marcelo' && (agentSummon.floor ?? 0) === floor)
 
   // Chamada pesada (gravando ou 3+ na call) → baixa a resolução do 3D.
   // Poll de 2s de propósito: um selector reativo sobre remotePlayers
@@ -405,19 +437,26 @@ export default function TeamOfficePage() {
     return { realtime, callManager }
   }, [me])
 
-  // Tecla F: liga/desliga o modo foco (cutucadas silenciadas com auto-resposta)
+  // Tecla F: abre o painel do elevador (andares). Tecla G: liga/desliga o
+  // modo foco (cutucadas silenciadas com auto-resposta). Visitante não usa
+  // o elevador (fica no andar da reunião).
   useEffect(() => {
     if (!managers) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.code !== 'KeyF') return
       const el = document.activeElement
-      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return
       const st = useTeamStore.getState()
+      if (e.code === 'KeyF') {
+        if (st.me?.isGuest || st.floorChanging) return
+        st.setElevatorOpen(!st.elevatorOpen)
+        return
+      }
+      if (e.code !== 'KeyG') return
       const next = !st.focused
       st.setFocused(next)
       void managers.realtime.updateFocus(next)
       st.addToast(
-        next ? '🔕 Modo foco ligado — cutucadas serão respondidas sozinhas (F pra sair)' : '🔔 Modo foco desligado',
+        next ? '🔕 Modo foco ligado — cutucadas serão respondidas sozinhas (G pra sair)' : '🔔 Modo foco desligado',
         next ? 'out' : 'in'
       )
     }
@@ -457,7 +496,9 @@ export default function TeamOfficePage() {
     roomDeepLinkDone.current = true
     const st = useTeamStore.getState()
     st.setPendingSeat(null)
-    st.setPendingTeleport([room.x, room.z]) // centro da sala de reunião
+    // Centro da sala de reunião; se a sala é de outro andar, o LocalPlayer
+    // troca de andar antes (visitante entra direto no andar do convite)
+    st.setPendingTeleport({ x: room.x, z: room.z, floor: room.floor })
     st.setMeetingViewRequested(true) // CallDock abre o modo reunião ao conectar
   }, [me, rooms])
 
@@ -469,7 +510,7 @@ export default function TeamOfficePage() {
     const iv = setInterval(() => {
       const st = useTeamStore.getState()
       const [px, , pz] = st.playerPosition
-      const myRoom = roomAt(px, pz, st.rooms)
+      const myRoom = roomAt(px, pz, st.roomsOnFloor)
       for (const r of st.rooms) {
         if (r.isLocked && r.lockedBy === me.id && myRoom?.id !== r.id) {
           void setRoomLock(r.id, false, me.id).then((ok) => {
@@ -503,7 +544,7 @@ export default function TeamOfficePage() {
       // Spawn padrão: sentado na cadeira da própria sala, atrás da mesa
       const seat = personalOwnerSeat(room)
       const st = useTeamStore.getState()
-      st.setPendingTeleport([seat.x, seat.z])
+      st.setPendingTeleport({ x: seat.x, z: seat.z, floor: room.floor })
       st.setPendingSeat(seat)
     })
   }, [me, managers, rooms])
@@ -587,12 +628,14 @@ export default function TeamOfficePage() {
           <SceneLights />
           <fog attach="fog" args={['#9fb0c2', 55, 140]} />
           <ModernOffice />
-          <Parking />
+          {/* Térreo = portaria: estacionamento, carros, faxineira e o que é
+              "mundo" só existem lá. NPCs ligados a sala seguem o andar dela. */}
+          {floor === 0 && <Parking />}
           <LocalPlayer realtime={managers.realtime} />
           <RemotePlayers />
-          <MarceloNpc />
+          {marceloHere && <MarceloNpc />}
           <AgentNpcs />
-          <CleaningLady />
+          {floor === 0 && <CleaningLady />}
           <DataTvs agendaToday={agendaToday} />
           <ScreenShareTvs />
           <CoffeeChat />
@@ -611,7 +654,9 @@ export default function TeamOfficePage() {
       <MusicPlayer realtime={managers.realtime} />
       <OfficeToasts />
       {!me.isGuest && <DeskNotes realtime={managers.realtime} />}
-      <TourGuide />
+      {floor === 0 && <TourGuide />}
+      {!me.isGuest && <ElevatorPanel />}
+      <FloorFade />
     </div>
   )
 }

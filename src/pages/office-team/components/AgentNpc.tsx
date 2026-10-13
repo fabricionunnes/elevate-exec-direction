@@ -20,6 +20,7 @@ import { findPath } from '../lib/pathfinding'
 import { npcObstacles, personAvoidance } from '../lib/npcNav'
 import { cafeDialogueLine, summonLine, getCafeNames, getCafeFacts, CafeFact } from '../lib/cafeDialogues'
 import { bistroSeatsFor, BistroSeat, CoffeeSip, SpeechBubble } from './CoffeeChat'
+import { ELEVATOR_FRONT } from '../lib/floors'
 import RobotBody from './RobotBody'
 
 const CYCLE = 360 // segundos por ciclo de rotina
@@ -221,8 +222,15 @@ function AgentFigure({
     }
 
     // ── Aceno: alguém chamou ESTE agente (sincronizado por broadcast) ──
-    const summon = useTeamStore.getState().agentSummon
-    if (summon && summon.agentKey === agent.key && Date.now() - summon.ts < SUMMON_TTL) {
+    // Só no andar de quem chamou (as coordenadas são da planta daquele andar)
+    const stNow = useTeamStore.getState()
+    const summon = stNow.agentSummon
+    if (
+      summon &&
+      summon.agentKey === agent.key &&
+      (summon.floor ?? 0) === stNow.floor &&
+      Date.now() - summon.ts < SUMMON_TTL
+    ) {
       const target = summon.seat ?? { x: summon.x + 0.9, z: summon.z + 0.4 }
       planPath(`summon:${summon.ts}:go`, target.x, target.z)
       if (!followPath()) {
@@ -388,6 +396,7 @@ function AgentFigure({
  * e a clientes (sem números). Tudo local — zero tokens. */
 function SummonTalk() {
   const summon = useTeamStore((s) => s.agentSummon)
+  const floor = useTeamStore((s) => s.floor)
   const [, setTick] = useState(0)
   const [facts, setFacts] = useState<CafeFact[]>([])
 
@@ -410,6 +419,7 @@ function SummonTalk() {
   }, [])
 
   if (!summon) return null
+  if ((summon.floor ?? 0) !== floor) return null // aceno de outro andar
   // Na sala privada a conversa é no CHAT real (backend, com permissão) —
   // sem balão de papo aleatório. Balão só no café.
   if (summon.context !== 'cafe') return null
@@ -443,19 +453,32 @@ function TourBubble() {
 }
 
 export default function AgentNpcs() {
-  const rooms = useTeamStore((s) => s.rooms)
+  // Agentes aparecem no andar da sala do seu setor. Fora dele, só em visita:
+  // o MAX guiando o tour (térreo) ou um agente chamado por alguém deste andar
+  // (entra pelo elevador e volta a sumir quando o aceno acaba).
+  const rooms = useTeamStore((s) => s.roomsOnFloor)
+  const floor = useTeamStore((s) => s.floor)
+  const tourOn = useTeamStore((s) => !!s.tour)
+  const summonKey = useTeamStore((s) => s.agentSummon?.agentKey ?? null)
+  const summonFloor = useTeamStore((s) => s.agentSummon?.floor ?? 0)
   const [cafe, setCafe] = useState<CafeShift | null>(null)
 
   // Posto de cada agente: fundo da sala do seu setor, longe da TV central
   const placed = useMemo(() => {
     return OFFICE_AGENTS.flatMap((agent, idx) => {
       const room = rooms.find((r) => r.roomType === 'sector' && r.sector === agent.sector)
-      if (!room) return []
-      const x = agent.slot === 0 ? room.x - room.width / 2 + 1.5 : room.x + room.width / 2 - 1.5
-      const z = room.z - room.depth / 2 + 1.1
-      return [{ agent, x, z, idx }]
+      if (room) {
+        const x = agent.slot === 0 ? room.x - room.width / 2 + 1.5 : room.x + room.width / 2 - 1.5
+        const z = room.z - room.depth / 2 + 1.1
+        return [{ agent, x, z, idx }]
+      }
+      const visiting =
+        (agent.key === 'ceo' && tourOn && floor === 0) || (summonKey === agent.key && summonFloor === floor)
+      if (!visiting) return []
+      // Posto provisório: na frente do elevador deste andar
+      return [{ agent, x: ELEVATOR_FRONT.x + (idx % 2 ? 0.9 : -0.9), z: ELEVATOR_FRONT.z + 0.6, idx }]
     })
-  }, [rooms])
+  }, [rooms, floor, tourOn, summonKey, summonFloor])
 
   const seats = useMemo(() => bistroSeatsFor(rooms), [rooms])
 
@@ -481,7 +504,7 @@ export default function AgentNpcs() {
       [0, 0.5],
       [-10, 0.5],
       [8, 0.5],
-      [-2, 13],
+      [-3.6, 12], // hall ao lado do elevador
     ]
     if (lounge) {
       out.push(

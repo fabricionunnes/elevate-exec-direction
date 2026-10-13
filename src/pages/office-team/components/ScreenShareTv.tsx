@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Billboard, Text } from '@react-three/drei'
 import * as THREE from 'three'
-import { useTeamStore } from '../store/useTeamStore'
+import { useTeamStore, playerFloor } from '../store/useTeamStore'
 import { roomAt, OfficeRoom } from '../lib/rooms'
 
 const TV_W = 3.6
@@ -56,7 +56,8 @@ function VideoScreen({ room, stream, presenterName }: { room: OfficeRoom; stream
 }
 
 export default function ScreenShareTvs() {
-  const rooms = useTeamStore((s) => s.rooms)
+  const rooms = useTeamStore((s) => s.roomsOnFloor)
+  const floor = useTeamStore((s) => s.floor)
   const remotePlayers = useTeamStore((s) => s.remotePlayers)
   const me = useTeamStore((s) => s.me)
   const call = useTeamStore((s) => s.call)
@@ -74,10 +75,11 @@ export default function ScreenShareTvs() {
     }
     if (me && call.screenOn) tryAdd(playerPosition[0], playerPosition[2], call.localStream, me.name)
     for (const p of Object.values(remotePlayers)) {
+      if (playerFloor(p) !== floor) continue // telão só do meu andar
       if (p.screenOn) tryAdd(p.position[0], p.position[2], remoteStreams[p.id] ?? null, p.name)
     }
     return out
-  }, [rooms, remotePlayers, me, call.screenOn, call.localStream, remoteStreams, playerPosition])
+  }, [rooms, floor, remotePlayers, me, call.screenOn, call.localStream, remoteStreams, playerPosition])
 
   return (
     <>

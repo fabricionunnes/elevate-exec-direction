@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useStaffPermissions } from '@/hooks/useStaffPermissions'
 import { supabase } from '@/integrations/supabase/client'
 import { useTeamStore } from '../store/useTeamStore'
-import { createRoom, setRoomLock, isEffectivelyLocked, personalOwnerSeat, RoomType } from '../lib/rooms'
+import { createRoom, setRoomLock, setRoomFloor, isEffectivelyLocked, personalOwnerSeat, RoomType } from '../lib/rooms'
+import { FLOORS, floorShort } from '../lib/floors'
 import RecordingsPanel from './RecordingsPanel'
 import type { TeamRealtime } from '../lib/realtime'
 
@@ -34,7 +35,9 @@ const btnStyle: React.CSSProperties = {
 
 export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
   const me = useTeamStore((s) => s.me)
-  const rooms = useTeamStore((s) => s.rooms)
+  const rooms = useTeamStore((s) => s.rooms) // todas (pra achar a minha sala em qualquer andar)
+  const roomsHere = useTeamStore((s) => s.roomsOnFloor)
+  const floor = useTeamStore((s) => s.floor)
   const myRoomId = useTeamStore((s) => s.myRoomId)
   const remotePlayers = useTeamStore((s) => s.remotePlayers)
   const setPendingWalkTo = useTeamStore((s) => s.setPendingWalkTo)
@@ -85,12 +88,15 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
   const [newName, setNewName] = useState('')
   const [newType, setNewType] = useState<RoomType>('sector')
   const [newColor, setNewColor] = useState(ROOM_COLORS[0])
+  // Andar da sala nova: null = o andar em que estou agora
+  const [newFloor, setNewFloor] = useState<number | null>(null)
+  const [moving, setMoving] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   if (!me) return null
 
-  const currentRoom = rooms.find((r) => r.id === myRoomId) ?? null
+  const currentRoom = roomsHere.find((r) => r.id === myRoomId) ?? null
   const onlineIds = new Set([me.id, ...Object.keys(remotePlayers)])
   const currentLocked = currentRoom ? isEffectivelyLocked(currentRoom, onlineIds) : false
   const canUnlock = currentRoom && (currentRoom.lockedBy === me.id || isMaster)
@@ -112,10 +118,26 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
 
   const goToMyRoom = () => {
     if (myPersonalRoom) {
-      // Vai até a sala E senta na própria cadeira
+      // Vai até a sala E senta na própria cadeira (troca de andar se precisar)
       const seat = personalOwnerSeat(myPersonalRoom)
-      setPendingWalkTo({ x: seat.x, z: seat.z, teleportFallback: true })
+      setPendingWalkTo({ x: seat.x, z: seat.z, teleportFallback: true, floor: myPersonalRoom.floor })
       setPendingSeat(seat)
+    }
+  }
+
+  // Master: move a sala em que estou pra outro andar (mesmo slot na planta)
+  const moveRoomToFloor = async (target: number) => {
+    if (!currentRoom || busy || target === currentRoom.floor) return
+    setBusy(true)
+    const ok = await setRoomFloor(currentRoom.id, target)
+    setBusy(false)
+    setMoving(false)
+    const st = useTeamStore.getState()
+    if (ok) {
+      realtime.announceRoomsChanged()
+      st.addToast(`Sala "${currentRoom.name}" movida pro ${floorShort(target)}`, 'in')
+    } else {
+      st.addToast('Não consegui mover a sala. Tenta de novo.', 'out')
     }
   }
 
@@ -130,14 +152,15 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
       color: newColor,
       createdBy: me.id,
       rooms,
+      floor: newFloor ?? floor,
     })
     if (result.ok) {
       realtime.announceRoomsChanged()
       setNewName('')
       setCreating(false)
       setFeedback(null)
-    } else if (result.reason === 'no_slot') {
-      setFeedback('Sem espaço livre para esse tipo de sala.')
+    } else if (result.ok === false && result.reason === 'no_slot') {
+      setFeedback('Sem espaço livre para esse tipo de sala nesse andar.')
     } else {
       setFeedback('Erro ao salvar a sala. Tente novamente.')
     }
@@ -168,6 +191,7 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
         <div style={{ fontSize: '13px', fontWeight: 700, marginTop: '3px', color: currentRoom ? '#fff' : 'rgba(255,255,255,0.5)' }}>
           {currentRoom ? `${currentLocked ? '🔒 ' : ''}${currentRoom.name}` : 'Corredor'}
         </div>
+        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)', marginTop: '2px' }}>{floorShort(floor)}</div>
         {currentRoom && currentRoom.roomType !== 'lounge' && (
           <button
             onClick={toggleLock}
@@ -187,6 +211,39 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
                 : '🔒 Trancada por outro usuário'
               : '🔒 Trancar sala (Z)'}
           </button>
+        )}
+        {currentRoom && isMaster && !moving && (
+          <button onClick={() => setMoving(true)} disabled={busy} style={{ ...btnStyle, marginTop: '6px', textAlign: 'center' }}>
+            🏢 Mover pra outro andar
+          </button>
+        )}
+        {currentRoom && isMaster && moving && (
+          <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+            <select
+              defaultValue={currentRoom.floor}
+              onChange={(e) => void moveRoomToFloor(Number(e.target.value))}
+              disabled={busy}
+              style={{
+                flex: 1,
+                background: 'rgba(20,20,32,0.95)',
+                border: '1px solid rgba(255,255,255,0.18)',
+                borderRadius: '8px',
+                padding: '6px 8px',
+                color: '#fff',
+                fontSize: '12px',
+                outline: 'none',
+              }}
+            >
+              {FLOORS.map((f) => (
+                <option key={f.n} value={f.n}>
+                  {floorShort(f.n)}
+                </option>
+              ))}
+            </select>
+            <button onClick={() => setMoving(false)} style={{ ...btnStyle, width: 'auto', padding: '6px 8px' }}>
+              ✕
+            </button>
+          </div>
         )}
       </div>
 
@@ -266,6 +323,26 @@ export default function RoomControls({ realtime }: { realtime: TeamRealtime }) {
             <option value="meeting">Sala de reunião</option>
             <option value="personal">Sala privada</option>
             <option value="lounge">Lounge</option>
+          </select>
+          <select
+            value={newFloor ?? floor}
+            onChange={(e) => setNewFloor(Number(e.target.value))}
+            title="Andar da sala nova (padrão: o andar em que você está)"
+            style={{
+              background: 'rgba(20,20,32,0.95)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              borderRadius: '8px',
+              padding: '8px 10px',
+              color: '#fff',
+              fontSize: '12px',
+              outline: 'none',
+            }}
+          >
+            {FLOORS.map((f) => (
+              <option key={f.n} value={f.n}>
+                {floorShort(f.n)}
+              </option>
+            ))}
           </select>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             {ROOM_COLORS.map((c) => (

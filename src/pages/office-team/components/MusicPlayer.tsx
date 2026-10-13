@@ -47,7 +47,7 @@ function loadYouTubeApi(): Promise<YTNamespace> {
 
 export default function MusicPlayer({ realtime }: { realtime: TeamRealtime }) {
   const me = useTeamStore((s) => s.me)
-  const rooms = useTeamStore((s) => s.rooms)
+  const rooms = useTeamStore((s) => s.roomsOnFloor)
   const playerPosition = useTeamStore((s) => s.playerPosition)
 
   // Sala em que estou agora (pela posição — mesma regra do áudio espacial)
