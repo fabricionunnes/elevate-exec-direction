@@ -77,12 +77,14 @@ export default function CardapioAdmin() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2"><span className="truncate font-bold">{p.name}</span>{!p.active && <Badge className="bg-neutral-100 text-neutral-600 ring-neutral-300">inativo</Badge>}</div>
                     <div className="text-sm text-choco-600">{brl(p.price)}{p.weight_g ? ` · ${p.weight_g}g` : ""} · {p.category}</div>
-                    {c && <div className="text-xs text-choco-500">custo {brl(c.cost)} · margem {brl(c.margin)} ({c.margin_pct}%)</div>}
+                    {c && Number(c.cost) > 0
+                      ? <div className="text-xs text-choco-500">custo {brl(c.cost)} · margem {brl(c.margin)} ({c.margin_pct}%)</div>
+                      : <div className="text-xs font-semibold text-amber-700">sem receita: custo zerado no Financeiro</div>}
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button size="sm" variant="outline" onClick={() => setEditing(p)}><Pencil size={14} /> Editar</Button>
-                  <Button size="sm" variant="outline" onClick={() => setRecipeFor(p)}>Receita / custo</Button>
+                  <Button size="sm" variant={c && Number(c.cost) > 0 ? "outline" : "primary"} onClick={() => setRecipeFor(p)}>{c && Number(c.cost) > 0 ? "Receita / custo" : "Montar receita"}</Button>
                   <Button size="sm" variant="ghost" onClick={() => remove(p)}><Trash2 size={14} /></Button>
                 </div>
               </Card>
@@ -134,26 +136,38 @@ export function RecipeModal({ product, onClose }: { product: Product; onClose: (
   const toast = useToast();
   const [ings, setIngs] = useState<Ingredient[]>([]);
   const [recipe, setRecipe] = useState<Record<string, number>>({});
-  const [others, setOthers] = useState<Product[]>([]);
+  const [others, setOthers] = useState<(Product & { itens: number; custo: number })[]>([]);
+  const [copyId, setCopyId] = useState("");
 
   useEffect(() => {
     void (async () => {
-      const [i, r, p] = await Promise.all([
+      const [i, r, p, c, all] = await Promise.all([
         supabase.from("ingredients").select("*").eq("active", true).order("name"),
         supabase.from("product_ingredients").select("*").eq("product_id", product.id),
         supabase.from("products").select("*").neq("id", product.id).order("sort_order"),
+        supabase.from("product_costs").select("product_id, cost"),
+        supabase.from("product_ingredients").select("product_id"),
       ]);
       setIngs((i.data as Ingredient[]) ?? []);
       setRecipe(Object.fromEntries(((r.data as ProductIngredient[]) ?? []).map((x) => [x.ingredient_id, Number(x.qty)])));
-      setOthers((p.data as Product[]) ?? []);
+      const custo = new Map(((c.data as { product_id: string; cost: number }[]) ?? []).map((x) => [x.product_id, Number(x.cost)]));
+      const itens = new Map<string, number>();
+      for (const x of ((all.data as { product_id: string }[]) ?? [])) itens.set(x.product_id, (itens.get(x.product_id) ?? 0) + 1);
+      // só quem tem receita serve de modelo
+      setOthers((((p.data as Product[]) ?? []).map((o) => ({ ...o, itens: itens.get(o.id) ?? 0, custo: custo.get(o.id) ?? 0 }))).filter((o) => o.itens > 0));
     })();
   }, [product.id]);
 
-  const copyFrom = async (otherId: string) => {
-    if (!otherId) return;
-    const { data } = await supabase.from("product_ingredients").select("*").eq("product_id", otherId);
-    setRecipe(Object.fromEntries(((data as ProductIngredient[]) ?? []).map((x) => [x.ingredient_id, Number(x.qty)])));
-    toast("Receita copiada. Ajuste o que muda (ex.: tire a cobertura) e salve.");
+  /** Copia a receita de outro produto: substitui tudo ou só acrescenta o que falta. Depois é editar e salvar. */
+  const copyFrom = async (mode: "substituir" | "juntar") => {
+    if (!copyId) return toast("Escolha de qual produto copiar.", "err");
+    const { data } = await supabase.from("product_ingredients").select("*").eq("product_id", copyId);
+    const src = Object.fromEntries(((data as ProductIngredient[]) ?? []).map((x) => [x.ingredient_id, Number(x.qty)]));
+    const hasCurrent = Object.keys(recipe).length > 0;
+    if (mode === "substituir" && hasCurrent && !window.confirm("Substituir a receita atual pela copiada? Nada é salvo até você tocar em Salvar receita.")) return;
+    setRecipe(mode === "substituir" ? src : { ...src, ...recipe });
+    const nome = others.find((o) => o.id === copyId)?.name ?? "o outro produto";
+    toast(`Receita de ${nome} ${mode === "substituir" ? "copiada" : "juntada"}. Ajuste quantidades, tire ou acrescente insumos e salve.`);
   };
 
   const cost = ings.reduce((a, i) => a + (recipe[i.id] ?? 0) * Number(i.cost_per_unit), 0);
@@ -171,11 +185,19 @@ export function RecipeModal({ product, onClose }: { product: Product; onClose: (
     <Modal open onClose={onClose} title={`Receita: ${product.name}`}>
       <p className="mb-2 text-sm text-choco-600">Quantidade de cada insumo por 1 unidade. Ao entrar em produção, o estoque é baixado automaticamente. Deixe em branco (ou 0) o que esse produto não usa: o bolo sem cobertura não leva chocolate, leite condensado nem manteiga.</p>
       {others.length > 0 && (
-        <div className="mb-3">
-          <Select label="Copiar receita de outro produto (depois ajuste)" defaultValue="" onChange={(e) => copyFrom(e.target.value)}>
-            <option value="">— escolher —</option>
-            {others.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-          </Select>
+        <div className="mb-3 rounded-xl border border-rosa-200 bg-rosa-50 p-3">
+          <div className="text-xs font-bold uppercase tracking-wide text-vinho-700">Copiar de outro bolo</div>
+          <p className="mb-2 text-xs text-choco-600">Parte de uma receita pronta e muda só o que é diferente. Nada é gravado até salvar.</p>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-[220px] flex-1">
+              <Select value={copyId} onChange={(e) => setCopyId(e.target.value)}>
+                <option value="">— escolher o bolo modelo —</option>
+                {others.map((o) => <option key={o.id} value={o.id}>{o.name} · {o.itens} insumo(s) · custo {brl(o.custo)}</option>)}
+              </Select>
+            </div>
+            <Button size="sm" disabled={!copyId} onClick={() => void copyFrom("substituir")}>Copiar tudo</Button>
+            <Button size="sm" variant="outline" disabled={!copyId} onClick={() => void copyFrom("juntar")} title="Mantém o que já está aqui e só acrescenta o que falta">Só acrescentar</Button>
+          </div>
         </div>
       )}
       {ings.length === 0 ? <Empty>Cadastre insumos na aba Estoque primeiro.</Empty> : (
