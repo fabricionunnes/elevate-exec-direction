@@ -37,6 +37,31 @@ async function chamarUnvSales(body: Record<string, unknown>) {
   return { ok: r.ok, ...j };
 }
 
+const soDigitos = (v: unknown) => String(v ?? "").replace(/\D/g, "");
+const cnpjFormatado = (d: string) => d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+
+// Troca o erro técnico do banco por algo que dá pra agir.
+function motivoBusca(detail: unknown, padrao: string) {
+  const d = String(detail || "");
+  if (/statement timeout|canceling statement/i.test(d)) {
+    return "A busca demorou demais com esse filtro. Escolha um estado ou diminua a quantidade e tente de novo.";
+  }
+  return d || padrao;
+}
+
+// Quais desses CNPJs já são lead no CRM (confere com e sem pontuação).
+async function jaNoCrm(admin: any, cnpjs: string[]): Promise<Set<string>> {
+  const achados = new Set<string>();
+  const unicos = [...new Set(cnpjs.filter((c) => c.length === 14))];
+  for (let i = 0; i < unicos.length; i += 100) {
+    const lote = unicos.slice(i, i + 100);
+    const { data } = await admin.from("crm_leads").select("document")
+      .in("document", [...lote, ...lote.map(cnpjFormatado)]).limit(1000);
+    for (const x of data ?? []) achados.add(soDigitos(x.document));
+  }
+  return achados;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return erro("method_not_allowed", "Requisição inválida.", 405);
@@ -59,16 +84,13 @@ Deno.serve(async (req) => {
     const filtros = (body.filtros && typeof body.filtros === "object") ? body.filtros : {};
 
     if (action === "contar") {
-      // "buscar_interno" já limita a 1000 (o teto de uma pesquisa); pra contar de
-      // verdade pedimos o teto e devolvemos o tamanho, descontando o que esse
-      // CRM já tem cadastrado — senão o número mostrado engana.
-      const r2 = await chamarUnvSales({ action: "buscar_interno", filtros, quantidade: 1000, modo: "lista" });
-      if (!r2.ok) return erro("falha_busca", r2.detail || "Não foi possível contar.");
-      const brutos: any[] = r2.empresas ?? [];
-      const { data: existentes } = await admin.from("crm_leads").select("document").not("document", "is", null);
-      const jaTem = new Set((existentes ?? []).map((x: any) => String(x.document)));
-      const novas = brutos.filter((e) => !jaTem.has(String(e.cnpj))).length;
-      return json({ ok: true, total: novas, teto: brutos.length >= 1000 });
+      // Só conta (ação leve "contar_interno" do UNV Sales). Antes buscava até 1000
+      // empresas só pra saber o tamanho e estourava o tempo em segmento grande com
+      // filtro de porte (23/09/2026). Empresa que já está no CRM é pulada na hora
+      // de enviar pro funil, não aqui.
+      const r2 = await chamarUnvSales({ action: "contar_interno", filtros });
+      if (!r2.ok) return erro("falha_busca", motivoBusca(r2.detail, "Não foi possível contar."));
+      return json({ ok: true, total: Number(r2.total ?? 0), teto: !!r2.teto });
     }
 
     if (action === "cnaes") {
@@ -96,24 +118,40 @@ Deno.serve(async (req) => {
     }
     if (!stageId) return erro("funil_sem_etapas", "O funil escolhido não tem etapas.");
 
-    // O UNV Sales não sabe o que o Nexus já usou (aqui não há tenant/carteira
-    // pra rastrear isso do lado dele), então pedimos uma folga e filtramos as
-    // já entregues por aqui — sem isso a mesma empresa repetia a cada busca.
-    let empresas: any[] = [];
-    let jaTem = new Set<string>();
-    {
-      const { data: existentes } = await admin.from("crm_leads").select("document").not("document", "is", null);
-      jaTem = new Set((existentes ?? []).map((x: any) => String(x.document)));
-    }
-    const alvoBusca = Math.min(3000, quantidade * 3);
-    const r = await chamarUnvSales({ action: "buscar_interno", filtros, quantidade: alvoBusca, modo });
-    if (!r.ok) return erro("falha_busca", r.detail || "Não foi possível buscar.");
-    for (const e of (r.empresas ?? [])) {
-      if (jaTem.has(String(e.cnpj))) continue;
-      empresas.push(e);
-      if (empresas.length >= quantidade) break;
+    // O UNV Sales não sabe o que o Nexus já usou (aqui não há tenant/carteira pra
+    // rastrear isso do lado dele), então quem tira as repetidas é este lado.
+    //
+    // 13/10/2026: a busca pedia sempre o triplo (e o UNV Sales triplica de novo pra
+    // validar WhatsApp), ou seja, 900 empresas pra entregar 100. Em filtro raro
+    // (ex.: estética + pequena empresa sem MEI) o banco levava 47s e a tela
+    // mostrava "non-2xx". Agora pede uma folga pequena e só vai buscar mais fundo
+    // se faltar empresa e ainda houver tempo.
+    // A conferência de duplicado lia crm_leads inteiro, mas a API devolve no máximo
+    // 1000 linhas e o CRM tem 47 mil leads com CNPJ: quase nada era conferido.
+    // Agora pergunta só pelos CNPJs que vieram na busca.
+    const inicio = Date.now();
+    const empresas: any[] = [];
+    const vistos = new Set<string>();
+    const teto = 1000; // teto de uma pesquisa no UNV Sales
+    const pedidos = [...new Set([Math.min(teto, Math.ceil(quantidade * 1.3) + 10), Math.min(teto, quantidade * 3)])];
+    let falha = "";
+    for (let i = 0; i < pedidos.length; i++) {
+      if (i > 0 && (empresas.length >= quantidade || Date.now() - inicio > 35_000)) break;
+      const r = await chamarUnvSales({ action: "buscar_interno", filtros, quantidade: pedidos[i], modo });
+      if (!r.ok) { falha = motivoBusca(r.detail, "Não foi possível buscar."); break; }
+      const vieram: any[] = (r.empresas ?? []).filter((e: any) => !vistos.has(soDigitos(e.cnpj)));
+      const repetidas = await jaNoCrm(admin, vieram.map((e) => soDigitos(e.cnpj)));
+      for (const e of vieram) {
+        const cnpj = soDigitos(e.cnpj);
+        vistos.add(cnpj);
+        if (repetidas.has(cnpj)) continue;
+        if (empresas.length < quantidade) empresas.push(e);
+      }
+      // na lista simples, vir menos do que foi pedido quer dizer que a base acabou
+      if (modo === "lista" && (r.empresas ?? []).length < pedidos[i]) break;
     }
     if (empresas.length === 0) {
+      if (falha) return erro("falha_busca", falha);
       return erro(modo === "whatsapp" ? "sem_whatsapp" : "nada_encontrado",
         modo === "whatsapp"
           ? "Nenhuma empresa NOVA com esse filtro tem WhatsApp confirmado (as que bateram já estão no CRM)."

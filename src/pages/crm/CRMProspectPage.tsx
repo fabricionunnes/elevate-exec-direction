@@ -90,12 +90,27 @@ export const CRMProspectPage = () => {
     return () => clearTimeout(t);
   }, [cnaeBusca, cnaes]);
 
+  // Quando a edge responde com erro (400, 500), o supabase-js só diz "non-2xx" e
+  // esconde o motivo. O motivo de verdade vem no corpo, em error.context.
+  const motivoDoErro = async (data: any, error: any, padrao: string) => {
+    if (data?.detail) return String(data.detail);
+    try {
+      const corpo = await error?.context?.json?.();
+      if (corpo?.detail) return String(corpo.detail);
+    } catch { /* corpo não era JSON */ }
+    const msg = String(error?.message || "");
+    if (/non-2xx|Failed to send|Failed to fetch/i.test(msg)) {
+      return "A busca demorou mais do que o servidor aguenta. Escolha um estado ou diminua a quantidade e tente de novo.";
+    }
+    return msg || padrao;
+  };
+
   const contar = async () => {
     setContando(true);
     setTotal(null);
     try {
       const { data, error } = await supabase.functions.invoke("crm-prospect-search", { body: { action: "contar", filtros } });
-      if (error || data?.error) { toast.error(data?.detail || error?.message || "Não foi possível contar."); return; }
+      if (error || data?.error) { toast.error(await motivoDoErro(data, error, "Não foi possível contar.")); return; }
       setTotal(data.total ?? 0);
       setTeto(!!data.teto);
     } finally {
@@ -109,7 +124,7 @@ export const CRMProspectPage = () => {
       const { data, error } = await supabase.functions.invoke("crm-prospect-search", {
         body: { action: "executar", filtros, quantidade, modo, pipeline_id: pipelineId },
       });
-      if (error || data?.error) { toast.error(data?.detail || error?.message || "A pesquisa falhou."); return; }
+      if (error || data?.error) { toast.error(await motivoDoErro(data, error, "A pesquisa falhou. Tente de novo."), { duration: 9000 }); return; }
       setResultado(data);
       setConfirmar(false);
       toast.success(`${data.entregues} empresa(s) entraram no funil ${data.pipeline}.`);
@@ -309,6 +324,11 @@ export const CRMProspectPage = () => {
             <DialogDescription>
               Até <b>{quantidade}</b> empresas vão entrar no funil <b>{pipelines.find((p) => p.id === pipelineId)?.name}</b>
               {modo === "whatsapp" ? ", só as que tiverem WhatsApp confirmado" : ""}. Sem custo.
+              {executando && (
+                <span className="block mt-2 text-xs">
+                  Em filtro raro a busca pode levar até um minuto. Deixe esta tela aberta.
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
