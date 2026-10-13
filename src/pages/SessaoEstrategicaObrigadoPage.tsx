@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { CheckCircle2, MessageCircle } from "lucide-react";
 
-const FURAR_FILA_WA = "https://wa.me/5511927008490?text=" + encodeURIComponent(
+const FURAR_FILA_WA = "https://wa.me/5517992061688?text=" + encodeURIComponent(
   "Olá! Acabei de me cadastrar e quero furar a fila pra ser atendido na frente."
 );
 

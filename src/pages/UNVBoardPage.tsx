@@ -27,7 +27,7 @@ import {
   Zap,
 } from "lucide-react";
 
-const WHATSAPP_URL = `https://wa.me/5511927008490?text=${encodeURIComponent(
+const WHATSAPP_URL = `https://wa.me/5517992061688?text=${encodeURIComponent(
   "Quero saber mais sobre o UNV Board"
 )}`;
 

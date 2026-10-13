@@ -37,7 +37,7 @@ import { generateBoardDeliverablePDF } from "@/components/board/generateBoardDel
 import UNVStartDashboard from "@/components/unv-start/UNVStartDashboard";
 
 const NAVY = "#0D2B5E";
-const WA_UPSELL = "https://wa.me/5511927008490";
+const WA_UPSELL = "https://wa.me/5517992061688";
 
 // ============ TIPOS LOCAIS (engine não está no types.ts) ============
 interface ModuleQuestion {
