@@ -46,10 +46,29 @@ export default function Clientes() {
     if (seg === "sumidos") l = l.filter((r) => (r.orders_count ?? 0) >= 1 && (r.days_since_last ?? 0) >= 30);
     if (q.trim()) {
       const s = q.trim().toLowerCase();
-      l = l.filter((r) => r.name.toLowerCase().includes(s) || r.phone.includes(onlyDigits(s)) || r.address.toLowerCase().includes(s));
+      const d = onlyDigits(s);
+      l = l.filter((r) => r.name.toLowerCase().includes(s) || (d.length > 0 && r.phone.includes(d)) || r.address.toLowerCase().includes(s));
     }
     return l;
   }, [rows, seg, q]);
+
+  const [mergeWith, setMergeWith] = useState("");
+
+  /** Mesma pessoa em dois cadastros (WhatsApp com um telefone, app com outro): junta pedidos e apaga o outro. */
+  const merge = async () => {
+    if (!editing?.id || !mergeWith) return;
+    const other = (rows ?? []).find((r) => r.id === mergeWith);
+    if (!other) return;
+    if (!window.confirm(`Juntar "${other.name}" (${formatPhone(other.phone)}) em "${editing.name}"? Os pedidos passam pra cá e o cadastro de ${other.name} é apagado.`)) return;
+    setBusy(true);
+    const { error } = await supabase.rpc("merge_customers", { p_keep: editing.id, p_remove: mergeWith });
+    setBusy(false);
+    if (error) return toast(friendlyError(error), "err");
+    toast("Cadastros juntados.");
+    setMergeWith("");
+    setEditing(null);
+    void load();
+  };
 
   const save = async () => {
     if (!editing?.name || !editing.phone) return toast("Nome e telefone são obrigatórios.", "err");
@@ -155,6 +174,19 @@ export default function Clientes() {
             <Input label="Referência" value={editing.reference ?? ""} onChange={(e) => setEditing({ ...editing, reference: e.target.value })} />
             <Textarea label="Anotações (preferências, aniversário, etc.)" value={editing.notes ?? ""} onChange={(e) => setEditing({ ...editing, notes: e.target.value })} />
             <Button className="w-full" loading={busy} onClick={save}><Plus size={16} /> Salvar</Button>
+            {editing.id && (
+              <div className="rounded-xl border border-choco-100 bg-choco-50 p-3">
+                <div className="text-xs font-bold uppercase tracking-wide text-choco-600">Mesma pessoa em dois cadastros?</div>
+                <p className="mb-2 text-xs text-choco-500">Acontece quando ela pede pelo WhatsApp com um telefone e pelo app com outro. Escolha o cadastro repetido: os pedidos vêm pra este e o outro é apagado.</p>
+                <div className="flex gap-2">
+                  <Select value={mergeWith} onChange={(e) => setMergeWith(e.target.value)} className="flex-1">
+                    <option value="">Escolher cadastro repetido…</option>
+                    {(rows ?? []).filter((r) => r.id !== editing.id).sort((a, b) => a.name.localeCompare(b.name)).map((r) => <option key={r.id} value={r.id}>{r.name} · {formatPhone(r.phone)} · {r.orders_count} pedido(s)</option>)}
+                  </Select>
+                  <Button variant="outline" disabled={!mergeWith} loading={busy} onClick={merge}>Juntar</Button>
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
       )}
