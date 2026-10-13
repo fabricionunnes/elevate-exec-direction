@@ -70,6 +70,7 @@ import { DistributeAdjustmentDialog } from "@/components/financial/DistributeAdj
 import { ReceivableEditDialog } from "@/components/financial/ReceivableEditDialog";
 import { CFOFilterBar, type CFOFilters } from "@/components/financial/CFOFilterBar";
 import { BillingRulesPanel } from "@/components/financial/BillingRulesPanel";
+import { BillingAgentPanel } from "@/components/financial/BillingAgentPanel";
 import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
 import { WhatsAppInstancePanel } from "@/components/financial/WhatsAppInstancePanel";
 import { FinancialInboxPanel } from "@/components/financial/FinancialInboxPanel";
@@ -2626,7 +2627,10 @@ export default function AllRecurringChargesPage() {
             <CFOAIPanel />
           )}
           {activeTab === "billing-rules" && (
-            <BillingRulesPanel />
+            <div className="space-y-6">
+              <BillingAgentPanel />
+              <BillingRulesPanel />
+            </div>
           )}
           {activeTab === "suppliers" && (
             <SuppliersPanel />

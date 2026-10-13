@@ -74,7 +74,18 @@ Deno.serve(async (req) => {
     diagnostics.rules_count = allRules?.length ?? 0;
 
     // 2. Filter rules by scheduled send time (skip filter when manual)
-    let rules = allRules || [];
+    // Agente de Cobrança ligado (billing-agent): quem fala com cliente em atraso é ele, com
+    // contexto e tom por faixa. A régua segue só com os lembretes de antes e do dia do
+    // vencimento, pra o cliente não receber duas cobranças no mesmo dia.
+    const { data: agentCfg } = await supabase
+      .from("billing_agent_config")
+      .select("enabled, dry_run, instance_id")
+      .eq("id", true)
+      .maybeSingle();
+    const agenteCobra = !!(agentCfg?.enabled && !agentCfg?.dry_run && agentCfg?.instance_id);
+    diagnostics.agente_cobranca_ativo = agenteCobra;
+
+    let rules = (allRules || []).filter((r: any) => !(agenteCobra && r.trigger_type === "after"));
     const TIME_TOLERANCE_MINUTES = 5;
 
     if (!isManual && rules.length > 0) {
