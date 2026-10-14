@@ -14,13 +14,15 @@ import { Cab, Combo } from "@/components/painel-controle/ui";
 import { mesLabel } from "@/components/painel-controle/fmt";
 import { alertas, calcMes, type Bruto, type Filtro } from "@/components/painel-kpis/modelo";
 import {
-  DiaKpis, FontesKpis, MetaKpis, PessoaKpis, TimeKpis, VisaoKpis, filtrosKpis, nomeEmpresa, type CtxK, type NavK,
+  ClientesKpis, DiaKpis, FontesKpis, FunilKpis, MetaKpis, PessoaKpis, TimeKpis, VisaoKpis, filtrosKpis, nomeEmpresa, type CtxK, type NavK,
 } from "@/components/painel-kpis/telas";
 
 const TITULOS: Record<string, [string, string]> = {
   meta: ["Ritmo da meta", "faturado e vendas contra a meta do mês, dia a dia"],
   time: ["Time comercial", "todas as vendedoras, meta, ritmo e ticket"],
   fontes: ["Fontes de dados", "de onde vem cada número"],
+  funil: ["Funil de atendimentos", "do atendimento à venda, por etapa e por vendedora"],
+  clientes: ["Clientes, CAC e LTV", "quanto custa trazer um cliente e quanto ele rende"],
 };
 
 function useDados(token: string | undefined, mes: string | null) {
@@ -90,6 +92,8 @@ export default function PainelKpisPage() {
       case "pessoa": return <PessoaKpis c={c} id={cur.id ?? ""} />;
       case "dia": return <DiaKpis c={c} dia={cur.dia ?? ""} />;
       case "fontes": return <FontesKpis c={c} />;
+      case "funil": return <FunilKpis c={c} />;
+      case "clientes": return <ClientesKpis c={c} />;
       default: return <VisaoKpis c={c} />;
     }
   };
@@ -122,7 +126,7 @@ export default function PainelKpisPage() {
         {c && cur.view !== "visao" && (
           <Cab titulo={tituloDe(cur)} sub={TITULOS[cur.view] ? `${TITULOS[cur.view][1]}. ${mesLabel(mes)}` : mesLabel(mes)}
             crumbs={crumbs} onBack={() => setStack((s) => s.slice(0, -1))} onCrumb={(i) => setStack((s) => (i < 0 ? [] : s.slice(0, i + 1)))}
-            filtros={cur.view === "time" || cur.view === "meta" || cur.view === "dia" ? filtrosKpis(c) : undefined} />
+            filtros={cur.view === "time" || cur.view === "meta" || cur.view === "dia" || cur.view === "funil" ? filtrosKpis(c) : undefined} />
         )}
         {conteudo()}
       </div>

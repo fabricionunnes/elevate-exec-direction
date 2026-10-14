@@ -16,6 +16,14 @@ export type Bruto = {
   times: { id: string; nome: string; unidade: string | null }[];
   pessoas: PessoaCad[];
   mensal: Linha[]; metas: LinhaMeta[]; diario: Linha[];
+  /** atendimentos do sistema do cliente: [data, vendedora, etapa, quantidade] do mês e do anterior */
+  funil?: { etapas: { chave: string; rotulo: string; ordem: number }[]; diario: [string, string | null, string, number][]; perdas: { motivo: string; quantidade: number }[]; atualizado_em: string | null };
+  clientes?: {
+    mensal: { mes: string; novos: number | null; recorrentes: number | null; ativos: number | null; fat_novos: number | null; fat_recorrentes: number | null }[];
+    ltv: { valor: number | null; meses: number | null; compras: number | null; recompra: number | null; base: number | null; desde: string | null; atualizado_em: string } | null;
+    por_vendedora: { id: string | null; nome: string; novos: number | null; recorrentes: number | null }[];
+  };
+  investimento?: { mes: string; midia: number | null; time: number | null; outros: number | null }[];
 };
 export type Filtro = { unidade?: string; time?: string };
 
@@ -253,6 +261,12 @@ export function alertas(b: Bruto, c: Calc, agora = new Date()): Alerta[] {
     if (c.ticket && c.ant.vendas && c.ant.fat / c.ant.vendas > 0 && c.ticket < 0.85 * (c.ant.fat / c.ant.vendas))
       out.push({ gravidade: "baixa", titulo: `Ticket médio ${Math.round((1 - c.ticket / (c.ant.fat / c.ant.vendas)) * 100)}% menor que no mês anterior`, detalhe: `${brlK(c.ticket)} agora contra ${brlK(c.ant.fat / c.ant.vendas)} no mesmo período do mês passado`, abre: { view: "time" } });
   }
+  const fu = calcFunil(b, c);
+  if (fu?.temDado && c.emAndamento && fu.conv != null && fu.convAnt && fu.atendimentos >= 30 && fu.conv < 0.85 * fu.convAnt)
+    out.push({ gravidade: "media", titulo: `Conversão caiu para ${Math.round(fu.conv * 100)}%`, detalhe: `${Math.round(fu.convAnt * 100)}% no mesmo período do mês anterior · ${fu.atendimentos} atendimentos e ${fu.vendas} vendas no mês`, abre: { view: "funil" } });
+  const cl = calcClientes(b, c.iso);
+  if (cl.ltvCac != null && cl.ltvCac < 3)
+    out.push({ gravidade: cl.ltvCac < 1.5 ? "alta" : "media", titulo: `LTV só ${cl.ltvCac.toFixed(1).replace(".", ",")}x o CAC`, detalhe: `CAC de ${brlK(cl.cac ?? 0)} para um LTV de ${brlK(cl.ltv?.valor ?? 0)}. O saudável é 3x ou mais`, abre: { view: "clientes" } });
   if (b.atualizado_em) {
     const h = (agora.getTime() - new Date(b.atualizado_em).getTime()) / 36e5;
     const dia = agora.getDay();
@@ -262,3 +276,65 @@ export function alertas(b: Bruto, c: Calc, agora = new Date()): Alerta[] {
   const ordem = { alta: 0, media: 1, baixa: 2 };
   return out.sort((a, z) => ordem[a.gravidade] - ordem[z.gravidade]);
 }
+
+/* ======================= funil de atendimentos ======================= */
+/** funil do mês (e do mês anterior no mesmo período) a partir dos atendimentos do sistema do cliente */
+export function calcFunil(b: Bruto, c: Calc, f: Filtro = {}) {
+  const fu = b.funil;
+  if (!fu || !fu.etapas.length) return null;
+  const ok = passa(b, f);
+  const etapas = [...fu.etapas].sort((a, z) => a.ordem - z.ordem);
+  const tot: Record<string, number> = {}, ant: Record<string, number> = {};
+  const pess = new Map<string, Record<string, number>>();
+  const dias = Array.from({ length: c.du.fim }, () => ({} as Record<string, number>));
+  for (const [d, sp, et, q] of fu.diario) {
+    if (!ok(sp)) continue;
+    const dia = Number(d.slice(8, 10));
+    if (ym(d) === c.chave) {
+      tot[et] = (tot[et] ?? 0) + q;
+      dias[dia - 1][et] = (dias[dia - 1][et] ?? 0) + q;
+      const k = sp ?? SEM; const x = pess.get(k) ?? {}; x[et] = (x[et] ?? 0) + q; pess.set(k, x);
+    } else if (ym(d) === ym(c.ant.iso) && dia <= c.ant.corte) ant[et] = (ant[et] ?? 0) + q;
+  }
+  const temDado = Object.values(tot).some((v) => v > 0) || fu.diario.some((l) => ym(l[0]) === c.chave);
+  const primeira = etapas[0].chave, ultima = etapas[etapas.length - 1].chave;
+  const nomes = new Map(b.pessoas.map((p) => [p.id, p]));
+  const porPessoa = [...pess.entries()].map(([id, x]) => ({
+    id: id === SEM ? null : id, nome: id === SEM ? "Sem vendedora" : nomes.get(id)?.nome ?? "Vendedora", ranking: id === SEM ? false : nomes.get(id)?.ranking ?? true,
+    etapas: x, atend: x[primeira] ?? 0, vendas: x[ultima] ?? 0, conv: pct(x[ultima] ?? 0, x[primeira] ?? 0),
+  })).sort((a, z) => z.atend - a.atend);
+  return {
+    etapas: etapas.map((e, i) => ({ ...e, v: tot[e.chave] ?? 0, ant: ant[e.chave] ?? 0, convAnterior: i ? pct(tot[e.chave] ?? 0, tot[etapas[i - 1].chave] ?? 0) : null })),
+    atendimentos: tot[primeira] ?? 0, vendas: tot[ultima] ?? 0, conv: pct(tot[ultima] ?? 0, tot[primeira] ?? 0),
+    convAnt: pct(ant[ultima] ?? 0, ant[primeira] ?? 0), atendAnt: ant[primeira] ?? 0,
+    porPessoa, dias, primeira, ultima, temDado, perdas: fu.perdas ?? [],
+  };
+}
+export type Funil = NonNullable<ReturnType<typeof calcFunil>>;
+
+/* ======================= clientes, CAC e LTV ======================= */
+/** CAC do mês = (mídia + time comercial + outros) ÷ clientes novos; LTV vem pronto do sistema do cliente */
+export function calcClientes(b: Bruto, mesIso: string) {
+  const k = ym(mesIso);
+  const cl = b.clientes?.mensal.find((m) => ym(m.mes) === k) ?? null;
+  const inv = b.investimento?.find((m) => ym(m.mes) === k) ?? null;
+  const custo = inv ? (inv.midia ?? 0) + (inv.time ?? 0) + (inv.outros ?? 0) : null;
+  const novos = cl?.novos ?? null;
+  const cac = custo != null && novos ? custo / novos : null;
+  const cacMidia = inv?.midia != null && novos ? inv.midia / novos : null;
+  const ltv = b.clientes?.ltv ?? null;
+  const serie = serieMeses(b).map((m) => {
+    const c2 = b.clientes?.mensal.find((x) => ym(x.mes) === ym(m.mes));
+    const i2 = b.investimento?.find((x) => ym(x.mes) === ym(m.mes));
+    const cu = i2 ? (i2.midia ?? 0) + (i2.time ?? 0) + (i2.outros ?? 0) : null;
+    return { mes: m.mes, novos: c2?.novos ?? null, recorrentes: c2?.recorrentes ?? null, custo: cu, midia: i2?.midia ?? null, cac: cu != null && c2?.novos ? cu / c2.novos : null };
+  });
+  return {
+    cl, inv, custo, novos, cac, cacMidia, ltv,
+    ltvCac: ltv?.valor != null && cac ? ltv.valor / cac : null,
+    temClientes: !!(b.clientes && (b.clientes.mensal.length || b.clientes.ltv)),
+    temInvest: !!(b.investimento && b.investimento.length),
+    serie,
+  };
+}
+export type Clientes = ReturnType<typeof calcClientes>;
