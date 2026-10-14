@@ -261,9 +261,6 @@ export function alertas(b: Bruto, c: Calc, agora = new Date()): Alerta[] {
     if (c.ticket && c.ant.vendas && c.ant.fat / c.ant.vendas > 0 && c.ticket < 0.85 * (c.ant.fat / c.ant.vendas))
       out.push({ gravidade: "baixa", titulo: `Ticket médio ${Math.round((1 - c.ticket / (c.ant.fat / c.ant.vendas)) * 100)}% menor que no mês anterior`, detalhe: `${brlK(c.ticket)} agora contra ${brlK(c.ant.fat / c.ant.vendas)} no mesmo período do mês passado`, abre: { view: "time" } });
   }
-  const fu = calcFunil(b, c);
-  if (fu?.temDado && c.emAndamento && fu.conv != null && fu.convAnt && fu.atendimentos >= 30 && fu.conv < 0.85 * fu.convAnt)
-    out.push({ gravidade: "media", titulo: `Conversão caiu para ${Math.round(fu.conv * 100)}%`, detalhe: `${Math.round(fu.convAnt * 100)}% no mesmo período do mês anterior · ${fu.atendimentos} atendimentos e ${fu.vendas} vendas no mês`, abre: { view: "funil" } });
   const cl = calcClientes(b, c.iso);
   if (cl.ltvCac != null && cl.ltvCac < 3)
     out.push({ gravidade: cl.ltvCac < 1.5 ? "alta" : "media", titulo: `LTV só ${cl.ltvCac.toFixed(1).replace(".", ",")}x o CAC`, detalhe: `CAC de ${brlK(cl.cac ?? 0)} para um LTV de ${brlK(cl.ltv?.valor ?? 0)}. O saudável é 3x ou mais`, abre: { view: "clientes" } });
@@ -297,7 +294,8 @@ export function calcFunil(b: Bruto, c: Calc, f: Filtro = {}) {
     } else if (ym(d) === ym(c.ant.iso) && dia <= c.ant.corte) ant[et] = (ant[et] ?? 0) + q;
   }
   const temDado = Object.values(tot).some((v) => v > 0) || fu.diario.some((l) => ym(l[0]) === c.chave);
-  const primeira = etapas[0].chave, ultima = etapas[etapas.length - 1].chave;
+  // base da conversão: a etapa "atendimento" quando existe (a 1ª pode ser carteira/lista importada)
+  const primeira = etapas.find((e) => e.chave === "atendimento")?.chave ?? etapas[0].chave, ultima = etapas[etapas.length - 1].chave;
   const nomes = new Map(b.pessoas.map((p) => [p.id, p]));
   const porPessoa = [...pess.entries()].map(([id, x]) => ({
     id: id === SEM ? null : id, nome: id === SEM ? "Sem vendedora" : nomes.get(id)?.nome ?? "Vendedora", ranking: id === SEM ? false : nomes.get(id)?.ranking ?? true,
