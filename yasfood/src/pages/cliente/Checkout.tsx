@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Minus, Plus, Trash2, Truck, Store, CheckCircle2 } from "lucide-react";
+import { Minus, Plus, Trash2, Truck, Store, CheckCircle2, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useCart, rememberOrder, saveMe, loadMe } from "@/lib/cart";
@@ -8,7 +8,7 @@ import { useSettings } from "@/lib/useSettings";
 import { notifyNewOrders } from "@/lib/push";
 import { brl, dayLabel, weekdayBR, todayISO, addDaysISO, onlyDigits, formatPhone, PAYMENT_LABEL, windowLabel } from "@/lib/format";
 import { waLink, pedidoClienteMsg } from "@/lib/whatsapp";
-import type { Availability, AvailableWindow, DeliveryZone, Fulfillment, PaymentMethod } from "@/lib/types";
+import type { Addon, Availability, AvailableWindow, DeliveryZone, Fulfillment, PaymentMethod } from "@/lib/types";
 import { Button, Input, Textarea, Select, Empty, useToast } from "@/components/ui";
 
 export default function Checkout() {
@@ -35,13 +35,17 @@ export default function Checkout() {
   const [notes, setNotes] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [addons, setAddons] = useState<Addon[]>([]);
+  const [addonQty, setAddonQty] = useState<Record<string, number>>({});
 
   useEffect(() => {
     void (async () => {
-      const [z, a] = await Promise.all([
+      const [z, a, ad] = await Promise.all([
         supabase.from("delivery_zones").select("*").eq("active", true).order("sort_order").order("name"),
         supabase.rpc("availability", { p_from: todayISO(), p_to: addDaysISO(30) }),
+        supabase.from("addons").select("*").eq("active", true).order("sort_order").order("name"),
       ]);
+      setAddons((ad.data as Addon[]) ?? []);
       setZones((z.data as DeliveryZone[]) ?? []);
       setAvail((a.data as Availability[]) ?? []);
     })();
@@ -62,7 +66,12 @@ export default function Checkout() {
 
   const zone = zones.find((z) => z.id === zoneId);
   const fee = fulfillment === "entrega" ? Number(zone?.fee ?? 0) : 0;
-  const total = cart.subtotal + fee;
+  // adicionais que valem pro carrinho (sem produto definido = vale pra qualquer pedido)
+  const cartIds = cart.lines.map((l) => l.product.id);
+  const addonsDisp = addons.filter((a) => !a.product_ids?.length || a.product_ids.some((id) => cartIds.includes(id)));
+  const addonsSel = addonsDisp.map((a) => ({ a, qty: addonQty[a.id] ?? 0 })).filter((x) => x.qty > 0);
+  const addonsTotal = addonsSel.reduce((t, x) => t + x.qty * Number(x.a.price), 0);
+  const total = cart.subtotal + fee + addonsTotal;
   const selectedDay = avail.find((d) => d.day === date);
   const notEnough = selectedDay ? cart.count > selectedDay.remaining : false;
 
@@ -87,8 +96,9 @@ export default function Checkout() {
       change_for: payment === "dinheiro" && changeFor ? Number(changeFor.replace(",", ".")) : null,
       notes: notes.trim(),
       items: cart.lines.map((l) => ({ product_id: l.product.id, qty: l.qty })),
+      addons: addonsSel.map((x) => ({ addon_id: x.a.id, qty: x.qty })),
     };
-    const { data, error: err } = await supabase.rpc("place_order", { p: payload });
+    const { data, error: err } = await supabase.rpc("place_order_with_addons", { p: payload });
     setSending(false);
     if (err) {
       waWindow?.close();
@@ -101,7 +111,7 @@ export default function Checkout() {
       const msg = pedidoClienteMsg({
         code: res.code,
         name: payload.name,
-        items: cart.lines.map((l) => ({ name: l.product.name, qty: l.qty })),
+        items: [...cart.lines.map((l) => ({ name: l.product.name, qty: l.qty })), ...addonsSel.map((x) => ({ name: `Adicional: ${x.a.name}`, qty: x.qty }))],
         fulfillment,
         zoneName: zone?.name,
         address: payload.address,
@@ -158,6 +168,37 @@ export default function Checkout() {
           ))}
         </ul>
       </section>
+
+      {/* Adicionais */}
+      {addonsDisp.length > 0 && (
+        <section className="rounded-2xl border border-choco-100 bg-white p-4 shadow-card">
+          <h2 className="mb-1 flex items-center gap-2 font-bold"><Sparkles size={18} className="text-vinho-600" /> Adicionais</h2>
+          <p className="mb-2 text-xs text-choco-500">Quer deixar ainda mais especial? É opcional.</p>
+          <ul className="divide-y divide-choco-100">
+            {addonsDisp.map((a) => {
+              const q = addonQty[a.id] ?? 0;
+              const set = (n: number) => setAddonQty({ ...addonQty, [a.id]: Math.max(0, Math.min(a.max_qty, n)) });
+              return (
+                <li key={a.id} className="flex items-center justify-between gap-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-choco-900">{a.name}</div>
+                    <div className="text-xs text-choco-500">{Number(a.price) > 0 ? `+ ${brl(a.price)}` : "sem custo"}{a.description ? ` · ${a.description}` : ""}</div>
+                  </div>
+                  {q === 0 ? (
+                    <Button size="sm" variant="outline" onClick={() => set(1)}><Plus size={14} /> Adicionar</Button>
+                  ) : (
+                    <div className="flex items-center gap-1 rounded-full bg-choco-100 p-0.5">
+                      <button className="rounded-full bg-white p-1 text-choco-800" onClick={() => set(q - 1)} aria-label="Menos"><Minus size={14} /></button>
+                      <span className="w-6 text-center text-sm font-bold">{q}</span>
+                      <button className="rounded-full bg-vinho-600 p-1 text-white disabled:opacity-40" disabled={q >= a.max_qty} onClick={() => set(q + 1)} aria-label="Mais"><Plus size={14} /></button>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {/* Entrega */}
       <section className="rounded-2xl border border-choco-100 bg-white p-4 shadow-card">
@@ -260,6 +301,7 @@ export default function Checkout() {
       {/* Resumo */}
       <section className="rounded-2xl border border-vinho-200 bg-white p-4 shadow-card">
         <div className="flex justify-between text-sm"><span>Itens</span><span>{brl(cart.subtotal)}</span></div>
+        {addonsTotal > 0 && <div className="flex justify-between text-sm"><span>Adicionais</span><span>{brl(addonsTotal)}</span></div>}
         <div className="flex justify-between text-sm"><span>Entrega</span><span>{fulfillment === "retirada" ? "Retirada" : fee === 0 ? "Grátis" : brl(fee)}</span></div>
         <div className="mt-2 flex justify-between border-t border-choco-100 pt-2 text-lg font-black"><span>Total</span><span className="text-vinho-700">{brl(total)}</span></div>
         {error && <p className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}

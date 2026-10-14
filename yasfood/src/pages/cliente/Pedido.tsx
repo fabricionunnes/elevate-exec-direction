@@ -49,6 +49,7 @@ export default function Pedido() {
   if (data === null) return <Empty>Pedido não encontrado. Confere o link ou chama no WhatsApp.</Empty>;
 
   const { order, items, events, settings, review } = data;
+  const addons = data.addons ?? [];
   const delivered = order.status === "entregue";
 
   const copyPix = async () => {
@@ -74,7 +75,7 @@ export default function Pedido() {
   const waPedido = pedidoClienteMsg({
     code: order.code,
     name: order.customer_name,
-    items: items.map((i) => ({ name: i.product_name, qty: i.qty })),
+    items: [...items.map((i) => ({ name: i.product_name, qty: i.qty })), ...addons.map((a) => ({ name: `Adicional: ${a.name}`, qty: a.qty }))],
     fulfillment: order.fulfillment,
     zoneName: order.zone_name,
     address: order.address,
@@ -134,6 +135,9 @@ export default function Pedido() {
         <ul className="divide-y divide-choco-100 text-sm">
           {items.map((i) => (
             <li key={i.id} className="flex justify-between py-1.5"><span>{i.qty}x {i.product_name}</span><span>{brl(i.line_total)}</span></li>
+          ))}
+          {addons.map((a, k) => (
+            <li key={`ad${k}`} className="flex justify-between py-1.5 text-choco-700"><span>+ {a.qty}x {a.name}</span><span>{brl(a.line_total)}</span></li>
           ))}
           {Number(order.delivery_fee) > 0 && <li className="flex justify-between py-1.5 text-choco-600"><span>Entrega</span><span>{brl(order.delivery_fee)}</span></li>}
           <li className="flex justify-between py-1.5 font-black"><span>Total</span><span className="text-vinho-700">{brl(order.total)}</span></li>
