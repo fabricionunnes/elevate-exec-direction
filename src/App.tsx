@@ -170,6 +170,7 @@ const KickoffFormPage = lazy(() => import("./pages/onboarding-tasks/KickoffFormP
 const PublicProjectDashboardPage = lazy(() => import("./pages/PublicProjectDashboardPage"));
 const PainelClientePage = lazy(() => import("./pages/PainelClientePage"));
 const PainelClienteAoVivoPage = lazy(() => import("./pages/PainelClienteAoVivoPage"));
+const PainelKpisPage = lazy(() => import("./pages/PainelKpisPage"));
 const OnboardingRenewalsPage = lazy(() => import("./pages/onboarding-tasks/OnboardingRenewalsPage"));
 const OnboardingCancellationsPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCancellationsPage"));
 const CancellationsRetentionModulePage = lazy(() => import("./pages/onboarding-tasks/CancellationsRetentionModulePage"));
@@ -638,6 +639,8 @@ const AppShell = () => {
             <Route path="/painel/:token/ao-vivo" element={<PainelClienteAoVivoPage />} />
             <Route path="/painel/:token/classico" element={<PublicProjectDashboardPage />} />
             <Route path="/painel/:token" element={<PainelClientePage />} />
+            {/* 14/10/2026: Painel de Controle de KPIs do cliente (vendedoras, metas, ritmo), link público por token */}
+            <Route path="/painel-kpis/:token" element={<PainelKpisPage />} />
             <Route path="/nps" element={<NPSSurveyPage />} />
             <Route path="/csat" element={<CSATSurveyPage />} />
             <Route path="/kpi-entry/:companyId" element={<KPIEntryPage />} />
