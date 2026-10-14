@@ -29,6 +29,26 @@ function deviceName() {
   return "Navegador";
 }
 
+/** Estado do aparelho, pra diagnóstico. */
+export function pushEnv() {
+  const iosMatch = navigator.userAgent.match(/OS (\d+)[._](\d+)/);
+  return {
+    ios: isIOS(),
+    ios_version: iosMatch ? `${iosMatch[1]}.${iosMatch[2]}` : null,
+    standalone: isStandalone(),
+    has_sw: "serviceWorker" in navigator,
+    has_push: typeof window !== "undefined" && "PushManager" in window,
+    has_notification: typeof window !== "undefined" && "Notification" in window,
+    permission: typeof Notification !== "undefined" ? Notification.permission : "indisponivel",
+    ua: navigator.userAgent.slice(0, 180),
+  };
+}
+
+/** Grava um passo da tentativa de ligar (só a admin consegue gravar). Nunca quebra o fluxo. */
+export async function logPush(step: string, ok: boolean, extra: Record<string, unknown> = {}) {
+  try { await supabase.from("push_debug").insert({ step, ok, info: { ...pushEnv(), ...extra } }); } catch { /* sem log */ }
+}
+
 export async function currentSubscription(): Promise<PushSubscription | null> {
   if (!pushSupported()) return null;
   const reg = await navigator.serviceWorker.getRegistration("/");
@@ -37,15 +57,37 @@ export async function currentSubscription(): Promise<PushSubscription | null> {
 
 /** Liga a notificação neste aparelho. Precisa ser chamado num toque (o navegador pede permissão). */
 export async function enablePush(): Promise<void> {
-  if (!pushSupported()) throw new Error(isIOS() && !isStandalone() ? "No iPhone, primeiro adicione o painel à Tela de Início e abra por lá." : "Este navegador não recebe notificação.");
+  await logPush("inicio", true);
+  if (!pushSupported()) {
+    const msg = isIOS() && !isStandalone()
+      ? "Abra pelo ícone Yas Painel da Tela de Início (não pelo Safari)."
+      : isIOS() ? "Esse iPhone não recebe notificação de site. Precisa do iOS 16.4 ou mais novo (Ajustes > Geral > Atualização de Software)." : "Este navegador não recebe notificação.";
+    await logPush("sem_suporte", false, { msg });
+    throw new Error(msg);
+  }
+  // pede a permissão primeiro, ainda dentro do toque (o iPhone exige)
   const perm = await Notification.requestPermission();
-  if (perm !== "granted") throw new Error("Permissão negada. Libere as notificações do site nas configurações do celular.");
+  await logPush("permissao", perm === "granted", { perm });
+  if (perm !== "granted") {
+    throw new Error(perm === "denied"
+      ? "A notificação foi bloqueada. No iPhone: Ajustes > Notificações > Yas Painel > Permitir Notificações. Se não aparecer lá, apague o ícone e adicione de novo à Tela de Início."
+      : "Você não tocou em Permitir. Toque em Ligar de novo e escolha Permitir.");
+  }
 
-  const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-  await navigator.serviceWorker.ready;
+  let reg: ServiceWorkerRegistration;
+  try {
+    reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+    await navigator.serviceWorker.ready;
+  } catch (e) {
+    await logPush("service_worker", false, { erro: (e as Error).message });
+    throw new Error("Não consegui registrar o serviço de notificação neste aparelho.");
+  }
 
   const { data, error } = await supabase.functions.invoke<{ publicKey?: string; error?: string }>("yasfood-push", { body: { action: "public_key" } });
-  if (error || !data?.publicKey) throw new Error(data?.error ?? "Não consegui falar com o servidor de notificação.");
+  if (error || !data?.publicKey) {
+    await logPush("chave", false, { erro: data?.error ?? error?.message });
+    throw new Error(data?.error ?? "Não consegui falar com o servidor de notificação.");
+  }
 
   let sub = await reg.pushManager.getSubscription();
   if (sub) {
@@ -54,7 +96,14 @@ export async function enablePush(): Promise<void> {
     const same = old && btoa(String.fromCharCode(...new Uint8Array(old))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "") === data.publicKey;
     if (!same) { await sub.unsubscribe(); sub = null; }
   }
-  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(data.publicKey) });
+  if (!sub) {
+    try {
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(data.publicKey) });
+    } catch (e) {
+      await logPush("inscricao", false, { erro: (e as Error).message });
+      throw new Error(`O aparelho recusou a inscrição: ${(e as Error).message}`);
+    }
+  }
 
   const json = sub.toJSON() as { endpoint: string; keys?: { p256dh?: string; auth?: string } };
   if (!json.keys?.p256dh || !json.keys.auth) throw new Error("O navegador não devolveu as chaves da inscrição.");
@@ -62,7 +111,8 @@ export async function enablePush(): Promise<void> {
     { endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth, device: deviceName(), fail_count: 0 },
     { onConflict: "endpoint" },
   );
-  if (upErr) throw new Error(upErr.message);
+  if (upErr) { await logPush("salvar", false, { erro: upErr.message }); throw new Error(upErr.message); }
+  await logPush("ligado", true, { endpoint_host: new URL(json.endpoint).host });
 }
 
 /** Desliga a notificação neste aparelho. */

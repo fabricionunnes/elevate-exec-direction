@@ -13,6 +13,10 @@ select json_build_object(
                              or exists (select 1 from yasfood.customers d where d.id <> c.id and right(regexp_replace(d.phone, '\D', '', 'g'), 8) = right(regexp_replace(c.phone, '\D', '', 'g'), 8))),
   'pedidos_sem_cliente', (select json_agg(json_build_object('code', o.code, 'n', o.customer_name, 'tel', right(o.customer_phone, 4), 'len', length(o.customer_phone), 'st', o.status) order by o.created_at)
                           from yasfood.orders o where o.customer_id is null or not exists (select 1 from yasfood.customers c where c.id = o.customer_id)),
+  'push_debug', (select json_agg(json_build_object('at', d.created_at, 'step', d.step, 'ok', d.ok, 'info', d.info) order by d.created_at desc)
+                 from (select * from yasfood.push_debug order by created_at desc limit 25) d),
+  'push_aparelhos', (select json_agg(json_build_object('device', device, 'criado', created_at, 'ultimo_ok', last_ok_at, 'falhas', fail_count)) from yasfood.push_subscriptions),
+  'push_chave', (select count(*) from yasfood.push_keys),
   'movimentos', (select json_agg(json_build_object('i', i.name, 'tp', m.type, 'q', m.qty, 'uc', m.unit_cost, 'n', m.note, 'at', m.created_at) order by m.created_at desc)
                  from (select * from yasfood.stock_movements order by created_at desc limit 40) m
                  join yasfood.ingredients i on i.id = m.ingredient_id)
