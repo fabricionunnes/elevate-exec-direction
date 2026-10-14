@@ -2283,6 +2283,32 @@ function semAutomaticas(lista) {
   return { lista: out, removidas: lista.length - out.length };
 }
 
+// ---------- Número reserva (14/10/2026, Fabrício: "quando um não tiver ativo pode jogar no outro") ----------
+// whatsapp_instances.failover_instance_id diz pra onde vão os leads de um número quando ele cai.
+// Se o número TITULAR está mudo (wa_instance_down_since: desconectado, ou avisado pelo vigia e
+// sem nenhuma mensagem recebida desde então), os agentes dele atendem as conversas do número
+// reserva que NASCERAM depois da queda. Conversa antiga do reserva fica de fora: é onde o dono
+// do número conversa à mão (caso Wagner, 13/10). Quando o titular volta a receber, para sozinho.
+async function agenteDaReserva(supabase, conv, override) {
+  if (!conv?.instance_id || !conv.created_at) return null;
+  const { data: titulares } = await supabase.from("whatsapp_instances").select("id, instance_name").eq("failover_instance_id", conv.instance_id);
+  for (const t of titulares || []) {
+    const { data: desde } = await supabase.rpc("wa_instance_down_since", { _id: t.id });
+    if (!desde) continue; // titular funcionando
+    if (Date.parse(String(conv.created_at)) < Date.parse(String(desde))) continue; // conversa de antes da queda
+    const { data: chRows } = await supabase.from("crm_ai_agent_channels").select("agent:crm_ai_agents(*)").eq("channel", "whatsapp").eq("instance_id", t.id);
+    const agents = (chRows || []).map((r)=>r.agent).filter((a)=>a && a.is_active).sort((a, b)=>a.created_at < b.created_at ? -1 : 1);
+    let melhor = null;
+    for (const cand of agents){
+      const m = await resolveAgentMode(supabase, cand, conv.lead_id, override);
+      if (m === "auto") return { agent: cand, mode: m, titular: t.instance_name };
+      if (m === "copilot" && !melhor) melhor = { agent: cand, mode: m, titular: t.instance_name };
+    }
+    if (melhor) return melhor;
+  }
+  return null;
+}
+
 Deno.serve(async (req)=>{
   if (req.method === "OPTIONS") return new Response("ok", {
     headers: cors
@@ -2753,7 +2779,7 @@ Deno.serve(async (req)=>{
       const { data } = await supabase.from("instagram_conversations").select("id, instance_id, contact_id, lead_id, contact:instagram_contacts(name, username)").eq("id", conversation_id).maybeSingle();
       conv = data;
     } else {
-      const { data } = await supabase.from("crm_whatsapp_conversations").select("id, instance_id, official_instance_id, contact_id, lead_id, contact:crm_whatsapp_contacts(name, phone)").eq("id", conversation_id).maybeSingle();
+      const { data } = await supabase.from("crm_whatsapp_conversations").select("id, instance_id, official_instance_id, contact_id, lead_id, created_at, contact:crm_whatsapp_contacts(name, phone)").eq("id", conversation_id).maybeSingle();
       conv = data;
     }
     if (!conv) return j({
@@ -2928,10 +2954,15 @@ Deno.serve(async (req)=>{
     if (!agent) {
       const { data: chRows } = await supabase.from("crm_ai_agent_channels").select("agent_id, agent:crm_ai_agents(*)").eq("channel", isOFFICIAL ? "whatsapp_official" : channel).eq("instance_id", isOFFICIAL ? conv.official_instance_id : conv.instance_id);
       const agents = (chRows || []).map((r)=>r.agent).filter((a)=>a && a.is_active);
-      if (agents.length === 0) return j({
-        ok: true,
-        skip: "nenhum agente ativo nesta instância"
-      });
+      if (agents.length === 0) {
+        const reserva = isOFFICIAL ? null : await agenteDaReserva(supabase, conv, override);
+        if (!reserva) return j({
+          ok: true,
+          skip: "nenhum agente ativo nesta instância"
+        });
+        console.log(`[reserva] conversa ${conv.id}: ${reserva.titular} fora do ar, responde ${reserva.agent.name}`);
+        agents.push(reserva.agent);
+      }
       agents.sort((a, b)=>a.created_at < b.created_at ? -1 : 1);
       // Mais de um agente na mesma instância: escolhe o que ATENDE o funil do lead
       // (modo auto > copiloto). Antes pegava sempre o mais antigo e, se o funil
@@ -2958,7 +2989,16 @@ Deno.serve(async (req)=>{
       }
     }
     // 3) Modo: override da conversa > funil do lead (allowlist) > padrão do agente
-    const mode = await resolveAgentMode(supabase, agent, conv.lead_id, override);
+    let mode = await resolveAgentMode(supabase, agent, conv.lead_id, override);
+    // Nenhum agente deste número atende o funil: se o número titular caiu, os agentes dele assumem
+    if (mode === "off" && !forcedAgent && !(override?.locked && override?.agent_id) && !isOFFICIAL && !isIG) {
+      const reserva = await agenteDaReserva(supabase, conv, override);
+      if (reserva) {
+        console.log(`[reserva] conversa ${conv.id}: ${reserva.titular} fora do ar, responde ${reserva.agent.name}`);
+        agent = reserva.agent;
+        mode = reserva.mode;
+      }
+    }
     if (mode === "off") return j({
       ok: true,
       skip: "modo desligado para este funil"
