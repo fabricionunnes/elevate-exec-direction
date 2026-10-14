@@ -7,6 +7,14 @@
     <title>YasFood · Yas Delícias</title>
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <script>
+      // Painel da Yasmim vira app na tela de início (necessário pra notificação no iPhone)
+      if (location.pathname.indexOf("/admin") === 0) {
+        var l = document.createElement("link"); l.rel = "manifest"; l.href = "/admin.webmanifest"; document.head.appendChild(l);
+        var m = document.createElement("meta"); m.name = "apple-mobile-web-app-capable"; m.content = "yes"; document.head.appendChild(m);
+        var t = document.createElement("meta"); t.name = "apple-mobile-web-app-title"; t.content = "Yas Painel"; document.head.appendChild(t);
+      }
+    </script>
     <meta name="description" content="Yas Delícias: bolo caseiro de cenoura com cobertura de chocolate, assado no dia e entregue nos condomínios do Alphaville." />
     <meta property="og:title" content="Yas Delícias" />
     <meta property="og:description" content="E as delícias? São da Yas! Bolo caseiro entregue na sua casa." />
