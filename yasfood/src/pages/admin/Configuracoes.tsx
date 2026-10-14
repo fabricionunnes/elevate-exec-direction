@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import type { Settings } from "@/lib/types";
 import { Button, Card, Input, Textarea, Spinner, useToast } from "@/components/ui";
 import { Logo } from "@/pages/cliente/Layout";
+import { PushCard } from "@/components/PushCard";
 import { geocodePlace, originQuery, mapsPin, hasCoords, currentPosition, isCityCenter } from "@/lib/route";
 
 export default function Configuracoes() {
@@ -101,6 +102,8 @@ export default function Configuracoes() {
         <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={form.is_open} onChange={(e) => set("is_open", e.target.checked)} /> loja aberta pra pedidos</label>
         <div className="mt-2"><Textarea label="Mensagem quando fechada" value={form.closed_message} onChange={(e) => set("closed_message", e.target.value)} /></div>
       </Card>
+
+      <PushCard />
 
       <Card title="Retirada no local">
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.pickup_enabled} onChange={(e) => set("pickup_enabled", e.target.checked)} /> permitir que o cliente venha buscar</label>

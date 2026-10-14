@@ -8,6 +8,7 @@ import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { brl, dayLong } from "@/lib/format";
 import { useToast } from "@/components/ui";
+import { notifyNewOrders, currentSubscription } from "@/lib/push";
 
 interface Pending {
   id: string;
@@ -29,7 +30,9 @@ export function NovoPedidoAlerta() {
   const [busy, setBusy] = useState<string | null>(null);
   const [audioOk, setAudioOk] = useState(false);
   const [muteUntil, setMuteUntil] = useState<number>(() => { try { return Number(localStorage.getItem(MUTE_KEY) ?? 0); } catch { return 0; } });
-  const [notif, setNotif] = useState<NotificationPermission | "none">(() => ("Notification" in window ? Notification.permission : "none"));
+  const [notif] = useState<NotificationPermission | "none">(() => ("Notification" in window ? Notification.permission : "none"));
+  const [pushOn, setPushOn] = useState(true);
+  useEffect(() => { void currentSubscription().then((s) => setPushOn(!!s)).catch(() => setPushOn(false)); }, []);
   const ctxRef = useRef<AudioContext | null>(null);
   const seen = useRef<Set<string>>(new Set());
   const first = useRef(true);
@@ -122,12 +125,14 @@ export function NovoPedidoAlerta() {
   useEffect(() => {
     const fresh = pending.filter((p) => !seen.current.has(p.id));
     for (const p of pending) seen.current.add(p.id);
+    // reforço: com o painel aberto em qualquer aparelho, garante que o celular também receba (o servidor avisa cada pedido uma vez só)
+    if (fresh.length) notifyNewOrders();
     if (first.current) { first.current = false; return; }
-    if (!fresh.length || notif !== "granted") return;
+    if (!fresh.length || notif !== "granted" || pushOn) return; // com push ligado, quem avisa é o celular
     try {
       for (const p of fresh) new Notification(`Novo pedido ${p.code}`, { body: `${p.customer_name} · ${brl(p.total)} · ${dayLong(p.scheduled_date)}`, tag: p.id });
     } catch { /* sem suporte */ }
-  }, [pending, notif]);
+  }, [pending, notif, pushOn]);
 
   const accept = async (id: string) => {
     setBusy(id);
@@ -144,9 +149,6 @@ export function NovoPedidoAlerta() {
     try { localStorage.setItem(MUTE_KEY, String(until)); } catch { /* sem storage */ }
   };
 
-  const askNotif = async () => {
-    try { setNotif(await Notification.requestPermission()); } catch { /* sem suporte */ }
-  };
 
   if (!count) return null;
 
@@ -160,7 +162,7 @@ export function NovoPedidoAlerta() {
             <div className="text-lg font-black">{count === 1 ? "Pedido novo esperando você aceitar" : `${count} pedidos novos esperando você aceitar`}</div>
             <div className="ml-auto flex flex-wrap items-center gap-1 text-xs">
               {!audioOk && <span className="rounded-full bg-white/20 px-2 py-1 font-semibold">Toque na tela pra ligar o som</span>}
-              {notif === "default" && <button type="button" onClick={askNotif} className="rounded-full bg-white/20 px-2 py-1 font-semibold hover:bg-white/30">Avisar também fora do site</button>}
+              {!pushOn && <Link to="/admin/configuracoes#notificacoes" className="rounded-full bg-white/20 px-2 py-1 font-semibold hover:bg-white/30">Receber no celular com o app fechado</Link>}
               {muted
                 ? <button type="button" onClick={() => mute(0)} className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-1 font-semibold hover:bg-white/30"><Bell size={12} /> Ligar o som</button>
                 : <button type="button" onClick={() => mute(10)} className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-1 font-semibold hover:bg-white/30"><BellOff size={12} /> Silenciar 10 min</button>}

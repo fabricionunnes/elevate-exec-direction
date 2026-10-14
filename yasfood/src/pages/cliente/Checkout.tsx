@@ -5,6 +5,7 @@ import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { useCart, rememberOrder, saveMe, loadMe } from "@/lib/cart";
 import { useSettings } from "@/lib/useSettings";
+import { notifyNewOrders } from "@/lib/push";
 import { brl, dayLabel, weekdayBR, todayISO, addDaysISO, onlyDigits, formatPhone, PAYMENT_LABEL, windowLabel } from "@/lib/format";
 import { waLink, pedidoClienteMsg } from "@/lib/whatsapp";
 import type { Availability, AvailableWindow, DeliveryZone, Fulfillment, PaymentMethod } from "@/lib/types";
@@ -95,6 +96,7 @@ export default function Checkout() {
       return;
     }
     const res = data as { order_id: string; code: string; tracking_token: string; total: number };
+    notifyNewOrders(); // notificação no celular da Yasmim
     if (waWindow && settings?.whatsapp) {
       const msg = pedidoClienteMsg({
         code: res.code,

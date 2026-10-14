@@ -1,0 +1,16 @@
+{
+  "name": "Yas Delícias · Painel",
+  "short_name": "Yas Painel",
+  "description": "Painel da Yasmim: pedidos, agenda, estoque e financeiro.",
+  "start_url": "/admin",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fdf6ee",
+  "theme_color": "#cd2345",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/icon-512.webp", "sizes": "512x512", "type": "image/webp", "purpose": "any" }
+  ]
+}
