@@ -1,0 +1,5 @@
+/* Ajustes do painel de KPIs do cliente sobre o tema do Painel de Controle (painel.css) */
+.pc .rk { grid-template-columns: minmax(120px, 170px) 1fr 44px; }
+.pc .rk > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc .brand .lg { font-size: 11px; }
+.pc .pt { font-family: var(--f); }
