@@ -8,12 +8,12 @@ import { brl, dayLabel, dateTimeBR, dayLong, formatPhone, nextStatus, PAYMENT_LA
 import { waLink, msgs, trackingUrl } from "@/lib/whatsapp";
 import { prioritize, gmapsRouteUrl, geocodeAddress, fmtKm, hasCoords, mapsPin, currentPosition, usableOrigin, anchorFor as anchorOf, isCityCenter, wazeUrl, type RouteCtx, type LatLng } from "@/lib/route";
 import { readOrderFromScreenshots, shrinkAll, type ReadOrder, type ShrunkImage } from "@/lib/readOrder";
-import type { Availability, AvailableWindow, Customer, DeliveryWindow, DeliveryZone, Order, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
+import type { Addon, Availability, AvailableWindow, Customer, DeliveryWindow, DeliveryZone, Order, OrderAddon, OrderEvent, OrderItem, OrderStatus, PaymentMethod, Product, Fulfillment } from "@/lib/types";
 import { StatusTimeline } from "@/components/StatusTimeline";
 import { Button, Badge, Card, Modal, Empty, Spinner, Input, Select, Textarea, useToast } from "@/components/ui";
 
 type Filter = "abertos" | "hoje" | "amanha" | "todos" | "cancelados";
-type OrderRow = Order & { order_items: { product_id: string | null; product_name: string; qty: number }[] | null };
+type OrderRow = Order & { order_items: { product_id: string | null; product_name: string; qty: number }[] | null; order_addons?: { name: string; qty: number }[] | null };
 
 // Etiquetas por produto: tira o prefixo comum dos nomes ("Bolo de Cenoura ") e colore cada um.
 const CORES_PRODUTO = [
@@ -63,7 +63,7 @@ export default function Pedidos() {
 
   const load = useCallback(async () => {
     const [{ data }, w, z] = await Promise.all([
-      supabase.from("orders").select("*, order_items(product_id, product_name, qty)").order("scheduled_date").order("created_at"),
+      supabase.from("orders").select("*, order_items(product_id, product_name, qty), order_addons(name, qty)").order("scheduled_date").order("created_at"),
       supabase.from("delivery_windows").select("id, start_time"),
       supabase.from("delivery_zones").select("id, lat, lng, sort_order"),
     ]);
@@ -279,6 +279,7 @@ export default function Pedidos() {
                       </div>
                       <div className="mt-1.5 flex flex-wrap gap-1">
                         {itensDe(o as OrderRow).map(([n, qn]) => <span key={n} className={clsx("rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ring-inset", tags.get(n)?.cor)} title={n}>{qn}x {tags.get(n)?.short ?? n}</span>)}
+                        {((o as OrderRow).order_addons ?? []).map((a) => <span key={`ad-${a.name}`} className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-inset ring-amber-300">+ {a.qty}x {a.name}</span>)}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-choco-500">
                         <span>{o.fulfillment === "entrega" ? `Entrega · ${o.zone_name ?? ""}` : "Retirada"}{o.window_label ? ` · ${o.window_label}` : ""}</span>
@@ -312,6 +313,7 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
   const toast = useToast();
   const [order, setOrder] = useState<Order | null>(null);
   const [items, setItems] = useState<OrderItem[]>([]);
+  const [orderAddons, setOrderAddons] = useState<OrderAddon[]>([]);
   const [events, setEvents] = useState<OrderEvent[]>([]);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -354,13 +356,15 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
   };
 
   const load = useCallback(async () => {
-    const [o, i, e] = await Promise.all([
+    const [o, i, e, ad] = await Promise.all([
       supabase.from("orders").select("*").eq("id", id).single(),
       supabase.from("order_items").select("*").eq("order_id", id),
       supabase.from("order_events").select("*").eq("order_id", id).order("created_at"),
+      supabase.from("order_addons").select("*").eq("order_id", id).order("name"),
     ]);
     setOrder(o.data as Order);
     setItems((i.data as OrderItem[]) ?? []);
+    setOrderAddons((ad.data as OrderAddon[]) ?? []);
     setEvents((e.data as OrderEvent[]) ?? []);
   }, [id]);
 
@@ -433,6 +437,7 @@ function OrderDetail({ id, onClose, onChanged, siteUrl, pix, reviewTemplate }: {
           <Card title="Itens">
             <ul className="divide-y divide-choco-100 text-sm">
               {items.map((i) => <li key={i.id} className="flex justify-between py-1.5"><span><b>{i.qty}x</b> {i.product_name}</span><span>{brl(i.line_total)}</span></li>)}
+              {orderAddons.map((a) => <li key={a.id} className="flex justify-between py-1.5 text-vinho-700"><span>+ <b>{a.qty}x</b> {a.name}</span><span>{brl(a.line_total)}</span></li>)}
               {Number(order.delivery_fee) > 0 && <li className="flex justify-between py-1.5 text-choco-600"><span>Entrega</span><span>{brl(order.delivery_fee)}</span></li>}
               <li className="flex justify-between py-1.5 text-base font-black"><span>Total</span><span className="text-vinho-700">{brl(order.total)}</span></li>
             </ul>
@@ -597,6 +602,8 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
   const [customerOpen, setCustomerOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [qty, setQty] = useState<Record<string, number>>({});
+  const [addonsList, setAddonsList] = useState<Addon[]>([]);
+  const [addonQty, setAddonQty] = useState<Record<string, number>>({});
   const [name, setName] = useState(initial?.customer_name ?? "");
   const [phone, setPhone] = useState(initial?.phone ? formatPhone(initial.phone) : "");
   const [fulfillment, setFulfillment] = useState<Fulfillment>(initial?.fulfillment === "retirada" ? "retirada" : "entrega");
@@ -650,12 +657,14 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
 
   useEffect(() => {
     void (async () => {
-      const [p, z, a, c] = await Promise.all([
+      const [p, z, a, c, ad] = await Promise.all([
         supabase.from("products").select("*").eq("active", true).order("sort_order"),
         supabase.from("delivery_zones").select("*").eq("active", true).order("sort_order"),
         supabase.rpc("availability", { p_from: todayISO(), p_to: addDaysISO(30) }),
         supabase.from("customers").select("*").order("name"),
+        supabase.from("addons").select("*").eq("active", true).order("sort_order").order("name"),
       ]);
+      setAddonsList((ad.data as Addon[]) ?? []);
       const ps = (p.data as Product[]) ?? [];
       const cs = (c.data as Customer[]) ?? [];
       setProducts(ps);
@@ -680,6 +689,7 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
         const known = digits ? cs.find((x) => x.phone.replace(/^55/, "") === digits) : undefined;
         if (known) {
           setSelectedCustomer(known); setCustomerQuery(known.name);
+          if (!initial.customer_name?.trim()) setName(known.name);
           if (!initial.address && known.address) setAddress(known.address);
           if (!initial.reference && known.reference) setReference(known.reference);
           if (!initial.zone_name && known.zone_id) setZoneId(known.zone_id);
@@ -692,9 +702,20 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
     const items = Object.entries(qty).filter(([, q]) => q > 0).map(([product_id, q]) => ({ product_id, qty: q }));
     if (!items.length) return toast("Escolha pelo menos um produto.", "err");
     if (!date) return toast("Escolha a data da encomenda.", "err");
+    // nome em branco mas cliente conhecido (escolhido ou pelo telefone): usa o nome do cadastro
+    const d = onlyDigits(phone).replace(/^55/, "");
+    const known = selectedCustomer ?? (d.length >= 10 ? customers.find((c) => c.phone.replace(/^55/, "") === d) : undefined);
+    const finalName = name.trim() || known?.name || "";
+    if (finalName.length < 2) return toast("Informe o nome da cliente (ou escolha uma cliente cadastrada).", "err");
+    if (finalName !== name) setName(finalName);
+    const prodIds = items.map((i) => i.product_id);
+    const addons = addonsList
+      .filter((ad) => !ad.product_ids?.length || ad.product_ids.some((id) => prodIds.includes(id)))
+      .map((ad) => ({ addon_id: ad.id, qty: addonQty[ad.id] ?? 0 }))
+      .filter((x) => x.qty > 0);
     setBusy(true);
-    const { error } = await supabase.rpc("place_order", {
-      p: { name, phone: onlyDigits(phone), fulfillment, zone_id: fulfillment === "entrega" ? zoneId : null, address, reference, scheduled_date: date, window_id: windowId || null, payment_method: payment, notes: notes ? `[${initial ? "prints" : "manual"}] ${notes}` : `[${initial ? "prints" : "manual"}]`, items },
+    const { error } = await supabase.rpc("place_order_with_addons", {
+      p: { addons, name: finalName, phone: onlyDigits(phone), fulfillment, zone_id: fulfillment === "entrega" ? zoneId : null, address, reference, scheduled_date: date, window_id: windowId || null, payment_method: payment, notes: notes ? `[${initial ? "prints" : "manual"}] ${notes}` : `[${initial ? "prints" : "manual"}]`, items },
     });
     setBusy(false);
     if (error) return toast(friendlyError(error), "err");
@@ -719,6 +740,22 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
               <input type="number" min={0} className="h-9 w-16 rounded-lg border border-choco-200 px-2 text-center" value={qty[p.id] ?? 0} onChange={(e) => setQty({ ...qty, [p.id]: Number(e.target.value) })} />
             </div>
           ))}
+          {(() => {
+            const prodIds = Object.entries(qty).filter(([, q]) => q > 0).map(([id]) => id);
+            const disp = addonsList.filter((ad) => !ad.product_ids?.length || ad.product_ids.some((id) => prodIds.includes(id)));
+            if (!disp.length) return null;
+            return (
+              <>
+                <h3 className="pt-1 text-sm font-bold">Adicionais</h3>
+                {disp.map((ad) => (
+                  <div key={ad.id} className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/50 p-2 text-sm">
+                    <span>{ad.name} <span className="text-choco-500">· {Number(ad.price) > 0 ? `+ ${brl(ad.price)}` : "sem custo"}</span></span>
+                    <input type="number" min={0} max={ad.max_qty} className="h-9 w-16 rounded-lg border border-choco-200 px-2 text-center" value={addonQty[ad.id] ?? 0} onChange={(e) => setAddonQty({ ...addonQty, [ad.id]: Math.max(0, Math.min(ad.max_qty, Number(e.target.value))) })} />
+                  </div>
+                ))}
+              </>
+            );
+          })()}
           <Input
             label="Data da entrega / retirada"
             type="date"
@@ -764,7 +801,22 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
             )}
           </div>
           <Input label="Nome" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input label="WhatsApp" value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} />
+          <Input label="WhatsApp" value={phone} onChange={(e) => {
+            const v = formatPhone(e.target.value);
+            setPhone(v);
+            // telefone de quem já é cliente: puxa nome e endereço sozinho
+            const d = onlyDigits(v).replace(/^55/, "");
+            if (d.length >= 10 && !selectedCustomer) {
+              const known = customers.find((c) => c.phone.replace(/^55/, "") === d);
+              if (known) {
+                setSelectedCustomer(known); setCustomerQuery(known.name);
+                if (!name.trim()) setName(known.name);
+                if (!address.trim() && known.address) setAddress(known.address);
+                if (!reference.trim() && known.reference) setReference(known.reference);
+                if (known.zone_id) setZoneId(known.zone_id);
+              }
+            }
+          }} />
           <Select label="Entrega" value={fulfillment} onChange={(e) => setFulfillment(e.target.value as Fulfillment)}>
             <option value="entrega">Entregar</option>
             <option value="retirada">Retirada</option>

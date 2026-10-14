@@ -143,6 +143,7 @@ export interface Order {
   window_id: string | null;
   window_label: string | null;
   items_total: number;
+  addons_total: number;
   total: number;
   payment_method: PaymentMethod;
   change_for: number | null;
@@ -256,6 +257,7 @@ export interface ProductCost {
 export interface TrackedOrder {
   order: Order;
   items: OrderItem[];
+  addons?: { name: string; qty: number; line_total: number }[];
   events: OrderEvent[];
   review: { rating: number; comment: string; reply: string } | null;
   settings: { business_name: string; whatsapp: string; pix_key: string; pix_name: string; pickup_address: string };
@@ -334,4 +336,25 @@ export interface Feedback {
   created_at: string;
   read_at: string | null;
   resolved_at: string | null;
+}
+
+/** Adicional do pedido (vela, cartão, embalagem presente…), com preço que soma no total. */
+export interface Addon {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  max_qty: number;
+  product_ids: string[];   // vazio = vale pra qualquer pedido
+  active: boolean;
+  sort_order: number;
+}
+export interface OrderAddon {
+  id: string;
+  order_id: string;
+  addon_id: string | null;
+  name: string;
+  unit_price: number;
+  qty: number;
+  line_total: number;
 }

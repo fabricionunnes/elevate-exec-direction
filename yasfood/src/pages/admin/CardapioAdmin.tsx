@@ -5,6 +5,7 @@ import { supabase, friendlyError } from "@/lib/supabase";
 import { brl } from "@/lib/format";
 import type { Ingredient, Product, ProductCost, ProductIngredient, ProductMedia } from "@/lib/types";
 import { Button, Card, Input, Textarea, Select, Modal, Spinner, Empty, Badge, useToast } from "@/components/ui";
+import { AdicionaisAdmin } from "@/components/AdicionaisAdmin";
 
 const empty: Omit<Product, "id"> = { name: "", description: "", price: 35, weight_g: 570, image_url: null, category: "Bolos", active: true, sort_order: 0 };
 
@@ -126,6 +127,8 @@ export default function CardapioAdmin() {
           </div>
         </Modal>
       )}
+
+      {products && <AdicionaisAdmin products={products} />}
 
       {recipeFor && <RecipeModal product={recipeFor} onClose={() => { setRecipeFor(null); void load(); }} />}
     </div>
