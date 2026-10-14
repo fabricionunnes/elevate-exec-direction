@@ -2283,6 +2283,12 @@ function semAutomaticas(lista) {
   return { lista: out, removidas: lista.length - out.length };
 }
 
+// Reação que vale como "sim" (polegar com qualquer tom de pele, ok, check, aperto de mão, palmas, 100)
+function reacaoDeConcordancia(emoji) {
+  const e = String(emoji || "").replace(/[\u{1F3FB}-\u{1F3FF}\uFE0F\u200D]/gu, "").trim();
+  return ["\u{1F44D}", "\u{1F44C}", "\u2705", "\u2714", "\u2611", "\u{1F91D}", "\u{1F64C}", "\u{1F44F}", "\u{1F4AF}"].includes(e);
+}
+
 // ---------- Número reserva (14/10/2026, Fabrício: "quando um não tiver ativo pode jogar no outro") ----------
 // whatsapp_instances.failover_instance_id diz pra onde vão os leads de um número quando ele cai.
 // Se o número TITULAR está mudo (wa_instance_down_since: desconectado, ou avisado pelo vigia e
@@ -3075,7 +3081,7 @@ Deno.serve(async (req)=>{
             ts: m.timestamp
           }));
       } else {
-        const { data: history } = await supabase.from("crm_whatsapp_messages").select("id, direction, content, created_at, type, media_url, transcription, is_ai, sent_by").eq("conversation_id", conversation_id).order("created_at", {
+        const { data: history } = await supabase.from("crm_whatsapp_messages").select("id, direction, content, created_at, type, media_url, transcription, is_ai, sent_by, quoted_message_id").eq("conversation_id", conversation_id).order("created_at", {
           ascending: false
         }).limit(60);
         rawHistory = (history || []).reverse().map((m)=>({
@@ -3127,8 +3133,18 @@ Deno.serve(async (req)=>{
       }
       // Reação (❤️ 👍) não é mensagem pra responder: sai do histórico, então uma
       // reação sozinha não dispara resposta do agente.
-      msgs = rawHistory.filter((m)=>String(m.message_type || "").toLowerCase() !== "reaction" && String(m.content || "").trim() !== "[reaction]").map((m)=>{
+      // EXCEÇÃO (14/10/2026, Fabrício): reação de CONCORDÂNCIA (👍 👌 ✅ 🤝 ...) do lead na
+      // NOSSA última mensagem, sendo a coisa mais recente da conversa, é resposta ("sim").
+      // Caso Mi: o agente perguntou se ela tinha condição de investir e ela respondeu com 👍.
+      // ❤️ e 🙏 ficam de fora: costumam ser "obrigado", e o agente responderia à toa.
+      const nossaUltimaMsg = [...rawHistory].reverse().find((m)=>m.direction === "outbound");
+      const ultimaLinha = rawHistory[rawHistory.length - 1];
+      const reacaoQueResponde = (m)=>m === ultimaLinha && m.direction === "inbound" && !!nossaUltimaMsg && m.quoted_message_id === nossaUltimaMsg.id && reacaoDeConcordancia(m.content);
+      msgs = rawHistory.filter((m)=>reacaoQueResponde(m) || (String(m.message_type || "").toLowerCase() !== "reaction" && String(m.content || "").trim() !== "[reaction]")).map((m)=>{
         let content = m.content || "";
+        if (reacaoQueResponde(m)) {
+          content = `(o lead reagiu com ${String(m.content || "").trim()} à sua última mensagem, sem escrever nada: entenda como "sim", concordância com o que você disse ou perguntou, e siga a conversa a partir disso)`;
+        }
         if (isAudio(m)) {
           content = m.transcription ? `(áudio do lead, transcrito) ${m.transcription}` : "(o lead mandou um áudio que não consegui transcrever)";
         } else if (isVideo(m)) {
