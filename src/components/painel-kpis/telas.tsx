@@ -324,9 +324,9 @@ export function FontesKpis({ c }: { c: CtxK }) {
           ["Ritmo e projeção", "Calculados aqui: meta dividida pelos dias úteis do mês (sem sábado, domingo e feriado nacional), contra o faturado até hoje."],
           ["Comparação com o mês anterior", "Mesmo período: do dia 1 até o mesmo dia do mês anterior, enquanto o mês está em andamento."],
           ["Ranking", "Só vendedoras do time comercial. Revenda e quem está marcado fora do ranking somam no total, mas não aparecem na disputa."],
-          ["Funil de atendimentos", "Sistema interno da empresa (recurso funil): contatos que entraram em cada etapa, por vendedora e por dia. Conferido a cada 10 minutos."],
-          ["Clientes novos, recompra e LTV", "Sistema interno da empresa (recurso clientes). LTV em valor = faturamento ÷ clientes distintos na história; em tempo = meses da primeira à última compra."],
-          ["CAC", "(mídia + time comercial + outros) ÷ clientes novos do mês. Investimento lançado pela empresa no sistema dela (recurso investimento)."],
+          ["Funil", "Negócios do CRM do time (Agendor), pela data de abertura: atendimentos (negócios abertos, inclui listas de prospecção), em negociação (chegaram na etapa de negociação do funil) e venda (ganhos). Atualizado a cada 10 minutos."],
+          ["Clientes novos, recompra e LTV", "Negócios ganhos no CRM do time, pela data de fechamento. Novo = primeiro ganho da história do cliente. LTV em valor = total ganho ÷ clientes; em tempo = meses da primeira à última compra."],
+          ["CAC", "(mídia + time comercial + outros) ÷ clientes novos do mês. O investimento é informado pela empresa."],
           ["Canais (site, marketplaces)", "Não entram neste painel: aqui é só o time comercial."],
         ]} />
       </Panel>
@@ -336,9 +336,9 @@ export function FontesKpis({ c }: { c: CtxK }) {
           ["Vendedoras no cadastro", String(b.pessoas.filter((p) => p.ativo).length)],
           ["Unidades", b.unidades.map((u) => u.nome).join(", ") || <Nd />],
           ["Histórico disponível", `${serieMeses(b).filter((m) => m.fat != null).length} meses`],
-          ["Funil de atendimentos", b.funil?.etapas.length ? `${b.funil.etapas.length} etapas · último em ${dataHoraBR(b.funil.atualizado_em)}` : "aguardando o sistema da empresa"],
-          ["Clientes e LTV", b.clientes?.ltv ? `atualizado em ${dataHoraBR(b.clientes.ltv.atualizado_em)}` : b.clientes?.mensal.length ? `${b.clientes.mensal.length} meses` : "aguardando o sistema da empresa"],
-          ["Investimento (CAC)", b.investimento?.length ? `${b.investimento.length} meses lançados` : "aguardando o sistema da empresa"],
+          ["Funil", b.funil?.etapas.length ? `atualizado em ${dataHoraBR(b.funil.atualizado_em)}` : "sem dado"],
+          ["Clientes e LTV", b.clientes?.ltv ? `atualizado em ${dataHoraBR(b.clientes.ltv.atualizado_em)} · desde ${b.clientes.ltv.desde ? b.clientes.ltv.desde.split("-").reverse().join("/") : "-"}` : "sem dado"],
+          ["Investimento (CAC)", b.investimento?.length ? `${b.investimento.length} meses informados` : "não informado: sem ele não há CAC"],
         ]} />
         <div className="note">O painel recarrega sozinho a cada 2 minutos. Link só de leitura.</div>
       </Panel>
@@ -347,7 +347,7 @@ export function FontesKpis({ c }: { c: CtxK }) {
 }
 
 /* ======================= funil, CAC e LTV ======================= */
-const AGUARDA = "aguardando o sistema da 3D Cure";
+const AGUARDA = "dado ainda não informado";
 const mesesTxt = (v: number | null | undefined) => (v == null ? "-" : `${num(v, 1)} ${Number(v) === 1 ? "mês" : "meses"}`);
 
 /** segunda faixa da visão geral: CAC, LTV em valor e em tempo, LTV ÷ CAC e conversão do funil */
@@ -358,13 +358,13 @@ function FaixaClientes({ c }: { c: CtxK }) {
   return (
     <div className="grid k5">
       <Tile label="CAC do mês" valor={brl(cl.cac)} cls={cl.ltvCac != null && cl.ltvCac < 3 ? "neg" : ""}
-        sub={cl.cac != null ? `${brl(cl.custo)} investidos ÷ ${num(cl.novos, 0)} clientes novos · só mídia ${brl(cl.cacMidia)}` : !cl.temInvest ? `investimento ${AGUARDA}` : !cl.novos ? `clientes novos ${AGUARDA}` : AGUARDA}
+        sub={cl.cac != null ? `${brl(cl.custo)} investidos ÷ ${num(cl.novos, 0)} clientes novos · só mídia ${brl(cl.cacMidia)}` : !cl.temInvest ? `falta o investimento do mês (mídia + time)${cl.novos ? ` · ${num(cl.novos, 0)} clientes novos` : ""}` : !cl.novos ? "sem cliente novo no mês" : AGUARDA}
         onClick={() => c.go({ view: "clientes" })} />
       <Tile label="LTV em valor" valor={brl(cl.ltv?.valor)} sub={cl.ltv?.valor != null ? `${num(cl.ltv.compras, 1)} compras por cliente · ${fp(cl.ltv.recompra)} recompram` : AGUARDA} onClick={() => c.go({ view: "clientes" })} />
       <Tile label="LTV em tempo" valor={mesesTxt(cl.ltv?.meses)} sub={cl.ltv?.meses != null ? `da primeira à última compra · base de ${num(cl.ltv.base, 0)} clientes` : AGUARDA} onClick={() => c.go({ view: "clientes" })} />
       <Tile label="LTV ÷ CAC" valor={cl.ltvCac == null ? "-" : `${num(cl.ltvCac, 1)}x`} cls={cl.ltvCac != null ? (cl.ltvCac >= 3 ? "pos" : "neg") : ""}
         sub={cl.ltvCac != null ? (cl.ltvCac >= 3 ? "saudável: cada R$ 1 pra trazer cliente volta " + num(cl.ltvCac, 1) + "x" : "abaixo de 3x: aquisição cara pro que o cliente rende") : "precisa de CAC e LTV"} onClick={() => c.go({ view: "clientes" })} />
-      <Tile label="Atendimento → venda" valor={fp(conv)} sub={fu?.temDado ? <>{num(fu.atendimentos, 0)} atendimentos · {num(fu.vendas, 0)} vendas{fu.convAnt != null ? <> · <Var v={conv != null && fu.convAnt ? (conv - fu.convAnt) / fu.convAnt : null} /> vs mês anterior</> : null}</> : `atendimentos ${AGUARDA}`}
+      <Tile label="Atendimento → venda" valor={fp(conv)} sub={fu?.temDado ? <>{num(fu.atendimentos, 0)} atendimentos · {num(fu.vendas, 0)} vendas{c.k.emAndamento ? " · sobe até os negócios do mês fecharem" : ""}</> : `atendimentos ${AGUARDA}`}
         onClick={() => c.go({ view: "funil" })} />
     </div>
   );
@@ -382,18 +382,18 @@ function PainelFunil({ c }: { c: CtxK }) {
   const fu = calcFunil(c.b, c.k, c.f);
   if (!fu) return (
     <Panel titulo="Funil de atendimentos · mês" sub={AGUARDA} onClick={() => c.go({ view: "fontes" })} more="Ver o que falta">
-      <div className="empty">O funil sai dos atendimentos registrados no sistema da 3D Cure (atendimento, orçamento, negociação, venda). A integração já está pronta: assim que o sistema deles publicar o recurso <b>funil</b>, o gráfico aparece aqui sozinho.</div>
+      <div className="empty">O funil sai dos negócios registrados no CRM do time. Ainda não há negócios neste mês.</div>
     </Panel>
   );
   const top = fu.perdas.slice(0, 1)[0];
   return (
-    <Panel titulo="Funil de atendimentos · mês" sub="do atendimento à venda. Arraste pra girar, clique numa etapa pra abrir.">
+    <Panel titulo="Funil de atendimentos · mês" sub="negócios criados no mês, do CRM do time. Arraste pra girar, clique numa etapa pra abrir.">
       <FunilMes etapas={etapasFunil(c, fu)} selo={top ? `Maior motivo de perda: ${top.motivo} (${num(top.quantidade, 0)})` : `${fp(fu.conv)} dos atendimentos viram venda`} onSelo={() => c.go({ view: "funil" })} />
       <div className="ft">
         <div onClick={() => c.go({ view: "funil" })}><small>Atendimentos</small><b>{num(fu.atendimentos, 0)}</b></div>
         <div onClick={() => c.go({ view: "funil" })}><small>Vendas</small><b>{num(fu.vendas, 0)}</b></div>
         <div onClick={() => c.go({ view: "funil" })}><small>Conversão</small><b>{fp(fu.conv)}</b></div>
-        <div onClick={() => c.go({ view: "funil" })}><small>Mês anterior</small><b>{fp(fu.convAnt)}</b></div>
+        <div onClick={() => c.go({ view: "funil" })} title="negócios criados no mês anterior, com o resultado de hoje"><small>Conv. mês anterior</small><b>{fp(fu.convAnt)}</b></div>
         <div onClick={() => c.go({ view: "funil" })}><small>Faturado por atend.</small><b>{brl(fu.atendimentos ? c.k.fat / fu.atendimentos : null)}</b></div>
       </div>
     </Panel>
@@ -417,7 +417,7 @@ function PainelClientes({ c }: { c: CtxK }) {
         ["LTV ÷ CAC", cl.ltvCac == null ? <Nd /> : `${num(cl.ltvCac, 1)}x`],
         ["Taxa de recompra", cl.ltv?.recompra == null ? <Nd /> : fp(cl.ltv.recompra)],
       ]} />
-      {!cl.temClientes && !cl.temInvest && <div className="note">Clientes e investimento {AGUARDA}: a integração lê sozinha assim que publicarem.</div>}
+      {!cl.temInvest && <div className="note">CAC precisa do investimento do mês (mídia + time comercial). Clientes e LTV vêm dos negócios ganhos no CRM do time.</div>}
     </Panel>
   );
 }
@@ -425,7 +425,7 @@ function PainelClientes({ c }: { c: CtxK }) {
 /** tela do funil: etapas, conversão por vendedora, dia a dia e perdas */
 export function FunilKpis({ c }: { c: CtxK }) {
   const fu = calcFunil(c.b, c.k, c.f);
-  if (!fu) return <div className="p"><div className="empty">O sistema da 3D Cure ainda não publicou os atendimentos (recurso <b>funil</b>). A integração do Nexus confere a cada 10 minutos e o funil aparece aqui sozinho.</div></div>;
+  if (!fu) return <div className="p"><div className="empty">Sem negócios registrados no CRM do time para montar o funil.</div></div>;
   const et = fu.etapas;
   const fatPessoa = new Map(c.k.pessoas.map((p) => [p.id, p]));
   return (
@@ -433,8 +433,9 @@ export function FunilKpis({ c }: { c: CtxK }) {
       <div className="grid r2">
         <Panel titulo="Funil do mês" sub="arraste pra girar">
           <FunilMes etapas={etapasFunil(c, fu)} selo={`${fp(fu.conv)} dos atendimentos viram venda`} onSelo={() => {}} />
+          {c.k.emAndamento && <div className="note">Os negócios criados neste mês ainda estão em andamento: a conversão sobe até eles fecharem. Compare com meses já encerrados.</div>}
         </Panel>
-        <Panel titulo="Etapa a etapa" sub="mês atual contra o mesmo período do mês anterior">
+        <Panel titulo="Etapa a etapa" sub="negócios criados no mês. Mês anterior: mesmo período, com o resultado de hoje">
           <Tabela cols={[{ h: "Etapa", tl: true }, "Mês", "Conv. etapa", "% dos atend.", "Mês ant."]}
             rows={et.map((e) => [e.rotulo, num(e.v, 0), e.convAnterior == null ? <Nd /> : fp(e.convAnterior), fp(pct(e.v, fu.atendimentos)), num(e.ant, 0)])} />
           {fu.perdas.length > 0 && <>
@@ -485,7 +486,7 @@ export function ClientesKpis({ c }: { c: CtxK }) {
         </Panel>
       </div>
       <div className="grid g2">
-        <Panel titulo="Investimento e CAC" sub="lançado pela 3D Cure no sistema dela">
+        <Panel titulo="Investimento e CAC" sub="mídia + time comercial + outros, por mês">
           <Tabela cols={[{ h: "Mês", tl: true }, "Mídia", "Time comercial", "Outros", "Total", "Novos", "CAC"]}
             rows={[...serie].reverse().filter((m) => m.custo != null || m.novos != null).map((m) => {
               const i = c.b.investimento?.find((x) => ym2(x.mes) === ym2(m.mes));
