@@ -10,6 +10,7 @@ import { fundadorFrase } from "./Fundador";
 import { coberturaFrase, reunioesFrase } from "./Antecedentes";
 import { ritmoFrase } from "./Ritmo";
 import type { EtapaFunil } from "./funil/geo";
+import { ResultadosCard } from "./Resultados";
 
 export function VisaoGeral({ c }: { c: Ctx }) {
   const { d, mes } = c;
@@ -157,6 +158,8 @@ export function VisaoGeral({ c }: { c: Ctx }) {
           ]} />
         </Panel>
       </div>
+
+      <ResultadosCard c={c} />
 
       <div className="grid r3">
         <Panel titulo="Financeiro · mês a mês" sub="recebido por mês, últimos 12 meses. Clique num mês pra trocar o painel inteiro.">

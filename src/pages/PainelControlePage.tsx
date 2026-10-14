@@ -27,6 +27,8 @@ import { Antecedentes } from "@/components/painel-controle/Antecedentes";
 import { Ritmo } from "@/components/painel-controle/Ritmo";
 import { Receita } from "@/components/painel-controle/Receita";
 import { Produtos } from "@/components/painel-controle/Produtos";
+import { ResultadosClientes } from "@/components/painel-controle/Resultados";
+import { ResultadoCliente } from "@/components/painel-controle/ResultadoCliente";
 import { limparBlocos } from "@/components/painel-controle/bloco";
 import { Detalhe, DETALHE_TITULO } from "@/components/painel-controle/Detalhe";
 import { MetaSync } from "@/components/painel-controle/MetaSync";
@@ -48,6 +50,7 @@ const TITULOS: Record<string, [string, string]> = {
   meta: ["Ritmo da meta", "vendido contra a meta do mês, projeção por dia útil e lucro do ano contra a meta anual"],
   antecedentes: ["O que ainda dá pra mudar", "reuniões na agenda, pipeline contra o que falta da meta e entrada de leads"],
   fundador: ["Dependência do fundador", "quanto da receita nova passa pela mão do dono e quanto das mensalidades está em poucos clientes"],
+  resultados: ["Resultados dos clientes", "meta entregue no KPI principal de cada cliente ativo, quem está sem meta e quem não lançou resultado"],
   fontes: ["Fontes de dados", "de onde vem cada número e o que falta conectar"],
 };
 
@@ -136,7 +139,7 @@ export default function PainelControlePage() {
   // depois de mudar uma configuração: busca o mês de novo e descarta os outros guardados
   const recarregar = () => { limparBlocos(); carregar(mes).then(() => { setCache((c) => (c[mes] ? { [mes]: c[mes] } : {})); setRev((r) => r + 1); }); };
   const ctx: Ctx | null = d ? { d, mes, setMes, go, det, abrir, f: cur.f ?? {}, setF, syncMeta, sincronizando, recarregar } : null;
-  const crumbs = stack.map((n) => (n.view === "detalhe" ? n.titulo ?? DETALHE_TITULO(n.bloco ?? "") : TITULOS[n.view]?.[0] ?? n.view));
+  const crumbs = stack.map((n) => (n.view === "detalhe" ? n.titulo ?? DETALHE_TITULO(n.bloco ?? "") : TITULOS[n.view]?.[0] ?? n.titulo ?? n.view));
 
   const conteudo = () => {
     if (!ctx) return null;
@@ -156,6 +159,8 @@ export default function PainelControlePage() {
       case "meta": return <Ritmo c={ctx} />;
       case "receita": return <Receita key={rev} c={ctx} />;
       case "produtos": return <Produtos key={rev} c={ctx} />;
+      case "resultados": return <ResultadosClientes key={rev} c={ctx} />;
+      case "resultado_cliente": return <ResultadoCliente key={`${rev}-${String(cur.filtro?.company_id ?? "")}`} c={ctx} companyId={String(cur.filtro?.company_id ?? "")} />;
       case "detalhe": return <Detalhe key={rev} mes={mes} bloco={cur.bloco ?? ""} filtro={cur.filtro} titulo={cur.titulo} sub={cur.sub} det={det} />;
       default: return <VisaoGeral c={ctx} />;
     }
@@ -173,7 +178,8 @@ export default function PainelControlePage() {
         {!authLoading && erro && <div className="err">Não consegui carregar {mesLabel(mes)}: {erro}. <button type="button" className="lk" onClick={() => carregar(mes)}>Tentar de novo</button></div>}
         {!authLoading && !erro && !d && <div className="load">Carregando {mesLabel(mes)}...</div>}
         {ctx && cur.view !== "visao" && (
-          <Cab titulo={cur.view === "detalhe" ? cur.titulo ?? "Detalhe" : t?.[0] ?? cur.view} sub={cur.view === "detalhe" ? undefined : `${t?.[1] ?? ""}. ${HOJE.has(cur.view) ? "A partir de hoje" : mesLabel(mes)}`}
+          <Cab titulo={cur.view === "detalhe" ? cur.titulo ?? "Detalhe" : t?.[0] ?? cur.titulo ?? cur.view}
+            sub={cur.view === "detalhe" ? undefined : cur.view === "resultado_cliente" ? `Resultado do cliente: KPI principal contra a meta, vendedores, dia a dia e 6 meses. ${mesLabel(mes)}` : `${t?.[1] ?? ""}. ${HOJE.has(cur.view) ? "A partir de hoje" : mesLabel(mes)}`}
             crumbs={crumbs} onBack={back} onCrumb={crumb} filtros={filtros} />
         )}
         {conteudo()}
