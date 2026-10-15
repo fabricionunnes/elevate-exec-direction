@@ -1682,7 +1682,7 @@ export const KPIDashboardTab = ({
 
   return (
     <div className="space-y-6">
-      {/* Integração automática de CRM: os KPIs mapeados chegam sozinhos, de hora em hora */}
+      {/* Integração automática de CRM: os KPIs mapeados chegam sozinhos (UNV Sales: venda na hora, gatilho no banco; demais de hora em hora) */}
       {integrationSources.length > 0 && (
         <div className="flex items-center gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2">
           <span className="relative flex h-2 w-2 shrink-0">
@@ -1690,7 +1690,7 @@ export const KPIDashboardTab = ({
             <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500" />
           </span>
           <p className="text-xs sm:text-sm text-sky-700 dark:text-sky-300 font-medium">
-            Integração automática ativa — KPIs de vendas preenchidos pelo CRM ({integrationSources.join(" + ")}) de hora em hora.
+            Integração automática ativa: KPIs de vendas preenchidos pelo CRM ({integrationSources.join(" + ")}){integrationSources.every((x) => x === "UNV Sales") ? ", vendas em tempo real" : " de hora em hora"}.
           </p>
         </div>
       )}
