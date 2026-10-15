@@ -69,6 +69,42 @@ Deno.serve(async (req) => {
       }
 
       const changes = entry.changes?.[0];
+
+      // Meta avisando que um template mudou de status (aprovado, recusado,
+      // pausado). Só chega se o campo message_template_status_update estiver
+      // assinado no painel da Meta; quando não estiver, a wa-template-watch
+      // pega na checagem de 10 em 10 minutos. (Fabrício, 28/09/2026)
+      if (changes?.field === 'message_template_status_update') {
+        const v = changes.value || {};
+        const nome = v.message_template_name;
+        const idioma = v.message_template_language || 'pt_BR';
+        const novo = v.event || v.new_status;   // APPROVED | REJECTED | PAUSED | DISABLED
+        if (nome && novo) {
+          // marca o status e LIMPA o avisado_status: assim a wa-template-watch
+          // manda o WhatsApp na próxima rodada sem duplicar a lógica de aviso
+          await supabase.from('whatsapp_template_status')
+            .update({
+              status: String(novo).toUpperCase(),
+              rejected_reason: v.reason || null,
+              avisado_status: null,
+              atualizado_em: new Date().toISOString(),
+            })
+            .eq('template_name', nome).eq('language', idioma);
+          // e dispara a verificação na hora, pro aviso não esperar os 10 min
+          try {
+            await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/wa-template-watch`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}` },
+              body: '{}',
+            });
+          } catch { /* a checagem periódica cobre */ }
+        }
+        return new Response(JSON.stringify({ status: 'template status processado', nome, novo }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       if (!changes || changes.field !== 'messages') {
         return new Response(JSON.stringify({ status: 'not messages' }), {
           status: 200,
@@ -123,6 +159,17 @@ Deno.serve(async (req) => {
   return new Response('Method not allowed', { status: 405 });
 });
 
+// Celular brasileiro chega da Meta às vezes SEM o 9 (55 47 9997-5895) e o disparo/lead guarda
+// COM o 9 (55 47 9 9997-5895). Sem tratar, a resposta do lead abria uma 2ª conversa sem o
+// agente escolhido no disparo e o agente padrão do número respondia (Mansão, 15/10/2026).
+function variantesBR(p: string): string[] {
+  const d = String(p || "").replace(/\D/g, "");
+  const out = new Set([d]);
+  if (d.startsWith("55") && d.length === 12 && /[6-9]/.test(d[4])) out.add(d.slice(0, 4) + "9" + d.slice(4));
+  if (d.startsWith("55") && d.length === 13 && d[4] === "9") out.add(d.slice(0, 4) + d.slice(5));
+  return [...out];
+}
+
 async function processIncomingMessage(
   supabase: any,
   officialInstanceId: string,
@@ -134,12 +181,26 @@ async function processIncomingMessage(
 
   console.log('[WhatsApp Official] Processing message from:', phone);
 
-  // Find or create contact
-  const { data: existingContact } = await supabase
+  // Find or create contact (com e sem o 9; se existirem os dois, fica com o que já conversa por este número)
+  const { data: candidatos } = await supabase
     .from('crm_whatsapp_contacts')
-    .select('id')
-    .eq('phone', phone)
-    .maybeSingle();
+    .select('id, phone')
+    .in('phone', variantesBR(phone));
+  let existingContact: { id: string } | null = null;
+  if (candidatos && candidatos.length === 1) {
+    existingContact = candidatos[0];
+  } else if (candidatos && candidatos.length > 1) {
+    const { data: convRecente } = await supabase
+      .from('crm_whatsapp_conversations')
+      .select('contact_id')
+      .in('contact_id', candidatos.map((c: any) => c.id))
+      .eq('official_instance_id', officialInstanceId)
+      .order('last_message_at', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+    existingContact = candidatos.find((c: any) => c.id === convRecente?.contact_id)
+      || candidatos.find((c: any) => c.phone === phone) || candidatos[0];
+  }
 
   let contactId: string;
   if (existingContact) {
@@ -305,7 +366,8 @@ async function processIncomingMessage(
   // igual o Evolution faz. Sem isso vídeo/imagem/áudio ficavam sem media_url e
   // não abriam no Atendimento nem chegavam na IA (14/09/2026).
   if (mediaId) {
-    const stored = await storeOfficialMedia(supabase, instanceId, mediaId, type, message.id);
+    // era "instanceId" (não existe aqui): toda mídia recebida quebrava e sumia desde 28/09/2026
+    const stored = await storeOfficialMedia(supabase, officialInstanceId, mediaId, type, message.id);
     if (stored) { mediaUrl = stored.url; mediaMimetype = stored.mime; }
   }
 
