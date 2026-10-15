@@ -11,7 +11,7 @@ import { valorKpi, type Ritmo } from "./Resultados";
 type Kpi = { kpi_id: string; kpi: string; tipo: string; principal: boolean; meta: number | null; realizado: number | null; lanc_mes: number; ultimo: string | null };
 type Vendedor = { salesperson_id: string; nome: string; ativo: boolean; meta: number | null; realizado: number | null; lanc_mes: number; ultimo: string | null };
 type Dado = {
-  mes: string; ritmo: Ritmo; empresa: string; company_id: string; project_id: string | null; consultor: string | null; kpi_id: string | null;
+  mes: string; ritmo: Ritmo; fonte?: "kpis" | "indicadores"; empresa: string; company_id: string; project_id: string | null; consultor: string | null; kpi_id: string | null;
   kpis: Kpi[]; vendedores: Vendedor[]; sem_vendedor: number | null;
   diario: { dia: string; valor: number }[]; serie: { mes: string; meta: number | null; realizado: number | null }[];
 };
@@ -60,11 +60,12 @@ export function ResultadoCliente({ c, companyId }: { c: Ctx; companyId: string }
     <>
       <div className="note" style={{ border: 0, margin: 0, padding: 0 }}>
         KPI principal: <b>{k?.kpi ?? "nenhum KPI cadastrado"}</b>{dado.consultor && <> · consultor {dado.consultor}</>}
-        {dado.project_id && <> · <Lk ext onClick={abrirProjeto}>Abrir os KPIs do cliente no Nexus</Lk></>}
+        {dado.fonte === "indicadores" && <> · meta e resultado do menu Indicadores, não dos KPIs</>}
+        {dado.project_id && <> · <Lk ext onClick={abrirProjeto}>{dado.fonte === "indicadores" ? "Abrir o cliente no Nexus (aba Indicadores)" : "Abrir os KPIs do cliente no Nexus"}</Lk></>}
       </div>
       <div className="kg">
         <Tile label="Meta do mês" valor={meta == null ? "-" : v(meta)} cls={meta == null ? "neg" : ""}
-          sub={meta == null ? "sem meta: cadastre por vendedor ou da empresa na aba KPIs" : `${plural(vend.filter((x) => x.meta).length, "vendedor com meta", "vendedores com meta")}`} onClick={abrirProjeto} />
+          sub={meta == null ? (dado.fonte === "indicadores" ? "sem meta do mês: cadastre no menu Indicadores" : "sem meta: cadastre por vendedor ou da empresa na aba KPIs") : `${plural(vend.filter((x) => x.meta).length, "vendedor com meta", "vendedores com meta")}`} onClick={abrirProjeto} />
         <Tile label="Realizado" valor={real == null ? "-" : v(real)} cls={real == null ? "neg" : ""}
           sub={k?.lanc_mes ? `${plural(k.lanc_mes, "lançamento", "lançamentos")} no mês` : "nenhum lançamento no mês"} onClick={abrirProjeto} />
         <Tile label="Meta entregue" valor={fp(pctReal)} cls={pctReal != null && pctReal < r.ritmo * 0.7 ? "neg" : ""}
