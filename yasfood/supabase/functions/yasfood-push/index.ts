@@ -104,6 +104,7 @@ Deno.serve(async (req) => {
         .from("orders")
         .update({ push_notified_at: new Date().toISOString() })
         .eq("status", "recebido")
+        .eq("origin", "site") // pedido lançado no painel não avisa
         .is("push_notified_at", null)
         .gte("created_at", since)
         .select("id, code, customer_name, total, scheduled_date, window_label, fulfillment");

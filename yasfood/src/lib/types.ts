@@ -145,6 +145,7 @@ export interface Order {
   items_total: number;
   addons_total: number;
   total: number;
+  origin: "site" | "painel";
   payment_method: PaymentMethod;
   change_for: number | null;
   payment_status: "pendente" | "pago" | "estornado";
