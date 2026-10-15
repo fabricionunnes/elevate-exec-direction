@@ -8,12 +8,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { Loader2, RefreshCw, AlertTriangle, ExternalLink } from "lucide-react";
+import { Loader2, RefreshCw, AlertTriangle, ExternalLink, MessageCircle, Check } from "lucide-react";
+import { toast } from "sonner";
 
 type Totais = {
   visitas: number; comecaram: number; enviaram: number; desqualificados: number; cortados_perfil: number;
   cortados_faturamento: number; abandonaram: number; preenchendo_agora: number; erros: number;
-  total_perguntas: number | null; mediana_seg_envio: number | null;
+  total_perguntas: number | null; mediana_seg_envio: number | null; recuperaveis?: number; recuperaveis_pendentes?: number;
 };
 type Pergunta = { q: number; nome: string | null; chegaram: number; pararam: number };
 type Campanha = { campanha: string; visitas: number; comecaram: number; enviaram: number; abandonaram: number };
@@ -22,6 +23,7 @@ type Sessao = {
   id: string; started_at: string; updated_at: string; situacao: string; last_step_name: string | null; max_question: number;
   total_questions: number | null; lead_id: string | null; respostas: Record<string, string>; utm_source: string | null;
   utm_campaign: string | null; ad_name: string | null; device: string | null;
+  contato_nome?: string | null; contato_whatsapp?: string | null; recuperacao_em?: string | null;
 };
 type Dados = { totais: Totais; perguntas: Pergunta[]; campanhas: Campanha[]; aparelhos: Aparelho[]; recentes: Sessao[] };
 
@@ -107,7 +109,25 @@ export function FormulariosTab() {
     return ps.sort((a, b) => b.pararam - a.pararam)[0] || null;
   }, [dados]);
 
-  const recentes = (dados?.recentes || []).filter((s) => filtroSit === "todas" || s.situacao === filtroSit);
+  const recentes = (dados?.recentes || []).filter((s) =>
+    filtroSit === "todas" ? true
+      : filtroSit === "recuperaveis" ? (s.situacao === "abandonou" && !!s.contato_whatsapp)
+      : s.situacao === filtroSit);
+  const pendentes = (dados?.recentes || []).filter((s) => s.situacao === "abandonou" && s.contato_whatsapp && !s.recuperacao_em);
+
+  const linkWhats = (s: Sessao) => {
+    const d = String(s.contato_whatsapp || "").replace(/\D/g, "");
+    const num = d.startsWith("55") ? d : `55${d}`;
+    const primeiro = (s.contato_nome || "").trim().split(/\s+/)[0] || "";
+    const texto = `Oi${primeiro ? ` ${primeiro}` : ""}, tudo bem? Aqui é da ${cfg.label}. Vi que você começou o diagnóstico e parou no meio. Posso te ajudar a terminar ou tirar alguma dúvida?`;
+    return `https://wa.me/${num}?text=${encodeURIComponent(texto)}`;
+  };
+  const marcarChamado = async (s: Sessao) => {
+    const { error } = await (supabase as any).rpc("form_session_recuperado", { p_session: s.id });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Marcado como chamado");
+    carregar();
+  };
   const enviaramTotal = (t?.enviaram || 0) + (t?.desqualificados || 0);
 
   return (
@@ -134,12 +154,13 @@ export function FormulariosTab() {
 
       {t && (
         <>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8">
             <Tile label="Visitas" valor={num(t.visitas)} sub="abriram o formulário" />
             <Tile label="Começaram" valor={num(t.comecaram)} sub={`${pct(t.comecaram, t.visitas)}% das visitas`} />
             <Tile label="Enviaram" valor={num(enviaramTotal)} sub={`${pct(enviaramTotal, t.comecaram)}% de quem começou`} tom="bom" />
             <Tile label="Abandonaram" valor={num(t.abandonaram)} sub={`${pct(t.abandonaram, t.comecaram)}% de quem começou`} tom={t.abandonaram ? "ruim" : undefined} />
             <Tile label="Cortados" valor={num(t.cortados_perfil + t.cortados_faturamento)} sub={`${num(t.cortados_perfil)} perfil · ${num(t.cortados_faturamento)} faturamento`} />
+            <Tile label="Recuperáveis" valor={num(t.recuperaveis || 0)} sub={`abandonaram com WhatsApp · ${num(t.recuperaveis_pendentes || 0)} sem chamar`} tom={(t.recuperaveis_pendentes || 0) > 0 ? "ruim" : undefined} />
             <Tile label="Preenchendo agora" valor={num(t.preenchendo_agora)} sub="mexeram nos últimos 30 min" />
             <Tile label="Tempo até enviar" valor={t.mediana_seg_envio ? `${Math.round(t.mediana_seg_envio / 60 * 10) / 10} min` : "-"} sub="mediana" />
           </div>
@@ -157,6 +178,31 @@ export function FormulariosTab() {
             <div className="rounded-md border border-orange-500/40 bg-orange-500/10 p-3 text-sm">
               {num(t.erros)} envio{t.erros === 1 ? "" : "s"} deram erro no período: a pessoa preencheu tudo e o lead pode não ter entrado no CRM.
             </div>
+          )}
+
+          {pendentes.length > 0 && (
+            <Card className="border-amber-500/50">
+              <CardContent className="p-4">
+                <h3 className="mb-1 font-semibold">Pra recuperar agora</h3>
+                <p className="mb-3 text-xs text-muted-foreground">Abandonaram depois de deixar o WhatsApp e ninguém chamou ainda. O botão abre o WhatsApp com a mensagem pronta.</p>
+                <div className="space-y-2">
+                  {pendentes.map((s) => (
+                    <div key={s.id} className="flex flex-wrap items-center gap-2 rounded-md border p-2 text-sm">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium">{s.contato_nome || "Sem nome"} <span className="font-normal text-muted-foreground">· {s.contato_whatsapp}</span></div>
+                        <div className="text-xs text-muted-foreground">
+                          Parou na pergunta {s.max_question}: {nomePergunta(s.max_question)} · {quando(s.updated_at)}{s.utm_campaign ? ` · ${s.utm_campaign}` : ""}
+                        </div>
+                      </div>
+                      <Button asChild size="sm" className="h-8 gap-1 bg-emerald-600 hover:bg-emerald-700">
+                        <a href={linkWhats(s)} target="_blank" rel="noreferrer"><MessageCircle className="h-3.5 w-3.5" />Chamar no WhatsApp</a>
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => marcarChamado(s)}><Check className="h-3.5 w-3.5" />Já chamei</Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           <Card>
@@ -252,7 +298,7 @@ export function FormulariosTab() {
                 <h3 className="font-semibold">Visitas recentes</h3>
                 <div className="w-56">
                   <SearchableSelect value={filtroSit} onValueChange={setFiltroSit}
-                    options={[{ value: "todas", label: "Todas as situações" }, ...Object.entries(SITUACAO).map(([v, s]) => ({ value: v, label: s.label }))]}
+                    options={[{ value: "todas", label: "Todas as situações" }, { value: "recuperaveis", label: "Recuperáveis (abandonou com WhatsApp)" }, ...Object.entries(SITUACAO).map(([v, s]) => ({ value: v, label: s.label }))]}
                     placeholder="Situação" />
                 </div>
               </div>
@@ -276,6 +322,12 @@ export function FormulariosTab() {
                           </td>
                           <td className="px-2 text-xs">
                             {s.max_question > 0 ? <>Pergunta {s.max_question}: {nomePergunta(s.max_question)}</> : <span className="text-muted-foreground">Só abriu</span>}
+                            {s.contato_whatsapp && s.situacao !== "enviou" && s.situacao !== "desqualificado" && (
+                              <div className="mt-0.5">
+                                {s.contato_nome || "Sem nome"} · <a className="text-emerald-600 hover:underline" href={linkWhats(s)} target="_blank" rel="noreferrer">{s.contato_whatsapp}</a>
+                                {s.recuperacao_em && <span className="text-muted-foreground"> · chamado {quando(s.recuperacao_em)}</span>}
+                              </div>
+                            )}
                           </td>
                           <td className="px-2">
                             <div className="flex flex-wrap gap-1">
@@ -296,7 +348,7 @@ export function FormulariosTab() {
                 </table>
               </div>
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Abandonou = parou há mais de 30 minutos sem enviar. Nome, telefone e e-mail de quem não enviou não são guardados.
+                Abandonou = parou há mais de 30 minutos sem enviar. Nome e WhatsApp só ficam guardados de quem passou da pergunta do WhatsApp; e-mail nunca.
               </p>
             </CardContent>
           </Card>
