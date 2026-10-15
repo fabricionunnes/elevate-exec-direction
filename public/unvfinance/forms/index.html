@@ -377,6 +377,51 @@ function paint(){
   $("pwrap").hidden = !q;
 }
 
+/* ── rastreio de onde a pessoa para (CRM > Dashboard > Formulários) ──────────
+   Cada visita vira uma sessão anônima e cada tela aberta é avisada ao Nexus.
+   Não manda nome, telefone nem e-mail: só a etapa, as respostas de múltipla
+   escolha, a origem (UTM) e o aparelho. Falha calada: nunca trava o formulário. */
+var TRK_FORM = "unvfinance";
+var TRK_SID = (function(){
+  var k = "frm_sid_" + TRK_FORM, v = null;
+  try { v = sessionStorage.getItem(k); } catch(e){}
+  if(!v){
+    v = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+      : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c){ var r = Math.random()*16|0; return (c === "x" ? r : (r&3|8)).toString(16); });
+    try { sessionStorage.setItem(k, v); } catch(e){}
+  }
+  return v;
+})();
+var TRK_NOMES = { 0:"abertura", 8:"enviando", 9:"concluido", 11:"saida_perfil", 12:"saida_faturamento" };
+function trkRespostas(){
+  var r = {};
+  try { for(var k in A){ if(A[k] && typeof A[k] === "object" && A[k].s) r[k] = A[k].s; } } catch(e){}
+  return r;
+}
+function trk(o){
+  try {
+    var body = {
+      p_session: TRK_SID, p_form: TRK_FORM,
+      p_step: (o.step === undefined ? null : o.step), p_step_name: o.name || null,
+      p_question: (o.q === undefined ? null : o.q),
+      p_total: (typeof totalSteps === "function" ? totalSteps() : ORDEM.length),
+      p_status: o.status || null, p_lead: o.lead || null,
+      p_meta: { respostas: trkRespostas() }
+    };
+    if(o.inicio){
+      body.p_meta.utm_source = qp("utm_source"); body.p_meta.utm_medium = qp("utm_medium");
+      body.p_meta.utm_campaign = qp("utm_campaign") || qp("campaign_name"); body.p_meta.utm_content = qp("utm_content");
+      body.p_meta.ad_name = qp("ad_name"); body.p_meta.referrer = (document.referrer || "").slice(0, 300);
+      body.p_meta.device = window.matchMedia("(max-width:767px)").matches ? "celular" : "computador";
+    }
+    fetch(SUPA + "/rest/v1/rpc/form_track", {
+      method: "POST", keepalive: true,
+      headers: { "Content-Type":"application/json", "Authorization":"Bearer " + ANON, "apikey": ANON },
+      body: JSON.stringify(body)
+    }).catch(function(){});
+  } catch(e){}
+}
+
 function show(i){
   var el = document.querySelector(".step.on");
   if(el) el.classList.remove("on");
@@ -390,6 +435,8 @@ function show(i){
   }
   var inp = $("s" + i).querySelector("input");
   if(inp && window.matchMedia("(min-width:768px)").matches) setTimeout(function(){ inp.focus(); }, 260);
+  trk({ step:i, name: STEP_NAMES[i] || TRK_NOMES[i] || ("s"+i), q: numPergunta(i),
+        status: i === 11 ? "cortado_perfil" : i === 12 ? "cortado_faturamento" : null });
   try { window.scrollTo(0,0); } catch(e){}
 }
 
@@ -627,6 +674,7 @@ function finish(){
   }).then(function(res){
     if(!res.ok) throw new Error((res.data && res.data.error) || "Erro ao enviar");
     var leadId = res.data && res.data.lead_id;
+    trk({ status: "enviou", lead: leadId });
     fb("track","Lead", { content_name:"Diagnóstico UNV Finance", content_category:A.fat ? A.fat.s : "", value:1, currency:"BRL" },
        leadId ? { eventID: leadId + ":Lead" } : undefined);
     render();
@@ -634,12 +682,14 @@ function finish(){
     sending = false;
     // Não perde o lead: mostra o resultado e joga pro WhatsApp do mesmo jeito.
     fb("trackCustom","FormError",{ msg: String(e && e.message || e).slice(0,100) });
+    trk({ status: "erro_envio" });
     render();
   });
 }
 
 prefill();
 paint();
+trk({ step:0, name:"abertura", q:0, inicio:true });
 })();
 </script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=247392077001023&ev=PageView&noscript=1"/></noscript>
