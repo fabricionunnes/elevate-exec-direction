@@ -354,51 +354,30 @@ export const CRMPipelinePage = () => {
 
   const loadSummaryCards = useCallback(async () => {
     try {
-      // Find all "Forecast" stages across ALL pipelines
-      const { data: forecastStages } = await supabase
-        .from("crm_stages")
-        .select("id")
-        .ilike("name", "%forecast%");
+      // Etapas do funil aberto (sem funil escolhido, todas). Forecast = etapa "Forecast";
+      // Em negociação = call realizada (Realizado/Realizada) + Forecast somadas (Fabrício, 15/10/2026).
+      // Antes procurava só "realizada" e a etapa "Realizado" ficava de fora (card zerado).
+      let stagesQuery = supabase.from("crm_stages").select("id, name");
+      if (selectedPipeline) stagesQuery = stagesQuery.eq("pipeline_id", selectedPipeline);
+      const { data: todasEtapas } = await stagesQuery;
+      const forecastIds = (todasEtapas || []).filter((st) => /forecast/i.test(st.name || "")).map((st) => st.id);
+      const realizadaIds = (todasEtapas || []).filter((st) => isRealizedStage(st.name || "") && !/n[ãa]o\s*realiz/i.test(st.name || "")).map((st) => st.id);
 
-      if (forecastStages && forecastStages.length > 0) {
-        const stageIds = forecastStages.map(s => s.id);
-        let forecastQuery = supabase
-          .from("crm_leads")
-          .select("id, opportunity_value, owner_staff_id")
-          .in("stage_id", stageIds);
-        if (selectedOrigin) {
-          forecastQuery = forecastQuery.eq("origin_id", selectedOrigin);
-        }
-        const { data: forecastLeads } = await forecastQuery;
-        setForecastData(forecastLeads || []);
-      } else {
-        setForecastData([]);
-      }
-
-      // Find all "Realizada" stages across ALL pipelines
-      const { data: realizadaStages } = await supabase
-        .from("crm_stages")
-        .select("id")
-        .ilike("name", "%realizada%");
-
-      if (realizadaStages && realizadaStages.length > 0) {
-        const stageIds = realizadaStages.map(s => s.id);
-        let negQuery = supabase
-          .from("crm_leads")
-          .select("id, opportunity_value, owner_staff_id")
-          .in("stage_id", stageIds);
-        if (selectedOrigin) {
-          negQuery = negQuery.eq("origin_id", selectedOrigin);
-        }
-        const { data: negotiationLeads } = await negQuery;
-        setNegotiationData(negotiationLeads || []);
-      } else {
-        setNegotiationData([]);
-      }
+      const leadsDas = async (ids: string[]) => {
+        if (!ids.length) return [];
+        let q = supabase.from("crm_leads").select("id, opportunity_value, owner_staff_id").in("stage_id", ids);
+        if (selectedOrigin) q = q.eq("origin_id", selectedOrigin);
+        const { data } = await q;
+        return data || [];
+      };
+      const [forecastLeads, realizadaLeads] = await Promise.all([leadsDas(forecastIds), leadsDas(realizadaIds)]);
+      setForecastData(forecastLeads);
+      const vistos = new Set<string>();
+      setNegotiationData([...realizadaLeads, ...forecastLeads].filter((l) => !vistos.has(l.id) && vistos.add(l.id)));
     } catch (error) {
       console.error("Error loading summary cards:", error);
     }
-  }, [selectedOrigin]);
+  }, [selectedOrigin, selectedPipeline]);
 
   // Compute filtered totals based on owner filter
   const filteredForecastTotal = useMemo(() => {
@@ -408,6 +387,10 @@ export const CRMPipelinePage = () => {
       : forecastData;
     return data.reduce((sum, f) => sum + (f.opportunity_value || 0), 0);
   }, [forecastData, filters.owners]);
+
+  const doDono = (l: { owner_staff_id: string | null }) => filters.owners.length === 0 || filters.owners.includes(l.owner_staff_id as string);
+  const forecastCount = forecastData.filter(doDono).length;
+  const negotiationCount = negotiationData.filter(doDono).length;
 
   const filteredNegotiationTotal = useMemo(() => {
     const ownerFilter = filters.owners;
@@ -1317,7 +1300,7 @@ export const CRMPipelinePage = () => {
               {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(filteredForecastTotal)}
             </span>
             <span className="text-[10px] text-muted-foreground hidden sm:inline shrink-0">
-              {forecastData.length} aberto{forecastData.length !== 1 ? "s" : ""}
+              {forecastCount} aberto{forecastCount !== 1 ? "s" : ""}
             </span>
           </div>
           <div className="flex-1 basis-0 flex items-center gap-2 px-3 sm:px-4 py-2 min-w-0">
@@ -1327,7 +1310,7 @@ export const CRMPipelinePage = () => {
               {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(filteredNegotiationTotal)}
             </span>
             <span className="text-[10px] text-muted-foreground hidden sm:inline shrink-0">
-              {negotiationData.length} negócio{negotiationData.length !== 1 ? "s" : ""}
+              {negotiationCount} negócio{negotiationCount !== 1 ? "s" : ""}
             </span>
           </div>
         </div>
