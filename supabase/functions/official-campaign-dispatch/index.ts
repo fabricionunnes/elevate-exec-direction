@@ -205,11 +205,13 @@ async function enviarUm(supabase: any, camp: any, inst: any, r: any, stagesCache
       throw new Error(`${er.code ? `${er.code} ` : ""}${er.message || `HTTP ${resp.status}`}${det}`.trim());
     }
     const wamid: string | null = data?.messages?.[0]?.id || null;
+    // a Meta devolve o número no formato em que as respostas vão chegar (wa_id): a conversa nasce nele
+    const waId: string = data?.contacts?.[0]?.wa_id || r.phone;
     await supabase.from(REC).update({ status: "sent", whatsapp_message_id: wamid, sent_at: new Date().toISOString() }).eq("id", r.id);
 
     const content = render(camp.template_body || camp.body_preview || "", vars, nome, staffName);
     const reg = await registrarNoAtendimento(supabase, {
-      instanceId: inst.id, leadId: r.lead_id, leadName: nome, phone: r.phone, content, wamid, staffId: camp.created_by_staff_id,
+      instanceId: inst.id, leadId: r.lead_id, leadName: nome, phone: waId, content, wamid, staffId: camp.created_by_staff_id,
     });
     // agente escolhido no disparo: fica FIXO na conversa (trava) e só ele responde,
     // até alguém desligar no Atendimento (Fabrício, 16/09/2026)
@@ -282,10 +284,30 @@ async function tagTemplateEnviado(supabase: any): Promise<string | null> {
 }
 
 /** contato + conversa (official_instance_id) + mensagem — mesmo formato do whatsapp-official-webhook */
+// Celular brasileiro chega da Meta às vezes SEM o 9 (55 47 9997-5895) e o disparo/lead guarda
+// COM o 9 (55 47 9 9997-5895). Sem tratar, a resposta do lead abria uma 2ª conversa sem o
+// agente escolhido no disparo e o agente padrão do número respondia (Mansão, 15/10/2026).
+function variantesBR(p: string): string[] {
+  const d = String(p || "").replace(/\D/g, "");
+  const out = new Set([d]);
+  if (d.startsWith("55") && d.length === 12 && /[6-9]/.test(d[4])) out.add(d.slice(0, 4) + "9" + d.slice(4));
+  if (d.startsWith("55") && d.length === 13 && d[4] === "9") out.add(d.slice(0, 4) + d.slice(5));
+  return [...out];
+}
+
 async function registrarNoAtendimento(supabase: any, a: {
   instanceId: string; leadId: string | null; leadName: string; phone: string; content: string; wamid: string | null; staffId: string | null;
 }): Promise<{ conversationId: string; messageId: string | null } | null> {
-  let { data: contact } = await supabase.from("crm_whatsapp_contacts").select("id, lead_id").eq("phone", a.phone).maybeSingle();
+  // com e sem o 9: se já existe o contato em qualquer formato, usa o que tem conversa neste número
+  const { data: candidatos } = await supabase.from("crm_whatsapp_contacts").select("id, lead_id, phone").in("phone", variantesBR(a.phone));
+  let contact: any = null;
+  if (candidatos?.length === 1) contact = candidatos[0];
+  else if (candidatos && candidatos.length > 1) {
+    const { data: convRecente } = await supabase.from("crm_whatsapp_conversations").select("contact_id")
+      .in("contact_id", candidatos.map((c: any) => c.id)).eq("official_instance_id", a.instanceId)
+      .order("last_message_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
+    contact = candidatos.find((c: any) => c.id === convRecente?.contact_id) || candidatos.find((c: any) => c.phone === a.phone) || candidatos[0];
+  }
   if (!contact) {
     const { data: created } = await supabase.from("crm_whatsapp_contacts")
       .insert({ phone: a.phone, name: a.leadName || a.phone, lead_id: a.leadId }).select("id, lead_id").single();
