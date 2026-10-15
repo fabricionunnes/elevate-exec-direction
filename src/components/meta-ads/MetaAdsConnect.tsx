@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
 import { Loader2, Megaphone, Link2 } from "lucide-react";
 import { getMetaAdsRedirectUri } from "@/lib/metaAds";
@@ -102,18 +102,13 @@ export const MetaAdsConnect = ({ projectId, onConnected }: MetaAdsConnectProps) 
           <Megaphone className="h-12 w-12 mx-auto text-primary" />
           <h3 className="text-lg font-semibold">Selecione a conta de anúncios</h3>
           <div className="max-w-xs mx-auto">
-            <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma conta" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts.map((acc) => (
-                  <SelectItem key={acc.id} value={acc.id}>
-                    {acc.name || acc.account_id}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={selectedAccount}
+              onValueChange={setSelectedAccount}
+              placeholder="Selecione uma conta"
+              emptyMessage="Nenhuma conta com esse nome"
+              options={accounts.map((acc) => ({ value: acc.id, label: acc.name || acc.account_id, hint: acc.name ? acc.account_id : undefined }))}
+            />
           </div>
           <Button onClick={handleSave} disabled={!selectedAccount || saving} className="gap-2">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
