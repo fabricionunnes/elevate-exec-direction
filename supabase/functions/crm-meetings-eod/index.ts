@@ -116,6 +116,22 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceKey);
 
     // ?probe=1: testa a chave da AssemblyAI com um áudio público curto e devolve a resposta crua
+    // ?probe=openai&url=<áudio>: testa o Whisper (a outra transcrição usada pelo agente)
+    if (new URL(req.url).searchParams.get("probe") === "openai") {
+      const audioUrl = new URL(req.url).searchParams.get("url") || "";
+      const a = await fetch(audioUrl);
+      const blob = await a.blob();
+      const form = new FormData();
+      form.append("file", blob, "audio.ogg");
+      form.append("model", "whisper-1");
+      const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method: "POST", headers: { Authorization: `Bearer ${Deno.env.get("OPENAI_API_KEY") || ""}` }, body: form,
+      });
+      const t = await r.text();
+      return new Response(JSON.stringify({ status: r.status, body: t.slice(0, 500) }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     if (new URL(req.url).searchParams.get("probe") === "1") {
       const r = await fetch("https://api.assemblyai.com/v2/transcript", {
         method: "POST",
