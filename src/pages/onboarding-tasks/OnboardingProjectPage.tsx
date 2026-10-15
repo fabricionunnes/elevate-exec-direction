@@ -62,7 +62,7 @@ import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBrief
 import { OnboardingPlanPanel } from "@/components/onboarding-tasks/OnboardingPlanPanel";
 import { CurriculumPanel } from "@/components/onboarding-tasks/CurriculumPanel";
 import { ProjectGraphPanel } from "@/components/onboarding-tasks/ProjectGraphPanel";
-import { GraduationCap, Network } from "lucide-react";
+import { GraduationCap, Network, Images } from "lucide-react";
 import { ClientBrainPanel } from "@/components/onboarding-tasks/ClientBrainPanel";
 import { AdsBriefingSection } from "@/components/social/strategy/AdsBriefingSection";
 import { StrategicDiagnosticModule } from "@/components/client-diagnostic/StrategicDiagnosticModule";
@@ -122,6 +122,7 @@ import { BrainCircuit } from "lucide-react";
 import { CommercialDirectorModule } from "@/components/commercial-director/CommercialDirectorModule";
 import { TransferTasksDialog } from "@/components/onboarding-tasks/TransferTasksDialog";
 import { ProjectWhatsAppTab } from "@/components/whatsapp-hub/ProjectWhatsAppTab";
+import { CriativosPanel } from "@/components/ads-criativos/CriativosPanel";
 import { DollarSign } from "lucide-react";
 import { SFCommissionsPanel } from "@/components/sf-commissions/SFCommissionsPanel";
 
@@ -240,7 +241,7 @@ const OnboardingProjectPage = () => {
   const [selectedTask, setSelectedTask] = useState<OnboardingTask | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
-  const [activeTab, setActiveTab] = useState("kpis");
+  const [activeTab, setActiveTab] = useState(() => new URLSearchParams(window.location.hash.split("?")[1] || window.location.search).get("tab") || "kpis");
 
   // Projetos com sistema financeiro migrado de planilha (cfin_*) ganham o grupo "Sistema"
   const [temCfin, setTemCfin] = useState(false);
@@ -267,7 +268,7 @@ const OnboardingProjectPage = () => {
     health: "gestao", hr: "gestao", board: "gestao", financial: "gestao", history: "gestao",
     cfin_sistema: "sistema",
     commercial_actions: "comercial", sales_funnel: "comercial", routine_contract: "comercial", commercial_director: "comercial",
-    paid_traffic: "marketing", access: "marketing", instagram: "marketing", social: "marketing",
+    criativos: "marketing", paid_traffic: "marketing", access: "marketing", instagram: "marketing", social: "marketing",
     sf_commissions: "salesforce",
   };
   const [navGroup, setNavGroup] = useState(() => tabGroupMap[activeTab] ?? "principal");
@@ -1651,6 +1652,7 @@ const OnboardingProjectPage = () => {
                   <TabsTrigger key="commercial_director" value="commercial_director"><BrainCircuit className="h-3.5 w-3.5 shrink-0" />Diretor Comercial</TabsTrigger>,
                 ],
                 marketing: [
+                  ...(project?.product_name === "UNV Ads" && currentUserRole !== "client" ? [<TabsTrigger key="criativos" value="criativos"><Images className="h-3.5 w-3.5 shrink-0" />Criativos</TabsTrigger>] : []),
                   <TabsTrigger key="paid_traffic" value="paid_traffic"><Megaphone className="h-3.5 w-3.5 shrink-0" />Tráfego</TabsTrigger>,
                   <TabsTrigger key="access" value="access"><Eye className="h-3.5 w-3.5 shrink-0" />Acessos</TabsTrigger>,
                   <TabsTrigger key="instagram" value="instagram"><Instagram className="h-3.5 w-3.5 shrink-0 text-pink-500" />Instagram</TabsTrigger>,
@@ -2045,6 +2047,12 @@ const OnboardingProjectPage = () => {
               userRole={currentUserRole || 'staff'}
             />
           </TabsContent>
+
+          {project?.product_name === "UNV Ads" && currentUserRole !== "client" && (
+            <TabsContent value="criativos">
+              <CriativosPanel projectId={projectId!} companyId={project.onboarding_company_id} />
+            </TabsContent>
+          )}
 
           <TabsContent value="paid_traffic">
             <ClientPaidTrafficPanel 
