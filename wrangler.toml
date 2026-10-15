@@ -1,5 +1,7 @@
 name = "unv-nexus"
 compatibility_date = "2026-05-15"
+# porteiro só da pasta /assets (ver worker/assets-guard.js); o resto continua direto nos arquivos
+main = "worker/assets-guard.js"
 
 routes = [
   { pattern = "unvholdings.com.br/*", zone_name = "unvholdings.com.br" },
@@ -9,3 +11,5 @@ routes = [
 [assets]
 directory = "./dist"
 not_found_handling = "single-page-application"
+binding = "ASSETS"
+run_worker_first = ["/assets/*"]

@@ -2,6 +2,7 @@ import React, { Component, ErrorInfo, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { ehErroDeVersao, recuperarVersao } from "@/lib/recuperarVersao";
 
 interface Props {
   children: ReactNode;
@@ -26,6 +27,8 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // arquivo da versão anterior depois de um deploy: recarrega sozinho em vez de mostrar o erro
+    if (ehErroDeVersao(error?.message)) recuperarVersao(error?.message);
     console.error("ErrorBoundary caught an error:", error, errorInfo);
     this.setState({ errorInfo });
     // Registra o erro real (útil pra diagnosticar crashes que só acontecem no
