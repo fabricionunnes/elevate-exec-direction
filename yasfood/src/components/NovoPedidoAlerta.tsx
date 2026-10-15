@@ -1,4 +1,4 @@
-// Pedido novo (status "recebido") pisca no painel e toca um som até a Yasmim aceitar.
+// Pedido novo do site (status "recebido") pisca no painel e toca um som até a Yasmim aceitar.
 // Fica em todas as telas do admin. O som usa o Web Audio (sem arquivo); o navegador só
 // libera áudio depois de um toque na página, por isso o aviso "toque na tela".
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -42,6 +42,7 @@ export function NovoPedidoAlerta() {
       .from("orders")
       .select("id, code, customer_name, total, scheduled_date, window_label, fulfillment, created_at")
       .eq("status", "recebido")
+      .eq("origin", "site") // pedido lançado no painel (digitado ou print) não pisca
       .order("created_at");
     setPending((data as Pending[]) ?? []);
   }, []);
