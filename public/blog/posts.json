@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-15T15:01:06",
+ "gerado_em": "2026-10-15T21:01:12",
  "posts": [
+  {
+   "slug": "equipe-comercial-so-funciona-com-dono-presente",
+   "url": "/blog/equipe-comercial-so-funciona-com-dono-presente/",
+   "titulo": "Equipe comercial que só funciona com o dono presente",
+   "resumo": "Se você tirar o olho, o número cai. Isso não é falta de empenho do vendedor, é ausência de estrutura que funcione sozinha.",
+   "tags": [
+    "dependência operacional",
+    "estrutura comercial",
+    "rotina de cobrança",
+    "treino de vendedor",
+    "acompanhamento"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-15",
+   "ts": 2178
+  },
   {
    "slug": "conversao-baixa-mostra-vendedor-sem-processo",
    "url": "/blog/conversao-baixa-mostra-vendedor-sem-processo/",
