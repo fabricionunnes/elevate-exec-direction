@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, Upload, FileIcon, Trash2, Download, Paperclip, Eye, ExternalLink } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, Upload, FileIcon, Trash2, Download, Paperclip } from "lucide-react";
+import { useVisualizarAnexo, BotaoVisualizar } from "@/components/anexos/VisualizarAnexo";
 
 interface Document {
   id: string;
@@ -27,9 +27,9 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  // Visualizar sem baixar: link assinado (bucket privado) aberto numa janela dentro do Nexus
-  const [vendo, setVendo] = useState<{ doc: Document; url: string } | null>(null);
-  const [abrindo, setAbrindo] = useState<string | null>(null);
+  // Visualizar sem baixar (mesma janela em todos os anexos do Nexus)
+  const visor = useVisualizarAnexo();
+  const handleView = (doc: Document) => visor.abrir({ nome: doc.file_name, tipo: doc.file_type, bucket: "onboarding-documents", path: doc.file_path });
   
 
   useEffect(() => {
@@ -154,38 +154,6 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
     }
   };
 
-  const tipoDe = (doc: Document) => {
-    const t = (doc.file_type || "").toLowerCase();
-    const ext = (doc.file_name.split(".").pop() || "").toLowerCase();
-    if (t.startsWith("image/") || ["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(ext)) return "imagem";
-    if (t.includes("pdf") || ext === "pdf") return "pdf";
-    if (t.startsWith("video/") || ["mp4", "mov", "webm"].includes(ext)) return "video";
-    if (t.startsWith("audio/") || ["mp3", "ogg", "wav", "m4a"].includes(ext)) return "audio";
-    if (t.startsWith("text/") || ["txt", "csv"].includes(ext)) return "texto";
-    if (["doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(ext) || /word|excel|spreadsheet|presentation|powerpoint/.test(t)) return "office";
-    return "outro";
-  };
-
-  const handleView = async (doc: Document) => {
-    setAbrindo(doc.id);
-    try {
-      const { data, error } = await supabase.storage
-        .from("onboarding-documents")
-        .createSignedUrl(doc.file_path, 60 * 60);
-      if (error || !data?.signedUrl) throw error || new Error("sem link");
-      if (tipoDe(doc) === "outro") {
-        window.open(data.signedUrl, "_blank", "noopener"); // tipo que o navegador não mostra: nova aba
-      } else {
-        setVendo({ doc, url: data.signedUrl });
-      }
-    } catch (error: any) {
-      console.error("Error viewing:", error);
-      toast.error("Não consegui abrir o arquivo");
-    } finally {
-      setAbrindo(null);
-    }
-  };
-
   const handleDelete = async (doc: Document) => {
     if (!isAdmin) {
       toast.error("Apenas administradores podem excluir anexos");
@@ -284,16 +252,7 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  title="Visualizar"
-                  onClick={() => handleView(doc)}
-                  disabled={abrindo === doc.id}
-                >
-                  {abrindo === doc.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-                </Button>
+                <BotaoVisualizar onClick={() => handleView(doc)} carregando={visor.abrindo === doc.file_path} />
                 <Button
                   title="Baixar"
                   variant="ghost"
@@ -319,32 +278,7 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
         </div>
       )}
 
-      <Dialog open={!!vendo} onOpenChange={(o) => !o && setVendo(null)}>
-        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col gap-3 p-4">
-          <DialogHeader className="flex-row items-center justify-between gap-2 space-y-0 pr-8">
-            <DialogTitle className="truncate text-base">{vendo?.doc.file_name}</DialogTitle>
-            <div className="flex shrink-0 gap-1">
-              <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => vendo && window.open(vendo.url, "_blank", "noopener")}>
-                <ExternalLink className="h-3.5 w-3.5" />Nova aba
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => vendo && handleDownload(vendo.doc)}>
-                <Download className="h-3.5 w-3.5" />Baixar
-              </Button>
-            </div>
-          </DialogHeader>
-          <div className="min-h-0 flex-1 overflow-auto rounded-md border bg-muted/30">
-            {vendo && (() => {
-              const t = tipoDe(vendo.doc);
-              if (t === "imagem") return <img src={vendo.url} alt={vendo.doc.file_name} className="mx-auto max-h-full max-w-full object-contain" />;
-              if (t === "video") return <video src={vendo.url} controls className="mx-auto max-h-full max-w-full" />;
-              if (t === "audio") return <div className="flex h-full items-center justify-center p-6"><audio src={vendo.url} controls className="w-full max-w-lg" /></div>;
-              // Word/Excel/PowerPoint: visualizador do Google pelo link assinado (vale 1h)
-              if (t === "office") return <iframe title={vendo.doc.file_name} className="h-full w-full" src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(vendo.url)}`} />;
-              return <iframe title={vendo.doc.file_name} className="h-full w-full bg-white" src={vendo.url} />;
-            })()}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {visor.janela}
     </div>
   );
 };

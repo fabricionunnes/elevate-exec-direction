@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useVisualizarAnexo, BotaoVisualizar } from "@/components/anexos/VisualizarAnexo";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,6 +72,7 @@ interface ContactsContractsPanelProps {
 }
 
 export const ContactsContractsPanel = ({ companyId, isAdmin }: ContactsContractsPanelProps) => {
+  const visor = useVisualizarAnexo(); // visualizar anexo sem baixar
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
@@ -327,6 +329,7 @@ export const ContactsContractsPanel = ({ companyId, isAdmin }: ContactsContracts
 
   return (
     <div className="space-y-6">
+      {visor.janela}
       <Tabs defaultValue="contacts" className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="contacts" className="gap-2">
@@ -593,6 +596,7 @@ export const ContactsContractsPanel = ({ companyId, isAdmin }: ContactsContracts
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <BotaoVisualizar className="h-9 w-9" onClick={() => visor.abrir({ nome: contract.file_name, tipo: contract.file_type, bucket: "onboarding-documents", path: contract.file_path })} />
                         <Button
                           size="icon"
                           variant="ghost"

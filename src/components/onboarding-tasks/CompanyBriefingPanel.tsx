@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useVisualizarAnexo, BotaoVisualizar } from "@/components/anexos/VisualizarAnexo";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -141,6 +142,7 @@ interface CompanyBriefingPanelProps {
 }
 
 export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAdmin = false }: CompanyBriefingPanelProps) => {
+  const visor = useVisualizarAnexo(); // visualizar anexo sem baixar
   // Apenas admin e CS podem editar o briefing
   const canEdit = isStaffAdmin || userRole === "admin" || userRole === "cs";
   // Consultor também pode gerar o planejamento estratégico (mas não editar o briefing).
@@ -620,6 +622,7 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {visor.janela}
       {/* Header com botões de ação */}
       {canPlan && (
         <div className="flex flex-wrap justify-end gap-2">
@@ -1236,6 +1239,7 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    <BotaoVisualizar className="h-8 w-8" onClick={() => visor.abrir({ nome: doc.file_name, tipo: doc.file_type, bucket: "onboarding-documents", path: doc.file_path })} />
                     <Button
                       variant="ghost"
                       size="icon"
