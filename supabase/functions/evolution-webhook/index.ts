@@ -642,6 +642,16 @@ async function handleIncomingMessage(
     senderName = data.pushName || message.pushName || null;
   }
 
+  // Id do WhatsApp da mensagem respondida (reply) ou reagida: é o mesmo pra todo mundo do
+  // grupo, então dá pra casar com o que a gente enviou de qualquer número (aprovação de criativo)
+  const ctxOf = (m: any) => m?.contextInfo || m?.ContextInfo || null;
+  const ctx = msg ? (ctxOf(msg.extendedTextMessage) || ctxOf(msg.imageMessage) || ctxOf(msg.videoMessage) ||
+    ctxOf(msg.audioMessage) || ctxOf(msg.documentMessage) || ctxOf(msg.stickerMessage) ||
+    ctxOf(msg.ExtendedTextMessage) || (data as any)?.contextInfo) : null;
+  const quotedRemoteId: string | null = type === 'reaction'
+    ? reactionTargetRemoteId
+    : (ctx?.stanzaId || ctx?.stanzaID || ctx?.StanzaID || ctx?.StanzaId || null);
+
   let quotedMessageId: string | null = null;
   if (type === 'reaction') {
     if (reactionTargetRemoteId) {
@@ -682,6 +692,7 @@ async function handleIncomingMessage(
       sender_phone: senderPhone,
       sender_name: senderName,
       quoted_message_id: quotedMessageId,
+      quoted_remote_id: quotedRemoteId,
     });
 
   if (msgError) {
