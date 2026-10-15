@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useVisualizarAnexo, BotaoVisualizar } from "@/components/anexos/VisualizarAnexo";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { 
@@ -40,6 +41,7 @@ const formatFileSize = (bytes: number | null) => {
 };
 
 export const CardAttachments = ({ cardId, disabled }: CardAttachmentsProps) => {
+  const visor = useVisualizarAnexo(); // visualizar anexo sem baixar
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -175,6 +177,7 @@ export const CardAttachments = ({ cardId, disabled }: CardAttachmentsProps) => {
 
   return (
     <div className="space-y-3">
+      {visor.janela}
       {/* Upload Button */}
       {!disabled && (
         <div>
@@ -230,6 +233,7 @@ export const CardAttachments = ({ cardId, disabled }: CardAttachmentsProps) => {
                   </p>
                 </div>
                 <div className="flex gap-1">
+                  <BotaoVisualizar className="h-7 w-7" onClick={() => visor.abrir({ nome: attachment.file_name, tipo: attachment.file_type, url: attachment.file_url })} />
                   <Button
                     variant="ghost"
                     size="icon"

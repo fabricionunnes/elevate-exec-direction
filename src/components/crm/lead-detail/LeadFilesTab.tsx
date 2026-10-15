@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useVisualizarAnexo, BotaoVisualizar } from "@/components/anexos/VisualizarAnexo";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,7 @@ interface LeadFilesTabProps {
 }
 
 export const LeadFilesTab = ({ leadId }: LeadFilesTabProps) => {
+  const visor = useVisualizarAnexo(); // visualizar anexo sem baixar
   const [files, setFiles] = useState<LeadFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -212,6 +214,7 @@ export const LeadFilesTab = ({ leadId }: LeadFilesTabProps) => {
 
   return (
     <div className="h-full flex flex-col">
+      {visor.janela}
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border">
         <div className="flex items-center gap-3">
@@ -285,6 +288,7 @@ export const LeadFilesTab = ({ leadId }: LeadFilesTabProps) => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
+                      <BotaoVisualizar className="h-9 w-9" onClick={() => visor.abrir({ nome: file.file_name, tipo: file.file_type, url: file.file_url })} />
                       <Button
                         variant="ghost"
                         size="icon"

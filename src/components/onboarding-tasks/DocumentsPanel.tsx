@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useVisualizarAnexo, BotaoVisualizar } from "@/components/anexos/VisualizarAnexo";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -65,6 +66,7 @@ export const DocumentsPanel = ({
   taskId,
   ticketId,
 }: DocumentsPanelProps) => {
+  const visor = useVisualizarAnexo(); // visualizar anexo sem baixar
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -243,6 +245,7 @@ export const DocumentsPanel = ({
 
   return (
     <div className="space-y-4">
+      {visor.janela}
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">Documentos</h3>
         <Button onClick={() => setShowUploadDialog(true)}>
@@ -288,6 +291,7 @@ export const DocumentsPanel = ({
                     )}
                   </div>
                   <div className="flex items-center gap-2">
+                    <BotaoVisualizar className="h-9 w-9" onClick={() => visor.abrir({ nome: doc.file_name, tipo: doc.file_type, bucket: "onboarding-documents", path: doc.file_path })} />
                     <Button variant="ghost" size="icon" onClick={() => handleDownload(doc)}>
                       <Download className="h-4 w-4" />
                     </Button>
