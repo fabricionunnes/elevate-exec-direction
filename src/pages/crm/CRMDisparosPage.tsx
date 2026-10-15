@@ -23,7 +23,7 @@ import { OfficialTemplatesTab } from "@/components/crm/settings/OfficialTemplate
 import { cancelarDisparo, retomarDisparo, pausadoPorPagamento, linkPagamentoMeta } from "@/components/crm/OfficialDispatchProgress";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertTriangle, ArrowLeft, CalendarDays, Download, Loader2, RefreshCw, RotateCcw, Search, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CalendarDays, Download, ExternalLink, Loader2, RefreshCw, RotateCcw, Search, ShieldCheck } from "lucide-react";
 
 interface CampaignRow {
   id: string; created_at: string; finished_at: string | null; status: string; template_name: string;
@@ -407,6 +407,15 @@ function DisparosLista() {
         <ShieldCheck className="h-5 w-5 text-emerald-600" />
         <h1 className="text-xl font-bold">Disparos</h1>
         {!semPeriodo && <span className="text-xs text-muted-foreground">{periodoTexto}</span>}
+        {/* atalho pra conta do WhatsApp no Meta (Gerenciador do WhatsApp: limites, qualidade, templates, cobrança) */}
+        {instances.filter((i) => i.waba_id).map((i) => (
+          <Button key={i.id} asChild variant="outline" size="sm" className="gap-1.5">
+            <a href={`https://business.facebook.com/wa/manage/home/?waba_id=${i.waba_id}${i.business_id ? `&business_id=${i.business_id}` : ""}`}
+               target="_blank" rel="noopener noreferrer" title="Abre o Gerenciador do WhatsApp no Meta">
+              <ExternalLink className="h-3.5 w-3.5" /> {instances.filter((x) => x.waba_id).length > 1 ? `Meta: ${i.display_name}` : "Abrir no Meta"}
+            </a>
+          </Button>
+        ))}
         {/* período e Atualizar valem pras abas de disparo; Impulsos e Execuções têm os próprios controles */}
         <div className={`ml-auto flex flex-wrap items-center gap-2 ${semPeriodo ? "hidden" : ""}`}>
           <div className="flex items-center gap-1.5">
