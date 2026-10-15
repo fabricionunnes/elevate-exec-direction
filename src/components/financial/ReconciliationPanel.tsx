@@ -109,7 +109,8 @@ export function ReconciliationPanel() {
       // recebimento também casa com FATURA de cliente (mensalidade, parcela de contrato novo)
       isCredit
         ? (supabase as any).from("company_invoices")
-            .select("id, description, amount_cents, due_date, status, custom_receiver_name, company:onboarding_companies(name)")
+            // company_invoices não tem FK pra onboarding_companies: embed dá erro e a lista vinha vazia
+            .select("id, company_id, description, amount_cents, due_date, status, custom_receiver_name")
             .in("status", ["pending", "overdue"]).order("due_date", { ascending: true }).limit(600)
         : Promise.resolve({ data: [] }),
     ]);
@@ -117,9 +118,17 @@ export function ReconciliationPanel() {
       id: r.id, kind: isCredit ? "receivable" : "payable", description: r.description, amount: r.amount, due_date: r.due_date, status: r.status,
       party: isCredit ? (r.custom_receiver_name || r.company?.name || null) : (r.supplier_name || null),
     }));
-    const fats: Candidate[] = ((faturas.data as any[]) || []).map((r) => ({
+    if ((faturas as any).error) toast.error(`Faturas não carregaram: ${(faturas as any).error.message}`);
+    const fatRows = ((faturas.data as any[]) || []);
+    const empIds = [...new Set(fatRows.map((r) => r.company_id).filter(Boolean))];
+    const nomes = new Map<string, string>();
+    for (let i = 0; i < empIds.length; i += 200) {
+      const { data: emp } = await (supabase as any).from("onboarding_companies").select("id, name").in("id", empIds.slice(i, i + 200));
+      for (const c of (emp as any[]) || []) nomes.set(c.id, c.name);
+    }
+    const fats: Candidate[] = fatRows.map((r) => ({
       id: r.id, kind: "invoice", description: r.description || "Fatura", amount: Number(r.amount_cents || 0) / 100,
-      due_date: r.due_date, status: r.status, party: r.company?.name || r.custom_receiver_name || null,
+      due_date: r.due_date, status: r.status, party: nomes.get(r.company_id) || r.custom_receiver_name || null,
     }));
     // valor igual ao recebido primeiro
     const valor = Math.abs(e.amount_cents) / 100;
