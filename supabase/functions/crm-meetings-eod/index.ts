@@ -8,10 +8,12 @@ const corsHeaders = {
 /**
  * crm-meetings-eod — Fechamento diário das reuniões do CRM Comercial (cron 20:00 BRT).
  *
- * Para cada reunião agendada do dia ainda pendente:
+ * Para cada reunião do dia (pendente, ou já finalizada sem transcrição):
  *  1. Busca gravação e transcrição do Meet (anexos do evento no Calendar → fallback busca no Drive)
  *  2. Importa a transcrição para crm_transcriptions (aba Transcrição do lead) + gera briefing IA
- *  3. Vincula a gravação (recording_url) e finaliza a atividade (status=completed)
+ *  3. Sem transcrição do Meet: a gravação entra na fila (transcript_file_id) e a fase "collect"
+ *     (cron a cada 10 min) manda pra AssemblyAI, colhe o texto e gera o briefing
+ *  4. Vincula a gravação (recording_url) e finaliza a atividade (status=completed)
  *
  * Suporta ?dry=1 para simular sem gravar nada.
  */
@@ -113,6 +115,19 @@ Deno.serve(async (req) => {
     const assemblyAiKey = Deno.env.get("ASSEMBLYAI_API_KEY");
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // ?probe=1: testa a chave da AssemblyAI com um áudio público curto e devolve a resposta crua
+    if (new URL(req.url).searchParams.get("probe") === "1") {
+      const r = await fetch("https://api.assemblyai.com/v2/transcript", {
+        method: "POST",
+        headers: { Authorization: assemblyAiKey || "", "Content-Type": "application/json" },
+        body: JSON.stringify({ audio_url: "https://assembly.ai/wildfires.mp3", language_code: "pt", speaker_labels: true }),
+      });
+      const t = await r.text();
+      return new Response(JSON.stringify({ status: r.status, body: t.slice(0, 800), key: !!assemblyAiKey }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const url = new URL(req.url);
     let body: Record<string, unknown> = {};
     try { body = await req.json(); } catch { /* cron chama sem body */ }
@@ -136,24 +151,38 @@ Deno.serve(async (req) => {
 
     // deno-lint-ignore no-explicit-any
     let meetings: any[] = [];
-    if (phase !== "report") {
+    if (phase !== "report" && phase !== "collect") {
+      // Pendentes + finalizadas do dia: quem finaliza a reunião na mão antes das 20h também
+      // tem que ganhar a transcrição (antes só as pendentes entravam)
       const { data: meetingsData, error: meetingsError } = await supabase
         .from("crm_activities")
         .select(`
           id, lead_id, title, scheduled_at, status, notes, meeting_link,
           google_calendar_event_id, google_calendar_user_id, responsible_staff_id, recording_url,
+          transcript_file_id, transcript_job_id,
           lead:lead_id (id, name, company)
         `)
         .eq("type", "meeting")
-        .eq("status", "pending")
+        .in("status", ["pending", "completed"])
         .gte("scheduled_at", dayStartUtc)
         .lte("scheduled_at", windowEndUtc)
         .order("scheduled_at");
 
       if (meetingsError) throw meetingsError;
-      meetings = meetingsData || [];
+      // finalizada só entra se ainda não tem transcrição automática nem está na fila
+      const finalizadas = (meetingsData || []).filter((m) => m.status === "completed" && !m.transcript_file_id);
+      const jaTem = new Set<string>();
+      if (finalizadas.length) {
+        // qualquer transcrição do lead feita a partir do dia da reunião (inclusive a colada na mão)
+        const { data: tr } = await supabase.from("crm_transcriptions").select("lead_id")
+          .in("lead_id", finalizadas.map((m) => m.lead_id).filter(Boolean))
+          .or(`recorded_at.gte.${dayStartUtc},created_at.gte.${dayStartUtc}`);
+        for (const t of tr || []) jaTem.add(t.lead_id);
+      }
+      meetings = (meetingsData || []).filter((m) => m.status === "pending" ||
+        (!m.transcript_file_id && !m.transcript_job_id && !jaTem.has(m.lead_id)));
     }
-    console.log(`[crm-meetings-eod] ${meetings.length} reuniões pendentes do dia`);
+    console.log(`[crm-meetings-eod] ${meetings.length} reuniões do dia pra fechar/transcrever`);
 
     // Resolve fallback de usuário Google via staff responsável
     const staffIds = [...new Set(meetings.filter((m) => !m.google_calendar_user_id && m.responsible_staff_id).map((m) => m.responsible_staff_id))];
@@ -253,28 +282,27 @@ Deno.serve(async (req) => {
       }
     };
 
-    // Upload em streaming do Drive pra AssemblyAI (webContentLink não funciona pra arquivo privado)
-    const transcribeViaAssemblyAI = async (fileId: string, accessToken: string): Promise<{ text: string; jobId: string } | null> => {
-      if (!assemblyAiKey) return null;
+    // Upload em streaming do Drive pra AssemblyAI (webContentLink não funciona pra arquivo privado).
+    // Só SUBMETE: a gravação de 1h leva uns 10 min pra transcrever, então o texto é colhido
+    // depois pela fase "collect" (cron a cada 10 min). Antes esperava 4 min aqui e desistia.
+    type Submit = { jobId: string } | { error: string; semSaldo?: boolean; definitivo?: boolean };
+    const submitToAssemblyAI = async (fileId: string, accessToken: string): Promise<Submit> => {
+      if (!assemblyAiKey) return { error: "ASSEMBLYAI_API_KEY não configurada", definitivo: true };
       try {
         const metaResp = await fetch(
           `https://www.googleapis.com/drive/v3/files/${fileId}?fields=size`,
           { headers: { Authorization: `Bearer ${accessToken}` } },
         );
+        if (metaResp.status === 404) return { error: "gravação não existe mais no Drive", definitivo: true };
         const meta = metaResp.ok ? await metaResp.json() : {};
         const fileSize = parseInt(meta.size || "0");
-        if (fileSize > 400 * 1024 * 1024) {
-          console.log(`[crm-meetings-eod] AssemblyAI: arquivo grande demais (${fileSize})`);
-          return null;
-        }
+        // AssemblyAI aceita até 2,2 GB; reunião de 1h do Meet dá uns 600 MB
+        if (fileSize > 2 * 1024 * 1024 * 1024) return { error: `arquivo grande demais (${Math.round(fileSize / 1048576)} MB)`, definitivo: true };
 
         const fileResp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
-        if (!fileResp.ok || !fileResp.body) {
-          console.log(`[crm-meetings-eod] AssemblyAI: download do Drive falhou (${fileResp.status})`);
-          return null;
-        }
+        if (!fileResp.ok || !fileResp.body) return { error: `download do Drive falhou (${fileResp.status})` };
 
         const uploadResp = await fetch("https://api.assemblyai.com/v2/upload", {
           method: "POST",
@@ -282,8 +310,8 @@ Deno.serve(async (req) => {
           body: fileResp.body,
         });
         if (!uploadResp.ok) {
-          console.log(`[crm-meetings-eod] AssemblyAI: upload falhou (${uploadResp.status})`);
-          return null;
+          const t = (await uploadResp.text()).slice(0, 300);
+          return { error: `upload AssemblyAI ${uploadResp.status}: ${t}`, semSaldo: /balance/i.test(t) };
         }
         const { upload_url } = await uploadResp.json();
 
@@ -293,36 +321,167 @@ Deno.serve(async (req) => {
           body: JSON.stringify({ audio_url: upload_url, language_code: "pt", speaker_labels: true }),
         });
         if (!submitResp.ok) {
-          console.log(`[crm-meetings-eod] AssemblyAI: submit falhou (${submitResp.status})`);
-          return null;
+          // o motivo vem no corpo (ex.: "account balance is negative"); sem ele o erro ficava mudo
+          const t = (await submitResp.text()).slice(0, 300);
+          return { error: `AssemblyAI ${submitResp.status}: ${t}`, semSaldo: /balance/i.test(t) };
         }
-        const { id: jobId } = await submitResp.json();
-
-        let status = "queued";
-        let attempts = 0;
-        while ((status === "queued" || status === "processing") && attempts < 24) {
-          await new Promise((r) => setTimeout(r, 10000));
-          const pollResp = await fetch(`https://api.assemblyai.com/v2/transcript/${jobId}`, {
-            headers: { Authorization: assemblyAiKey },
-          });
-          if (pollResp.ok) {
-            const pollData = await pollResp.json();
-            status = pollData.status;
-            if (status === "completed") {
-              const text = pollData.utterances?.length
-                ? pollData.utterances.map((u: { speaker: string; text: string }) => `[Participante ${u.speaker}]: ${u.text}`).join("\n\n")
-                : pollData.text || "";
-              return text.length > 50 ? { text, jobId } : null;
-            }
-            if (status === "error") return null;
-          }
-          attempts++;
-        }
-        return null;
-      } catch {
-        return null;
+        const { id } = await submitResp.json();
+        return id ? { jobId: id } : { error: "AssemblyAI não devolveu o id do job" };
+      } catch (e) {
+        return { error: e instanceof Error ? e.message : String(e) };
       }
     };
+
+    const pollAssemblyAI = async (jobId: string): Promise<{ status: "pronto"; text: string } | { status: "processando" } | { status: "erro"; error: string }> => {
+      try {
+        const r = await fetch(`https://api.assemblyai.com/v2/transcript/${jobId}`, { headers: { Authorization: assemblyAiKey! } });
+        if (!r.ok) return { status: "processando" };
+        const d = await r.json();
+        if (d.status === "completed") {
+          const text = d.utterances?.length
+            ? d.utterances.map((u: { speaker: string; text: string }) => `[Participante ${u.speaker}]: ${u.text}`).join("\n\n")
+            : d.text || "";
+          return text.length > 50 ? { status: "pronto", text } : { status: "erro", error: "áudio sem fala (transcrição vazia)" };
+        }
+        if (d.status === "error") return { status: "erro", error: String(d.error || "erro na AssemblyAI").slice(0, 300) };
+        return { status: "processando" };
+      } catch {
+        return { status: "processando" };
+      }
+    };
+
+    // Grava na aba Transcrição do lead + briefing IA. Não duplica (mesma origem ou mesmo horário).
+    // deno-lint-ignore no-explicit-any
+    const saveTranscript = async (meeting: any, text: string, sourceId: string | null): Promise<"ok" | "ja" | "erro"> => {
+      const lead = meeting.lead as { name: string | null; company: string | null } | null;
+      const leadName = lead?.name || "Lead";
+      const { data: porOrigem } = sourceId
+        ? await supabase.from("crm_transcriptions").select("id").eq("source_meeting_id", sourceId).limit(1)
+        : { data: null };
+      const { data: porHorario } = await supabase.from("crm_transcriptions").select("id")
+        .eq("lead_id", meeting.lead_id).eq("source", "google-meet-auto").eq("recorded_at", meeting.scheduled_at).limit(1);
+      if (porOrigem?.length || porHorario?.length) return "ja";
+
+      const title = `Reunião ${new Date(meeting.scheduled_at).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}, ${leadName}`;
+      const { data: inserted, error: insertError } = await supabase
+        .from("crm_transcriptions")
+        .insert({
+          lead_id: meeting.lead_id,
+          title,
+          transcription_text: text,
+          source: "google-meet-auto",
+          source_meeting_id: sourceId,
+          source_meeting_url: meeting.meeting_link,
+          recorded_at: meeting.scheduled_at,
+          language: "pt-BR",
+          status: "completed",
+        })
+        .select("id")
+        .single();
+      if (insertError) {
+        console.error(`[crm-meetings-eod] Erro ao inserir transcrição (lead ${meeting.lead_id}):`, insertError);
+        return "erro";
+      }
+
+      // Briefing IA (best-effort)
+      try {
+        const briefResp = await fetch(`${supabaseUrl}/functions/v1/generate-crm-briefing`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+          body: JSON.stringify({ transcription: text, leadName, companyName: lead?.company || "" }),
+        });
+        if (briefResp.ok) {
+          const { briefing } = await briefResp.json();
+          if (briefing) await supabase.from("crm_transcriptions").update({ ai_analysis: briefing }).eq("id", inserted.id);
+        } else {
+          console.error(`[crm-meetings-eod] Briefing ${briefResp.status}: ${(await briefResp.text()).slice(0, 200)}`);
+        }
+      } catch (e) {
+        console.error("[crm-meetings-eod] Briefing falhou:", e);
+      }
+      return "ok";
+    };
+
+    // Fase "collect" (cron a cada 10 min): fila de gravações -> AssemblyAI -> lead + briefing
+    if (phase === "collect") {
+      const inicio = Date.now();
+      const { data: fila } = await supabase
+        .from("crm_activities")
+        .select(`id, lead_id, scheduled_at, notes, meeting_link, google_calendar_user_id, responsible_staff_id,
+          transcript_file_id, transcript_job_id, transcript_attempts, transcript_next_try_at,
+          lead:lead_id (id, name, company)`)
+        .not("transcript_file_id", "is", null)
+        .order("scheduled_at")
+        .limit(30);
+      const itens = fila || [];
+      const out: Record<string, unknown>[] = [];
+      const fechar = async (id: string, extra: Record<string, unknown>) =>
+        await supabase.from("crm_activities").update({
+          transcript_file_id: null, transcript_job_id: null, transcript_next_try_at: null, ...extra,
+        }).eq("id", id);
+
+      // 1) colhe o que já foi enviado
+      for (const m of itens.filter((x) => x.transcript_job_id)) {
+        const r = await pollAssemblyAI(m.transcript_job_id);
+        if (r.status === "processando") { out.push({ id: m.id, status: "processando" }); continue; }
+        if (r.status === "erro") {
+          const tentativas = (m.transcript_attempts || 0) + 1;
+          if (tentativas >= 3) await fechar(m.id, { transcript_error: r.error, transcript_attempts: tentativas });
+          else await supabase.from("crm_activities").update({ transcript_job_id: null, transcript_error: r.error, transcript_attempts: tentativas }).eq("id", m.id);
+          out.push({ id: m.id, status: "erro", error: r.error });
+          continue;
+        }
+        const salvo = await saveTranscript(m, r.text, `assemblyai:${m.transcript_job_id}`);
+        if (salvo === "erro") { out.push({ id: m.id, status: "erro ao gravar" }); continue; }
+        const nota = "Transcrição da gravação importada para a aba Transcrição, com briefing.";
+        await fechar(m.id, { transcript_error: null, notes: m.notes ? `${m.notes}\n\n${nota}` : nota });
+        out.push({ id: m.id, status: salvo === "ok" ? "importada" : "já existia" });
+      }
+
+      // 2) envia as que estão na fila (uma gravação de 600 MB leva ~30 s; limite de tempo por execução)
+      const pendentes = itens.filter((x) => !x.transcript_job_id &&
+        (!x.transcript_next_try_at || new Date(x.transcript_next_try_at) <= new Date()));
+      const semUser = pendentes.filter((x) => !x.google_calendar_user_id && x.responsible_staff_id).map((x) => x.responsible_staff_id);
+      const staffUser = new Map<string, string>();
+      if (semUser.length) {
+        const { data: st } = await supabase.from("onboarding_staff").select("id, user_id").in("id", [...new Set(semUser)]);
+        for (const x of st || []) if (x.user_id) staffUser.set(x.id, x.user_id);
+      }
+      for (const m of pendentes) {
+        if (Date.now() - inicio > 120_000) break;
+        const userId = m.google_calendar_user_id || staffUser.get(m.responsible_staff_id);
+        const token = userId ? await getAccessToken(userId) : null;
+        if (!token) {
+          await fechar(m.id, { transcript_error: "sem acesso ao Google do responsável" });
+          out.push({ id: m.id, status: "sem token Google" });
+          continue;
+        }
+        const r = await submitToAssemblyAI(m.transcript_file_id, token);
+        if ("jobId" in r) {
+          await supabase.from("crm_activities").update({ transcript_job_id: r.jobId, transcript_error: null }).eq("id", m.id);
+          out.push({ id: m.id, status: "enviada", job: r.jobId });
+          continue;
+        }
+        console.log(`[crm-meetings-eod] fila ${m.id}: ${r.error}`);
+        const tentativas = (m.transcript_attempts || 0) + (r.semSaldo ? 0 : 1);
+        if (r.definitivo || tentativas >= 5) {
+          await fechar(m.id, { transcript_error: r.error, transcript_attempts: tentativas });
+        } else {
+          // sem saldo: tenta de hora em hora sem gastar tentativa (volta sozinho quando recarregar)
+          const espera = r.semSaldo ? 60 : 15;
+          await supabase.from("crm_activities").update({
+            transcript_error: r.error, transcript_attempts: tentativas,
+            transcript_next_try_at: new Date(Date.now() + espera * 60_000).toISOString(),
+          }).eq("id", m.id);
+        }
+        out.push({ id: m.id, status: "falhou", error: r.error });
+        if (r.semSaldo) break; // as outras vão dar o mesmo erro
+      }
+
+      return new Response(JSON.stringify({ success: true, phase, fila: itens.length, resultados: out }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const usedFileIds = new Set<string>();
 
@@ -368,6 +527,7 @@ Deno.serve(async (req) => {
       let transcriptText: string | null = null;
       let transcriptSourceId: string | null = null;
       let recordingLink: string | null = meeting.recording_url || null;
+      let queueFileId: string | null = null;
 
       if (googleUserId) {
         const accessToken = await getAccessToken(googleUserId);
@@ -458,14 +618,8 @@ Deno.serve(async (req) => {
             }
           }
 
-          // 3) Último recurso: transcrever a gravação via AssemblyAI
-          if (!transcriptText && recordingFile && !dryRun) {
-            const ai = await transcribeViaAssemblyAI(recordingFile.id, accessToken);
-            if (ai) {
-              transcriptText = ai.text;
-              transcriptSourceId = `assemblyai:${ai.jobId}`;
-            }
-          }
+          // 3) Último recurso: a gravação vai pra fila da AssemblyAI (fase "collect" importa + briefing)
+          if (!transcriptText && recordingFile) queueFileId = recordingFile.id;
         } else {
           result.warning = "sem token Google";
         }
@@ -473,68 +627,17 @@ Deno.serve(async (req) => {
         result.warning = "sem usuário Google vinculado";
       }
 
-      // Importa transcrição pra aba Transcrição do lead
+      // Importa transcrição pra aba Transcrição do lead (+ briefing)
       if (transcriptText && meeting.lead_id) {
-        const { data: existing } = transcriptSourceId
-          ? await supabase
-              .from("crm_transcriptions")
-              .select("id")
-              .eq("source_meeting_id", transcriptSourceId)
-              .limit(1)
-          : { data: null };
-
-        if (!existing || existing.length === 0) {
-          const title = `Reunião ${scheduledAt.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} — ${leadName}`;
-          if (!dryRun) {
-            const { data: inserted, error: insertError } = await supabase
-              .from("crm_transcriptions")
-              .insert({
-                lead_id: meeting.lead_id,
-                title,
-                transcription_text: transcriptText,
-                source: "google-meet-auto",
-                source_meeting_id: transcriptSourceId,
-                source_meeting_url: meeting.meeting_link,
-                recorded_at: meeting.scheduled_at,
-                language: "pt-BR",
-                status: "completed",
-              })
-              .select("id")
-              .single();
-
-            if (insertError) {
-              console.error(`[crm-meetings-eod] Erro ao inserir transcrição (lead ${meeting.lead_id}):`, insertError);
-            } else {
-              transcriptsImported++;
-              result.transcript = true;
-
-              // Briefing IA (best-effort)
-              try {
-                const briefResp = await fetch(`${supabaseUrl}/functions/v1/generate-crm-briefing`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
-                  body: JSON.stringify({
-                    transcription: transcriptText,
-                    leadName,
-                    companyName: lead?.company || "",
-                  }),
-                });
-                if (briefResp.ok) {
-                  const { briefing } = await briefResp.json();
-                  if (briefing) {
-                    await supabase.from("crm_transcriptions").update({ ai_analysis: briefing }).eq("id", inserted.id);
-                  }
-                }
-              } catch (e) {
-                console.error("[crm-meetings-eod] Briefing falhou:", e);
-              }
-            }
-          } else {
-            result.transcript = "dry-run";
-          }
+        if (dryRun) {
+          result.transcript = "dry-run";
         } else {
-          result.transcript = "já importada";
+          const salvo = await saveTranscript(meeting, transcriptText, transcriptSourceId);
+          if (salvo === "ok") { transcriptsImported++; result.transcript = true; }
+          else if (salvo === "ja") result.transcript = "já importada";
         }
+      } else if (queueFileId && meeting.lead_id) {
+        result.transcript = "na fila";
       }
 
       if (recordingLink && recordingLink !== meeting.recording_url) {
@@ -543,26 +646,45 @@ Deno.serve(async (req) => {
       }
 
       // Finaliza a reunião do dia
+      const jaFinalizada = meeting.status === "completed";
       const autoNote = result.transcript === true || result.transcript === "já importada"
-        ? "Finalizada automaticamente (20h) — transcrição importada para a aba Transcrição."
-        : recordingLink
-          ? "Finalizada automaticamente (20h) — gravação vinculada, sem transcrição encontrada."
-          : "Finalizada automaticamente (20h) — nenhuma gravação/transcrição encontrada no Google.";
+        ? "Finalizada automaticamente (20h), transcrição importada para a aba Transcrição."
+        : result.transcript === "na fila"
+          ? "Finalizada automaticamente (20h), gravação vinculada, transcrição em processamento (chega na aba Transcrição com briefing)."
+          : recordingLink
+            ? "Finalizada automaticamente (20h), gravação vinculada, sem transcrição encontrada."
+            : "Finalizada automaticamente (20h), nenhuma gravação/transcrição encontrada no Google.";
+      const notaFinalizada = result.transcript === true
+        ? "Transcrição importada automaticamente para a aba Transcrição."
+        : result.transcript === "na fila"
+          ? "Gravação encontrada, transcrição em processamento (chega na aba Transcrição com briefing)."
+          : null;
+
+      // já finalizada e nada novo: não mexe (nem nota repetida)
+      if (!dryRun && jaFinalizada && !notaFinalizada && recordingLink === meeting.recording_url) {
+        result.note = "já finalizada, nada novo";
+        results.push(result);
+        continue;
+      }
 
       if (!dryRun) {
+        const nota = jaFinalizada ? notaFinalizada : autoNote;
         const { error: updError } = await supabase
           .from("crm_activities")
           .update({
-            status: "completed",
-            completed_at: now.toISOString(),
+            ...(jaFinalizada ? {} : { status: "completed", completed_at: now.toISOString() }),
             recording_url: recordingLink,
-            notes: meeting.notes ? `${meeting.notes}\n\n${autoNote}` : autoNote,
+            ...(nota ? { notes: meeting.notes ? `${meeting.notes}\n\n${nota}` : nota } : {}),
+            ...(queueFileId ? {
+              transcript_file_id: queueFileId, transcript_job_id: null, transcript_attempts: 0,
+              transcript_error: null, transcript_next_try_at: null,
+            } : {}),
           })
           .eq("id", meeting.id);
         if (updError) {
           console.error(`[crm-meetings-eod] Erro ao finalizar atividade ${meeting.id}:`, updError);
           result.error = updError.message;
-        } else {
+        } else if (!jaFinalizada) {
           finalized++;
         }
       }
@@ -580,7 +702,7 @@ Deno.serve(async (req) => {
       // CRM: todas as reuniões do dia (qualquer status) + transcrições automáticas importadas hoje
       const { data: dayActs } = await supabase
         .from("crm_activities")
-        .select("id, lead_id, title, scheduled_at, status, recording_url, lead:lead_id (id, name)")
+        .select("id, lead_id, title, scheduled_at, status, recording_url, transcript_file_id, transcript_error, lead:lead_id (id, name)")
         .eq("type", "meeting")
         .gte("scheduled_at", dayStartUtc)
         .lt("scheduled_at", dayEndUtc)
@@ -619,12 +741,22 @@ Deno.serve(async (req) => {
               ? "cancelada"
               : leadsComTranscricao.has(a.lead_id)
                 ? "finalizada, transcrição no lead"
+                : a.transcript_file_id
+                  ? "finalizada, transcrição em processamento"
                 : a.recording_url
                   ? "finalizada, gravação sem transcrição"
                   : a.status === "completed"
                     ? "finalizada, sem gravação/transcrição"
                     : "pendente";
             lines.push(`- ${hora} ${leadName}: ${st}`);
+          }
+          // falha da transcrição não pode ficar muda (ficou 10 dias sem saldo sem ninguém saber)
+          const erroTrans = crmActs.find((a) => a.transcript_error)?.transcript_error as string | undefined;
+          if (erroTrans) {
+            lines.push("");
+            lines.push(/balance/i.test(erroTrans)
+              ? "ATENÇÃO: a AssemblyAI (transcrição das gravações) está sem saldo. Recarregue em assemblyai.com/dashboard; a fila sai sozinha depois."
+              : `ATENÇÃO: transcrição automática com erro: ${erroTrans.slice(0, 160)}`);
           }
         } else {
           lines.push("CRM: nenhuma reunião no dia.");

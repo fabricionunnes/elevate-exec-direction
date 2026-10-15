@@ -24,7 +24,8 @@ interface DriveFile {
 
 const TRANSCRIPT_NAME_RE = /(transcri|transcript|gemini|anota|notes)/i;
 const MAX_ASSEMBLYAI_PER_RUN = 3;
-const MAX_RECORDING_BYTES = 800 * 1024 * 1024;
+// AssemblyAI aceita até 2,2 GB no upload; gravação de 1h do Meet passa de 600 MB
+const MAX_RECORDING_BYTES = 2 * 1024 * 1024 * 1024;
 
 const parseSubtitleToText = (content: string): string => {
   const lines = content.split("\n");
@@ -227,7 +228,7 @@ Deno.serve(async (req) => {
           body: fileResp.body,
         });
         if (!uploadResp.ok) {
-          console.log(`AssemblyAI: upload falhou (${uploadResp.status})`);
+          console.log(`AssemblyAI: upload falhou (${uploadResp.status}): ${(await uploadResp.text()).slice(0, 300)}`);
           return null;
         }
         const { upload_url } = await uploadResp.json();
@@ -239,7 +240,8 @@ Deno.serve(async (req) => {
           body: JSON.stringify({ audio_url: upload_url, language_code: "pt", speaker_labels: true }),
         });
         if (!submitResp.ok) {
-          console.log(`AssemblyAI: submit falhou (${submitResp.status})`);
+          // o motivo vem no corpo (ex.: "account balance is negative"); sem ele o erro fica mudo
+          console.log(`AssemblyAI: submit falhou (${submitResp.status}): ${(await submitResp.text()).slice(0, 300)}`);
           return null;
         }
         const { id: jobId } = await submitResp.json();
