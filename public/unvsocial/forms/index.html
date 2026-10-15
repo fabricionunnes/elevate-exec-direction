@@ -380,9 +380,10 @@ function paint(){
 }
 
 /* ── rastreio de onde a pessoa para (CRM > Dashboard > Formulários) ──────────
-   Cada visita vira uma sessão anônima e cada tela aberta é avisada ao Nexus.
-   Não manda nome, telefone nem e-mail: só a etapa, as respostas de múltipla
-   escolha, a origem (UTM) e o aparelho. Falha calada: nunca trava o formulário. */
+   Cada visita vira uma sessão e cada tela aberta é avisada ao Nexus: etapa, respostas
+   de múltipla escolha, origem (UTM) e aparelho. Nome e WhatsApp só vão depois que a
+   pessoa passa da pergunta do WhatsApp (pra recuperar quem abandona). E-mail nunca.
+   Falha calada: nunca trava o formulário. */
 var TRK_FORM = "unvsocial";
 var TRK_SID = (function(){
   var k = "frm_sid_" + TRK_FORM, v = null;
@@ -410,6 +411,10 @@ function trk(o){
       p_status: o.status || null, p_lead: o.lead || null,
       p_meta: { respostas: trkRespostas() }
     };
+    // Recuperação (autorizada pelo Fabrício, 16/10/2026): nome e WhatsApp só depois que a pessoa
+    // confirmou o WhatsApp e avançou (A.tel só é preenchido na validação da pergunta).
+    var trkTel = String(A.tel || "").replace(/\D/g, "");
+    if(trkTel.length >= 10) body.p_meta.contato = { nome: A.nome || "", whatsapp: trkTel };
     if(o.inicio){
       body.p_meta.utm_source = qp("utm_source"); body.p_meta.utm_medium = qp("utm_medium");
       body.p_meta.utm_campaign = qp("utm_campaign") || qp("campaign_name"); body.p_meta.utm_content = qp("utm_content");
