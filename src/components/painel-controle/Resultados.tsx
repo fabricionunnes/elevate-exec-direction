@@ -13,7 +13,7 @@ export type ResCliente = {
   consultant_id: string | null; consultor: string | null;
   kpi_id: string | null; kpi: string | null; tipo: string | null;
   /** "indicadores" = meta e resultado do menu Indicadores (Facunicamps), não dos KPIs */
-  fonte?: "kpis" | "indicadores";
+  fonte?: "kpis" | "indicadores" | "painel";
   meta: number | null; realizado: number | null; pct: number | null;
   lanc_mes: number; ultimo: string | null; dias_sem_lancar: number | null;
   situacao: Situacao;
@@ -200,7 +200,7 @@ export function ResultadosClientes({ c }: { c: Ctx }) {
             x.consultor ?? <Nd />,
           ])} vazio="Nenhum cliente neste filtro." />
       </Panel>
-      <div className="note">{dado.meta_nao_necessaria ? `${plural(dado.meta_nao_necessaria, "cliente marcado", "clientes marcados")} como "meta não é necessária" no cadastro ${dado.meta_nao_necessaria === 1 ? "fica" : "ficam"} fora desta tela. ` : ""}Facunicamps usa o menu Indicadores (matrículas do mês contra a meta de matrículas). Régua igual à aba KPIs do projeto de cada cliente: KPI marcado como meta principal; meta = soma das metas por vendedor, senão a meta da empresa, senão por unidade ou time, senão a meta padrão do KPI. Realizado = soma dos lançamentos do mês. Dias úteis contam de segunda a sexta, sem feriado.</div>
+      <div className="note">{dado.meta_nao_necessaria ? `${plural(dado.meta_nao_necessaria, "cliente marcado", "clientes marcados")} como "meta não é necessária" no cadastro ${dado.meta_nao_necessaria === 1 ? "fica" : "ficam"} fora desta tela. ` : ""}Facunicamps usa o menu Indicadores (matrículas do mês contra a meta de matrículas) e quem tem meta no Painel de controle do projeto (Vitor Jaci) usa as vendas e a meta de lá. Régua igual à aba KPIs do projeto de cada cliente: KPI marcado como meta principal; meta = soma das metas por vendedor, senão a meta da empresa, senão por unidade ou time, senão a meta padrão do KPI. Realizado = soma dos lançamentos do mês. Dias úteis contam de segunda a sexta, sem feriado.</div>
     </>
   );
 }
