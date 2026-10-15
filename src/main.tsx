@@ -3,6 +3,13 @@ import App from "./App.tsx";
 import "./index.css";
 import { isCircleDomain } from "./lib/domainRouting";
 import { registerServiceWorker } from "./registerSW";
+import { recuperarVersao } from "./lib/recuperarVersao";
+
+// arquivo de versão anterior depois de um deploy: busca de novo e recarrega (ver lib/recuperarVersao.ts)
+window.addEventListener("vite:preloadError", (ev: Event) => {
+  const msg = (ev as any)?.payload?.message || "";
+  if (recuperarVersao(msg)) ev.preventDefault();
+});
 import { setupNativeAuthPersistence } from "./lib/nativeAuthPersistence";
 
 // Detecta Safari (desktop + iOS) e aplica classe no <html> para
