@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Loader2, RefreshCw, AlertTriangle, CheckCircle2, Link2, Undo2, EyeOff, Building2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,6 +43,13 @@ export function ReconciliationPanel() {
   const [lastRun, setLastRun] = useState<Run | null>(null);
   const [filter, setFilter] = useState<string>("review");
   const [linking, setLinking] = useState<Entry | null>(null);
+  // "Criar nova conta": conta a receber/pagar já paga com o valor que entrou/saiu no extrato
+  const [criando, setCriando] = useState(false);
+  const [novo, setNovo] = useState({ companyId: "", nome: "", descricao: "", categoriaId: "" });
+  const [salvandoNovo, setSalvandoNovo] = useState(false);
+  const [empresas, setEmpresas] = useState<{ value: string; label: string }[]>([]);
+  const [fornecedores, setFornecedores] = useState<{ value: string; label: string }[]>([]);
+  const [categorias, setCategorias] = useState<{ id: string; name: string; type: string }[]>([]);
   const [cands, setCands] = useState<Candidate[]>([]);
   const [search, setSearch] = useState("");
   const [candFrom, setCandFrom] = useState("");
@@ -96,6 +104,18 @@ export function ReconciliationPanel() {
 
   const openLink = async (e: Entry) => {
     setLinking(e); setSearch(""); setCands([]);
+    setCriando(false); setNovo({ companyId: "", nome: "", descricao: e.description || "", categoriaId: "" });
+    if (!categorias.length) {
+      Promise.all([
+        (supabase as any).from("onboarding_companies").select("id, name").order("name").limit(2000),
+        (supabase as any).from("financial_suppliers").select("id, name").eq("is_active", true).order("name").limit(2000),
+        (supabase as any).from("financial_categories").select("id, name, type").eq("is_active", true).order("name"),
+      ]).then(([emp, forn, cat]: any[]) => {
+        setEmpresas(((emp.data as any[]) || []).map((c) => ({ value: c.id, label: c.name })));
+        setFornecedores(((forn.data as any[]) || []).map((f) => ({ value: f.name, label: f.name })));
+        setCategorias((cat.data as any[]) || []);
+      });
+    }
     const isCredit = e.kind === "credit";
     const table = isCredit ? "financial_receivables" : "financial_payables";
     // Nome real de quem paga/recebe: sem ele a lista vira "Venda 1704012" e não
@@ -148,6 +168,29 @@ export function ReconciliationPanel() {
     });
     if (error) { toast.error(error.message || "Não consegui vincular"); return; }
     toast.success(c.kind === "invoice" ? "Fatura baixada e vinculada" : "Vinculado e baixado");
+    setLinking(null); load();
+  };
+
+  const criarConta = async () => {
+    if (!linking) return;
+    const credito = linking.kind === "credit";
+    const nome = credito ? (novo.companyId ? "" : novo.nome.trim()) : novo.nome.trim();
+    if (credito && !novo.companyId && !nome) { toast.error("Escolha o cliente ou digite o nome"); return; }
+    if (!credito && !nome) { toast.error("Escolha ou digite o fornecedor"); return; }
+    if (!novo.descricao.trim()) { toast.error("Dê uma descrição"); return; }
+    setSalvandoNovo(true);
+    const empresaNome = empresas.find((x) => x.value === novo.companyId)?.label;
+    const { error } = await (supabase as any).rpc("resolve_statement_entry", {
+      p_entry_id: linking.id,
+      p_action: credito ? "create_receivable" : "create_payable",
+      p_payload: credito
+        ? { company_id: novo.companyId || undefined, party: nome || undefined, category_id: novo.categoriaId || undefined,
+            description: [empresaNome || nome, novo.descricao.trim()].filter(Boolean).join(" · ") }
+        : { supplier_name: nome, category_id: novo.categoriaId || undefined, description: [nome, novo.descricao.trim()].join(" · ") },
+    });
+    setSalvandoNovo(false);
+    if (error) { toast.error(error.message || "Não consegui criar"); return; }
+    toast.success(credito ? "Conta a receber criada, já recebida e conciliada" : "Conta a pagar criada, já paga e conciliada");
     setLinking(null); load();
   };
 
@@ -352,6 +395,47 @@ export function ReconciliationPanel() {
             <Input type="date" value={candTo} onChange={(e) => setCandTo(e.target.value)} className="h-8 w-[140px]" />
             {(candFrom || candTo) && (
               <Button variant="ghost" size="sm" className="h-8" onClick={() => { setCandFrom(""); setCandTo(""); }}>Limpar</Button>
+            )}
+          </div>
+          <div className="rounded-md border border-dashed p-2.5">
+            {!criando ? (
+              <button type="button" className="text-sm font-medium text-primary hover:underline" onClick={() => setCriando(true)}>
+                + Não achou? Criar {linking?.kind === "credit" ? "conta a receber" : "conta a pagar"} com esse valor (já {linking?.kind === "credit" ? "recebida" : "paga"})
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Cria {linking?.kind === "credit" ? "a conta a receber" : "a conta a pagar"} de {linking ? brl(Math.abs(linking.amount_cents)) : ""} em{" "}
+                  {linking ? dt(linking.entry_date) : ""}, já baixada, e liga a esse lançamento. O saldo não muda: o dinheiro já {linking?.kind === "credit" ? "entrou" : "saiu"}.
+                </p>
+                {linking?.kind === "credit" ? (
+                  <>
+                    <SearchableSelect value={novo.companyId || "none"} onValueChange={(v) => setNovo((n) => ({ ...n, companyId: v === "none" ? "" : v }))}
+                      options={empresas} allowNone noneLabel="Cliente sem cadastro (digitar o nome)" placeholder="Cliente" emptyMessage="Nenhum cliente com esse nome" />
+                    {!novo.companyId && (
+                      <Input placeholder="Nome de quem pagou" value={novo.nome} onChange={(ev) => setNovo((n) => ({ ...n, nome: ev.target.value }))} />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <SearchableSelect value={fornecedores.some((f) => f.value === novo.nome) ? novo.nome : "none"} onValueChange={(v) => setNovo((n) => ({ ...n, nome: v === "none" ? "" : v }))}
+                      options={fornecedores} allowNone noneLabel="Fornecedor sem cadastro (digitar o nome)" placeholder="Fornecedor" emptyMessage="Nenhum fornecedor com esse nome" />
+                    {!fornecedores.some((f) => f.value === novo.nome) && (
+                      <Input placeholder="Nome de quem recebeu" value={novo.nome} onChange={(ev) => setNovo((n) => ({ ...n, nome: ev.target.value }))} />
+                    )}
+                  </>
+                )}
+                <Input placeholder="Descrição" value={novo.descricao} onChange={(ev) => setNovo((n) => ({ ...n, descricao: ev.target.value }))} />
+                <SearchableSelect value={novo.categoriaId || "none"} onValueChange={(v) => setNovo((n) => ({ ...n, categoriaId: v === "none" ? "" : v }))}
+                  options={categorias.filter((c) => c.type === (linking?.kind === "credit" ? "income" : "expense")).map((c) => ({ value: c.id, label: c.name }))}
+                  allowNone noneLabel="Sem categoria" placeholder="Categoria" emptyMessage="Nenhuma categoria" />
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setCriando(false)}>Cancelar</Button>
+                  <Button size="sm" onClick={criarConta} disabled={salvandoNovo} className="gap-1.5">
+                    {salvandoNovo && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Criar e conciliar
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
           <div className="max-h-[380px] overflow-auto space-y-1.5">
