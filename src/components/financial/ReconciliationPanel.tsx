@@ -19,7 +19,7 @@ interface Run {
   id: string; created_at: string; imported: number; auto_matched: number; needs_review: number;
   provider_balance_cents: number | null; system_balance_cents: number | null; diff_cents: number | null;
 }
-interface Candidate { id: string; description: string | null; amount: number; due_date: string | null; status: string; party: string | null }
+interface Candidate { id: string; kind: "receivable" | "payable" | "invoice"; description: string | null; amount: number; due_date: string | null; status: string; party: string | null }
 interface SaldoConta {
   id: string; name: string; current_balance_cents: number;
   provider_balance_cents: number | null; provider_balance_at: string | null; provider_balance_error: string | null;
@@ -103,48 +103,49 @@ export function ReconciliationPanel() {
     const cols = isCredit
       ? "id, description, amount, due_date, status, custom_receiver_name, company:onboarding_companies(name)"
       : "id, description, amount, due_date, status, supplier_name";
-    const { data } = await (supabase as any).from(table)
-      .select(cols).neq("status", "paid")
-      .order("due_date", { ascending: false }).limit(400);
-    setCands(((data as any[]) || []).map((r) => ({
-      id: r.id, description: r.description, amount: r.amount, due_date: r.due_date, status: r.status,
+    const [{ data }, faturas] = await Promise.all([
+      (supabase as any).from(table).select(cols).neq("status", "paid")
+        .order("due_date", { ascending: false }).limit(400),
+      // recebimento também casa com FATURA de cliente (mensalidade, parcela de contrato novo)
+      isCredit
+        ? (supabase as any).from("company_invoices")
+            .select("id, description, amount_cents, due_date, status, custom_receiver_name, company:onboarding_companies(name)")
+            .in("status", ["pending", "overdue"]).order("due_date", { ascending: true }).limit(600)
+        : Promise.resolve({ data: [] }),
+    ]);
+    const titulos: Candidate[] = ((data as any[]) || []).map((r) => ({
+      id: r.id, kind: isCredit ? "receivable" : "payable", description: r.description, amount: r.amount, due_date: r.due_date, status: r.status,
       party: isCredit ? (r.custom_receiver_name || r.company?.name || null) : (r.supplier_name || null),
-    })));
+    }));
+    const fats: Candidate[] = ((faturas.data as any[]) || []).map((r) => ({
+      id: r.id, kind: "invoice", description: r.description || "Fatura", amount: Number(r.amount_cents || 0) / 100,
+      due_date: r.due_date, status: r.status, party: r.company?.name || r.custom_receiver_name || null,
+    }));
+    // valor igual ao recebido primeiro
+    const valor = Math.abs(e.amount_cents) / 100;
+    setCands([...fats, ...titulos].sort((x, y) => Number(Math.abs(y.amount - valor) < 0.01) - Number(Math.abs(x.amount - valor) < 0.01)));
   };
 
   const confirmLink = async (c: Candidate) => {
     if (!linking) return;
     const e = linking;
-    const table = e.kind === "credit" ? "financial_receivables" : "financial_payables";
     const valor = Math.abs(e.amount_cents) / 100;
-    const { error: upErr } = await (supabase as any).from(table).update({
-      status: "paid", paid_date: e.entry_date, paid_amount: valor, updated_at: new Date().toISOString(),
-    }).eq("id", c.id);
-    if (upErr) { toast.error("Sem permissão para dar baixa"); return; }
-    const { data: { user } } = await supabase.auth.getUser();
-    await (supabase as any).from("financial_statement_entries").update({
-      status: "matched", match_kind: e.kind === "credit" ? "receivable" : "payable", match_id: c.id,
-      match_confidence: "manual", match_reason: `vinculado manualmente (${[c.party, c.description].filter(Boolean).join(" — ")})`.trim(),
-      auto_settled: false, reviewed_by: user?.id || null, reviewed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }).eq("id", e.id);
-    toast.success("Vinculado e baixado");
+    if (Math.abs(c.amount - valor) >= 0.01 && !window.confirm(
+      `O título é de ${c.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} e o ${e.kind === "credit" ? "recebimento" : "pagamento"} foi de ${brl(Math.abs(e.amount_cents))}. Dar baixa com o valor recebido mesmo assim?`)) return;
+    // RPC: baixa o título e o lançamento "sem título" do extrato passa a ser dele (nome do cliente no extrato)
+    const { error } = await (supabase as any).rpc("resolve_statement_entry", {
+      p_entry_id: e.id, p_action: "link",
+      p_payload: { kind: c.kind, id: c.id, description: [c.party, c.description].filter(Boolean).join(" · ") || undefined },
+    });
+    if (error) { toast.error(error.message || "Não consegui vincular"); return; }
+    toast.success(c.kind === "invoice" ? "Fatura baixada e vinculada" : "Vinculado e baixado");
     setLinking(null); load();
   };
 
   const undo = async (e: Entry) => {
-    if (!window.confirm("Desfazer a conciliação? O título volta para em aberto.")) return;
-    if (e.match_id && (e.match_kind === "receivable" || e.match_kind === "payable")) {
-      const table = e.match_kind === "receivable" ? "financial_receivables" : "financial_payables";
-      await (supabase as any).from(table).update({
-        status: "pending", paid_date: null, paid_amount: null, updated_at: new Date().toISOString(),
-      }).eq("id", e.match_id);
-    }
-    const { error } = await (supabase as any).from("financial_statement_entries").update({
-      status: "review", match_kind: null, match_id: null, match_confidence: null,
-      match_reason: "conciliação desfeita manualmente", auto_settled: false, updated_at: new Date().toISOString(),
-    }).eq("id", e.id);
-    if (error) { toast.error("Sem permissão para editar"); return; }
+    if (!window.confirm("Desfazer a conciliação? O título volta para em aberto e o dinheiro continua no saldo.")) return;
+    const { error } = await (supabase as any).rpc("resolve_statement_entry", { p_entry_id: e.id, p_action: "unlink", p_payload: {} });
+    if (error) { toast.error(error.message || "Não consegui desfazer"); return; }
     toast.success("Conciliação desfeita");
     load();
   };
@@ -346,12 +347,13 @@ export function ReconciliationPanel() {
           </div>
           <div className="max-h-[380px] overflow-auto space-y-1.5">
             {filtered.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">Nenhum título em aberto encontrado.</p>
+              <p className="text-sm text-muted-foreground text-center py-6">Nenhum título em aberto encontrado. Se o cliente é novo, lance a fatura dele (ou a conta) e volte aqui pra vincular.</p>
             ) : filtered.map((c) => (
               <button key={c.id} onClick={() => confirmLink(c)}
                 className="w-full text-left border rounded-md p-2.5 hover:border-primary hover:bg-primary/5 transition">
                 <div className="flex items-center gap-3">
                   <span className="font-semibold tabular-nums">{c.amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                  <Badge variant="outline" className="text-[10px] shrink-0">{c.kind === "invoice" ? "Fatura" : c.kind === "receivable" ? "A receber" : "A pagar"}</Badge>
                   <span className="flex-1 min-w-0">
                     <span className="block truncate text-sm font-medium">{c.party || c.description || "(sem nome)"}</span>
                     {c.party && c.description && (
