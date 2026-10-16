@@ -26,6 +26,8 @@ export default function Checkout() {
   const [fulfillment, setFulfillment] = useState<Fulfillment>("entrega");
   const [zoneId, setZoneId] = useState(me?.zone_id ?? "");
   const [address, setAddress] = useState(me?.address ?? "");
+  const [bairro, setBairro] = useState(me?.bairro ?? "");
+  const [bairros, setBairros] = useState<string[]>([]);
   const [reference, setReference] = useState(me?.reference ?? "");
   const [date, setDate] = useState("");
   const [windows, setWindows] = useState<AvailableWindow[] | null>(null);
@@ -64,6 +66,7 @@ export default function Checkout() {
     void supabase.rpc("available_windows", { p_date: date, p_fulfillment: fulfillment }).then(({ data }) => setWindows((data as AvailableWindow[]) ?? []));
   }, [date, fulfillment]);
 
+  useEffect(() => { void supabase.rpc("known_bairros").then(({ data }) => setBairros((data as string[] | null) ?? [])); }, []);
   const zone = zones.find((z) => z.id === zoneId);
   const fee = fulfillment === "entrega" ? Number(zone?.fee ?? 0) : 0;
   // adicionais que valem pro carrinho (sem produto definido = vale pra qualquer pedido)
@@ -79,6 +82,7 @@ export default function Checkout() {
     setError(null);
     if (!date) return setError("Escolha a data da encomenda.");
     if (notEnough) return setError(`Só temos ${selectedDay?.remaining} vaga(s) nesse dia. Reduza a quantidade ou escolha outra data.`);
+    if (fulfillment === "entrega" && bairro.trim().length < 2) return setError("Informe o bairro ou condomínio da entrega.");
     if (windows && windows.length > 0 && !windowId) return setError(`Escolha o horário de ${fulfillment === "entrega" ? "entrega" : "retirada"}.`);
     setSending(true);
     // Abre a aba ainda dentro do clique (bloqueador de pop-up deixa) e preenche depois.
@@ -90,6 +94,7 @@ export default function Checkout() {
       zone_id: fulfillment === "entrega" ? zoneId : null,
       address: address.trim(),
       reference: reference.trim(),
+      bairro: bairro.trim(),
       scheduled_date: date,
       window_id: windowId || null,
       payment_method: payment,
@@ -128,7 +133,7 @@ export default function Checkout() {
       waWindow.location.href = waLink(settings.whatsapp, msg);
     }
     rememberOrder({ code: res.code, token: res.tracking_token, created_at: new Date().toISOString() });
-    saveMe({ name: payload.name, phone: payload.phone, zone_id: zoneId, address: payload.address, reference: payload.reference });
+    saveMe({ name: payload.name, phone: payload.phone, zone_id: zoneId, address: payload.address, reference: payload.reference, bairro: payload.bairro || me?.bairro });
     cart.clear();
     toast(`Pedido ${res.code} enviado!`);
     nav(`/pedido/${res.tracking_token}?novo=1`);
@@ -212,6 +217,8 @@ export default function Checkout() {
             <Select label="Qual condomínio / região?" value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
               {zones.map((z) => <option key={z.id} value={z.id}>{z.name} · {Number(z.fee) === 0 ? "frete grátis" : brl(z.fee)}</option>)}
             </Select>
+            <Input label="Bairro ou condomínio" placeholder="Ex.: Alphaville Lagoa dos Ingleses" value={bairro} onChange={(e) => setBairro(e.target.value)} list="yas-bairros" />
+            <datalist id="yas-bairros">{bairros.map((b) => <option key={b} value={b} />)}</datalist>
             <Input label="Endereço (rua, número, casa ou apto)" placeholder="Ex.: Rua das Acácias, 120, casa 7" value={address} onChange={(e) => setAddress(e.target.value)} />
             <Input label="Ponto de referência (opcional)" placeholder="Ex.: portaria principal, deixar com o porteiro" value={reference} onChange={(e) => setReference(e.target.value)} />
           </div>

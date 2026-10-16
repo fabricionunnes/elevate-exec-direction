@@ -25,6 +25,7 @@ import Compras from "@/pages/admin/Compras";
 import Financeiro from "@/pages/admin/Financeiro";
 import Avaliacoes from "@/pages/admin/Avaliacoes";
 import Sugestoes from "@/pages/admin/Sugestoes";
+import Ranking from "@/pages/admin/Ranking";
 import Configuracoes from "@/pages/admin/Configuracoes";
 
 export default function App() {
@@ -58,6 +59,7 @@ export default function App() {
                 <Route path="financeiro" element={<Financeiro />} />
                 <Route path="avaliacoes" element={<Avaliacoes />} />
                 <Route path="sugestoes" element={<Sugestoes />} />
+                <Route path="ranking" element={<Ranking />} />
                 <Route path="configuracoes" element={<Configuracoes />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
