@@ -30,8 +30,9 @@ export const dataHora = (v: string | null | undefined) =>
   v ? new Date(v).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "-";
 
 // ------------------------------------------------------------------ período
-export type PeriodoKey = "7" | "30" | "90" | "mes" | "mes_passado" | "custom";
+export type PeriodoKey = "hoje" | "ontem" | "7" | "30" | "90" | "mes" | "mes_passado" | "custom";
 export const PERIODOS: { value: PeriodoKey; label: string }[] = [
+  { value: "hoje", label: "Hoje" }, { value: "ontem", label: "Ontem" },
   { value: "7", label: "Últimos 7 dias" }, { value: "30", label: "Últimos 30 dias" }, { value: "90", label: "Últimos 90 dias" },
   { value: "mes", label: "Este mês" }, { value: "mes_passado", label: "Mês passado" }, { value: "custom", label: "Intervalo" },
 ];
@@ -49,6 +50,9 @@ export function intervalo(p: Periodo): { from: Date; to: Date; texto: string } {
     to.setHours(0, 0, 0, 0); to.setDate(to.getDate() + 1);
     return { from, to, texto: `${format(from, "dd/MM/yy")} a ${format(new Date(to.getTime() - 1), "dd/MM/yy")}` };
   }
+  // hoje e ontem comparam com o dia anterior (a janela "anterior" tem o mesmo tamanho: 1 dia)
+  if (p.key === "hoje") return { from: hoje, to: amanha, texto: "hoje" };
+  if (p.key === "ontem") { const ontem = new Date(hoje); ontem.setDate(ontem.getDate() - 1); return { from: ontem, to: hoje, texto: "ontem" }; }
   if (p.key === "mes") return { from: new Date(hoje.getFullYear(), hoje.getMonth(), 1), to: amanha, texto: "este mês" };
   if (p.key === "mes_passado") return { from: new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1), to: new Date(hoje.getFullYear(), hoje.getMonth(), 1), texto: "mês passado" };
   const from = new Date(hoje); from.setDate(from.getDate() - (Number(p.key) - 1));
