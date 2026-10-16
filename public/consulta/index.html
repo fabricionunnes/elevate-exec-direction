@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Registro de Consulta</title>
+<style>
+/* Layout: uma coluna central, botões grandes, texto grande. Nada sai deste navegador. */
+:root{
+  --ground:#F5F6F8; --surface:#FFFFFF; --surface-2:#EEF1F5;
+  --ink:#0A1F45; --ink-2:#33415C; --muted:#5F6B80;
+  --rule:#D8DEE7;
+  --navy:#0D2B5E;
+  --go:#0F6B52; --go-hover:#0C5A45;
+  --stop:#B3261E; --stop-hover:#971F18;
+  --warn-bg:#FFF4D6; --warn-ink:#6B4A00; --warn-rule:#E8C96A;
+  --doc:#0D2B5E; --pac:#0F6B52;
+  --font:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--font);font-size:19px;line-height:1.5}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 80px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+h1{font-size:30px;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:17px}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:22px;margin-bottom:18px}
+.card h2{font-size:20px;margin:0 0 12px}
+details.cfg summary{cursor:pointer;font-weight:600;font-size:18px;list-style:none;display:flex;justify-content:space-between;align-items:center}
+details.cfg summary::-webkit-details-marker{display:none}
+details.cfg summary::after{content:"Abrir";color:var(--muted);font-weight:400;font-size:16px}
+details.cfg[open] summary::after{content:"Fechar"}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.grid .full{grid-column:1/-1}
+label{display:block;font-size:15px;color:var(--ink-2);margin-bottom:4px;font-weight:600}
+input[type=text],input[type=password]{width:100%;font:inherit;font-size:18px;padding:10px 12px;border:1px solid var(--rule);border-radius:10px;background:#fff;color:var(--ink)}
+input:focus{outline:3px solid #BFD3F2;border-color:var(--navy)}
+.hint{font-size:15px;color:var(--muted);margin-top:6px}
+.notice{background:var(--warn-bg);border:1px solid var(--warn-rule);color:var(--warn-ink);border-radius:14px;padding:18px 22px;margin-bottom:18px}
+.notice strong{font-size:22px;display:block;margin-bottom:8px}
+.notice label{display:flex;align-items:center;gap:12px;font-size:18px;color:var(--warn-ink);font-weight:500;margin:10px 0 0;cursor:pointer}
+.notice input[type=checkbox]{width:26px;height:26px;accent-color:var(--go)}
+.actions{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.btn{font:inherit;font-weight:700;border:0;border-radius:14px;cursor:pointer;padding:18px 28px;font-size:22px;color:#fff;background:var(--navy);min-height:64px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.go{background:var(--go)} .btn.go:not(:disabled):hover{background:var(--go-hover)}
+.btn.stop{background:var(--stop)} .btn.stop:not(:disabled):hover{background:var(--stop-hover)}
+.btn.sec{background:var(--surface-2);color:var(--ink);font-size:17px;padding:10px 16px;min-height:44px;font-weight:600;border:1px solid var(--rule)}
+.btn.sec:not(:disabled):hover{background:#E3E8EF}
+.btn:focus-visible{outline:3px solid #BFD3F2}
+.timer{font-variant-numeric:tabular-nums;font-size:40px;font-weight:700;letter-spacing:.02em;margin-left:auto;display:flex;align-items:center;gap:12px}
+.dot{width:16px;height:16px;border-radius:50%;background:var(--stop);display:none}
+.rec .dot{display:inline-block;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.rec .dot{animation:none}}
+.status{font-size:17px;color:var(--muted);margin-top:12px;min-height:26px}
+.status.err{color:var(--stop);font-weight:600}
+.live{font-size:21px;line-height:1.6;min-height:140px;max-height:48vh;overflow:auto;white-space:pre-wrap;word-break:break-word;padding:4px 2px}
+.live .interim{color:var(--muted)}
+.live .empty{color:var(--muted);font-size:18px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.panel-head h2{margin:0}
+.out{white-space:pre-wrap;word-break:break-word;font-size:19px;line-height:1.65}
+.out .doc{color:var(--doc);font-weight:700}
+.out .pac{color:var(--pac);font-weight:700}
+.out .oth{color:var(--muted);font-weight:700}
+.resumo{font-size:19px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.resumo .t{font-weight:700;color:var(--navy);display:block;margin-top:14px}
+.resumo .t:first-child{margin-top:0}
+.foot{font-size:15px;color:var(--muted);margin-top:28px;border-top:1px solid var(--rule);padding-top:14px}
+.spin{display:inline-block;width:18px;height:18px;border:3px solid var(--rule);border-top-color:var(--navy);border-radius:50%;animation:rot .8s linear infinite;vertical-align:-3px;margin-right:8px}
+@keyframes rot{to{transform:rotate(360deg)}}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 20px;border-radius:12px;font-size:17px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+@media (max-width:640px){.grid{grid-template-columns:1fr}.timer{margin-left:0;width:100%}.btn{width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Registro de Consulta</h1>
+      <div class="sub" id="subtitle">Documentação Ouro</div>
+    </div>
+    <div class="sub">Nada é salvo fora deste computador</div>
+  </header>
+
+  <details class="cfg card" id="cfg">
+    <summary>Configuração do consultório</summary>
+    <div class="grid">
+      <div>
+        <label for="drNome">Nome do(a) doutor(a)</label>
+        <input type="text" id="drNome" placeholder="Dr(a). Nome Sobrenome" autocomplete="off">
+      </div>
+      <div>
+        <label for="drEsp">Especialidade</label>
+        <input type="text" id="drEsp" placeholder="Ex.: Odontologia estética" autocomplete="off">
+      </div>
+      <div class="full">
+        <label for="ctx">Contexto do consultório</label>
+        <input type="text" id="ctx" value="Documentação Ouro" autocomplete="off">
+      </div>
+      <div class="full">
+        <label for="apiKey">Chave da API Claude (fica só neste navegador)</label>
+        <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off">
+        <div class="hint">Usada apenas para organizar a transcrição e gerar o resumo ao encerrar a consulta. Sem a chave, o app oferece o prompt pronto para copiar.</div>
+      </div>
+      <div class="full">
+        <label for="wsId">ID do workspace (só se a chave pedir)</label>
+        <input type="text" id="wsId" placeholder="wrkspc_..." autocomplete="off">
+        <div class="hint">Chaves que começam com "sk-ant-usr-" não estão presas a um workspace e exigem este ID. Chaves "sk-ant-api03-" não precisam.</div>
+      </div>
+    </div>
+  </details>
+
+  <div class="notice" id="consentBox">
+    <strong>Peça o consentimento do paciente.</strong>
+    Informe que a consulta será transcrita para organizar o atendimento e só inicie após o "sim" do paciente.
+    <label><input type="checkbox" id="consent"> O paciente consentiu com a gravação</label>
+  </div>
+
+  <div class="card" id="recCard">
+    <div class="actions">
+      <button class="btn go" id="btnStart" disabled>Iniciar consulta</button>
+      <button class="btn stop" id="btnStop" hidden>Encerrar consulta</button>
+      <div class="timer"><span class="dot"></span><span id="timer">00:00</span></div>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="card">
+    <div class="panel-head">
+      <h2>Transcrição ao vivo</h2>
+      <button class="btn sec" id="btnCopyRaw" disabled>Copiar transcrição</button>
+    </div>
+    <div class="live" id="live"><span class="empty">O texto aparece aqui enquanto a consulta é gravada.</span></div>
+  </div>
+
+  <div class="card" id="orgCard" hidden>
+    <div class="panel-head">
+      <h2>Transcrição organizada</h2>
+      <button class="btn sec" id="btnCopyOrg">Copiar transcrição</button>
+    </div>
+    <div class="out" id="org"></div>
+  </div>
+
+  <div class="card" id="sumCard" hidden>
+    <div class="panel-head">
+      <h2>Resumo da consulta</h2>
+      <button class="btn sec" id="btnCopySum">Copiar resumo</button>
+    </div>
+    <div class="resumo" id="sum"></div>
+  </div>
+
+  <div class="card" id="fallbackCard" hidden>
+    <h2>Gerar o resumo manualmente</h2>
+    <p id="fallbackMsg" style="margin:0 0 12px"></p>
+    <div class="actions">
+      <button class="btn sec" id="btnCopyPrompt">Copiar prompt com a transcrição</button>
+      <button class="btn sec" id="btnRetry">Tentar de novo</button>
+    </div>
+    <div class="hint">Cole o prompt no Claude (claude.ai) e você recebe a transcrição organizada e o resumo no mesmo formato.</div>
+  </div>
+
+  <div class="actions" id="newBox" hidden>
+    <button class="btn" id="btnNew">Nova consulta</button>
+  </div>
+
+  <div class="foot">
+    Este resumo não substitui o prontuário. A transcrição fica apenas na memória desta página e some ao fechar ou recarregar a aba. Funciona no Google Chrome ou Microsoft Edge.
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var MODEL = 'claude-opus-5-5';
+  var MARK_T = '===TRANSCRICAO===';
+  var MARK_R = '===RESUMO===';
+
+  var els = {
+    cfg:$('cfg'), drNome:$('drNome'), drEsp:$('drEsp'), ctx:$('ctx'), apiKey:$('apiKey'), wsId:$('wsId'), subtitle:$('subtitle'),
+    consent:$('consent'), consentBox:$('consentBox'), btnStart:$('btnStart'), btnStop:$('btnStop'), timer:$('timer'),
+    status:$('status'), recCard:$('recCard'), live:$('live'), btnCopyRaw:$('btnCopyRaw'),
+    orgCard:$('orgCard'), org:$('org'), btnCopyOrg:$('btnCopyOrg'),
+    sumCard:$('sumCard'), sum:$('sum'), btnCopySum:$('btnCopySum'),
+    fallbackCard:$('fallbackCard'), fallbackMsg:$('fallbackMsg'), btnCopyPrompt:$('btnCopyPrompt'), btnRetry:$('btnRetry'),
+    newBox:$('newBox'), btnNew:$('btnNew'), toast:$('toast')
+  };
+
+  // ---- estado (só memória) ----
+  var recording = false, rec = null, segments = [], interim = '', startAt = 0, tick = null;
+  var organized = '', summary = '';
+
+  // ---- configuração (localStorage deste navegador) ----
+  var CFG_KEYS = ['drNome','drEsp','ctx','apiKey','wsId'];
+  function loadCfg(){
+    try{
+      CFG_KEYS.forEach(function(k){ var v = localStorage.getItem('consulta.'+k); if (v !== null) els[k].value = v; });
+    }catch(e){}
+    if (!els.ctx.value) els.ctx.value = 'Documentação Ouro';
+    els.subtitle.textContent = [els.drNome.value, els.drEsp.value].filter(Boolean).join(' · ') || els.ctx.value;
+    if (!els.drNome.value || !els.apiKey.value) els.cfg.open = true;
+  }
+  CFG_KEYS.forEach(function(k){
+    els[k].addEventListener('change', function(){
+      try{ localStorage.setItem('consulta.'+k, els[k].value.trim()); }catch(e){}
+      els.subtitle.textContent = [els.drNome.value, els.drEsp.value].filter(Boolean).join(' · ') || els.ctx.value;
+    });
+  });
+  loadCfg();
+
+  // ---- utilitários ----
+  function pad(n){ return (n<10?'0':'')+n; }
+  function fmt(sec){ sec = Math.max(0, Math.floor(sec)); return pad(Math.floor(sec/60))+':'+pad(sec%60); }
+  function elapsed(){ return (Date.now()-startAt)/1000; }
+  function setStatus(msg, err){ els.status.textContent = msg || ''; els.status.className = 'status' + (err?' err':''); }
+  function showToast(msg){ els.toast.textContent = msg; els.toast.classList.add('show'); clearTimeout(showToast.t); showToast.t = setTimeout(function(){ els.toast.classList.remove('show'); }, 1800); }
+  function esc(s){ return s.replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+  function copyText(text, okMsg){
+    if (!text){ showToast('Nada para copiar'); return; }
+    var done = function(){ showToast(okMsg || 'Copiado'); };
+    var fallback = function(){
+      var ta = document.createElement('textarea'); ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); done(); }catch(e){ showToast('Não foi possível copiar'); }
+      document.body.removeChild(ta);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+    else fallback();
+  }
+  function rawTranscript(){
+    return segments.map(function(s){ return '['+fmt(s.t)+'] '+s.text; }).join('\n');
+  }
+  function renderLive(){
+    if (!segments.length && !interim){
+      els.live.innerHTML = '<span class="empty">O texto aparece aqui enquanto a consulta é gravada.</span>';
+      return;
+    }
+    var html = segments.map(function(s){ return esc(s.text); }).join('\n');
+    if (interim) html += (html?'\n':'') + '<span class="interim">'+esc(interim)+'</span>';
+    els.live.innerHTML = html;
+    els.live.scrollTop = els.live.scrollHeight;
+  }
+
+  // ---- gravação / transcrição ----
+  if (!SR){
+    setStatus('Este navegador não transcreve voz. Abra esta página no Google Chrome ou Microsoft Edge.', true);
+    els.consent.disabled = true;
+  }
+  els.consent.addEventListener('change', function(){ els.btnStart.disabled = !(els.consent.checked && SR && !recording); });
+
+  function makeRec(){
+    var r = new SR();
+    r.lang = 'pt-BR'; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
+    r.onresult = function(e){
+      interim = '';
+      for (var i = e.resultIndex; i < e.results.length; i++){
+        var txt = (e.results[i][0].transcript || '').trim();
+        if (!txt) continue;
+        if (e.results[i].isFinal) segments.push({ t: elapsed(), text: txt });
+        else interim += (interim?' ':'') + txt;
+      }
+      renderLive();
+      els.btnCopyRaw.disabled = !segments.length;
+    };
+    r.onerror = function(e){
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+        setStatus('Microfone bloqueado. Clique no cadeado ao lado do endereço, permita o microfone e inicie de novo.', true);
+        stopRecording(true);
+      } else if (e.error === 'network'){
+        setStatus('Sem conexão para transcrever. Verifique a internet; a gravação tenta continuar.', true);
+      } else if (e.error === 'audio-capture'){
+        setStatus('Nenhum microfone encontrado. Conecte um microfone e inicie de novo.', true);
+        stopRecording(true);
+      }
+      // 'no-speech' e 'aborted' são normais em pausas; o onend reinicia.
+    };
+    r.onend = function(){
+      if (recording){ try{ r.start(); }catch(err){} }
+    };
+    return r;
+  }
+
+  function startRecording(){
+    if (recording || !SR) return;
+    segments = []; interim = ''; organized = ''; summary = '';
+    els.orgCard.hidden = true; els.sumCard.hidden = true; els.fallbackCard.hidden = true; els.newBox.hidden = true;
+    renderLive();
+    rec = makeRec();
+    try{ rec.start(); }catch(err){ setStatus('Não foi possível iniciar o microfone. Recarregue a página e tente de novo.', true); return; }
+    recording = true; startAt = Date.now();
+    els.timer.textContent = '00:00';
+    tick = setInterval(function(){ els.timer.textContent = fmt(elapsed()); }, 500);
+    els.recCard.classList.add('rec');
+    els.btnStart.hidden = true; els.btnStop.hidden = false;
+    els.consentBox.hidden = true;
+    setStatus('Gravando. Fale normalmente; o texto aparece abaixo.');
+  }
+
+  function stopRecording(silent){
+    if (!recording) return;
+    recording = false;
+    clearInterval(tick);
+    if (interim){ segments.push({ t: elapsed(), text: interim }); interim = ''; }
+    try{ rec.onend = null; rec.stop(); }catch(err){}
+    renderLive();
+    els.recCard.classList.remove('rec');
+    els.btnStop.hidden = true; els.btnStart.hidden = false;
+    els.consent.checked = false; els.btnStart.disabled = true; els.consentBox.hidden = false;
+    els.btnCopyRaw.disabled = !segments.length;
+    els.newBox.hidden = false;
+    if (silent) return;
+    if (!segments.length){ setStatus('Consulta encerrada sem fala reconhecida. Nada a organizar.', true); return; }
+    setStatus('Consulta encerrada. Duração '+fmt(elapsed())+'.');
+    organizeAndSummarize();
+  }
+
+  els.btnStart.addEventListener('click', startRecording);
+  els.btnStop.addEventListener('click', function(){ stopRecording(false); });
+  window.addEventListener('beforeunload', function(e){ if (recording || segments.length){ e.preventDefault(); e.returnValue = ''; } });
+
+  // ---- prompt ----
+  function buildPrompt(){
+    var nome = els.drNome.value.trim() || 'não informado';
+    var esp = els.drEsp.value.trim() || 'não informada';
+    var ctx = els.ctx.value.trim() || 'não informado';
+    return [
+      'Você recebe a transcrição bruta de uma consulta de '+nome+', '+esp+'. Contexto do consultório: '+ctx+'.',
+      'A transcrição veio de reconhecimento de voz contínuo, sem identificação de quem fala, com marcação de tempo [mm:ss] em cada trecho.',
+      '',
+      'TAREFA 1. Organize a transcrição separando as falas em "Doutor:" e "Paciente:" pelo contexto da conversa (quem pergunta sobre sintomas, examina, propõe conduta e valores é o Doutor; quem relata queixa, dúvidas e decide é o Paciente). Mantenha as palavras originais, corrija só pontuação e erros óbvios do reconhecimento de voz. Não resuma, não invente e não omita trechos. Se um trecho não der para atribuir, use "Não identificado:". Remova as marcações de tempo. Uma fala por linha.',
+      '',
+      'TAREFA 2. Gere o resumo da consulta exatamente nestes blocos:',
+      '1. Queixa e objetivo: o que o paciente quer resolver, nas palavras dele.',
+      '2. O que foi proposto: conduta ou tratamento apresentado e o valor, se foi falado.',
+      '3. Dúvidas e objeções: o que travou a decisão.',
+      '4. Próximo passo: o que fazer, quem faz e até quando.',
+      '5. Mensagem de follow-up: texto pronto para a secretária enviar no WhatsApp.',
+      '',
+      'REGRAS DO RESUMO: use só o que está na transcrição. Se algo não foi dito, escreva "não mencionado". Não invente diagnóstico nem valor. Este resumo não substitui o prontuário.',
+      '',
+      'FORMATO DA RESPOSTA, sem nada antes ou depois:',
+      MARK_T,
+      '(falas organizadas)',
+      MARK_R,
+      '(os 5 blocos numerados)',
+      '',
+      'TRANSCRIÇÃO BRUTA:',
+      rawTranscript()
+    ].join('\n');
+  }
+
+  function parseAnswer(text){
+    var iT = text.indexOf(MARK_T), iR = text.indexOf(MARK_R);
+    if (iT < 0 || iR < 0 || iR < iT) return null;
+    return {
+      org: text.slice(iT + MARK_T.length, iR).trim(),
+      sum: text.slice(iR + MARK_R.length).trim()
+    };
+  }
+
+  function renderOrganized(txt){
+    organized = txt;
+    els.org.innerHTML = txt.split('\n').map(function(line){
+      var m = line.match(/^\s*(Doutor|Doutora|Paciente|Não identificado)\s*:\s*(.*)$/i);
+      if (!m) return esc(line);
+      var cls = /^doutor/i.test(m[1]) ? 'doc' : (/^paciente/i.test(m[1]) ? 'pac' : 'oth');
+      var who = cls === 'doc' ? 'Doutor' : (cls === 'pac' ? 'Paciente' : 'Não identificado');
+      return '<span class="'+cls+'">'+who+':</span> '+esc(m[2]);
+    }).join('\n');
+    els.orgCard.hidden = false;
+  }
+
+  function renderSummary(txt){
+    summary = txt;
+    els.sum.innerHTML = txt.split('\n').map(function(line){
+      var m = line.match(/^\s*(\d\.\s*[^:]+:)\s*(.*)$/);
+      if (m) return '<span class="t">'+esc(m[1])+'</span>'+esc(m[2]);
+      return esc(line);
+    }).join('\n');
+    els.sumCard.hidden = false;
+  }
+
+  function showFallback(msg){
+    els.fallbackMsg.textContent = msg;
+    els.fallbackCard.hidden = false;
+  }
+
+  // ---- chamada à API ----
+  function organizeAndSummarize(){
+    var key = els.apiKey.value.trim();
+    els.fallbackCard.hidden = true;
+    if (!key){
+      showFallback('Nenhuma chave da API configurada. Abra "Configuração do consultório" e cole a chave, ou copie o prompt abaixo.');
+      return;
+    }
+    els.status.innerHTML = '<span class="spin"></span>Organizando a transcrição e gerando o resumo...';
+    els.status.className = 'status';
+    var ctrl = new AbortController();
+    var timer = setTimeout(function(){ ctrl.abort(); }, 240000);
+    var headers = {
+      'content-type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    };
+    var ws = els.wsId.value.trim();
+    if (ws) headers['anthropic-workspace-id'] = ws;
+    fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: headers,
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 16000,
+        output_config: { effort: 'medium' },
+        system: 'Você organiza transcrições de consultas em consultórios e produz resumos fiéis ao que foi dito. Responda em português do Brasil. Nunca invente informação.',
+        messages: [{ role: 'user', content: buildPrompt() }]
+      })
+    }).then(function(res){
+      clearTimeout(timer);
+      return res.json().then(function(data){ return { ok: res.ok, status: res.status, data: data }; });
+    }).then(function(r){
+      if (!r.ok){
+        var m = (r.data && r.data.error && r.data.error.message) || ('HTTP '+r.status);
+        if (r.status === 401) m = 'Chave da API inválida. Confira em "Configuração do consultório".';
+        if (r.status === 400 && /workspace/i.test(m)) m = 'Esta chave exige o ID do workspace. Preencha o campo em "Configuração do consultório".';
+        if (r.status === 429) m = 'Limite da API atingido no momento. Tente de novo em instantes.';
+        throw new Error(m);
+      }
+      if (r.data.stop_reason === 'refusal') throw new Error('A IA não processou esta transcrição.');
+      var text = (r.data.content || []).filter(function(b){ return b.type === 'text'; }).map(function(b){ return b.text; }).join('');
+      var parsed = parseAnswer(text);
+      if (!parsed) throw new Error('A resposta veio fora do formato esperado.');
+      renderOrganized(parsed.org);
+      renderSummary(parsed.sum);
+      setStatus('Pronto. Transcrição organizada e resumo gerados.');
+      els.sumCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }).catch(function(err){
+      clearTimeout(timer);
+      var msg = err && err.name === 'AbortError' ? 'A geração demorou demais e foi cancelada.' : (err && err.message) || 'Falha desconhecida.';
+      setStatus('Não foi possível gerar o resumo: '+msg, true);
+      showFallback('A geração automática falhou. Você pode tentar de novo ou copiar o prompt e colar no Claude.');
+    });
+  }
+
+  els.btnRetry.addEventListener('click', organizeAndSummarize);
+  els.btnCopyPrompt.addEventListener('click', function(){ copyText(buildPrompt(), 'Prompt copiado'); });
+  els.btnCopyRaw.addEventListener('click', function(){ copyText(rawTranscript(), 'Transcrição copiada'); });
+  els.btnCopyOrg.addEventListener('click', function(){ copyText(organized, 'Transcrição copiada'); });
+  els.btnCopySum.addEventListener('click', function(){ copyText(summary, 'Resumo copiado'); });
+
+  els.btnNew.addEventListener('click', function(){
+    segments = []; interim = ''; organized = ''; summary = '';
+    els.timer.textContent = '00:00';
+    renderLive();
+    els.btnCopyRaw.disabled = true;
+    els.orgCard.hidden = true; els.sumCard.hidden = true; els.fallbackCard.hidden = true; els.newBox.hidden = true;
+    setStatus('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+})();
+</script>
+</body>
+</html>
