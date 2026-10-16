@@ -25,11 +25,6 @@ interface MonthlyDataPoint {
   salesCount: number;
 }
 
-interface MonthlyTarget {
-  month_year: string;
-  target_value: number;
-}
-
 interface SectorTeam {
   sector_id: string;
   team_id: string;
@@ -186,19 +181,29 @@ export const SingleMonthlySalesChart = ({
         return all;
       };
 
-      // Fetch monthly targets
+      // Meta de cada mês (kpi_monthly_targets), pra TODOS os KPIs do gráfico.
+      // Antes só carregava quando vinha um único kpiId: com vários, a linha de meta
+      // usava a meta fixa do cadastro (Kapitão: R$ 2,89 mi fixo x R$ 3,06 mi do mês).
+      // Mesma prioridade do resolveMonthlyTarget da página: linhas da empresa >
+      // por unidade > por vendedor; dentro do mês, só o nível mais baixo (a "Meta").
       let monthlyTargetsMap: Record<string, number> = {};
-      if (kpiId) {
-        const { data: monthlyTargets } = await supabase
+      {
+        const { data: monthlyTargets } = await (supabase as any)
           .from("kpi_monthly_targets")
-          .select("month_year, target_value")
-          .eq("kpi_id", kpiId);
-
-        if (monthlyTargets) {
-          monthlyTargets.forEach((mt: MonthlyTarget) => {
-            monthlyTargetsMap[mt.month_year] = mt.target_value;
-          });
-        }
+          .select("kpi_id, month_year, target_value, level_order, unit_id, team_id, salesperson_id")
+          .in("kpi_id", targetKpiIds);
+        const porMes: Record<string, any[]> = {};
+        (monthlyTargets || []).forEach((mt: any) => { (porMes[mt.month_year] ||= []).push(mt); });
+        Object.entries(porMes).forEach(([mes, rows]) => {
+          const nivel = Math.min(...rows.map((r) => Number(r.level_order ?? 1)));
+          const doNivel = rows.filter((r) => Number(r.level_order ?? 1) === nivel);
+          const empresa = doNivel.filter((r) => !r.unit_id && !r.team_id && !r.salesperson_id);
+          const unidade = doNivel.filter((r) => r.unit_id && !r.team_id && !r.salesperson_id);
+          const vendedor = doNivel.filter((r) => r.salesperson_id);
+          const usar = empresa.length ? empresa : unidade.length ? unidade : vendedor;
+          const soma = usar.reduce((acc, r) => acc + Number(r.target_value || 0), 0);
+          if (soma > 0) monthlyTargetsMap[mes] = soma;
+        });
       }
 
       const getMonthlyTarget = (monthYear: string): number => {

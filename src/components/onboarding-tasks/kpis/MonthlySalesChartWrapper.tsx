@@ -111,13 +111,20 @@ export const MonthlySalesChartWrapper = (props: MonthlySalesChartWrapperProps) =
   const isFaturamento = (name: string) => /faturamento|vendas?|pedido|contrato/i.test(name) && !/receit|dinheiro|caixa|recebid/i.test(name);
   const isReceita = (name: string) => /receita|dinheiro|caixa|recebid/i.test(name);
 
+  // 16/10/2026 (Kapitão América): o gráfico somava TODOS os indicadores em reais
+  // (Faturamento bruto + Orçamentos + Devolução + Pedidos não faturados = R$ 18,5 mi em
+  // setembro, contra R$ 2,39 mi de faturamento real). Regra agora: se o grupo tem
+  // indicador marcado como meta principal, o gráfico mostra só esses. Sem meta
+  // principal, continua somando o grupo (compatível com quem só tem um indicador).
+  const soMetasPrincipais = (ks: MonetaryKpi[]) => (ks.some(k => k.is_main_goal) ? ks.filter(k => k.is_main_goal) : ks);
+
   // Group KPIs by type
   const faturamentoKpis = effectiveKpis.filter(k => isFaturamento(k.name));
-  const receitaKpis = effectiveKpis.filter(k => isReceita(k.name));
+  const receitaKpis = soMetasPrincipais(effectiveKpis.filter(k => isReceita(k.name)));
   
   // KPIs that don't match either pattern - treat as faturamento
   const otherKpis = effectiveKpis.filter(k => !isFaturamento(k.name) && !isReceita(k.name));
-  const allFaturamentoKpis = [...faturamentoKpis, ...otherKpis];
+  const allFaturamentoKpis = soMetasPrincipais([...faturamentoKpis, ...otherKpis]);
 
   const hasBothTypes = allFaturamentoKpis.length > 0 && receitaKpis.length > 0;
 
@@ -150,7 +157,7 @@ export const MonthlySalesChartWrapper = (props: MonthlySalesChartWrapperProps) =
   return (
     <SingleMonthlySalesChart
       companyId={companyId}
-      kpiIds={effectiveKpis.map(k => k.id)}
+      kpiIds={soMetasPrincipais(effectiveKpis).map(k => k.id)}
       kpiName={mainKpi?.name || "Vendas"}
       kpiTargetValue={mainKpi?.target_value || 0}
       {...rest}
