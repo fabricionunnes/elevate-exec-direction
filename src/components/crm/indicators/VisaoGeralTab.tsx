@@ -283,6 +283,8 @@ function MapaClientes({ estados, filtros, periodoTexto }: { estados: any[]; filt
 
 export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
   const [periodo, setPeriodo] = useState<Periodo>({ key: "mes" });
+  const [funilSel, setFunilSel] = useState("all");
+  const [funis, setFunis] = useState<{ id: string; name: string }[]>([]);
   const [origem, setOrigem] = useState("all");
   const [campanha, setCampanha] = useState("all");
   const [produto, setProduto] = useState("all");
@@ -305,6 +307,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
 
   useEffect(() => {
     supabase.from("crm_origins").select("id, name").eq("is_active", true).order("name").then(({ data }) => setOrigens((data || []) as any));
+    (supabase as any).from("crm_pipelines").select("id, name").neq("is_active", false).order("name").then(({ data }: any) => setFunis((data || []) as any));
     supabase.from("onboarding_services").select("id, name").eq("is_active", true).order("name").then(({ data }) => setProdutos((data || []) as any));
   }, []);
 
@@ -313,7 +316,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
     setCarregando(true);
     const { from, to } = intervalo(periodo);
     const prevFrom = new Date(from.getTime() - (to.getTime() - from.getTime()));
-    const filtros = { p_origin: origem === "all" ? null : origem, p_campaign: campanha === "all" ? null : campanha, p_product: produto === "all" ? null : produto, p_staff: equipe !== "all" ? equipe : null };
+    const filtros = { p_pipeline: funilSel === "all" ? null : funilSel, p_origin: origem === "all" ? null : origem, p_campaign: campanha === "all" ? null : campanha, p_product: produto === "all" ? null : produto, p_staff: equipe !== "all" ? equipe : null };
     const closer = equipe !== "all" ? equipe : null;
     const [vg, at, inv, invPrev] = await Promise.all([
       (supabase as any).rpc("crm_visao_geral", { p_from: from.toISOString(), p_to: to.toISOString(), ...filtros }),
@@ -338,15 +341,15 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
         setDialer({ atual: soma(from, to), anterior: soma(prevFrom, from) });
       }
     } catch { /* sem custo do discador */ }
-  }, [periodo, origem, campanha, produto, equipe, staffFiltrado]);
+  }, [periodo, funilSel, origem, campanha, produto, equipe, staffFiltrado]);
   useEffect(() => { carregar(); }, [carregar]);
 
   const { texto } = intervalo(periodo);
   // filtros da tela, pro diálogo de lista por UF do mapa (mesmos parâmetros da RPC principal)
   const filtrosUf = useMemo<FiltrosUf>(() => {
     const { from, to } = intervalo(periodo);
-    return { from: from.toISOString(), to: to.toISOString(), origin: origem === "all" ? null : origem, campaign: campanha === "all" ? null : campanha, product: produto === "all" ? null : produto, staff: equipe !== "all" ? equipe : null };
-  }, [periodo, origem, campanha, produto, equipe]);
+    return { from: from.toISOString(), to: to.toISOString(), pipeline: funilSel === "all" ? null : funilSel, origin: origem === "all" ? null : origem, campaign: campanha === "all" ? null : campanha, product: produto === "all" ? null : produto, staff: equipe !== "all" ? equipe : null };
+  }, [periodo, funilSel, origem, campanha, produto, equipe]);
   const A = dados?.atual || {}, B = dados?.anterior || {};
   const invA = useMemo(() => calcInvest(invest, dialer.atual, staffFiltrado), [invest, dialer.atual, staffFiltrado]);
   const invB = useMemo(() => calcInvest(investPrev, dialer.anterior, staffFiltrado), [investPrev, dialer.anterior, staffFiltrado]);
@@ -473,6 +476,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
           <p className="text-xs text-muted-foreground">Da aquisição à receita, em um só lugar. {texto}{dados?.periodo ? `, comparado com os ${n(dados.periodo.dias)} dias anteriores` : ""}.</p>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          <div className="w-[180px]"><SearchableSelect value={funilSel} onChange={setFunilSel} options={[{ value: "all", label: "Todos os funis" }, ...funis.map((f) => ({ value: f.id, label: f.name }))]} /></div>
           <div className="w-[180px]"><SearchableSelect value={origem} onChange={setOrigem} options={[{ value: "all", label: "Todas as origens" }, ...origens.map((o) => ({ value: o.id, label: o.name }))]} /></div>
           <div className="w-[200px]"><SearchableSelect value={campanha} onChange={setCampanha} options={campanhasOpcoes} /></div>
           <div className="w-[170px]"><SearchableSelect value={produto} onChange={setProduto} options={[{ value: "all", label: "Todos os produtos" }, ...produtos.map((p) => ({ value: p.name, label: p.name }))]} /></div>

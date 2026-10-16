@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { n, moeda, ThOrdenavel } from "./dashboardShared";
 
 export type TipoListaUf = "clientes" | "leads";
-export interface FiltrosUf { from: string; to: string; origin: string | null; campaign: string | null; product: string | null; staff: string | null }
+export interface FiltrosUf { from: string; to: string; pipeline?: string | null; origin: string | null; campaign: string | null; product: string | null; staff: string | null }
 
 interface Props {
   uf: string | null;
@@ -45,14 +45,14 @@ export function ClientesUfDialog({ uf, tipo, onTipo, onClose, filtros, periodoTe
     setCarregando(true); setDados(null);
     (supabase as any).rpc("crm_visao_geral_uf", {
       p_from: filtros.from, p_to: filtros.to, p_uf: uf, p_tipo: tipo,
-      p_origin: filtros.origin, p_campaign: filtros.campaign, p_product: filtros.product, p_staff: filtros.staff,
+      p_pipeline: filtros.pipeline ?? null, p_origin: filtros.origin, p_campaign: filtros.campaign, p_product: filtros.product, p_staff: filtros.staff,
     }).then(({ data, error }: any) => {
       if (!vivo) return;
       if (error) toast.error("Erro ao carregar a lista: " + error.message);
       setDados(data || null); setCarregando(false);
     });
     return () => { vivo = false; };
-  }, [uf, tipo, filtros.from, filtros.to, filtros.origin, filtros.campaign, filtros.product, filtros.staff]);
+  }, [uf, tipo, filtros.from, filtros.to, filtros.pipeline, filtros.origin, filtros.campaign, filtros.product, filtros.staff]);
   useEffect(() => { setSort(tipo === "clientes" ? { key: "valor", dir: "desc" } : { key: "data", dir: "desc" }); setBusca(""); setFiltroTipo("all"); }, [tipo, uf]);
 
   const colunas = tipo === "clientes"
