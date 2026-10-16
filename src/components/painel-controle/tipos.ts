@@ -102,7 +102,7 @@ export type Painel = {
     pago_por_categoria: { categoria: string; valor: number; n: number }[];
   };
   comercial: {
-    leads: number; leads_inflow: number; agendadas: number; realizadas: number; no_show: number; fora_icp: number;
+    leads: number; leads_inflow: number; mql?: number; sql?: number; agendadas: number; realizadas: number; no_show: number; fora_icp: number;
     vendas: number; receita: number; ticket: number | null; conv_reuniao_venda: number | null; presenca: number | null; ganhos_sem_valor: number;
     por_closer: { id: string; nome: string; papel: string; realizadas: number; no_show: number; vendas: number; receita: number }[];
     por_sdr: { id: string; nome: string; papel: string; agendadas: number; realizadas: number; no_show: number; fora_icp: number; vendas: number }[];
