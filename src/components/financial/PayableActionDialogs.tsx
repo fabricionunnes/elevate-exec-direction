@@ -451,7 +451,9 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
       });
       setEditScope("single");
       setEditId(null);
-      supabase.from("financial_banks").select("id, name").then(({ data }) => setBankAccounts((data as any) || []));
+      // conta principal já vem escolhida; ordem = a da tela de Bancos
+      supabase.from("financial_banks").select("id, name, is_main").eq("is_active", true).order("is_main", { ascending: false }).order("sort_order", { ascending: true, nullsFirst: false }).order("name")
+        .then(({ data }) => { const b = (data as any) || []; setBankAccounts(b); const principal = b.find((x: any) => x.is_main); if (principal) setBankId(principal.id); });
       loadPagamentos();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

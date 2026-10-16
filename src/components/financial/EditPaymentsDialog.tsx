@@ -79,6 +79,7 @@ export function EditPaymentsDialog({
         .from("financial_banks")
         .select("id, name")
         .eq("is_active", true)
+        .order("is_main", { ascending: false }).order("sort_order", { ascending: true, nullsFirst: false }).order("name")
         .then(({ data }) => setBanks((data as any) || []));
     }
   }, [open, receivable?.id]);
