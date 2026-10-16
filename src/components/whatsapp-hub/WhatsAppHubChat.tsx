@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { TextoWhatsApp } from "@/lib/whatsapp/TextoWhatsApp";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -482,7 +483,7 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
                   </div>
                 )}
                 {msg.content && !msg.media_type?.startsWith("audio") && (
-                  <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  <p className="whitespace-pre-wrap break-words"><TextoWhatsApp texto={msg.content} /></p>
                 )}
                 <div className={cn("flex items-center gap-1 mt-1", msg.direction === "outgoing" ? "justify-end" : "justify-start")}>
                   <span className={cn("text-[10px]", msg.direction === "outgoing" ? "text-primary-foreground/80" : "text-muted-foreground")}>

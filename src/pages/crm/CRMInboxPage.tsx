@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, Fragment } from "react";
+import { TextoWhatsApp, textoWhatsAppLimpo } from "@/lib/whatsapp/TextoWhatsApp";
 import { waErrorPt } from "@/lib/whatsapp/waErrorPt";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -1324,7 +1325,7 @@ export const CRMInboxPage = () => {
                       </Badge>
                     )}
                     <p className={cn("text-xs truncate min-w-0 flex-1", conv.unread_count > 0 ? "text-foreground font-semibold" : "text-muted-foreground")}>
-                      {conv.last_message || "Sem mensagens"}
+                      {textoWhatsAppLimpo(conv.last_message) || "Sem mensagens"}
                     </p>
                     {conv.unread_count > 0 && (
                       <Badge className="h-5 min-w-5 shrink-0 rounded-full px-1.5 flex items-center justify-center text-[10px]" title={`${conv.unread_count} não lidas`}>
@@ -1593,7 +1594,7 @@ export const CRMInboxPage = () => {
                             📷 Imagem não disponível
                           </div>
                           {message.content && message.content !== "[Imagem]" && (
-                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                            <p className="text-sm whitespace-pre-wrap"><TextoWhatsApp texto={message.content} /></p>
                           )}
                           {/* Receipt analysis button for inbound images when company has open invoices */}
                           {message.direction === "inbound" && identifiedCompany && companyInvoices.length > 0 && (
@@ -1620,7 +1621,7 @@ export const CRMInboxPage = () => {
                             🎥 Vídeo não disponível
                           </div>
                           {message.content && message.content !== "[Vídeo]" && (
-                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                            <p className="text-sm whitespace-pre-wrap"><TextoWhatsApp texto={message.content} /></p>
                           )}
                         </div>
                       ) : message.type === "audio" ? (
@@ -1669,7 +1670,7 @@ export const CRMInboxPage = () => {
                           </div>
                         </div>
                       ) : (
-                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                        <p className="text-sm whitespace-pre-wrap"><TextoWhatsApp texto={message.content} /></p>
                       )}
                       <div className="flex items-center justify-end gap-1 mt-1">
                         <span className="text-[10px] text-muted-foreground" title={format(new Date(message.created_at), "dd/MM/yyyy HH:mm")}>
