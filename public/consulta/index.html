@@ -105,6 +105,11 @@ input:focus{outline:3px solid #BFD3F2;border-color:var(--navy)}
         <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off">
         <div class="hint">Usada apenas para organizar a transcrição e gerar o resumo ao encerrar a consulta. Sem a chave, o app oferece o prompt pronto para copiar.</div>
       </div>
+      <div class="full">
+        <label for="wsId">ID do workspace (só se a chave pedir)</label>
+        <input type="text" id="wsId" placeholder="wrkspc_..." autocomplete="off">
+        <div class="hint">Chaves que começam com "sk-ant-usr-" não estão presas a um workspace e exigem este ID. Chaves "sk-ant-api03-" não precisam.</div>
+      </div>
     </div>
   </details>
 
@@ -177,7 +182,7 @@ input:focus{outline:3px solid #BFD3F2;border-color:var(--navy)}
   var MARK_R = '===RESUMO===';
 
   var els = {
-    cfg:$('cfg'), drNome:$('drNome'), drEsp:$('drEsp'), ctx:$('ctx'), apiKey:$('apiKey'), subtitle:$('subtitle'),
+    cfg:$('cfg'), drNome:$('drNome'), drEsp:$('drEsp'), ctx:$('ctx'), apiKey:$('apiKey'), wsId:$('wsId'), subtitle:$('subtitle'),
     consent:$('consent'), consentBox:$('consentBox'), btnStart:$('btnStart'), btnStop:$('btnStop'), timer:$('timer'),
     status:$('status'), recCard:$('recCard'), live:$('live'), btnCopyRaw:$('btnCopyRaw'),
     orgCard:$('orgCard'), org:$('org'), btnCopyOrg:$('btnCopyOrg'),
@@ -191,7 +196,7 @@ input:focus{outline:3px solid #BFD3F2;border-color:var(--navy)}
   var organized = '', summary = '';
 
   // ---- configuração (localStorage deste navegador) ----
-  var CFG_KEYS = ['drNome','drEsp','ctx','apiKey'];
+  var CFG_KEYS = ['drNome','drEsp','ctx','apiKey','wsId'];
   function loadCfg(){
     try{
       CFG_KEYS.forEach(function(k){ var v = localStorage.getItem('consulta.'+k); if (v !== null) els[k].value = v; });
@@ -397,15 +402,18 @@ input:focus{outline:3px solid #BFD3F2;border-color:var(--navy)}
     els.status.className = 'status';
     var ctrl = new AbortController();
     var timer = setTimeout(function(){ ctrl.abort(); }, 240000);
+    var headers = {
+      'content-type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    };
+    var ws = els.wsId.value.trim();
+    if (ws) headers['anthropic-workspace-id'] = ws;
     fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       signal: ctrl.signal,
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: headers,
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 16000,
@@ -420,6 +428,7 @@ input:focus{outline:3px solid #BFD3F2;border-color:var(--navy)}
       if (!r.ok){
         var m = (r.data && r.data.error && r.data.error.message) || ('HTTP '+r.status);
         if (r.status === 401) m = 'Chave da API inválida. Confira em "Configuração do consultório".';
+        if (r.status === 400 && /workspace/i.test(m)) m = 'Esta chave exige o ID do workspace. Preencha o campo em "Configuração do consultório".';
         if (r.status === 429) m = 'Limite da API atingido no momento. Tente de novo em instantes.';
         throw new Error(m);
       }
