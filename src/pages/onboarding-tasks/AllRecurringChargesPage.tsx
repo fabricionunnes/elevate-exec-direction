@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { Star, ChevronUp, ChevronDown } from "lucide-react";
 
 function getLocalDateString(date = new Date()): string {
   const y = date.getFullYear();
@@ -503,7 +504,7 @@ export default function AllRecurringChargesPage() {
         fetchAllRows("financial_payables", "due_date"),
         fetchAllRows("company_invoices", "due_date"),
         fetchAllRows("financial_receivables", "due_date"),
-        supabase.from("financial_banks").select("*").eq("is_active", true).order("name"),
+        supabase.from("financial_banks").select("*").eq("is_active", true).order("is_main", { ascending: false }).order("sort_order", { ascending: true, nullsFirst: false }).order("name"),
         supabase.from("staff_financial_categories").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("staff_financial_cost_centers").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("onboarding_staff").select("id, name, role").eq("is_active", true).order("name"),
@@ -2556,15 +2557,43 @@ export default function AllRecurringChargesPage() {
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {banks.map((bank: any) => (
+                {banks.map((bank: any, idx: number) => (
                   <Card key={bank.id} className="cursor-pointer transition-shadow hover:shadow-md" onClick={() => { setStatementBank(bank); setIsStatementOpen(true); }}>
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-base flex items-center gap-2">
                           <Landmark className="h-4 w-4 text-primary" />
                           {bank.name}
+                          {bank.is_main && <Badge className="ml-1 bg-amber-500 hover:bg-amber-500 text-white text-[10px]">Principal</Badge>}
                         </CardTitle>
                         <div className="flex gap-1">
+                          {/* ordem e principal: o principal fica sempre em primeiro (Fabrício, 16/10/2026) */}
+                          <Button variant="ghost" size="icon" className={`h-7 w-7 ${bank.is_main ? "text-amber-500" : "text-muted-foreground"}`} title={bank.is_main ? "Conta principal" : "Tornar principal"} onClick={async (e) => {
+                            e.stopPropagation();
+                            if (bank.is_main) return;
+                            const { error } = await (supabase as any).rpc("financial_banks_principal", { p_id: bank.id });
+                            if (error) { toast.error(error.message); return; }
+                            toast.success(`${bank.name} agora é a conta principal`);
+                            recarregarSilencioso("bancos");
+                          }}>
+                            <Star className={`h-3.5 w-3.5 ${bank.is_main ? "fill-amber-500" : ""}`} />
+                          </Button>
+                          {!bank.is_main && idx > (banks[0]?.is_main ? 1 : 0) && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Subir" onClick={async (e) => {
+                              e.stopPropagation();
+                              const ids = banks.map((b: any) => b.id); [ids[idx - 1], ids[idx]] = [ids[idx], ids[idx - 1]];
+                              const { error } = await (supabase as any).rpc("financial_banks_reordenar", { p_ids: ids });
+                              if (error) toast.error(error.message); else recarregarSilencioso("bancos");
+                            }}><ChevronUp className="h-3.5 w-3.5" /></Button>
+                          )}
+                          {!bank.is_main && idx < banks.length - 1 && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Descer" onClick={async (e) => {
+                              e.stopPropagation();
+                              const ids = banks.map((b: any) => b.id); [ids[idx + 1], ids[idx]] = [ids[idx], ids[idx + 1]];
+                              const { error } = await (supabase as any).rpc("financial_banks_reordenar", { p_ids: ids });
+                              if (error) toast.error(error.message); else recarregarSilencioso("bancos");
+                            }}><ChevronDown className="h-3.5 w-3.5" /></Button>
+                          )}
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => {
                             e.stopPropagation();
                             setBankForm({ name: bank.name, bank_code: bank.bank_code || "", agency: bank.agency || "", account_number: bank.account_number || "", initial_balance: (bank.initial_balance_cents / 100).toString() });

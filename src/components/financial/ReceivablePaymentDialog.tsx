@@ -82,15 +82,15 @@ export function ReceivablePaymentDialog({
   useEffect(() => {
     if (open) {
       // Load banks
+      // Reset form (a conta principal já vem escolhida)
+      setBankId("none");
       supabase
         .from("financial_banks")
-        .select("id, name")
+        .select("id, name, is_main")
         .eq("is_active", true)
-        .order("name")
-        .then(({ data }) => setBanks((data as any) || []));
+        .order("is_main", { ascending: false }).order("sort_order", { ascending: true, nullsFirst: false }).order("name")
+        .then(({ data }) => { const b = (data as any) || []; setBanks(b); const principal = b.find((x: any) => x.is_main); if (principal) setBankId(principal.id); });
 
-      // Reset form
-      setBankId("none");
       setPaymentDate(new Date());
       setDiscount(0);
       setInterest(0);
