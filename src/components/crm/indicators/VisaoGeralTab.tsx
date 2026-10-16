@@ -355,6 +355,8 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
     receita: [n(A.receita), n(B.receita)],
     vendas: [n(A.vendas), n(B.vendas)],
     leads: [n(A.leads), n(B.leads)],
+    mql: [n(A.mql), n(B.mql)],
+    sql: [n(A.sql), n(B.sql)],
     invest: [invest ? invA.total : null, investPrev ? invB.total : null],
     roas: [invest ? div(n(A.receita_pagos), invA.total) : null, investPrev ? div(n(B.receita_pagos), invB.total) : null],
     cpl: [invest ? div(invA.total, n(A.leads_pagos)) : null, investPrev ? div(invB.total, n(B.leads_pagos)) : null],
@@ -510,6 +512,8 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
             <KpiVar label="Receita total" valor={kpis.receita[0]} anterior={kpis.receita[1]} formato={moeda} dica="Vendas ganhas no período (crm_sales, fora de funis de evento), igual à aba Vendas" onClick={() => onNavigate?.("sales")} />
             <KpiVar label="Vendas" valor={kpis.vendas[0]} anterior={kpis.vendas[1]} formato={inteiro} dica="Quantidade de vendas no período" onClick={() => setLista({ titulo: "Vendas do período", itens: dados.vendas_lista || [] })} />
             <KpiVar label="Leads gerados" valor={kpis.leads[0]} anterior={kpis.leads[1]} formato={inteiro} dica="Leads criados no período, fora das etapas que não contam (Pessoal, Fora do ICP)" onClick={() => onNavigate?.("negocios")} />
+            <KpiVar label="MQL" valor={kpis.mql[0]} anterior={kpis.mql[1]} formato={inteiro} dica={`Leads do período que mostraram interesse ou foram qualificados: responderam no WhatsApp/Instagram, avançaram da etapa de entrada ou têm reunião (${kpis.leads[0] ? Math.round((kpis.mql[0] / kpis.leads[0]) * 100) : 0}% dos leads)`} onClick={() => onNavigate?.("negocios")} />
+            <KpiVar label="SQL" valor={kpis.sql[0]} anterior={kpis.sql[1]} formato={inteiro} dica={`Leads do período aceitos pela venda: com reunião agendada ou realizada (${kpis.mql[0] ? Math.round((kpis.sql[0] / kpis.mql[0]) * 100) : 0}% dos MQL)`} onClick={() => onNavigate?.("presales")} />
             <KpiVar label="Investimento em mídia" valor={kpis.invest[0]} anterior={kpis.invest[1]} formato={moeda} dica={`Tráfego Meta ${moeda(invA.meta)} + discador ${moeda(invA.discador)} + outros custos ${moeda(invA.outros)}${staffFiltrado ? " (rateado por leads do closer)" : ""}`} onClick={() => onNavigate?.("sales")} inverso />
             <KpiVar label="ROAS pago" valor={kpis.roas[0]} anterior={kpis.roas[1]} formato={(v) => `${v.toFixed(2)}x`} dica={`Receita de leads de mídia paga (${moeda(A.receita_pagos)}) sobre o investimento`} onClick={() => onNavigate?.("traffic")} />
             <KpiVar label="CPL pago" valor={kpis.cpl[0]} anterior={kpis.cpl[1]} formato={moedaCheia} dica={`Investimento sobre leads de mídia paga (${inteiro(A.leads_pagos)})`} onClick={() => onNavigate?.("traffic")} inverso />

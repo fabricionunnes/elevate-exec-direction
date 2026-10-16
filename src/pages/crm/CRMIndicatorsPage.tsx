@@ -12,8 +12,9 @@ import { AtividadesDashboardTab } from "@/components/crm/indicators/AtividadesDa
 import { NegociosDashboardTab } from "@/components/crm/indicators/NegociosDashboardTab";
 import { VisaoGeralTab } from "@/components/crm/indicators/VisaoGeralTab";
 import { FormulariosTab } from "@/components/crm/indicators/FormulariosTab";
+import { PercursoTab } from "@/components/crm/indicators/PercursoTab";
 import { CRMCommissionCard, CommissionSummary } from "@/components/crm/CRMCommissionCard";
-import { DollarSign, ChevronDown, TrendingUp, Wallet, Megaphone, Filter, Banknote, MessageSquare, ListChecks, Briefcase, LayoutDashboard, ClipboardList } from "lucide-react";
+import { DollarSign, ChevronDown, TrendingUp, Wallet, Megaphone, Filter, Banknote, MessageSquare, ListChecks, Briefcase, LayoutDashboard, ClipboardList, Route } from "lucide-react";
 
 export const CRMIndicatorsPage = () => {
   const { staffRole, staffId } = useOutletContext<{ staffRole: string; isAdmin: boolean; staffId: string | null }>();
@@ -138,6 +139,15 @@ export const CRMIndicatorsPage = () => {
                 <Megaphone className="h-3.5 w-3.5" /> Tráfego Pago
               </TabsTrigger>
             )}
+            {/* Percurso do contrato: o que um contrato precisa pra fechar; só gestão */}
+            {isAdmin && (
+              <TabsTrigger
+                value="percurso"
+                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-6 gap-1.5"
+              >
+                <Route className="h-3.5 w-3.5" /> Percurso
+              </TabsTrigger>
+            )}
             {/* Onde o lead para nos formulários de diagnóstico (Ads, Social, Finance): só gestão */}
             {isAdmin && (
               <TabsTrigger
@@ -163,7 +173,7 @@ export const CRMIndicatorsPage = () => {
           <TabsContent value="visao" className="m-0 h-full">
             <VisaoGeralTab staffId={staffId} lockedStaffId={lockedStaffId} onNavigate={(tab) => {
               // só abre abas que o papel do usuário enxerga
-              const ok = tab === "sales" ? showSales : tab === "presales" ? showPresales : ["funnels", "traffic", "leadrevenue", "formularios"].includes(tab) ? isAdmin : true;
+              const ok = tab === "sales" ? showSales : tab === "presales" ? showPresales : ["funnels", "traffic", "leadrevenue", "formularios", "percurso"].includes(tab) ? isAdmin : true;
               setActiveTab(ok ? tab : "negocios");
             }} />
           </TabsContent>
@@ -194,6 +204,11 @@ export const CRMIndicatorsPage = () => {
           {isAdmin && (
             <TabsContent value="traffic" className="m-0 h-full p-4">
               <CRMTrafficTab isAdmin={isAdmin} />
+            </TabsContent>
+          )}
+          {isAdmin && (
+            <TabsContent value="percurso" className="m-0 h-full">
+              <PercursoTab />
             </TabsContent>
           )}
           {isAdmin && (
