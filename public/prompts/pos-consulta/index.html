@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Prompt do agente de Pós-consulta</title>
+<meta name="description" content="Prompts da Secretária Comercial e do Resumo de Consulta para copiar." />
+<meta name="robots" content="noindex" />
+<link rel="icon" href="/favicon.ico" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400..800&display=swap">
+<style>
+*{box-sizing:border-box}html,body{margin:0}h1,h2,p,pre{margin:0}
+/* Layout: coluna única de leitura no celular, um cartão por prompt com botão de copiar sempre à mão. */
+:root {
+  --bg: #F5F0E4; --surface: #FBF8F0; --fg: #131210; --muted: #5F594E;
+  --line: #DDD3BD; --accent: #8A5F00; --btn-bg: #131210; --btn-fg: #F5F0E4;
+  --font: 'DM Sans', Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131210; --surface: #1E1C19; --fg: #F5F0E4; --muted: #B9B2A3;
+    --line: #38342D; --accent: #E0A526; --btn-bg: #E0A526; --btn-fg: #131210; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131210; --surface: #1E1C19; --fg: #F5F0E4; --muted: #B9B2A3;
+  --line: #38342D; --accent: #E0A526; --btn-bg: #E0A526; --btn-fg: #131210; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 17px; line-height: 1.5; }
+.wrap { max-width: 720px; margin-inline: auto; padding-inline: 20px; padding-block: 32px 64px; display: flex; flex-direction: column; gap: 32px; }
+.eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+h1 { font-size: 34px; line-height: 1.1; font-weight: 700; letter-spacing: -.02em; text-wrap: balance; }
+h2 { font-size: 24px; line-height: 1.2; font-weight: 700; text-wrap: balance; }
+header { display: flex; flex-direction: column; gap: 10px; }
+header p, .how { color: var(--muted); }
+nav { display: flex; flex-wrap: wrap; gap: 10px; }
+nav a { color: var(--fg); border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; text-decoration: none; font-weight: 600; font-size: 15px; }
+section { display: flex; flex-direction: column; gap: 14px; border-top: 1px solid var(--line); padding-top: 28px; scroll-margin-top: 16px; }
+.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+button { font-family: var(--font); font-size: 16px; font-weight: 700; background: var(--btn-bg); color: var(--btn-fg); border: 0; border-radius: 10px; padding: 12px 20px; cursor: pointer; }
+button:focus-visible, nav a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+pre { font-family: var(--font); font-size: 16px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; user-select: all; -webkit-user-select: all; }
+footer { color: var(--muted); font-size: 15px; border-top: 1px solid var(--line); padding-top: 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<p class="eyebrow">Consultórios Inteligentes · Construindo seus Agentes</p>
+<h1>Prompt do agente de Pós-consulta</h1>
+<p>Copie o prompt, cole no Claude e troque o que está entre colchetes pelos dados do seu consultório.</p>
+</header>
+<section style="border-top:0;padding-top:0" id="pos-consulta">
+<div class="head"><button type="button" id="btn-secretaria" data-alvo="p-secretaria">Copiar prompt</button></div>
+<p class="how">Crie um projeto no Claude com o nome do agente e cole este texto nas instruções.</p>
+<pre id="p-secretaria">PAPEL
+Você é [nome], da equipe do consultório de [Dr(a). nome], [especialidade]. Você acompanha o paciente depois do atendimento. Seu objetivo é que ele se sinta cuidado, siga o que foi combinado e, se estiver satisfeito, indique o consultório.
+
+CONTEXTO
+[Cole aqui a sua Documentação Ouro inteira]
+[Orientações gerais que você dá a todo paciente depois da consulta]
+
+TOM
+Tom de cuidado, mensagens curtas, uma pergunta por vez, sempre com o nome do paciente.
+
+ROTEIRO
+1. [1 dia] depois da consulta, pergunte como ele está e se ficou alguma dúvida sobre o que foi combinado.
+2. Lembre o próximo passo com data: retorno, exame ou início do tratamento.
+3. [7 dias] depois, pergunte de 0 a 10 o quanto ele recomendaria o consultório.
+4. Nota 9 ou 10: agradeça e pergunte se ele conhece alguém que também poderia ser ajudado.
+5. Nota 8 ou menos: pergunte o que poderia ter sido melhor e avise a equipe.
+
+REGRAS
+Só repita orientações que estão no contexto, com as mesmas palavras.
+Retorno: [como o paciente agenda].
+
+LIMITES
+Se o paciente relatar sintoma novo, piora, dor ou efeito colateral, responda "Vou avisar a equipe agora" e pare. Nunca avalie sozinho.
+Nunca mude nem complemente uma orientação do médico.
+Se perguntarem se você é uma pessoa, diga que é a assistente virtual do consultório.</pre>
+</section>
+<footer>Fabrício Nunnes · @ofabricionunnes</footer>
+</div>
+<script>
+document.querySelectorAll('button[data-alvo]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var pre = document.getElementById(b.dataset.alvo);
+    var ok = function () { b.textContent = 'Copiado'; setTimeout(function () { b.textContent = 'Copiar prompt'; }, 2000); };
+    var manual = function () {
+      var r = document.createRange(); r.selectNodeContents(pre);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      b.textContent = 'Texto selecionado, copie';
+    };
+    try { navigator.clipboard.writeText(pre.textContent).then(ok, manual); } catch (e) { manual(); }
+  });
+});
+</script>
+</body>
+</html>
