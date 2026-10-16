@@ -29,7 +29,7 @@ export const StaffSettingsSheet = ({
   const [savingPhone, setSavingPhone] = useState(false);
   // Assinatura das mensagens no Atendimento (pedido do Fabrício 22/09/2026)
   const [signature, setSignature] = useState("");
-  const [signatureDefault, setSignatureDefault] = useState(true);
+  const [signatureDefault, setSignatureDefault] = useState(false);
   const [savingSignature, setSavingSignature] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -64,7 +64,7 @@ export const StaffSettingsSheet = ({
         setStaffId(staff.id);
         setPhone(staff.phone || "");
         setSignature((staff as any).wa_signature || "");
-        setSignatureDefault((staff as any).wa_signature_default !== false);
+        setSignatureDefault((staff as any).wa_signature_default === true);
         return;
       }
 
