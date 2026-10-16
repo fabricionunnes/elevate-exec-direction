@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-16T15:01:07",
+ "gerado_em": "2026-10-16T22:31:12",
  "posts": [
+  {
+   "slug": "suporte-pos-venda-nao-pode-depender-tempo-dono",
+   "url": "/blog/suporte-pos-venda-nao-pode-depender-tempo-dono/",
+   "titulo": "Suporte pós-venda não pode depender do tempo do dono",
+   "resumo": "Cliente que precisa do dono para tirar dúvida depois da venda mostra que falta estrutura. O dono tem que estar na outra ponta.",
+   "tags": [
+    "suporte",
+    "dependência operacional",
+    "estrutura comercial",
+    "retenção",
+    "tempo do dono"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-16",
+   "ts": 2182
+  },
   {
    "slug": "dono-travado-operacao-nao-consegue-crescer",
    "url": "/blog/dono-travado-operacao-nao-consegue-crescer/",
