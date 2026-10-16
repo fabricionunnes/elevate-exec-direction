@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback, Fragment } from "react";
+import { TextoWhatsApp } from "@/lib/whatsapp/TextoWhatsApp";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -903,7 +904,7 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
                           </a>
                         ) : null}
                         {m.content && !/^\[(áudio|audio|imagem|image|vídeo|video|sticker|figurinha)\]$/i.test(m.content.trim()) && (
-                          <div className="whitespace-pre-wrap break-words">{m.content}</div>
+                          <div className="whitespace-pre-wrap break-words"><TextoWhatsApp texto={m.content} /></div>
                         )}
                         <div
                           className={cn(
