@@ -3095,13 +3095,22 @@ Deno.serve(async (req)=>{
       const isAudio = (m)=>String(m.message_type || "").toLowerCase().includes("audio") || String(m.message_type || "").toLowerCase().includes("ptt") || /^\[(audio|áudio|voice)\]$/i.test(String(m.content || "").trim());
       const audiosToDo = rawHistory.filter((m)=>isAudio(m) && !m.transcription && m.media_url).slice(-4);
       for (const m of audiosToDo){
-        const text = await transcribeAudio(m.media_url);
-        if (text) {
-          m.transcription = text;
-          const table = isIG ? "instagram_messages" : "crm_whatsapp_messages";
+        const r = await transcribeAudioDetalhado(m.media_url);
+        const table = isIG ? "instagram_messages" : "crm_whatsapp_messages";
+        if (r.text) {
+          m.transcription = r.text;
           await supabase.from(table).update({
-            transcription: text
+            transcription: r.text,
+            ...(isIG ? {} : { error_text: null })
           }).eq("id", m.id);
+        } else {
+          // 16/10/2026: a falha ficava só no log e o agente respondia "não veio o áudio"
+          // por dias sem ninguém saber (chave da OpenAI/AssemblyAI inválida ou sem crédito).
+          // Agora o motivo fica na mensagem (error_text) e o vigia ai-health-check lê daqui.
+          console.error("[audio] não transcreveu:", r.error);
+          if (!isIG) {
+            await supabase.from(table).update({ error_text: `transcrição falhou: ${String(r.error || "motivo desconhecido").slice(0, 300)}` }).eq("id", m.id);
+          }
         }
       }
       // Vídeo e imagem (14/09/2026): vídeo → transcreve a fala (Whisper/AssemblyAI

@@ -159,11 +159,22 @@ export const RealtimeNotifications = () => {
   const notificationTarget = (n: Notification): { path: string; label: string } | null => {
     // notificações novas já dizem pra onde levar
     if (n.action_url && !/^https?:\/\//i.test(n.action_url)) return { path: n.action_url.replace(/^\/?#/, ""), label: "Abrir" };
+    // link do próprio app colado no texto (fluxos antigos): vira o botão, não fica cru na tela
+    const noTexto = String(n.message || "").match(/https?:\/\/[^\s]*unvholdings\.com\.br\/#(\/[^\s)]+)/i);
+    if (noTexto) return { path: noTexto[1], label: /\/crm\/leads\//.test(noTexto[1]) ? "Abrir lead" : "Abrir" };
     if ((n.reference_type === "crm_lead" || n.reference_type === "lead") && n.reference_id) {
       return { path: `/crm/leads/${n.reference_id}`, label: "Abrir lead" };
     }
     if (n.project_id) return { path: `/onboarding-tasks/${n.project_id}`, label: "Ver Projeto" };
     return null;
+  };
+
+  // Texto da notificação sem link cru: o link já virou botão. Em 16/10/2026 o alerta
+  // "Lead parado 3 dias" aparecia cortado porque a URL inteira estava no texto.
+  const textoNotificacao = (n: Notification) => {
+    const msg = String(n.message || "");
+    if (!notificationTarget(n)) return msg;
+    return msg.replace(/\s*https?:\/\/[^\s]+/g, "").replace(/\s+([.,;:])/g, "$1").trim();
   };
 
   const handleGoToNotification = async (notification: Notification) => {
@@ -197,12 +208,12 @@ export const RealtimeNotifications = () => {
             <div className="space-y-4">
               <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
                 <div className="flex items-start justify-between gap-2">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <Badge variant="destructive" className="mb-2">
                       {typeLabels[currentNotification.type] || "Alerta"}
                     </Badge>
-                    <h4 className="font-semibold text-lg">{currentNotification.title}</h4>
-                    <p className="text-muted-foreground mt-1">{currentNotification.message}</p>
+                    <h4 className="font-semibold text-lg break-words">{currentNotification.title}</h4>
+                    <p className="text-muted-foreground mt-1 break-words whitespace-pre-line">{textoNotificacao(currentNotification)}</p>
                     <p className="text-xs text-muted-foreground mt-2">
                       {format(new Date(currentNotification.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
@@ -280,8 +291,8 @@ export const RealtimeNotifications = () => {
                           <h4 className="font-medium text-sm leading-tight truncate">
                             {notification.title}
                           </h4>
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                            {notification.message}
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 break-words">
+                            {textoNotificacao(notification)}
                           </p>
                         </div>
                         <Button

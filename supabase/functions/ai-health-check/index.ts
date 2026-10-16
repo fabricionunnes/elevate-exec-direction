@@ -6,6 +6,7 @@ const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers
 // possivel e avisa o Fabricio no WhatsApp no mesmo dia.
 // Nao avisa de novo antes de 12h, e avisa tambem quando volta. Desde 07/10/2026 roda a cada
 // 30 min (cron ai-health-30min) e avisa pelo Marcelo e pelo Fabricio Nunnes.
+// Desde 16/10/2026 vigia tambem a transcricao de audio dos agentes (vigiaTranscricao).
 
 const FONE = "5531989840003";        // Fabricio
 const ANTI_SPAM_HORAS = 12;
@@ -50,6 +51,54 @@ async function zap(sb: any, texto: string) {
   return (res.some((x) => x.endsWith(": enviado")) ? "enviado" : "falhou") + " [" + res.join(" | ") + "]";
 }
 
+// Lê as falhas de transcrição gravadas pelo crm-agent-respond nas últimas 3h. Quebrado =
+// pelo menos 2 áudios com falha e nenhum transcrito no período. Avisa no WhatsApp (anti-spam
+// de 12h, igual ao check da Anthropic) e manda "voltou" quando normaliza.
+function motivoTranscricao(erro: string) {
+  const e = erro.toLowerCase();
+  if (/incorrect api key|invalid_api_key/.test(e)) return "a chave da OpenAI guardada no Nexus está INVÁLIDA (não é falta de crédito)";
+  if (/no credits|insufficient_quota|exceeded your current quota|billing/.test(e)) return "a OpenAI está SEM CRÉDITO";
+  if (/assembly.*401|token missing\/invalid/.test(e)) return "a chave da AssemblyAI está inválida";
+  if (/balance|insufficient funds/.test(e)) return "a AssemblyAI está sem saldo";
+  if (/download \d+/.test(e)) return "o arquivo do áudio não baixou (link vencido)";
+  return "erro: " + erro.slice(0, 160);
+}
+async function vigiaTranscricao(sb: any, silencioso: boolean) {
+  const desde = new Date(Date.now() - 3 * 3600000).toISOString();
+  const { data: falhas } = await sb.from("crm_whatsapp_messages")
+    .select("error_text, created_at").like("error_text", "transcrição falhou:%").gte("created_at", desde)
+    .order("created_at", { ascending: false }).limit(50);
+  const { count: okCount } = await sb.from("crm_whatsapp_messages")
+    .select("id", { count: "exact", head: true }).in("type", ["audio", "ptt"]).eq("direction", "inbound")
+    .gte("created_at", desde).not("transcription", "is", null);
+  const nFalhas = (falhas || []).length;
+  const quebrado = nFalhas >= 2 && !(okCount && okCount > 0);
+  const erro = nFalhas ? String(falhas[0].error_text).replace(/^transcrição falhou:\s*/, "") : null;
+
+  const { data: ant } = await sb.from("ai_health_log")
+    .select("ok").eq("tipo", "transcricao").order("checked_at", { ascending: false }).limit(1).maybeSingle();
+  const estavaQuebrado = ant ? ant.ok === false : false;
+  const { data: ult } = await sb.from("ai_health_log")
+    .select("checked_at").eq("tipo", "transcricao").eq("alertou", true).order("checked_at", { ascending: false }).limit(1).maybeSingle();
+  const horas = ult ? (Date.now() - new Date(ult.checked_at).getTime()) / 3600000 : 1e9;
+
+  let avisou = false, envio = "nao precisou";
+  if (quebrado && horas >= ANTI_SPAM_HORAS && !silencioso) {
+    const msg = "Nexus — OS AGENTES NÃO ESTÃO OUVINDO OS ÁUDIOS DOS LEADS.\n\n"
+      + nFalhas + " áudio(s) sem transcrição nas últimas 3h. Motivo: " + motivoTranscricao(erro || "") + ".\n"
+      + "Enquanto isso o agente responde \"não veio o áudio direito, consegue escrever?\" e o lead esfria.\n\n"
+      + "Resolve em: platform.openai.com > API keys (criar chave nova, com crédito na conta) e colar em "
+      + "Supabase > Edge Functions > Secrets > OPENAI_API_KEY. Reserva: AssemblyAI (ASSEMBLYAI_API_KEY) com saldo.";
+    envio = await zap(sb, msg);
+    avisou = envio.startsWith("enviado");
+  }
+  if (!quebrado && estavaQuebrado && !silencioso && okCount && okCount > 0) {
+    envio = await zap(sb, "Nexus — a transcrição de áudio voltou. Os agentes já estão ouvindo os áudios dos leads de novo.");
+  }
+  await sb.from("ai_health_log").insert({ ok: !quebrado, status_code: null, erro: quebrado ? erro : null, alertou: avisou, tipo: "transcricao" });
+  return { quebrado, falhas_3h: nFalhas, transcritos_3h: okCount || 0, motivo: quebrado ? motivoTranscricao(erro || "") : null, avisou, envio };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
@@ -82,14 +131,20 @@ Deno.serve(async (req) => {
       } catch (e) { erro = String(e).slice(0, 300); }
     }
 
+    // 1b. transcrição de áudio dos agentes (16/10/2026). Entre 10/10 e 16/10 nenhum áudio de
+    // lead foi transcrito (chave da OpenAI inválida e AssemblyAI sem saldo) e o agente passou
+    // dias respondendo "não veio o áudio direito" sem ninguém saber. O crm-agent-respond agora
+    // grava o motivo em crm_whatsapp_messages.error_text; aqui a gente lê e avisa.
+    const transc = await vigiaTranscricao(sb, !!body.silencioso);
+
     // 2. como estava no check anterior
     const { data: ant } = await sb.from("ai_health_log")
-      .select("ok, alertou, checked_at").order("checked_at", { ascending: false }).limit(1).maybeSingle();
+      .select("ok, alertou, checked_at").eq("tipo", "anthropic").order("checked_at", { ascending: false }).limit(1).maybeSingle();
     const estavaQuebrado = ant ? ant.ok === false : false;
 
     // 3. ja avisei faz pouco?
     const { data: ultAlerta } = await sb.from("ai_health_log")
-      .select("checked_at").eq("alertou", true).order("checked_at", { ascending: false }).limit(1).maybeSingle();
+      .select("checked_at").eq("alertou", true).eq("tipo", "anthropic").order("checked_at", { ascending: false }).limit(1).maybeSingle();
     const horasDesdeAlerta = ultAlerta
       ? (Date.now() - new Date(ultAlerta.checked_at).getTime()) / 3600000 : 1e9;
 
@@ -116,9 +171,9 @@ Deno.serve(async (req) => {
       envio = await zap(sb, "Nexus — a IA voltou a responder. As rotinas automaticas retomam sozinhas no proximo horario.");
     }
 
-    await sb.from("ai_health_log").insert({ ok, status_code: status || null, erro, alertou: avisou });
+    await sb.from("ai_health_log").insert({ ok, status_code: status || null, erro, alertou: avisou, tipo: "anthropic" });
 
-    return new Response(JSON.stringify({ ok, status, erro, avisou, envio, horas_desde_ultimo_alerta: Math.round(horasDesdeAlerta) }, null, 1),
+    return new Response(JSON.stringify({ ok, status, erro, avisou, envio, horas_desde_ultimo_alerta: Math.round(horasDesdeAlerta), transcricao: transc }, null, 1),
       { headers: { ...CORS, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ erro: String(e) }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });

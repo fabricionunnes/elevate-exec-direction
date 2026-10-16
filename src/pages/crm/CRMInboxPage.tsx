@@ -160,11 +160,12 @@ export const CRMInboxPage = () => {
   const [newMessage, setNewMessage] = useState("");
   // Assinatura (Conta → Meu Perfil): primeira linha da mensagem; liga/desliga por conversa
   // em crm_whatsapp_conversations.signature_enabled (null = padrão do usuário). 22/09/2026.
+  // Desde 16/10/2026 o padrão é DESLIGADA (Fabrício): quem quiser assinar marca a caneta na conversa.
   const [mySignature, setMySignature] = useState<{ text: string; byDefault: boolean }>({ text: "", byDefault: true });
   useEffect(() => {
     if (!staffId) return;
     (supabase as any).from("onboarding_staff").select("wa_signature, wa_signature_default").eq("id", staffId).maybeSingle()
-      .then(({ data }: any) => setMySignature({ text: data?.wa_signature || "", byDefault: data?.wa_signature_default !== false }));
+      .then(({ data }: any) => setMySignature({ text: data?.wa_signature || "", byDefault: data?.wa_signature_default === true }));
   }, [staffId]);
   const [signatureOverride, setSignatureOverride] = useState<Record<string, boolean>>({});
   const signatureOnFor = (conv: any) => {
