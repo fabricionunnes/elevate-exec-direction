@@ -114,6 +114,7 @@ export interface Customer {
   lat: number | null;
   lng: number | null;
   geo_address: string | null;
+  bairro: string;
 }
 
 export interface CustomerStats {
