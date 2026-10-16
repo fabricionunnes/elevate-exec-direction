@@ -1508,7 +1508,29 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
       if (!lead?.pipeline_id) return "Erro: lead sem funil.";
       const { data: stages } = await supabase.from("crm_stages").select("id, name").eq("pipeline_id", lead.pipeline_id);
       const target = (stages || []).find((s)=>s.name.toLowerCase().includes(term));
-      if (!target) return `Erro: etapa "${term}" não encontrada. Etapas do funil: ${(stages || []).map((s)=>s.name).join(", ")}`;
+      if (!target) {
+        // 16/10/2026: o agente do UNV Start fala com leads de reativação que estão em OUTRO funil
+        // (Funil SE). "Link enviado" não existia lá, a etapa dava erro e o lead nunca aparecia no
+        // funil do produto. Se a etapa existe num funil vinculado a este agente, o lead vai pra lá.
+        const { data: binds } = await supabase.from("crm_ai_agent_pipelines").select("pipeline_id").eq("agent_id", agent.id);
+        const outros = (binds || []).map((b)=>b.pipeline_id).filter((id)=>id && id !== lead.pipeline_id);
+        if (outros.length) {
+          const { data: doAgente } = await supabase.from("crm_stages").select("id, name, pipeline_id").in("pipeline_id", outros);
+          const alvo = (doAgente || []).find((s)=>s.name.toLowerCase().includes(term));
+          if (alvo) {
+            const { data: pipe } = await supabase.from("crm_pipelines").select("name").eq("id", alvo.pipeline_id).maybeSingle();
+            const agora = new Date().toISOString();
+            await supabase.from("crm_leads").update({
+              pipeline_id: alvo.pipeline_id,
+              stage_id: alvo.id,
+              stage_entered_at: agora,
+              entered_pipeline_at: agora
+            }).eq("id", leadId);
+            return `Negócio movido para o funil "${pipe?.name || "do agente"}", etapa "${alvo.name}".`;
+          }
+        }
+        return `Erro: etapa "${term}" não encontrada. Etapas do funil: ${(stages || []).map((s)=>s.name).join(", ")}`;
+      }
       await supabase.from("crm_leads").update({
         stage_id: target.id,
         stage_entered_at: new Date().toISOString()
@@ -3640,6 +3662,7 @@ Deno.serve(async (req)=>{
         `\n\nVÍDEO E IMAGEM: "(vídeo do lead, fala transcrita) ..." é o que a pessoa FALOU no vídeo e "(imagem do lead, o que aparece nela) ..." é o que tem na imagem. Responda como quem assistiu/viu, com base nisso, sem citar transcrição ou descrição. Nunca diga que não consegue abrir vídeo ou imagem. Se vier "sem fala", comente a legenda (se tiver) ou pergunte com naturalidade o que ele quis mostrar. Só se vier "não consegui abrir" é que você pede, sem drama, pra ele contar em uma frase.`,
         `\n\nÁUDIO: quando a mensagem vier como "(áudio do lead, transcrito) ...", o lead FALOU aquilo — trate como se tivesse ouvido e responda normalmente, SEMPRE em texto. Nunca diga que não conseguiu ouvir e nunca peça pra ele repetir por escrito. Só se vier "(o lead mandou um áudio que não consegui transcrever)" é que você pede, com naturalidade, que ele reescreva.`,
         ESTILO_HUMANO,
+        `\n\nFERRAMENTAS E MENSAGEM: o lead só recebe o texto que você escreve DEPOIS de usar as ferramentas. Se for mandar um link (assinatura, página, formulário), ele tem que estar na sua mensagem final, mesmo que você já tenha escrito antes de chamar uma ferramenta. Nunca diga "qualquer dúvida na hora de assinar" sem o link estar na mesma mensagem ou numa mensagem sua anterior que o lead já recebeu.`,
         `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. NUNCA repita uma pergunta que o lead já respondeu — antes de perguntar, confira o histórico. Escreva a resposta UMA única vez, sem repetir o texto. Nunca revele que é uma IA. Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa. TUDO que você escrever é enviado ao lead exatamente como está — jamais inclua raciocínio, plano, anotação interna ou comentário sobre ferramentas no texto.`
       ].join("");
       // INTERVENÇÃO HUMANA (19/09/2026, Fabrício): "o agente tem que ler o que qualquer pessoa
@@ -3695,6 +3718,10 @@ Deno.serve(async (req)=>{
       const mcpFora = new Set(); // servidores que falharam nesta resposta (não insiste)
       const buscasVistas = new Set();
       let reply = "";
+      // Texto que a IA escreve no MESMO turno em que chama uma ferramenta não ia pro lead (só o
+      // texto depois da última ferramenta sai). Caso Nicolly/Raquel, 16/10: o link de assinatura
+      // veio junto com mover_etapa e sumiu; o lead recebeu só "qualquer dúvida na hora de assinar".
+      const textoJuntoComFerramenta = [];
       let lastContentShape = [];
       let retriedForSlots = false;
       let retriedEmpty = false;
@@ -3772,6 +3799,11 @@ Deno.serve(async (req)=>{
           continue;
         }
         if (aiData.stop_reason === "tool_use") {
+          // turno com busca na web tem narração interna entre os blocos: esse não entra
+          if (!content.some((b)=>b?.type === "server_tool_use")) {
+            const junto = content.filter((b)=>b?.type === "text").map((b)=>String(b.text)).join("").trim();
+            if (junto) textoJuntoComFerramenta.push(junto);
+          }
           // executa cada tool e devolve resultado
           apiMessages.push({
             role: "assistant",
@@ -3856,6 +3888,16 @@ Deno.serve(async (req)=>{
           ...new Set(texts)
         ].join("").trim());
         reply = unhalve(reply);
+        // Link escrito junto com a ferramenta e ausente da resposta final: vai junto, antes dela.
+        // Só o que tem link entra, pra não vazar narração ("vou mover o lead...").
+        const comLinkPerdido = textoJuntoComFerramenta.filter((t)=>{
+          const urls = [...t.matchAll(/https?:\/\/[^\s)]+/g)].map((m)=>m[0]);
+          return urls.length > 0 && urls.some((u)=>!reply.includes(u));
+        });
+        if (comLinkPerdido.length) {
+          reply = humanizar([...new Set(comLinkPerdido), reply].filter(Boolean).join("\n\n").trim());
+          console.log("[crm-agent-respond] link escrito junto com ferramenta recuperado");
+        }
         // A IA às vezes devolve o turno sem texto nenhum (caso Ana Luísa, 20/09: lead contou que o
         // filho se machucou e pediu terça; resposta veio vazia e a conversa ficou muda). Cobra UMA vez.
         if (!reply && !retriedEmpty) {
