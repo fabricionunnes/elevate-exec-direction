@@ -610,7 +610,6 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
   const [zoneId, setZoneId] = useState("");
   const [address, setAddress] = useState(initial?.address ?? "");
   const [reference, setReference] = useState(initial?.reference ?? "");
-  const [bairro, setBairro] = useState("");
 
   const pickCustomer = (c: Customer) => {
     setSelectedCustomer(c);
@@ -621,7 +620,6 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
     if (c.zone_id) setZoneId(c.zone_id);
     if (c.address) setAddress(c.address);
     if (c.reference) setReference(c.reference);
-    if (c.bairro) setBairro(c.bairro);
   };
 
   const customerMatches = customerQuery.trim().length >= 2
@@ -695,7 +693,6 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
           if (!initial.address && known.address) setAddress(known.address);
           if (!initial.reference && known.reference) setReference(known.reference);
           if (!initial.zone_name && known.zone_id) setZoneId(known.zone_id);
-          if (known.bairro) setBairro(known.bairro);
         }
       }
     })();
@@ -718,7 +715,7 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
       .filter((x) => x.qty > 0);
     setBusy(true);
     const { error } = await supabase.rpc("place_order_with_addons", {
-      p: { addons, name: finalName, phone: onlyDigits(phone), fulfillment, zone_id: fulfillment === "entrega" ? zoneId : null, address, reference, bairro, scheduled_date: date, window_id: windowId || null, payment_method: payment, notes: notes ? `[${initial ? "prints" : "manual"}] ${notes}` : `[${initial ? "prints" : "manual"}]`, items },
+      p: { addons, name: finalName, phone: onlyDigits(phone), fulfillment, zone_id: fulfillment === "entrega" ? zoneId : null, address, reference, scheduled_date: date, window_id: windowId || null, payment_method: payment, notes: notes ? `[${initial ? "prints" : "manual"}] ${notes}` : `[${initial ? "prints" : "manual"}]`, items },
     });
     setBusy(false);
     if (error) return toast(friendlyError(error), "err");
@@ -817,7 +814,6 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
                 if (!address.trim() && known.address) setAddress(known.address);
                 if (!reference.trim() && known.reference) setReference(known.reference);
                 if (known.zone_id) setZoneId(known.zone_id);
-                if (known.bairro && !bairro.trim()) setBairro(known.bairro);
               }
             }
           }} />
@@ -828,7 +824,6 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
           {fulfillment === "entrega" && (
             <>
               <Select label="Zona" value={zoneId} onChange={(e) => setZoneId(e.target.value)}>{zones.map((z) => <option key={z.id} value={z.id}>{z.name} · {brl(z.fee)}</option>)}</Select>
-              <Input label="Condomínio" value={bairro} onChange={(e) => setBairro(e.target.value)} />
               <Input label="Endereço" value={address} onChange={(e) => setAddress(e.target.value)} />
               <Input label="Referência" value={reference} onChange={(e) => setReference(e.target.value)} />
             </>

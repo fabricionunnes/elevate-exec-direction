@@ -1,7 +1,6 @@
-// Ranking de condomínios e ruas (pra mandar no grupo) e sorteio entre quem pediu na rua campeã.
-// No banco o condomínio fica em customers.bairro.
+// Ranking das ruas (pra mandar no grupo) e sorteio entre quem pediu na rua campeã.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Trophy, Gift, Copy, Send, ImageDown, Dices, Check, MapPin, Trash2, PartyPopper, Share2 } from "lucide-react";
+import { Trophy, Gift, Copy, Send, ImageDown, Dices, Trash2, PartyPopper, Share2 } from "lucide-react";
 import { clsx } from "clsx";
 import { format, startOfMonth, endOfMonth, subMonths, subDays, startOfYear } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -34,30 +33,21 @@ function periodRange(p: Periodo, from: string, to: string): { from: string | nul
   return { from: null, to: null, label: "de todos os tempos" };
 }
 
-/** Sugestão de condomínio a partir do endereço que o mapa achou ("120, Rua X, Bairro, Nova Lima, ..."). */
-function bairroFromGeo(geo: string | null) {
-  if (!geo) return "";
-  const parts = geo.split(",").map((s) => s.trim());
-  const i = parts.findIndex((s) => /nova lima|belo horizonte|brumadinho|rio acima|sabar/i.test(s));
-  const cand = i > 0 ? parts[i - 1] : "";
-  return /^(rua|avenida|alameda|travessa|\d)/i.test(cand) ? "" : cand;
-}
-
-function RankList({ rows, unit, sub }: { rows: Row[]; unit: [string, string]; sub?: (r: Row) => string | null | undefined }) {
+function RankList({ rows, unit, start = 0, top }: { rows: Row[]; unit: [string, string]; start?: number; top?: number }) {
   if (!rows.length) return <Empty>Ainda sem pedidos com esse dado no período.</Empty>;
-  const max = Math.max(...rows.map((r) => r.orders));
+  const max = top ?? Math.max(...rows.map((r) => r.orders));
   return (
     <ol className="space-y-2">
       {rows.map((r, i) => (
         <li key={r.key} className="flex items-center gap-3">
-          <span className={clsx("grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-black", MEDAL[i] ?? "bg-rosa-100 text-vinho-700")}>{i + 1}º</span>
+          <span className={clsx("grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-black", MEDAL[start + i] ?? "bg-rosa-100 text-vinho-700")}>{start + i + 1}º</span>
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between gap-2">
               <span className="truncate font-semibold text-choco-900">{r.name}</span>
               <span className="shrink-0 text-sm font-bold text-vinho-700">{plural(r.orders, unit[0], unit[1])}</span>
             </div>
             <div className="mt-1 h-2 overflow-hidden rounded-full bg-rosa-100"><div className="h-full rounded-full bg-gradient-to-r from-rosa-500 to-vinho-600" style={{ width: `${Math.max(6, (r.orders / max) * 100)}%` }} /></div>
-            <div className="mt-0.5 text-xs text-choco-500">{plural(r.customers, "cliente", "clientes")}{sub?.(r) ? ` · ${sub(r)}` : ""}</div>
+            <div className="mt-0.5 text-xs text-choco-500">{plural(r.customers, "cliente", "clientes")}</div>
           </div>
         </li>
       ))}
@@ -79,10 +69,9 @@ export default function Ranking() {
   const [msg, setMsg] = useState("");
   const [msgTouched, setMsgTouched] = useState(false);
   const [products, setProducts] = useState<string[]>([]);
-  const [fix, setFix] = useState<Record<string, string>>({});
 
   // sorteio
-  const [scope, setScope] = useState<"rua" | "bairro" | "todos">("rua");
+  const [scope, setScope] = useState<"rua" | "todos">("rua");
   const [scopeKey, setScopeKey] = useState("");
   const [weighted, setWeighted] = useState(true);
   const [drawing, setDrawing] = useState(false);
@@ -109,22 +98,16 @@ export default function Ranking() {
   // opção padrão do sorteio: a campeã
   useEffect(() => {
     if (!data) return;
-    const list = scope === "rua" ? data.ruas : scope === "bairro" ? data.bairros : [];
-    if (scope !== "todos" && !list.some((r) => r.key === scopeKey)) setScopeKey(list[0]?.key ?? "");
+    if (scope === "rua" && !data.ruas.some((r) => r.key === scopeKey)) setScopeKey(data.ruas[0]?.key ?? "");
   }, [data, scope, scopeKey]);
 
   const business = settings?.business_name || "Yas Delícias";
   const autoMsg = useMemo(() => {
     if (!data) return "";
     const lines = [`*Ranking ${business} · ${range.label.replace(/^\w/, (c) => c.toUpperCase())}*`, ""];
-    if (data.bairros.length) {
-      lines.push("*Condomínios que mais pediram*");
-      data.bairros.slice(0, 5).forEach((r, i) => lines.push(`${i + 1}º ${r.name} · ${plural(r.orders, "pedido", "pedidos")}`));
-      lines.push("");
-    }
     if (data.ruas.length) {
       lines.push("*Ruas campeãs*");
-      data.ruas.slice(0, 5).forEach((r, i) => lines.push(`${i + 1}º ${r.name}${r.bairro ? ` (${r.bairro})` : ""} · ${plural(r.orders, "pedido", "pedidos")}`));
+      data.ruas.slice(0, 10).forEach((r, i) => lines.push(`${i + 1}º ${r.name} · ${plural(r.orders, "pedido", "pedidos")}`));
       lines.push("");
     }
     lines.push(prize.trim() ? `A rua campeã concorre a *${prize.trim()}* no sorteio! Quanto mais pedidos, mais chances.` : "Bora colocar a sua rua no topo do ranking?");
@@ -138,7 +121,7 @@ export default function Ranking() {
   };
   const sendWa = (text: string) => window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
 
-  const makeImage = () => rankingImage({ period: range.label, ruas: data?.ruas ?? [], condos: data?.bairros ?? [], prize: prize.trim(), site, business });
+  const makeImage = () => rankingImage({ period: range.label, ruas: data?.ruas ?? [], condos: [], prize: prize.trim(), site, business });
   const fileName = `ranking-yas-${range.label.replace(/\s+/g, "-").toLowerCase()}.png`;
   const canShareFiles = useMemo(() => {
     try { const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }; return !!nav.canShare?.({ files: [new File([""], "x.png", { type: "image/png" })] }); } catch { return false; }
@@ -160,22 +143,13 @@ export default function Ranking() {
     try { await navigator.share({ files: [file], text: msg }); } catch { /* cancelou */ }
   };
 
-  const saveBairro = async (c: SemBairro) => {
-    const v = (fix[c.id] ?? bairroFromGeo(c.geo_address)).trim();
-    if (v.length < 2) return toast("Escreva o condomínio.", "err");
-    const { error } = await supabase.from("customers").update({ bairro: v }).eq("id", c.id);
-    if (error) return toast(friendlyError(error), "err");
-    toast(`Condomínio de ${first(c.name)} salvo.`);
-    void load();
-  };
-
-  const scopeList = scope === "rua" ? data?.ruas ?? [] : scope === "bairro" ? data?.bairros ?? [] : [];
+  const scopeList = scope === "rua" ? data?.ruas ?? [] : [];
   const scopeRow = scopeList.find((r) => r.key === scopeKey);
-  const scopeLabel = scope === "todos" ? "Todos os clientes" : scopeRow ? (scope === "rua" ? scopeRow.name : `Condomínio ${scopeRow.name}`) : "";
+  const scopeLabel = scope === "todos" ? "Todos os clientes" : scopeRow?.name ?? "";
 
   const draw = async () => {
     if (!prize.trim()) return toast("Escreva o prêmio do sorteio.", "err");
-    if (scope !== "todos" && !scopeKey) return toast(`Escolha ${scope === "rua" ? "a rua" : "o condomínio"}.`, "err");
+    if (scope !== "todos" && !scopeKey) return toast("Escolha a rua.", "err");
     setDrawing(true);
     const { data: r, error } = await supabase.rpc("draw_raffle", { p: { from: range.from, to: range.to, scope, key: scopeKey, label: scopeLabel, prize: prize.trim(), weighted } });
     setDrawing(false);
@@ -244,21 +218,18 @@ export default function Ranking() {
       </div>
 
       {!data ? <Spinner /> : <>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           <Stat label="Pedidos no período" value={data.orders} />
-          <Stat label="Condomínios" value={data.bairros.length} tone="accent" />
-          <Stat label="Ruas" value={data.ruas.length} />
-          <Stat label="Pedidos sem condomínio" value={data.sem_bairro} tone={data.sem_bairro ? "bad" : "good"} sub={data.sem_bairro ? "veja embaixo" : "tudo certo"} />
+          <Stat label="Ruas" value={data.ruas.length} tone="accent" />
+          <Stat label="Rua campeã" value={<span className="text-lg">{data.ruas[0]?.name ?? "—"}</span>} sub={data.ruas[0] ? plural(data.ruas[0].orders, "pedido", "pedidos") : undefined} />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card title={<span className="flex items-center gap-2"><MapPin size={18} /> Condomínios que mais pediram</span>}>
-            <RankList rows={data.bairros.slice(0, 10)} unit={["pedido", "pedidos"]} />
-          </Card>
-          <Card title={<span className="flex items-center gap-2"><Trophy size={18} /> Ruas campeãs</span>}>
-            <RankList rows={data.ruas.slice(0, 10)} unit={["pedido", "pedidos"]} sub={(r) => r.bairro} />
-          </Card>
-        </div>
+        <Card title={<span className="flex items-center gap-2"><Trophy size={18} /> Ruas campeãs</span>}>
+          <div className="grid gap-x-8 lg:grid-cols-2">
+            <RankList rows={data.ruas.slice(0, 10)} unit={["pedido", "pedidos"]} />
+            {data.ruas.length > 10 && <div className="mt-2 lg:mt-0"><RankList rows={data.ruas.slice(10, 20)} unit={["pedido", "pedidos"]} start={10} top={data.ruas[0]?.orders} /></div>}
+          </div>
+        </Card>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <Card title={<span className="flex items-center gap-2"><Send size={18} /> Mandar no grupo</span>}>
@@ -274,19 +245,18 @@ export default function Ranking() {
               <Button variant="outline" onClick={() => void downloadImage()}><ImageDown size={16} /> Baixar imagem</Button>
               {canShareFiles && <Button variant="outline" onClick={() => void shareImage()}><Share2 size={16} /> Compartilhar imagem</Button>}
             </div>
-            <p className="mt-2 text-xs text-choco-500">A mensagem e a imagem mostram só condomínios e ruas, nunca o nome dos clientes.</p>
+            <p className="mt-2 text-xs text-choco-500">A mensagem e a imagem mostram só as ruas, nunca o nome dos clientes.</p>
           </Card>
 
           <Card title={<span className="flex items-center gap-2"><Gift size={18} /> Sorteio</span>}>
             <div className="grid gap-3 sm:grid-cols-2">
               <Select label="Sortear entre quem pediu" value={scope} onChange={(e) => setScope(e.target.value as typeof scope)}>
                 <option value="rua">na rua</option>
-                <option value="bairro">no condomínio</option>
-                <option value="todos">em qualquer lugar</option>
+                <option value="todos">em qualquer rua</option>
               </Select>
               {scope !== "todos" && (
-                <Select label={scope === "rua" ? "Qual rua" : "Qual condomínio"} value={scopeKey} onChange={(e) => setScopeKey(e.target.value)}>
-                  {scopeList.length === 0 && <option value="">Nenhum{scope === "rua" ? "a rua" : " condomínio"} no período</option>}
+                <Select label="Qual rua" value={scopeKey} onChange={(e) => setScopeKey(e.target.value)}>
+                  {scopeList.length === 0 && <option value="">Nenhuma rua no período</option>}
                   {scopeList.map((r, i) => <option key={r.key} value={r.key}>{i === 0 ? "Campeã: " : `${i + 1}º `}{r.name} ({plural(r.customers, "cliente", "clientes")})</option>)}
                 </Select>
               )}
@@ -303,21 +273,6 @@ export default function Ranking() {
           </Card>
         </div>
 
-        {data.sem_bairro_clientes.length > 0 && (
-          <Card title={<span className="flex items-center gap-2"><MapPin size={18} /> Clientes sem condomínio ({data.sem_bairro_clientes.length})</span>}>
-            <p className="mb-3 text-sm text-choco-600">Esses pedidos ficam fora do ranking de condomínios. Complete aqui; os próximos pedidos já perguntam o condomínio.</p>
-            <ul className="divide-y divide-choco-100">
-              {data.sem_bairro_clientes.map((c) => (
-                <li key={c.id} className="flex flex-wrap items-end gap-2 py-2">
-                  <div className="min-w-[10rem] flex-1"><div className="font-semibold">{c.name}</div><div className="text-xs text-choco-500">{c.address || "sem endereço"}</div></div>
-                  <Input className="w-56" placeholder="Nome do condomínio" value={fix[c.id] ?? bairroFromGeo(c.geo_address)} onChange={(e) => setFix({ ...fix, [c.id]: e.target.value })} list="yas-bairros" />
-                  <Button size="sm" onClick={() => void saveBairro(c)}><Check size={14} /> Salvar</Button>
-                </li>
-              ))}
-            </ul>
-            <datalist id="yas-bairros">{data.bairros.map((b) => <option key={b.key} value={b.name} />)}</datalist>
-          </Card>
-        )}
       </>}
 
       <Card title="Sorteios feitos">
