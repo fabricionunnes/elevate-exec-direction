@@ -19,5 +19,12 @@ select json_build_object(
   'push_chave', (select count(*) from yasfood.push_keys),
   'movimentos', (select json_agg(json_build_object('i', i.name, 'tp', m.type, 'q', m.qty, 'uc', m.unit_cost, 'n', m.note, 'at', m.created_at) order by m.created_at desc)
                  from (select * from yasfood.stock_movements order by created_at desc limit 40) m
-                 join yasfood.ingredients i on i.id = m.ingredient_id)
+                 join yasfood.ingredients i on i.id = m.ingredient_id),
+  'agenda_hoje', json_build_object(
+    'agora', yasfood.now_br(), 'hoje', yasfood.today_br(), 'dow', extract(dow from yasfood.today_br()),
+    'config', (select json_build_object('min_lead_days', min_lead_days, 'is_open', is_open, 'pickup', pickup_enabled) from yasfood.settings where id = 1),
+    'dia', (select row_to_json(c) from yasfood.capacity_days c where c.day = yasfood.today_br()),
+    'disp', (select json_agg(row_to_json(a)) from yasfood.availability(yasfood.today_br(), yasfood.today_br() + 1) a),
+    'janelas_hoje', (select json_agg(row_to_json(w)) from yasfood.available_windows(yasfood.today_br(), 'ambos') w),
+    'janelas', (select json_agg(json_build_object('label', label, 'ini', start_time, 'fim', end_time, 'lead', min_lead_minutes, 'dias', weekdays, 'tipo', applies_to, 'ativo', active, 'max', max_orders)) from yasfood.delivery_windows))
 ) as diag;
