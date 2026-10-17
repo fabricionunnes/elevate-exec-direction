@@ -1,7 +1,7 @@
 // Ranking de condomínios e ruas (pra mandar no grupo) e sorteio entre quem pediu na rua campeã.
 // No banco o condomínio fica em customers.bairro.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Trophy, Gift, Copy, Send, ImageDown, Dices, Check, MapPin, Trash2, PartyPopper } from "lucide-react";
+import { Trophy, Gift, Copy, Send, ImageDown, Dices, Check, MapPin, Trash2, PartyPopper, Share2 } from "lucide-react";
 import { clsx } from "clsx";
 import { format, startOfMonth, endOfMonth, subMonths, subDays, startOfYear } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -138,17 +138,26 @@ export default function Ranking() {
   };
   const sendWa = (text: string) => window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
 
+  const makeImage = () => rankingImage({ period: range.label, ruas: data?.ruas ?? [], condos: data?.bairros ?? [], prize: prize.trim(), site, business });
+  const fileName = `ranking-yas-${range.label.replace(/\s+/g, "-").toLowerCase()}.png`;
+  const canShareFiles = useMemo(() => {
+    try { const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }; return !!nav.canShare?.({ files: [new File([""], "x.png", { type: "image/png" })] }); } catch { return false; }
+  }, []);
+
+  const downloadImage = async () => {
+    if (!data) return;
+    const blob = await makeImage();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    toast("Imagem baixada. Ela fica na pasta Downloads.");
+  };
+
   const shareImage = async () => {
     if (!data) return;
-    const blob = await rankingImage({ period: range.label, ruas: data.ruas, condos: data.bairros, prize: prize.trim(), site, business });
-    const file = new File([blob], "ranking-yas.png", { type: "image/png" });
-    const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-    if (nav.canShare?.({ files: [file] })) {
-      try { await navigator.share({ files: [file], text: msg }); return; } catch { /* cancelou */ return; }
-    }
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "ranking-yas.png"; a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    toast("Imagem baixada.");
+    const blob = await makeImage();
+    const file = new File([blob], fileName, { type: "image/png" });
+    try { await navigator.share({ files: [file], text: msg }); } catch { /* cancelou */ }
   };
 
   const saveBairro = async (c: SemBairro) => {
@@ -262,7 +271,8 @@ export default function Ranking() {
             <div className="mt-3 flex flex-wrap gap-2">
               <Button onClick={() => void copy(msg)}><Copy size={16} /> Copiar mensagem</Button>
               <Button variant="outline" onClick={() => sendWa(msg)}><Send size={16} /> Abrir no WhatsApp</Button>
-              <Button variant="outline" onClick={() => void shareImage()}><ImageDown size={16} /> Imagem do ranking</Button>
+              <Button variant="outline" onClick={() => void downloadImage()}><ImageDown size={16} /> Baixar imagem</Button>
+              {canShareFiles && <Button variant="outline" onClick={() => void shareImage()}><Share2 size={16} /> Compartilhar imagem</Button>}
             </div>
             <p className="mt-2 text-xs text-choco-500">A mensagem e a imagem mostram só condomínios e ruas, nunca o nome dos clientes.</p>
           </Card>
