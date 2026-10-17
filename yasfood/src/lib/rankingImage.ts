@@ -5,7 +5,6 @@ export interface RankRow { name: string; orders: number }
 
 const C = { creme: "#fbf3ea", vinho: "#b0123a", vinhoD: "#7d0c29", rosa: "#ec4879", rosaCl: "#fce4ec", choco: "#4a2c20", chocoD: "#2b1810", choco2: "#785442", ouro: "#f2b632", ouroD: "#c98a0c", prata: "#cfd5de", prataD: "#8e98a6", bronze: "#e9a26b", bronzeD: "#b5672e" };
 const W = 1080;
-const plural = (n: number) => `${n} ${n === 1 ? "pedido" : "pedidos"}`;
 
 function rnd(seed: number) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
 
@@ -138,8 +137,7 @@ export async function rankingImage(opts: { period: string; ruas: RankRow[]; cond
         g.fillStyle = grad; g.beginPath(); g.roundRect(bx, by, bw, s.h, [26, 26, 0, 0]); g.fill();
       });
       g.fillStyle = "rgba(255,255,255,0.28)"; g.beginPath(); g.roundRect(bx + 18, by + 14, 26, s.h - 28, 13); g.fill();
-      g.fillStyle = "#fff"; g.font = `900 ${s.i === 0 ? 96 : 76}px ${SANS}`; g.fillText(s.label, s.x, by + (s.i === 0 ? 120 : 96));
-      g.font = `800 28px ${SANS}`; g.fillStyle = "rgba(255,255,255,0.95)"; g.fillText(plural(r.orders), s.x, by + (s.i === 0 ? 172 : 140));
+      g.fillStyle = "#fff"; g.font = `900 ${s.i === 0 ? 110 : 84}px ${SANS}`; g.fillText(s.label, s.x, by + (s.i === 0 ? 150 : 116));
       // nome acima do bloco, num cartão
       g.font = `800 ${s.i === 0 ? 38 : 32}px ${SANS}`;
       const lines = wrap(g, r.name, 270, 2);
@@ -157,18 +155,14 @@ export async function rankingImage(opts: { period: string; ruas: RankRow[]; cond
 
   // 4º ao 10º
   if (rest.length) {
-    const max = Math.max(1, ...opts.ruas.map((r) => r.orders));
     rest.forEach((r, k) => {
       const ry = y + k * 92;
       shadowed(g, () => { g.fillStyle = "rgba(255,255,255,0.94)"; g.beginPath(); g.roundRect(70, ry, W - 140, 76, 38); g.fill(); }, 12, 4, "rgba(74,44,32,0.14)");
       g.fillStyle = C.rosaCl; g.beginPath(); g.arc(116, ry + 38, 28, 0, Math.PI * 2); g.fill();
       g.fillStyle = C.vinho; g.font = `900 26px ${SANS}`; g.textAlign = "center"; g.fillText(`${k + 4}º`, 116, ry + 47);
       g.textAlign = "left"; g.fillStyle = C.chocoD;
-      const fs = fitFont(g, r.name, "700", SANS, 32, 560); g.font = `700 ${fs}px ${SANS}`; g.fillText(r.name, 164, ry + 36);
-      g.fillStyle = C.rosaCl; g.beginPath(); g.roundRect(164, ry + 50, 600, 10, 5); g.fill();
-      const gr = g.createLinearGradient(164, 0, 764, 0); gr.addColorStop(0, C.rosa); gr.addColorStop(1, C.vinho);
-      g.fillStyle = gr; g.beginPath(); g.roundRect(164, ry + 50, Math.max(24, (r.orders / max) * 600), 10, 5); g.fill();
-      g.textAlign = "right"; g.fillStyle = C.vinho; g.font = `800 28px ${SANS}`; g.fillText(plural(r.orders), W - 100, ry + 48);
+      const fs = fitFont(g, r.name, "700", SANS, 34, 700); g.font = `700 ${fs}px ${SANS}`; g.fillText(r.name, 164, ry + 50);
+      heart(g, W - 118, ry + 24, 26, k % 2 ? "#f6b3c7" : C.rosa);
       g.textAlign = "center";
     });
     y += rest.length * 92 + 40;
@@ -187,8 +181,7 @@ export async function rankingImage(opts: { period: string; ruas: RankRow[]; cond
       g.fillStyle = cols[1]; g.font = `900 30px ${SANS}`; g.fillText(`${k + 1}º`, cx + cw / 2, y + 128);
       g.fillStyle = C.chocoD; g.font = `800 27px ${SANS}`;
       const nl = wrap(g, r.name, cw - 30, 2);
-      nl.forEach((l, j) => g.fillText(l, cx + cw / 2, y + (nl.length === 1 ? 172 : 160) + j * 32));
-      g.fillStyle = C.vinho; g.font = `700 24px ${SANS}`; g.fillText(plural(r.orders), cx + cw / 2, y + 228);
+      nl.forEach((l, j) => g.fillText(l, cx + cw / 2, y + (nl.length === 1 ? 188 : 172) + j * 32));
     });
     y += 280;
   }
