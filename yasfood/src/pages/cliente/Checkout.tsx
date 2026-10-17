@@ -82,7 +82,7 @@ export default function Checkout() {
     setError(null);
     if (!date) return setError("Escolha a data da encomenda.");
     if (notEnough) return setError(`Só temos ${selectedDay?.remaining} vaga(s) nesse dia. Reduza a quantidade ou escolha outra data.`);
-    if (fulfillment === "entrega" && bairro.trim().length < 2) return setError("Informe o bairro ou condomínio da entrega.");
+    if (fulfillment === "entrega" && !/fora/i.test(zone?.name ?? "") && bairro.trim().length < 2) return setError("Informe o nome do condomínio da entrega.");
     if (windows && windows.length > 0 && !windowId) return setError(`Escolha o horário de ${fulfillment === "entrega" ? "entrega" : "retirada"}.`);
     setSending(true);
     // Abre a aba ainda dentro do clique (bloqueador de pop-up deixa) e preenche depois.
@@ -217,7 +217,7 @@ export default function Checkout() {
             <Select label="Qual condomínio / região?" value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
               {zones.map((z) => <option key={z.id} value={z.id}>{z.name} · {Number(z.fee) === 0 ? "frete grátis" : brl(z.fee)}</option>)}
             </Select>
-            <Input label="Bairro ou condomínio" placeholder="Ex.: Alphaville Lagoa dos Ingleses" value={bairro} onChange={(e) => setBairro(e.target.value)} list="yas-bairros" />
+            <Input label="Nome do condomínio" placeholder="Ex.: nome do seu condomínio ou bairro" value={bairro} onChange={(e) => setBairro(e.target.value)} list="yas-bairros" />
             <datalist id="yas-bairros">{bairros.map((b) => <option key={b} value={b} />)}</datalist>
             <Input label="Endereço (rua, número, casa ou apto)" placeholder="Ex.: Rua das Acácias, 120, casa 7" value={address} onChange={(e) => setAddress(e.target.value)} />
             <Input label="Ponto de referência (opcional)" placeholder="Ex.: portaria principal, deixar com o porteiro" value={reference} onChange={(e) => setReference(e.target.value)} />

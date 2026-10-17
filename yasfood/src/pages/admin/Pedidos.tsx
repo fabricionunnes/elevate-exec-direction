@@ -828,7 +828,7 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
           {fulfillment === "entrega" && (
             <>
               <Select label="Zona" value={zoneId} onChange={(e) => setZoneId(e.target.value)}>{zones.map((z) => <option key={z.id} value={z.id}>{z.name} · {brl(z.fee)}</option>)}</Select>
-              <Input label="Bairro ou condomínio" value={bairro} onChange={(e) => setBairro(e.target.value)} />
+              <Input label="Condomínio" value={bairro} onChange={(e) => setBairro(e.target.value)} />
               <Input label="Endereço" value={address} onChange={(e) => setAddress(e.target.value)} />
               <Input label="Referência" value={reference} onChange={(e) => setReference(e.target.value)} />
             </>
