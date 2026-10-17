@@ -25,6 +25,8 @@ export interface Settings {
   review_webhook_url: string;
   review_message: string;
   default_daily_capacity: number;
+  cap_entregas: number | null;   // entregas por dia (vazio = sem limite)
+  cap_retiradas: number | null;  // retiradas por dia
   /** Casa da Yasmim: ponto de partida das entregas (só na tabela completa). */
   origin_lat: number | null;
   origin_lng: number | null;
@@ -97,6 +99,9 @@ export interface Availability {
   booked_units: number;
   remaining: number;
   bookable: boolean;
+  order_limit?: number | null;      // limite de entregas/retiradas do dia (availability_for)
+  orders_booked?: number;
+  orders_remaining?: number | null;
 }
 
 export interface Customer {
