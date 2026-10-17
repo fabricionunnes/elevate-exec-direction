@@ -83,6 +83,6 @@ export function getMyOrders(): MyOrderRef[] {
 
 /** Dados do cliente pra pré-preencher o checkout. */
 const ME_KEY = "dy_me_v1";
-export interface Me { name: string; phone: string; zone_id: string; address: string; reference: string; bairro?: string }
+export interface Me { name: string; phone: string; zone_id: string; address: string; reference: string }
 export function saveMe(me: Me) { try { localStorage.setItem(ME_KEY, JSON.stringify(me)); } catch { /* ignore */ } }
 export function loadMe(): Me | null { try { const r = localStorage.getItem(ME_KEY); return r ? (JSON.parse(r) as Me) : null; } catch { return null; } }
