@@ -227,7 +227,7 @@ Deno.serve(async (req) => {
         id, amount_cents, description, due_date, status,
         payment_link_url, daily_interest_percent, late_fee_percent,
         late_fee_cents, interest_cents, installment_number,
-        total_installments, company_id, recurring_charge_id, send_whatsapp
+        total_installments, company_id, recurring_charge_id, send_whatsapp, auto_debit
       `)
       .in("status", ["pending", "overdue"])
       .in("due_date", targetDatesArray)
@@ -328,6 +328,12 @@ Deno.serve(async (req) => {
     const sendQueue: any[] = [];
     const skippedReasons: string[] = [];
 
+    // Pix Automático (auto_debit, mensalidade do UNV Sales, 17/10/2026): antes e no dia do
+    // vencimento o cliente recebe só o lembrete de que vai debitar, sem link e sem a oferta de
+    // desconto pra pagar hoje, e no máximo um por dia (várias regras caem no mesmo dia).
+    // Depois do vencimento (o débito não passou) segue a régua normal, com o link.
+    const autoDebitoHoje = new Set<string>((sentToday || []).map((s: any) => String(s.invoice_id)));
+
     for (const rule of rules) {
       const d = new Date(today);
       let targetDate: string;
@@ -378,7 +384,17 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const message = buildMessage(rule, invoice, company, today);
+        let message: string;
+        if (invoice.auto_debit && (rule.trigger_type === "before" || rule.trigger_type === "on_due")) {
+          if (autoDebitoHoje.has(String(invoice.id))) {
+            skippedReasons.push(`[${company.name}] Pix Automático: lembrete de débito já enviado hoje`);
+            continue;
+          }
+          autoDebitoHoje.add(String(invoice.id));
+          message = buildAutoDebitMessage(rule, invoice, company);
+        } else {
+          message = buildMessage(rule, invoice, company, today);
+        }
 
         sendQueue.push({
           rule, invoice, company, formattedPhone, message,
@@ -486,6 +502,17 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+/** Lembrete de Pix Automático: o valor sai sozinho da conta do cliente no vencimento. */
+function buildAutoDebitMessage(rule: any, invoice: any, company: any): string {
+  const valor = (invoice.amount_cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const [a, m, d] = String(invoice.due_date).split("-");
+  const quando = rule.trigger_type === "on_due" ? "*hoje*" : `no dia *${d}/${m}/${a}*`;
+  return `Olá ${company.name || ""}! 👋\n\n` +
+    `Passando pra lembrar que ${quando} a sua mensalidade será debitada automaticamente pelo *Pix Automático*:\n\n` +
+    `📄 *${invoice.description || "Mensalidade"}*\n💰 *Valor:* ${valor}\n\n` +
+    `Você não precisa fazer nada, é só manter o saldo disponível na conta. Qualquer dúvida, é só responder esta mensagem.`;
+}
 
 function buildMessage(rule: any, invoice: any, company: any, today: Date): string {
   const amountBRL = (invoice.amount_cents / 100).toLocaleString("pt-BR", {
