@@ -88,7 +88,7 @@ p{margin:0}
 .card-photo dl div+div{border-left:1px solid #D3D9E4}
 .card-photo dt{font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:#56637A}
 .card-photo dd{margin:2px 0 0;font-family:var(--display);font-variation-settings:"wdth" 85;font-weight:750;font-size:1.02rem}
-.slate-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:clamp(32px,5vw,48px);border-top:1px solid rgba(255,255,255,.2)}
+.slate-strip{display:grid;grid-template-columns:1.5fr repeat(4,minmax(0,1fr));margin-top:clamp(32px,5vw,48px);border-top:1px solid rgba(255,255,255,.2)}
 .slate-strip div{padding:14px 16px 18px 0}
 .slate-strip div+div{padding-left:16px;border-left:1px solid rgba(255,255,255,.14)}
 .slate-strip dt{font-family:var(--mono);font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;color:#9FB2D6}
@@ -97,7 +97,7 @@ p{margin:0}
   .slate-grid{grid-template-columns:1fr;align-items:start}
   .card-photo{max-width:340px;border-radius:6px}
   .slate-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .slate-strip div:nth-child(3){padding-left:0;border-left:0}
+  .slate-strip div:nth-child(odd){padding-left:0;border-left:0}
   .slate-strip div:nth-child(n+3){border-top:1px solid rgba(255,255,255,.14)}
 }
 
@@ -249,8 +249,8 @@ footer a{color:#DCE4F3}
       <div>
         <div class="slate-top"><span class="rec">Gravando</span><span>Um quadro UNV</span></div>
         <h1>Diretor<br>por um <span>Dia</span></h1>
-        <p class="lede">Eu entro na sua empresa como <strong>diretor comercial por um dia</strong>. Vejo a venda acontecer, encontro o que trava o seu resultado <strong>em número</strong> e saio com um <strong>plano de 30 dias</strong> na parede. Daqui a 90 dias eu volto pra conferir o placar.</p>
-        <p class="lede" style="margin-top:12px">Tudo gravado. <strong>Nenhum dado sensível da sua empresa vai ao ar.</strong></p>
+        <p class="lede">Eu entro na sua empresa como <strong>diretor comercial por um dia</strong>, em qualquer cidade do Brasil. Vejo a venda acontecer, encontro o que trava o seu resultado <strong>em número</strong> e saio com um <strong>plano de 30 dias</strong> na parede. Daqui a 90 dias eu volto pra conferir o placar.</p>
+        <p class="lede" style="margin-top:12px">O dia é investimento da UNV. <strong>Você paga só a minha passagem e a minha hospedagem</strong>, e deixa a câmera ligada o dia inteiro. <strong>Nenhum dado sensível da sua empresa vai ao ar.</strong></p>
         <div class="hero-cta">
           <a class="btn" href="#inscricao">Quero minha empresa no quadro
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
@@ -266,10 +266,11 @@ footer a{color:#DCE4F3}
       </figure>
     </div>
     <dl class="slate-strip">
-      <div><dt>Custo pra empresa</dt><dd>Zero</dd></div>
-      <div><dt>Tempo na empresa</dt><dd>2 a 3 horas</dd></div>
+      <div><dt>Custo pra empresa</dt><dd>Passagem e hospedagem</dd></div>
+      <div><dt>Tempo na empresa</dt><dd>Um dia inteiro</dd></div>
       <div><dt>Você leva</dt><dd>Plano de 30 dias</dd></div>
       <div><dt>Retorno</dt><dd>Em 90 dias</dd></div>
+      <div><dt>Atendo em</dt><dd>Todo o Brasil</dd></div>
     </dl>
   </div>
 </section>
@@ -370,6 +371,7 @@ footer a{color:#DCE4F3}
           <li>Fatura acima de R$ 50 mil por mês</li>
           <li>Pode estar presente no dia da gravação</li>
           <li>Quer ouvir a verdade sobre o comercial, mesmo que incomode</li>
+          <li>Topa que o dia inteiro seja gravado</li>
           <li>Topa o retorno em 90 dias</li>
         </ul></div>
         <div class="no"><h3>Não é pra você se</h3><ul>
@@ -404,12 +406,13 @@ footer a{color:#DCE4F3}
     <div class="wrap">
       <div class="sec-head"><span class="label">Dúvidas</span><h2>Perguntas de quem vai participar</h2></div>
       <div class="faq">
-        <details><summary>Eu pago alguma coisa?</summary><p>Não. A participação não tem custo e você também não recebe cachê.</p></details>
+        <details><summary>Eu pago alguma coisa?</summary><p>O meu trabalho é por conta da UNV, sem honorário e sem mensalidade. Você paga só a minha passagem e a minha hospedagem, combinadas com você antes de marcar a data. Você também não recebe cachê pela participação.</p></details>
+        <details><summary>Você vai até qualquer cidade?</summary><p>Vou. Atendo empresa em qualquer cidade do Brasil, e é por isso que a passagem e a hospedagem ficam por sua conta. Se a sua cidade for perto de Nova Lima, a gente combina o deslocamento por carro.</p></details>
         <details><summary>Sou obrigado a contratar a UNV depois?</summary><p>Não. O plano de 30 dias é pensado pra funcionar com o seu próprio time. Se depois você quiser ajuda pra executar, a conversa acontece fora da gravação.</p></details>
         <details><summary>E se eu falar algo que não quero publicado?</summary><p>Diga "fora do ar" na hora e o trecho é descartado. Além disso, você revisa o corte final e tem 48 horas pra apontar qualquer informação sensível.</p></details>
         <details><summary>Preciso mostrar meu faturamento no vídeo?</summary><p>Não. No nível Protegido, que é o padrão, os números aparecem só em proporção, índice e percentual. Valor em reais só no nível Aberto e com autorização por escrito.</p></details>
         <details><summary>Meu time precisa participar?</summary><p>Ajuda muito, porque ver um atendimento real é o que torna o diagnóstico preciso. Mas ninguém é exposto individualmente, e quem não quiser aparecer não aparece.</p></details>
-        <details><summary>Quanto tempo leva?</summary><p>A preparação leva 20 minutos por vídeo. A gravação na empresa leva de 2 a 3 horas. O retorno em 90 dias leva cerca de 1 hora.</p></details>
+        <details><summary>Quanto tempo leva?</summary><p>A preparação leva 20 minutos por vídeo. O dia na empresa é um dia inteiro de trabalho, do começo ao fim do expediente. O retorno em 90 dias leva cerca de 1 hora.</p></details>
         <details><summary>Onde o episódio é publicado?</summary><p>No YouTube e nas redes sociais da UNV e do Fabrício Nunnes, com trechos curtos nas redes. Tudo isso fica descrito no termo.</p></details>
         <details><summary>Como a empresa é escolhida?</summary><p>Depois da conversa de preparação. O critério é ter uma história que ensine outros empresários, e não o tamanho da empresa.</p></details>
       </div>
