@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Plus, Trash2, Clock, MapPin } from "lucide-react";
 import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
@@ -30,7 +31,7 @@ export default function Entregas() {
     if (!editingWin.weekdays?.length) return toast("Escolha pelo menos um dia da semana.", "err");
     setBusyWin(true);
     const { id, ...rest } = editingWin;
-    const payload = { label: rest.label ?? "", start_time: rest.start_time, end_time: rest.end_time, weekdays: rest.weekdays, min_lead_minutes: rest.min_lead_minutes ?? 120, applies_to: rest.applies_to ?? "ambos", active: rest.active ?? true, sort_order: rest.sort_order ?? 0, max_orders: rest.max_orders && rest.max_orders > 0 ? rest.max_orders : null };
+    const payload = { label: rest.label ?? "", start_time: rest.start_time, end_time: rest.end_time, weekdays: rest.weekdays, min_lead_minutes: rest.min_lead_minutes ?? 120, applies_to: rest.applies_to ?? "ambos", active: rest.active ?? true, sort_order: rest.sort_order ?? 0 };
     const { error } = id ? await supabase.from("delivery_windows").update(payload).eq("id", id) : await supabase.from("delivery_windows").insert(payload);
     setBusyWin(false);
     if (error) return toast(friendlyError(error), "err");
@@ -120,7 +121,7 @@ export default function Entregas() {
       </Card>
 
       <Card title={<span className="flex items-center gap-2"><Clock size={18} /> Horários de entrega e retirada</span>} action={<Button size="sm" onClick={() => setEditingWin({ label: "", start_time: "14:00", end_time: "17:00", weekdays: [1, 2, 3, 4, 5, 6], min_lead_minutes: 120, applies_to: "ambos", active: true, sort_order: (windows?.length ?? 0) + 1 })}><Plus size={14} /> Novo horário</Button>}>
-        <p className="mb-3 text-sm text-choco-600">O cliente escolhe a data e depois um desses horários. Cada horário tem sua antecedência: "pedir até 2h antes" some da tela quando passa do prazo. Sem horário cadastrado pro dia, o cliente só escolhe a data.</p>
+        <p className="mb-3 text-sm text-choco-600">O cliente escolhe a data e depois um desses horários. Cada horário fecha pela antecedência contada do fim: "Tarde 14h–17h, 2h antes" aceita pedido até 15h. Sem horário cadastrado pro dia, o cliente só escolhe a data.</p>
         {windows === null ? <Spinner /> : windows.length === 0 ? <Empty>Nenhum horário. Sem horários, o cliente escolhe só a data.</Empty> : (
           <ul className="divide-y divide-choco-100">
             {windows.map((w) => (
@@ -128,7 +129,7 @@ export default function Entregas() {
                 <span className="w-28 font-bold">{hm(w.start_time)}–{hm(w.end_time)}</span>
                 <span className="text-choco-600">{w.label}</span>
                 <span className="flex gap-1">{[0, 1, 2, 3, 4, 5, 6].map((d) => <span key={d} className={clsx("rounded px-1 text-[10px] font-bold uppercase", w.weekdays.includes(d) ? "bg-vinho-600 text-white" : "bg-choco-100 text-choco-400")}>{WEEKDAYS_SHORT[d]}</span>)}</span>
-                <span className="text-xs text-choco-500">pedir até {leadLabel(w.min_lead_minutes)} antes · {w.applies_to === "ambos" ? "entrega e retirada" : w.applies_to} · {w.max_orders ? `até ${w.max_orders} pedido(s)` : "sem limite de pedidos"}</span>
+                <span className="text-xs text-choco-500">aceita pedido até {leadLabel(w.min_lead_minutes)} antes do fim · {w.applies_to === "ambos" ? "entrega e retirada" : w.applies_to} · {w.max_orders ? `até ${w.max_orders} pedido(s)` : "sem limite de pedidos"}</span>
                 <span className="ml-auto flex gap-1">
                   <Button size="sm" variant="outline" onClick={() => setEditingWin(w)}>Editar</Button>
                   <Button size="sm" variant="ghost" onClick={() => toggleWindow(w)}>{w.active ? "Desativar" : "Ativar"}</Button>
@@ -157,14 +158,14 @@ export default function Entregas() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <Select label="Pedir até… antes do início" value={String(editingWin.min_lead_minutes ?? 120)} onChange={(e) => setEditingWin({ ...editingWin, min_lead_minutes: Number(e.target.value) })}>
+              <Select label="Fecha quanto tempo antes do fim do horário" value={String(editingWin.min_lead_minutes ?? 120)} onChange={(e) => setEditingWin({ ...editingWin, min_lead_minutes: Number(e.target.value) })}>
                 {[30, 60, 90, 120, 180, 240, 360, 720, 1440, 2880].map((m) => <option key={m} value={m}>{leadLabel(m)}</option>)}
               </Select>
               <Select label="Vale pra" value={editingWin.applies_to ?? "ambos"} onChange={(e) => setEditingWin({ ...editingWin, applies_to: e.target.value as DeliveryWindow["applies_to"] })}>
                 <option value="ambos">Entrega e retirada</option><option value="entrega">Só entrega</option><option value="retirada">Só retirada</option>
               </Select>
             </div>
-            <Input label="Limite de pedidos nesse horário (por dia)" type="number" min={1} inputMode="numeric" value={editingWin.max_orders ?? ""} onChange={(e) => setEditingWin({ ...editingWin, max_orders: e.target.value ? Number(e.target.value) : null })} hint="Vazio = sem limite. Cheio, o horário some do site; a vaga por dia continua valendo." />
+            <p className="rounded-xl bg-rosa-50 p-2 text-xs text-choco-700">Limite de pedidos desse horário, entregas e retiradas por dia: na <Link to="/admin/agenda" className="font-semibold text-vinho-700 underline">Agenda</Link>.</p>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editingWin.active ?? true} onChange={(e) => setEditingWin({ ...editingWin, active: e.target.checked })} /> ativo</label>
             <Button className="w-full" loading={busyWin} onClick={saveWindow}>Salvar horário</Button>
           </div>

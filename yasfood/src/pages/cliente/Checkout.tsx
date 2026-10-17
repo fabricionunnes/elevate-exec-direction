@@ -40,16 +40,21 @@ export default function Checkout() {
 
   useEffect(() => {
     void (async () => {
-      const [z, a, ad] = await Promise.all([
+      const [z, ad] = await Promise.all([
         supabase.from("delivery_zones").select("*").eq("active", true).order("sort_order").order("name"),
-        supabase.rpc("availability", { p_from: todayISO(), p_to: addDaysISO(30) }),
         supabase.from("addons").select("*").eq("active", true).order("sort_order").order("name"),
       ]);
       setAddons((ad.data as Addon[]) ?? []);
       setZones((z.data as DeliveryZone[]) ?? []);
-      setAvail((a.data as Availability[]) ?? []);
     })();
   }, []);
+
+  // dias com vaga pra entrega ou pra retirada (cada uma tem seu limite por dia)
+  useEffect(() => {
+    void supabase.rpc("availability_for", { p_from: todayISO(), p_to: addDaysISO(30), p_fulfillment: fulfillment })
+      .then(({ data }) => setAvail((data as Availability[]) ?? []));
+  }, [fulfillment]);
+  useEffect(() => { if (date && avail.length && !avail.some((d) => d.day === date && d.bookable)) setDate(""); }, [avail, date]);
 
   useEffect(() => {
     if (settings && !settings.pickup_enabled) setFulfillment("entrega");
@@ -240,6 +245,7 @@ export default function Checkout() {
                   <div className="text-sm font-bold capitalize">{dayLabel(d.day)}</div>
                   <div className="text-[11px] capitalize text-choco-500">{weekdayBR(d.day)}</div>
                   <div className={clsx("mt-1 text-[11px] font-semibold", low ? "text-red-600" : "text-emerald-700")}>{d.remaining} {d.remaining === 1 ? "vaga" : "vagas"}</div>
+                  {d.orders_remaining != null && d.orders_remaining <= 3 && <div className="text-[10px] font-semibold text-red-600">{d.orders_remaining === 1 ? `última ${fulfillment}` : `últimas ${d.orders_remaining} ${fulfillment === "entrega" ? "entregas" : "retiradas"}`}</div>}
                 </button>
               );
             })}
