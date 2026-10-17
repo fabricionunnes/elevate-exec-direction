@@ -182,7 +182,7 @@ declare
 begin
   if not yasfood.is_admin() then raise exception 'Só a administradora pode sortear'; end if;
   if v_scope not in ('rua', 'bairro', 'todos') then raise exception 'Tipo de sorteio inválido'; end if;
-  if v_scope <> 'todos' and coalesce(v_key, '') = '' then raise exception 'Escolha a rua ou o bairro do sorteio'; end if;
+  if v_scope <> 'todos' and coalesce(v_key, '') = '' then raise exception 'Escolha a rua ou o condomínio do sorteio'; end if;
 
   drop table if exists _entries;
   create temp table _entries on commit drop as

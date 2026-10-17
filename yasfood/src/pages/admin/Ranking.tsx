@@ -1,4 +1,5 @@
-// Ranking de bairros e ruas (pra mandar no grupo) e sorteio entre quem pediu na rua campeã.
+// Ranking de condomínios e ruas (pra mandar no grupo) e sorteio entre quem pediu na rua campeã.
+// No banco o condomínio fica em customers.bairro.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trophy, Gift, Copy, Send, ImageDown, Dices, Check, MapPin, Trash2, PartyPopper } from "lucide-react";
 import { clsx } from "clsx";
@@ -8,6 +9,7 @@ import { supabase, friendlyError } from "@/lib/supabase";
 import { useSettings } from "@/lib/useSettings";
 import { dateBR, dateTimeBR, formatPhone } from "@/lib/format";
 import { waLink } from "@/lib/whatsapp";
+import { rankingImage } from "@/lib/rankingImage";
 import { Button, Card, Input, Select, Stat, Spinner, Empty, Modal, Textarea, useToast } from "@/components/ui";
 
 interface Row { key: string; name: string; orders: number; customers: number; total: number; bairro?: string | null }
@@ -32,7 +34,7 @@ function periodRange(p: Periodo, from: string, to: string): { from: string | nul
   return { from: null, to: null, label: "de todos os tempos" };
 }
 
-/** Sugestão de bairro a partir do endereço que o mapa achou ("120, Rua X, Bairro, Nova Lima, ..."). */
+/** Sugestão de condomínio a partir do endereço que o mapa achou ("120, Rua X, Bairro, Nova Lima, ..."). */
 function bairroFromGeo(geo: string | null) {
   if (!geo) return "";
   const parts = geo.split(",").map((s) => s.trim());
@@ -61,56 +63,6 @@ function RankList({ rows, unit, sub }: { rows: Row[]; unit: [string, string]; su
       ))}
     </ol>
   );
-}
-
-/** Imagem do ranking pro grupo (1080x1440). */
-async function rankingImage(opts: { title: string; period: string; bairros: Row[]; ruas: Row[]; prize: string; site: string }) {
-  const W = 1080, H = 1440;
-  const c = document.createElement("canvas"); c.width = W; c.height = H;
-  const g = c.getContext("2d")!;
-  await document.fonts?.ready;
-  g.fillStyle = "#fbf3ea"; g.fillRect(0, 0, W, H);
-  // bolinhas de fundo
-  g.fillStyle = "#fce4ec";
-  for (let i = 0; i < 70; i++) { const x = (i * 157) % W, y = (i * 263) % H, r = 6 + (i % 5) * 2; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
-  // faixa de chocolate com pingos
-  g.fillStyle = "#4a2c20"; g.fillRect(0, 0, W, 70);
-  for (let x = 10; x < W; x += 74) { const len = 30 + ((x * 37) % 70); g.beginPath(); g.roundRect(x, 40, 30, len, 15); g.fill(); }
-  const logo = new Image(); logo.src = "/logo.webp";
-  await new Promise((r) => { logo.onload = r; logo.onerror = r; });
-  if (logo.complete && logo.naturalWidth) g.drawImage(logo, W / 2 - 110, 120, 220, 220);
-  g.textAlign = "center";
-  g.fillStyle = "#b0123a"; g.font = "900 64px Inter, sans-serif"; g.fillText(opts.title, W / 2, 410);
-  g.fillStyle = "#785442"; g.font = "600 32px Inter, sans-serif"; g.fillText(opts.period, W / 2, 458);
-
-  const block = (label: string, rows: Row[], y0: number, n: number) => {
-    g.textAlign = "left"; g.fillStyle = "#4a2c20"; g.font = "800 36px Inter, sans-serif"; g.fillText(label, 90, y0);
-    const max = Math.max(1, ...rows.map((r) => r.orders));
-    rows.slice(0, n).forEach((r, i) => {
-      const y = y0 + 40 + i * 84;
-      const medal = ["#f2b632", "#c7ccd4", "#e9a26b"][i] ?? "#fbd2df";
-      g.fillStyle = medal; g.beginPath(); g.arc(120, y + 30, 30, 0, Math.PI * 2); g.fill();
-      g.fillStyle = i < 3 ? "#ffffff" : "#b0123a"; g.font = "900 28px Inter, sans-serif"; g.textAlign = "center"; g.fillText(`${i + 1}º`, 120, y + 40);
-      g.textAlign = "left"; g.fillStyle = "#2b1810"; g.font = "700 32px Inter, sans-serif";
-      let name = r.name; while (g.measureText(name).width > 620 && name.length > 4) name = name.slice(0, -2);
-      g.fillText(name === r.name ? name : `${name}…`, 172, y + 26);
-      g.fillStyle = "#fce4ec"; g.beginPath(); g.roundRect(172, y + 40, 640, 16, 8); g.fill();
-      const grad = g.createLinearGradient(172, 0, 812, 0); grad.addColorStop(0, "#ec4879"); grad.addColorStop(1, "#b0123a");
-      g.fillStyle = grad; g.beginPath(); g.roundRect(172, y + 40, Math.max(30, (r.orders / max) * 640), 16, 8); g.fill();
-      g.textAlign = "right"; g.fillStyle = "#b0123a"; g.font = "800 30px Inter, sans-serif"; g.fillText(plural(r.orders, "pedido", "pedidos"), 990, y + 26);
-    });
-  };
-  const nb = Math.min(3, opts.bairros.length), nr = Math.min(opts.bairros.length ? 3 : 7, opts.ruas.length);
-  let y = 540;
-  if (nb) { block("Bairros que mais pediram", opts.bairros, y, nb); y += 70 + nb * 84; }
-  if (nr) block("Ruas campeãs", opts.ruas, y, nr);
-  // rodapé
-  g.textAlign = "center";
-  g.fillStyle = "#ec4879"; g.beginPath(); g.roundRect(140, H - 200, W - 280, 92, 46); g.fill();
-  g.fillStyle = "#ffffff"; g.font = "800 34px Inter, sans-serif";
-  g.fillText(opts.prize ? `A rua campeã concorre a ${opts.prize}!`.slice(0, 48) : "Coloque sua rua no topo!", W / 2, H - 142);
-  g.fillStyle = "#b0123a"; g.font = "700 30px Inter, sans-serif"; g.fillText(opts.site.replace(/^https?:\/\//, ""), W / 2, H - 50);
-  return new Promise<Blob>((res) => c.toBlob((b) => res(b!), "image/png"));
 }
 
 export default function Ranking() {
@@ -166,7 +118,7 @@ export default function Ranking() {
     if (!data) return "";
     const lines = [`*Ranking ${business} · ${range.label.replace(/^\w/, (c) => c.toUpperCase())}*`, ""];
     if (data.bairros.length) {
-      lines.push("*Bairros que mais pediram*");
+      lines.push("*Condomínios que mais pediram*");
       data.bairros.slice(0, 5).forEach((r, i) => lines.push(`${i + 1}º ${r.name} · ${plural(r.orders, "pedido", "pedidos")}`));
       lines.push("");
     }
@@ -188,7 +140,7 @@ export default function Ranking() {
 
   const shareImage = async () => {
     if (!data) return;
-    const blob = await rankingImage({ title: "Ranking dos bairros", period: range.label.replace(/^\w/, (c) => c.toUpperCase()), bairros: data.bairros, ruas: data.ruas, prize: prize.trim(), site });
+    const blob = await rankingImage({ period: range.label, ruas: data.ruas, condos: data.bairros, prize: prize.trim(), site, business });
     const file = new File([blob], "ranking-yas.png", { type: "image/png" });
     const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
     if (nav.canShare?.({ files: [file] })) {
@@ -201,20 +153,20 @@ export default function Ranking() {
 
   const saveBairro = async (c: SemBairro) => {
     const v = (fix[c.id] ?? bairroFromGeo(c.geo_address)).trim();
-    if (v.length < 2) return toast("Escreva o bairro.", "err");
+    if (v.length < 2) return toast("Escreva o condomínio.", "err");
     const { error } = await supabase.from("customers").update({ bairro: v }).eq("id", c.id);
     if (error) return toast(friendlyError(error), "err");
-    toast(`Bairro de ${first(c.name)} salvo.`);
+    toast(`Condomínio de ${first(c.name)} salvo.`);
     void load();
   };
 
   const scopeList = scope === "rua" ? data?.ruas ?? [] : scope === "bairro" ? data?.bairros ?? [] : [];
   const scopeRow = scopeList.find((r) => r.key === scopeKey);
-  const scopeLabel = scope === "todos" ? "Todos os clientes" : scopeRow ? `${scope === "rua" ? "Rua" : "Bairro"}: ${scopeRow.name}` : "";
+  const scopeLabel = scope === "todos" ? "Todos os clientes" : scopeRow ? (scope === "rua" ? scopeRow.name : `Condomínio ${scopeRow.name}`) : "";
 
   const draw = async () => {
     if (!prize.trim()) return toast("Escreva o prêmio do sorteio.", "err");
-    if (scope !== "todos" && !scopeKey) return toast(`Escolha ${scope === "rua" ? "a rua" : "o bairro"}.`, "err");
+    if (scope !== "todos" && !scopeKey) return toast(`Escolha ${scope === "rua" ? "a rua" : "o condomínio"}.`, "err");
     setDrawing(true);
     const { data: r, error } = await supabase.rpc("draw_raffle", { p: { from: range.from, to: range.to, scope, key: scopeKey, label: scopeLabel, prize: prize.trim(), weighted } });
     setDrawing(false);
@@ -285,13 +237,13 @@ export default function Ranking() {
       {!data ? <Spinner /> : <>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Stat label="Pedidos no período" value={data.orders} />
-          <Stat label="Bairros" value={data.bairros.length} tone="accent" />
+          <Stat label="Condomínios" value={data.bairros.length} tone="accent" />
           <Stat label="Ruas" value={data.ruas.length} />
-          <Stat label="Pedidos sem bairro" value={data.sem_bairro} tone={data.sem_bairro ? "bad" : "good"} sub={data.sem_bairro ? "veja embaixo" : "tudo certo"} />
+          <Stat label="Pedidos sem condomínio" value={data.sem_bairro} tone={data.sem_bairro ? "bad" : "good"} sub={data.sem_bairro ? "veja embaixo" : "tudo certo"} />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <Card title={<span className="flex items-center gap-2"><MapPin size={18} /> Bairros que mais pediram</span>}>
+          <Card title={<span className="flex items-center gap-2"><MapPin size={18} /> Condomínios que mais pediram</span>}>
             <RankList rows={data.bairros.slice(0, 10)} unit={["pedido", "pedidos"]} />
           </Card>
           <Card title={<span className="flex items-center gap-2"><Trophy size={18} /> Ruas campeãs</span>}>
@@ -312,19 +264,19 @@ export default function Ranking() {
               <Button variant="outline" onClick={() => sendWa(msg)}><Send size={16} /> Abrir no WhatsApp</Button>
               <Button variant="outline" onClick={() => void shareImage()}><ImageDown size={16} /> Imagem do ranking</Button>
             </div>
-            <p className="mt-2 text-xs text-choco-500">A mensagem e a imagem mostram só bairros e ruas, nunca o nome dos clientes.</p>
+            <p className="mt-2 text-xs text-choco-500">A mensagem e a imagem mostram só condomínios e ruas, nunca o nome dos clientes.</p>
           </Card>
 
           <Card title={<span className="flex items-center gap-2"><Gift size={18} /> Sorteio</span>}>
             <div className="grid gap-3 sm:grid-cols-2">
               <Select label="Sortear entre quem pediu" value={scope} onChange={(e) => setScope(e.target.value as typeof scope)}>
                 <option value="rua">na rua</option>
-                <option value="bairro">no bairro</option>
+                <option value="bairro">no condomínio</option>
                 <option value="todos">em qualquer lugar</option>
               </Select>
               {scope !== "todos" && (
-                <Select label={scope === "rua" ? "Qual rua" : "Qual bairro"} value={scopeKey} onChange={(e) => setScopeKey(e.target.value)}>
-                  {scopeList.length === 0 && <option value="">Nenhum{scope === "rua" ? "a rua" : " bairro"} no período</option>}
+                <Select label={scope === "rua" ? "Qual rua" : "Qual condomínio"} value={scopeKey} onChange={(e) => setScopeKey(e.target.value)}>
+                  {scopeList.length === 0 && <option value="">Nenhum{scope === "rua" ? "a rua" : " condomínio"} no período</option>}
                   {scopeList.map((r, i) => <option key={r.key} value={r.key}>{i === 0 ? "Campeã: " : `${i + 1}º `}{r.name} ({plural(r.customers, "cliente", "clientes")})</option>)}
                 </Select>
               )}
@@ -342,13 +294,13 @@ export default function Ranking() {
         </div>
 
         {data.sem_bairro_clientes.length > 0 && (
-          <Card title={<span className="flex items-center gap-2"><MapPin size={18} /> Clientes sem bairro ({data.sem_bairro_clientes.length})</span>}>
-            <p className="mb-3 text-sm text-choco-600">Esses pedidos ficam fora do ranking de bairros. Complete aqui; os próximos pedidos já perguntam o bairro.</p>
+          <Card title={<span className="flex items-center gap-2"><MapPin size={18} /> Clientes sem condomínio ({data.sem_bairro_clientes.length})</span>}>
+            <p className="mb-3 text-sm text-choco-600">Esses pedidos ficam fora do ranking de condomínios. Complete aqui; os próximos pedidos já perguntam o condomínio.</p>
             <ul className="divide-y divide-choco-100">
               {data.sem_bairro_clientes.map((c) => (
                 <li key={c.id} className="flex flex-wrap items-end gap-2 py-2">
                   <div className="min-w-[10rem] flex-1"><div className="font-semibold">{c.name}</div><div className="text-xs text-choco-500">{c.address || "sem endereço"}</div></div>
-                  <Input className="w-56" placeholder="Bairro ou condomínio" value={fix[c.id] ?? bairroFromGeo(c.geo_address)} onChange={(e) => setFix({ ...fix, [c.id]: e.target.value })} list="yas-bairros" />
+                  <Input className="w-56" placeholder="Nome do condomínio" value={fix[c.id] ?? bairroFromGeo(c.geo_address)} onChange={(e) => setFix({ ...fix, [c.id]: e.target.value })} list="yas-bairros" />
                   <Button size="sm" onClick={() => void saveBairro(c)}><Check size={14} /> Salvar</Button>
                 </li>
               ))}

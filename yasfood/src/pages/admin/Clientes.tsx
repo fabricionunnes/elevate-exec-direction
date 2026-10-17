@@ -171,7 +171,7 @@ export default function Clientes() {
               <Select label="Origem" value={editing.source ?? "whatsapp"} onChange={(e) => setEditing({ ...editing, source: e.target.value })}>{SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}</Select>
             </div>
             <Select label="Região de entrega" value={editing.zone_id ?? ""} onChange={(e) => setEditing({ ...editing, zone_id: e.target.value || null })}><option value="">—</option>{zones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}</Select>
-            <Input label="Bairro ou condomínio" value={editing.bairro ?? ""} onChange={(e) => setEditing({ ...editing, bairro: e.target.value })} />
+            <Input label="Condomínio" value={editing.bairro ?? ""} onChange={(e) => setEditing({ ...editing, bairro: e.target.value })} />
             <Input label="Endereço" value={editing.address ?? ""} onChange={(e) => setEditing({ ...editing, address: e.target.value })} />
             <Input label="Referência" value={editing.reference ?? ""} onChange={(e) => setEditing({ ...editing, reference: e.target.value })} />
             <Textarea label="Anotações (preferências, aniversário, etc.)" value={editing.notes ?? ""} onChange={(e) => setEditing({ ...editing, notes: e.target.value })} />
