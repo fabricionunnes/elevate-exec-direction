@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-18T15:00:59",
+ "gerado_em": "2026-10-18T21:02:16",
  "posts": [
+  {
+   "slug": "trocar-ferramenta-nao-usada-custa-mesmo",
+   "url": "/blog/trocar-ferramenta-nao-usada-custa-mesmo/",
+   "titulo": "Trocar ferramenta que ninguém usa custa o mesmo que implementar",
+   "resumo": "Se o time não usa o CRM atual, trocar não é mais difícil que começar a usar. O problema não é a ferramenta, é a falta de quem cobra.",
+   "tags": [
+    "crm",
+    "ferramenta",
+    "estrutura comercial",
+    "implementação",
+    "rotina de cobrança"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-18",
+   "ts": 2188
+  },
   {
    "slug": "investimento-comercial-vem-depois-venda-aumentar",
    "url": "/blog/investimento-comercial-vem-depois-venda-aumentar/",
