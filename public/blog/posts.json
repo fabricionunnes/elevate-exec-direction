@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-17T21:01:19",
+ "gerado_em": "2026-10-18T10:00:53",
  "posts": [
+  {
+   "slug": "ferramenta-pronta-nao-resolve-falta-quem-cobra",
+   "url": "/blog/ferramenta-pronta-nao-resolve-falta-quem-cobra/",
+   "titulo": "Ferramenta pronta não resolve falta de quem cobra",
+   "resumo": "A maioria chega achando que o problema é não ter CRM. O problema é não ter quem olha o CRM todo dia e cobra o vendedor.",
+   "tags": [
+    "ferramenta",
+    "rotina de cobrança",
+    "estrutura comercial",
+    "acompanhamento",
+    "crm"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-18",
+   "ts": 2186
+  },
   {
    "slug": "venda-funciona-igual-qualquer-segmento",
    "url": "/blog/venda-funciona-igual-qualquer-segmento/",
