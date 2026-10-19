@@ -2350,6 +2350,20 @@ const OnboardingTasksPage = () => {
               </Button>
             )}
 
+            {/* Tráfego pago dos clientes (19/10/2026): geral e por empresa, CAC, ROAS, conexão Meta e saldo */}
+            {(isMaster || isAdmin) && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 ml-1 border-primary/40 text-primary hover:bg-primary/10 font-semibold"
+                onClick={() => navigate("/onboarding-tasks/trafego-pago")}
+                title="Tráfego pago: resultado de todas as empresas que rodam tráfego com a UNV"
+              >
+                <Megaphone className="h-4 w-4" />
+                Tráfego pago
+              </Button>
+            )}
+
             {/* Separator */}
             <div className="w-px h-5 bg-border/60 mx-1.5" />
 
