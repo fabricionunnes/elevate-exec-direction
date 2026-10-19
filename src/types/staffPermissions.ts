@@ -34,6 +34,7 @@ export const STAFF_MENU_KEYS = {
   nf_manage: "nf_manage",
   automations: "automations",
   whatsapp_hub: "whatsapp_hub",
+  trafego_pago: "trafego_pago",
 } as const;
 
 // Financial sub-permission keys
@@ -215,6 +216,12 @@ export const STAFF_MENU_STRUCTURE = [
     label: "WhatsApp Hub", 
     description: "Hub de comunicação com WhatsApp pessoal",
     group: "Comunicação" 
+  },
+  { 
+    key: STAFF_MENU_KEYS.trafego_pago, 
+    label: "Tráfego pago (clientes)", 
+    description: "Menu Tráfego pago: investimento, leads, CAC, ROAS, conexão Meta e saldo. Quem não é master/admin vê só as empresas em que é consultor ou CS",
+    group: "Administração" 
   },
 ] as const;
 
