@@ -858,9 +858,11 @@ async function cfTranscribeConfig() {
   if (base && secret) return { base, secret };
   if (cfCfgCache) return cfCfgCache;
   const sb = createClient(SUPABASE_URL, SERVICE_ROLE);
-  const { data } = await sb.from("app_secrets").select("key, value").in("key", ["cf_transcribe_url", "cf_transcribe_secret"]);
-  const m = Object.fromEntries((data || []).map((r) => [r.key, r.value]));
-  cfCfgCache = { base: base || m.cf_transcribe_url || "", secret: secret || m.cf_transcribe_secret || "" };
+  // a tabela não é lida direto (sem grant pro service_role); vai pela RPC app_secret_get
+  const [u, k] = await Promise.all([sb.rpc("app_secret_get", { p_key: "cf_transcribe_url" }), sb.rpc("app_secret_get", { p_key: "cf_transcribe_secret" })]);
+  if (u.error || k.error) console.error("[transcribe] app_secret_get:", u.error?.message || k.error?.message);
+  cfCfgCache = { base: base || String(u.data || ""), secret: secret || String(k.data || "") };
+  if (!cfCfgCache.base || !cfCfgCache.secret) cfCfgCache = null; // tenta de novo na próxima
   return cfCfgCache;
 }
 async function transcribeViaCloudflare(url) {
