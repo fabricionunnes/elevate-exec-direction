@@ -99,6 +99,76 @@ async function vigiaTranscricao(sb: any, silencioso: boolean) {
   return { quebrado, falhas_3h: nFalhas, transcritos_3h: okCount || 0, motivo: quebrado ? motivoTranscricao(erro || "") : null, avisou, envio };
 }
 
+// Vigia "lead esperando o agente" (19/10/2026). Fabrício: "direto a IA está parando de
+// responder, e tenho que ficar conferindo toda hora, precisa resolver isso em definitivo".
+// Pega conversas em que a IA já respondeu, o lead mandou a última mensagem há 30 min+ e
+// ninguém respondeu. Erro passageiro (sem tentativa, resposta vazia, falha de envio):
+// chama o crm-agent-respond de novo, UMA vez por mensagem. Seja qual for o motivo, avisa
+// no WhatsApp (uma vez por mensagem do lead), com o motivo em português.
+const ALERTA_HORA_INI = 8, ALERTA_HORA_FIM = 21; // BRT: fora disso só registra, não manda
+function motivoLead(r: any): { texto: string; retentar: boolean } {
+  const oc = String(r.ultimo_run_outcome || "");
+  if (r.override_enabled === false) return { texto: r.override_por_pessoa ? "agente desligado nesta conversa por uma pessoa" : "agente desligado nesta conversa pelo sistema", retentar: false };
+  if (Number(r.tentativas_depois || 0) === 0) return { texto: "o agente nem foi acionado pra essa mensagem", retentar: true };
+  if (/^skip: modo desligado/.test(oc)) return { texto: "agente desligado para o funil deste lead", retentar: false };
+  if (/^skip: nenhum agente ativo/.test(oc)) return { texto: "nenhum agente ativo neste número", retentar: false };
+  if (/^skip: fora do horário/.test(oc)) return { texto: "fora do horário de atendimento do agente", retentar: false };
+  if (/^skip: mensagem automática/.test(oc)) return { texto: "o sistema achou que era mensagem automática do lado do lead", retentar: false };
+  if (/empty_reply/.test(oc)) return { texto: "a IA devolveu resposta vazia", retentar: true };
+  if (/send_failed/.test(oc) || r.ultimo_run_erro) return { texto: "falha ao enviar: " + String(r.ultimo_run_erro || "").slice(0, 80), retentar: true };
+  if (/^sent/.test(oc)) return { texto: "o agente respondeu uma anterior e não respondeu esta", retentar: true };
+  return { texto: oc || "sem registro do agente", retentar: true };
+}
+async function vigiaLeadsEsperando(sb: any, silencioso: boolean) {
+  const { data: rows, error } = await sb.rpc("crm_agent_leads_esperando", { p_min_minutos: 30, p_max_horas: 24 });
+  if (error) return { erro: error.message };
+  const lista = (rows || []) as any[];
+  const horaBR = Number(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo", hour: "2-digit", hour12: false }));
+  const horarioOk = horaBR >= ALERTA_HORA_INI && horaBR < ALERTA_HORA_FIM;
+  const supaUrl = Deno.env.get("SUPABASE_URL")!, srv = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const novos: any[] = [];
+  let retentados = 0;
+  for (const r of lista) {
+    const { data: ja } = await sb.from("crm_agent_silence_alerts").select("id, retentou, avisou")
+      .eq("conversation_id", r.conversation_id).eq("channel", r.channel).eq("inbound_at", r.ult_lead).maybeSingle();
+    const m = motivoLead(r);
+    // 1) tenta de novo uma vez (só erro passageiro, só no horário)
+    let retentou = !!ja?.retentou;
+    if (!retentou && m.retentar && horarioOk && !silencioso) {
+      try {
+        const resp = await fetch(`${supaUrl}/functions/v1/crm-agent-respond`, {
+          method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${srv}`, apikey: srv },
+          body: JSON.stringify({ channel: r.channel, conversation_id: r.conversation_id, message_ts: r.ult_lead }),
+        });
+        const txt = await resp.text();
+        retentou = true; retentados++;
+        if (/"sent":\s*true/.test(txt)) {
+          // respondeu agora: registra e não avisa
+          await sb.from("crm_agent_silence_alerts").upsert({ conversation_id: r.conversation_id, channel: r.channel, inbound_at: r.ult_lead, motivo: m.texto + " (resolvido na segunda tentativa)", retentou: true, avisou: false }, { onConflict: "conversation_id,channel,inbound_at" });
+          continue;
+        }
+      } catch (e) { console.error("[vigia leads] retry falhou", String(e).slice(0, 120)); }
+    }
+    if (!ja?.avisou) novos.push({ ...r, motivo: m.texto, retentou });
+  }
+  let envio = "nao precisou";
+  if (novos.length && horarioOk && !silencioso) {
+    const linhas = novos.slice(0, 10).map((r) => {
+      const h = Number(r.minutos) >= 60 ? Math.round(Number(r.minutos) / 60) + "h" : r.minutos + " min";
+      return `• ${String(r.lead_name || r.contato || "lead").slice(0, 40)} (${r.channel === "instagram" ? "Instagram" : "WhatsApp"}, há ${h}): ${r.motivo}`;
+    });
+    const msg = "Nexus — " + novos.length + (novos.length === 1 ? " LEAD ESPERANDO RESPOSTA" : " LEADS ESPERANDO RESPOSTA") + " (a IA já atendia essa conversa).\n\n"
+      + linhas.join("\n") + (novos.length > 10 ? `\n… e mais ${novos.length - 10}` : "")
+      + "\n\nAbra o Atendimento, filtro Esperando. Se o agente foi desligado na conversa, a caneta/chave do painel religa.";
+    envio = await zap(sb, msg);
+    const avisou = envio.startsWith("enviado");
+    for (const r of novos) {
+      await sb.from("crm_agent_silence_alerts").upsert({ conversation_id: r.conversation_id, channel: r.channel, inbound_at: r.ult_lead, motivo: r.motivo, retentou: r.retentou, avisou }, { onConflict: "conversation_id,channel,inbound_at" });
+    }
+  }
+  return { esperando: lista.length, novos: novos.length, retentados, horario_ok: horarioOk, envio, lista: novos.slice(0, 10).map((r) => ({ lead: r.lead_name, canal: r.channel, min: r.minutos, motivo: r.motivo })) };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
@@ -136,6 +206,7 @@ Deno.serve(async (req) => {
     // dias respondendo "não veio o áudio direito" sem ninguém saber. O crm-agent-respond agora
     // grava o motivo em crm_whatsapp_messages.error_text; aqui a gente lê e avisa.
     const transc = await vigiaTranscricao(sb, !!body.silencioso);
+    const leads = await vigiaLeadsEsperando(sb, !!body.silencioso);
 
     // 2. como estava no check anterior
     const { data: ant } = await sb.from("ai_health_log")
@@ -173,7 +244,7 @@ Deno.serve(async (req) => {
 
     await sb.from("ai_health_log").insert({ ok, status_code: status || null, erro, alertou: avisou, tipo: "anthropic" });
 
-    return new Response(JSON.stringify({ ok, status, erro, avisou, envio, horas_desde_ultimo_alerta: Math.round(horasDesdeAlerta), transcricao: transc }, null, 1),
+    return new Response(JSON.stringify({ ok, status, erro, avisou, envio, horas_desde_ultimo_alerta: Math.round(horasDesdeAlerta), transcricao: transc, leads_esperando: leads }, null, 1),
       { headers: { ...CORS, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ erro: String(e) }), { status: 500, headers: { ...CORS, "Content-Type": "application/json" } });
