@@ -95,10 +95,18 @@ export function useInstagramConversations() {
       .eq("id", id);
   };
 
+  const markAsUnread = async (id: string) => {
+    await supabase
+      .from("instagram_conversations")
+      .update({ unread_count: 1 })
+      .eq("id", id);
+  };
+
   return {
     conversations,
     loading,
     refetch: fetchConversations,
     markAsRead,
+    markAsUnread,
   };
 }

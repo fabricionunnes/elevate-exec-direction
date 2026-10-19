@@ -218,6 +218,11 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
     supabase.functions.invoke('evolution-api', { body: { action: 'markRead', conversationId: id } }).catch(() => {});
   };
 
+  // Marcar como não lida (19/10/2026): volta a conversa pra fila de não lidas (contador 1).
+  const markAsUnread = async (id: string) => {
+    await updateConversation(id, { unread_count: 1 });
+  };
+
   const assignToStaff = async (id: string, staffId: string | null) => {
     await updateConversation(id, { assigned_to: staffId });
   };
@@ -237,6 +242,7 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
     refetch: fetchConversations,
     updateConversation,
     markAsRead,
+    markAsUnread,
     assignToStaff,
     closeConversation,
     reopenConversation,
