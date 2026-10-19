@@ -72,6 +72,14 @@ const fmtWeekday = (iso: string) =>
   new Date(iso).toLocaleDateString("pt-BR", { timeZone: BR, weekday: "long" });
 
 /** Descobre o lead ou o projeto ligado ao evento, pra mandar o link certo */
+async function eventoNasceuNoNexus(supabase: any, eventId: string): Promise<boolean> {
+  const [{ data: a }, { data: p }] = await Promise.all([
+    supabase.from("crm_activities").select("id").eq("google_calendar_event_id", eventId).limit(1).maybeSingle(),
+    supabase.from("onboarding_meeting_notes").select("id").eq("google_event_id", eventId).limit(1).maybeSingle(),
+  ]);
+  return !!(a?.id || p?.id);
+}
+
 async function findContext(supabase: any, eventId: string, description: string | null) {
   // 1) atividade do CRM criada junto do evento
   const { data: act } = await supabase
@@ -232,7 +240,11 @@ Deno.serve(async (req: Request) => {
           notified_30: startMs - now < 30 * 60000,
           notified_5: startMs - now < 5 * 60000,
         });
-        const novo = (!isBootstrap && startMs > now) ? await ehReuniaoDeVerdade(supabase, e) : { ok: false, ctx: null };
+        // 19/10/2026 (Fabrício): reunião que NASCEU no Nexus já foi avisada na hora pelo
+        // meeting-scheduled-notify (Marcelo). Avisar de novo aqui, minutos depois, era duplicado.
+        // Só avisa "nova" quando a reunião foi criada direto na agenda (fora do sistema).
+        const nasceuNoNexus = await eventoNasceuNoNexus(supabase, e.id);
+        const novo = (!isBootstrap && startMs > now && !nasceuNoNexus) ? await ehReuniaoDeVerdade(supabase, e) : { ok: false, ctx: null };
         if (novo.ok) {
           const ctx = novo.ctx;
           notifications.push([
