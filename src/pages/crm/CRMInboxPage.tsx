@@ -65,6 +65,8 @@ import {
   EyeOff,
   PanelRight,
   Hourglass,
+  Pin,
+  PinOff,
   PenLine,
   User as UserIcon,
   Zap,
@@ -199,6 +201,27 @@ export const CRMInboxPage = () => {
   const [instanceNames, setInstanceNames] = useState<{ value: string; label: string }[]>([]);
   // Conversas ocultadas (grupos de promoção etc.): somem da lista e o servidor para de gravar
   const [ignoredPhones, setIgnoredPhones] = useState<Set<string>>(new Set());
+  // Conversas fixadas (19/10/2026): cada pessoa fixa as suas; fixada vai pro topo da lista.
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!staffId) return;
+    (supabase as any).from("crm_conversation_pins").select("conversation_id").eq("staff_id", staffId)
+      .then(({ data }: any) => setPinnedIds(new Set((data || []).map((r: any) => String(r.conversation_id)))));
+  }, [staffId]);
+  const fixarConversa = async (conv: any) => {
+    if (!staffId || !conv?.id) return;
+    const id = String(conv.id);
+    const canal = conv.channel === "instagram" ? "instagram" : "whatsapp";
+    const estava = pinnedIds.has(id);
+    setPinnedIds((prev) => { const n = new Set(prev); estava ? n.delete(id) : n.add(id); return n; });
+    const { error } = estava
+      ? await (supabase as any).from("crm_conversation_pins").delete().eq("staff_id", staffId).eq("conversation_id", id).eq("channel", canal)
+      : await (supabase as any).from("crm_conversation_pins").upsert({ staff_id: staffId, conversation_id: id, channel: canal }, { onConflict: "staff_id,conversation_id,channel" });
+    if (error) {
+      setPinnedIds((prev) => { const n = new Set(prev); estava ? n.add(id) : n.delete(id); return n; });
+      toast.error("Não consegui salvar. Tenta de novo.");
+    } else toast.success(estava ? "Conversa desafixada" : "Conversa fixada no topo");
+  };
   useEffect(() => {
     (supabase as any).from("crm_whatsapp_ignored_chats").select("phone").then(({ data }: any) => {
       setIgnoredPhones(new Set(((data || []) as any[]).map((r) => r.phone)));
@@ -956,6 +979,12 @@ export const CRMInboxPage = () => {
           ...[...filaAndamento].sort((a, b) => tempoUltima(a) - tempoUltima(b)),
         ]
       : [...filaEsperando, ...filaAndamento];
+  // Fixadas sempre no topo, na ordem que já estavam; o resto segue a fila normal.
+  const fixadas = listaOrdenada.filter((c: any) => pinnedIds.has(String(c.id)));
+  const naoFixadas = listaOrdenada.filter((c: any) => !pinnedIds.has(String(c.id)));
+  const listaFinal = [...fixadas, ...naoFixadas];
+  const esperandoSemFixo = naoFixadas.filter((c: any) => aguardando(c)).length;
+  const andamentoSemFixo = naoFixadas.length - esperandoSemFixo;
   // Filtro atual no formato do banco (crm_inbox_bulk): "sem seleção = todas do filtro"
   const bulkFilter = useMemo(() => {
     const dia = (d?: Date) => (d ? format(new Date(d), "yyyy-MM-dd") : "");
@@ -1231,7 +1260,7 @@ export const CRMInboxPage = () => {
               )}
             </div>
           ) : (
-            listaOrdenada.map((conv, convIdx) => {
+            listaFinal.map((conv, convIdx) => {
               const rawName = (conv.contact?.name || "").trim();
               const isGenericName = !nomeValido(rawName) || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
               const displayName = isGenericName ? conv.lead?.name || conv.contact?.phone || "Desconhecido" : rawName;
@@ -1241,15 +1270,19 @@ export const CRMInboxPage = () => {
               const companyName = String((conv.lead as any)?.company || "").trim();
               const etapa = stageMap[String((conv.lead as any)?.stage_id || "")];
               const aguarda = aguardando(conv);
-              const cabecalho = convIdx === 0 && filaEsperando.length > 0 ? `Esperando resposta · ${filaEsperando.length}`
-                : convIdx === filaEsperando.length && filaEsperando.length > 0 && filaAndamento.length > 0 ? `Em andamento · ${filaAndamento.length}` : "";
+              const fixada = pinnedIds.has(String(conv.id));
+              const idxFila = convIdx - fixadas.length; // posição dentro da fila (sem as fixadas)
+              const temFilaNormal = filters.sortBy !== "oldest";
+              const cabecalho = convIdx === 0 && fixadas.length > 0 ? `Fixadas · ${fixadas.length}`
+                : temFilaNormal && idxFila === 0 && esperandoSemFixo > 0 ? `Esperando resposta · ${esperandoSemFixo}`
+                : temFilaNormal && idxFila === esperandoSemFixo && (esperandoSemFixo > 0 || fixadas.length > 0) && andamentoSemFixo > 0 ? `Em andamento · ${andamentoSemFixo}` : "";
               const esperaMin = aguarda && (conv as any).last_inbound_at ? (Date.now() - new Date((conv as any).last_inbound_at).getTime()) / 60000 : 0;
 
               return (
               <div key={conv.id}>
               {cabecalho && (
                 <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground bg-muted/40 border-b border-border/60 flex items-center gap-1">
-                  {convIdx === 0 && <Hourglass className="h-3 w-3" />}{cabecalho}
+                  {cabecalho.startsWith("Fixadas") ? <Pin className="h-3 w-3" /> : cabecalho.startsWith("Esperando") ? <Hourglass className="h-3 w-3" /> : null}{cabecalho}
                 </div>
               )}
               <button
@@ -1290,7 +1323,8 @@ export const CRMInboxPage = () => {
                     <span className={cn("text-sm truncate", conv.unread_count > 0 ? "font-bold" : "font-medium")}>
                       {titleName}
                     </span>
-                    <span className={cn("text-[10px] shrink-0", conv.unread_count > 0 ? "text-primary font-semibold" : "text-muted-foreground")}>
+                    <span className={cn("text-[10px] shrink-0 flex items-center gap-1", conv.unread_count > 0 ? "text-primary font-semibold" : "text-muted-foreground")}>
+                      {fixada && <Pin className="h-3 w-3 text-primary" />}
                       {conv.last_message_at ? quandoCurto(conv.last_message_at) : ""}
                     </span>
                   </div>
@@ -1452,6 +1486,10 @@ export const CRMInboxPage = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => fixarConversa(selectedConversation)}>
+                    {pinnedIds.has(String(selectedConversation.id)) ? <PinOff className="h-4 w-4 mr-2" /> : <Pin className="h-4 w-4 mr-2" />}
+                    {pinnedIds.has(String(selectedConversation.id)) ? "Desafixar conversa" : "Fixar conversa no topo"}
+                  </DropdownMenuItem>
                   {selectedConversation.status === "closed" ? (
                     <DropdownMenuItem onClick={async () => {
                       try {
