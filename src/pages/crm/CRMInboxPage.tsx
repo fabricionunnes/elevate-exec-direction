@@ -67,6 +67,7 @@ import {
   Hourglass,
   Pin,
   PinOff,
+  MailOpen,
   PenLine,
   User as UserIcon,
   Zap,
@@ -373,6 +374,7 @@ export const CRMInboxPage = () => {
     loading: loadingWhatsApp, 
     refetch: refetchConversations,
     markAsRead,
+    markAsUnread,
     closeConversation,
     reopenConversation,
   } = useWhatsAppConversations({
@@ -385,7 +387,18 @@ export const CRMInboxPage = () => {
     loading: loadingInstagram,
     refetch: refetchIgConversations,
     markAsRead: markIgAsRead,
+    markAsUnread: markIgAsUnread,
   } = useInstagramConversations();
+
+  // Marcar como não lida (Fabrício, 19/10/2026): volta a conversa pra "Não lidas" e fecha o chat,
+  // senão o próprio abrir já marcava como lida de novo.
+  const marcarNaoLida = async (conv: any) => {
+    try {
+      if (conv.channel === "instagram") await markIgAsUnread(conv.id); else await markAsUnread(conv.id);
+      setSelectedConversation(null);
+      toast.success("Marcada como não lida");
+    } catch { toast.error("Não consegui marcar como não lida"); }
+  };
 
   const loadingConversations = loadingWhatsApp || loadingInstagram;
 
@@ -1502,6 +1515,10 @@ export const CRMInboxPage = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => marcarNaoLida(selectedConversation)}>
+                    <MailOpen className="h-4 w-4 mr-2" />
+                    Marcar como não lida
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => fixarConversa(selectedConversation)}>
                     {pinnedIds.has(String(selectedConversation.id)) ? <PinOff className="h-4 w-4 mr-2" /> : <Pin className="h-4 w-4 mr-2" />}
                     {pinnedIds.has(String(selectedConversation.id)) ? "Desafixar conversa" : "Fixar conversa no topo"}
