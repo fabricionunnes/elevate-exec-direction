@@ -2351,7 +2351,7 @@ const OnboardingTasksPage = () => {
             )}
 
             {/* Tráfego pago dos clientes (19/10/2026): geral e por empresa, CAC, ROAS, conexão Meta e saldo */}
-            {(isMaster || isAdmin) && (
+            {(isMaster || isAdmin || hasMenuPerm("trafego_pago")) && (
               <Button
                 size="sm"
                 variant="outline"

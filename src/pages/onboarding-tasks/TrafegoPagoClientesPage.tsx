@@ -34,7 +34,7 @@ type Painel = {
   de: string; ate: string; empresas: Empresa[]; serie: { dia: string; gasto: number; leads: number; conversas: number; compras: number }[];
   campanhas: { campaign_id: string; nome: string; objetivo: string | null; gasto: number; impressoes: number; cliques: number; leads: number; conversas: number; compras: number; receita: number; cpl: number | null; ultimo_dia: string }[];
   leads_nexus: { id: string; nome: string; telefone: string | null; chegou_em: string; origem: string | null; status: string; valor: number | null; fechou_em: string | null }[];
-  totais: Record<string, number | null>; gerado_em: string;
+  totais: Record<string, number | null> & { restrito?: boolean }; gerado_em: string;
 };
 
 const PERIODOS = [
@@ -86,8 +86,10 @@ function Saldo({ c }: { c: Conta }) {
 
 export default function TrafegoPagoClientesPage() {
   const navigate = useNavigate();
-  const { loading: authLoading, currentStaff, isMaster } = useStaffPermissions();
-  const podeVer = isMaster || currentStaff?.role === "admin";
+  const { loading: authLoading, currentStaff, isMaster, hasPermission } = useStaffPermissions();
+  // master/admin veem tudo; quem tem a permissão "trafego_pago" (ex.: Weslley, gestor de tráfego)
+  // vê só as empresas em que é consultor ou CS (a RPC filtra).
+  const podeVer = isMaster || currentStaff?.role === "admin" || hasPermission("trafego_pago");
   const [periodo, setPeriodo] = useState("30");
   const [projeto, setProjeto] = useState("");
   const [dados, setDados] = useState<Painel | null>(null);
@@ -162,7 +164,7 @@ export default function TrafegoPagoClientesPage() {
           <Megaphone className="h-5 w-5 text-primary" />
           <div className="mr-auto">
             <h1 className="text-lg font-bold leading-tight">Tráfego pago</h1>
-            <p className="text-xs text-muted-foreground">Resultado de todas as empresas que rodam tráfego com a UNV. {dados?.gerado_em ? `Atualizado ${dt(dados.gerado_em)}.` : ""}</p>
+            <p className="text-xs text-muted-foreground">{dados?.totais?.restrito ? "Só as empresas em que você é o consultor." : "Resultado de todas as empresas que rodam tráfego com a UNV."} {dados?.gerado_em ? `Atualizado ${dt(dados.gerado_em)}.` : ""}</p>
           </div>
           <SearchableSelect value={periodo} onValueChange={setPeriodo} options={PERIODOS} placeholder="Período" className="w-[170px]" />
           <SearchableSelect
