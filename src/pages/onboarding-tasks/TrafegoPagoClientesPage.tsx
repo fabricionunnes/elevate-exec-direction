@@ -51,7 +51,7 @@ function intervalo(p: string): { de: string; ate: string } {
 const n = (v: unknown) => Number(v || 0);
 const brl = (v: unknown, dec = 0) => n(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: dec, minimumFractionDigits: dec });
 const num = (v: unknown) => n(v).toLocaleString("pt-BR");
-const x = (v: unknown) => (v == null ? "-" : `${n(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}x`);
+const x = (v: unknown) => (v == null || n(v) === 0 ? "-" : `${n(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}x`);
 const dt = (v?: string | null, f = "dd/MM HH:mm") => (v ? format(parseISO(v), f, { locale: ptBR }) : "-");
 const STATUS_LEAD: Record<string, string> = { novo: "Novo", em_contato: "Em contato", agendou: "Agendou", compareceu: "Compareceu", fechou: "Fechou", sem_resposta: "Sem resposta", perdido: "Perdido" };
 
