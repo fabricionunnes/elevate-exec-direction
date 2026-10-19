@@ -68,6 +68,7 @@ import {
   Pin,
   PinOff,
   MailOpen,
+  MailCheck,
   PenLine,
   User as UserIcon,
   Zap,
@@ -395,9 +396,22 @@ export const CRMInboxPage = () => {
   const marcarNaoLida = async (conv: any) => {
     try {
       if (conv.channel === "instagram") await markIgAsUnread(conv.id); else await markAsUnread(conv.id);
-      setSelectedConversation(null);
+      if (selectedConversation?.id === conv.id) setSelectedConversation(null);
       toast.success("Marcada como não lida");
     } catch { toast.error("Não consegui marcar como não lida"); }
+  };
+  // Atalho na própria linha da lista (Fabrício, 19/10: "um jeito mais fácil, no canto esquerdo
+  // mesmo"): ícone que aparece ao passar o mouse; alterna lida / não lida sem abrir a conversa.
+  const alternarLida = async (e: React.MouseEvent, conv: any) => {
+    e.preventDefault(); e.stopPropagation();
+    if ((conv.unread_count || 0) > 0) {
+      try {
+        if (conv.channel === "instagram") await markIgAsRead(conv.id); else await markAsRead(conv.id);
+        toast.success("Marcada como lida");
+      } catch { toast.error("Não consegui marcar como lida"); }
+    } else {
+      await marcarNaoLida(conv);
+    }
   };
 
   const loadingConversations = loadingWhatsApp || loadingInstagram;
@@ -1328,7 +1342,7 @@ export const CRMInboxPage = () => {
                   }
                 }}
                 className={cn(
-                  "relative w-full flex items-start gap-3 px-3 py-3.5 hover:bg-muted/50 transition-colors text-left border-b border-border/60 overflow-hidden",
+                  "group relative w-full flex items-start gap-3 px-3 py-3.5 hover:bg-muted/50 transition-colors text-left border-b border-border/60 overflow-hidden",
                   conv.unread_count > 0 && "bg-primary/5",
                   selectedConversation?.id === conv.id && "bg-muted shadow-[inset_3px_0_0_hsl(var(--primary))]",
                   selectMode && selectedIds.has(conv.id) && "bg-primary/10"
@@ -1353,6 +1367,18 @@ export const CRMInboxPage = () => {
                       {titleName}
                     </span>
                     <span className={cn("text-[10px] shrink-0 flex items-center gap-1", conv.unread_count > 0 ? "text-primary font-semibold" : "text-muted-foreground")}>
+                      {!selectMode && (
+                        // span com papel de botão: a linha inteira já é um <button>
+                        <span
+                          role="button"
+                          tabIndex={-1}
+                          title={conv.unread_count > 0 ? "Marcar como lida" : "Marcar como não lida"}
+                          onClick={(e) => alternarLida(e, conv)}
+                          className="h-5 w-5 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-muted text-muted-foreground hover:text-foreground transition-opacity"
+                        >
+                          {conv.unread_count > 0 ? <MailCheck className="h-3.5 w-3.5" /> : <MailOpen className="h-3.5 w-3.5" />}
+                        </span>
+                      )}
                       {fixada && <Pin className="h-3 w-3 text-primary" />}
                       {conv.last_message_at ? quandoCurto(conv.last_message_at) : ""}
                     </span>
