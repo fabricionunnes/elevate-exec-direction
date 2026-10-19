@@ -847,7 +847,45 @@ async function transcribeAudio(url) {
   return (await transcribeAudioDetalhado(url)).text;
 }
 /** Versão com o motivo da falha (usada no teste e nos logs). Extensão do arquivo
- *  segue o content-type: mandar .ogg com nome .mp4 fazia o Whisper recusar (11/09/2026). */ async function transcribeAudioDetalhado(url) {
+ *  segue o content-type: mandar .ogg com nome .mp4 fazia o Whisper recusar (11/09/2026). */ // 19/10/2026: PRIMEIRA opção é o Whisper no Workers AI da Cloudflare (worker unv-transcricao,
+// conta da UNV, cobrado na fatura mensal). OpenAI e AssemblyAI são pré-pagas e zeraram três vezes
+// em outubro, deixando o agente "sem ouvir" por dias. Fabrício: "não pode acontecer em hipótese
+// alguma". Se a Cloudflare falhar, cai pra OpenAI e depois AssemblyAI.
+let cfCfgCache = null;
+async function cfTranscribeConfig() {
+  // o projeto bateu no teto de 100 secrets, então a chave fica em app_secrets (como meta_balance_secret)
+  let base = Deno.env.get("CF_TRANSCRIBE_URL"), secret = Deno.env.get("CF_TRANSCRIBE_SECRET");
+  if (base && secret) return { base, secret };
+  if (cfCfgCache) return cfCfgCache;
+  const sb = createClient(SUPABASE_URL, SERVICE_ROLE);
+  const { data } = await sb.from("app_secrets").select("key, value").in("key", ["cf_transcribe_url", "cf_transcribe_secret"]);
+  const m = Object.fromEntries((data || []).map((r) => [r.key, r.value]));
+  cfCfgCache = { base: base || m.cf_transcribe_url || "", secret: secret || m.cf_transcribe_secret || "" };
+  return cfCfgCache;
+}
+async function transcribeViaCloudflare(url) {
+  const { base, secret } = await cfTranscribeConfig();
+  if (!base || !secret) return { text: null, error: "cloudflare não configurada" };
+  try {
+    const r = await fetch(base, { method: "POST", headers: { "Content-Type": "application/json", "x-secret": secret }, body: JSON.stringify({ url, language: "pt" }), signal: AbortSignal.timeout(90000) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.error) return { text: null, error: `cloudflare ${r.status}: ${String(d.error || "").slice(0, 120)}` };
+    const t = String(d.text || "").trim();
+    return { text: t || null, error: t ? undefined : "cloudflare: transcrição vazia" };
+  } catch (e) {
+    return { text: null, error: `cloudflare: ${String(e.message || e).slice(0, 120)}` };
+  }
+}
+async function transcribeAudioDetalhado(url) {
+  if (!url) return { text: null, error: "sem url" };
+  const cf = await transcribeViaCloudflare(url);
+  if (cf.text) return { text: cf.text, via: "cloudflare" };
+  console.error("[transcribe] cloudflare falhou:", cf.error, "→ tentando OpenAI/AssemblyAI");
+  const r = await transcribeAudioLegado(url);
+  if (!r.text && r.error) r.error = `${cf.error} | ${r.error}`;
+  return r;
+}
+async function transcribeAudioLegado(url) {
   try {
     const key = Deno.env.get("OPENAI_API_KEY");
     if (!url) return {
