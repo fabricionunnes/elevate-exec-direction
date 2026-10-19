@@ -1,0 +1,9 @@
+# unv-transcricao (19/10/2026): Whisper no Workers AI da conta da UNV. Transcrição de áudio dos
+# agentes do Nexus sem depender de saldo pré-pago (OpenAI/AssemblyAI zeraram 3x em outubro).
+name = "unv-transcricao"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+account_id = "aff9eb9c02b633cb91fb2bf947216daf"
+
+[ai]
+binding = "AI"

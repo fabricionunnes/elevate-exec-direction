@@ -72,7 +72,8 @@ async function vigiaTranscricao(sb: any, silencioso: boolean) {
     .select("id", { count: "exact", head: true }).in("type", ["audio", "ptt"]).eq("direction", "inbound")
     .gte("created_at", desde).not("transcription", "is", null);
   const nFalhas = (falhas || []).length;
-  const quebrado = nFalhas >= 2 && !(okCount && okCount > 0);
+  // 19/10/2026 (Fabrício: "nem mais uma vez"): UMA falha já avisa, mesmo que outro áudio tenha passado
+  const quebrado = nFalhas >= 1;
   const erro = nFalhas ? String(falhas[0].error_text).replace(/^transcrição falhou:\s*/, "") : null;
 
   const { data: ant } = await sb.from("ai_health_log")
