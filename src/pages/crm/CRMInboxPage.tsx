@@ -191,6 +191,22 @@ export const CRMInboxPage = () => {
   const quickRef = useRef<QuickResponsesPickerHandle>(null);
   const quickQuery = newMessage.startsWith("/") ? newMessage.slice(1) : "";
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  // ESC fecha a conversa aberta e volta pra lista, como no WhatsApp (Fabrício, 19/10/2026).
+  // Não age se houver janela, menu ou painel aberto (esses fecham primeiro com o próprio ESC),
+  // nem com o painel de respostas rápidas aberto.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (!selectedConversation) return;
+      if (quickOpen) { setQuickOpen(false); return; }
+      if (document.querySelector('[role="dialog"], [role="menu"], [role="listbox"], [data-state="open"][data-radix-popper-content-wrapper]')) return;
+      e.preventDefault();
+      setSelectedConversation(null);
+      (document.activeElement as HTMLElement | null)?.blur?.();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedConversation, quickOpen]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram">("all");
