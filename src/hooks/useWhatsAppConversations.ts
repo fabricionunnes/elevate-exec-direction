@@ -213,14 +213,15 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
   };
 
   const markAsRead = async (id: string) => {
-    await updateConversation(id, { unread_count: 0 });
+    await updateConversation(id, { unread_count: 0, unread_manual: false } as any);
     // Leu no Atendimento = lido no WhatsApp também (não bloqueia a tela se falhar).
     supabase.functions.invoke('evolution-api', { body: { action: 'markRead', conversationId: id } }).catch(() => {});
   };
 
   // Marcar como não lida (19/10/2026): volta a conversa pra fila de não lidas (contador 1).
   const markAsUnread = async (id: string) => {
-    await updateConversation(id, { unread_count: 1 });
+    // unread_manual: o webhook do celular não desfaz (19/10/2026, "tinha que marcar 3x")
+    await updateConversation(id, { unread_count: 1, unread_manual: true } as any);
   };
 
   const assignToStaff = async (id: string, staffId: string | null) => {
