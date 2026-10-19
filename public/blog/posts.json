@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-18T21:02:16",
+ "gerado_em": "2026-10-19T10:01:05",
  "posts": [
+  {
+   "slug": "dashboard-pronto-primeira-semana-depende-cliente-preencher",
+   "url": "/blog/dashboard-pronto-primeira-semana-depende-cliente-preencher/",
+   "titulo": "Dashboard pronto na primeira semana depende do cliente preencher",
+   "resumo": "Sistema configurado não é sistema funcionando. O tempo de implementação depende de quem entrega a informação, não de quem monta a ferramenta.",
+   "tags": [
+    "ferramenta",
+    "implementação",
+    "diagnóstico",
+    "estrutura comercial",
+    "rotina de cobrança"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-19",
+   "ts": 2189
+  },
   {
    "slug": "trocar-ferramenta-nao-usada-custa-mesmo",
    "url": "/blog/trocar-ferramenta-nao-usada-custa-mesmo/",
