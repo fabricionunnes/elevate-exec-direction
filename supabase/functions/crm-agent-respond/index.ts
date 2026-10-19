@@ -3862,7 +3862,10 @@ Deno.serve(async (req)=>{
               });
               if (block.name === "marcar_perdido" && result.startsWith("OK")) encerrarConversa = true;
               // Fora do ICP encerra igual à recusa: sem resposta automática e sem follow-up nesta conversa.
-              if (block.name === "marcar_fora_do_perfil" && !result.startsWith("Erro")) encerrarConversa = true;
+              // 19/10/2026: só desliga quando a marcação ACONTECEU. A ferramenta também devolve
+              // "RECUSADO: ... você precisa SONDAR" (piso de ICP) e aí o agente faz uma pergunta;
+              // desligar nessa hora deixava o lead falando sozinho (Devid, Marcela, Bruna, Flávio).
+              if (block.name === "marcar_fora_do_perfil" && /^(Negócio movido|Lead marcado)/.test(result)) encerrarConversa = true;
               if (block.name === "transferir_para_humano" && result.startsWith("OK")) transferidoHumano = true;
             }
             toolCalls.push(`${block.name}(${JSON.stringify(block.input)}) -> ${result.slice(0, 120)}`);
@@ -4051,6 +4054,12 @@ Deno.serve(async (req)=>{
             last_message: reply.substring(0, 255),
             last_message_at: new Date().toISOString()
           }).eq("id", conversation_id);
+        }
+        // Rede de segurança: se a resposta que acabou de sair termina em pergunta, o agente
+        // está esperando o lead responder. Não pode se desligar agora.
+        if (encerrarConversa && /\?\s*$/.test(String(reply || "").trim())) {
+          console.warn("[agente] não desliga: a resposta termina em pergunta");
+          encerrarConversa = false;
         }
         if (encerrarConversa || transferidoHumano) {
           // lead perdido após 2 recusas (ou conversa passada pra uma pessoa): agente desligado
