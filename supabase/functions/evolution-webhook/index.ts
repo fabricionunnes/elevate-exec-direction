@@ -708,7 +708,7 @@ async function handleIncomingMessage(
   };
 
   // Respondeu pelo celular (ou pelo próprio Nexus): a conversa foi lida.
-  if (fromMe && (conversation.unread_count || 0) > 0) updateData.unread_count = 0;
+  if (fromMe && ((conversation.unread_count || 0) > 0 || conversation.unread_manual)) { updateData.unread_count = 0; updateData.unread_manual = false; }
   if (!fromMe && type !== 'reaction') {
     updateData.unread_count = (conversation.unread_count || 0) + 1;
     if (conversation.status === 'closed') {
@@ -812,7 +812,8 @@ async function zeraNaoLidas(supabase: any, instanceId: string | null, jid: strin
     .or(`phone.eq.${digits},phone.eq.${jid}`).limit(5);
   const ids = (contacts || []).map((c: any) => c.id);
   if (!ids.length) return;
-  let q = supabase.from('crm_whatsapp_conversations').update({ unread_count: 0 }).in('contact_id', ids).gt('unread_count', 0);
+  // 19/10/2026: marcação manual de "não lida" no Nexus (unread_manual) não é desfeita pelo celular
+  let q = supabase.from('crm_whatsapp_conversations').update({ unread_count: 0 }).in('contact_id', ids).gt('unread_count', 0).eq('unread_manual', false);
   if (instanceId) q = q.eq('instance_id', instanceId);
   await q;
 }
@@ -840,7 +841,7 @@ async function handleMessageStatusUpdate(supabase: any, dataIn: any) {
   // Mensagem do CONTATO marcada como lida = alguém leu no celular. Zera o não lidas.
   if (key.fromMe === false && Number(status) >= 3) {
     const { data: m } = await supabase.from('crm_whatsapp_messages').select('conversation_id').eq('remote_id', key.id).maybeSingle();
-    if (m?.conversation_id) await supabase.from('crm_whatsapp_conversations').update({ unread_count: 0 }).eq('id', m.conversation_id).gt('unread_count', 0);
+    if (m?.conversation_id) await supabase.from('crm_whatsapp_conversations').update({ unread_count: 0 }).eq('id', m.conversation_id).gt('unread_count', 0).eq('unread_manual', false);
     return;
   }
 
