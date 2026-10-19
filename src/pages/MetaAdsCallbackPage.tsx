@@ -127,7 +127,10 @@ const MetaAdsCallbackPage = () => {
 
       // Navigate back to the same app origin that initiated the flow when possible
       setTimeout(() => {
-        const targetPath = `/onboarding-tasks/${projectId}`;
+        // 19/10/2026: quem veio do menu "Tráfego pago" volta pra lá (sessionStorage meta_ads_return_to)
+        const voltarPara = sessionStorage.getItem("meta_ads_return_to");
+        if (voltarPara) sessionStorage.removeItem("meta_ads_return_to");
+        const targetPath = voltarPara || `/onboarding-tasks/${projectId}`;
 
         if (returnOrigin && returnOrigin !== window.location.origin) {
           window.location.href = `${returnOrigin}/#${targetPath}`;

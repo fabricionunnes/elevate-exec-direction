@@ -46,6 +46,7 @@ const ProcessosPage = lazy(() => import("./pages/onboarding-tasks/ProcessosPage"
 const CustoIAPage = lazy(() => import("./pages/onboarding-tasks/CustoIAPage"));
 const ProdutoCheckupPage = lazy(() => import("./pages/onboarding-tasks/ProdutoCheckupPage"));
 const PainelControlePage = lazy(() => import("./pages/PainelControlePage"));
+const TrafegoPagoClientesPage = lazy(() => import("./pages/onboarding-tasks/TrafegoPagoClientesPage"));
 const PainelAoVivoPage = lazy(() => import("./pages/PainelAoVivoPage"));
 const AgendaFabricioPage = lazy(() => import("./pages/onboarding-tasks/AgendaFabricioPage"));
 const CertificateVerifyPage = lazy(() => import("./pages/CertificateVerifyPage"));
@@ -624,6 +625,7 @@ const AppShell = () => {
             <Route path="/onboarding-tasks/leader" element={<LeaderDashboardPage />} />
             <Route path="/onboarding-tasks/ceo" element={<CEODashboardPage />} />
             <Route path="/onboarding-tasks/cockpit" element={<CockpitPage />} />
+            <Route path="/onboarding-tasks/trafego-pago" element={<TrafegoPagoClientesPage />} />
             
             {/* Hotseat Public Form */}
             <Route path="/hotseat" element={<HotseatFormPage />} />
