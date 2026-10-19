@@ -96,6 +96,7 @@ import { LeadMeetingsPanel } from "@/components/crm/lead-detail/LeadMeetingsPane
 import { LeadCalendarDialog } from "@/components/crm/lead-detail/LeadCalendarDialog";
 import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
 import { SendContractButton } from "@/components/crm/SendContractButton";
+import { LeadMeetingActions } from "@/components/crm/LeadMeetingActions";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { OfficialTemplateSendDialog } from "@/components/crm/OfficialTemplateSendDialog";
 import { ConvertLeadToCompanyDialog } from "@/components/crm/lead-detail/ConvertLeadToCompanyDialog";
@@ -1185,6 +1186,22 @@ export const CRMLeadDetailPage = () => {
             </DropdownMenu>
           </div>
         </div>
+
+        {/* Row 3 (19/10/2026, Fabrício): os mesmos ícones de reunião do card do kanban
+            (Agendada, Realizada, No-show, Fora do ICP) pra marcar dentro do lead */}
+        {lead.pipeline_id && lead.stage_id && (
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Reunião</span>
+            <LeadMeetingActions
+              leadId={lead.id}
+              pipelineId={lead.pipeline_id}
+              stageId={lead.stage_id}
+              ownerStaffId={lead.owner_staff_id}
+              showContractButton={false}
+              onEventTracked={loadLead}
+            />
+          </div>
+        )}
 
         {/* Tags */}
         <div className="flex items-center gap-2 mt-3">
