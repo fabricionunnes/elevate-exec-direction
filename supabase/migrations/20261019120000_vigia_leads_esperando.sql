@@ -76,3 +76,5 @@ language sql stable security definer set search_path = public as $$
   order by b.ult_lead desc;
 $$;
 revoke all on function public.crm_agent_leads_esperando(int, int) from public, anon, authenticated;
+-- a edge roda com service_role; sem este grant dava "permission denied for function"
+grant execute on function public.crm_agent_leads_esperando(int, int) to service_role;

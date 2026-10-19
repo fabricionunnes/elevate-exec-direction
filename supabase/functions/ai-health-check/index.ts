@@ -123,7 +123,7 @@ async function vigiaLeadsEsperando(sb: any, silencioso: boolean) {
   const { data: rows, error } = await sb.rpc("crm_agent_leads_esperando", { p_min_minutos: 30, p_max_horas: 24 });
   if (error) return { erro: error.message };
   const lista = (rows || []) as any[];
-  const horaBR = Number(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo", hour: "2-digit", hour12: false }));
+  const horaBR = new Date(Date.now() - 3 * 3600000).getUTCHours(); // BRT = UTC-3 (sem horário de verão)
   const horarioOk = horaBR >= ALERTA_HORA_INI && horaBR < ALERTA_HORA_FIM;
   const supaUrl = Deno.env.get("SUPABASE_URL")!, srv = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const novos: any[] = [];
