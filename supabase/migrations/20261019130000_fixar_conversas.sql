@@ -13,4 +13,5 @@ create policy "pins: cada um os seus" on public.crm_conversation_pins
   for all to authenticated
   using (staff_id = (select get_current_staff_id()))
   with check (staff_id = (select get_current_staff_id()));
-grant select, insert, delete on public.crm_conversation_pins to authenticated;
+-- upsert do front = ON CONFLICT DO UPDATE: precisa de UPDATE também (sem ele: "Não consegui salvar")
+grant select, insert, update, delete on public.crm_conversation_pins to authenticated;
