@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, useImperativeHandle, forwardRef, Fragment } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, useImperativeHandle, useSyncExternalStore, forwardRef, Fragment } from "react";
 import type { KeyboardEvent, MutableRefObject } from "react";
 import { TextoWhatsApp, textoWhatsAppLimpo } from "@/lib/whatsapp/TextoWhatsApp";
 import { waErrorPt } from "@/lib/whatsapp/waErrorPt";
@@ -167,7 +167,8 @@ export const CRMInboxPage = () => {
   // Fabrício, 20/10/2026: "a digitação fica lenta demais, não vejo as letras em tempo real".
   const draftRef = useRef("");
   const composerRef = useRef<ComposerHandle>(null);
-  const [temRascunho, setTemRascunho] = useState(false);
+  // Quem precisa saber se há texto (botão Enviar) assina aqui, sem re-renderizar a página.
+  const draftSubs = useRef(new Set<() => void>());
   const setNewMessage = (v: string) => composerRef.current?.setText(v);
   // Assinatura (Conta → Meu Perfil): primeira linha da mensagem; liga/desliga por conversa
   // em crm_whatsapp_conversations.signature_enabled (null = padrão do usuário). 22/09/2026.
@@ -201,7 +202,6 @@ export const CRMInboxPage = () => {
   const [quickQuery, setQuickQuery] = useState("");
   const onComposerChange = useCallback((v: string) => {
     setQuickQuery(v.startsWith("/") ? v.slice(1) : "");
-    setTemRascunho(v.trim().length > 0);
     if (v.startsWith("/")) setQuickOpen(true);
     else if (!v) setQuickOpen((o) => (o ? false : o));
   }, []);
@@ -1885,6 +1885,7 @@ export const CRMInboxPage = () => {
               <ComposerInput
                 ref={composerRef}
                 draftRef={draftRef}
+                subs={draftSubs}
                 disabled={sending}
                 onChange={onComposerChange}
                 onKeyDown={(e) => {
@@ -1925,15 +1926,7 @@ export const CRMInboxPage = () => {
                   <CalendarClock className="h-4 w-4" />
                 </Button>
               )}
-              <Button 
-                onClick={handleSendMessage} 
-                size={isMobile ? "icon" : "default"}
-                className="shrink-0" 
-                disabled={sending || !temRascunho}
-              >
-                <Send className="h-4 w-4" />
-                <span className="hidden sm:inline ml-2">{sending ? "Enviando..." : "Enviar"}</span>
-              </Button>
+              <BotaoEnviar draftRef={draftRef} subs={draftSubs} sending={sending} isMobile={isMobile} onClick={handleSendMessage} />
             </div>
           </div>
           {!isInstagramConversation && (
@@ -2036,16 +2029,19 @@ type ComposerHandle = { setText: (v: string) => void };
 // quando precisa (enviar, "/" das respostas rápidas, vazio x com texto).
 const ComposerInput = forwardRef<ComposerHandle, {
   draftRef: MutableRefObject<string>;
+  subs: MutableRefObject<Set<() => void>>;
   disabled: boolean;
   onChange: (v: string) => void;
   onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void;
-}>(function ComposerInput({ draftRef, disabled, onChange, onKeyDown }, ref) {
+}>(function ComposerInput({ draftRef, subs, disabled, onChange, onKeyDown }, ref) {
   const [text, setTextState] = useState(draftRef.current);
   const inputRef = useRef<HTMLInputElement>(null);
   const setText = (v: string) => {
+    const tinha = draftRef.current.trim().length > 0;
     draftRef.current = v;
     setTextState(v);
     onChange(v);
+    if (tinha !== (v.trim().length > 0)) subs.current.forEach((f) => f());
   };
   useImperativeHandle(ref, () => ({
     setText: (v: string) => {
@@ -2065,3 +2061,23 @@ const ComposerInput = forwardRef<ComposerHandle, {
     />
   );
 });
+
+// Botão Enviar: assina o rascunho (vazio x com texto) sem re-renderizar a página.
+function BotaoEnviar({ draftRef, subs, sending, isMobile, onClick }: {
+  draftRef: MutableRefObject<string>;
+  subs: MutableRefObject<Set<() => void>>;
+  sending: boolean;
+  isMobile: boolean;
+  onClick: () => void;
+}) {
+  const temTexto = useSyncExternalStore(
+    (cb) => { subs.current.add(cb); return () => { subs.current.delete(cb); }; },
+    () => draftRef.current.trim().length > 0,
+  );
+  return (
+    <Button onClick={onClick} size={isMobile ? "icon" : "default"} className="shrink-0" disabled={sending || !temTexto}>
+      <Send className="h-4 w-4" />
+      <span className="hidden sm:inline ml-2">{sending ? "Enviando..." : "Enviar"}</span>
+    </Button>
+  );
+}
