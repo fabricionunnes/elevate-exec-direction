@@ -218,6 +218,13 @@ export const CRMLeadDetailPage = () => {
   };
   const [linkedProject, setLinkedProject] = useState<{ id: string; product_name: string | null } | null>(null);
   const [wonDialogOpen, setWonDialogOpen] = useState(false);
+  // Abre a janela de ganho com a lista de produtos (usada no botão do cabeçalho e no menu "...").
+  const abrirGanho = async () => {
+    const { data: prods } = await supabase.from("onboarding_services").select("id, name").eq("is_active", true).order("sort_order" as any).order("name");
+    setWonProducts(prods || []);
+    setWonProductId((lead as any)?.product_id || "");
+    setWonDialogOpen(true);
+  };
   const [wonProducts, setWonProducts] = useState<{ id: string; name: string }[]>([]);
   const [wonProductId, setWonProductId] = useState<string>("");
   const [lostDialogOpen, setLostDialogOpen] = useState(false);
@@ -1099,6 +1106,30 @@ export const CRMLeadDetailPage = () => {
 
           {/* Contract + extras */}
           <div className="flex items-center gap-1 shrink-0 ml-auto">
+            {/* Ganho e Perda à mão, à esquerda do contrato (Fabrício, 20/10/2026: "pra facilitar").
+                Mesmas janelas do menu "...": ganho pede produto/valor, perda pede o motivo. */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 border-green-500/50 text-green-700 hover:bg-green-50 hover:text-green-800 dark:text-green-400 dark:hover:bg-green-950/40"
+              onClick={abrirGanho}
+              disabled={lead.stage?.final_type === 'won'}
+              title={lead.stage?.final_type === 'won' ? "Este lead já está ganho" : "Marcar como ganho"}
+            >
+              <Trophy className="h-4 w-4" />
+              <span className="hidden md:inline">Ganho</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 border-red-500/50 text-red-700 hover:bg-red-50 hover:text-red-800 dark:text-red-400 dark:hover:bg-red-950/40 mr-1"
+              onClick={() => setLostDialogOpen(true)}
+              disabled={lead.stage?.final_type === 'lost'}
+              title={lead.stage?.final_type === 'lost' ? "Este lead já está perdido" : "Marcar como perdido"}
+            >
+              <XCircle className="h-4 w-4" />
+              <span className="hidden md:inline">Perda</span>
+            </Button>
             <SendContractButton
               leadId={lead.id}
               variant="full"
@@ -1132,12 +1163,7 @@ export const CRMLeadDetailPage = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-popover">
                 <DropdownMenuItem 
-                  onClick={async () => {
-                    const { data: prods } = await supabase.from("onboarding_services").select("id, name").eq("is_active", true).order("sort_order" as any).order("name");
-                    setWonProducts(prods || []);
-                    setWonProductId((lead as any)?.product_id || "");
-                    setWonDialogOpen(true);
-                  }}
+                  onClick={abrirGanho}
                   disabled={lead.stage?.final_type === 'won'}
                 >
                   <Trophy className="h-4 w-4 mr-2 text-green-500" />
