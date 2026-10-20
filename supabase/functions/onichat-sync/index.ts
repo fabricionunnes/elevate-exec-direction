@@ -76,6 +76,108 @@ async function diaDaEtiqueta(cfg: Cfg, token: string, convId: number, label: str
   return null;
 }
 
+// Auditoria: quantas conversas têm cada etiqueta "de fechamento" e em que mês a etiqueta entrou,
+// mais as que têm link de contrato (ZapSign). Serve pra conferir se a regra de venda está estreita.
+async function auditoriaVendas(sb: any, cfg: Cfg, labels: string[], attrLink: string) {
+  const token = await getToken(sb, cfg);
+  const out: Record<string, any> = {};
+  for (const label of labels) {
+    const convs = await filtrar(cfg, token, [{ attribute_key: "labels", filter_operator: "equal_to", values: [label], query_operator: null }], 20);
+    const porMes: Record<string, number> = {}; const ids: any[] = [];
+    for (const c of convs) {
+      const dia = (await diaDaEtiqueta(cfg, token, c.id, label).catch(() => null)) || diaBR(c.last_activity_at || c.created_at) + "?";
+      porMes[dia.slice(0, 7)] = (porMes[dia.slice(0, 7)] || 0) + 1;
+      ids.push({ id: c.id, dia, assignee: c.meta?.assignee?.name, labels: c.labels, link: !!(c.custom_attributes || {})[attrLink] });
+    }
+    out[label] = { total: convs.length, por_mes: porMes, conversas: ids.slice(0, 60) };
+  }
+  if (attrLink) {
+    const comLink = await filtrar(cfg, token, [{ attribute_key: attrLink, filter_operator: "is_present", values: [], query_operator: null, custom_attribute_type: "conversation_attribute" }], 20).catch((e) => ({ erro: String(e) }));
+    out["com_" + attrLink] = Array.isArray(comLink) ? { total: comLink.length, conversas: comLink.slice(0, 60).map((c: any) => ({ id: c.id, criada: diaBR(c.created_at), ult: diaBR(c.last_activity_at || c.created_at), assignee: c.meta?.assignee?.name, labels: c.labels })) } : comLink;
+  }
+  return out;
+}
+
+// Busca termos nas mensagens (endpoint de busca do Chatwoot) e lista as conversas por mês.
+async function buscaTermos(sb: any, cfg: Cfg, termos: string[]) {
+  const token = await getToken(sb, cfg);
+  const out: Record<string, any> = {};
+  for (const termo of termos) {
+    const vistos = new Map<number, any>();
+    for (let page = 1; page <= 15; page++) {
+      const j = await api(cfg, token, `/conversations/search?q=${encodeURIComponent(termo)}&page=${page}`).catch(() => null);
+      const lista: any[] = j?.payload || [];
+      for (const c of lista) if (!vistos.has(c.id)) vistos.set(c.id, c);
+      if (lista.length < 25) break;
+    }
+    const porMes: Record<string, number> = {};
+    const convs = [...vistos.values()].map((c: any) => {
+      const m = (c.messages || [])[0];
+      const dia = m?.created_at ? diaBR(m.created_at) : diaBR(c.last_activity_at || c.created_at);
+      porMes[dia.slice(0, 7)] = (porMes[dia.slice(0, 7)] || 0) + 1;
+      return { id: c.id, dia, assignee: c.meta?.assignee?.name, labels: c.labels, status: c.status, trecho: String(m?.content || "").replace(/\s+/g, " ").slice(0, 140) };
+    });
+    out[termo] = { total: convs.length, por_mes: porMes, conversas: convs.sort((a, b) => b.dia.localeCompare(a.dia)).slice(0, 80) };
+  }
+  // conversas resolvidas, por mês da última atividade
+  const resolvidas = await filtrar(cfg, token, [{ attribute_key: "status", filter_operator: "equal_to", values: ["resolved"], query_operator: null }], 40);
+  const porMesRes: Record<string, number> = {};
+  resolvidas.forEach((c: any) => { const k = diaBR(c.last_activity_at || c.created_at).slice(0, 7); porMesRes[k] = (porMesRes[k] || 0) + 1; });
+  out["resolvidas"] = { total: resolvidas.length, por_mes: porMesRes, amostra: resolvidas.slice(0, 20).map((c: any) => ({ id: c.id, ult: diaBR(c.last_activity_at || c.created_at), assignee: c.meta?.assignee?.name, labels: c.labels })) };
+  return out;
+}
+
+// Mensagens de conversas específicas (tipo, remetente, trecho, dia), pra entender o fluxo de venda.
+async function mensagensDe(sb: any, cfg: Cfg, ids: number[]) {
+  const token = await getToken(sb, cfg);
+  const out: Record<string, any> = {};
+  for (const id of ids) {
+    const todas: any[] = [];
+    let before: number | null = null;
+    for (let i = 0; i < 8; i++) {
+      const j = await api(cfg, token, `/conversations/${id}/messages${before ? `?before=${before}` : ""}`).catch(() => null);
+      const msgs: any[] = j?.payload || [];
+      if (!msgs.length) break;
+      todas.push(...msgs);
+      before = Math.min(...msgs.map((m) => m.id));
+      if (msgs.length < 20) break;
+    }
+    todas.sort((a, b) => a.created_at - b.created_at);
+    out[id] = todas.map((m) => ({ d: new Date(m.created_at * 1000).toISOString().slice(0, 16), t: m.message_type, de: m.sender?.name || m.sender?.type || "", priv: m.private || undefined, c: String(m.content || m.content_attributes?.deleted && "(apagada)" || "").replace(/\s+/g, " ").slice(0, 110) + ((m.attachments || []).length ? " [anexo " + (m.attachments || []).map((a: any) => a.file_type).join(",") + "]" : "") }));
+  }
+  return out;
+}
+
+// Sonda: GET em caminhos da API da conta (pra mapear módulos fora do Chatwoot padrão, ex. Kanban).
+async function sonda(sb: any, cfg: Cfg, paths: string[], limite = 6000) {
+  const token = await getToken(sb, cfg);
+  const out: Record<string, any> = {};
+  for (const path of paths) {
+    try {
+      const r = await fetch(`${cfg.base_url}/api/v1/accounts/${cfg.account_id}${path}`, { headers: { api_access_token: token } });
+      const txt = await r.text();
+      out[path] = { status: r.status, corpo: txt.slice(0, limite) };
+    } catch (e) { out[path] = { erro: String(e) }; }
+  }
+  return out;
+}
+
+// Cards do Kanban (módulo do OniChat) de um funil, nas etapas dadas, todas as páginas.
+async function cardsKanban(cfg: Cfg, token: string, funnelId: number, stages: string[]) {
+  const out: any[] = [];
+  for (const stage of stages) {
+    for (let page = 1; page <= 40; page++) {
+      const j = await api(cfg, token, `/kanban_items?funnel_id=${funnelId}&stage_id=${encodeURIComponent(stage)}${page > 1 ? `&page=${page}` : ""}`);
+      const itens: any[] = j?.items || j?.payload || [];
+      out.push(...itens);
+      const total = Number(j?.meta?.total_count ?? j?.meta?.count ?? NaN);
+      if (!itens.length || (Number.isFinite(total) && out.length >= total)) break;
+      if (itens.length < 10) break;
+    }
+  }
+  return out;
+}
+
 async function discover(sb: any, cfg: Cfg) {
   const token = await getToken(sb, cfg);
   const [agents, inboxes, labels, attrs, teams] = await Promise.all([
@@ -119,7 +221,12 @@ async function sync(sb: any, cfg: Cfg, dias: number, dryRun: boolean, janela?: {
   const convs = await conversasCriadas(cfg, token, desdeStr, ateStr);
   // vendas: TODAS as conversas com a etiqueta de venda, seja quando for que nasceram
   // (a etiqueta entra semanas depois do primeiro contato). Cada conversa conta uma vez.
-  const vendidas = labelVenda ? await filtrar(cfg, token, [{ attribute_key: "labels", filter_operator: "equal_to", values: [regras.label_venda], query_operator: null }]) : [];
+  const kanban = regras.kanban as { funnel_id: number; stages: string[] } | undefined;
+  // sem kanban: cai na regra antiga (etiqueta)
+  const vendidas = !kanban && labelVenda ? await filtrar(cfg, token, [{ attribute_key: "labels", filter_operator: "equal_to", values: [regras.label_venda], query_operator: null }]) : [];
+  const cards = kanban ? await cardsKanban(cfg, token, Number(kanban.funnel_id), kanban.stages || ["contrato_fechado"]) : [];
+  const agentes: any[] = kanban ? (await api(cfg, token, "/agents").catch(() => [])) : [];
+  const agentePorId = new Map(agentes.map((a: any) => [Number(a.id), a]));
 
   // vendedores do Nexus (casa por e-mail, depois nome; fallback da config)
   const { data: sellers } = await sb.from("company_salespeople").select("id, name, email, unit_id, team_id, sector_id").eq("company_id", cfg.company_id);
@@ -169,6 +276,18 @@ async function sync(sb: any, cfg: Cfg, dias: number, dryRun: boolean, janela?: {
     }
   }
 
+  for (const it of cards) {
+    const det = it.item_details || {};
+    const ag = agentePorId.get(Number(det.attributed_to));
+    const sp = vendedorDe({ meta: { assignee: ag ? { email: ag.email, name: ag.name } : null } });
+    if (ja.has(`${it.id}|venda_kanban`)) continue;
+    const diaVenda = diaBR(it.stage_entered_at || det.status_changed_at || it.updated_at || it.created_at);
+    add("vendas", sp, diaVenda, 1);
+    eventos.push({ config_id: cfg.id, conversation_id: it.id, kpi: "venda_kanban", salesperson_id: sp?.id || null, entry_date: diaVenda, value: 1 });
+    const valor = Number(det.value || 0);
+    if (valor > 0) { add("faturamento", sp, diaVenda, valor); eventos.push({ config_id: cfg.id, conversation_id: it.id, kpi: "fat_kanban", salesperson_id: sp?.id || null, entry_date: diaVenda, value: valor }); }
+  }
+
   // soma o que já existe no dia (lançamento manual ou rodada anterior) e reescreve a linha do dia
   const planejado = [...soma.values()];
   let gravadas = 0;
@@ -188,7 +307,7 @@ async function sync(sb: any, cfg: Cfg, dias: number, dryRun: boolean, janela?: {
     }
     await sb.from("onichat_sync_configs").update({ last_run_at: new Date().toISOString(), last_result: { conversas: convs.length, novos_eventos: eventos.length, linhas: planejado.length, nao_mapeados: [...naoMapeados] } }).eq("id", cfg.id);
   }
-  return { dry_run: dryRun, janela: [desdeStr, ateStr], conversas_no_periodo: convs.length, com_etiqueta_venda: vendidas.length, novos_eventos: eventos.length, linhas_planejadas: planejado.length, gravadas, nao_mapeados: [...naoMapeados], sem_vendedor: !fallback && !(sellers || []).length, planejado: planejado.slice(0, 40).map((p) => ({ kpi: p.kpi, vendedor: p.sp.name, dia: p.dia, valor: p.valor })) };
+  return { dry_run: dryRun, janela: [desdeStr, ateStr], conversas_no_periodo: convs.length, com_etiqueta_venda: vendidas.length, cards_kanban: cards.length, novos_eventos: eventos.length, linhas_planejadas: planejado.length, gravadas, nao_mapeados: [...naoMapeados], sem_vendedor: !fallback && !(sellers || []).length, planejado: planejado.slice(0, 40).map((p) => ({ kpi: p.kpi, vendedor: p.sp.name, dia: p.dia, valor: p.valor })) };
 }
 
 Deno.serve(async (req) => {
@@ -204,7 +323,12 @@ Deno.serve(async (req) => {
     const out: Record<string, unknown> = {};
     for (const cfg of cfgs as Cfg[]) {
       try {
-        out[cfg.id] = body.action === "discover" ? await discover(sb, cfg) : await sync(sb, cfg, Number(body.dias || 3), !!body.dry_run, body.desde && body.ate ? { desde: String(body.desde), ate: String(body.ate) } : undefined);
+        out[cfg.id] = body.action === "discover" ? await discover(sb, cfg)
+          : body.action === "sonda" ? await sonda(sb, cfg, body.paths || [], Number(body.limite || 6000))
+          : body.action === "mensagens" ? await mensagensDe(sb, cfg, (body.ids || []).map(Number))
+          : body.action === "busca" ? await buscaTermos(sb, cfg, body.termos || [])
+          : body.action === "auditoria_vendas" ? await auditoriaVendas(sb, cfg, body.labels || [], body.attr_link || "")
+          : await sync(sb, cfg, Number(body.dias || 3), !!body.dry_run, body.desde && body.ate ? { desde: String(body.desde), ate: String(body.ate) } : undefined);
       } catch (e) {
         out[cfg.id] = { error: String(e).slice(0, 300) };
         // token vencido/inválido: limpa pra relogar na próxima
