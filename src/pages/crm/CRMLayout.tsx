@@ -145,17 +145,22 @@ export const CRMLayout = () => {
   const [inboxNaoLidas, setInboxNaoLidas] = useState(0);
   useEffect(() => {
     let vivo = true;
+    // Mesmo filtro de número/canal que o Atendimento deixou salvo (20/10/2026): o pontinho
+    // mostra o que a lista mostra, não contagem global.
+    const filtroSalvo = () => { try { return localStorage.getItem("crm_inbox_instance_filter") || "all"; } catch { return "all"; } };
     const ler = async () => {
-      const { data } = await (supabase as any).rpc("crm_inbox_nao_lidas");
+      const { data } = await (supabase as any).rpc("crm_inbox_nao_lidas", { p_filtro: filtroSalvo() });
       if (vivo) setInboxNaoLidas(Number(data || 0));
     };
     ler();
     const timer = setInterval(ler, 60000);
+    window.addEventListener("crm-inbox-filter", ler);
+    window.addEventListener("storage", ler);
     const canal = supabase.channel("crm-inbox-nao-lidas")
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "crm_whatsapp_conversations" }, ler)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "instagram_conversations" }, ler)
       .subscribe();
-    return () => { vivo = false; clearInterval(timer); supabase.removeChannel(canal); };
+    return () => { vivo = false; clearInterval(timer); window.removeEventListener("crm-inbox-filter", ler); window.removeEventListener("storage", ler); supabase.removeChannel(canal); };
   }, []);
   useEffect(() => {
     const onComposer = (e: Event) => setChatComposerOnScreen(!!(e as CustomEvent).detail);

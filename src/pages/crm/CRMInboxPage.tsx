@@ -262,6 +262,7 @@ export const CRMInboxPage = () => {
   };
   useEffect(() => {
     try { localStorage.setItem("crm_inbox_instance_filter", instanceFilter); } catch { /* sem storage */ }
+    window.dispatchEvent(new Event("crm-inbox-filter")); // o pontinho do menu reconta com o filtro novo
   }, [instanceFilter]);
   useEffect(() => {
     (async () => {
