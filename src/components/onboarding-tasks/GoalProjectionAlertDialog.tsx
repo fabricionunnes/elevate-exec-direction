@@ -84,6 +84,17 @@ export const GoalProjectionAlertDialog = ({
       const companyId = project.onboarding_company_id;
       const currentMonthYear = format(today, "yyyy-MM");
 
+      // 20/10/2026 (Fabrício): empresa marcada como "meta não necessária" no cadastro não recebe este aviso
+      const { data: empresa } = await supabase
+        .from("onboarding_companies")
+        .select("goal_not_required")
+        .eq("id", companyId)
+        .maybeSingle();
+      if (empresa?.goal_not_required) {
+        setLoading(false);
+        return;
+      }
+
       // Check if ANY KPI has a target value set (not just monetary)
       const { data: allKpis } = await supabase
         .from("company_kpis")

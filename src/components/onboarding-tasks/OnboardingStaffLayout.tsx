@@ -6,7 +6,6 @@ import { useGlobalPresence } from "@/hooks/useGlobalPresence";
 // Lazy load heavy components to prevent white screen issues
 const RealtimeNotifications = lazy(() => import("./RealtimeNotifications").then(m => ({ default: m.RealtimeNotifications })));
 const NpsCelebrationPopup = lazy(() => import("./NpsCelebrationPopup").then(m => ({ default: m.NpsCelebrationPopup })));
-const GlobalChatWidget = lazy(() => import("@/components/virtual-office/GlobalChatWidget"));
 const ChatNotifications = lazy(() => import("@/components/virtual-office/ChatNotifications").then(m => ({ default: m.ChatNotifications })));
 const AnnouncementPopup = lazy(() => import("./AnnouncementPopup").then(m => ({ default: m.AnnouncementPopup })));
 const GlobalSupportNotification = lazy(() => import("./GlobalSupportNotification").then(m => ({ default: m.GlobalSupportNotification })));
@@ -233,7 +232,7 @@ export const OnboardingStaffLayout = () => {
       {/* Chat global para staff */}
       {isStaff && (
         <Suspense fallback={<LoadingFallback />}>
-          <GlobalChatWidget />
+          {/* 20/10/2026 (Fabrício): chat flutuante do UNV Office removido, "a gente não usa" */}
         </Suspense>
       )}
       {/* Notificações globais de suporte ao vivo */}
