@@ -26,5 +26,7 @@ select json_build_object(
     'dia', (select row_to_json(c) from yasfood.capacity_days c where c.day = yasfood.today_br()),
     'disp', (select json_agg(row_to_json(a)) from yasfood.availability(yasfood.today_br(), yasfood.today_br() + 1) a),
     'janelas_hoje', (select json_agg(row_to_json(w)) from yasfood.available_windows(yasfood.today_br(), 'ambos') w),
-    'janelas', (select json_agg(json_build_object('label', label, 'ini', start_time, 'fim', end_time, 'lead', min_lead_minutes, 'dias', weekdays, 'tipo', applies_to, 'ativo', active, 'max', max_orders)) from yasfood.delivery_windows))
+    'janelas', (select json_agg(json_build_object('label', label, 'ini', start_time, 'fim', end_time, 'lead', min_lead_minutes, 'dias', weekdays, 'tipo', applies_to, 'ativo', active, 'max', max_orders)) from yasfood.delivery_windows)),
+  'foto_biscoito', (select json_agg(json_build_object('p', p.name, 'capa', p.image_url, 'fotos', (select count(*) from yasfood.product_media m where m.product_id = p.id)))
+                    from yasfood.products p where p.name ilike '%biscoito%')
 ) as diag;
