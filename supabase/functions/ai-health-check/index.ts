@@ -38,8 +38,11 @@ async function zapUma(sb: any, instName: string, texto: string) {
 }
 async function zap(sb: any, texto: string) {
   const res: string[] = [];
+  // Manda por UMA instância só: a primeira que conseguir. A segunda é reserva, não cópia
+  // (Fabrício recebia o mesmo aviso do Marcelo e do Fabrício Nunnes, 20/10/2026).
   for (const nome of INSTANCIAS) {
     try { res.push(await zapUma(sb, nome, texto)); } catch (e) { res.push(nome + ": erro " + String(e).slice(0, 80)); }
+    if (res[res.length - 1].endsWith(": enviado")) break;
   }
   // sem instancia nenhuma: tenta qualquer uma conectada
   if (!res.some((x) => x.endsWith(": enviado"))) {
