@@ -111,6 +111,8 @@ async function sync(sb: any, cfg: Cfg, dias: number, dryRun: boolean, janela?: {
         if (ja.has(`card:${c.id}|matricula`)) continue;
         const sp = spDe(usuarios[String(c.responsibleId)] || funis[String(c.funnelId)] || null);
         const dia = diaBR(c.closureDate || c.updatedAt || c.createdDate);
+        // cards antigos (antes da integração) já foram lançados à mão no Nexus: ignora
+        if (regras.cards_desde && dia < String(regras.cards_desde)) continue;
         add("matriculas", sp, dia, 1); add("vendas", sp, dia, 1);
         eventos.push({ config_id: cfg.id, ref_id: `card:${c.id}`, kpi: "matricula", salesperson_id: sp?.id || null, entry_date: dia, value: 1 });
         const valor = Number(c.estimatedValue || 0);
