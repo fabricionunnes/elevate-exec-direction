@@ -110,6 +110,8 @@ async function vigiaTranscricao(sb: any, silencioso: boolean) {
 // chama o crm-agent-respond de novo, UMA vez por mensagem. Seja qual for o motivo, avisa
 // no WhatsApp (uma vez por mensagem do lead), com o motivo em português.
 const ALERTA_HORA_INI = 8, ALERTA_HORA_FIM = 21; // BRT: fora disso só registra, não manda
+// Mensagem que só fecha ou confirma (ok, obrigado, combinado, já enviei, emoji): não pede resposta.
+const SO_FECHAMENTO_RE = /^(ok(ay|ey)?|ok+|blz|beleza|show|top|perfeito|[oó]timo|combinado|fechado|certo|certinho|t[aá]|t[aá] bom|t[aá] certo|tudo bem|tudo certo|valeu|vlw|obrigad[oa]|obg|brigad[oa]|agrade[cç]o|grat[oa]|amém|amem|kk+|haha+|rs+|j[aá] (enviei|mandei|fiz|vi|recebi|entrei|aceitei|assinei)( (o|a|os|as) [a-zà-ú]+)?|entendido|perfeito,? obrigad[oa]|at[eé] (mais|logo|amanh[aã]))[\s.!,]*(obrigad[oa]|valeu|👍|🙏|😊)?[\s.!]*$|^[\p{Emoji}\s]+$/iu;
 function motivoLead(r: any): { texto: string; retentar: boolean } {
   const oc = String(r.ultimo_run_outcome || "");
   if (r.override_enabled === false) return { texto: r.override_por_pessoa ? "agente desligado nesta conversa por uma pessoa" : "agente desligado nesta conversa pelo sistema", retentar: false };
@@ -133,6 +135,15 @@ async function vigiaLeadsEsperando(sb: any, silencioso: boolean) {
   const novos: any[] = [];
   let retentados = 0;
   for (const r of lista) {
+    // Pessoa do time desligou o agente: a conversa é dela, não é falha da IA (20/10/2026, caso
+    // Rafael Bonfim: Fabrício conduzindo à mão, última fala do lead "Já enviei o convite").
+    if (r.override_enabled === false && r.override_por_pessoa) continue;
+    // Última fala do lead é só fechamento/confirmação: não há o que responder.
+    if (r.channel !== "instagram") {
+      const { data: ult } = await sb.from("crm_whatsapp_messages").select("content").eq("conversation_id", r.conversation_id)
+        .eq("direction", "inbound").order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (SO_FECHAMENTO_RE.test(String(ult?.content || "").trim())) continue;
+    }
     const { data: ja } = await sb.from("crm_agent_silence_alerts").select("id, retentou, avisou")
       .eq("conversation_id", r.conversation_id).eq("channel", r.channel).eq("inbound_at", r.ult_lead).maybeSingle();
     const m = motivoLead(r);
