@@ -789,6 +789,7 @@ export const CRMInboxPage = () => {
       const rawMessage = newMessage.trim();
       const messageToSend = comAssinatura(rawMessage);
       setNewMessage("");
+      composerRef.current?.focus();
       setIgSending(true);
       try {
         const { data, error } = await supabase.functions.invoke("instagram-send", {
@@ -818,6 +819,7 @@ export const CRMInboxPage = () => {
     const rawMessage = newMessage.trim();
     const messageToSend = comAssinatura(rawMessage);
     setNewMessage(""); // Clear immediately for better UX
+    composerRef.current?.focus();
 
     try {
       if (isOfficialAPI) {
@@ -2023,7 +2025,7 @@ export const CRMInboxPage = () => {
   );
 };
 
-type ComposerHandle = { setText: (v: string) => void };
+type ComposerHandle = { setText: (v: string) => void; focus: () => void };
 
 // Campo de mensagem com estado próprio: a página só fica sabendo do texto
 // quando precisa (enviar, "/" das respostas rápidas, vazio x com texto).
@@ -2048,6 +2050,7 @@ const ComposerInput = forwardRef<ComposerHandle, {
       setText(v);
       if (v) inputRef.current?.focus();
     },
+    focus: () => inputRef.current?.focus(),
   }));
   return (
     <Input
@@ -2057,7 +2060,9 @@ const ComposerInput = forwardRef<ComposerHandle, {
       onChange={(e) => setText(e.target.value)}
       onKeyDown={onKeyDown}
       className="flex-1"
-      disabled={disabled}
+      // Não desabilita durante o envio: campo desabilitado perde o foco e o cursor some.
+      // O rascunho já é limpo antes de enviar, então dá pra ir digitando a próxima.
+      aria-busy={disabled || undefined}
     />
   );
 });
