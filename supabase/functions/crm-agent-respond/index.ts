@@ -94,7 +94,7 @@ async function vincularLeadRecente(supabase, conv) {
   return lead.id;
 }
 // ---------- Envio WhatsApp (mesmo transporte do survey-sender: Stevo/Manager V2 vs Evolution legado) ----------
-async function sendWhatsAppText(supabase, instanceId, phone, message) {
+async function sendWhatsAppText(supabase, instanceId, phone, message, digitarMs = 0) {
   const { data: instance } = await supabase.from("whatsapp_instances").select("id, instance_name, api_url, api_key, provider_type, status").eq("id", instanceId).maybeSingle();
   if (!instance) return {
     ok: false,
@@ -165,7 +165,8 @@ async function sendWhatsAppText(supabase, instanceId, phone, message) {
     body: JSON.stringify({
       number: phone,
       text: message,
-      delay: 0
+      // a API mostra "digitando..." por esse tempo antes de entregar
+      delay: Math.max(0, Math.min(25000, Math.round(Number(digitarMs) || 0)))
     })
   });
   if (!resp.ok) return {
@@ -229,9 +230,26 @@ async function sendWhatsAppText(supabase, instanceId, phone, message) {
 // ---------- Estilo humano (pedido do Fabrício 13/09/2026) ----------
 // Vale pra TODOS os agentes, na resposta e no follow-up. A IA vinha com cara de IA:
 // "Opa, bora!", "Me conta uma coisa: ...", "Boa, Roberto.", nome em toda frase.
-const ESTILO_HUMANO = `\n\nESTILO (obrigatório, vale acima do tom do agente): escreva como uma pessoa escreve no WhatsApp. Frases curtas, no máximo 2 parágrafos pequenos. Nunca use dois-pontos, travessão, listas, negrito, títulos ou emojis. Não abra com interjeição de animação ("Opa, bora!", "Que massa", "Boa!", "Show", "Perfeito", "Fala, Fulano!") e não elogie a resposta do lead. Use o nome do lead no máximo uma vez a cada três mensagens. Não anuncie a pergunta ("me conta uma coisa", "fiquei curioso aqui", "só uma dúvida rápida"), pergunte direto. Uma pergunta por mensagem. Varie a abertura entre mensagens. Nada de fórmula repetida. Se for retomar, retome pelo assunto, não pelo aviso de que está retomando.`;
+const ESTILO_HUMANO = `\n\nESTILO (obrigatório, vale acima do tom do agente): escreva como uma pessoa escreve no WhatsApp. Frases curtas, no máximo 2 parágrafos pequenos. Nunca use dois-pontos, travessão, listas, negrito, títulos ou emojis. Não abra com interjeição de animação ("Opa, bora!", "Que massa", "Boa!", "Show", "Perfeito", "Fala, Fulano!") e não elogie a resposta do lead. Use o nome do lead no máximo uma vez a cada três mensagens. Não anuncie a pergunta ("me conta uma coisa", "fiquei curioso aqui", "só uma dúvida rápida"), pergunte direto. Uma pergunta por mensagem. Varie a abertura entre mensagens. Nada de fórmula repetida. Se for retomar, retome pelo assunto, não pelo aviso de que está retomando.
+
+O QUE ENTREGA ROBÔ (leads perceberam, 20/10/2026), evite sempre:
+(1) Toda mensagem no formato "reconhecimento + pergunta". Não comece com "Entendi", "Saquei", "Certo", "Show", "Legal", "Bacana", "Faz sentido", "Boa", "Ótimo". Quando quiser reagir, reaja ao que ELE disse, com algo específico e curto ("puts, constância é o que mais pega"), e às vezes nem pergunte nada, só comente e espere.
+(2) Pergunta com três opções ("você mesma, alguém do time ou ninguém"). Pergunta aberta, ou no máximo duas opções, e não em toda mensagem.
+(3) Interrogatório. No máximo uma pergunta de qualificação a cada duas mensagens suas; entre elas, dê algo de volta (uma observação, um exemplo curto, o próximo passo).
+(4) Ignorar o que já foi combinado. Se alguém do time ou uma mensagem automática já perguntou algo e o lead respondeu (ex.: período "tarde"), use a resposta e avance; não volte a qualificar como se nada tivesse sido dito.
+(5) Tamanho fora do tom do lead. Espelhe: mensagem curta dele, resposta curta sua (até umas 20 palavras). Se ele escreve informal, sem acento ou com abreviação, pode soltar mais o jeito (vc, pq, tá, pra), sem errar de propósito.
+(6) Texto liso demais. Pode usar ponto de interrogação normal, "kkk" quando o lead brincar, e quebrar a resposta em duas mensagens curtas separadas por uma linha em branco quando forem duas ideias (cada bloco vira uma mensagem no WhatsApp).`;
 /** Última limpeza antes de enviar: tira dois-pontos e travessões que sobrarem. */ function humanizar(texto) {
   let t = String(texto || "");
+  // muletas de abertura que denunciam IA (20/10/2026): "Entendi, ...", "Saquei. ...", "Me conta uma coisa, ..."
+  const antesMuleta = t;
+  t = t.replace(/^(\s*)(entendi|saquei|certo|show|perfeito|ótimo|otimo|bacana|beleza|legal)\s*[,.!]+\s+(?=\S)/i, "$1");
+  t = t.replace(/(^|[.!?]\s+|\n\s*)(me conta uma coisa|me diz uma coisa|deixa eu te perguntar uma coisa|só uma dúvida rápida|fiquei curioso aqui)\s*[,.:]?\s*/gi, "$1");
+  t = t.replace(/,\s*(me conta uma coisa|me diz uma coisa|deixa eu te perguntar uma coisa)\s*,/gi, ",");
+  // "Me conta, qual o ramo?" → "Qual o ramo?"
+  t = t.replace(/(^|[.!?]\s+|\n\s*)(me conta|me diz|me fala|conta pra mim)\s*,\s*(?=\S)/gi, "$1");
+  // tirou muleta: a frase que sobrou começa com maiúscula
+  if (t !== antesMuleta) t = t.replace(/(^|[.!?]\s+|\n\s*)([a-zà-ú])/g, (_m, a, b)=>a + b.toUpperCase());
   t = t.replace(/\s*[—–]\s*/g, ", "); // travessão → vírgula
   t = t.replace(/(?<!\d):\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])/g, ". "); // ": Palavra" → ". Palavra"
   t = t.replace(/(?<!\d):\s+/g, ", "); // ": palavra" → ", palavra"
@@ -407,6 +425,19 @@ async function triagemPorIntencao(supabase, conv, conversation_id, channel, isIG
   console.log(`[triagem] conversa ${conversation_id}: intenção ${rota.key} → ${agente?.name || "sem agente"}`);
   return agente;
 }
+// Resposta quebrada em mensagens curtas (como gente faz no WhatsApp) e tempo de "digitando..."
+// proporcional ao tamanho (~6 caracteres por segundo). Máximo 3 mensagens; o resto vai junto na última.
+function dividirEmMensagens(texto) {
+  const t = String(texto || "").trim();
+  const partes = t.split(/\n\s*\n/).map((x)=>x.trim()).filter(Boolean);
+  if (partes.length <= 1) return t ? [t] : [];
+  return partes.length <= 3 ? partes : [partes[0], partes[1], partes.slice(2).join("\n\n")];
+}
+function tempoDigitandoMs(texto) {
+  return Math.min(20000, Math.max(1800, String(texto || "").length * 170));
+}
+const PEDIU_HUMANO_RE = /(falar|conversar|atendimento|atender)\s+(com\s+)?(um|uma|algum|alguma|o|a)?\s*(atendente|humano|pessoa|vendedor|vendedora|consultor|consultora)\b|atendente\s+humano|pessoa\s+de\s+verdade|\b(voc[eê]|vc|tu|isso|aqui|ce)\s+(é|eh|e|eres)\s+(um\s+|uma\s+)?(rob[oô]|bot|ia|intelig[eê]ncia\s+artificial|chat\s*gpt|m[aá]quina)(?![a-zà-ú])|^\s*(é|eh|e)\s+(um\s+)?(rob[oô]|bot|ia)\s*\??\s*$|\b(t[oô]|estou)\s+falando\s+com\s+(um\s+|uma\s+)?(rob[oô]|bot|ia|m[aá]quina)(?![a-zà-ú])/i;
+const PERGUNTOU_ROBO_RE = /\b(rob[oô]|bot|ia|intelig[eê]ncia\s+artificial|chat\s*gpt|m[aá]quina)(?![a-zà-ú])/i;
 async function leadRecusou(hist, leadNm) {
   try {
     const txt = hist.map((m)=>`${m.direction === "inbound" ? leadNm : "Atendente"}: ${m.content}`).join("\n");
@@ -446,8 +477,7 @@ const FERRAMENTAS_NOVAS = [
   "consultar_produtos",
   "consultar_historico_lead",
   "criar_tarefa_para_vendedor",
-  "aplicar_etiqueta",
-  "transferir_para_humano"
+  "aplicar_etiqueta"
 ];
 // consultas sem efeito colateral: podem rodar de verdade no dry_run
 const FERRAMENTAS_SO_LEITURA = [
@@ -2488,6 +2518,40 @@ Deno.serve(async (req)=>{
       for (const t of body0.textos || []) out.push({ texto: t, rota: await classificarIntencao(String(t), rotas || []) });
       return j({ ok: true, out });
     }
+    // Debug/admin: roda o agente sobre uma conversa INVENTADA (sem ferramentas, sem enviar nada)
+    // pra conferir o estilo. body: { agent_id, historico: [{de:"lead"|"agente"|"time", texto}] }
+    if (body0.action === "estilo_teste") {
+      const authz = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+      if (body0.secret !== SERVICE_ROLE && authz !== SERVICE_ROLE) return j({ ok: false, error: "não autorizado" }, 401);
+      const { data: ag } = await supabase.from("crm_ai_agents").select("*").eq("id", body0.agent_id).maybeSingle();
+      if (!ag) return j({ ok: false, error: "agente não encontrado" });
+      const hist = (body0.historico || []).map((m)=>({ role: m.de === "lead" ? "user" : "assistant", content: String(m.texto || "") }));
+      const msgsApi = [];
+      for (const m of hist) {
+        const last = msgsApi[msgsApi.length - 1];
+        if (msgsApi.length === 0 && m.role === "assistant") continue;
+        if (last && last.role === m.role) last.content += `\n${m.content}`;
+        else msgsApi.push({ ...m });
+      }
+      const nowBR = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 16).replace("T", " ");
+      const sys = [
+        ag.instructions || "Você é um atendente comercial.",
+        ag.objective ? `\nOBJETIVO: ${ag.objective}` : "",
+        ag.tone ? `\nTOM DE VOZ: ${ag.tone}` : "",
+        `\n\nData/hora atual (Brasília): ${nowBR}.`,
+        ESTILO_HUMANO,
+        `\n\nVocê está respondendo uma conversa de WhatsApp. Responda como mensagem: curta, humana, sem markdown. NUNCA repita uma pergunta que o lead já respondeu. Não diga por conta própria que é assistente virtual ou IA, e nunca afirme que é humano. Neste teste você NÃO tem ferramentas: se precisaria de horários, diga que vai ver a agenda.`
+      ].join("");
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+        body: JSON.stringify({ model: ag.model || "claude-sonnet-5", max_tokens: 600, system: sys, messages: msgsApi })
+      });
+      const d = await r.json();
+      const txt = (Array.isArray(d?.content) ? d.content : []).filter((x)=>x?.type === "text").map((x)=>String(x.text)).join("").trim();
+      const limpo = humanizar(txt);
+      return j({ ok: r.ok, bruto: txt, enviado_como: dividirEmMensagens(limpo), erro: r.ok ? undefined : d });
+    }
     if (body0.action === "test_tool") {
       // só quem tem a chave de serviço pode rodar ferramenta direto (antes estava aberto, 19/09/2026)
       {
@@ -3173,7 +3237,10 @@ Deno.serve(async (req)=>{
     // Tempo de resposta: adia o processamento e responde só à ÚLTIMA mensagem da
     // rajada (cada mensagem dispara um run; após o sleep, só o run da mensagem
     // mais recente segue — os outros veem inbound mais novo e desistem).
-    const delaySec = Number(agent.response_delay_seconds || 0);
+    // Ritmo humano (20/10/2026): ninguém responde 30 palavras em 6 segundos. Todo agente espera
+    // um tempo de leitura (mínimo 12 s) que varia a cada mensagem, pra não ficar cravado.
+    const baseLeitura = Math.max(Number(agent.response_delay_seconds || 0), 12);
+    const delaySec = Math.round(Math.min(90, baseLeitura * (0.6 + Math.random() * 0.8)));
     const triggerTs = body0.message_ts || null;
     if (delaySec > 0 && !dry_run) {
       // deno-lint-ignore no-explicit-any
@@ -3402,6 +3469,83 @@ Deno.serve(async (req)=>{
         ok: true,
         skip: "handoff acionado por palavra-chave"
       };
+      // PEDIU PESSOA / PERGUNTOU SE É ROBÔ (20/10/2026, caso Júlia): o agente respondeu "sou eu
+      // mesmo, Ricardo" e continuou qualificando. Mentir que é humano é o que confirma a
+      // desconfiança. Agora: resposta curta e honesta, conversa passa pra uma pessoa do time
+      // (aviso no sistema + WhatsApp) e o agente sai desta conversa.
+      const falaLead = String(msgs[msgs.length - 1].content || "");
+      if (PEDIU_HUMANO_RE.test(falaLead)) {
+        const perguntouRobo = PERGUNTOU_ROBO_RE.test(falaLead);
+        const aviso = perguntouRobo ? "Aqui é o assistente virtual do time. Já chamei uma pessoa pra seguir com você por aqui." : "Claro, já chamei uma pessoa do time pra seguir com você por aqui.";
+        if (dry_run) return {
+          ok: true,
+          dry_run: true,
+          pediu_humano: true,
+          reply: aviso
+        };
+        await runTool(supabase, agent, conv.lead_id, "transferir_para_humano", {
+          motivo: perguntouRobo ? "O lead perguntou se está falando com robô" : "O lead pediu pra falar com uma pessoa",
+          resumo: `Última mensagem do lead: "${falaLead.replace(/\s+/g, " ").slice(0, 200)}"`
+        }, {
+          conversationId: conversation_id,
+          channel,
+          contactName: conv.contact?.name || conv.contact?.username || null
+        }).catch((e)=>console.error("handoff pedido humano", e));
+        let enviado = false;
+        if (isIG) {
+          const { error: se } = await supabase.functions.invoke("instagram-send", {
+            body: {
+              conversationId: conversation_id,
+              message: aviso,
+              staffId: null
+            }
+          });
+          enviado = !se;
+        } else {
+          const ph = String(conv.contact?.phone || "").replace(/\D/g, "");
+          const sent = isOFFICIAL ? await sendOfficialText(supabase, conv.official_instance_id, ph, aviso) : await sendWhatsAppText(supabase, conv.instance_id, ph, aviso, tempoDigitandoMs(aviso));
+          enviado = sent.ok;
+          if (sent.ok && !sent.isV2) {
+            await supabase.from("crm_whatsapp_messages").insert({
+              conversation_id,
+              content: aviso,
+              type: "text",
+              direction: "outbound",
+              status: "sent",
+              remote_id: sent.remoteId || null,
+              whatsapp_message_id: isOFFICIAL ? sent.remoteId || null : null,
+              is_ai: true,
+              sent_by: null
+            });
+          }
+          if (sent.ok) await supabase.from("crm_whatsapp_conversations").update({
+            last_message: aviso.substring(0, 255),
+            last_message_at: new Date().toISOString()
+          }).eq("id", conversation_id);
+        }
+        await supabase.from("crm_ai_agent_conversation_overrides").upsert({
+          agent_id: agent.id,
+          conversation_id,
+          channel,
+          enabled: false,
+          reply_mode: mode
+        }, {
+          onConflict: "conversation_id,channel"
+        });
+        await supabase.from("crm_ai_agent_runs").insert({
+          agent_id: agent.id,
+          channel,
+          conversation_id,
+          mode,
+          outcome: enviado ? "handoff_pedido" : "handoff_pedido_send_failed",
+          reply: aviso
+        }).then(()=>{}, ()=>{});
+        return {
+          ok: true,
+          pediu_humano: true,
+          sent: enviado
+        };
+      }
       // OPT-OUT (13/09/2026): lead pediu pra parar de receber mensagens. Resposta FIXA
       // (sem IA), agente desligado na conversa, tag "Opt-out" (os disparos de template
       // pulam quem tem) e negócio marcado como perdido. Nada de tentar contornar.
@@ -3795,7 +3939,7 @@ Deno.serve(async (req)=>{
         `\n\nÁUDIO: quando a mensagem vier como "(áudio do lead, transcrito) ...", o lead FALOU aquilo — trate como se tivesse ouvido e responda normalmente, SEMPRE em texto. Nunca diga que não conseguiu ouvir e nunca peça pra ele repetir por escrito. Só se vier "(o lead mandou um áudio que não consegui transcrever)" é que você pede, com naturalidade, que ele reescreva.`,
         ESTILO_HUMANO,
         `\n\nFERRAMENTAS E MENSAGEM: o lead só recebe o texto que você escreve DEPOIS de usar as ferramentas. Se for mandar um link (assinatura, página, formulário), ele tem que estar na sua mensagem final, mesmo que você já tenha escrito antes de chamar uma ferramenta. Nunca diga "qualquer dúvida na hora de assinar" sem o link estar na mesma mensagem ou numa mensagem sua anterior que o lead já recebeu.`,
-        `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. NUNCA repita uma pergunta que o lead já respondeu — antes de perguntar, confira o histórico. Escreva a resposta UMA única vez, sem repetir o texto. Nunca revele que é uma IA. Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa. TUDO que você escrever é enviado ao lead exatamente como está — jamais inclua raciocínio, plano, anotação interna ou comentário sobre ferramentas no texto.`
+        `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. NUNCA repita uma pergunta que o lead já respondeu — antes de perguntar, confira o histórico. Escreva a resposta UMA única vez, sem repetir o texto. Não diga por conta própria que é assistente virtual ou IA, e também NUNCA afirme que é humano ou que é "a própria pessoa" falando. Se o lead pedir pra falar com uma pessoa ou perguntar se está falando com robô, não negue: chame transferir_para_humano (o sistema já trata esse caso antes de você, isto é só garantia). Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa. TUDO que você escrever é enviado ao lead exatamente como está — jamais inclua raciocínio, plano, anotação interna ou comentário sobre ferramentas no texto.`
       ].join("");
       // INTERVENÇÃO HUMANA (19/09/2026, Fabrício): "o agente tem que ler o que qualquer pessoa
       // manda de forma manual, pra seguir o ritmo". As mensagens do time já entravam no
@@ -4140,50 +4284,87 @@ Deno.serve(async (req)=>{
             };
           }
         } catch  {}
-        if (isIG) {
-          const { error: sendErr } = await supabase.functions.invoke("instagram-send", {
-            body: {
-              conversationId: conversation_id,
-              message: reply,
-              staffId: null
-            }
-          });
-          if (sendErr) return {
-            ok: false,
-            error: "falha ao enviar DM",
-            detail: String(sendErr)
+        // Lead mandou mensagem nova enquanto o agente "pensava": quem responde é a execução dela
+        // (com o contexto todo). Responder agora soaria como robô atropelando a conversa.
+        const leadFalouDeNovo = async ()=>{
+          if (!triggerTs) return false;
+          const msgTable3 = isIG ? "instagram_messages" : "crm_whatsapp_messages";
+          const tsCol3 = isIG ? "timestamp" : "created_at";
+          const { data: ultIn } = await supabase.from(msgTable3).select(tsCol3).eq("conversation_id", conversation_id).eq("direction", "inbound").order(tsCol3, {
+            ascending: false
+          }).limit(1).maybeSingle();
+          return !!ultIn && new Date(ultIn[tsCol3]).getTime() > new Date(triggerTs).getTime() + 3000;
+        };
+        if (!dry_run && await leadFalouDeNovo()) {
+          await logRun("skipped_newer_inbound");
+          return {
+            ok: true,
+            skip: "lead mandou mensagem nova; a execução dela responde"
           };
-        } else {
-          const phone = String(conv.contact?.phone || "").replace(/\D/g, "");
-          const sent = isOFFICIAL ? await sendOfficialText(supabase, conv.official_instance_id, phone, reply) : await sendWhatsAppText(supabase, conv.instance_id, phone, reply);
-          if (!sent.ok) {
-            await logRun("send_failed", sent.error);
-            return {
-              ok: false,
-              error: "falha ao enviar WhatsApp",
-              detail: sent.error
-            };
-          }
-          // Stevo: NÃO insere a mensagem aqui — o eco do webhook grava o outbound
-          // (com remote_id); gravar dos dois lados duplicava o histórico.
-          // Evolution (servidor próprio): a API NÃO ecoa o que ela mesma enviou, então
-          // a resposta do agente sumia do Atendimento (09/09: Yasmin Teles — o log
-          // dizia "sent" e a conversa não mostrava nada). Gravamos aqui, com remote_id;
-          // se algum eco vier, o webhook deduplica pelo remote_id.
-          if (!sent.isV2) {
-            await supabase.from("crm_whatsapp_messages").insert({
-              conversation_id,
-              content: reply,
-              type: "text",
-              direction: "outbound",
-              status: "sent",
-              remote_id: sent.remoteId || null,
-              is_ai: true,
-              sent_by: null
+        }
+        const blocos = dividirEmMensagens(reply);
+        // "digitando..." proporcional ao texto, com teto somado de 35 s
+        const tempos = blocos.map((b)=>tempoDigitandoMs(b));
+        const soma = tempos.reduce((a, b)=>a + b, 0);
+        const fator = soma > 35000 ? 35000 / soma : 1;
+        let enviados = 0;
+        let ultimoEnviado = "";
+        for (let bi = 0; bi < blocos.length; bi++) {
+          const bloco = blocos[bi];
+          const digitar = Math.round(tempos[bi] * fator);
+          if (bi > 0 && await leadFalouDeNovo()) break;
+          if (isIG) {
+            if (bi > 0) await new Promise((r)=>setTimeout(r, Math.min(digitar, 8000)));
+            const { error: sendErr } = await supabase.functions.invoke("instagram-send", {
+              body: {
+                conversationId: conversation_id,
+                message: bloco,
+                staffId: null
+              }
             });
+            if (sendErr) {
+              if (enviados > 0) break;
+              return {
+                ok: false,
+                error: "falha ao enviar DM",
+                detail: String(sendErr)
+              };
+            }
+          } else {
+            const phone = String(conv.contact?.phone || "").replace(/\D/g, "");
+            if (isOFFICIAL && bi > 0) await new Promise((r)=>setTimeout(r, Math.min(digitar, 8000)));
+            const sent = isOFFICIAL ? await sendOfficialText(supabase, conv.official_instance_id, phone, bloco) : await sendWhatsAppText(supabase, conv.instance_id, phone, bloco, digitar);
+            if (!sent.ok) {
+              if (enviados > 0) break;
+              await logRun("send_failed", sent.error);
+              return {
+                ok: false,
+                error: "falha ao enviar WhatsApp",
+                detail: sent.error
+              };
+            }
+            // Stevo: NÃO insere a mensagem aqui, o eco do webhook grava o outbound (com remote_id).
+            // Evolution (servidor próprio) não ecoa o que ela mesma enviou: gravamos aqui, com
+            // remote_id; se algum eco vier, o webhook deduplica pelo remote_id.
+            if (!sent.isV2) {
+              await supabase.from("crm_whatsapp_messages").insert({
+                conversation_id,
+                content: bloco,
+                type: "text",
+                direction: "outbound",
+                status: "sent",
+                remote_id: sent.remoteId || null,
+                is_ai: true,
+                sent_by: null
+              });
+            }
           }
+          enviados++;
+          ultimoEnviado = bloco;
+        }
+        if (!isIG && ultimoEnviado) {
           await supabase.from("crm_whatsapp_conversations").update({
-            last_message: reply.substring(0, 255),
+            last_message: ultimoEnviado.substring(0, 255),
             last_message_at: new Date().toISOString()
           }).eq("id", conversation_id);
         }
