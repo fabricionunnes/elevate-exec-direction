@@ -346,6 +346,44 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // CONVERSA JÁ EM ANDAMENTO (20/10/2026, caso Júlia): a 1ª mensagem automática ("Olá,
+        // Fulano! Aqui é o Ricardo...") saía 20 s depois de o agente de IA já ter respondido o lead
+        // que chamou primeiro. Duas saudações seguidas entregam robô. Se o lead escreveu nas últimas
+        // 24 h ou alguém (pessoa ou agente) respondeu nas últimas 2 h, a 1ª mensagem não sai:
+        // a cadência para e o lead segue de etapa como se ela tivesse saído.
+        if (enr.current_step_index === 0) {
+          const { data: convs } = await supabase.from("crm_whatsapp_conversations").select("id").eq("lead_id", lead.id).limit(5);
+          const convIds = (convs || []).map((c: any) => c.id);
+          if (convIds.length) {
+            const desdeIn = new Date(now.getTime() - 24 * 3600000).toISOString();
+            const desdeOut = new Date(now.getTime() - 2 * 3600000).toISOString();
+            const { count: nIn } = await supabase.from("crm_whatsapp_messages").select("id", { count: "exact", head: true })
+              .in("conversation_id", convIds).eq("direction", "inbound").gte("created_at", desdeIn);
+            const { count: nOut } = await supabase.from("crm_whatsapp_messages").select("id", { count: "exact", head: true })
+              .in("conversation_id", convIds).eq("direction", "outbound").gte("created_at", desdeOut);
+            if ((nIn || 0) > 0 || (nOut || 0) > 0) {
+              if ((cadence as any).advance_stage_on_first_message && (lead as any).stage_id) {
+                try {
+                  const { data: curStage } = await supabase.from("crm_stages").select("pipeline_id, sort_order").eq("id", (lead as any).stage_id).maybeSingle();
+                  if (curStage) {
+                    const { data: nextStage } = await supabase.from("crm_stages").select("id")
+                      .eq("pipeline_id", curStage.pipeline_id).gt("sort_order", curStage.sort_order).is("final_type", null)
+                      .order("sort_order", { ascending: true }).limit(1).maybeSingle();
+                    if (nextStage) await supabase.from("crm_leads").update({ stage_id: nextStage.id }).eq("id", enr.lead_id);
+                  }
+                } catch (e) {
+                  console.error("[cadence-dispatcher] falha ao mover etapa (conversa em andamento):", e);
+                }
+              }
+              await supabase.from("crm_cadence_enrollments").update({
+                status: "stopped", stopped_reason: "conversa_em_andamento", next_run_at: null,
+              }).eq("id", enr.id);
+              console.log(`[cadence-dispatcher] enr=${enr.id}: 1ª mensagem pulada, conversa já em andamento (in24h=${nIn} out2h=${nOut})`);
+              continue;
+            }
+          }
+        }
+
         // Próxima reunião agendada (para variáveis {{data_reuniao}} e {{link_reuniao}})
         const { data: nextMeeting } = await supabase
           .from("crm_activities")
