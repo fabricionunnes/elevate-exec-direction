@@ -233,7 +233,7 @@ async function acharConversa(supabase: any, instanceId: string, phone: string) {
 async function historico(supabase: any, conversationId: string | null) {
   if (!conversationId) return [];
   const { data } = await supabase.from("crm_whatsapp_messages")
-    .select("id, direction, content, created_at, type, transcription, is_ai")
+    .select("id, direction, content, created_at, type, transcription, is_ai, media_url, media_mimetype")
     .eq("conversation_id", conversationId).order("created_at", { ascending: false }).limit(60);
   return (data || []).reverse();
 }
@@ -895,6 +895,18 @@ async function responderCliente(supabase: any, cfg: any, conv: any, caso: any, m
   }
   if (AUTOMATICA_RE.test(String(ultima.content || ""))) return { skip: "resposta automática do cliente" };
 
+  // Comprovante: confere no Nexus e no Asaas e responde na hora, sem passar pela conversa da IA.
+  const midia = await midiaPendente(supabase, hist, companyId);
+  if (midia) {
+    try {
+      const { data: emp0 } = await supabase.from("onboarding_companies").select("name, owner_name").eq("id", companyId).maybeSingle();
+      const conf = await conferirComprovante(supabase, cfg, companyId, midia, emp0?.owner_name || conv.contact?.name || "");
+      if (conf) return await enviarRespostaComprovante(supabase, cfg, companyId, conv.id, caso.phone, conf, midia.id, simulando, emp0?.name || "cliente");
+    } catch (e) {
+      console.error(`[${FN}] comprovante`, String((e as any)?.message || e));
+    }
+  }
+
   const { data: hojeResp } = await supabase.from("billing_agent_messages").select("id").eq("company_id", companyId).eq("kind", "resposta").gte("created_at", inicioDoDiaBR(hoje));
   if ((hojeResp || []).length >= Number(cfg.reply_daily_cap ?? 8)) return { skip: "teto de respostas do dia" };
 
@@ -962,6 +974,193 @@ async function responderCliente(supabase: any, cfg: any, conv: any, caso: any, m
   await gravarSaida(supabase, conv.id, texto, sent);
   await salvarCaso(supabase, companyId, { ...ctx.patch, last_outbound_at: new Date().toISOString() });
   return { ok: true, texto };
+}
+
+
+// ---------- comprovante ----------
+// Fabrício, 20/10/2026: "quando cliente mandar comprovante, já conferir no Asaas e no sistema,
+// até porque já é dado baixa na hora, e já responder". Caso Wagner (Pier Club): mandou o Pix de
+// R$ 3.000 às 19h39, a parcela já estava paga no Nexus e o agente respondeu "vou confirmar com o
+// financeiro". Agora: lê o comprovante (imagem ou PDF), confere recebedor, valor e data contra as
+// faturas do cliente no Nexus e no Asaas e responde na hora. Não compensou ainda: avisa e reconfere
+// a cada rodada do cron (10 min) por até 48 h; depois disso, chama o Fabrício.
+const CNPJ_UNV = "51356237000140";
+const MIDIA_RE = /image|document|pdf/i;
+
+async function lerComprovante(model: string, url: string, mime: string) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`download ${r.status}`);
+  const buf = new Uint8Array(await r.arrayBuffer());
+  if (buf.length > 8 * 1024 * 1024) throw new Error("arquivo grande demais");
+  let bin = "";
+  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+  const b64 = btoa(bin);
+  const ehPdf = /pdf/i.test(mime) || url.toLowerCase().endsWith(".pdf");
+  const tipoImg = /png/i.test(mime) ? "image/png" : /webp/i.test(mime) ? "image/webp" : "image/jpeg";
+  const anexo = ehPdf
+    ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: b64 } }
+    : { type: "image", source: { type: "base64", media_type: tipoImg, data: b64 } };
+  const tool = {
+    name: "comprovante",
+    description: "Registra o que está escrito no arquivo.",
+    input_schema: {
+      type: "object",
+      properties: {
+        eh_comprovante: { type: "boolean", description: "true só se for comprovante de pagamento ou transferência (Pix, TED, boleto pago)" },
+        valor: { type: "number", description: "valor pago em reais, ex. 3000.00" },
+        data: { type: "string", description: "data do pagamento no formato AAAA-MM-DD" },
+        recebedor_nome: { type: "string" },
+        recebedor_documento: { type: "string", description: "CPF ou CNPJ do recebedor, como aparece" },
+        chave_pix: { type: "string" },
+        instituicao_recebedor: { type: "string" },
+        pagador_nome: { type: "string" },
+      },
+      required: ["eh_comprovante"],
+    },
+  };
+  const resp = await claude(model, "Você lê comprovantes de pagamento brasileiros e transcreve os campos exatamente como aparecem. Não invente: campo que não aparece fica vazio.", [
+    { role: "user", content: [anexo, { type: "text", text: "Leia este arquivo e registre os campos." }] },
+  ], [tool], 400, "comprovante");
+  const uso = (resp.content || []).find((b: any) => b.type === "tool_use");
+  return (uso?.input || { eh_comprovante: false }) as any;
+}
+
+function recebedorEhUNV(c: any): "sim" | "nao" | "indefinido" {
+  const doc = String(c.recebedor_documento || "").replace(/\D/g, "");
+  const chave = String(c.chave_pix || "").replace(/\D/g, "");
+  const nome = String(c.recebedor_nome || "");
+  if (doc.includes(CNPJ_UNV) || chave.includes(CNPJ_UNV) || /universidade\s+(nacional\s+de\s+)?vendas|\bunv\b/i.test(nome)) return "sim";
+  if (doc.length >= 11 && !doc.includes(CNPJ_UNV)) return "nao";
+  if (nome.trim().length > 3) return "nao";
+  return "indefinido";
+}
+
+/** Procura a fatura que o comprovante paga: primeiro uma já paga perto da data, depois uma em aberto. */
+async function acharFaturaDoComprovante(supabase: any, companyId: string, valorCents: number, dataYmd: string) {
+  const hoje = hojeYmdBR();
+  const de = new Date(Date.now() - 200 * 86400000).toISOString().slice(0, 10);
+  const ate = new Date(Date.now() + 45 * 86400000).toISOString().slice(0, 10);
+  const { data } = await supabase.from("company_invoices").select(CAMPOS_FATURA + ", paid_amount_cents")
+    .eq("company_id", companyId).gte("due_date", de).lte("due_date", ate).order("due_date", { ascending: true });
+  const lista = (data || []) as any[];
+  const bate = (f: any) => {
+    const pago = Number(f.paid_amount_cents || 0);
+    if (pago && Math.abs(pago - valorCents) <= 100) return true;
+    // valor original até original + multa/juros (teto de 20%)
+    return valorCents >= f.amount_cents - 100 && valorCents <= Math.round(f.amount_cents * 1.2) + 100;
+  };
+  const refData = dataYmd && /^\d{4}-\d{2}-\d{2}$/.test(dataYmd) ? dataYmd : hoje;
+  const pagas = lista.filter((f) => f.paid_at && bate(f) && Math.abs(diffDias(String(f.paid_at).slice(0, 10), refData)) <= 5)
+    .sort((a, b) => Math.abs(diffDias(String(a.paid_at).slice(0, 10), refData)) - Math.abs(diffDias(String(b.paid_at).slice(0, 10), refData)));
+  if (pagas.length) return { fatura: pagas[0], situacao: "paga" as const };
+  const abertas = lista.filter((f) => !f.paid_at && ["pending", "overdue"].includes(String(f.status)) && bate(f));
+  for (const f of abertas) if (await pagaNoAsaas(supabase, f)) return { fatura: f, situacao: "paga_asaas" as const };
+  if (abertas.length) return { fatura: abertas[0], situacao: "aberta" as const };
+  return { fatura: null, situacao: "sem_fatura" as const };
+}
+
+function primeiroNome(n: unknown) {
+  const p = String(n || "").trim().split(/\s+/)[0] || "";
+  return p && !/^\d+$/.test(p) ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : "";
+}
+
+/** Confere um comprovante recebido e devolve a resposta pronta (ou null se não for comprovante). */
+async function conferirComprovante(supabase: any, cfg: any, companyId: string, msg: any, nomeContato: string) {
+  const lido = await lerComprovante(cfg.model || MODELO_PADRAO, msg.media_url, String(msg.media_mimetype || ""));
+  if (!lido?.eh_comprovante) return null;
+  const valorCents = Math.round(Number(lido.valor || 0) * 100);
+  const dataYmd = String(lido.data || "").slice(0, 10);
+  const nome = primeiroNome(nomeContato);
+  const oi = nome ? `, ${nome}` : "";
+  const valorTxt = valorCents > 0 ? `de ${brl(valorCents)}` : "";
+  const dataTxt = /^\d{4}-\d{2}-\d{2}$/.test(dataYmd) ? ` de ${ddmm(dataYmd)}` : "";
+  const quem = recebedorEhUNV(lido);
+  const base = { lido, valorCents, dataYmd, recebedor: quem };
+  if (quem === "nao") {
+    return { ...base, situacao: "outro_recebedor", resposta: `Recebi o comprovante${oi}. Vou conferir com o financeiro e te retorno por aqui ainda hoje.`, avisar: true };
+  }
+  if (!valorCents) {
+    return { ...base, situacao: "ilegivel", resposta: `Recebi o comprovante${oi}. Vou conferir com o financeiro e te retorno por aqui ainda hoje.`, avisar: true };
+  }
+  const achado = await acharFaturaDoComprovante(supabase, companyId, valorCents, dataYmd);
+  const venc = achado.fatura?.due_date ? `a parcela que venceu em ${ddmm(achado.fatura.due_date)}` : "a parcela";
+  if (achado.situacao === "paga" || achado.situacao === "paga_asaas") {
+    return { ...base, ...achado, situacao: achado.situacao, resposta: `Recebido${oi}. O pagamento ${valorTxt}${dataTxt} já consta aqui e ${venc} está quitada. Obrigado!`, avisar: false };
+  }
+  if (achado.situacao === "aberta") {
+    return { ...base, ...achado, situacao: "aguardando", resposta: `Recebi o comprovante ${valorTxt}${dataTxt}${oi}. Ainda não compensou aqui, às vezes leva alguns minutos. Assim que entrar eu te confirmo por aqui.`, avisar: false };
+  }
+  return { ...base, ...achado, situacao: "sem_fatura", resposta: `Recebi o comprovante ${valorTxt}${dataTxt}${oi}. Vou conferir com o financeiro em qual parcela ele entra e te retorno por aqui.`, avisar: true };
+}
+
+async function enviarRespostaComprovante(supabase: any, cfg: any, companyId: string, convId: string | null, phone: string, conf: any, msgId: string, simulando: boolean, empresaNome: string) {
+  const meta = { message_id: msgId, situacao: conf.situacao, valor_cents: conf.valorCents, data: conf.dataYmd, recebedor: conf.recebedor, invoice_id: conf.fatura?.id || null, lido: conf.lido };
+  const base = { company_id: companyId, direction: "outbound", kind: "comprovante", content: conf.resposta, phone, conversation_id: convId, invoice_ids: conf.fatura?.id ? [conf.fatura.id] : [], meta };
+  if (conf.avisar) {
+    const l = conf.lido || {};
+    await avisarDono(supabase, cfg, `Cobrança: ${empresaNome} mandou comprovante e não consegui casar com uma parcela (${conf.situacao}).\n\nValor: ${conf.valorCents ? brl(conf.valorCents) : "não li"}\nData: ${conf.dataYmd || "não li"}\nRecebedor: ${l.recebedor_nome || "?"} ${l.recebedor_documento || ""}\nPagador: ${l.pagador_nome || "?"}\nTelefone: ${phone}`, { company_id: companyId, conversation_id: convId }, simulando);
+  }
+  if (simulando) {
+    await registrar(supabase, { ...base, status: "dry_run" });
+    return { ok: true, simulando: true, comprovante: meta, texto: conf.resposta };
+  }
+  const sent = await sendText(supabase, cfg.instance_id, phone, conf.resposta);
+  await registrar(supabase, { ...base, status: sent.ok ? "sent" : "failed", error: sent.ok ? null : sent.error });
+  if (!sent.ok) return { ok: false, error: sent.error };
+  await gravarSaida(supabase, convId, conf.resposta, sent);
+  if (conf.situacao === "paga" || conf.situacao === "paga_asaas") {
+    await salvarCaso(supabase, companyId, { last_outbound_at: new Date().toISOString(), status: "ativo", paused_until: null, pause_reason: null, promise_date: null });
+  } else {
+    // pausa a cobrança enquanto confere (igual ao "cliente informou pagamento")
+    const ate = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
+    await salvarCaso(supabase, companyId, { last_outbound_at: new Date().toISOString(), paused_until: ate, pause_reason: `comprovante recebido (${conf.situacao})` });
+  }
+  return { ok: true, comprovante: meta, texto: conf.resposta };
+}
+
+/** Rodada do cron: comprovante "aguardando" das últimas 48 h que compensou → confirma ao cliente. */
+async function conferirComprovantesPendentes(supabase: any, cfg: any) {
+  if (!cfg.enabled || cfg.dry_run || !cfg.instance_id) return { skip: "agente desligado ou simulando" };
+  const desde = new Date(Date.now() - 48 * 3600000).toISOString();
+  const { data: pend } = await supabase.from("billing_agent_messages").select("id, company_id, phone, conversation_id, meta, created_at")
+    .eq("kind", "comprovante").eq("status", "sent").gte("created_at", new Date(Date.now() - 72 * 3600000).toISOString()).order("created_at", { ascending: true });
+  const out: any[] = [];
+  for (const p of (pend || []) as any[]) {
+    if (p.meta?.situacao !== "aguardando" || !p.meta?.invoice_id) continue;
+    // já resolvido (confirmado ou escalado) depois deste?
+    const { data: depois } = await supabase.from("billing_agent_messages").select("id").eq("company_id", p.company_id)
+      .in("kind", ["comprovante_confirmado", "comprovante_escalado"]).gt("created_at", p.created_at).limit(1);
+    if ((depois || []).length) continue;
+    const { data: f } = await supabase.from("company_invoices").select(CAMPOS_FATURA).eq("id", p.meta.invoice_id).maybeSingle();
+    const paga = !!f && (!!f.paid_at || String(f.status) === "paid" || await pagaNoAsaas(supabase, f));
+    const { data: emp } = await supabase.from("onboarding_companies").select("name, owner_name").eq("id", p.company_id).maybeSingle();
+    if (paga) {
+      const oi = primeiroNome(emp?.owner_name) ? `, ${primeiroNome(emp?.owner_name)}` : "";
+      const texto = `Compensou${oi}. O pagamento de ${brl(Number(p.meta.valor_cents || 0))} entrou e a parcela que venceu em ${ddmm(f.due_date)} está quitada. Obrigado!`;
+      const sent = await sendText(supabase, cfg.instance_id, p.phone, texto);
+      await registrar(supabase, { company_id: p.company_id, direction: "outbound", kind: "comprovante_confirmado", content: texto, phone: p.phone, conversation_id: p.conversation_id, invoice_ids: [f.id], status: sent.ok ? "sent" : "failed", error: sent.ok ? null : sent.error });
+      if (sent.ok) {
+        await gravarSaida(supabase, p.conversation_id, texto, sent);
+        await salvarCaso(supabase, p.company_id, { last_outbound_at: new Date().toISOString(), status: "ativo", paused_until: null, pause_reason: null, promise_date: null });
+      }
+      out.push({ empresa: emp?.name, confirmado: sent.ok });
+    } else if (p.created_at < desde) {
+      await avisarDono(supabase, cfg, `Cobrança: ${emp?.name || "cliente"} mandou comprovante de ${brl(Number(p.meta.valor_cents || 0))} há mais de 48 h e a parcela de ${f?.due_date ? ddmm(f.due_date) : "?"} ainda não consta paga no Nexus nem no Asaas. Vale conferir.\n\nTelefone: ${p.phone}`, { company_id: p.company_id, conversation_id: p.conversation_id }, false);
+      await registrar(supabase, { company_id: p.company_id, direction: "outbound", kind: "comprovante_escalado", content: "escalado após 48 h sem compensar", phone: p.phone, conversation_id: p.conversation_id, status: "sent" });
+      out.push({ empresa: emp?.name, escalado: true });
+    }
+  }
+  return { conferidos: out };
+}
+
+/** Mídia do cliente desde a última mensagem nossa que ainda não foi conferida. */
+async function midiaPendente(supabase: any, hist: any[], companyId: string) {
+  const idxUltSaida = hist.map((m: any) => m.direction).lastIndexOf("outbound");
+  const novas = hist.slice(idxUltSaida + 1).filter((m: any) => m.direction === "inbound" && MIDIA_RE.test(String(m.type || "")) && m.media_url);
+  if (!novas.length) return null;
+  const m = novas[novas.length - 1];
+  const { data: ja } = await supabase.from("billing_agent_messages").select("id").eq("company_id", companyId).eq("kind", "comprovante").contains("meta", { message_id: m.id }).limit(1);
+  return (ja || []).length ? null : m;
 }
 
 // ---------- decisão do Fabrício ----------
@@ -1105,7 +1304,26 @@ async function tratarInbound(supabase: any, cfg: any, body: any) {
   // Só conversa com telefone que o agente já cobrou. Desconhecido não recebe resposta.
   const { data: casos } = await supabase.from("billing_agent_cases").select("*").ilike("phone", `%${fim8(fone)}`).order("last_outbound_at", { ascending: false }).limit(1);
   const caso = casos?.[0];
-  if (!caso) return { skip: "telefone sem cobrança do agente" };
+  if (!caso) {
+    // Cliente que não está em cobrança mas mandou comprovante pro financeiro: confere e responde.
+    if (!cfg.enabled) return { skip: "telefone sem cobrança do agente" };
+    await new Promise((r) => setTimeout(r, 12000));
+    const hist = await historico(supabase, conv.id);
+    const ult = hist[hist.length - 1];
+    if (!ult || ult.direction !== "inbound") return { skip: "telefone sem cobrança do agente" };
+    const f8 = fim8(fone);
+    const { data: emps } = await supabase.from("onboarding_companies").select("id, name, owner_name, phone, owner_phone").or(`phone.ilike.%${f8},owner_phone.ilike.%${f8}`).limit(2);
+    if (!emps || emps.length !== 1) return { skip: "telefone sem cobrança do agente" };
+    const emp = emps[0];
+    const midia = await midiaPendente(supabase, hist, emp.id);
+    if (!midia) return { skip: "telefone sem cobrança do agente" };
+    const conf = await conferirComprovante(supabase, cfg, emp.id, midia, emp.owner_name || conv.contact?.name || "");
+    if (!conf) return { skip: "mídia não é comprovante" };
+    const tel = normalizaFone(fone) || fone;
+    const { data: casoNovo } = await supabase.from("billing_agent_cases").select("company_id").eq("company_id", emp.id).maybeSingle();
+    if (!casoNovo) await supabase.from("billing_agent_cases").upsert({ company_id: emp.id, phone: tel, status: "ativo" }, { onConflict: "company_id" });
+    return await enviarRespostaComprovante(supabase, cfg, emp.id, conv.id, tel, conf, midia.id, cfg.dry_run === true, emp.name);
+  }
   return await responderCliente(supabase, cfg, conv, caso, body.message_id || null);
 }
 
@@ -1123,7 +1341,14 @@ Deno.serve(async (req) => {
     if (action === "simulate") {
       return j(await rodarCobranca(supabase, cfg, { simulando: true, companyId: body.company_id, limite: Math.min(Number(body.limit) || 8, 15) }));
     }
+    if (action === "conferir_comprovantes") return j(await conferirComprovantesPendentes(supabase, cfg));
+    // Teste sem envio: lê um comprovante de um link e mostra o que acharia pra empresa.
+    if (action === "ler_comprovante") {
+      const conf = await conferirComprovante(supabase, cfg, String(body.company_id), { media_url: body.url, media_mimetype: body.mime || "" }, String(body.nome || ""));
+      return j({ ok: true, conf });
+    }
     if (action === "run") {
+      try { console.log(`[${FN}] comprovantes`, JSON.stringify(await conferirComprovantesPendentes(supabase, cfg)).slice(0, 300)); } catch (e) { console.error(`[${FN}] comprovantes`, String(e)); }
       // dry_run da configuração: gera e registra, não envia.
       return j(await rodarCobranca(supabase, cfg, { simulando: cfg.dry_run === true && cfg.enabled === true, companyId: body.company_id }));
     }
