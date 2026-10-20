@@ -91,6 +91,12 @@ export function PercursoTab() {
   const won = dados?.comparativo.find((c) => c.ft === "won");
   const lost = dados?.comparativo.find((c) => c.ft === "lost");
   const alertas = useMemo(() => (dados?.alertas || []).filter((a) => alertaTipo === "todos" || a.tipo === alertaTipo), [dados, alertaTipo]);
+  // Paginação do "Pra agir agora" (Fabrício, 20/10/2026: "quero que apareça de 15 em 15")
+  const POR_PAGINA = 15;
+  const [paginaAlertas, setPaginaAlertas] = useState(0);
+  useEffect(() => { setPaginaAlertas(0); }, [alertaTipo, dados]);
+  const totalPaginas = Math.max(1, Math.ceil(alertas.length / POR_PAGINA));
+  const alertasPagina = useMemo(() => alertas.slice(paginaAlertas * POR_PAGINA, paginaAlertas * POR_PAGINA + POR_PAGINA), [alertas, paginaAlertas]);
   const etapas = useMemo(() => (dados?.etapas || []).filter((e) => (e.passagens || 0) >= 3 || (e.parados_agora || 0) >= 3)
     .sort((a, b) => (Number(b.dias_mediana ?? b.dias_parado ?? 0)) - (Number(a.dias_mediana ?? a.dias_parado ?? 0))).slice(0, 14), [dados]);
   const maiorVirada = useMemo(() => {
@@ -217,7 +223,7 @@ export function PercursoTab() {
                   <table className="w-full text-sm">
                     <thead><tr className="border-b text-left text-xs text-muted-foreground"><th className="py-1.5 pr-2">Lead</th><th className="px-2">Etapa</th><th className="px-2">Vendedor</th><th className="px-2">Alerta</th></tr></thead>
                     <tbody>
-                      {alertas.map((a) => (
+                      {alertasPagina.map((a) => (
                         <tr key={`${a.tipo}-${a.id}`} className="border-b last:border-0">
                           <td className="py-1.5 pr-2"><button type="button" className="font-medium text-primary hover:underline" onClick={() => navigate(`/crm/leads/${a.id}`)}>{a.name || "(sem nome)"}</button></td>
                           <td className="px-2 text-xs">{a.etapa}</td>
@@ -227,6 +233,14 @@ export function PercursoTab() {
                       ))}
                     </tbody>
                   </table>
+                  {alertas.length > POR_PAGINA && (
+                    <div className="mt-2 flex items-center justify-end gap-2 text-xs text-muted-foreground">
+                      <span>{paginaAlertas * POR_PAGINA + 1}–{Math.min(alertas.length, (paginaAlertas + 1) * POR_PAGINA)} de {alertas.length}</span>
+                      <Button variant="outline" size="sm" className="h-7 px-2" disabled={paginaAlertas === 0} onClick={() => setPaginaAlertas((p) => Math.max(0, p - 1))}>Anterior</Button>
+                      <span>Pág. {paginaAlertas + 1}/{totalPaginas}</span>
+                      <Button variant="outline" size="sm" className="h-7 px-2" disabled={paginaAlertas >= totalPaginas - 1} onClick={() => setPaginaAlertas((p) => Math.min(totalPaginas - 1, p + 1))}>Próximo</Button>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
