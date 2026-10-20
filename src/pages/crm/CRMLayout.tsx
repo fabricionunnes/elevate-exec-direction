@@ -140,6 +140,23 @@ export const CRMLayout = () => {
   // A aba Conversas do lead avisa quando tem a barra de envio na tela: o botão
   // flutuante de Ajuda ficava em cima do botão de enviar (13/10/2026).
   const [chatComposerOnScreen, setChatComposerOnScreen] = useState(false);
+  // Pontinho do menu Atendimento (Fabrício, 20/10/2026): só acende com conversa não lida.
+  // RPC crm_inbox_nao_lidas; atualiza a cada 60 s e quando uma conversa muda (realtime).
+  const [inboxNaoLidas, setInboxNaoLidas] = useState(0);
+  useEffect(() => {
+    let vivo = true;
+    const ler = async () => {
+      const { data } = await (supabase as any).rpc("crm_inbox_nao_lidas");
+      if (vivo) setInboxNaoLidas(Number(data || 0));
+    };
+    ler();
+    const timer = setInterval(ler, 60000);
+    const canal = supabase.channel("crm-inbox-nao-lidas")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "crm_whatsapp_conversations" }, ler)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "instagram_conversations" }, ler)
+      .subscribe();
+    return () => { vivo = false; clearInterval(timer); supabase.removeChannel(canal); };
+  }, []);
   useEffect(() => {
     const onComposer = (e: Event) => setChatComposerOnScreen(!!(e as CustomEvent).detail);
     window.addEventListener("crm-chat-composer", onComposer);
@@ -334,8 +351,8 @@ export const CRMLayout = () => {
                         >
                           <Icon className="h-4 w-4 shrink-0" />
                           {tab.title}
-                          {tab.badge && (
-                            <span className="ml-auto w-2 h-2 bg-emerald-500 rounded-full" />
+                          {tab.badge && inboxNaoLidas > 0 && (
+                            <span className="ml-auto w-2 h-2 bg-emerald-500 rounded-full" title={`${inboxNaoLidas} não lida(s)`} />
                           )}
                         </Link>
                       );
@@ -382,8 +399,8 @@ export const CRMLayout = () => {
                   >
                     <Icon className="h-3.5 w-3.5 shrink-0" />
                     {tab.title}
-                    {tab.badge && (
-                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                    {tab.badge && inboxNaoLidas > 0 && (
+                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" title={`${inboxNaoLidas} não lida(s)`} />
                     )}
                   </Link>
                 );
