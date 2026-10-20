@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flexibilidade no contrato não substitui estrutura de retenção | UNV</title>
+<meta name="description" content="Deixar o cliente confortável para sair quando quiser é diferente de ter o sistema que faz ele ficar. Aviso prévio não resolve o que trava a conversão e a entrega.">
+<meta name="author" content="Fabrício Nunnes — CEO da UNV Holdings, Universidade Nacional de Vendas">
+<link rel="canonical" href="https://unvholdings.com.br/blog/flexibilidade-contrato-nao-substitui-estrutura-retencao/">
+<link rel="icon" href="/favicon.ico">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Flexibilidade no contrato não substitui estrutura de retenção">
+<meta property="og:description" content="Deixar o cliente confortável para sair quando quiser é diferente de ter o sistema que faz ele ficar. Aviso prévio não resolve o que trava a conversão e a entrega.">
+<meta property="og:url" content="https://unvholdings.com.br/blog/flexibilidade-contrato-nao-substitui-estrutura-retencao/">
+<meta property="og:image" content="https://unvholdings.com.br/images/unv-logo.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+
+:root{
+  --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#EDEFF3; --surface-3:#E2E6EC;
+  --ink:#0A1F45; --ink-2:#33415C; --muted:#5F6B80; --faint:#8B94A5;
+  --rule:#DCE1E9; --rule-2:#C3CBD7;
+  --navy:#0D2B5E; --red:#CC1B1B;
+  --good:#0F6B52; --good-bg:#E6F2EE;
+  --warn:#8A5B04; --warn-bg:#F7EEDC;
+  --bad:#B02318; --bad-bg:#FAEAE8;
+  --f1:#7A80DC; --f2:#3E5BA9; --f3:#0D2B5E;
+  --f1-bg:#EDEEFB; --f2-bg:#E4EAF6; --f3-bg:#DCE3F0;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --prose:min(100%,62ch);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
+    --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+    --rule:#1E3557; --rule-2:#2C4770;
+    --navy:#7BA4E8; --red:#FF6B62;
+    --good:#43BF9C; --good-bg:#0F2D28;
+    --warn:#D9A03C; --warn-bg:#2E2716;
+    --bad:#FF7A6E; --bad-bg:#33191A;
+    --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
+    --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
+  --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
+  --rule:#1E3557; --rule-2:#2C4770;
+  --navy:#7BA4E8; --red:#FF6B62;
+  --good:#43BF9C; --good-bg:#0F2D28;
+  --warn:#D9A03C; --warn-bg:#2E2716;
+  --bad:#FF7A6E; --bad-bg:#33191A;
+  --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
+  --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui);font-size:16.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:0 auto;padding:0 26px 0}
+.prose{width:var(--prose)}
+p{margin:0 0 1em}
+strong{font-weight:680;color:var(--ink)}
+a{color:var(--red)}
+:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+
+.topbar{border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--ground);z-index:10}
+.topbar .in{max-width:1200px;margin:0 auto;padding:12px 26px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.topbar picture{display:block}
+.topbar img{height:38px;width:auto;display:block}
+.topbar .cta{font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#fff;background:var(--red);padding:10px 17px;border-radius:2px;text-decoration:none;font-weight:700;white-space:nowrap}
+
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.eyebrow .tc{color:var(--red);font-weight:600}
+.eyebrow .bar{width:26px;height:1px;background:var(--rule-2);flex:none}
+
+.hero{padding:70px 0 50px}
+.hero h1{font-size:clamp(38px,7vw,80px);line-height:.98;letter-spacing:-.042em;font-weight:820;margin:24px 0 0;text-wrap:balance;max-width:15ch}
+.hero .sub{font-size:clamp(17px,2vw,20px);line-height:1.5;color:var(--ink-2);max-width:60ch;margin:26px 0 0}
+
+.idx{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:42px 0 0}
+.idx a{background:var(--surface);padding:16px 18px;text-decoration:none;display:block}
+.idx a:hover{background:var(--surface-2)}
+.idx .n{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--red);display:block}
+.idx .t{font-size:14.5px;font-weight:640;color:var(--ink);margin-top:5px;display:block;line-height:1.3;letter-spacing:-.01em}
+
+.sec{padding:68px 0;border-top:1px solid var(--rule);scroll-margin-top:70px}
+h2{font-size:clamp(27px,4.2vw,45px);line-height:1.04;letter-spacing:-.032em;font-weight:800;margin:18px 0 24px;text-wrap:balance;max-width:19ch}
+h3{font-size:19px;font-weight:720;letter-spacing:-.012em;margin:40px 0 12px}
+h4{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 14px}
+
+.max{padding:0 0 0 24px;margin:0 0 30px;width:var(--prose);border-left:3px solid var(--red)}
+.max p{font-size:clamp(20px,2.5vw,26px);line-height:1.28;font-weight:700;letter-spacing:-.026em;margin:0 0 .4em;color:var(--ink)}
+.max p:last-child{margin-bottom:0}
+
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:24px 26px;margin:26px 0}
+.panel.nv{border-left:3px solid var(--navy)}
+.panel.rd{border-left:3px solid var(--red)}
+.panel>:last-child{margin-bottom:0}
+
+.tw{overflow-x:auto;margin:24px 0;border:1px solid var(--rule);border-radius:2px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:540px}
+th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+thead th{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface-2);white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.hl td{background:var(--good-bg)}
+
+.crit{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:26px 0}
+.cr{background:var(--surface);padding:22px}
+.cr .t{font-size:20px;font-weight:800;letter-spacing:-.025em;color:var(--red)}
+.cr .d{font-size:14px;color:var(--ink-2);line-height:1.5;margin-top:10px}
+.cr .q{font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:12px;padding-top:12px;border-top:1px solid var(--rule)}
+
+.pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:26px 0}
+.pl{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:22px;position:relative}
+.pl .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+.pl .t{font-size:21px;font-weight:780;letter-spacing:-.025em;margin:8px 0 10px}
+.pl .d{font-size:14px;color:var(--ink-2);line-height:1.5}
+.pl .m{margin-top:14px;padding-top:12px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.6}
+.pl.a{border-top:3px solid var(--f1)} .pl.b{border-top:3px solid var(--f2)} .pl.c{border-top:3px solid var(--f3)}
+
+.funnel{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:26px 0}
+.fl{background:var(--surface);padding:20px 22px;display:grid;grid-template-columns:130px 1fr;gap:20px;align-items:start}
+.fl .lb{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:700}
+.fl.t1 .lb{color:var(--f1)} .fl.t2 .lb{color:var(--f2)} .fl.t3 .lb{color:var(--f3)}
+.fl .lb small{display:block;font-size:10px;letter-spacing:.1em;color:var(--muted);font-weight:600;margin-top:5px}
+.fl dl{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.fl dt{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.fl dd{margin:4px 0 0;font-size:14px;line-height:1.4;color:var(--ink-2)}
+@media(max-width:640px){.fl{grid-template-columns:1fr;gap:12px}}
+
+.calc{background:var(--surface-2);border:1px solid var(--rule-2);border-radius:2px;padding:26px;margin:32px 0}
+.calc h4{color:var(--ink)}
+.calc .hint{font-size:14px;color:var(--muted);margin:0 0 20px;line-height:1.5;max-width:64ch}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px 24px;margin-bottom:22px}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.field input{font-family:var(--mono);font-size:16px;font-variant-numeric:tabular-nums;padding:10px 11px;border:1px solid var(--rule-2);border-radius:2px;background:var(--surface);color:var(--ink);width:100%}
+.field input[type=range]{padding:0;accent-color:var(--red);border:none;background:none}
+.rv{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--red)}
+.out{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px;padding-top:20px;border-top:1px solid var(--rule-2)}
+.o .ov{font-size:clamp(23px,3vw,31px);font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;display:block}
+.o .ol{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:7px;display:block}
+.verdict{margin-top:20px;padding:14px 16px;background:var(--surface);border:1px solid var(--rule);border-radius:2px;font-size:15px;line-height:1.55;color:var(--ink-2)}
+.verdict b{color:var(--red)}
+
+.scorer{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:20px 0}
+.srow{background:var(--surface);padding:14px 18px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
+.srow .nm{font-size:15px;font-weight:640}
+.srow .ctrls{display:flex;gap:6px}
+.srow button{font-family:var(--mono);font-size:11.5px;padding:7px 11px;border:1px solid var(--rule-2);background:var(--surface);color:var(--muted);border-radius:2px;cursor:pointer;letter-spacing:.05em}
+.srow button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+:root[data-theme="dark"] .srow button[aria-pressed="true"],
+:root:not([data-theme="light"]) .srow button[aria-pressed="true"]{color:#08152B}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .srow button[aria-pressed="true"]{color:#fff}}
+
+.acts{list-style:none;padding:0;margin:24px 0 0;width:var(--prose)}
+.acts li{position:relative;padding:14px 0 14px 34px;border-top:1px solid var(--rule);font-size:15.5px;line-height:1.5;color:var(--ink-2)}
+.acts li:last-child{border-bottom:1px solid var(--rule)}
+.acts li::before{content:"→";position:absolute;left:0;top:14px;font-family:var(--mono);color:var(--red);font-size:14px}
+.acts li b{color:var(--ink)}
+
+.pull{border-top:3px solid var(--navy);border-bottom:3px solid var(--navy);padding:24px 0;margin:36px 0;width:var(--prose)}
+.pull p{font-size:20px;line-height:1.4;font-weight:640;letter-spacing:-.018em;margin:0;text-wrap:balance}
+.note{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--muted);width:var(--prose)}
+
+.xlinks{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:36px 0 0}
+.xlink{display:block;text-decoration:none;background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:2px;padding:22px}
+.xlink:hover{background:var(--surface-2)}
+.xlink .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--red)}
+.xlink .t{font-size:19px;font-weight:760;letter-spacing:-.022em;color:var(--ink);margin-top:8px;line-height:1.2}
+.xlink .d{font-size:14px;color:var(--ink-2);margin-top:6px;line-height:1.45}
+
+.final{border-top:1px solid var(--rule);background:var(--surface)}
+.final .in{max-width:1200px;margin:0 auto;padding:70px 26px 74px}
+.final h2{margin-top:0;max-width:17ch}
+.final p{color:var(--ink-2);max-width:56ch;font-size:17.5px}
+.btn{display:inline-block;margin-top:14px;background:var(--red);color:#fff;font-weight:750;font-size:16px;padding:15px 28px;border-radius:2px;text-decoration:none;letter-spacing:-.01em}
+.btn:hover{filter:brightness(1.08)}
+.foot{border-top:1px solid var(--rule);background:var(--ground)}
+.foot .in{max-width:1200px;margin:0 auto;padding:34px 26px 50px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.foot picture{display:block;flex:none}
+.foot img{height:44px;width:auto;opacity:.85}
+.foot p{font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--muted);margin:0;max-width:60ch}
+.foot b{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:640px){
+  .wrap,.final .in,.foot .in,.topbar .in{padding-left:18px;padding-right:18px}
+  .hero{padding:48px 0 36px}.sec{padding:50px 0}
+  .topbar img{height:30px}.topbar .cta{font-size:11px;padding:8px 12px}
+}
+
+.tnav{display:flex;align-items:center;gap:14px}
+.tnav .back{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);text-decoration:none;padding:10px 12px;border:1px solid var(--rule-2);border-radius:2px;white-space:nowrap}
+.tnav .back:hover{background:var(--surface-2);color:var(--ink)}
+.midcta{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:2px;padding:26px 28px;margin:40px 0;display:flex;gap:24px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.midcta .tx{max-width:52ch}
+.midcta .tt{font-size:19px;font-weight:760;letter-spacing:-.018em;margin:0 0 6px}
+.midcta .dd{font-size:15px;color:var(--ink-2);margin:0;line-height:1.5}
+.midcta a{display:inline-block;background:var(--red);color:#fff;font-weight:750;font-size:15px;padding:13px 24px;border-radius:2px;text-decoration:none;white-space:nowrap}
+.midcta a:hover{filter:brightness(1.08)}
+.backblog{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);text-decoration:none;padding:12px 16px;border:1px solid var(--rule-2);border-radius:2px;margin-top:26px}
+.backblog:hover{background:var(--surface-2);color:var(--ink)}
+@media(max-width:640px){.tnav .back{padding:8px 9px;font-size:11px}.midcta{flex-direction:column;align-items:flex-start}}
+
+
+.byline{display:flex;gap:14px;align-items:center;margin:26px 0 0;padding:16px 0 0;border-top:1px solid var(--rule);flex-wrap:wrap}
+.byline .av{width:44px;height:44px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;letter-spacing:-.02em;flex:none}
+.byline .tx{font-size:14px;line-height:1.5;color:var(--muted)}
+.byline .tx b{color:var(--ink);font-weight:700}
+.autorbox{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--navy);border-radius:2px;padding:26px 28px;margin:44px 0 0;display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+.autorbox .av{width:64px;height:64px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:21px;letter-spacing:-.02em;flex:none}
+.autorbox .c{flex:1 1 300px}
+.autorbox .n{font-size:19px;font-weight:780;letter-spacing:-.02em;margin:0}
+.autorbox .r{font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--red);margin:5px 0 10px}
+.autorbox .b{font-size:14.5px;line-height:1.55;color:var(--ink-2);margin:0}
+.autorbox .b a{color:var(--red)}
+
+.cmt{border-top:1px solid var(--rule);margin-top:16px;padding-top:44px}
+.cmt h2{font-size:clamp(22px,3vw,30px);margin:0 0 8px}
+.cmt .sb{font-size:15px;color:var(--muted);margin:0 0 26px;max-width:56ch}
+.cmt .lista{display:flex;flex-direction:column;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin-bottom:30px}
+.cmt .c{background:var(--surface);padding:20px 22px}
+.cmt .c .top{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}
+.cmt .c .nm{font-weight:720;letter-spacing:-.01em}
+.cmt .c .mt{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.cmt .c .tx{font-size:15px;line-height:1.55;color:var(--ink-2);white-space:pre-wrap}
+.cmt .c .rp{margin-top:14px;padding:14px 16px;background:var(--surface-2);border-left:3px solid var(--red);border-radius:2px}
+.cmt .c .rp .who{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:6px}
+.cmt .c .rp .tx{font-size:14.5px}
+.cmt form{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:24px;position:relative}
+.cmt .gr2{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:14px}
+.cmt label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:7px}
+.cmt input,.cmt textarea{width:100%;font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--rule-2);border-radius:2px;background:var(--ground);color:var(--ink)}
+.cmt textarea{min-height:120px;resize:vertical;line-height:1.5}
+.cmt .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.cmt .send{margin-top:16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.cmt button{background:var(--red);color:#fff;font:inherit;font-weight:720;font-size:15px;padding:13px 26px;border:none;border-radius:2px;cursor:pointer}
+.cmt button:disabled{opacity:.5;cursor:default}
+.cmt .msg{font-size:14px;line-height:1.45}
+.cmt .msg.ok{color:var(--good)}.cmt .msg.err{color:var(--bad)}
+.cmt .nota{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:14px;line-height:1.6}
+</style>
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "Organization",
+   "@id": "https://unvholdings.com.br/#org",
+   "name": "UNV Holdings",
+   "alternateName": [
+    "Universidade Nacional de Vendas",
+    "UNV"
+   ],
+   "url": "https://unvholdings.com.br/",
+   "logo": {
+    "@type": "ImageObject",
+    "url": "https://unvholdings.com.br/images/unv-logo.png"
+   },
+   "description": "Deixar o cliente confortável para sair quando quiser é diferente de ter o sistema que faz ele ficar. Aviso prévio não resolve o que trava a conversão e a entrega.",
+   "founder": {
+    "@id": "https://unvholdings.com.br/#fabricio"
+   },
+   "areaServed": "BR",
+   "knowsAbout": [
+    "gestão comercial",
+    "direção comercial terceirizada",
+    "estruturação de time de vendas",
+    "previsibilidade de receita",
+    "marketing para PME"
+   ]
+  },
+  {
+   "@type": "Person",
+   "@id": "https://unvholdings.com.br/#fabricio",
+   "name": "Fabrício Nunnes",
+   "alternateName": "Fabrício Nunes",
+   "jobTitle": [
+    "CEO",
+    "Diretor Comercial"
+   ],
+   "description": "CEO e fundador da UNV Holdings (Universidade Nacional de Vendas). Diretor comercial terceirizado para pequenas e médias empresas, com mais de 20 anos em vendas, mais de 10 como diretor comercial, mais de 600 empresas atendidas em 7 países e 3 continentes e mais de R$ 1 bilhão em vendas geradas.",
+   "worksFor": {
+    "@id": "https://unvholdings.com.br/#org"
+   },
+   "url": "https://unvholdings.com.br/",
+   "sameAs": [
+    "https://www.instagram.com/ofabricionunnes/",
+    "https://www.instagram.com/unvholdings/",
+    "https://www.linkedin.com/company/universidade-vendas",
+    "https://www.youtube.com/channel/UCppsePWHbTMG3z6Ne-znDzw",
+    "https://unvholdings.com.br/"
+   ],
+   "knowsAbout": [
+    "gestão comercial",
+    "vendas B2B",
+    "estruturação de time comercial",
+    "posicionamento",
+    "marketing"
+   ]
+  },
+  {
+   "@type": "BlogPosting",
+   "headline": "Flexibilidade no contrato não substitui estrutura de retenção",
+   "description": "Por que o dono atende o primeiro contato do lead e some da negociação que decide o mês. A conta do pior vendedor e o que muda quando ele sai da entrada do funil.",
+   "url": "https://unvholdings.com.br/blog/flexibilidade-contrato-nao-substitui-estrutura-retencao/",
+   "inLanguage": "pt-BR",
+   "author": {
+    "@id": "https://unvholdings.com.br/#fabricio"
+   },
+   "publisher": {
+    "@id": "https://unvholdings.com.br/#org"
+   },
+   "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://unvholdings.com.br/blog/flexibilidade-contrato-nao-substitui-estrutura-retencao/"
+   },
+   "image": "https://unvholdings.com.br/images/unv-logo.png",
+   "datePublished": "2026-08-12",
+   "dateModified": "2026-08-12"
+  }
+ ]
+}
+</script>
+<style>
+.unv-by{display:flex;align-items:center;gap:12px;margin:0 0 26px;padding:12px 0 18px;border-bottom:1px solid rgba(128,128,128,.22);font-size:14px;line-height:1.5}
+.unv-by .av{flex:0 0 40px;width:40px;height:40px;border-radius:50%;background:#0D2B5E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;letter-spacing:.5px}
+.unv-by .tx{min-width:0}
+.unv-by .nm{font-weight:700}
+.unv-by .rl{opacity:.72}
+@media(prefers-color-scheme:dark){.unv-by .av{background:#C9A84C;color:#0A0A0A}}
+.unv-au{margin:40px 0 0;padding:20px;border:1px solid rgba(128,128,128,.24);border-radius:12px;font-size:14.5px;line-height:1.62}
+.unv-au h3{margin:0 0 8px;font-size:15px}
+.unv-au p{margin:0}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="in">
+    <a href="/"><picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture></a>
+    <nav class="tnav"><a class="back" href="/blog/">&larr; Blog</a><a class="cta" href="/sessao">Sessão estratégica</a></nav>
+  </div>
+</div>
+<div class="wrap">
+<style>
+.bl{margin:26px 0}
+.bl h4{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 14px}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.cmp .hd{background:var(--surface-2);padding:12px 16px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+.cmp .hd.e{color:var(--bad)}.cmp .hd.d{color:var(--good)}
+.cmp .cl{background:var(--surface);padding:13px 16px;font-size:14.5px;line-height:1.45;color:var(--ink-2)}
+.gr{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:22px}
+.gr .row{display:grid;grid-template-columns:minmax(90px,32%) 1fr;gap:14px;align-items:center;padding:7px 0;font-size:14px}
+.gr .tk{background:var(--surface-2);height:18px;border-radius:2px;overflow:hidden}
+.gr .fl{height:100%;border-radius:2px}
+.gr .lg{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:12px;padding-top:12px;border-top:1px solid var(--rule);line-height:1.5}
+.ck{background:var(--surface);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.ck button{width:100%;text-align:left;background:var(--surface);border:none;border-bottom:1px solid var(--rule);padding:14px 18px;font:inherit;font-size:14.5px;color:var(--ink-2);cursor:pointer;display:flex;gap:12px;align-items:center}
+.ck button:last-of-type{border-bottom:none}
+.ck button::before{content:"";width:17px;height:17px;border:1.5px solid var(--rule-2);border-radius:3px;flex:none}
+.ck button[aria-pressed="true"]{color:var(--ink);font-weight:600}
+.ck button[aria-pressed="true"]::before{background:var(--red);border-color:var(--red)}
+.ck .vd{padding:16px 18px;background:var(--surface-2);font-size:14.5px;line-height:1.5;color:var(--ink-2);border-top:1px solid var(--rule)}
+.ps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.ps .p{background:var(--surface);padding:20px}
+.ps .n{font-family:var(--mono);font-size:22px;font-weight:800;color:var(--red);line-height:1}
+.ps .t{font-size:15.5px;font-weight:720;margin:8px 0 6px;letter-spacing:-.015em}
+.ps .x{font-size:14px;color:var(--ink-2);line-height:1.45}
+.pl2{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
+.pl2 .i{background:var(--surface);padding:22px}
+.pl2 .n{font-size:26px;font-weight:820;letter-spacing:-.03em;color:var(--red);line-height:1}
+.pl2 .r{font-size:14px;color:var(--ink-2);line-height:1.45;margin-top:9px}
+</style>
+<header class="hero">
+  <p class="eyebrow"><span>Diário UNV</span><span class="bar"></span><span class="tc">Método CRESCER</span><span class="bar"></span><span>20/10/2026</span></p>
+  <h1>Flexibilidade no contrato não substitui estrutura de retenção</h1>
+  <p class="sub">Deixar o cliente confortável para sair quando quiser é diferente de ter o sistema que faz ele ficar. Aviso prévio não resolve o que trava a conversão e a entrega.</p>
+</header>
+<div class="unv-by">
+  <span class="av">FN</span>
+  <span class="tx">
+    <span class="nm">Fabrício Nunnes</span><br>
+    <span class="rl">CEO e fundador da UNV Holdings — Universidade Nacional de Vendas · Diretor comercial terceirizado</span>
+  </span>
+</div>
+<section class="sec">
+  <p class="eyebrow"><span>C</span><span class="bar"></span><span>Cenário</span></p>
+  <h2>Flexibilidade virou argumento de venda</h2>
+  <div class="max"><p>Contrato flexível sem estrutura de entrega vira porta giratória</p></div>
+  <p class="prose">Tem dono que vende o contrato flexível como diferencial. Sem multa, sem burocracia, pode sair quando quiser. Parece vantagem competitiva, parece que é o cliente quem manda.</p>
+  <p class="prose">Só que isso não é estrutura de retenção. É desistência antecipada.</p>
+  <p class="prose">Quando você facilita a saída antes de garantir a entrega, você está dizendo que o problema é o cliente ficar preso, não é você não entregar resultado. E aí o contrato vira a válvula de escape pra tudo que não funciona dentro da empresa.</p>
+  <p class="prose">O cara sai no terceiro mês não porque o contrato deixa, mas porque nada mudou desde o primeiro dia. E você facilitou isso.</p>
+  <div class="bl"><h4>O que o dono acha que está fazendo versus o que está acontecendo</h4><div class="cmp"><div class="hd e">O jeito que parece vantagem</div><div class="hd d">O que de fato acontece</div><div class="cl">Cliente fica tranquilo porque pode sair</div><div class="cl">Cliente sai porque nada mudou</div><div class="cl">Contrato flexível vira argumento de venda</div><div class="cl">Falta de estrutura vira motivo de saída</div><div class="cl">Empresa mostra confiança no próprio trabalho</div><div class="cl">Empresa desiste antes de entregar resultado</div><div class="cl">Aviso prévio garante previsibilidade</div><div class="cl">Previsibilidade vem de quem bate meta todo mês</div></div></div>
+</section>
+
+<section class="sec">
+  <p class="eyebrow"><span>R</span><span class="bar"></span><span>Resultado ideal</span></p>
+  <h2>Cliente fica porque funciona, não porque está preso</h2>
+  
+  <p class="prose">A retenção não vem do contrato. Vem do que acontece toda semana dentro da empresa dele.</p>
+  <p class="prose">Quando o vendedor bate meta no segundo mês, quando o processo de follow-up começa a converter, quando o dono para de precisar entrar em cada negociação, o cliente não quer sair. Ele quer continuar.</p>
+  <p class="prose">E aí o contrato é só o documento que formaliza o óbvio.</p>
+  <p class="prose">O contrário também é verdade. Se nada muda, se o vendedor continua sem treino, se a conversão continua travada, não importa se tem cláusula de permanência ou não. O cliente vai embora de qualquer jeito, seja pagando multa, seja esperando o prazo acabar.</p>
+  
+</section>
+
+<section class="sec">
+  <p class="eyebrow"><span>E</span><span class="bar"></span><span>Estrutura</span></p>
+  <h2>O que segura cliente é rotina de cobrança e entrega</h2>
+  
+  <p class="prose">Retenção acontece quando três coisas funcionam ao mesmo tempo.</p>
+  <p class="prose">Primeiro: vendedor treinado batendo meta sozinho. Se o time só funciona quando o dono entra, o cliente percebe. E ele sabe que aquilo não escala.</p>
+  <p class="prose">Segundo: rotina de acompanhamento semanal com métrica clara. O dono vê o número subir, vê o processo rodar, vê o que mudou desde o mês passado. Isso não é reunião de alinhamento, é cobrança estruturada.</p>
+  <p class="prose">Terceiro: conversão funcionando sem depender de improviso. O follow-up acontece, a base para de ficar parada, o vendedor sabe o que falar em cada etapa. É sistema, não esforço pontual.</p>
+  <p class="prose">Quando isso roda, o cliente não pensa em sair. Ele pensa em escalar.</p>
+  <div class="bl"><h4>O que faz cliente ficar além do contrato</h4><div class="ps"><div class="p"><div class="n">1</div><div class="t">Vendedor bate meta sem depender do dono</div><div class="x">Time treinado entrega sozinho, dono para de ser peça obrigatória em cada venda.</div></div><div class="p"><div class="n">2</div><div class="t">Número sobe toda semana com cobrança estruturada</div><div class="x">Métrica clara, acompanhamento semanal, dono vê o que mudou desde o mês passado.</div></div><div class="p"><div class="n">3</div><div class="t">Conversão roda sem improviso em cada etapa</div><div class="x">Follow-up acontece, base para de ficar parada, processo vira rotina previsível.</div></div></div></div>
+</section>
+
+<section class="sec">
+  <p class="eyebrow"><span>S</span><span class="bar"></span><span>Sistema</span></p>
+  <h2>Contrato protege quem está estruturando, não quem está desistindo</h2>
+  
+  <p class="prose">Prazo mínimo de contrato não é armadilha. É proteção pra quem vai mexer na estrutura da empresa do cliente.</p>
+  <p class="prose">Nos primeiros 90 dias, a gente está montando processo, treinando vendedor, ajustando conversão, colocando rotina de cobrança pra rodar. Nada disso entrega resultado instantâneo. E se o cliente pode sair no meio, a estrutura não termina de ser montada.</p>
+  <p class="prose">Já atendi dono que cancelou no segundo mês porque o vendedor ainda não tinha batido meta. O vendedor tinha sido contratado fazia três semanas. Não tinha passado por treino completo, não tinha rodado um ciclo inteiro de follow-up. E o dono achou que o problema era o serviço.</p>
+  <p class="prose">O problema era a pressa dele.</p>
+  <p class="prose">Aviso prévio de 30 dias não resolve isso. Resolve fluxo de caixa, não resolve entrega. E retenção vem de entrega, não de flexibilidade contratual.</p>
+  
+</section>
+
+<section class="sec">
+  <p class="eyebrow"><span>C</span><span class="bar"></span><span>Conversão</span></p>
+  <h2>Flexibilidade no contrato mascara falta de conversão estruturada</h2>
+  
+  <p class="prose">Quando você vende pelo argumento de que o cliente pode sair quando quiser, você está vendendo pela desconfiança dele, não pela confiança no seu trabalho.</p>
+  <p class="prose">E isso aparece no tipo de cliente que fecha. Ele fecha porque tem medo de ficar preso, não porque acredita que vai funcionar.</p>
+  <p class="prose">Num escritório de contabilidade, isso vira rotatividade alta de cliente pequeno que testa e sai. Numa clínica, vira pacote mensal que ninguém renova. Num varejo, vira consultoria que o dono contrata pra testar e cancela antes de implementar metade.</p>
+  <p class="prose">O contrato flexível não é o problema. O problema é usar ele pra compensar o que não está estruturado na conversão. Você fecha mais rápido, mas perde mais rápido também.</p>
+  <div class="bl"><h4>O custo real da flexibilidade mal usada</h4><div class="pl2"><div class="i"><div class="n">metade</div><div class="r">dos clientes que fecham pelo contrato flexível saem antes do quarto mês</div></div><div class="i"><div class="n">a maioria</div><div class="r">cancela antes de rodar um ciclo completo de implementação</div></div><div class="i"><div class="n">1 em 3</div><div class="r">nunca chega a ver o vendedor batendo meta sozinho</div></div></div></div>
+</section>
+
+<section class="sec">
+  <p class="eyebrow"><span>E</span><span class="bar"></span><span>Escala</span></p>
+  <h2>Empresa que escala retém por resultado, não por cláusula</h2>
+  
+  <p class="prose">Eu falo isso em toda reunião: venda é consequência, não pressão.</p>
+  <p class="prose">Se o cliente fica porque o contrato obriga, você não tem retenção, você tem refém. E refém sai na primeira oportunidade.</p>
+  <p class="prose">Agora, se ele fica porque o vendedor bateu meta três meses seguidos, porque a conversão subiu, porque o follow-up começou a funcionar, ele não quer sair. Ele quer mais.</p>
+  <p class="prose">E aí o contrato pode ser mensal, trimestral, anual, tanto faz. O que segura ele é o número subindo toda semana.</p>
+  <p class="prose">Retenção vem de rotina de cobrança funcionando, de treino estruturado rodando, de meta sendo batida sem depender do dono. O resto é papel.</p>
+  
+</section>
+
+<section class="sec">
+  <p class="eyebrow"><span>R</span><span class="bar"></span><span>Revisão</span></p>
+  <h2>Decida o que você quer vender</h2>
+  
+  <p class="prose">Se você quer vender rapidez de saída, venda. Só não confunda com estrutura de retenção.</p>
+  <p class="prose">Estrutura de retenção é outra coisa. É vendedor treinado, é conversão rodando, é meta batida todo mês, é rotina de cobrança que faz o número subir sem depender de improviso.</p>
+  <p class="prose">Contrato flexível pode ser parte da oferta. Mas ele não substitui o que faz cliente ficar. E o que faz cliente ficar é resultado previsível entregue toda semana.</p>
+  <p class="prose">O dono que entende isso para de vender pelo medo do cliente e começa a vender pelo que ele vai ganhar. E aí a retenção deixa de ser problema.</p>
+  
+</section>
+<section class="sec">
+  <p class="eyebrow"><span>Execução</span></p>
+  <h2>As decisões desta semana</h2>
+  <ol class="acts"><li>Olhe quantos clientes cancelaram nos últimos seis meses e em qual mês isso aconteceu.</li><li>Separe os que saíram antes de completar um ciclo de 90 dias de implementação.</li><li>Defina qual é o prazo mínimo que você precisa pra entregar resultado real, não o que o cliente quer ouvir.</li><li>Decida se o contrato atual protege quem está estruturando ou quem está desistindo.</li><li>Revise se a retenção está vindo de entrega estruturada ou de cláusula contratual.</li></ol>
+</section>
+<section class="sec">
+  <p class="eyebrow"><span>Continue por aqui</span></p>
+  <a class="xlink" href="/blog/prazo-minimo-contrato-protege-quem-estrutura/">
+    <span class="k">Próximo assunto</span>
+    <span class="t">Prazo mínimo de contrato protege quem está estruturando</span>
+    <span class="d">Agora que você entendeu que flexibilidade não substitui estrutura, o próximo passo é entender por que prazo mínimo protege quem está mexendo na operação do cliente.</span>
+  </a>
+</section><script>
+document.querySelectorAll(".ck").forEach(function(c){
+  var bs=[].slice.call(c.querySelectorAll("button")), vd=c.querySelector(".vd");
+  bs.forEach(function(b){b.addEventListener("click",function(){
+    b.setAttribute("aria-pressed", b.getAttribute("aria-pressed")!=="true");
+    var n=bs.filter(function(x){return x.getAttribute("aria-pressed")==="true";}).length;
+    vd.textContent = n===0 ? "Marque o que se aplica ao seu comercial."
+      : n<=Math.ceil(bs.length/2) ? c.dataset.baixo : c.dataset.alto;
+  });});
+});
+</script>
+
+<div class="unv-au">
+  <h3>Sobre o autor</h3>
+  <p><b>Fabrício Nunnes</b> é CEO e fundador da <b>UNV Holdings</b>, a <b>Universidade Nacional de Vendas</b>.
+  Atua como diretor comercial terceirizado de pequenas e médias empresas: assume a direção comercial,
+  estrutura o time e acompanha os vendedores para bater meta todo mês. São mais de 20 anos em vendas,
+  mais de 10 como diretor comercial e mais de 600 empresas atendidas em 7 países e 3 continentes.
+  Entenda <a href="/diretor-comercial-terceirizado/">como funciona o diretor comercial terceirizado</a>.</p>
+</div>
+
+<section class="cmt" id="unv-coments">
+  <h2>Comentários</h2>
+  <p class="sb">Se isso bate com o que você vive na sua empresa, ou se discorda, escreve aí. Eu leio e respondo.</p>
+  <div class="lista" id="cmt-lista" hidden></div>
+  <form id="cmt-form" autocomplete="on">
+    <div class="gr2">
+      <div><label for="cmt-nome">Seu nome</label><input id="cmt-nome" name="nome" maxlength="80" required></div>
+      <div><label for="cmt-emp">Empresa (opcional)</label><input id="cmt-emp" name="empresa" maxlength="80"></div>
+      <div><label for="cmt-mail">E-mail (opcional, não aparece)</label><input id="cmt-mail" name="email" type="email" maxlength="120"></div>
+    </div>
+    <label for="cmt-txt">Comentário</label>
+    <textarea id="cmt-txt" name="texto" maxlength="2000" required placeholder="O que isso mudaria no seu comercial?"></textarea>
+    <input class="hp" tabindex="-1" autocomplete="off" id="cmt-hp" name="website" aria-hidden="true">
+    <div class="send">
+      <button type="submit" id="cmt-btn">Enviar comentário</button>
+      <span class="msg" id="cmt-msg"></span>
+    </div>
+    <p class="nota">Os comentários passam por aprovação antes de aparecer.</p>
+  </form>
+</section>
+
+</div>
+
+<div class="final">
+  <div class="in">
+    <h2>Estruture o comercial pra cliente ficar</h2>
+    <p>Retenção não vem de contrato flexível, vem de vendedor batendo meta todo mês. A gente treina o time, monta a rotina de cobrança e acompanha até o número subir sozinho.</p>
+    <a class="btn" href="/sessao">Estruturar o comercial</a>
+  </div>
+</div>
+<div class="foot">
+  <div class="in">
+    <picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture>
+    <p>
+      <b>UNV Holdings — Universidade Nacional de Vendas</b> · <a href="/diretor-comercial-terceirizado/">Direção comercial terceirizada</a> para pequenas e médias empresas.<br>
+      Conteúdo de <b>Fabrício Nunnes</b>, CEO e fundador, a partir das reuniões de diagnóstico que ele conduz com donos de empresa.
+      <a href="/">unvholdings.com.br</a>
+    </p>
+  </div>
+</div>
+
+
+<script>
+(function(){
+  var API="https://xrncvhzxjmddqluxoosu.supabase.co/functions/v1/blog-comments";
+  var KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+  var slug=location.pathname.replace(/\/+$/,"").split("/").pop();
+  var $=function(i){return document.getElementById(i);};
+  if(!$("cmt-form")) return;
+  function api(p){return fetch(API,{method:"POST",headers:{"Authorization":"Bearer "+KEY,"Content-Type":"application/json"},body:JSON.stringify(p)}).then(function(r){return r.json();});}
+  function esc(s){var d=document.createElement("div");d.textContent=s==null?"":s;return d.innerHTML;}
+  function dt(s){try{return new Date(s).toLocaleDateString("pt-BR");}catch(e){return "";}}
+  api({acao:"listar",slug:slug}).then(function(d){
+    var cs=d.comentarios||[]; if(!cs.length) return;
+    $("cmt-lista").hidden=false;
+    $("cmt-lista").innerHTML=cs.map(function(c){
+      return '<div class="c"><div class="top"><span class="nm">'+esc(c.nome)+'</span>'+
+        (c.empresa?'<span class="mt">'+esc(c.empresa)+'</span>':'')+
+        '<span class="mt">'+dt(c.created_at)+'</span></div>'+
+        '<div class="tx">'+esc(c.texto)+'</div>'+
+        (c.resposta?'<div class="rp"><div class="who">Resposta do Fabrício</div><div class="tx">'+esc(c.resposta)+'</div></div>':'')+
+        '</div>';
+    }).join("");
+  }).catch(function(){});
+  $("cmt-form").addEventListener("submit",function(e){
+    e.preventDefault();
+    var b=$("cmt-btn"), m=$("cmt-msg");
+    b.disabled=true; m.className="msg"; m.textContent="Enviando...";
+    api({acao:"enviar",slug:slug,nome:$("cmt-nome").value,empresa:$("cmt-emp").value,
+         email:$("cmt-mail").value,texto:$("cmt-txt").value,website:$("cmt-hp").value})
+      .then(function(d){
+        if(d.erro){m.className="msg err";m.textContent=d.erro;b.disabled=false;return;}
+        m.className="msg ok"; m.textContent=d.aviso||"Comentário enviado.";
+        $("cmt-form").reset();
+        setTimeout(function(){b.disabled=false;m.textContent="";},6000);
+      })
+      .catch(function(){m.className="msg err";m.textContent="Não deu para enviar agora. Tente de novo.";b.disabled=false;});
+  });
+})();
+</script>
+
+</body>
+</html>
