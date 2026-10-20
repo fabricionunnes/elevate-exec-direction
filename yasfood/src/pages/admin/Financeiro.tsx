@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { clsx } from "clsx";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { format, parseISO, subMonths, startOfMonth, endOfMonth } from "date-fns";
@@ -42,6 +42,13 @@ export default function Financeiro() {
   useEffect(() => { void load(); }, [load]);
 
   const monthTx = useMemo(() => (tx ?? []).filter((t) => t.occurred_on.startsWith(month)), [tx, month]);
+  // lista do mês em páginas de 10
+  const PER_PAGE = 10;
+  const [page, setPage] = useState(0);
+  useEffect(() => setPage(0), [month]);
+  const pages = Math.max(1, Math.ceil(monthTx.length / PER_PAGE));
+  const curPage = Math.min(page, pages - 1);
+  const pageTx = monthTx.slice(curPage * PER_PAGE, curPage * PER_PAGE + PER_PAGE);
   const receitaBruta = monthOrders.reduce((a, o) => a + Number(o.total), 0);                 // todos os pedidos do mês, menos cancelados
   const recebido = monthOrders.filter((o) => o.payment_status === "pago").reduce((a, o) => a + Number(o.total), 0);
   const aReceber = receitaBruta - recebido;
@@ -144,7 +151,7 @@ export default function Financeiro() {
       <Card title="Lançamentos do mês">
         {tx === null ? <Spinner /> : monthTx.length === 0 ? <Empty>Nada lançado neste mês. Receitas entram sozinhas quando você marca o pedido como pago.</Empty> : (
           <ul className="divide-y divide-choco-100 text-sm">
-            {monthTx.map((t) => (
+            {pageTx.map((t) => (
               <li key={t.id} className="flex items-center gap-3 py-2">
                 <span className="w-20 text-choco-500">{dateBR(t.occurred_on)}</span>
                 <span className="flex-1"><b>{t.category}</b>{t.description && <span className="text-choco-600"> · {t.description}</span>}{t.payment_method && <span className="text-xs text-choco-400"> · {t.payment_method}</span>}</span>
@@ -153,6 +160,13 @@ export default function Financeiro() {
               </li>
             ))}
           </ul>
+        )}
+        {monthTx.length > PER_PAGE && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-choco-100 pt-3 text-sm">
+            <Button size="sm" variant="outline" disabled={curPage === 0} onClick={() => setPage(curPage - 1)}><ChevronLeft size={16} /> Anterior</Button>
+            <span className="text-choco-600">Página <b>{curPage + 1}</b> de {pages}<span className="hidden sm:inline"> · {monthTx.length} lançamentos</span></span>
+            <Button size="sm" variant="outline" disabled={curPage >= pages - 1} onClick={() => setPage(curPage + 1)}>Próxima <ChevronRight size={16} /></Button>
+          </div>
         )}
       </Card>
 
