@@ -253,8 +253,15 @@ async function sync(sb: any, cfg: Cfg, dias: number, dryRun: boolean, janela?: {
     const k = `${kpi}|${sp.id}|${dia}`; const cur = soma.get(k) || { kpi, sp, dia, valor: 0 }; cur.valor += v; soma.set(k, cur);
   };
   const eventos: any[] = [];
-  const { data: jaContadas } = await sb.from("onichat_kpi_events").select("conversation_id, kpi").eq("config_id", cfg.id);
-  const ja = new Set((jaContadas || []).map((e: any) => `${e.conversation_id}|${e.kpi}`));
+  // PostgREST devolve no máximo 1000 linhas por chamada: paginar, senão os já contados
+  // somem da lista e a rodada seguinte lança tudo de novo (aconteceu em 20/10: 163 vendas).
+  const ja = new Set<string>();
+  for (let from = 0; ; from += 1000) {
+    const { data: pag, error } = await sb.from("onichat_kpi_events").select("conversation_id, kpi").eq("config_id", cfg.id).order("created_at", { ascending: true }).range(from, from + 999);
+    if (error) throw new Error("eventos: " + error.message);
+    (pag || []).forEach((e: any) => ja.add(`${e.conversation_id}|${e.kpi}`));
+    if (!pag || pag.length < 1000) break;
+  }
 
   for (const c of convs) {
     const sp = vendedorDe(c);
@@ -292,6 +299,11 @@ async function sync(sb: any, cfg: Cfg, dias: number, dryRun: boolean, janela?: {
   const planejado = [...soma.values()];
   let gravadas = 0;
   if (!dryRun) {
+    // eventos primeiro: se a dedupe não gravar, não lança nada (evita contar duas vezes)
+    for (let i = 0; i < eventos.length; i += 500) {
+      const { error } = await sb.from("onichat_kpi_events").insert(eventos.slice(i, i + 500));
+      if (error) throw new Error("gravar eventos: " + error.message);
+    }
     for (const p of planejado) {
       const { data: atual } = await sb.from("kpi_entries").select("id, value").eq("company_id", cfg.company_id).eq("kpi_id", cfg.kpi_map[p.kpi]).eq("salesperson_id", p.sp.id).eq("entry_date", p.dia).maybeSingle();
       const linha = {
@@ -302,9 +314,7 @@ async function sync(sb: any, cfg: Cfg, dias: number, dryRun: boolean, janela?: {
       const { error } = await sb.from("kpi_entries").upsert(linha, { onConflict: "salesperson_id,kpi_id,entry_date" });
       if (error) console.error("[onichat-sync] upsert:", error.message); else gravadas++;
     }
-    if (eventos.length) {
-      for (let i = 0; i < eventos.length; i += 500) { const { error } = await sb.from("onichat_kpi_events").insert(eventos.slice(i, i + 500)); if (error) console.error("[onichat-sync] eventos:", error.message); }
-    }
+
     await sb.from("onichat_sync_configs").update({ last_run_at: new Date().toISOString(), last_result: { conversas: convs.length, novos_eventos: eventos.length, linhas: planejado.length, nao_mapeados: [...naoMapeados] } }).eq("id", cfg.id);
   }
   return { dry_run: dryRun, janela: [desdeStr, ateStr], conversas_no_periodo: convs.length, com_etiqueta_venda: vendidas.length, cards_kanban: cards.length, novos_eventos: eventos.length, linhas_planejadas: planejado.length, gravadas, nao_mapeados: [...naoMapeados], sem_vendedor: !fallback && !(sellers || []).length, planejado: planejado.slice(0, 40).map((p) => ({ kpi: p.kpi, vendedor: p.sp.name, dia: p.dia, valor: p.valor })) };
