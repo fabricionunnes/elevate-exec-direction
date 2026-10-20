@@ -257,7 +257,7 @@ export default function PainelAoVivoPage() {
             <tbody>
               <Linha l="Recebido" v={[h?.recebido, s?.recebido, m?.recebido]} dinheiro forte oculto={finOculto} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrirPer("faturas_pagas", k, "Recebido", {}, "Pagamentos de clientes confirmados no período (faturas pagas)."); }} />
               <Linha l="Pago" v={[h?.pago, s?.pago, m?.pago]} dinheiro oculto={finOculto} onClick={(i) => { const k = (["hoje", "semana", "mes"] as const)[i]; abrirPer("contas_pagas", k, "Pago", {}, "Contas a pagar quitadas no período."); }} />
-              <Linha l="Resultado (caixa)" v={[n(h?.recebido) - n(h?.pago), n(s?.recebido) - n(s?.pago), n(m?.recebido) - n(m?.pago)]} dinheiro sinal oculto={finOculto} />
+              <Linha l="Resultado" v={[n(h?.recebido) - n(h?.pago), n(s?.recebido) - n(s?.pago), n(m?.recebido) - n(m?.pago)]} dinheiro sinal oculto={finOculto} />
             </tbody>
           </table>
           <div className="av-kpis" style={{ marginTop: 8 }}>

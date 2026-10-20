@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useMemo, Fragment } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, useImperativeHandle, forwardRef, Fragment } from "react";
+import type { KeyboardEvent, MutableRefObject } from "react";
 import { TextoWhatsApp, textoWhatsAppLimpo } from "@/lib/whatsapp/TextoWhatsApp";
 import { waErrorPt } from "@/lib/whatsapp/waErrorPt";
 import { useSearchParams } from "react-router-dom";
@@ -161,7 +162,13 @@ export const CRMInboxPage = () => {
   const urlConvAplicada = useRef<string | null>(null);
   const { staffId, staffName, isAdmin, staffRole } = useCRMContext();
   const [selectedConversation, setSelectedConversation] = useState<WhatsAppConversation | null>(null);
-  const [newMessage, setNewMessage] = useState("");
+  // Rascunho da mensagem fica DENTRO do ComposerInput (estado local) pra cada letra
+  // digitada não re-renderizar a página inteira (lista com milhares de conversas).
+  // Fabrício, 20/10/2026: "a digitação fica lenta demais, não vejo as letras em tempo real".
+  const draftRef = useRef("");
+  const composerRef = useRef<ComposerHandle>(null);
+  const [temRascunho, setTemRascunho] = useState(false);
+  const setNewMessage = (v: string) => composerRef.current?.setText(v);
   // Assinatura (Conta → Meu Perfil): primeira linha da mensagem; liga/desliga por conversa
   // em crm_whatsapp_conversations.signature_enabled (null = padrão do usuário). 22/09/2026.
   // Desde 16/10/2026 o padrão é DESLIGADA (Fabrício): quem quiser assinar marca a caneta na conversa.
@@ -191,7 +198,13 @@ export const CRMInboxPage = () => {
   // Respostas rápidas no composer: "/" no início abre o painel; o raio também.
   const [quickOpen, setQuickOpen] = useState(false);
   const quickRef = useRef<QuickResponsesPickerHandle>(null);
-  const quickQuery = newMessage.startsWith("/") ? newMessage.slice(1) : "";
+  const [quickQuery, setQuickQuery] = useState("");
+  const onComposerChange = useCallback((v: string) => {
+    setQuickQuery(v.startsWith("/") ? v.slice(1) : "");
+    setTemRascunho(v.trim().length > 0);
+    if (v.startsWith("/")) setQuickOpen(true);
+    else if (!v) setQuickOpen((o) => (o ? false : o));
+  }, []);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   // ESC fecha a conversa aberta e volta pra lista, como no WhatsApp (Fabrício, 19/10/2026).
   // Não age se houver janela, menu ou painel aberto (esses fecham primeiro com o próprio ESC),
@@ -767,6 +780,7 @@ export const CRMInboxPage = () => {
   };
 
   const handleSendMessage = async () => {
+    const newMessage = draftRef.current;
     if (!newMessage.trim() || !selectedConversation || sending || igSending) return;
 
     // Conversa de Instagram não tem dispositivo de WhatsApp — envia pela
@@ -1868,21 +1882,15 @@ export const CRMInboxPage = () => {
                   <ShieldCheck className="h-5 w-5" />
                 </Button>
               )}
-              <Input
-                placeholder="Mensagem (/ abre as respostas rápidas)"
-                value={newMessage}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setNewMessage(v);
-                  if (v.startsWith("/")) setQuickOpen(true);
-                  else if (quickOpen && !v) setQuickOpen(false);
-                }}
+              <ComposerInput
+                ref={composerRef}
+                draftRef={draftRef}
+                disabled={sending}
+                onChange={onComposerChange}
                 onKeyDown={(e) => {
                   if (quickRef.current?.handleKey(e)) return;
                   if (e.key === "Enter" && !e.shiftKey) handleSendMessage();
                 }}
-                className="flex-1"
-                disabled={sending}
               />
               <AudioRecorder
                 onSend={async (file) => {
@@ -1921,7 +1929,7 @@ export const CRMInboxPage = () => {
                 onClick={handleSendMessage} 
                 size={isMobile ? "icon" : "default"}
                 className="shrink-0" 
-                disabled={sending || !newMessage.trim()}
+                disabled={sending || !temRascunho}
               >
                 <Send className="h-4 w-4" />
                 <span className="hidden sm:inline ml-2">{sending ? "Enviando..." : "Enviar"}</span>
@@ -1933,7 +1941,7 @@ export const CRMInboxPage = () => {
               open={scheduleOpen}
               onOpenChange={setScheduleOpen}
               conversation={selectedConversation as any}
-              initialText={newMessage.startsWith("/") ? "" : newMessage}
+              initialText={scheduleOpen && !draftRef.current.startsWith("/") ? draftRef.current : ""}
               staffId={staffId}
               onSaved={() => setNewMessage("")}
             />
@@ -2021,3 +2029,39 @@ export const CRMInboxPage = () => {
     </div>
   );
 };
+
+type ComposerHandle = { setText: (v: string) => void };
+
+// Campo de mensagem com estado próprio: a página só fica sabendo do texto
+// quando precisa (enviar, "/" das respostas rápidas, vazio x com texto).
+const ComposerInput = forwardRef<ComposerHandle, {
+  draftRef: MutableRefObject<string>;
+  disabled: boolean;
+  onChange: (v: string) => void;
+  onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void;
+}>(function ComposerInput({ draftRef, disabled, onChange, onKeyDown }, ref) {
+  const [text, setTextState] = useState(draftRef.current);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const setText = (v: string) => {
+    draftRef.current = v;
+    setTextState(v);
+    onChange(v);
+  };
+  useImperativeHandle(ref, () => ({
+    setText: (v: string) => {
+      setText(v);
+      if (v) inputRef.current?.focus();
+    },
+  }));
+  return (
+    <Input
+      ref={inputRef}
+      placeholder="Mensagem (/ abre as respostas rápidas)"
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onKeyDown={onKeyDown}
+      className="flex-1"
+      disabled={disabled}
+    />
+  );
+});
