@@ -333,6 +333,80 @@ async function reunioesDoLead(supabase, leadId) {
     texto
   };
 }
+// ===== TRIAGEM POR INTENÇÃO (Fabrício, 20/10/2026) =====
+// "O lead chamou falando de social media e veio o agente do comercial." Na PRIMEIRA mensagem
+// do lead, se nenhuma palavra-chave bateu e ninguém fixou agente, um classificador lê o que
+// ele escreveu e decide o serviço pela tabela crm_agent_intent_routes (social, trafego,
+// finance, comercial): move o lead pro funil da rota e fixa o agente da rota na conversa.
+async function classificarIntencao(texto, rotas) {
+  if (!ANTHROPIC_API_KEY) return null;
+  const lista = rotas.map((r)=>`- ${r.key}: ${r.descricao}`).join("\n");
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 10,
+      system: `Você faz a triagem de leads de uma empresa que vende serviços distintos. Leia a mensagem do lead e responda APENAS com a chave do serviço que ele está pedindo, entre estas:\n${lista}\nRegras: responda só a chave, em minúsculas, sem pontuação. Se a mensagem não deixa claro qual serviço ele quer (ex.: só "oi", "quero saber mais", "vi o anúncio"), responda: nenhum.`,
+      messages: [{ role: "user", content: `Mensagem do lead: """${String(texto).slice(0, 600)}"""` }]
+    })
+  });
+  if (!r.ok) return null;
+  const d = await r.json();
+  const out = (Array.isArray(d?.content) ? d.content : []).filter((x)=>x?.type === "text").map((x)=>String(x.text)).join("").trim().toLowerCase().replace(/[^a-z_]/g, "");
+  return rotas.some((x)=>x.key === out) ? out : null;
+}
+async function triagemPorIntencao(supabase, conv, conversation_id, channel, isIG) {
+  const msgTable = isIG ? "instagram_messages" : "crm_whatsapp_messages";
+  const tsCol = isIG ? "timestamp" : "created_at";
+  // só na primeira mensagem do lead nesta conversa
+  const { count } = await supabase.from(msgTable).select("id", { count: "exact", head: true }).eq("conversation_id", conversation_id).eq("direction", "inbound");
+  if ((count || 0) !== 1) return null;
+  const { data: jaFeito } = await supabase.from("crm_keyword_trigger_logs").select("id").eq("conversation_id", conversation_id).eq("source", "intent").limit(1).maybeSingle();
+  if (jaFeito) return null;
+  const { data: rotas } = await supabase.from("crm_agent_intent_routes").select("*").eq("is_active", true).order("priority", { ascending: false });
+  const ativas = (rotas || []).filter((r)=>(r.channels || ["whatsapp", "instagram"]).includes(channel));
+  if (ativas.length === 0) return null;
+  let lead = null;
+  if (conv.lead_id) {
+    const { data: ld } = await supabase.from("crm_leads").select("id, pipeline_id, stage_id").eq("id", conv.lead_id).maybeSingle();
+    lead = ld;
+  }
+  // Rotas SEM agente e COM funil (ex. comercial → Funil SE) marcam os funis de ENTRADA:
+  // a triagem só age em lead desses funis (ou sem lead). Lead de Eventos, Mansão etc. fica onde está.
+  const origens = ativas.filter((r)=>!r.agent_id && r.pipeline_id).map((r)=>r.pipeline_id);
+  if (lead && origens.length && !origens.includes(lead.pipeline_id)) return null;
+  // lead já está num funil de destino (alguém colocou lá de propósito): não mexe
+  const destinos = new Set(ativas.filter((r)=>r.agent_id && r.pipeline_id).map((r)=>r.pipeline_id));
+  if (lead && destinos.has(lead.pipeline_id)) return null;
+  const { data: lastIn } = await supabase.from(msgTable).select("content").eq("conversation_id", conversation_id).eq("direction", "inbound").order(tsCol, { ascending: false }).limit(1).maybeSingle();
+  const texto = String(lastIn?.content || "").trim();
+  if (texto.length < 8) return null;
+  const key = await classificarIntencao(texto, ativas);
+  const rota = ativas.find((r)=>r.key === key);
+  if (!rota) return null;
+  // rota "padrão" (sem agente, ex. comercial): deixa o fluxo normal decidir, sem mover
+  if (!rota.agent_id) {
+    await supabase.from("crm_keyword_trigger_logs").insert({ conversation_id, channel, source: "intent", matched_keyword: rota.key });
+    return null;
+  }
+  let agente = null;
+  if (rota.agent_id) {
+    const { data: ag } = await supabase.from("crm_ai_agents").select("*").eq("id", rota.agent_id).maybeSingle();
+    if (ag?.is_active) agente = ag;
+  }
+  // move o lead pro funil da rota (primeira etapa), se ainda não está lá
+  if (lead && rota.pipeline_id && lead.pipeline_id !== rota.pipeline_id) {
+    const { data: st } = await supabase.from("crm_stages").select("id").eq("pipeline_id", rota.pipeline_id).eq("is_final", false).order("sort_order", { ascending: true }).limit(1).maybeSingle();
+    if (st) await supabase.from("crm_leads").update({ pipeline_id: rota.pipeline_id, stage_id: st.id, stage_entered_at: new Date().toISOString() }).eq("id", lead.id);
+  }
+  if (agente) {
+    await supabase.from("crm_ai_agent_conversation_overrides").upsert({ agent_id: agente.id, conversation_id, channel, enabled: true, reply_mode: "auto" }, { onConflict: "conversation_id,channel" });
+  }
+  await supabase.from("crm_keyword_trigger_logs").insert({ agent_id: agente?.id || rota.agent_id || null, conversation_id, channel, source: "intent", matched_keyword: rota.key });
+  console.log(`[triagem] conversa ${conversation_id}: intenção ${rota.key} → ${agente?.name || "sem agente"}`);
+  return agente;
+}
 async function leadRecusou(hist, leadNm) {
   try {
     const txt = hist.map((m)=>`${m.direction === "inbound" ? leadNm : "Atendente"}: ${m.content}`).join("\n");
@@ -2405,6 +2479,15 @@ Deno.serve(async (req)=>{
         ...await transcribeAudioDetalhado(String(body0.url || ""))
       });
     }
+    // Debug/admin: classifica um texto pela triagem por intenção, sem efeito colateral
+    if (body0.action === "triagem_teste") {
+      const authz = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+      if (body0.secret !== SERVICE_ROLE && authz !== SERVICE_ROLE) return j({ ok: false, error: "não autorizado" }, 401);
+      const { data: rotas } = await supabase.from("crm_agent_intent_routes").select("*").eq("is_active", true).order("priority", { ascending: false });
+      const out = [];
+      for (const t of body0.textos || []) out.push({ texto: t, rota: await classificarIntencao(String(t), rotas || []) });
+      return j({ ok: true, out });
+    }
     if (body0.action === "test_tool") {
       // só quem tem a chave de serviço pode rodar ferramenta direto (antes estava aberto, 19/09/2026)
       {
@@ -3004,6 +3087,15 @@ Deno.serve(async (req)=>{
       }
     } catch (e) {
       console.error("keyword match error", e);
+    }
+    // 1.6) Triagem por intenção: só quando nada acima fixou agente e ninguém travou à mão
+    if (!forcedAgent && !agenteTravado && !travaOv?.agent_id && numeroTemAgente) {
+      try {
+        const rota = await triagemPorIntencao(supabase, conv, conversation_id, channel, isIG);
+        if (rota) forcedAgent = rota;
+      } catch (e) {
+        console.error("triagem intencao", e);
+      }
     }
     // 2) Agente: o forçado pela palavra-chave vence; senão o vinculado à instância/canal
     let agent = forcedAgent;
