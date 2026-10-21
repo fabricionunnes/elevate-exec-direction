@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,10 +100,11 @@ const lerRecentes = (): string[] => {
 };
 const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
-export function EmojiPicker({ onPick, className }: { onPick: (emoji: string) => void; className?: string }) {
+export function EmojiPicker({ onPick, onClose, className }: { onPick: (emoji: string) => void; onClose?: () => void; className?: string }) {
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState("");
   const [recentes, setRecentes] = useState<string[]>(lerRecentes);
+  const buscaRef = useRef<HTMLInputElement>(null);
 
   const escolher = (e: string) => {
     onPick(e);
@@ -127,7 +128,7 @@ export function EmojiPicker({ onPick, className }: { onPick: (emoji: string) => 
   }, [busca, recentes]);
 
   return (
-    <Popover open={aberto} onOpenChange={(v) => { setAberto(v); if (!v) setBusca(""); }}>
+    <Popover open={aberto} onOpenChange={(v) => { setAberto(v); if (!v) { setBusca(""); onClose?.(); } }}>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
@@ -142,11 +143,13 @@ export function EmojiPicker({ onPick, className }: { onPick: (emoji: string) => 
         side="top"
         align="start"
         className="w-80 p-2"
-        // não rouba o foco da caixa de mensagem ao fechar: o cursor fica onde estava
+        // abre com o foco na busca (o clique no botão puxava o foco de volta pra ele) e, ao
+        // fechar, quem devolve o cursor pra caixa de mensagem é o onClose
+        onOpenAutoFocus={(e) => { e.preventDefault(); setTimeout(() => buscaRef.current?.focus(), 30); }}
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
         <Input
-          autoFocus
+          ref={buscaRef}
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder="Buscar emoji (ex.: joinha, coração, festa)"
