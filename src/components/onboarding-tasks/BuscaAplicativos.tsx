@@ -71,11 +71,16 @@ export function BuscaAplicativos({ apps }: { apps: AppDaBusca[] }) {
           <DialogTitle className="sr-only">Buscar aplicativo</DialogTitle>
           <Command
             filter={(valor, busca) => {
-              const v = semAcento(valor);
+              // valor = "título|||sinônimos e grupo": nome do módulo pesa mais que sinônimo
+              const [tituloBruto, resto = ""] = valor.split("|||");
+              const titulo = semAcento(tituloBruto), extra = semAcento(resto);
               const termos = semAcento(busca).split(/\s+/).filter(Boolean);
               if (!termos.length) return 1;
-              if (!termos.every((t) => v.includes(t))) return 0;
-              return v.startsWith(termos[0]) ? 1 : 0.6;
+              if (termos.every((t) => titulo.includes(t))) {
+                if (titulo.startsWith(termos[0])) return 1;
+                return titulo.split(/\s+/).some((p) => p.startsWith(termos[0])) ? 0.9 : 0.8;
+              }
+              return termos.every((t) => titulo.includes(t) || extra.includes(t)) ? 0.4 : 0;
             }}
             className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-2.5"
           >
@@ -87,7 +92,7 @@ export function BuscaAplicativos({ apps }: { apps: AppDaBusca[] }) {
                   {itens.map((a) => (
                     <CommandItem
                       key={`${a.titulo}|${a.caminho}`}
-                      value={`${a.titulo} ${a.grupo} ${a.palavras || ""} ${a.caminho}`}
+                      value={`${a.titulo}|||${a.palavras || ""} ${a.grupo}`}
                       onSelect={() => abrir(a.caminho)}
                       className="flex items-center justify-between gap-3"
                     >
