@@ -60,7 +60,8 @@ import { CreditCard,
   Clock,
   Package,
   KeyRound,
-  LifeBuoy
+  LifeBuoy,
+  Instagram
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
 import { StageChecklistDialog } from "@/components/crm/StageChecklistDialog";
@@ -75,6 +76,7 @@ import { PipelineFormsManager } from "@/components/crm/PipelineFormsManager";
 import { CRMDistributionTab } from "@/components/crm/settings/CRMDistributionTab";
 import { CRMMetaLeadFormsCard } from "@/components/crm/settings/CRMMetaLeadFormsCard";
 import { CRMAutomationsTab } from "@/components/crm/settings/CRMAutomationsTab";
+import { IgTriggersManager } from "@/components/crm/agents/IgTriggersManager";
 import { CRMMessageRulesTab } from "@/components/crm/settings/CRMMessageRulesTab";
 import { CRMPaymentMethodsTab } from "@/components/crm/settings/CRMPaymentMethodsTab";
 import { CRMActivityTypesTab } from "@/components/crm/settings/CRMActivityTypesTab";
@@ -156,7 +158,7 @@ export const CRMSettingsPage = () => {
   const fullSettings = staffRole === "master" || staffRole === "admin";
   // API, webhooks e suporte: só staff da UNV (tenant nulo). As functions da API gravam
   // no CRM da UNV, então cliente white-label não gerencia chave nem webhook.
-  const { tenantId } = useCRMContext();
+  const { tenantId, staffId } = useCRMContext();
   const unvAdmin = fullSettings && tenantId === null;
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
@@ -2453,6 +2455,15 @@ export const CRMSettingsPage = () => {
             </TabsContent>
             <TabsContent value="automations" className="mt-6">
               <CRMAutomationsTab />
+              {/* Gatilhos do Instagram (comentário, resposta de story, menção, DM): moravam só em
+                  /crm/automacoes, página sem link no menu (Fabrício, 21/10: "não tem aba instagram
+                  em automações"). */}
+              <div className="mt-10 pt-8 border-t border-border">
+                <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">
+                  <Instagram className="h-5 w-5 text-primary" />Gatilhos do Instagram
+                </h2>
+                <IgTriggersManager canSettings={canSettings} staffId={staffId} tenantId={tenantId} />
+              </div>
             </TabsContent>
           </>
         )}
