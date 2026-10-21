@@ -145,7 +145,16 @@ export function EmojiPicker({ onPick, onClose, className }: { onPick: (emoji: st
         className="w-80 p-2"
         // abre com o foco na busca (o clique no botão puxava o foco de volta pra ele) e, ao
         // fechar, quem devolve o cursor pra caixa de mensagem é o onClose
-        onOpenAutoFocus={(e) => { e.preventDefault(); setTimeout(() => buscaRef.current?.focus(), 30); }}
+        // Logo depois de trocar de conversa a página re-renderiza e tira o foco: reforça a busca
+        // e não fecha por perda de foco (fecha com clique fora, Esc ou escolhendo de novo o botão).
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          [30, 350, 900].forEach((ms) => setTimeout(() => {
+            const el = buscaRef.current;
+            if (el && !el.closest("[data-radix-popper-content-wrapper]")?.contains(document.activeElement)) el.focus();
+          }, ms));
+        }}
+        onFocusOutside={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
         <Input
