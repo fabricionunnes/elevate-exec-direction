@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
-import { Loader2, MessageSquare, CalendarClock, ClipboardCheck, Star, FileText, Trophy, Bell, Megaphone, BarChart3 } from "lucide-react";
+import { Loader2, MessageSquare, CalendarClock, ClipboardCheck, Star, FileText, Trophy, Bell, Megaphone, BarChart3, Target } from "lucide-react";
 
 // Painel liga/desliga das mensagens automáticas enviadas nos grupos do cliente.
 // Sem linha na tabela = LIGADO (default). As edge functions consultam
@@ -23,6 +23,8 @@ const AUTOMATIONS: {
   /** horário padrão (Brasília) — quando existe, a empresa pode escolher outro (22/09/2026) */
   defaultTime?: string;
   timeNote?: string;
+  /** sem registro na empresa = DESLIGADA (as antigas nascem ligadas) */
+  defaultOff?: boolean;
 }[] = [
   {
     key: "resumo_diario",
@@ -109,6 +111,16 @@ const AUTOMATIONS: {
     defaultTime: "08:00",
   },
   {
+    key: "meta_diaria_vendedores",
+    label: "Meta do dia dos vendedores",
+    description: "De manhã, no grupo de vendedores: imagem com a meta do dia de cada vendedor (o que falta da meta do mês dividido pelos dias úteis que restam) e uma mensagem de direcionamento, diferente a cada dia, pedindo o que cada um tem pra fechar hoje. Sem valores consolidados da empresa.",
+    schedule: "seg–sex · horário configurável",
+    sender: "Marcelo",
+    icon: Target,
+    defaultTime: "09:00",
+    defaultOff: true,
+  },
+  {
     key: "ranking_vendas",
     label: "Ranking diário de vendas",
     description: "Ranking dos vendedores no grupo de vendas, com base nos lançamentos do dia.",
@@ -171,7 +183,11 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
     load();
   }, [companyId]);
 
-  const isOn = (key: string) => settings[key] !== false; // ausente = ligado
+  // ausente = ligado, exceto automação marcada defaultOff (ativada à mão, empresa por empresa)
+  const isOn = (key: string) => {
+    if (key in settings) return settings[key] !== false;
+    return !AUTOMATIONS.find((a) => a.key === key)?.defaultOff;
+  };
 
   const toggle = async (key: string, next: boolean) => {
     setSaving(key);
@@ -184,7 +200,8 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
         { onConflict: "company_id,automation_key" },
       );
     if (error) {
-      setSettings((s) => ({ ...s, [key]: prev }));
+      // desfaz: se não havia registro, volta a "sem registro" (vale o padrão da automação)
+      setSettings((s) => { const n = { ...s }; if (prev === undefined) delete n[key]; else n[key] = prev; return n; });
       toast.error("Não foi possível salvar. Tente de novo.");
     } else {
       const a = AUTOMATIONS.find((x) => x.key === key);
