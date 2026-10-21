@@ -1828,7 +1828,7 @@ export const CRMInboxPage = () => {
                 onPick={(texto) => { setNewMessage(texto); setQuickOpen(false); }}
                 onClose={() => setQuickOpen(false)}
               />
-              <EmojiPicker className="hidden sm:flex" onPick={(e) => composerRef.current?.insertText(e)} />
+              <EmojiPicker className="hidden sm:flex" onPick={(e) => composerRef.current?.insertText(e)} onClose={() => composerRef.current?.focusAtCaret()} />
               <Button
                 variant="ghost"
                 size="icon"
@@ -2003,7 +2003,7 @@ export const CRMInboxPage = () => {
   );
 };
 
-type ComposerHandle = { setText: (v: string) => void; focus: () => void; insertText: (v: string) => void };
+type ComposerHandle = { setText: (v: string) => void; focus: () => void; insertText: (v: string) => void; focusAtCaret: () => void };
 
 // Campo de mensagem com estado próprio: a página só fica sabendo do texto
 // quando precisa (enviar, "/" das respostas rápidas, vazio x com texto).
@@ -2016,6 +2016,8 @@ const ComposerInput = forwardRef<ComposerHandle, {
 }>(function ComposerInput({ draftRef, subs, disabled, onChange, onKeyDown }, ref) {
   const [text, setTextState] = useState(draftRef.current);
   const inputRef = useRef<HTMLInputElement>(null);
+  // posição do cursor guardada: com o seletor de emoji aberto o campo fica sem foco
+  const caretRef = useRef<number | null>(null);
   const setText = (v: string) => {
     const tinha = draftRef.current.trim().length > 0;
     draftRef.current = v;
@@ -2029,17 +2031,22 @@ const ComposerInput = forwardRef<ComposerHandle, {
       if (v) inputRef.current?.focus();
     },
     focus: () => inputRef.current?.focus(),
-    // emoji entra onde o cursor estava (o campo guarda a seleção mesmo sem foco)
+    // emoji entra onde o cursor estava; vários emojis seguidos entram em sequência
     insertText: (v: string) => {
       const el = inputRef.current;
       const atual = draftRef.current;
-      const ini = el?.selectionStart ?? atual.length, fim = el?.selectionEnd ?? atual.length;
+      const focado = !!el && document.activeElement === el;
+      const ini = Math.min(focado ? el!.selectionStart ?? atual.length : caretRef.current ?? atual.length, atual.length);
+      const fim = focado ? Math.max(ini, el!.selectionEnd ?? ini) : ini;
       setText(atual.slice(0, ini) + v + atual.slice(fim));
-      requestAnimationFrame(() => {
-        if (!el) return;
-        el.focus();
-        el.setSelectionRange(ini + v.length, ini + v.length);
-      });
+      caretRef.current = ini + v.length;
+    },
+    focusAtCaret: () => {
+      const el = inputRef.current;
+      if (!el) return;
+      el.focus();
+      const pos = Math.min(caretRef.current ?? draftRef.current.length, draftRef.current.length);
+      el.setSelectionRange(pos, pos);
     },
   }));
   return (
@@ -2047,7 +2054,8 @@ const ComposerInput = forwardRef<ComposerHandle, {
       ref={inputRef}
       placeholder="Mensagem (/ abre as respostas rápidas)"
       value={text}
-      onChange={(e) => setText(e.target.value)}
+      onChange={(e) => { caretRef.current = e.target.selectionStart; setText(e.target.value); }}
+      onSelect={(e) => { caretRef.current = e.currentTarget.selectionStart; }}
       onKeyDown={onKeyDown}
       className="flex-1"
       // Não desabilita durante o envio: campo desabilitado perde o foco e o cursor some.
