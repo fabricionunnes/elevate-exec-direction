@@ -59,7 +59,9 @@ export function PWAInstallPrompt() {
     sessionStorage.setItem("pwa-prompt-dismissed", "1");
   }, []);
 
-  if (isStandalone || !showPrompt) return null;
+  // páginas públicas de venda do UNV Start (checkout, obrigado, portal do cliente): sem convite
+  // pra instalar o app do Nexus por cima do formulário
+  if (isStandalone || !showPrompt || window.location.hash.startsWith("#/start")) return null;
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-[9999] mx-auto max-w-md animate-in slide-in-from-bottom-4 duration-500">
