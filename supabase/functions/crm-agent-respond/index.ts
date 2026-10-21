@@ -3008,10 +3008,28 @@ Deno.serve(async (req)=>{
       skip: "conversa sem instância"
     });
     if (isIG && await igSeguidoPeloFabricio(supabase, conv.contact?.username)) {
-      return j({
-        ok: true,
-        skip: `@${conv.contact?.username}: o Fabrício segue esta conta — agente não responde`
-      });
+      // Exceção (21/10/2026, Raio-X R$ 5 dos stories): quem o Fabrício segue e responde
+      // exatamente a palavra de um agente de campanha ("eu quero") pediu o link de propósito.
+      // Só essa mensagem passa; o resto da conversa com conhecidos continua sem IA.
+      let pedidoDeCampanha = false;
+      try {
+        const { data: ultimaIg } = await supabase.from("instagram_messages").select("content").eq("conversation_id", conversation_id).eq("direction", "inbound").order("timestamp", {
+          ascending: false
+        }).limit(1).maybeSingle();
+        const txt = String(ultimaIg?.content || "").toLowerCase().trim();
+        if (txt) {
+          const { data: campanhas } = await supabase.from("crm_ai_agents").select("trigger_keywords, trigger_channels, trigger_match_type").eq("is_active", true).not("trigger_keywords", "is", null);
+          pedidoDeCampanha = (campanhas || []).some((ag)=>(ag.trigger_channels || []).includes("instagram") && (ag.trigger_keywords || []).map((k)=>String(k).toLowerCase().trim()).filter(Boolean).some((kw)=>ag.trigger_match_type === "exact" ? txt === kw : ag.trigger_match_type === "starts" ? txt.startsWith(kw) : txt.includes(kw)));
+        }
+      } catch (e) {
+        console.error("exceção de campanha (seguido)", e);
+      }
+      if (!pedidoDeCampanha) {
+        return j({
+          ok: true,
+          skip: `@${conv.contact?.username}: o Fabrício segue esta conta — agente não responde`
+        });
+      }
     }
     // WhatsApp: nunca responder em GRUPO/newsletter — agente é só pra conversa individual
     if (!isIG) {
