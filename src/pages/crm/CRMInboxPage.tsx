@@ -316,24 +316,12 @@ export const CRMInboxPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   // Redesenho 19/09/2026 (opção 2 + fila da 3): atalhos de filtro, fila por prioridade,
   // negócio no topo da conversa e painel lateral recolhível.
-  const [quick, setQuick] = useState<"all" | "unread" | "waiting" | "mine" | "automation" | "failed" | "hidden">("all");
+  const [quick, setQuick] = useState<"all" | "unread" | "waiting" | "mine" | "hidden">("all");
   // Seleção múltipla e ações em massa (item 8 do benchmark Datacrazy, 30/09/2026)
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const toggleSelected = (id: string) => setSelectedIds((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  // "Em automação" e "Falhas" vêm do banco (crm_inbox_automation_ids / crm_inbox_failed_ids)
-  const [automationIds, setAutomationIds] = useState<Set<string>>(new Set());
-  const [failedIds, setFailedIds] = useState<Set<string>>(new Set());
-  const loadQuickSets = async () => {
-    const [{ data: a }, { data: f }] = await Promise.all([
-      (supabase as any).rpc("crm_inbox_automation_ids"),
-      (supabase as any).rpc("crm_inbox_failed_ids"),
-    ]);
-    setAutomationIds(new Set(((a || []) as any[]).map((r) => String(r.conversation_id))));
-    setFailedIds(new Set(((f || []) as any[]).map((r) => String(r.conversation_id))));
-  };
-  useEffect(() => { loadQuickSets(); }, []);
-  useEffect(() => { if (quick === "automation" || quick === "failed") loadQuickSets(); }, [quick]);
+  // "Em automação" e "Falhas" saíram dos atalhos (Fabrício, 21/10/2026: "não são necessários").
   const reexibirConversa = async (conv: any) => {
     const phone = String(conv?.contact?.phone || "");
     if (!phone) return;
@@ -968,8 +956,6 @@ export const CRMInboxPage = () => {
     if (quick === "unread" && !(conv.unread_count > 0)) return false;
     if (quick === "waiting" && !(esperando(conv) && !(stageMap[String((conv.lead as any)?.stage_id || "")] as any)?.lost)) return false;
     if (quick === "mine" && conv.assigned_to !== staffId) return false;
-    if (quick === "automation" && !automationIds.has(String(conv.id))) return false;
-    if (quick === "failed" && !failedIds.has(String(conv.id))) return false;
 
     // Conversation filters
     if (filters.assignedToMe && conv.assigned_to !== staffId) return false;
@@ -1022,10 +1008,8 @@ export const CRMInboxPage = () => {
   const contagens = useMemo(() => ({
     unread: conversations.filter((c: any) => (c.unread_count || 0) > 0).length,
     waiting: conversations.filter((c: any) => aguardando(c)).length,
-    automation: conversations.filter((c: any) => automationIds.has(String(c.id))).length,
-    failed: conversations.filter((c: any) => failedIds.has(String(c.id))).length,
     hidden: quick === "hidden" ? conversations.length : allConversations.filter((c: any) => c.channel !== "instagram" && ignoredPhones.has(String(c.contact?.phone || ""))).length,
-  }), [conversations, stageMap, automationIds, failedIds, ignoredPhones, quick]);
+  }), [conversations, stageMap, ignoredPhones, quick]);
   // Fila: quem está esperando resposta sobe, e dentro de cada grupo vale o mais recente.
   // Ordenação (Filtros → Ordenar por): mais recente (padrão), mais antiga, mais tempo sem resposta.
   const tempoUltima = (c: any) => new Date(c.last_message_at || c.created_at || 0).getTime();
@@ -1074,7 +1058,6 @@ export const CRMInboxPage = () => {
   const onBulkDone = (action: BulkAction) => {
     setSelectedIds(new Set());
     refetchConversations();
-    loadQuickSets();
     if (action === "hide" || action === "unhide") {
       (supabase as any).from("crm_whatsapp_ignored_chats").select("phone").then(({ data }: any) => setIgnoredPhones(new Set(((data || []) as any[]).map((r) => r.phone))));
     }
@@ -1118,7 +1101,6 @@ export const CRMInboxPage = () => {
   // Depois de mesclar: a lista recarrega e a tela vai pra conversa principal
   const handleMerged = async (primaryId: string) => {
     await refetchConversations();
-    loadQuickSets();
     const { data } = await supabase
       .from("crm_whatsapp_conversations")
       .select(`*, contact:crm_whatsapp_contacts(*), lead:crm_leads(id, name, company, origin_id, stage_id), assigned_staff:onboarding_staff(id, name, avatar_url), instance:whatsapp_instances(id, instance_name, display_name), official_instance:whatsapp_official_instances(id, display_name, phone_number)`)
@@ -1187,8 +1169,6 @@ export const CRMInboxPage = () => {
               ["unread", "Não lidas", contagens.unread],
               ["waiting", "Esperando", contagens.waiting],
               ["mine", "Minhas", 0],
-              ["automation", "Em automação", contagens.automation],
-              ["failed", "Falhas", contagens.failed],
               ["hidden", "Ocultas", contagens.hidden],
             ] as const).map(([k, label, n]) => (
               <button
