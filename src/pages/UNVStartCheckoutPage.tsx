@@ -34,6 +34,14 @@ async function callCheckout(payload: Record<string, unknown>) {
   return data;
 }
 
+// Raio-X avulso de R$ 5 (stories, 21/10/2026): /#/start/checkout?oferta=raiox5
+const beneficiosRaiox = [
+  "Diagnóstico da sua operação comercial, guiado pela IA da UNV",
+  "Nota por área e onde a venda está vazando",
+  "O que corrigir primeiro, em ordem de impacto",
+  "Pronto em cerca de 30 minutos, acesso na hora",
+];
+
 const beneficios = [
   "7 documentos comerciais prontos e personalizados",
   "Raio-X, ICP, Funil, Script, Playbook, Processos e Metas",
@@ -44,13 +52,17 @@ const beneficios = [
 
 export default function UNVStartCheckoutPage() {
   const navigate = useNavigate();
+  const qsInicial = new URLSearchParams(window.location.hash.split("?")[1] || window.location.search || "");
+  const avulso = qsInicial.get("oferta") === "raiox5";
+  const valor = avulso ? 5 : 97;
+  const [vagas, setVagas] = useState<number | null>(null);
   const [step, setStep] = useState<"form" | "pix">("form");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(qsInicial.get("email") || "");
   const [whatsapp, setWhatsapp] = useState("");
   const [cpf, setCpf] = useState("");
   const [method, setMethod] = useState<"pix" | "credit_card">("pix");
@@ -67,16 +79,25 @@ export default function UNVStartCheckoutPage() {
     (token: string, crmLeadId?: string | null) => {
       if (pollRef.current) window.clearInterval(pollRef.current);
       const lid = crmLeadId ? `&lid=${encodeURIComponent(crmLeadId)}` : "";
-      navigate(`/start/obrigado?token=${encodeURIComponent(token)}${lid}`);
+      navigate(`/start/obrigado?token=${encodeURIComponent(token)}${lid}&v=${valor}`);
     },
-    [navigate],
+    [navigate, valor],
   );
 
   // pixel do Meta (Purchase é server-side via CAPI no gate de pagamento)
   useEffect(() => {
     initMetaPixel();
-    trackMetaEvent("InitiateCheckout", { value: 97, currency: "BRL" });
-  }, []);
+    trackMetaEvent("InitiateCheckout", { value: valor, currency: "BRL" });
+    if (avulso) {
+      callCheckout({ action: "vagas" })
+        .then((r) => {
+          if (typeof r?.restantes === "number") setVagas(r.restantes);
+        })
+        .catch(() => {
+          /* sem contador, segue normal */
+        });
+    }
+  }, [avulso, valor]);
 
   // lead no CRM assim que nome, WhatsApp e e-mail estão válidos, mesmo que não pague
   const leadEnviado = useRef("");
@@ -133,7 +154,7 @@ export default function UNVStartCheckoutPage() {
     setLoading(true);
     // pixel: identifica quem está comprando e marca o envio dos dados de pagamento
     identifyMetaUser({ email: email.trim(), phone: digitsWhats, name: name.trim() });
-    trackMetaEvent("AddPaymentInfo", { value: 97, currency: "BRL", content_name: "Raio-X Comercial", payment_method: method });
+    trackMetaEvent("AddPaymentInfo", { value: valor, currency: "BRL", content_name: "Raio-X Comercial", payment_method: method });
     try {
       const fbclid =
         new URLSearchParams(window.location.search).get("fbclid") ||
@@ -147,9 +168,11 @@ export default function UNVStartCheckoutPage() {
         cpf: digitsCpf,
         payment_method: method,
         fbclid,
+        ...(avulso ? { oferta: "raiox5" } : {}),
       });
       if (r.error) {
         setError(r.error);
+        if (r.esgotado) setVagas(0);
         return;
       }
       if (r.already_paid && r.token) {
@@ -198,10 +221,12 @@ export default function UNVStartCheckoutPage() {
                 {step === "form" ? (
                   <>
                     <h1 className="font-display text-2xl md:text-3xl font-bold text-[#0D2B5E] mb-1">
-                      Falta pouco pra sua estrutura
+                      {avulso ? "Seu Raio-X Comercial por R$ 5" : "Falta pouco pra sua estrutura"}
                     </h1>
                     <p className="text-muted-foreground mb-6">
-                      Preencha seus dados pra liberar o acesso na hora.
+                      {avulso && vagas === 0
+                        ? "As vagas dessa condição acabaram. Você ainda pode assinar o Raio-X Comercial completo."
+                        : "Preencha seus dados pra liberar o acesso na hora."}
                     </p>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
@@ -282,20 +307,26 @@ export default function UNVStartCheckoutPage() {
                       <Button
                         type="submit"
                         size="xl"
-                        disabled={loading}
+                        disabled={loading || (avulso && vagas === 0)}
                         className="w-full bg-[#0D2B5E] text-white hover:bg-[#0D2B5E]/90"
                       >
                         {loading ? (
                           <Loader2 className="animate-spin" />
                         ) : (
                           <>
-                            Assinar por R$ 97/mês
-                            <ArrowRight className="ml-2" />
+                            {avulso ? (vagas === 0 ? "Vagas esgotadas" : "Pagar R$ 5 e fazer meu Raio-X") : "Assinar por R$ 97/mês"}
+                            {!(avulso && vagas === 0) && <ArrowRight className="ml-2" />}
                           </>
                         )}
                       </Button>
+                      {avulso && vagas === 0 && (
+                        <a href="/#/start/checkout" className="block text-center text-sm font-medium text-[#0D2B5E] underline">
+                          Ver o Raio-X Comercial completo
+                        </a>
+                      )}
                       <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                        <Lock className="h-3 w-3" /> Pagamento seguro · Sem fidelidade · Cancele quando quiser
+                        <Lock className="h-3 w-3" />{" "}
+                        {avulso ? "Pagamento seguro · Pagamento único, sem mensalidade" : "Pagamento seguro · Sem fidelidade · Cancele quando quiser"}
                       </p>
                     </form>
                   </>
@@ -305,7 +336,11 @@ export default function UNVStartCheckoutPage() {
                       {method === "pix" ? "Pague com Pix pra liberar" : "Finalize no cartão"}
                     </h1>
                     <p className="text-muted-foreground mb-6">
-                      {method === "pix"
+                      {avulso
+                        ? method === "pix"
+                          ? "Escaneie o QR code ou copie o código. O acesso libera aqui na hora."
+                          : "Clique abaixo pra abrir a página segura do Asaas. Os dados do cartão ficam só lá. Assim que aprovar, seu acesso libera aqui."
+                        : method === "pix"
                         ? billingMode === "pix_automatico"
                           ? "Escaneie o QR code ou copie o código. Seu banco vai pedir pra autorizar o Pix Automático: autorize e as próximas mensalidades caem sozinhas. O acesso libera aqui na hora."
                           : "Escaneie o QR code ou copie o código. O acesso libera aqui na hora. Todo mês você recebe o Pix da mensalidade no WhatsApp."
@@ -356,12 +391,16 @@ export default function UNVStartCheckoutPage() {
                 <div className="text-center md:text-left mb-5">
                   <img src={logoUnvBoard} alt="UNV" className="h-12 mx-auto md:mx-0 mb-3" />
                   <p className="text-white/60 text-sm uppercase tracking-wider">Você está adquirindo</p>
-                  <h2 className="font-display text-xl font-bold text-white">UNV Start</h2>
-                  <p className="text-white/70 text-sm">Assinatura mensal: estrutura comercial + painel com Diretor Comercial IA</p>
+                  <h2 className="font-display text-xl font-bold text-white">{avulso ? "Raio-X Comercial" : "UNV Start"}</h2>
+                  <p className="text-white/70 text-sm">
+                    {avulso
+                      ? "Diagnóstico da sua operação comercial com a IA da UNV"
+                      : "Assinatura mensal: estrutura comercial + painel com Diretor Comercial IA"}
+                  </p>
                 </div>
 
                 <div className="rounded-2xl bg-white/5 border border-white/10 p-5 space-y-3">
-                  {beneficios.map((b, i) => (
+                  {(avulso ? beneficiosRaiox : beneficios).map((b, i) => (
                     <div key={i} className="flex items-start gap-2 text-white/85 text-sm">
                       <Check className="h-4 w-4 text-white mt-0.5 shrink-0" />
                       <span>{b}</span>
@@ -370,14 +409,26 @@ export default function UNVStartCheckoutPage() {
                 </div>
 
                 <div className="mt-5 flex items-baseline justify-between rounded-2xl bg-white/10 border border-white/10 px-5 py-4">
-                  <span className="text-white/70">Mensalidade</span>
+                  <span className="text-white/70">{avulso ? "Pagamento único" : "Mensalidade"}</span>
                   <span className="font-display text-3xl font-bold text-white">
-                    R$ 97<span className="text-base font-medium text-white/70">/mês</span>
+                    {avulso ? (
+                      "R$ 5"
+                    ) : (
+                      <>
+                        R$ 97<span className="text-base font-medium text-white/70">/mês</span>
+                      </>
+                    )}
                   </span>
                 </div>
+                {avulso && vagas !== null && vagas > 0 && (
+                  <p className="mt-3 rounded-xl bg-[#F40505] px-4 py-2 text-center text-sm font-bold text-white">
+                    {vagas === 1 ? "Resta 1 vaga" : `Restam ${Math.min(vagas, 20)} vagas`}
+                  </p>
+                )}
 
                 <p className="mt-4 flex items-center gap-2 text-xs text-white/60">
-                  <ShieldCheck className="h-4 w-4" /> Garantia incondicional de 7 dias. Sem fidelidade.
+                  <ShieldCheck className="h-4 w-4" />{" "}
+                  {avulso ? "Sem mensalidade e sem renovação automática." : "Garantia incondicional de 7 dias. Sem fidelidade."}
                 </p>
               </div>
             </div>

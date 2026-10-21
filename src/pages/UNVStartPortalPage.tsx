@@ -61,6 +61,9 @@ interface Member {
   company_name: string;
   current_step: number;
   paid_until?: string | null;
+  // raiox5 = Raio-X avulso de R$ 5 (só o Documento 1); o resto é da assinatura
+  plan?: string | null;
+  email?: string | null;
 }
 
 interface AccessData {
@@ -249,10 +252,15 @@ export default function UNVStartPortalPage() {
     loadAccess();
   }, [loadAccess]);
 
-  const totalModules = access?.modules.length || 7;
-  const doneCount = access?.modules.filter((m) => m.done).length || 0;
-  // quem ainda não fez nenhum documento começa pela estrutura; depois o padrão é o painel
-  const activeTab = tab ?? (doneCount > 0 ? "painel" : "estrutura");
+  const soRaioX = access?.member.plan === "raiox5";
+  const totalModules = soRaioX ? 1 : access?.modules.length || 7;
+  const doneCount = access?.modules.filter((m) => m.done && (!soRaioX || m.step === 1)).length || 0;
+  // quem ainda não fez nenhum documento começa pela estrutura; depois o padrão é o painel.
+  // Raio-X avulso não tem painel.
+  const activeTab = soRaioX ? "estrutura" : tab ?? (doneCount > 0 ? "painel" : "estrutura");
+  const linkAssinar = `/#/start/checkout?utm_source=portal&utm_campaign=upgrade_raiox5${
+    access?.member.email ? `&email=${encodeURIComponent(access.member.email)}` : ""
+  }`;
   const progressPct = totalModules > 0 ? Math.round((doneCount / totalModules) * 100) : 0;
 
   // ============ AÇÕES ============
@@ -904,6 +912,7 @@ export default function UNVStartPortalPage() {
       )}
 
       {/* abas da central */}
+      {!soRaioX && (
       <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1" role="tablist">
         {(
           [
@@ -927,6 +936,7 @@ export default function UNVStartPortalPage() {
           </button>
         ))}
       </div>
+      )}
 
       {activeTab === "painel" && token && (
         <UNVStartDashboard token={token} invokeEngine={invokeEngine} Markdown={MarkdownPreview} />
@@ -940,10 +950,12 @@ export default function UNVStartPortalPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold" style={{ color: NAVY }}>
-                Sua estrutura comercial
+                {soRaioX ? "Seu Raio-X Comercial" : "Sua estrutura comercial"}
               </p>
               <p className="text-xs text-muted-foreground">
-                {doneCount} de {totalModules} documentos concluídos
+                {soRaioX
+                  ? doneCount ? "Diagnóstico concluído" : "Comece pelo Documento 1"
+                  : `${doneCount} de ${totalModules} documentos concluídos`}
               </p>
             </div>
             <span className="text-2xl font-bold" style={{ color: NAVY }}>
@@ -958,6 +970,23 @@ export default function UNVStartPortalPage() {
       <div className="space-y-3">
         {access.modules.map((mod, idx) => {
           const num = idx + 1;
+          // Raio-X avulso: do Documento 2 em diante é da assinatura
+          if (soRaioX && mod.step > 1) {
+            return (
+              <Card key={mod.step} className="opacity-60">
+                <CardContent className="py-4 flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <Lock className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-muted-foreground">Documento {num}</p>
+                    <p className="font-semibold truncate text-muted-foreground">{mod.label}</p>
+                    <p className="text-xs text-muted-foreground">Disponível na assinatura</p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          }
           if (mod.done) {
             return (
               <Card key={mod.step} className="border-green-600/30">
@@ -1037,7 +1066,30 @@ export default function UNVStartPortalPage() {
         })}
       </div>
 
+      {/* Raio-X avulso: no lugar do Book, o convite pra assinatura */}
+      {soRaioX && (
+        <Card className="border-2 border-[#0D2B5E] bg-[#0D2B5E]/[0.04] shadow-md">
+          <CardContent className="py-5 space-y-3">
+            <p className="font-bold text-[#0D2B5E] dark:text-blue-300">
+              {doneCount ? "Agora monte a estrutura que fecha esses vazamentos" : "Depois do Raio-X, a estrutura completa"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Na assinatura do Raio-X Comercial a IA monta os outros 6 documentos da sua empresa (ICP, funil,
+              script com contorno de objeção, playbook, processos e metas), gera o Book da Estrutura e libera
+              o painel com o Diretor Comercial IA lendo seus números toda semana. R$ 97 por mês, sem fidelidade.
+            </p>
+            <a href={linkAssinar}>
+              <Button className="w-full h-11 bg-[#0D2B5E] hover:bg-[#0D2B5E]/90 text-white">
+                Assinar e liberar a estrutura completa
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </a>
+          </CardContent>
+        </Card>
+      )}
+
       {/* BOOK — largura total, destacado */}
+      {!soRaioX && (
       <Card
         className={
           access.all_done
@@ -1076,6 +1128,7 @@ export default function UNVStartPortalPage() {
           </Button>
         </CardContent>
       </Card>
+      )}
       </>
       )}
     </>,
