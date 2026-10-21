@@ -39,6 +39,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { BuscaAplicativos, type AppDaBusca } from "@/components/onboarding-tasks/BuscaAplicativos";
 import {
   Select,
   SelectContent,
@@ -1889,6 +1890,110 @@ const OnboardingTasksPage = () => {
   const canAccessAcademy = hasMenuPerm("academy");
   const canAccessAnnouncements = hasMenuPerm("announcements");
 
+  // Catálogo da busca de aplicativos: mesmas regras de acesso dos menus da tela (21/10/2026).
+  const ehCEO = currentUserEmail === "fabricio@universidadevendas.com.br";
+  const ehStaffInterno = isMaster || isAdmin || isCS || isConsultant || ["closer", "sdr", "social_setter", "bdr", "head_comercial", "rh", "financeiro", "marketing", "juridico"].includes(currentUserRole || "");
+  const appsDaBusca: AppDaBusca[] = [
+    ...(isMaster ? [{ titulo: "Painel de Controle", caminho: "/painel-de-controle", grupo: "Gestão", palavras: "caixa vendas tráfego clientes atendimento ia dashboard" },
+                    { titulo: "Painel ao vivo", caminho: "/painel-de-controle/ao-vivo", grupo: "Gestão", palavras: "gestão à vista tv tela" }] : []),
+    ...(ehCEO ? [{ titulo: "Cockpit UNV", caminho: "/onboarding-tasks/cockpit", grupo: "Gestão", palavras: "escada comercial plano estratégico" },
+                 { titulo: "Painel do CEO", caminho: "/onboarding-tasks/ceo", grupo: "Gestão" },
+                 { titulo: "IA (Master)", caminho: "/onboarding-tasks/master-ai", grupo: "Gestão" },
+                 { titulo: "Agenda Fabrício", caminho: "/onboarding-tasks/agenda-fabricio", grupo: "Gestão" },
+                 { titulo: "White-Label", caminho: "/whitelabel-gestao", grupo: "Gestão" }] : []),
+    ...((isMaster || isAdmin || hasMenuPerm("trafego_pago")) ? [{ titulo: "Tráfego pago dos clientes", caminho: "/onboarding-tasks/trafego-pago", grupo: "Gestão", palavras: "meta ads cac roas anúncios saldo" }] : []),
+    ...(isMaster ? [{ titulo: "MRR do Mês", caminho: "/onboarding-tasks/mrr", grupo: "Gestão", palavras: "receita recorrente" },
+                    { titulo: "Custo de IA", caminho: "/onboarding-tasks/custo-ia", grupo: "Gestão" },
+                    { titulo: "Escritório Agentes", caminho: "/office", grupo: "Operações", palavras: "3d agentes ia" }] : []),
+    ...(ehStaffInterno ? [{ titulo: "Ponto de Encontro", caminho: "/ponto-de-encontro", grupo: "Operações" }] : []),
+    { titulo: "Copiloto de Resultados", caminho: "/onboarding-tasks/copiloto", grupo: "Operações" },
+    { titulo: "Gerenciador de tarefas", caminho: "/onboarding-tasks/task-manager", grupo: "Operações", palavras: "tarefas" },
+    { titulo: "Manual de Processos", caminho: "/processos", grupo: "Operações" },
+    { titulo: "Conectar Google Agenda", caminho: "/onboarding-tasks/office?tab=calendar", grupo: "Operações", palavras: "calendário google" },
+    { titulo: "UNV Office", caminho: "/onboarding-tasks/unv-office", grupo: "Operações", palavras: "escritório virtual equipe" },
+    { titulo: "Mapas Mentais", caminho: "/onboarding-tasks/mapas", grupo: "Operações" },
+    { titulo: "Transcrições", caminho: "/onboarding-tasks/transcricoes", grupo: "Operações", palavras: "reuniões gravação" },
+    { titulo: "Nota Fiscal", caminho: "/onboarding-tasks/nota-fiscal", grupo: "Operações", palavras: "nfse nfs-e" },
+    { titulo: "UNV Disparador", caminho: "/onboarding-tasks/whatsapp", grupo: "Operações", palavras: "whatsapp disparo campanha" },
+    { titulo: "Atendimentos (WhatsApp Hub)", caminho: "/onboarding-tasks/whatsapp-hub", grupo: "Operações", palavras: "whatsapp conversas" },
+    ...(canCreateCompany ? [{ titulo: "Consultorias", caminho: "/onboarding-tasks/consultorias", grupo: "Operações" }] : []),
+    ...((isAdmin || isCS || currentUserRole === "closer") ? [{ titulo: "Contratos", caminho: "/contratos?history=true", grupo: "Operações", palavras: "gerador de contrato" },
+                                                             { titulo: "Assinaturas eletrônicas", caminho: "/onboarding-tasks/assinaturas", grupo: "Operações", palavras: "envelopes assinatura contrato" }] : []),
+    ...(canAccessHR ? [{ titulo: "Vagas (RH)", caminho: "/onboarding-tasks/vagas", grupo: "Operações", palavras: "recrutamento candidatos" }] : []),
+    ...(isAdmin ? [{ titulo: "API", caminho: "/onboarding-tasks/api-docs", grupo: "Operações" }] : []),
+    ...(canAccessCRM ? [
+      { titulo: "CRM Comercial", caminho: "/crm", grupo: "CRM", palavras: "vendas comercial" },
+      { titulo: "Negócios (funil)", caminho: "/crm/pipeline", grupo: "CRM", palavras: "kanban pipeline funil" },
+      { titulo: "Contatos / Leads", caminho: "/crm/leads", grupo: "CRM" },
+      { titulo: "Atendimento", caminho: "/crm/inbox", grupo: "CRM", palavras: "whatsapp instagram conversas inbox" },
+      { titulo: "Atividades do CRM", caminho: "/crm/activities", grupo: "CRM" },
+      { titulo: "Discador", caminho: "/crm/dialer", grupo: "CRM", palavras: "ligações telefone" },
+      { titulo: "Dashboard do CRM", caminho: "/crm/reports", grupo: "CRM", palavras: "relatórios indicadores percurso" },
+      { titulo: "Prospecção B2B (CRM)", caminho: "/crm/prospeccao", grupo: "CRM" },
+      { titulo: "Reuniões", caminho: "/crm/meetings", grupo: "CRM", palavras: "agenda" },
+      { titulo: "Transcrições do CRM", caminho: "/crm/transcriptions", grupo: "CRM" },
+      { titulo: "Forecast", caminho: "/crm/forecast", grupo: "CRM", palavras: "previsão" },
+      { titulo: "Cadências", caminho: "/crm/cadences", grupo: "CRM", palavras: "follow up" },
+      { titulo: "Fluxos", caminho: "/crm/fluxos", grupo: "CRM", palavras: "automação" },
+      { titulo: "Disparador de E-mail", caminho: "/crm/email-blast", grupo: "CRM" },
+      { titulo: "Disparos API Oficial", caminho: "/crm/disparos", grupo: "CRM", palavras: "template whatsapp oficial" },
+      { titulo: "Agentes IA", caminho: "/crm/automacoes", grupo: "CRM", palavras: "agente sdr bot automações" },
+      { titulo: "Aplicações", caminho: "/crm/applications", grupo: "CRM", palavras: "formulários" },
+      { titulo: "Conexão WhatsApp", caminho: "/crm/conexao-whatsapp", grupo: "CRM", palavras: "instância qr code número" },
+      { titulo: "Escritório (CRM)", caminho: "/crm/office", grupo: "CRM" },
+      { titulo: "Configurações do CRM", caminho: "/crm/settings", grupo: "CRM", palavras: "funis etapas origens" },
+    ] : []),
+    ...(canAccessFinancial ? [
+      ["overview", "Financeiro (visão geral)", "dre dfc caixa"], ["receivables", "Contas a Receber", "faturas recebimentos"], ["payables", "Contas a Pagar", "despesas fornecedores"],
+      ["clients", "Clientes & Contratos (Financeiro)", ""], ["banks", "Bancos & Saldos", "saldo conta"], ["billing", "Cobranças", "boleto pix"],
+      ["reports", "Relatórios financeiros", "dre dfc"], ["planning", "Planejamento financeiro", "orçamento"], ["cfo", "IA CFO", ""],
+      ["integrations", "Integrações financeiras", "asaas conta azul nibo"], ["billing-rules", "Régua de Cobranças", ""], ["suppliers", "Fornecedores", ""],
+      ["inbox", "Atendimentos do Financeiro", "whatsapp cobrança"], ["bank-statement", "Extrato Bancário", ""], ["reconciliation", "Conciliação", "conciliar extrato"],
+      ["general-statement", "Extrato Geral", ""], ["nfse", "NFS-e (Financeiro)", "nota fiscal"],
+    ].map(([tab, titulo, palavras]) => ({ titulo, caminho: `/onboarding-tasks/financeiro?tab=${tab}`, grupo: "Financeiro", palavras }))
+      .concat([{ titulo: "Recorrências", caminho: "/onboarding-tasks/financeiro/recorrencias", grupo: "Financeiro", palavras: "mensalidades assinaturas" }]) : []),
+    ...(isAdmin ? [{ titulo: "Monitor de Parcelas", caminho: "/onboarding-tasks/financeiro/monitor-parcelas", grupo: "Financeiro" },
+                   { titulo: "Jurídico", caminho: "/onboarding-tasks/juridico", grupo: "Financeiro", palavras: "inadimplência cobrança judicial" },
+                   { titulo: "ROI dos Clientes", caminho: "/onboarding-tasks/roi-clientes", grupo: "Sucesso do Cliente" },
+                   { titulo: "Pipeline de Renovações", caminho: "/onboarding-tasks/renovacoes", grupo: "Sucesso do Cliente" },
+                   { titulo: "Dashboard Executivo", caminho: "/onboarding-tasks/executive", grupo: "Sucesso do Cliente" },
+                   { titulo: "Previsão de Churn", caminho: "/onboarding-tasks/churn-prediction", grupo: "Sucesso do Cliente" },
+                   { titulo: "Análise de Cohort", caminho: "/onboarding-tasks/cohort-retention", grupo: "Sucesso do Cliente" },
+                   { titulo: "Reagendar Tarefas", caminho: "/onboarding-tasks/reschedule", grupo: "Sucesso do Cliente" }] : []),
+    ...(canCreateCompany ? [{ titulo: "UNV Board", caminho: "/onboarding-tasks/board-unv", grupo: "Produtos" },
+                            { titulo: "UNV Start", caminho: "/onboarding-tasks/unv-start", grupo: "Produtos" },
+                            { titulo: "Hotseat", caminho: "/onboarding-tasks/hotseat", grupo: "Engajamento" },
+                            { titulo: "Onboarding", caminho: "/onboarding", grupo: "Engajamento" },
+                            { titulo: "Equipe", caminho: "/onboarding-tasks/staff", grupo: "Administrar", palavras: "colaboradores usuários permissões" },
+                            { titulo: "Serviços", caminho: "/onboarding-tasks/services", grupo: "Administrar", palavras: "produtos" },
+                            { titulo: "Importar", caminho: "/onboarding-tasks/import", grupo: "Administrar" },
+                            { titulo: "Notificações de Pagamento", caminho: "/onboarding-tasks/payment-notifications", grupo: "Administrar" }] : []),
+    ...((canCreateCompany || canAccessResults) ? [{ titulo: "Resultados", caminho: "/onboarding-tasks/results", grupo: "Engajamento" }] : []),
+    ...((canCreateCompany || canAccessCircle) ? [{ titulo: "UNV Circle", caminho: "/circle", grupo: "Engajamento", palavras: "comunidade" }] : []),
+    ...(canAccessAnalytics ? [{ titulo: "Radar", caminho: "/onboarding-tasks/radar", grupo: "Sucesso do Cliente", palavras: "risco clientes" },
+                              { titulo: "Cérebro do Cliente", caminho: "/onboarding-tasks/cerebro", grupo: "Sucesso do Cliente" }] : []),
+    ...((isAdmin || isCS) ? [
+      { titulo: "Checkup do Produto", caminho: "/onboarding-tasks/checkup", grupo: "Sucesso do Cliente" },
+      { titulo: "Cancelamento & Retenção", caminho: "/onboarding-tasks/cancellations-retention", grupo: "Sucesso do Cliente", palavras: "churn cancelamentos" },
+      { titulo: "Renovações", caminho: "/onboarding-tasks/renewals", grupo: "Sucesso do Cliente" },
+      { titulo: "Régua de Pesquisas", caminho: "/onboarding-tasks/survey-send-config", grupo: "Sucesso do Cliente", palavras: "nps csat" },
+      { titulo: "Relatório de Empresas", caminho: "/onboarding-tasks/companies-report", grupo: "Administrar" },
+      { titulo: "Histórico de Atividades", caminho: "/onboarding-tasks/activity-history", grupo: "Administrar" },
+      { titulo: "Ranking de Engajamento", caminho: "/onboarding-tasks/engagement", grupo: "Engajamento" },
+      { titulo: "Acessos dos Clientes", caminho: "/onboarding-tasks/client-access", grupo: "Administrar" },
+      { titulo: "Segmentos", caminho: "/onboarding-tasks/segments", grupo: "Administrar" },
+      { titulo: "Gamificação Geral", caminho: "/onboarding-tasks/gamificacao-geral", grupo: "Engajamento" },
+      { titulo: "Ações Comerciais", caminho: "/onboarding-tasks/commercial-actions", grupo: "Administrar" },
+      { titulo: "Central de Automações", caminho: "/onboarding-tasks/automations", grupo: "Administrar" },
+      { titulo: "Prospecção B2B", caminho: "/onboarding-tasks/b2b-prospection", grupo: "Administrar" },
+      { titulo: "PDI", caminho: "/pdi", grupo: "Engajamento" },
+      { titulo: "UNV Academy", caminho: "/academy", grupo: "Engajamento", palavras: "cursos treinamento" },
+      { titulo: "UNV Profile", caminho: "/unv-profile", grupo: "Engajamento", palavras: "rh disc" },
+    ] : []),
+    ...(isAdmin ? [{ titulo: "Relatório de Vendas do Mês", caminho: "/sales-report", grupo: "Administrar" }] : []),
+    ...(isAdmin && !ehCEO ? [{ titulo: "Painel do Líder", caminho: "/onboarding-tasks/leader", grupo: "Gestão" }] : []),
+  ];
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -2935,6 +3040,9 @@ const OnboardingTasksPage = () => {
                 Painel de Controle
               </Button>
             )}
+
+            {/* Busca de aplicativos: acha e abre qualquer módulo (Ctrl+K) */}
+            <BuscaAplicativos apps={appsDaBusca} />
 
             {/* ── Right side ──────────────────────────────── */}
             <div className="ml-auto flex items-center gap-0.5 shrink-0">
