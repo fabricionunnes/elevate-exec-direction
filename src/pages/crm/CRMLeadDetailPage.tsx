@@ -178,7 +178,7 @@ interface Activity {
 export const CRMLeadDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAdmin, isMaster, staffId } = useCRMContext();
+  const { isAdmin, isMaster, staffId, selectedPipeline, setSelectedPipeline, setSelectedOrigin } = useCRMContext();
   // Acesso por funil + permissões granulares (lead_move / lead_delete)
   const pipelinePerms = useCRMPipelinePermissions();
   const [stageGate, setStageGate] = useState<{ result: LeadGateResult; targetStageId: string; targetStageName: string } | null>(null);
@@ -298,6 +298,23 @@ export const CRMLeadDetailPage = () => {
       cancelled = true;
     };
   }, [isMaster, isAdmin, staffId]);
+
+  // Barra lateral (Origens) acompanha o funil do lead aberto. Antes, abrindo o lead direto
+  // (Atendimento, link), ela marcava o 1º funil da lista (Funil SE) mesmo com o lead em outro
+  // funil (Fabrício, 20/10/2026: lead do Social Media com Funil SE marcado).
+  const leadPipelineId = (lead as any)?.pipeline_id as string | undefined;
+  useEffect(() => {
+    if (!leadPipelineId || leadPipelineId === selectedPipeline) return;
+    let vivo = true;
+    (async () => {
+      const { data: org } = await supabase.from("crm_origins").select("id").eq("pipeline_id", leadPipelineId).eq("is_active", true).order("sort_order").limit(1).maybeSingle();
+      if (!vivo) return;
+      setSelectedPipeline(leadPipelineId);
+      if (org?.id) setSelectedOrigin(org.id);
+    })();
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadPipelineId]);
 
   const loadLead = useCallback(async () => {
     if (!id) return;

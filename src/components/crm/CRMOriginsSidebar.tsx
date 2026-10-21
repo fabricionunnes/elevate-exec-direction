@@ -107,7 +107,8 @@ export const CRMOriginsSidebar = ({
       // Só na entrada — clicar em "Todos os Leads" depois continua valendo.
       if (!autoSelectedRef.current) {
         autoSelectedRef.current = true;
-        if (selectedOrigin === null) {
+        // Na página de um lead quem escolhe o funil marcado é o próprio lead (o funil dele)
+        if (selectedOrigin === null && !/\/crm\/leads\//.test(location.pathname)) {
           const gs = groupsRes.data || [];
           const os = (originsRes.data || []) as Origin[];
           const firstGroup = gs.find((g) => os.some((o) => o.group_id === g.id && o.pipeline_id));
