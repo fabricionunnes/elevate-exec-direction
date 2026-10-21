@@ -1,4 +1,4 @@
-// Onde o lead para no formulário de diagnóstico (UNV Ads, UNV Social, UNV Finance).
+// Onde o lead para no formulário de diagnóstico (UNV Ads, UNV Social, UNV Finance, Mansão Empreendedora).
 // Os formulários públicos avisam cada tela aberta (RPC form_track, tabela crm_form_sessions);
 // aqui o funil pergunta a pergunta vem da RPC form_funnel, chamada uma vez por formulário
 // marcado e somada na tela. Abandono = parado há 30 min.
@@ -37,6 +37,8 @@ const FORMS: { value: string; label: string; url: string; perguntas: string[] }[
     perguntas: ["Perfil (dono, sócio, prestador)", "Faturamento", "Nome", "WhatsApp", "E-mail", "Instagram", "Gestão das redes hoje", "Motivo de buscar ajuda"] },
   { value: "unvfinance", label: "UNV Finance", url: "https://unvholdings.com.br/unvfinance/forms/",
     perguntas: ["É dono ou sócio?", "Nome", "WhatsApp", "E-mail", "Nome da empresa", "Faturamento", "Maior incômodo no financeiro", "Quem cuida do financeiro"] },
+  { value: "mansao", label: "Mansão Empreendedora", url: "https://unvholdings.com.br/mansao/forms/",
+    perguntas: ["É dono ou sócio?", "Nome", "WhatsApp", "E-mail", "Nome da empresa", "Faturamento", "IA hoje", "O que quer tirar da mão"] },
 ];
 const cfgDe = (form: string) => FORMS.find((f) => f.value === form) || FORMS[0];
 const nomePergunta = (form: string, q: number) => cfgDe(form).perguntas[q - 1] || `Pergunta ${q}`;
@@ -154,7 +156,9 @@ export function FormulariosTab() {
     const d = String(s.contato_whatsapp || "").replace(/\D/g, "");
     const numero = d.startsWith("55") ? d : `55${d}`;
     const primeiro = (s.contato_nome || "").trim().split(/\s+/)[0] || "";
-    const texto = `Oi${primeiro ? ` ${primeiro}` : ""}, tudo bem? Aqui é da ${cfgDe(s.form).label}. Vi que você começou o diagnóstico e parou no meio. Posso te ajudar a terminar ou tirar alguma dúvida?`;
+    const texto = s.form === "mansao"
+      ? `Oi${primeiro ? ` ${primeiro}` : ""}, tudo bem? Aqui é da Mansão Empreendedora. Vi que você começou a inscrição pro GP de Outubro e parou no meio. Quer que eu te passe o investimento e confirme sua vaga?`
+      : `Oi${primeiro ? ` ${primeiro}` : ""}, tudo bem? Aqui é da ${cfgDe(s.form).label}. Vi que você começou o diagnóstico e parou no meio. Posso te ajudar a terminar ou tirar alguma dúvida?`;
     return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
   };
   const marcarChamado = async (s: Sessao) => {
