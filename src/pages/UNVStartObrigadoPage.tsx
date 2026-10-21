@@ -58,6 +58,8 @@ export default function UNVStartObrigadoPage() {
   const [params] = useSearchParams();
   const token = params.get("token") || "";
   const crmLeadId = params.get("lid") || "";
+  // valor da compra: 5 no Raio-X avulso dos stories, 97 na assinatura
+  const valorCompra = params.get("v") === "5" ? 5 : 97;
 
   const [primeiroNome, setPrimeiroNome] = useState("");
   const [etapa, setEtapa] = useState<Etapa>("oferta");
@@ -76,11 +78,11 @@ export default function UNVStartObrigadoPage() {
       window.fbq(
         "track",
         "Purchase",
-        { value: 97, currency: "BRL", content_name: "Raio-X Comercial" },
+        { value: valorCompra, currency: "BRL", content_name: "Raio-X Comercial" },
         { eventID: `${crmLeadId}:Purchase` },
       );
     }
-  }, [crmLeadId]);
+  }, [crmLeadId, valorCompra]);
 
   // quem já agendou e volta pra página vê a confirmação, não o formulário de novo
   useEffect(() => {

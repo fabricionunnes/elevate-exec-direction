@@ -54,6 +54,12 @@
             window.location.replace("/unvfinance/" + (window.location.search || ""));
             return;
           }
+          // Raio-X avulso de R$ 5 dos stories: link curto direto pro checkout
+          if (p === "/raiox" || p === "/raiox/") {
+            var qr = window.location.search || "";
+            window.location.replace("/#/start/checkout?oferta=raiox5" + (qr ? "&" + qr.slice(1) : ""));
+            return;
+          }
           if (p === "/unv-start" || p === "/unv-start/") {
             window.location.replace("/start/" + window.location.search);
           } else if (p.indexOf("/start/") === 0) {
