@@ -223,7 +223,7 @@ export default function UNVStartCheckoutPage() {
                     <h1 className="font-display text-2xl md:text-3xl font-bold text-[#0D2B5E] mb-1">
                       {avulso ? "Seu Raio-X Comercial por R$ 5" : "Falta pouco pra sua estrutura"}
                     </h1>
-                    <p className="text-muted-foreground mb-6">
+                    <p className="text-slate-500 mb-6">
                       {avulso && vagas === 0
                         ? "As vagas dessa condição acabaram. Você ainda pode assinar o Raio-X Comercial completo."
                         : "Preencha seus dados pra liberar o acesso na hora."}
@@ -231,47 +231,60 @@ export default function UNVStartCheckoutPage() {
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                       <div>
-                        <label className="text-sm font-medium text-foreground">Nome completo</label>
+                        <label className="text-sm font-medium text-[#0D2B5E]">Nome completo</label>
                         <input
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground outline-none focus:ring-2 focus:ring-[#0D2B5E]"
+                          name="name"
+                          autoComplete="name"
+                          autoCapitalize="words"
+                          className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#0D2B5E]"
                           placeholder="Seu nome"
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-foreground">Email</label>
+                        <label className="text-sm font-medium text-[#0D2B5E]">Email</label>
                         <input
                           type="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground outline-none focus:ring-2 focus:ring-[#0D2B5E]"
+                          name="email"
+                          autoComplete="email"
+                          inputMode="email"
+                          autoCapitalize="off"
+                          className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#0D2B5E]"
                           placeholder="voce@email.com"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-sm font-medium text-foreground">WhatsApp</label>
+                          <label className="text-sm font-medium text-[#0D2B5E]">WhatsApp</label>
                           <input
                             value={whatsapp}
                             onChange={(e) => setWhatsapp(e.target.value)}
-                            className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground outline-none focus:ring-2 focus:ring-[#0D2B5E]"
+                            type="tel"
+                            name="tel"
+                            autoComplete="tel"
+                            inputMode="tel"
+                            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#0D2B5E]"
                             placeholder="(11) 90000-0000"
                           />
                         </div>
                         <div>
-                          <label className="text-sm font-medium text-foreground">CPF</label>
+                          <label className="text-sm font-medium text-[#0D2B5E]">CPF</label>
                           <input
                             value={cpf}
                             onChange={(e) => setCpf(e.target.value)}
-                            className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground outline-none focus:ring-2 focus:ring-[#0D2B5E]"
+                            name="cpf"
+                            inputMode="numeric"
+                            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#0D2B5E]"
                             placeholder="000.000.000-00"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="text-sm font-medium text-foreground">Forma de pagamento</label>
+                        <label className="text-sm font-medium text-[#0D2B5E]">Forma de pagamento</label>
                         <div className="mt-1 grid grid-cols-2 gap-3">
                           <button
                             type="button"
@@ -279,7 +292,7 @@ export default function UNVStartCheckoutPage() {
                             className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 font-medium transition-all ${
                               method === "pix"
                                 ? "border-[#0D2B5E] bg-[#0D2B5E]/10 text-[#0D2B5E]"
-                                : "border-input text-muted-foreground"
+                                : "border-slate-300 text-slate-500"
                             }`}
                           >
                             <QrCode className="h-4 w-4" /> Pix
@@ -290,7 +303,7 @@ export default function UNVStartCheckoutPage() {
                             className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 font-medium transition-all ${
                               method === "credit_card"
                                 ? "border-[#0D2B5E] bg-[#0D2B5E]/10 text-[#0D2B5E]"
-                                : "border-input text-muted-foreground"
+                                : "border-slate-300 text-slate-500"
                             }`}
                           >
                             <CreditCard className="h-4 w-4" /> Cartão
@@ -324,7 +337,7 @@ export default function UNVStartCheckoutPage() {
                           Ver o Raio-X Comercial completo
                         </a>
                       )}
-                      <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                      <p className="flex items-center justify-center gap-2 text-xs text-slate-500">
                         <Lock className="h-3 w-3" />{" "}
                         {avulso ? "Pagamento seguro · Pagamento único, sem mensalidade" : "Pagamento seguro · Sem fidelidade · Cancele quando quiser"}
                       </p>
@@ -335,7 +348,7 @@ export default function UNVStartCheckoutPage() {
                     <h1 className="font-display text-2xl md:text-3xl font-bold text-[#0D2B5E] mb-1">
                       {method === "pix" ? "Pague com Pix pra liberar" : "Finalize no cartão"}
                     </h1>
-                    <p className="text-muted-foreground mb-6">
+                    <p className="text-slate-500 mb-6">
                       {avulso
                         ? method === "pix"
                           ? "Escaneie o QR code ou copie o código. O acesso libera aqui na hora."
@@ -354,7 +367,7 @@ export default function UNVStartCheckoutPage() {
                         </div>
                         <button
                           onClick={copyPix}
-                          className="mt-4 flex items-center gap-2 rounded-xl bg-secondary px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary/70 transition-colors w-full justify-center"
+                          className="mt-4 flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-3 text-sm font-medium text-slate-900 hover:bg-slate-200 transition-colors w-full justify-center"
                         >
                           {copied ? (
                             <>
@@ -378,7 +391,7 @@ export default function UNVStartCheckoutPage() {
                       </a>
                     )}
 
-                    <div className="mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <div className="mt-6 flex items-center justify-center gap-2 text-sm text-slate-500">
                       <Loader2 className="h-4 w-4 animate-spin text-accent" />
                       Aguardando confirmação do pagamento...
                     </div>
