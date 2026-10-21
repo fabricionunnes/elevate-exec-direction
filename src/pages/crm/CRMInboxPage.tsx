@@ -46,7 +46,6 @@ import {
   MoreVertical,
   Send,
   Paperclip,
-  Smile,
   Image,
   Clock,
   CheckCheck,
@@ -99,6 +98,7 @@ import { AudioRecorder } from "@/components/crm/inbox/AudioRecorder";
 import { ReceiptAnalysisButton } from "@/components/crm/inbox/ReceiptAnalysisButton";
 import { useCompanyIdentification } from "@/hooks/useCompanyIdentification";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { EmojiPicker } from "@/components/crm/inbox/EmojiPicker";
 import { QuickResponsesPicker, QuickResponsesPickerHandle, quickVariablesFor } from "@/components/crm/inbox/QuickResponsesPicker";
 import { ScheduleMessageDialog } from "@/components/crm/inbox/ScheduleMessageDialog";
 import { BulkActionsBar, BulkAction } from "@/components/crm/inbox/BulkActionsBar";
@@ -1828,9 +1828,7 @@ export const CRMInboxPage = () => {
                 onPick={(texto) => { setNewMessage(texto); setQuickOpen(false); }}
                 onClose={() => setQuickOpen(false)}
               />
-              <Button variant="ghost" size="icon" className="h-9 w-9 hidden sm:flex">
-                <Smile className="h-5 w-5" />
-              </Button>
+              <EmojiPicker className="hidden sm:flex" onPick={(e) => composerRef.current?.insertText(e)} />
               <Button
                 variant="ghost"
                 size="icon"
@@ -2005,7 +2003,7 @@ export const CRMInboxPage = () => {
   );
 };
 
-type ComposerHandle = { setText: (v: string) => void; focus: () => void };
+type ComposerHandle = { setText: (v: string) => void; focus: () => void; insertText: (v: string) => void };
 
 // Campo de mensagem com estado próprio: a página só fica sabendo do texto
 // quando precisa (enviar, "/" das respostas rápidas, vazio x com texto).
@@ -2031,6 +2029,18 @@ const ComposerInput = forwardRef<ComposerHandle, {
       if (v) inputRef.current?.focus();
     },
     focus: () => inputRef.current?.focus(),
+    // emoji entra onde o cursor estava (o campo guarda a seleção mesmo sem foco)
+    insertText: (v: string) => {
+      const el = inputRef.current;
+      const atual = draftRef.current;
+      const ini = el?.selectionStart ?? atual.length, fim = el?.selectionEnd ?? atual.length;
+      setText(atual.slice(0, ini) + v + atual.slice(fim));
+      requestAnimationFrame(() => {
+        if (!el) return;
+        el.focus();
+        el.setSelectionRange(ini + v.length, ini + v.length);
+      });
+    },
   }));
   return (
     <Input
