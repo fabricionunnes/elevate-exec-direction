@@ -301,7 +301,12 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
         // (marcelo-scheduler, task meta_diaria): meta individual nível 1 do mês, senão meta da
         // empresa ÷ vendedores (estimada); realizado ATÉ ONTEM; dias úteis restantes contando hoje
         // (sábado conta por padrão, domingo não, feriado nacional fora).
-        if (main && isThisMonth && people.length) {
+        // KPI da meta do dia: entre os principais em R$, o que tem meta individual no mês (ex.: CR
+        // Sublime tem Receita e Faturamento, as metas por vendedor estão no Faturamento); senão o main.
+        const metaKpi = rows.filter(r => r.is_main_goal && r.kpi_type === "monetary")
+          .find(r => targets.some(t => t.kpi_id === r.id && t.salesperson_id && t.level_order === 1 && Number(t.target_value || 0) > 0)) || main;
+        if (metaKpi && isThisMonth && people.length) {
+          const main = metaKpi;
           const t0 = new Date();
           const dia = t0.getDate(), y = t0.getFullYear(), mo = t0.getMonth();
           const sat = daySettings ? daySettings.include_saturday : true;
@@ -320,7 +325,10 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
             else compMeta += Number(t.target_value || 0);
           });
           if (compMeta <= 0) compMeta = Number(main.target_value || 0);
-          const derivada = compMeta > 0 ? compMeta / people.length : 0;
+          // se alguém tem meta individual, quem não tem fica fora (Vivance: a meta é só do Rafael);
+          // a estimativa meta da empresa ÷ time só vale quando ninguém tem meta individual
+          const algumInd = [...metaInd.values()].some(v => v > 0);
+          const derivada = !algumInd && compMeta > 0 ? compMeta / people.length : 0;
           const ateOntem = new Map<string, number>(), hojePor = new Map<string, number>();
           entries.filter(e => e.kpi_id === main.id && e.salesperson_id).forEach(e => {
             const alvo = e.entry_date < todayKey ? ateOntem : e.entry_date === todayKey ? hojePor : null;
