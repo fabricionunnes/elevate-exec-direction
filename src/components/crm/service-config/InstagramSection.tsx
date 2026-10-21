@@ -10,12 +10,19 @@ import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 interface InstagramInstance {
   id: string;
   instagram_user_id: string;
-  username: string;
+  username?: string;
+  instagram_username?: string | null;
+  instance_name?: string | null;
   profile_picture_url: string | null;
   status: string;
   token_expires_at: string;
   created_at: string;
 }
+
+// A função grava status "active" (antes a tela só aceitava "connected" e mostrava tudo como
+// Desconectado) e o @ vem em instagram_username (Fabrício, 21/10: "conectei todas mas mostra desconectado").
+const estaConectada = (i: InstagramInstance) => i.status === "active" || i.status === "connected";
+const arrobaDe = (i: InstagramInstance) => (i.instagram_username || i.username || i.instance_name || "").replace(/^@/, "");
 
 interface InstagramSectionProps {
   onBack: () => void;
@@ -112,8 +119,11 @@ export const InstagramSection = ({ onBack }: InstagramSectionProps) => {
     }
   };
 
-  const handleDisconnect = async (instanceId: string) => {
+  const handleDisconnect = async (instanceId: string, arroba: string) => {
     if (!staffId) return;
+    // um clique desconectava sem aviso (o ícone parecia "reconectar"): com a conta desconectada o
+    // Instagram para de chegar no Atendimento e os gatilhos param
+    if (!window.confirm(`Desconectar @${arroba}? As mensagens e os gatilhos dessa conta param de funcionar no Nexus.`)) return;
 
     try {
       const { error } = await supabase.functions.invoke("instagram-oauth", {
@@ -252,8 +262,10 @@ export const InstagramSection = ({ onBack }: InstagramSectionProps) => {
                     {instance.profile_picture_url ? (
                       <img 
                         src={instance.profile_picture_url} 
-                        alt={instance.username}
+                        alt={arrobaDe(instance)}
                         className="h-10 w-10 rounded-full"
+                        // link da foto do Instagram expira: cai pro ícone
+                        onError={() => setInstances((prev) => prev.map((x) => x.id === instance.id ? { ...x, profile_picture_url: null } : x))}
                       />
                     ) : (
                       <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 flex items-center justify-center">
@@ -262,12 +274,12 @@ export const InstagramSection = ({ onBack }: InstagramSectionProps) => {
                     )}
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">@{instance.username}</span>
+                        <span className="font-medium">@{arrobaDe(instance)}</span>
                         <Badge 
-                          variant={instance.status === "connected" ? "default" : "secondary"}
-                          className={instance.status === "connected" ? "bg-green-500" : ""}
+                          variant={estaConectada(instance) ? "default" : "secondary"}
+                          className={estaConectada(instance) ? "bg-green-500" : ""}
                         >
-                          {instance.status === "connected" ? "Conectado" : "Desconectado"}
+                          {estaConectada(instance) ? "Conectado" : "Desconectado"}
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">
@@ -295,9 +307,11 @@ export const InstagramSection = ({ onBack }: InstagramSectionProps) => {
                       variant="ghost" 
                       size="sm"
                       className="text-destructive hover:text-destructive"
-                      onClick={() => handleDisconnect(instance.id)}
+                      onClick={() => handleDisconnect(instance.id, arrobaDe(instance))}
+                      title="Desconectar esta conta"
                     >
-                      <Unlink className="h-4 w-4" />
+                      <Unlink className="h-4 w-4 mr-1" />
+                      Desconectar
                     </Button>
                   </div>
                 </CardContent>
