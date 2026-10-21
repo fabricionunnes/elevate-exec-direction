@@ -31,6 +31,17 @@ const fmt = (v: number, t: string) => {
   if (t === "percentage") return `${v.toFixed(1)}%`;
   return v.toLocaleString("pt-BR");
 };
+// Feriado nacional (fixos + Sexta-feira Santa). Mesma regra do marcelo-scheduler, pra a meta do
+// dia do quadro bater com a que o Marcelo manda no grupo.
+const isNationalHoliday = (ymd: string) => {
+  if (["01-01", "04-21", "05-01", "09-07", "10-12", "11-02", "11-15", "11-20", "12-25"].includes(ymd.slice(5))) return true;
+  const y = Number(ymd.slice(0, 4));
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4;
+  const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const goodFriday = new Date(Date.UTC(y, Math.floor((h + l - 7 * m + 114) / 31) - 1, ((h + l - 7 * m + 114) % 31) + 1) - 2 * 86400000);
+  return ymd === goodFriday.toISOString().slice(0, 10);
+};
 const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 const monthLabel = (d: Date) => d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 const norm = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -68,6 +79,12 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
     top: { name: string; value: number } | null;
     topSales: { name: string; count: number } | null;   // quem mais vendeu em quantidade
     isRecord: boolean;            // maior dia do mês (faturamento ou nº de vendas)
+  } | null>(null);
+  // meta do dia por vendedor (só no mês corrente): o que falta da meta do mês até ontem ÷ dias
+  // úteis restantes contando hoje; "hoje" = o que já lançou hoje contra essa meta
+  const [metaDia, setMetaDia] = useState<{
+    dias: number; type: string;
+    rows: { name: string; metaDia: number; hoje: number; pctMes: number; batida: boolean; estimada: boolean }[];
   } | null>(null);
   // fila das últimas 5 vendas (1 linha = 1 venda, do feed do banco)
   const [salesFeed, setSalesFeed] = useState<{ id: string; name: string; at: string }[]>([]);
@@ -278,6 +295,51 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
           setToday({ revenue, revenueType: main.kpi_type, sales, top, topSales, isRecord });
         } else {
           setToday(null);
+        }
+
+        // ── Meta do dia por vendedor ── mesma conta da automação "Meta do dia dos vendedores"
+        // (marcelo-scheduler, task meta_diaria): meta individual nível 1 do mês, senão meta da
+        // empresa ÷ vendedores (estimada); realizado ATÉ ONTEM; dias úteis restantes contando hoje
+        // (sábado conta por padrão, domingo não, feriado nacional fora).
+        if (main && isThisMonth && people.length) {
+          const t0 = new Date();
+          const dia = t0.getDate(), y = t0.getFullYear(), mo = t0.getMonth();
+          const sat = daySettings ? daySettings.include_saturday : true;
+          const sun = daySettings ? daySettings.include_sunday : false;
+          let dias = 0;
+          for (let d = dia; d <= endD.getDate(); d++) {
+            const wd = new Date(y, mo, d).getDay();
+            if ((wd === 0 && !sun) || (wd === 6 && !sat) || isNationalHoliday(`${mKey}-${String(d).padStart(2, "0")}`)) continue;
+            dias++;
+          }
+          dias = Math.max(1, dias);
+          const metaInd = new Map<string, number>();
+          let compMeta = 0;
+          targets.filter(t => t.kpi_id === main.id && t.level_order === 1).forEach(t => {
+            if (t.salesperson_id) metaInd.set(t.salesperson_id, (metaInd.get(t.salesperson_id) || 0) + Number(t.target_value || 0));
+            else compMeta += Number(t.target_value || 0);
+          });
+          if (compMeta <= 0) compMeta = Number(main.target_value || 0);
+          const derivada = compMeta > 0 ? compMeta / people.length : 0;
+          const ateOntem = new Map<string, number>(), hojePor = new Map<string, number>();
+          entries.filter(e => e.kpi_id === main.id && e.salesperson_id).forEach(e => {
+            const alvo = e.entry_date < todayKey ? ateOntem : e.entry_date === todayKey ? hojePor : null;
+            if (alvo) alvo.set(e.salesperson_id!, (alvo.get(e.salesperson_id!) || 0) + Number(e.value || 0));
+          });
+          const rowsMeta = people.map(p => {
+            const own = metaInd.get(p.id) || 0;
+            const meta = own > 0 ? own : derivada;
+            const real = ateOntem.get(p.id) || 0;
+            return {
+              name: p.name, metaDia: meta > 0 ? Math.max(0, meta - real) / dias : 0, hoje: hojePor.get(p.id) || 0,
+              pctMes: meta > 0 ? ((real + (hojePor.get(p.id) || 0)) / meta) * 100 : 0,
+              batida: meta > 0 && real >= meta, estimada: !(own > 0), temMeta: meta > 0,
+            };
+          }).filter(r => r.temMeta)
+            .sort((a, b) => Number(a.batida) - Number(b.batida) || b.metaDia - a.metaDia);
+          setMetaDia(rowsMeta.length ? { dias, type: main.kpi_type, rows: rowsMeta } : null);
+        } else {
+          setMetaDia(null);
         }
       }
 
@@ -716,6 +778,47 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
 
               {/* Coluna direita: ranking + equipes + funil */}
               <div className={GRID("space-y-4 order-1 lg:order-none")}>
+                {showMeta && metaDia && (
+                  <div className={cn("rounded-xl border border-amber-500/30 bg-amber-500/5 p-4", CARD)}>
+                    <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-1", "text-sm")}>
+                      <Target className={cn("text-amber-500", "h-4 w-4")} /> Meta de hoje por vendedor
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mb-3">
+                      {metaDia.dias} dia{metaDia.dias === 1 ? "" : "s"} út{metaDia.dias === 1 ? "il" : "eis"} até o fim do mês, contando hoje
+                    </div>
+                    <div className="space-y-2.5">
+                      {metaDia.rows.map(r => {
+                        const pctHoje = r.metaDia > 0 ? (r.hoje / r.metaDia) * 100 : 100;
+                        return (
+                          <div key={r.name}>
+                            <div className="flex items-baseline justify-between gap-2 text-sm">
+                              <span className="truncate text-foreground/90">{r.name}{r.estimada && <span className="text-muted-foreground">*</span>}</span>
+                              {r.batida ? (
+                                <span className="font-bold text-emerald-500 whitespace-nowrap">✓ meta do mês batida</span>
+                              ) : (
+                                <span className="font-black tabular-nums text-amber-600 whitespace-nowrap">{fmt(r.metaDia, metaDia.type)}</span>
+                              )}
+                            </div>
+                            {!r.batida && (
+                              <>
+                                <div className="rounded-full bg-muted mt-1 overflow-hidden h-1.5">
+                                  <div className={cn("h-full rounded-full transition-all", toneClass(pctHoje))} style={{ width: `${Math.min(100, pctHoje)}%` }} />
+                                </div>
+                                <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+                                  <span>{showReal ? <>hoje {fmt(r.hoje, metaDia.type)} · </> : null}<span className={toneText(pctHoje)}>{pctHoje.toFixed(0)}% do dia</span></span>
+                                  <span>mês {r.pctMes.toFixed(0)}%</span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {metaDia.rows.some(r => r.estimada) && (
+                      <div className="text-[10px] text-muted-foreground mt-3">* sem meta individual: meta da empresa dividida pelo time</div>
+                    )}
+                  </div>
+                )}
                 {cfg.show_ranking && ranking.length > 0 && (
                   <div className={cn("rounded-xl border border-border bg-muted/20", "p-4 overflow-hidden")}>
                     <div className={cn("flex items-center gap-2 font-bold uppercase tracking-wider text-foreground mb-5", "text-sm")}><Trophy className={cn("text-amber-500", "h-4 w-4")} /> Ranking do Time</div>
