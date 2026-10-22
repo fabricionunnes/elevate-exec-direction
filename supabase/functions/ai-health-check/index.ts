@@ -112,6 +112,47 @@ async function vigiaTranscricao(sb: any, silencioso: boolean) {
 const ALERTA_HORA_INI = 8, ALERTA_HORA_FIM = 21; // BRT: fora disso só registra, não manda
 // Mensagem que só fecha ou confirma (ok, obrigado, combinado, já enviei, emoji): não pede resposta.
 const SO_FECHAMENTO_RE = /^(ok(ay|ey)?|ok+|blz|beleza|show|top|perfeito|[oó]timo|combinado|fechado|certo|certinho|t[aá]|t[aá] bom|t[aá] certo|tudo bem|tudo certo|valeu|vlw|obrigad[oa]|obg|brigad[oa]|agrade[cç]o|grat[oa]|amém|amem|kk+|haha+|rs+|j[aá] (enviei|mandei|fiz|vi|recebi|entrei|aceitei|assinei)( (o|a|os|as) [a-zà-ú]+)?|entendido|perfeito,? obrigad[oa]|at[eé] (mais|logo|amanh[aã]))[\s.!,]*(obrigad[oa]|valeu|👍|🙏|😊)?[\s.!]*$|^[\p{Emoji}\s]+$/iu;
+// Conversa encerrada (22/10/2026, Fabrício: "estes leads já foi encerrado conversa, não faz sentido
+// seguir, tem que identificar isso e parar de mandar mensagem"; casos Guaciara = corrente religiosa,
+// Construtora EPO = resposta automática "estamos encerrando este atendimento").
+const AUTO_RESPOSTA_RE = /(agradecemos (o seu|seu|pelo|o) contato|encerra(ndo|mos|do) (este|o|seu) atendimento|mensagem autom[aá]tica|resposta autom[aá]tica|fora do (nosso )?hor[aá]rio de atendimento|n[aã]o (estamos|est[aá]) dispon[ií]ve(l|is) no momento|em breve (retornaremos|responderemos|entraremos)|digite o n[uú]mero|escolha uma (das )?op[cç]([aã]o|[oõ]es)|envie seu cpf|menu (de|do) atendimento)/i;
+async function conversaEncerrada(sb: any, r: any): Promise<string | null> {
+  // 1) lead em etapa final (perdido/ganho) ou Fora do ICP
+  if (r.lead_id) {
+    const { data: l } = await sb.from("crm_leads").select("stage:crm_stages(name, final_type)").eq("id", r.lead_id).maybeSingle();
+    const st: any = l?.stage;
+    if (st?.final_type === "lost" || st?.final_type === "won") return "lead em etapa final (" + st.name + ")";
+    if (/fora do icp/i.test(String(st?.name || ""))) return "lead em Fora do ICP";
+  }
+  // 2) últimas mensagens da conversa
+  const tab = r.channel === "instagram" ? "instagram_messages" : "crm_whatsapp_messages";
+  const tcol = r.channel === "instagram" ? "timestamp" : "created_at";
+  const { data: msgs } = await sb.from(tab).select(r.channel === "instagram" ? "direction, content, message_type" : "direction, content").eq("conversation_id", r.conversation_id)
+    .order(tcol, { ascending: false }).limit(8);
+  const hist = ((msgs || []) as any[]).reverse();
+  const ultIn = [...hist].reverse().find((m) => m.direction === "inbound");
+  const txt = String(ultIn?.content || "").trim();
+  if (AUTO_RESPOSTA_RE.test(txt)) return "resposta automática do lado do lead";
+  // 3) IA rápida decide se ainda há algo a responder
+  const chave = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!chave || !hist.length) return null;
+  try {
+    const conversa = hist.map((m) => (m.direction === "inbound" ? "LEAD: " : "NÓS: ") + (String(m.content || "").slice(0, 400) || `[${m.message_type || "mídia"}]`)).join("\n");
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": chave, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001", max_tokens: 20,
+        system: "Você avalia conversas comerciais de WhatsApp/Instagram. Responda só RESPONDER ou ENCERRADA. ENCERRADA quando a última mensagem do lead não pede resposta: despedida, agradecimento final, resposta automática ou menu de atendimento da empresa do lead, corrente, mensagem religiosa ou de bom dia sem relação com a negociação, figurinha, ou quando a conversa já foi encerrada pelo nosso lado e o lead só fechou. RESPONDER quando há pergunta, pedido, objeção, interesse ou informação nova que pede continuidade.",
+        messages: [{ role: "user", content: conversa }],
+      }),
+    });
+    const d = await resp.json();
+    const out = String(d?.content?.[0]?.text || "").toUpperCase();
+    if (out.includes("ENCERRADA")) return "conversa encerrada (última mensagem não pede resposta)";
+  } catch (e) { console.error("[vigia leads] classificação falhou", String(e).slice(0, 120)); }
+  return null;
+}
 function motivoLead(r: any): { texto: string; retentar: boolean } {
   const oc = String(r.ultimo_run_outcome || "");
   if (r.override_enabled === false) return { texto: r.override_por_pessoa ? "agente desligado nesta conversa por uma pessoa" : "agente desligado nesta conversa pelo sistema", retentar: false };
@@ -144,8 +185,15 @@ async function vigiaLeadsEsperando(sb: any, silencioso: boolean) {
         .eq("direction", "inbound").order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (SO_FECHAMENTO_RE.test(String(ult?.content || "").trim())) continue;
     }
-    const { data: ja } = await sb.from("crm_agent_silence_alerts").select("id, retentou, avisou")
+    const { data: ja } = await sb.from("crm_agent_silence_alerts").select("id, retentou, avisou, motivo")
       .eq("conversation_id", r.conversation_id).eq("channel", r.channel).eq("inbound_at", r.ult_lead).maybeSingle();
+    if (ja?.avisou || String(ja?.motivo || "").startsWith("ignorado:")) continue; // já tratado esta mensagem
+    // conversa encerrada: registra uma vez e não retenta nem avisa
+    const encerrada = await conversaEncerrada(sb, r);
+    if (encerrada) {
+      await sb.from("crm_agent_silence_alerts").upsert({ conversation_id: r.conversation_id, channel: r.channel, inbound_at: r.ult_lead, motivo: "ignorado: " + encerrada, retentou: false, avisou: false }, { onConflict: "conversation_id,channel,inbound_at" });
+      continue;
+    }
     const m = motivoLead(r);
     // 1) tenta de novo uma vez (só erro passageiro, só no horário)
     let retentou = !!ja?.retentou;
@@ -178,7 +226,9 @@ async function vigiaLeadsEsperando(sb: any, silencioso: boolean) {
     envio = await zap(sb, msg);
     const avisou = envio.startsWith("enviado");
     for (const r of novos) {
-      await sb.from("crm_agent_silence_alerts").upsert({ conversation_id: r.conversation_id, channel: r.channel, inbound_at: r.ult_lead, motivo: r.motivo, retentou: r.retentou, avisou }, { onConflict: "conversation_id,channel,inbound_at" });
+      // sem permissão no contador do id a gravação falhava calada e o aviso repetia a cada 30 min (22/10/2026)
+      const { error: eGrava } = await sb.from("crm_agent_silence_alerts").upsert({ conversation_id: r.conversation_id, channel: r.channel, inbound_at: r.ult_lead, motivo: r.motivo, retentou: r.retentou, avisou }, { onConflict: "conversation_id,channel,inbound_at" });
+      if (eGrava) console.error("[vigia leads] não gravou o aviso", eGrava.message);
     }
   }
   return { esperando: lista.length, novos: novos.length, retentados, horario_ok: horarioOk, envio, lista: novos.slice(0, 10).map((r) => ({ lead: r.lead_name, canal: r.channel, min: r.minutos, motivo: r.motivo })) };
