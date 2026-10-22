@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Copy, Check, ExternalLink, Plus, FileText, Trash2, QrCode, Download } from "lucide-react";
 import QRCodeLib from "qrcode";
@@ -19,6 +20,13 @@ interface Pipeline {
   name: string;
 }
 
+interface Stage {
+  id: string;
+  name: string;
+  pipeline_id: string;
+  sort_order: number;
+}
+
 interface PipelineForm {
   id: string;
   pipeline_id: string;
@@ -28,12 +36,14 @@ interface PipelineForm {
   is_active: boolean;
   origin_name: string | null;
   redirect_url: string | null;
+  target_stage_id: string | null;
   pipeline_name?: string;
 }
 
 export const PipelineFormsManager = () => {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [forms, setForms] = useState<PipelineForm[]>([]);
+  const [stages, setStages] = useState<Stage[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,13 +51,15 @@ export const PipelineFormsManager = () => {
   }, []);
 
   const loadData = async () => {
-    const [pipelinesRes, formsRes] = await Promise.all([
+    const [pipelinesRes, formsRes, stagesRes] = await Promise.all([
       supabase.from("crm_pipelines").select("id, name").eq("is_active", true).order("name"),
       supabase.from("crm_pipeline_forms").select("*").order("created_at", { ascending: false }),
+      supabase.from("crm_stages").select("id, name, pipeline_id, sort_order").order("sort_order"),
     ]);
 
     setPipelines(pipelinesRes.data || []);
-    setForms(formsRes.data || []);
+    setForms((formsRes.data as PipelineForm[]) || []);
+    setStages((stagesRes.data as Stage[]) || []);
     setLoading(false);
   };
 
@@ -87,7 +99,7 @@ export const PipelineFormsManager = () => {
     loadData();
   };
 
-  const updateFormField = async (formId: string, field: string, value: string) => {
+  const updateFormField = async (formId: string, field: string, value: string | null) => {
     await supabase.from("crm_pipeline_forms").update({ [field]: value }).eq("id", formId);
     toast.success("Salvo!");
     loadData();
@@ -211,6 +223,26 @@ export const PipelineFormsManager = () => {
                   className="h-8 text-sm"
                 />
               </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Etapa de entrada do lead</Label>
+              <Select
+                value={form.target_stage_id || "__first__"}
+                onValueChange={(v) => updateFormField(form.id, "target_stage_id", v === "__first__" ? null : v)}
+              >
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__first__">Primeira etapa do funil (padrão)</SelectItem>
+                  {stages
+                    .filter((st) => st.pipeline_id === form.pipeline_id)
+                    .map((st) => (
+                      <SelectItem key={st.id} value={st.id}>{st.name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1">
