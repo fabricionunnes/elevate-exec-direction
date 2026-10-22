@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-21T21:00:59",
+ "gerado_em": "2026-10-22T10:01:20",
  "posts": [
+  {
+   "slug": "passar-contato-cliente-mostra-falta-processo-indicacao",
+   "url": "/blog/passar-contato-cliente-mostra-falta-processo-indicacao/",
+   "titulo": "Passar contato de cliente mostra falta de processo de indicação",
+   "resumo": "Quando o vendedor precisa ficar pedindo nome de outros clientes, o problema não é timidez. É ausência de sistema que faça a base se multiplicar sozinha.",
+   "tags": [
+    "indicação",
+    "conversão",
+    "processo comercial",
+    "estrutura comercial",
+    "base de leads"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-22",
+   "ts": 2198
+  },
   {
    "slug": "opcao-pagamento-nao-pode-ficar-vendedor",
    "url": "/blog/opcao-pagamento-nao-pode-ficar-vendedor/",
