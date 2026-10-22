@@ -1054,7 +1054,11 @@ async function transcribeAudioLegado(url) {
 // Chrome logado) o agente NÃO responde — pedido dele em 08/09/2026: "se for
 // alguém que eu sigo, não quero que a IA responda". Vale pro DM, pro follow-up
 // e pro gatilho por etapa. Sem username ou tabela vazia → não bloqueia.
-async function igSeguidoPeloFabricio(supabase, username) {
+// Perfis onde a regra NÃO vale: o agente responde mesmo quem o Fabrício segue.
+// @socialcomcarol (Carol, UNV Social): "pro dela não" (Fabrício, 22/10/2026).
+const IG_SEM_REGRA_SEGUIDOS = new Set(["208c41b4-5814-4feb-af81-c767b49b5355"]);
+async function igSeguidoPeloFabricio(supabase, username, instanceId = null) {
+  if (instanceId && IG_SEM_REGRA_SEGUIDOS.has(instanceId)) return false;
   const u = String(username || "").trim().replace(/^@/, "").toLowerCase();
   if (!u) return false;
   const { data } = await supabase.from("crm_ig_following").select("username").eq("username", u).maybeSingle();
@@ -2586,7 +2590,7 @@ Deno.serve(async (req)=>{
       });
       const [{ data: waConvs }, { data: igConvs }, { data: agentChannels }] = await Promise.all([
         supabase.from("crm_whatsapp_conversations").select("id, instance_id, official_instance_id, contact:crm_whatsapp_contacts(phone)").eq("lead_id", lead_id),
-        supabase.from("instagram_conversations").select("id, contact:instagram_contacts(username)").eq("lead_id", lead_id),
+        supabase.from("instagram_conversations").select("id, instance_id, contact:instagram_contacts(username)").eq("lead_id", lead_id),
         supabase.from("crm_ai_agent_channels").select("channel, instance_id").eq("agent_id", agent_id)
       ]);
       // O gatilho por etapa só ativa o agente nos CANAIS em que ele está
@@ -2612,7 +2616,7 @@ Deno.serve(async (req)=>{
       // Instagram: conta que o Fabrício segue não é ativada pelo gatilho de etapa
       for(let i = targets.length - 1; i >= 0; i--){
         const t = targets[i];
-        if (t.channel === "instagram" && await igSeguidoPeloFabricio(supabase, t.conv?.contact?.username)) targets.splice(i, 1);
+        if (t.channel === "instagram" && await igSeguidoPeloFabricio(supabase, t.conv?.contact?.username, t.conv?.instance_id)) targets.splice(i, 1);
       }
       let greeted = 0;
       for (const t of targets){
@@ -2790,7 +2794,7 @@ Deno.serve(async (req)=>{
               if (ph.includes("@") || ph.includes("-") || ph.replace(/\D/g, "").length > 15) continue;
             }
             // Instagram: quem o Fabrício segue não recebe follow-up do agente
-            if (isBIG && await igSeguidoPeloFabricio(supabase, cv.contact?.username)) continue;
+            if (isBIG && await igSeguidoPeloFabricio(supabase, cv.contact?.username, cv.instance_id)) continue;
             // agente desligado nesta conversa?
             const { data: ov } = await supabase.from("crm_ai_agent_conversation_overrides").select("enabled, reply_mode, agent_id, locked").eq("conversation_id", cv.id).eq("channel", b.channel).maybeSingle();
             if (ov && ov.enabled === false) continue;
@@ -3007,7 +3011,7 @@ Deno.serve(async (req)=>{
       ok: true,
       skip: "conversa sem instância"
     });
-    if (isIG && await igSeguidoPeloFabricio(supabase, conv.contact?.username)) {
+    if (isIG && await igSeguidoPeloFabricio(supabase, conv.contact?.username, conv.instance_id)) {
       // Exceção (21/10/2026, Raio-X R$ 5 dos stories): quem o Fabrício segue e responde
       // exatamente a palavra de um agente de campanha ("eu quero") pediu o link de propósito.
       // Só essa mensagem passa; o resto da conversa com conhecidos continua sem IA.
