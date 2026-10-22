@@ -312,8 +312,8 @@ var PERFIL = [
   {v:"Nenhum desses",                         s:"nenhum"}
 ];
 var FAT = [
-  {v:"Até R$ 20 mil por mês",          s:"ate20k"},
-  {v:"R$ 20 mil a R$ 50 mil",          s:"20a50k"},
+  {v:"Até R$ 30 mil por mês",          s:"ate30k"},
+  {v:"R$ 30 mil a R$ 50 mil",          s:"30a50k"},
   {v:"R$ 50 mil a R$ 100 mil",         s:"50a100k"},
   {v:"R$ 100 mil a R$ 300 mil",        s:"100a300k"},
   {v:"Acima de R$ 300 mil por mês",    s:"300k+"}
@@ -595,7 +595,7 @@ $("outroGo").addEventListener("click", function(){
 buildOpts($("optFat"), FAT, function(it){
   A.fat = it;
   err(7,"");
-  if(it.s === "ate20k"){
+  if(it.s === "ate30k"){
     // Segundo corte. Como o perfil não disparou nada, quem para aqui sai
     // sem CRM e sem um único evento pro pixel.
     show(12);
@@ -682,7 +682,7 @@ function proporcao(){
   var f = A.fat ? A.fat.s : null, g = A.gestao ? A.gestao.s : null;
   if((f === "100a300k" || f === "300k+") && (g === "eu" || g === "nada"))
     return " Uma operação do seu tamanho com a rede social na mão do dono, ou parada, é a distância mais cara entre o que a empresa é e o que ela parece ser.";
-  if((f === "ate20k") && g === "tem")
+  if((f === "ate30k") && g === "tem")
     return " No seu momento, o que decide não é volume de post: é o conteúdo puxar conversa suficiente pra pagar a própria gestão.";
   return "";
 }
