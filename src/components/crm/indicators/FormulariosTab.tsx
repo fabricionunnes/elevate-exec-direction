@@ -8,9 +8,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { MultiSearchableSelect } from "@/components/ui/multi-searchable-select";
-import { Loader2, RefreshCw, AlertTriangle, ExternalLink, MessageCircle, Check } from "lucide-react";
+import { Loader2, RefreshCw, AlertTriangle, ExternalLink, MessageCircle, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 type Totais = {
@@ -123,6 +124,11 @@ export function FormulariosTab() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [filtroSit, setFiltroSit] = useState("todas");
+  // Visitas recentes: filtro por formulário (todos marcados; dá pra desmarcar todos e ir marcando
+  // um a um) e 10 por página (Fabrício, 21/10/2026)
+  const [formsLista, setFormsLista] = useState<string[]>(FORMS.map((f) => f.value));
+  const [pagina, setPagina] = useState(1);
+  const POR_PAGINA = 10;
 
   const carregar = async () => {
     if (!forms.length) { setPorForm([]); setCarregando(false); return; }
@@ -146,10 +152,12 @@ export function FormulariosTab() {
     return ps[0] ? { form, ...ps[0] } : null;
   }).filter(Boolean) as (Pergunta & { form: string })[], [porForm]);
 
-  const recentes = (soma?.recentes || []).filter((s) =>
+  const recentes = (soma?.recentes || []).filter((s) => formsLista.includes(s.form)).filter((s) =>
     filtroSit === "todas" ? true
       : filtroSit === "recuperaveis" ? (s.situacao === "abandonou" && !!s.contato_whatsapp)
       : s.situacao === filtroSit);
+  const totalPaginas = Math.max(1, Math.ceil(recentes.length / POR_PAGINA));
+  const paginaAtual = Math.min(pagina, totalPaginas);
   const pendentes = (soma?.recentes || []).filter((s) => s.situacao === "abandonou" && s.contato_whatsapp && !s.recuperacao_em);
 
   const textoRecuperacao = (s: Sessao) => {
@@ -399,11 +407,38 @@ export function FormulariosTab() {
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-semibold">Visitas recentes</h3>
                 <div className="w-56">
-                  <SearchableSelect value={filtroSit} onValueChange={setFiltroSit}
+                  <SearchableSelect value={filtroSit} onValueChange={(v) => { setFiltroSit(v); setPagina(1); }}
                     options={[{ value: "todas", label: "Todas as situações" }, { value: "recuperaveis", label: "Recuperáveis (abandonou com WhatsApp)" }, ...Object.entries(SITUACAO).map(([v, s]) => ({ value: v, label: s.label }))]}
                     placeholder="Situação" />
                 </div>
               </div>
+              {forms.length > 1 && (
+                <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border bg-muted/30 px-3 py-2">
+                  <span className="text-xs text-muted-foreground">Formulários:</span>
+                  {FORMS.filter((f) => forms.includes(f.value)).map((f) => (
+                    <label key={f.value} className="flex cursor-pointer items-center gap-1.5 text-sm">
+                      <Checkbox
+                        checked={formsLista.includes(f.value)}
+                        onCheckedChange={(v) => {
+                          setFormsLista((prev) => (v ? [...new Set([...prev, f.value])] : prev.filter((x) => x !== f.value)));
+                          setPagina(1);
+                        }}
+                      />
+                      {f.label}
+                    </label>
+                  ))}
+                  <Button
+                    variant="ghost" size="sm" className="ml-auto h-7 text-xs"
+                    onClick={() => {
+                      const todos = forms.every((f) => formsLista.includes(f));
+                      setFormsLista(todos ? [] : FORMS.map((f) => f.value));
+                      setPagina(1);
+                    }}
+                  >
+                    {forms.every((f) => formsLista.includes(f)) ? "Desmarcar todos" : "Marcar todos"}
+                  </Button>
+                </div>
+              )}
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b text-left text-xs text-muted-foreground">
@@ -411,7 +446,7 @@ export function FormulariosTab() {
                     <th className="px-2">Respostas</th><th className="px-2">Origem</th><th className="pl-2">Aparelho</th>
                   </tr></thead>
                   <tbody>
-                    {recentes.map((s) => {
+                    {recentes.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA).map((s) => {
                       const sit = SITUACAO[s.situacao] || { label: s.situacao, cls: "" };
                       return (
                         <tr key={s.id} className="border-b align-top last:border-0">
@@ -446,10 +481,22 @@ export function FormulariosTab() {
                         </tr>
                       );
                     })}
-                    {!recentes.length && <tr><td colSpan={7} className="py-4 text-center text-muted-foreground">Nenhuma visita nesse filtro.</td></tr>}
+                    {!recentes.length && <tr><td colSpan={7} className="py-4 text-center text-muted-foreground">{formsLista.some((f) => forms.includes(f)) ? "Nenhuma visita nesse filtro." : "Marque ao menos um formulário."}</td></tr>}
                   </tbody>
                 </table>
               </div>
+              {recentes.length > POR_PAGINA && (
+                <div className="mt-3 flex items-center justify-end gap-2 text-xs text-muted-foreground">
+                  <span>{(paginaAtual - 1) * POR_PAGINA + 1}–{Math.min(paginaAtual * POR_PAGINA, recentes.length)} de {recentes.length}</span>
+                  <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={paginaAtual <= 1} onClick={() => setPagina(paginaAtual - 1)} title="Página anterior">
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="tabular-nums">Página {paginaAtual} de {totalPaginas}</span>
+                  <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={paginaAtual >= totalPaginas} onClick={() => setPagina(paginaAtual + 1)} title="Próxima página">
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
               <p className="mt-2 text-[11px] text-muted-foreground">
                 Abandonou = parou há mais de 30 minutos sem enviar. Nome e WhatsApp só ficam guardados de quem passou da pergunta do WhatsApp; e-mail nunca.
               </p>
