@@ -60,6 +60,7 @@
   .btn-sm{padding:10px 20px;font-size:13px}
 
   section{position:relative}
+  #formTop{scroll-margin-top:100px}
   .sec{padding:clamp(96px,12vw,168px) 0}
   .hair{border-top:1px solid var(--line)}
 
@@ -70,7 +71,9 @@
   /* ── HEADER ── */
   .hdr{position:fixed;inset:0 0 auto 0;z-index:60;transition:background .4s var(--ease),border-color .4s;border-bottom:1px solid transparent}
   .hdr .wrap{height:84px;display:flex;align-items:center;justify-content:space-between}
-  .hdr img{width:96px}
+  .logo-chip{display:inline-flex;align-items:center;justify-content:center;background:#F5F5F0;border-radius:10px;padding:7px 12px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .logo-chip img{display:block;height:auto}
+  .hdr .logo-chip img{width:72px}
   .hdr nav{display:flex;align-items:center;gap:30px;font-size:13px;color:var(--g1)}
   .hdr nav a.lk{transition:color .2s}
   .hdr nav a.lk:hover{color:var(--txt)}
@@ -97,7 +100,8 @@
   .host img{width:46px;height:46px;border-radius:50%;object-fit:cover;object-position:50% 20%}
   .host span{display:block;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--g2)}
   .host b{display:block;font-weight:500;font-size:14px;color:var(--txt);margin-top:2px}
-  .host .lg{width:58px;height:auto;border-radius:0;margin-left:6px;padding-left:14px;border-left:1px solid var(--line2);box-sizing:content-box}
+  .host .logo-chip{margin-left:6px;padding:5px 9px;border-radius:999px;box-shadow:none}
+  .host .logo-chip img{width:52px;height:auto;border-radius:0}
   .hero-loc{position:absolute;left:0;right:0;bottom:34px;text-align:center;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--g2)}
 
   /* ── NÚMEROS ── */
@@ -203,16 +207,6 @@
   .fit .yes li svg{color:var(--gold)}
   .fit .no li svg{color:var(--g3)}
 
-  /* ── INVESTIMENTO ── */
-  .inv{max-width:760px;margin:0 auto;text-align:center;padding:clamp(40px,6vw,72px) clamp(24px,5vw,64px);border:1px solid rgba(201,169,110,.55);border-radius:8px;background:radial-gradient(100% 80% at 50% 0%,rgba(201,169,110,.08),transparent 70%)}
-  .inv .tag{display:inline-block;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);border:1px solid rgba(201,169,110,.4);border-radius:999px;padding:7px 14px}
-  .inv h2{font-size:clamp(40px,5vw,64px)}
-  .inv .val{font-family:var(--serif);font-style:italic;font-weight:300;font-size:clamp(28px,3vw,40px);color:var(--gold-hi);margin-top:14px}
-  .inv ul{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:12px 28px;text-align:left;margin:38px auto 0;max-width:560px}
-  .inv li{display:flex;gap:10px;font-size:14.5px;color:var(--g1);font-weight:300}
-  .inv li svg{width:15px;height:15px;color:var(--gold);flex:0 0 auto;margin-top:4px}
-  .inv .btn{margin-top:40px}
-  .inv .fine{font-size:13.5px;color:var(--g2);margin-top:22px;font-weight:300}
 
   /* ── FAQ ── */
   .faq{max-width:860px;margin:0 auto;border-top:1px solid var(--line)}
@@ -235,7 +229,8 @@
 
   footer{border-top:1px solid var(--line);padding:56px 0 48px;font-size:13px;color:var(--g2)}
   footer .wrap{display:grid;grid-template-columns:1fr auto;gap:28px;align-items:end}
-  footer img{width:96px;margin-bottom:18px}
+  footer .logo-chip{margin-bottom:20px}
+  footer .logo-chip img{width:80px}
   footer .links{display:flex;flex-wrap:wrap;gap:12px 26px}
   footer .links a:hover{color:var(--txt)}
   footer .legal{grid-column:1/-1;padding-top:26px;border-top:1px solid var(--line);font-size:12px;color:var(--g3);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
@@ -245,16 +240,21 @@
   .wa:hover{border-color:var(--gold);transform:translateY(-2px)}
   .wa svg{width:22px;height:22px}
 
-  /* ── MODAL DE APLICAÇÃO ── */
-  .modal{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;visibility:hidden;opacity:0;transition:opacity .4s var(--ease),visibility .4s}
-  .modal.open{visibility:visible;opacity:1}
-  .modal .scrim{position:absolute;inset:0;background:rgba(5,5,5,.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-  .is-safari .modal .scrim{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(5,5,5,.92)}
-  .panel{position:relative;width:100%;max-width:580px;max-height:calc(100svh - 40px);overflow:auto;background:var(--bg1);border:1px solid var(--line2);border-radius:10px;padding:clamp(26px,4vw,44px);transform:translateY(16px) scale(.985);transition:transform .5s var(--ease)}
-  .modal.open .panel{transform:none}
-  .x{position:absolute;right:16px;top:16px;width:36px;height:36px;border-radius:50%;border:1px solid var(--line2);background:transparent;color:var(--txt);cursor:pointer;display:flex;align-items:center;justify-content:center}
-  .x:hover{border-color:var(--g2)}
-  .prog{display:flex;align-items:center;gap:14px;margin-bottom:30px;padding-right:44px}
+  /* ── APLICAÇÃO (card no estilo UNV Social / UNV Finance) ── */
+  .apply-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:clamp(40px,6vw,96px);align-items:start}
+  .apply-info{position:sticky;top:120px}
+  .apply-list{list-style:none;display:grid;gap:12px;margin-top:30px}
+  .apply-list li{display:flex;gap:12px;font-size:15px;color:var(--g1);font-weight:300}
+  .apply-list svg{width:16px;height:16px;color:var(--gold);flex:0 0 auto;margin-top:4px}
+  .apply-host{display:flex;align-items:center;gap:14px;margin-top:36px;padding-top:28px;border-top:1px solid var(--line)}
+  .apply-host img{width:56px;height:56px;border-radius:50%;object-fit:cover;object-position:50% 20%;filter:grayscale(1)}
+  .apply-host b{display:block;font-weight:500;font-size:15px}
+  .apply-host span{display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--g2);margin-top:3px}
+  .formcard{position:relative;overflow:hidden;border-radius:20px;padding:clamp(24px,3.4vw,44px);background:linear-gradient(165deg,rgba(245,245,240,.065),rgba(245,245,240,.015));border:1px solid var(--line);box-shadow:0 40px 90px -40px rgba(0,0,0,.95)}
+  .formcard::before{content:"";position:absolute;inset:0;border-radius:20px;padding:1px;background:linear-gradient(140deg,rgba(201,169,110,.7),transparent 40%,transparent 64%,rgba(245,245,240,.18));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+  .formcard::after{content:"";position:absolute;right:-120px;top:-120px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(201,169,110,.16),transparent 70%);pointer-events:none}
+  .formcard > *{position:relative;z-index:1}
+  .prog{display:flex;align-items:center;gap:14px;margin-bottom:30px}
   .prog .bar{flex:1;height:2px;background:var(--line2);border-radius:2px;overflow:hidden}
   .prog .bar i{display:block;height:100%;width:33.33%;background:var(--gold);transition:width .6s var(--ease)}
   .prog span{font-size:12px;color:var(--g2);font-variant-numeric:tabular-nums;letter-spacing:.08em}
@@ -266,10 +266,10 @@
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
   .f{margin-bottom:18px}
   .f > label,.f > .q{display:block;font-size:12.5px;color:var(--g1);margin-bottom:8px;font-weight:500}
-  .f input[type=text],.f input[type=email],.f input[type=tel],.f select{width:100%;background:var(--bg);border:1px solid var(--line2);border-radius:6px;color:var(--txt);font-size:16px;font-family:var(--sans);padding:13px 14px;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;appearance:none}
+  .f input[type=text],.f input[type=email],.f input[type=tel],.f select{width:100%;background:rgba(245,245,240,.045);border:1px solid var(--line2);border-radius:11px;color:var(--txt);font-size:16px;font-family:var(--sans);padding:13px 14px;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;appearance:none}
   .f select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%23C9A96E' stroke-width='1.5'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:38px}
   .f select option{background:#111110}
-  .f input:focus,.f select:focus{border-color:rgba(201,169,110,.7);box-shadow:0 0 0 3px rgba(201,169,110,.12)}
+  .f input:focus,.f select:focus{border-color:rgba(201,169,110,.75);background:rgba(201,169,110,.06);box-shadow:0 0 0 3px rgba(201,169,110,.14)}
   .f input::placeholder{color:var(--g3)}
   .chips{display:flex;flex-wrap:wrap;gap:8px}
   .chip{position:relative}
@@ -286,6 +286,7 @@
   .back{background:none;border:none;color:var(--g2);font-size:14px;cursor:pointer;padding:10px 0}
   .back:hover{color:var(--txt)}
   .done{text-align:center;padding:24px 0 8px}
+  .done .btn{margin-top:24px}
   .done .ic{width:64px;height:64px;border-radius:50%;border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;margin:0 auto 26px;color:var(--gold)}
   .done h3{font-size:34px}
   .done p{font-size:15.5px;color:var(--g1);font-weight:300;line-height:1.7;margin-top:14px}
@@ -301,10 +302,13 @@
     .pcard{min-height:380px}
     .inc{grid-template-columns:repeat(2,1fr)}
     .co{grid-template-columns:1fr}
+    .apply-grid{grid-template-columns:1fr}
+    .apply-info{position:static}
   }
   @media (max-width:640px){
     .hdr .wrap{height:68px}
-    .hdr img{width:74px}
+    .hdr .logo-chip{padding:5px 9px}
+    .hdr .logo-chip img{width:58px}
     #hero .wrap{padding-top:112px;padding-bottom:96px}
     .count{gap:12px;padding:12px 18px}
     .count .lbl{display:none}
@@ -323,7 +327,6 @@
     .day .inner{grid-column:1}
     .tl-note{padding-left:34px}
     .inc .c{padding:26px 18px}
-    .inv ul{grid-template-columns:1fr}
     .co .m{grid-template-columns:84px 1fr;gap:16px;padding:18px}
     .co img{width:84px;height:105px}
     .row2{grid-template-columns:1fr}
@@ -337,7 +340,7 @@
 <!-- ══ HEADER ══ -->
 <header class="hdr" id="hdr">
   <div class="wrap">
-    <a href="#hero" aria-label="Início"><img src="./logo-unv-holdings-branca.webp" width="96" height="73" alt="UNV Holdings" /></a>
+    <a href="#hero" aria-label="Início" class="logo-chip"><img src="./logo-unv-holdings.webp" width="578" height="440" alt="UNV Holdings" /></a>
     <nav>
       <a class="lk" href="#imersao">A imersão</a>
       <a class="lk" href="#roteiro">Roteiro</a>
@@ -356,7 +359,7 @@
     <p class="eyebrow rv">Imersão executiva <b>·</b> 20 a 27 de março de 2027 <b>·</b> Vagas limitadas</p>
     <h1 class="rv d1">O futuro dos negócios está sendo construído no Vale do Silício. <em>Você vai ver de dentro.</em></h1>
     <p class="hero-sub rv d2">8 dias com um grupo seleto de empresários brasileiros, visitando as empresas e as pessoas que estão redefinindo vendas, gestão e inteligência artificial.</p>
-    <div class="host rv d2"><img src="./fabricio.webp" width="46" height="46" alt="Fabrício Nunes" /><div><span>Conduzida por</span><b>Fabrício Nunes</b></div><img class="lg" src="./logo-unv-holdings-branca.webp" width="58" height="44" alt="UNV Holdings" /></div>
+    <div class="host rv d2"><img src="./fabricio.webp" width="46" height="46" alt="Fabrício Nunes" /><div><span>Conduzida por</span><b>Fabrício Nunes</b></div><span class="logo-chip"><img src="./logo-unv-holdings.webp" width="578" height="440" alt="UNV Holdings" /></span></div>
     <div class="hero-cta rv d3">
       <button class="btn" data-apply>Quero aplicar <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
       <a class="btn btn-ghost" href="#roteiro">Ver o roteiro</a>
@@ -598,101 +601,43 @@
   </div>
 </section>
 
-<!-- ══ INVESTIMENTO ══ -->
-<section class="sec hair" id="investimento">
+<!-- ══ APLICAÇÃO ══ -->
+<section class="sec hair" id="aplicar">
   <div class="wrap">
-    <div class="inv rv">
-      <img src="./logo-unv-holdings-branca.webp" width="96" height="73" alt="UNV Holdings" style="width:96px;margin:0 auto 26px" loading="lazy" />
-      <span class="tag">Vagas limitadas · grupo fechado</span>
-      <h2>Investimento</h2>
-      <p class="val">Sob aplicação</p>
-      <ul>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>8 dias de programação completa</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Hospedagem em quarto duplo</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Visitas técnicas e estudos de caso</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Transporte interno e tradução</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Mentorias e HotSeat</li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Parcelamento no cartão ou boleto</li>
-      </ul>
-      <button class="btn" data-apply>Aplicar para uma vaga <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-      <p class="fine">A seleção é feita por entrevista para garantir a qualidade do grupo.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ══ FAQ ══ -->
-<section class="sec hair" id="faq">
-  <div class="wrap">
-    <div class="sec-head center">
-      <p class="eyebrow rv">Dúvidas frequentes</p>
-      <h2 class="rv d1">Antes de <em>aplicar.</em></h2>
-    </div>
-    <div class="faq">
-      <details class="rv"><summary>Preciso de visto?<i></i></summary><p>Sim. Pra entrar nos Estados Unidos você precisa de passaporte válido e visto americano. Se ainda não tem, é importante ter disponibilidade pra tirar o visto nos próximos 30 dias. O visto não está incluso no investimento.</p></details>
-      <details class="rv"><summary>Qual o idioma? Preciso falar inglês?<i></i></summary><p>A imersão é conduzida em português. Nas visitas técnicas há tradução simultânea, então não é preciso falar inglês.</p></details>
-      <details class="rv"><summary>Como funcionam pagamento e parcelamento?<i></i></summary><p>O investimento pode ser parcelado no cartão de crédito ou no boleto. Os valores e as condições são apresentados pelo nosso time na entrevista, depois da aplicação.</p></details>
-      <details class="rv"><summary>A passagem aérea está inclusa?<i></i></summary><p>Não. A passagem aérea é de responsabilidade de cada participante. Os voos são alinhados com o grupo depois da confirmação da vaga.</p></details>
-      <details class="rv"><summary>Como funciona a hospedagem?<i></i></summary><p>O investimento inclui quarto duplo. Mulheres dividem o quarto com outra participante ou ficam em quarto single, que tem um valor adicional.</p></details>
-      <details class="rv"><summary>Posso levar acompanhante?<i></i></summary><p>Fale sobre isso com o nosso time na entrevista. Cada caso é avaliado conforme a composição do grupo.</p></details>
-      <details class="rv"><summary>E se eu precisar cancelar?<i></i></summary><p>A política de cancelamento é apresentada antes da reserva e consta no contrato. Tire todas as dúvidas na entrevista com o nosso time.</p></details>
-      <details class="rv"><summary>O que acontece depois que eu aplicar?<i></i></summary><p>Nosso time analisa sua aplicação e entra em contato em até 24h pelo WhatsApp pra uma entrevista. Se houver encaixe, você recebe as condições e reserva sua vaga.</p></details>
-    </div>
-  </div>
-</section>
-
-<!-- ══ CTA FINAL ══ -->
-<section id="final">
-  <img class="bgimg photo-treat" src="https://images.unsplash.com/photo-1422464804701-7d8356b3a42f?w=1920&q=78&auto=format&fit=crop" alt="Golden Gate ao entardecer" loading="lazy" />
-  <div class="shade"></div>
-  <div class="wrap">
-    <img class="rv" src="./logo-unv-holdings-branca.webp" width="110" height="84" alt="UNV Holdings" style="width:110px;margin:0 auto 40px" loading="lazy" />
-    <h2 class="rv">Poucos vão.<br><em>Os que vão voltam diferentes.</em></h2>
-    <button class="btn rv d1" data-apply>Quero aplicar <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-  </div>
-</section>
-
-<!-- ══ FOOTER ══ -->
-<footer>
-  <div class="wrap">
-    <div>
-      <img src="./logo-unv-holdings-branca.webp" width="76" height="58" alt="UNV Holdings" loading="lazy" />
-      <div class="links">
-        <a id="ftWa" href="#" target="_blank" rel="noopener">WhatsApp</a>
-        <a href="https://instagram.com/unvholdings" target="_blank" rel="noopener">Instagram</a>
-        <a href="https://unvholdings.com.br/#/privacidade">Política de privacidade</a>
+    <div class="apply-grid">
+      <div class="apply-info">
+        <div class="rv"><span class="logo-chip"><img src="./logo-unv-holdings.webp" width="578" height="440" alt="UNV Holdings" style="width:92px" loading="lazy" /></span></div>
+        <p class="eyebrow rv d1" style="margin-top:34px">Investimento · <b>vagas limitadas</b></p>
+        <h2 class="rv d1">Aplique para <em>uma vaga.</em></h2>
+        <p class="lead rv d2">Investimento sob aplicação. A seleção é feita por entrevista para garantir a qualidade do grupo. Depois da aplicação, nosso time te chama no WhatsApp em até 24h.</p>
+        <ul class="apply-list rv d2">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>8 dias de programação completa</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Hospedagem em quarto duplo</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Visitas técnicas e estudos de caso</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Transporte interno e tradução</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Mentorias e HotSeat</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Parcelamento no cartão ou boleto</li>
+        </ul>
+        <div class="apply-host rv d3"><img src="./fabricio.webp" width="56" height="56" alt="Fabrício Nunes" loading="lazy" /><div><b>Fabrício Nunes</b><span>CEO · UNV Holdings</span></div></div>
       </div>
-    </div>
-    <button class="btn btn-ghost btn-sm" data-apply>Aplicar</button>
-    <div class="legal"><span>© 2026 Universidade Nacional de Vendas Ltda · CNPJ 51.356.237/0001-40</span><span>Nova Lima, MG</span></div>
-  </div>
-</footer>
-
-<a class="wa" id="waFloat" href="#" target="_blank" rel="noopener" aria-label="Falar no WhatsApp">
-  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.1-.2.3-.8.9-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3 2.4 1 2.9.8 3.4.7.5-.1 1.7-.7 2-1.4.2-.7.2-1.3.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 00-8.6 15.1L2 22l5-1.3A10 10 0 1012 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1112 20.2z"/></svg>
-</a>
-
-<!-- ══ FORMULÁRIO DE APLICAÇÃO ══ -->
-<div class="modal" id="apply" role="dialog" aria-modal="true" aria-labelledby="applyTitle" aria-hidden="true">
-  <div class="scrim" data-close></div>
-  <div class="panel">
-    <button class="x" data-close aria-label="Fechar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      <div class="formcard rv d1" id="formTop">
     <div id="formArea">
       <div class="prog"><div class="bar"><i id="progBar"></i></div><span id="progTxt">1 de 3</span></div>
       <form id="appForm" novalidate>
         <div class="step on" data-step="1">
-          <h3 id="applyTitle">Aplicação</h3>
+          <h3>Aplicação</h3>
           <p class="sub">Leva 2 minutos. Nosso time analisa e retorna em até 24h.</p>
-          <div class="f"><label for="a-nome">Nome completo</label><input id="a-nome" name="nome" type="text" autocomplete="name" maxlength="120" /></div>
-          <div class="f"><label for="a-email">E-mail</label><input id="a-email" name="email" type="email" autocomplete="email" inputmode="email" maxlength="150" /></div>
+          <div class="f"><label for="a-nome">Nome completo</label><input id="a-nome" name="nome" type="text" autocomplete="name" placeholder="Como podemos te chamar?" maxlength="120" /></div>
+          <div class="f"><label for="a-email">E-mail</label><input id="a-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="seu@email.com" maxlength="150" /></div>
           <div class="row2">
             <div class="f"><label for="a-tel">WhatsApp</label><input id="a-tel" name="telefone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="(31) 99999-9999" maxlength="24" /></div>
-            <div class="f"><label for="a-cidade">Cidade</label><input id="a-cidade" name="cidade" type="text" autocomplete="address-level2" maxlength="80" /></div>
+            <div class="f"><label for="a-cidade">Cidade</label><input id="a-cidade" name="cidade" type="text" autocomplete="address-level2" placeholder="Sua cidade" maxlength="80" /></div>
           </div>
         </div>
         <div class="step" data-step="2">
           <h3>Sua empresa</h3>
           <p class="sub">Pra montarmos um grupo equilibrado.</p>
-          <div class="f"><label for="a-empresa">Empresa</label><input id="a-empresa" name="empresa" type="text" autocomplete="organization" maxlength="120" /></div>
+          <div class="f"><label for="a-empresa">Empresa</label><input id="a-empresa" name="empresa" type="text" autocomplete="organization" placeholder="Nome da empresa" maxlength="120" /></div>
           <div class="row2">
             <div class="f"><label for="a-seg">Segmento</label><select id="a-seg" name="segmento"><option value="">Selecione</option><option>Serviços</option><option>Varejo</option><option>Indústria</option><option>Saúde</option><option>Educação</option><option>Tecnologia</option><option>Imobiliário</option><option>Alimentação</option><option>Agronegócio</option><option>Outro</option></select></div>
             <div class="f"><label for="a-cargo">Cargo</label><select id="a-cargo" name="cargo"><option value="">Selecione</option><option>Dono ou sócio</option><option>CEO ou diretor</option><option>Gestor</option><option>Outro</option></select></div>
@@ -740,8 +685,61 @@
         </div>
       </form>
     </div>
+      </div>
+    </div>
   </div>
-</div>
+</section>
+
+<!-- ══ FAQ ══ -->
+<section class="sec hair" id="faq">
+  <div class="wrap">
+    <div class="sec-head center">
+      <p class="eyebrow rv">Dúvidas frequentes</p>
+      <h2 class="rv d1">Antes de <em>aplicar.</em></h2>
+    </div>
+    <div class="faq">
+      <details class="rv"><summary>Preciso de visto?<i></i></summary><p>Sim. Pra entrar nos Estados Unidos você precisa de passaporte válido e visto americano. Se ainda não tem, é importante ter disponibilidade pra tirar o visto nos próximos 30 dias. O visto não está incluso no investimento.</p></details>
+      <details class="rv"><summary>Qual o idioma? Preciso falar inglês?<i></i></summary><p>A imersão é conduzida em português. Nas visitas técnicas há tradução simultânea, então não é preciso falar inglês.</p></details>
+      <details class="rv"><summary>Como funcionam pagamento e parcelamento?<i></i></summary><p>O investimento pode ser parcelado no cartão de crédito ou no boleto. Os valores e as condições são apresentados pelo nosso time na entrevista, depois da aplicação.</p></details>
+      <details class="rv"><summary>A passagem aérea está inclusa?<i></i></summary><p>Não. A passagem aérea é de responsabilidade de cada participante. Os voos são alinhados com o grupo depois da confirmação da vaga.</p></details>
+      <details class="rv"><summary>Como funciona a hospedagem?<i></i></summary><p>O investimento inclui quarto duplo. Mulheres dividem o quarto com outra participante ou ficam em quarto single, que tem um valor adicional.</p></details>
+      <details class="rv"><summary>Posso levar acompanhante?<i></i></summary><p>Fale sobre isso com o nosso time na entrevista. Cada caso é avaliado conforme a composição do grupo.</p></details>
+      <details class="rv"><summary>E se eu precisar cancelar?<i></i></summary><p>A política de cancelamento é apresentada antes da reserva e consta no contrato. Tire todas as dúvidas na entrevista com o nosso time.</p></details>
+      <details class="rv"><summary>O que acontece depois que eu aplicar?<i></i></summary><p>Nosso time analisa sua aplicação e entra em contato em até 24h pelo WhatsApp pra uma entrevista. Se houver encaixe, você recebe as condições e reserva sua vaga.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ══ CTA FINAL ══ -->
+<section id="final">
+  <img class="bgimg photo-treat" src="https://images.unsplash.com/photo-1422464804701-7d8356b3a42f?w=1920&q=78&auto=format&fit=crop" alt="Golden Gate ao entardecer" loading="lazy" />
+  <div class="shade"></div>
+  <div class="wrap">
+    <div class="rv" style="margin:0 auto 40px"><span class="logo-chip" style="padding:10px 16px"><img src="./logo-unv-holdings.webp" width="578" height="440" alt="UNV Holdings" style="width:112px" loading="lazy" /></span></div>
+    <h2 class="rv">Poucos vão.<br><em>Os que vão voltam diferentes.</em></h2>
+    <button class="btn rv d1" data-apply>Quero aplicar <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+  </div>
+</section>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <div class="wrap">
+    <div>
+      <span class="logo-chip"><img src="./logo-unv-holdings.webp" width="578" height="440" alt="UNV Holdings" loading="lazy" /></span><br>
+      <div class="links">
+        <a id="ftWa" href="#" target="_blank" rel="noopener">WhatsApp</a>
+        <a href="https://instagram.com/unvholdings" target="_blank" rel="noopener">Instagram</a>
+        <a href="https://unvholdings.com.br/#/privacidade">Política de privacidade</a>
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-sm" data-apply>Aplicar</button>
+    <div class="legal"><span>© 2026 Universidade Nacional de Vendas Ltda · CNPJ 51.356.237/0001-40</span><span>Nova Lima, MG</span></div>
+  </div>
+</footer>
+
+<a class="wa" id="waFloat" href="#" target="_blank" rel="noopener" aria-label="Falar no WhatsApp">
+  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.1-.7.1-.2.3-.8.9-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3 2.4 1 2.9.8 3.4.7.5-.1 1.7-.7 2-1.4.2-.7.2-1.3.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 00-8.6 15.1L2 22l5-1.3A10 10 0 1012 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1112 20.2z"/></svg>
+</a>
 
 <script>
 (function(){
@@ -832,21 +830,15 @@
   }
   var days = document.querySelectorAll(".tl details"); if (days[2]) days[2].open = true;
 
-  // ── Modal ──
-  var modal = document.getElementById("apply"), lastFocus = null;
-  function openModal(){
-    lastFocus = document.activeElement;
-    modal.classList.add("open"); modal.setAttribute("aria-hidden", "false"); document.body.classList.add("lock");
-    setTimeout(function(){ var f = modal.querySelector(".step.on input, .step.on select"); if (f) try { f.focus(); } catch(e){} }, 350);
+  // ── Botões "Aplicar": rolam até o card do formulário ──
+  function goToForm(ev){
+    if (ev) ev.preventDefault();
+    var card = document.getElementById("formTop");
+    card.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    setTimeout(function(){ var f = card.querySelector(".step.on input, .step.on select"); if (f) try { f.focus({ preventScroll: true }); } catch(e){} }, 700);
   }
-  function closeModal(){
-    modal.classList.remove("open"); modal.setAttribute("aria-hidden", "true"); document.body.classList.remove("lock");
-    if (lastFocus) try { lastFocus.focus(); } catch(e){}
-  }
-  Array.prototype.forEach.call(document.querySelectorAll("[data-apply]"), function(b){ b.addEventListener("click", openModal); });
-  Array.prototype.forEach.call(modal.querySelectorAll("[data-close]"), function(b){ b.addEventListener("click", closeModal); });
-  document.addEventListener("keydown", function(e){ if (e.key === "Escape" && modal.classList.contains("open")) closeModal(); });
-  if (location.hash === "#aplicar") openModal();
+  Array.prototype.forEach.call(document.querySelectorAll("[data-apply]"), function(b){ b.addEventListener("click", goToForm); });
+  if (location.hash === "#aplicar") setTimeout(goToForm, 300);
 
   // ── Formulário em etapas ──
   var form = document.getElementById("appForm"), step = 1, TOTAL = 3;
@@ -1000,7 +992,7 @@
       try { fbq("track", "Lead", { value: sc, content_name: "Imersão Vale do Silício" }); } catch(e){}
       try { oaiq("measure", "lead_created", { type: "customer_action" }); } catch(e){}
       try { if (window.gtag) gtag("event", "generate_lead", { event_category: "imersaoeua", value: sc }); } catch(e){}
-      area.innerHTML = '<div class="done"><div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg></div><h3>Aplicação recebida.</h3><p>Nosso time vai entrar em contato em até 24h pelo WhatsApp.</p></div>';
+      area.innerHTML = '<div class="done"><div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg></div><h3>Aplicação recebida.</h3><p>Nosso time vai entrar em contato em até 24h pelo WhatsApp.</p><a class="btn" target="_blank" rel="noopener" href="' + WA_URL + '">Falar no WhatsApp agora</a></div>';
     }).catch(function(err){
       btnNext.disabled = false; btnNext.textContent = "Enviar aplicação";
       showErr((err && err.message) || "Algo deu errado. Tente de novo ou fale com a gente pelo WhatsApp.");
