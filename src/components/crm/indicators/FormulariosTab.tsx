@@ -152,14 +152,34 @@ export function FormulariosTab() {
       : s.situacao === filtroSit);
   const pendentes = (soma?.recentes || []).filter((s) => s.situacao === "abandonou" && s.contato_whatsapp && !s.recuperacao_em);
 
+  const textoRecuperacao = (s: Sessao) => {
+    const primeiro = (s.contato_nome || "").trim().split(/\s+/)[0] || "";
+    return s.form === "mansao"
+      ? `Oi${primeiro ? ` ${primeiro}` : ""}, tudo bem? Aqui é da Mansão Empreendedora. Vi que você começou a inscrição pro GP de Outubro e parou no meio. Quer que eu te passe o investimento e confirme sua vaga?`
+      : `Oi${primeiro ? ` ${primeiro}` : ""}, tudo bem? Aqui é da ${cfgDe(s.form).label}. Vi que você começou o diagnóstico e parou no meio. Posso te ajudar a terminar ou tirar alguma dúvida?`;
+  };
   const linkWhats = (s: Sessao) => {
     const d = String(s.contato_whatsapp || "").replace(/\D/g, "");
     const numero = d.startsWith("55") ? d : `55${d}`;
-    const primeiro = (s.contato_nome || "").trim().split(/\s+/)[0] || "";
-    const texto = s.form === "mansao"
-      ? `Oi${primeiro ? ` ${primeiro}` : ""}, tudo bem? Aqui é da Mansão Empreendedora. Vi que você começou a inscrição pro GP de Outubro e parou no meio. Quer que eu te passe o investimento e confirme sua vaga?`
-      : `Oi${primeiro ? ` ${primeiro}` : ""}, tudo bem? Aqui é da ${cfgDe(s.form).label}. Vi que você começou o diagnóstico e parou no meio. Posso te ajudar a terminar ou tirar alguma dúvida?`;
-    return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
+    return `https://wa.me/${numero}?text=${encodeURIComponent(textoRecuperacao(s))}`;
+  };
+  // "Chamar no WhatsApp" abre o Atendimento no número do SDR (sem SDR, do closer) com a mensagem
+  // já escrita na caixa, pra enviar ou editar (Fabrício, 21/10/2026). A função crm-abrir-conversa
+  // escolhe o número, acha o telefone como o WhatsApp conhece e cria a conversa se não existir.
+  const [abrindo, setAbrindo] = useState<string | null>(null);
+  const abrirNoAtendimento = async (s: Sessao) => {
+    setAbrindo(s.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("crm-abrir-conversa", {
+        body: { phone: s.contato_whatsapp, nome: s.contato_nome, lead_id: s.lead_id },
+      });
+      const msg = (data as any)?.error || error?.message;
+      if (msg || !(data as any)?.conversation_id) { toast.error(`Não consegui abrir no Atendimento: ${msg || "sem conversa"}`); return; }
+      toast.success(`Abrindo no número ${(data as any).numero} (${(data as any).papel === "sdr" ? "SDR" : "closer"})`);
+      navigate(`/crm/inbox?conversation=${(data as any).conversation_id}&texto=${encodeURIComponent(textoRecuperacao(s))}`);
+    } finally {
+      setAbrindo(null);
+    }
   };
   const marcarChamado = async (s: Sessao) => {
     const { error } = await (supabase as any).rpc("form_session_recuperado", { p_session: s.id });
@@ -259,7 +279,7 @@ export function FormulariosTab() {
             <Card className="border-amber-500/50">
               <CardContent className="p-4">
                 <h3 className="mb-1 font-semibold">Pra recuperar agora</h3>
-                <p className="mb-3 text-xs text-muted-foreground">Abandonaram depois de deixar o WhatsApp e ninguém chamou ainda. O botão abre o WhatsApp com a mensagem pronta.</p>
+                <p className="mb-3 text-xs text-muted-foreground">Abandonaram depois de deixar o WhatsApp e ninguém chamou ainda. O botão abre a conversa no Atendimento (número do SDR; sem SDR, do closer) com a mensagem pronta pra enviar ou editar.</p>
                 <div className="space-y-2">
                   {pendentes.map((s) => (
                     <div key={s.id} className="flex flex-wrap items-center gap-2 rounded-md border p-2 text-sm">
@@ -269,8 +289,8 @@ export function FormulariosTab() {
                           Parou na pergunta {s.max_question}: {nomePergunta(s.form, s.max_question)} · {quando(s.updated_at)}{s.utm_campaign ? ` · ${s.utm_campaign}` : ""}
                         </div>
                       </div>
-                      <Button asChild size="sm" className="h-8 gap-1 bg-emerald-600 hover:bg-emerald-700">
-                        <a href={linkWhats(s)} target="_blank" rel="noreferrer"><MessageCircle className="h-3.5 w-3.5" />Chamar no WhatsApp</a>
+                      <Button size="sm" className="h-8 gap-1 bg-emerald-600 hover:bg-emerald-700" disabled={abrindo === s.id} onClick={() => abrirNoAtendimento(s)}>
+                        {abrindo === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5" />}Chamar no WhatsApp
                       </Button>
                       <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => marcarChamado(s)}><Check className="h-3.5 w-3.5" />Já chamei</Button>
                     </div>
