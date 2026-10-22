@@ -160,6 +160,13 @@ export const CRMInboxPage = () => {
   // O parâmetro da URL vale UMA vez: depois de aplicado, sai da URL. Antes ele era
   // reaplicado a cada atualização da lista e o clique em outra conversa "voltava".
   const urlConvAplicada = useRef<string | null>(null);
+  // ?texto= junto com ?conversation=: mensagem já escrita na caixa pra enviar ou editar (vem do
+  // "Chamar no WhatsApp" dos formulários abandonados, 21/10/2026). Vale uma vez, pra essa conversa.
+  const textoDaUrl = useRef<{ conv: string; texto: string } | null>(
+    searchParams.get("conversation") && searchParams.get("texto")
+      ? { conv: searchParams.get("conversation")!, texto: searchParams.get("texto")! }
+      : null
+  );
   const { staffId, staffName, isAdmin, staffRole } = useCRMContext();
   const [selectedConversation, setSelectedConversation] = useState<WhatsAppConversation | null>(null);
   // Rascunho da mensagem fica DENTRO do ComposerInput (estado local) pra cada letra
@@ -678,6 +685,7 @@ export const CRMInboxPage = () => {
     urlConvAplicada.current = conversationIdFromUrl;
     const next = new URLSearchParams(searchParams);
     next.delete("conversation");
+    next.delete("texto");
     setSearchParams(next, { replace: true });
   };
   useEffect(() => {
@@ -721,6 +729,14 @@ export const CRMInboxPage = () => {
       fetchConversationById();
     }
   }, [conversationIdFromUrl, conversations, selectedConversation, loadingConversations]);
+
+  useEffect(() => {
+    const pend = textoDaUrl.current;
+    if (!pend || selectedConversation?.id !== pend.conv) return;
+    textoDaUrl.current = null;
+    draftRef.current = pend.texto; // se a caixa ainda não montou, ela nasce com o texto
+    requestAnimationFrame(() => composerRef.current?.setText(pend.texto));
+  }, [selectedConversation?.id]);
 
   // Fila "Esperando resposta": a conversa só sai da fila quando o usuário SAI dela (abre outra,
   // fecha ou troca de tela) — não no clique, senão ela some da lista na mão de quem está lendo.
