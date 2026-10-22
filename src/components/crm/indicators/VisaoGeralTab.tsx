@@ -364,6 +364,10 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
     roas: [invest ? div(n(A.receita_pagos), invA.total) : null, investPrev ? div(n(B.receita_pagos), invB.total) : null],
     cpl: [invest ? div(invA.total, n(A.leads_pagos)) : null, investPrev ? div(invB.total, n(B.leads_pagos)) : null],
     conversao: [div(n(A.vendas), n(A.leads)), div(n(B.vendas), n(B.leads))],
+    // Fabrício, 22/10/2026: conversão de vendas (fechamento) e de leads em reunião agendada/realizada
+    convVendas: [div(n(A.vendas), n(A.realizados)), div(n(B.vendas), n(B.realizados))],
+    convAgendada: [div(n(A.agendados), n(A.leads)), div(n(B.agendados), n(B.leads))],
+    convRealizada: [div(n(A.realizados), n(A.leads)), div(n(B.realizados), n(B.leads))],
     ticket: [div(n(A.receita), n(A.vendas)), div(n(B.receita), n(B.vendas))],
     cac: [invest ? div(invA.total, n(A.vendas)) : null, investPrev ? div(invB.total, n(B.vendas)) : null],
     custoRealizada: [invest ? div(invA.total, n(A.realizados)) : null, investPrev ? div(invB.total, n(B.realizados)) : null],
@@ -448,7 +452,7 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
   const blocosExport = useMemo(() => {
     const kv = (k: keyof typeof kpis) => ({ atual: kpis[k][0] ?? "", anterior: kpis[k][1] ?? "" });
     return [
-      { chave: "kpis", rotulo: "KPIs", linhas: dados ? Object.entries({ "Receita": kv("receita"), "Vendas": kv("vendas"), "Leads": kv("leads"), "Investimento": kv("invest"), "ROAS pago": kv("roas"), "CPL pago": kv("cpl"), "Conversao": kv("conversao"), "Ticket medio": kv("ticket"), "CAC": kv("cac"), "Custo por reuniao realizada": kv("custoRealizada") }).map(([k, v]) => ({ Indicador: k, Periodo: texto, Atual: v.atual, Anterior: v.anterior })) : [] },
+      { chave: "kpis", rotulo: "KPIs", linhas: dados ? Object.entries({ "Receita": kv("receita"), "Vendas": kv("vendas"), "Leads": kv("leads"), "Investimento": kv("invest"), "ROAS pago": kv("roas"), "CPL pago": kv("cpl"), "Conversao": kv("conversao"), "Leads em reuniao agendada": kv("convAgendada"), "Leads em reuniao realizada": kv("convRealizada"), "Conversao de vendas": kv("convVendas"), "Ticket medio": kv("ticket"), "CAC": kv("cac"), "Custo por reuniao realizada": kv("custoRealizada") }).map(([k, v]) => ({ Indicador: k, Periodo: texto, Atual: v.atual, Anterior: v.anterior })) : [] },
       { chave: "receita", rotulo: "Receita e meta", linhas: receitaSerie.map((r) => ({ Dia: r.dia, "Receita acumulada": r.receita ?? "", "Meta acumulada": r.meta ?? "" })) },
       { chave: "funil", rotulo: "Funil", linhas: etapasFunil.map((e, i) => ({ Etapa: e.label, Quantidade: e.v, "Conversao da etapa anterior": i > 0 && etapasFunil[i - 1].v > 0 ? Number(((e.v / etapasFunil[i - 1].v) * 100).toFixed(1)) : "" })) },
       { chave: "origens", rotulo: "Origem dos leads", linhas: origensLista.map((o) => ({ Origem: o.nome, Grupo: o.grupo || "", "Midia paga": o.pago ? "sim" : "nao", Leads: n(o.leads), "%": leadsTot ? Number(((n(o.leads) / leadsTot) * 100).toFixed(1)) : "", Vendas: n(o.vendas), Receita: n(o.receita) })) },
@@ -522,6 +526,9 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
             <KpiVar label="ROAS pago" valor={kpis.roas[0]} anterior={kpis.roas[1]} formato={(v) => `${v.toFixed(2)}x`} dica={`Receita de leads de mídia paga (${moeda(A.receita_pagos)}) sobre o investimento`} onClick={() => onNavigate?.("traffic")} />
             <KpiVar label="CPL pago" valor={kpis.cpl[0]} anterior={kpis.cpl[1]} formato={moedaCheia} dica={`Investimento sobre leads de mídia paga (${inteiro(A.leads_pagos)})`} onClick={() => onNavigate?.("traffic")} inverso />
             <KpiVar label="Conversão de leads" valor={kpis.conversao[0]} anterior={kpis.conversao[1]} formato={(v) => `${(v * 100).toFixed(1)}%`} dica="Vendas sobre leads gerados no período" onClick={() => onNavigate?.("negocios")} />
+            <KpiVar label="Leads em reunião agendada" valor={kpis.convAgendada[0]} anterior={kpis.convAgendada[1]} formato={(v) => `${(v * 100).toFixed(1)}%`} dica={`Reuniões agendadas (${inteiro(A.agendados)}) sobre leads gerados (${inteiro(A.leads)}) no período`} onClick={() => onNavigate?.("presales")} />
+            <KpiVar label="Leads em reunião realizada" valor={kpis.convRealizada[0]} anterior={kpis.convRealizada[1]} formato={(v) => `${(v * 100).toFixed(1)}%`} dica={`Reuniões realizadas (${inteiro(A.realizados)}) sobre leads gerados (${inteiro(A.leads)}) no período`} onClick={() => onNavigate?.("presales")} />
+            <KpiVar label="Conversão de vendas" valor={kpis.convVendas[0]} anterior={kpis.convVendas[1]} formato={(v) => `${(v * 100).toFixed(1)}%`} dica={`Vendas (${inteiro(A.vendas)}) sobre reuniões realizadas (${inteiro(A.realizados)}): taxa de fechamento`} onClick={() => onNavigate?.("sales")} />
             <KpiVar label="Ticket médio" valor={kpis.ticket[0]} anterior={kpis.ticket[1]} formato={moeda} dica="Receita sobre quantidade de vendas" onClick={() => onNavigate?.("sales")} />
             <KpiVar label="CAC" valor={kpis.cac[0]} anterior={kpis.cac[1]} formato={moeda} dica="Investimento total sobre vendas" onClick={() => onNavigate?.("sales")} inverso />
             <KpiVar label="Custo / reunião realizada" valor={kpis.custoRealizada[0]} anterior={kpis.custoRealizada[1]} formato={moeda} dica={`Investimento sobre reuniões realizadas (${inteiro(A.realizados)})`} onClick={() => onNavigate?.("sales")} inverso />
