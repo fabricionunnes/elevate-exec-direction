@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Entrar no grid | Mansão Empreendedora · GP de Outubro</title>
+<meta name="description" content="Imersão presencial para empresários. Sábado, 24 de outubro, em Alphaville, com kart em Betim. Responda 8 perguntas e garanta seu lugar no grid." />
+<meta name="robots" content="noindex,nofollow" />
+<meta name="theme-color" content="#0A0A0A" />
+<link rel="icon" href="/favicon.ico" />
+<link rel="preload" as="image" href="/mansao/logo-mansao.webp" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+/* Mansão Empreendedora · GP de Outubro (24/10/2026). Mesma mecânica dos formulários
+   UNV Ads / Social / Finance: pergunta a pergunta, rastreio de abandono (form_track) e envio
+   pro funil "Mansão Empreendedora" do CRM (submit-pipeline-form). O lead entra no CRM
+   antes do WhatsApp: quem não chamar continua no funil. */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --ink:#0A0A0A; --ink-2:#111111; --ink-3:#161616;
+  --cream:#EDE3C8; --muted:rgba(237,227,200,.68); --muted2:rgba(237,227,200,.42);
+  --gold:#C9A84C; --gold-hi:#E6C978; --gl:rgba(201,168,76,.32); --gsoft:rgba(201,168,76,.1);
+  --red:#E0262C; --green:#22C55E;
+  --serif:"Playfair Display",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  --pad:22px;
+}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--sans);background:var(--ink);color:var(--cream);
+  min-height:100svh;display:flex;flex-direction:column;overflow-x:hidden;-webkit-font-smoothing:antialiased;
+}
+/* luz dourada + traçado de pista ao fundo */
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(760px 520px at 80% -8%, rgba(201,168,76,.16), transparent 62%),
+    radial-gradient(620px 420px at -10% 108%, rgba(224,38,44,.10), transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 800' fill='none'%3E%3Cpath d='M-40 760 C 80 600, 260 640, 330 520 S 420 260, 640 220' stroke='%23C9A84C' stroke-opacity='.16' stroke-width='1.4'/%3E%3Cpath d='M-60 800 C 60 560, 240 600, 310 480 S 430 200, 660 170' stroke='%23C9A84C' stroke-opacity='.08' stroke-width='1.4'/%3E%3C/svg%3E") right bottom / 640px auto no-repeat;
+}
+body::after{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── topo ── */
+header{position:relative;z-index:2;padding:18px var(--pad) 0;display:flex;align-items:center;gap:12px;max-width:600px;width:100%;margin:0 auto}
+header img{height:40px;width:auto;display:block}
+.badge{
+  margin-left:auto;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.18em;color:var(--gold);
+  border:1px solid var(--gl);padding:7px 10px;white-space:nowrap;text-transform:uppercase;
+}
+
+/* ── progresso: luzes de largada ── */
+.pwrap{position:relative;z-index:2;padding:20px var(--pad) 0;max-width:600px;width:100%;margin:0 auto}
+.lights{display:flex;gap:8px;align-items:center}
+.lights i{flex:1;height:6px;background:rgba(237,227,200,.1);border-radius:3px;transition:background .35s,box-shadow .35s}
+.lights i.on{background:var(--red);box-shadow:0 0 12px rgba(224,38,44,.55)}
+.lights.go i{background:var(--green);box-shadow:0 0 12px rgba(34,197,94,.5)}
+.pmeta{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted2);text-transform:uppercase}
+.pmeta b{color:var(--cream);font-weight:600}
+
+/* ── palco ── */
+main{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;justify-content:center;padding:24px var(--pad) 30px;max-width:600px;width:100%;margin:0 auto}
+.step{display:none;animation:in .42s cubic-bezier(.22,1,.36,1) both}
+.step.on{display:block}
+@keyframes in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.step{animation:none}.lights i{transition:none}}
+
+.kicker{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.22em;color:var(--gold);text-transform:uppercase;margin:0 0 16px}
+.kicker::before{content:"";width:26px;height:1px;background:var(--gold)}
+h1,h2{font-family:var(--serif);color:#F6EFDB;font-weight:500;margin:0 0 12px;line-height:1.08;letter-spacing:-.5px}
+h1{font-size:clamp(36px,10vw,52px)}
+h2{font-size:clamp(26px,7vw,34px)}
+h1 em,h2 em{color:var(--gold);font-style:italic}
+.sub{color:var(--muted);font-size:16px;line-height:1.6;margin:0 0 26px}
+.sub strong{color:var(--cream);font-weight:600}
+
+/* faixa de informações da abertura */
+.race{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--gl);border-bottom:1px solid var(--gl);margin:0 0 26px}
+.race div{padding:14px 6px;text-align:center;border-left:1px solid var(--gl)}
+.race div:first-child{border-left:0}
+.race b{display:block;font-family:var(--serif);font-size:26px;font-weight:600;color:var(--gold);line-height:1;margin-bottom:6px}
+.race span{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.only{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--cream);border:1px solid var(--gl);padding:8px 12px;margin:0 0 20px}
+.only::before{content:"";width:8px;height:8px;background:var(--red);border-radius:50%;box-shadow:0 0 10px var(--red)}
+
+/* ── campos ── */
+label.f{display:block;margin-bottom:14px}
+input{
+  width:100%;font-size:18px;font-family:inherit;color:var(--cream);
+  background:transparent;border:0;border-bottom:1.5px solid rgba(237,227,200,.26);border-radius:0;
+  padding:14px 2px;outline:none;transition:border-color .18s;
+}
+input::placeholder{color:rgba(237,227,200,.28)}
+input:focus{border-bottom-color:var(--gold)}
+input.bad{border-bottom-color:var(--red)}
+
+/* ── opções ── */
+.opts{display:grid;gap:10px;margin-bottom:6px}
+.opt{
+  position:relative;display:flex;align-items:center;gap:14px;width:100%;text-align:left;cursor:pointer;
+  background:var(--ink-3);border:1px solid rgba(237,227,200,.11);
+  padding:16px;min-height:60px;color:var(--cream);font-size:15.5px;font-weight:500;font-family:inherit;line-height:1.35;
+  transition:transform .14s,border-color .18s,background .18s;
+}
+.opt:active{transform:scale(.985)}
+.opt .dot{flex:0 0 20px;height:20px;border:1.5px solid rgba(201,168,76,.55);border-radius:50%;display:grid;place-items:center;transition:background .18s,border-color .18s}
+.opt .dot i{width:8px;height:8px;border-radius:50%;background:var(--ink);opacity:0;transition:opacity .18s}
+.opt.sel{border-color:var(--gold);background:rgba(201,168,76,.1)}
+.opt.sel .dot{background:var(--gold);border-color:var(--gold)}
+.opt.sel .dot i{opacity:1}
+@media (hover:hover){.opt:hover{border-color:var(--gl)}}
+
+/* ── botões ── */
+.btn{
+  position:relative;width:100%;border:0;border-radius:2px;cursor:pointer;
+  font-family:var(--mono);font-size:13.5px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;
+  padding:19px;min-height:58px;color:#0A0A0A;
+  background:linear-gradient(180deg,var(--gold-hi),var(--gold) 60%,#A98A3A);
+  box-shadow:0 14px 34px rgba(201,168,76,.22);
+  transition:transform .14s,opacity .18s,filter .18s;margin-top:8px;
+}
+.btn:hover{filter:brightness(1.05)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.6;cursor:default}
+.btn.wa{background:#1F8F4E;color:#fff;box-shadow:0 14px 34px rgba(31,143,78,.25);display:block;text-align:center;text-decoration:none;line-height:1.4}
+.btn.wa:hover{background:#17713D;filter:none}
+.back{
+  background:none;border:0;color:var(--muted2);font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  padding:16px 2px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+}
+.err{color:#FF9B9B;font-size:13.5px;font-weight:600;margin:10px 0 0;min-height:18px}
+.hint{color:var(--muted2);font-size:12.5px;margin:14px 0 0;text-align:center;line-height:1.55}
+
+/* ── credencial (resultado) ── */
+.pass{position:relative;background:linear-gradient(180deg,#141414,#0D0D0D);border:1px solid var(--gl);padding:0;overflow:hidden}
+.pass .chk{height:14px;background:repeating-conic-gradient(#EDE3C8 0 25%, #0A0A0A 0 50%) 0 0/14px 14px;opacity:.85}
+.pass .in{padding:24px 22px 22px}
+.pass .hd{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);padding-bottom:14px;border-bottom:1px solid var(--gl);margin-bottom:18px}
+.pass h3{margin:0 0 8px;font-family:var(--serif);font-weight:500;font-size:28px;color:#F6EFDB;line-height:1.12}
+.pass h3 em{color:var(--gold);font-style:italic}
+.pass p{margin:0;color:var(--muted);font-size:15px;line-height:1.6}
+.count{margin:16px 0 0;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);text-align:center}
+.rows{list-style:none;margin:20px 0 0;padding:0;border-top:1px solid var(--gl)}
+.rows li{display:flex;gap:12px;padding:10px 0;border-bottom:1px dashed rgba(201,168,76,.22);font-size:14px}
+.rows span{color:var(--muted2);flex:0 0 108px;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding-top:2px}
+.rows b{color:var(--cream);font-weight:600;word-break:break-word}
+
+.ftr{position:relative;z-index:2;text-align:center;padding:0 0 20px}
+.ftr small{color:var(--muted2);font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase}
+</style>
+</head>
+<body>
+
+<header>
+  <img src="/mansao/logo-mansao.webp" alt="Mansão Empreendedora" width="120" height="45" />
+  <span class="badge">GP de Outubro · 24.10</span>
+</header>
+
+<div class="pwrap" id="pwrap" hidden>
+  <div class="lights" id="lights"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="pmeta"><span id="pstep">Volta 1 de 8</span><span><b id="ppct">0%</b> do grid</span></div>
+</div>
+
+<main>
+
+  <!-- 0 — abertura -->
+  <section class="step on" id="s0">
+    <p class="only">Evento presencial · só para empresários</p>
+    <h1>Assuma <em>o volante.</em></h1>
+    <p class="sub">Um sábado na casa do Fabrício, em Alphaville, para montar <strong>sua equipe de agentes de IA</strong> e redesenhar sua semana como CEO. Às 15h, a estratégia sai pra pista.</p>
+    <div class="race">
+      <div><b>24.10</b><span>Sábado</span></div>
+      <div><b>08h30</b><span>Alphaville</span></div>
+      <div><b>15h</b><span>Kart em Betim</span></div>
+    </div>
+    <button class="btn" id="go">Quero entrar no grid</button>
+    <p class="hint">8 perguntas, menos de 1 minuto. Investimento e condições chegam no seu WhatsApp.</p>
+  </section>
+
+  <!-- 10 — triagem: empresário? -->
+  <section class="step" id="s10">
+    <p class="kicker">Volta 1 de 8</p>
+    <h2>Você é dono ou sócio de uma empresa?</h2>
+    <p class="sub">A Mansão é um encontro entre empresários. É isso que faz a troca valer o sábado.</p>
+    <div class="opts" id="optEmp"></div>
+    <p class="err" id="e10"></p>
+    <button class="back" data-back="10" data-back-to="0">← Voltar</button>
+  </section>
+
+  <!-- 1 — nome -->
+  <section class="step" id="s1">
+    <p class="kicker">Volta 2 de 8</p>
+    <h2>Como você se chama?</h2>
+    <p class="sub">É o nome que vai na sua credencial de piloto.</p>
+    <label class="f"><input id="nome" type="text" name="name" autocomplete="name" autocapitalize="words" placeholder="Seu nome completo" maxlength="80" enterkeyhint="next" /></label>
+    <button class="btn" data-next="1">Continuar</button>
+    <p class="err" id="e1"></p>
+    <button class="back" data-back="1" data-back-to="10">← Voltar</button>
+  </section>
+
+  <!-- 2 — whatsapp -->
+  <section class="step" id="s2">
+    <p class="kicker">Volta 3 de 8</p>
+    <h2>Qual seu WhatsApp?</h2>
+    <p class="sub">É por ali que você recebe o investimento e confirma a vaga.</p>
+    <label class="f"><input id="tel" type="tel" name="tel" inputmode="numeric" autocomplete="tel" placeholder="(31) 99999-9999" maxlength="24" enterkeyhint="next" /></label>
+    <button class="btn" data-next="2">Continuar</button>
+    <p class="err" id="e2"></p>
+    <button class="back" data-back="2">← Voltar</button>
+  </section>
+
+  <!-- 3 — email -->
+  <section class="step" id="s3">
+    <p class="kicker">Volta 4 de 8</p>
+    <h2>E seu melhor e-mail?</h2>
+    <p class="sub">Pra mandar a programação completa do dia. Nada de spam.</p>
+    <label class="f"><input id="email" type="email" name="email" inputmode="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="voce@suaempresa.com.br" maxlength="120" enterkeyhint="next" /></label>
+    <button class="btn" data-next="3">Continuar</button>
+    <p class="err" id="e3"></p>
+    <button class="back" data-back="3">← Voltar</button>
+  </section>
+
+  <!-- 4 — empresa -->
+  <section class="step" id="s4">
+    <p class="kicker">Volta 5 de 8</p>
+    <h2>Qual o nome da sua empresa?</h2>
+    <p class="sub">A gente monta o grid pensando em quem vai sentar na mesma bancada.</p>
+    <label class="f"><input id="empresa" type="text" name="organization" autocomplete="organization" placeholder="Nome da empresa" maxlength="120" enterkeyhint="next" /></label>
+    <button class="btn" data-next="4">Continuar</button>
+    <p class="err" id="e4"></p>
+    <button class="back" data-back="4">← Voltar</button>
+  </section>
+
+  <!-- 5 — faturamento -->
+  <section class="step" id="s5">
+    <p class="kicker">Volta 6 de 8</p>
+    <h2>Quanto sua empresa fatura por mês?</h2>
+    <p class="sub">Uma média dos últimos meses já serve.</p>
+    <div class="opts" id="optFat"></div>
+    <p class="err" id="e5"></p>
+    <button class="back" data-back="5">← Voltar</button>
+  </section>
+
+  <!-- 6 — IA hoje -->
+  <section class="step" id="s6">
+    <p class="kicker">Volta 7 de 8</p>
+    <h2>Como a IA entra na sua empresa hoje?</h2>
+    <p class="sub">Sem certo ou errado. A bancada parte do seu ponto.</p>
+    <div class="opts" id="optIa"></div>
+    <p class="err" id="e6"></p>
+    <button class="back" data-back="6">← Voltar</button>
+  </section>
+
+  <!-- 7 — o que tirar da mão -->
+  <section class="step" id="s7">
+    <p class="kicker">Última volta</p>
+    <h2>O que você mais quer tirar <em>da sua mão?</em></h2>
+    <p class="sub">É o primeiro agente que você monta no dia.</p>
+    <div class="opts" id="optAg"></div>
+    <p class="err" id="e7"></p>
+    <button class="back" data-back="7">← Voltar</button>
+  </section>
+
+  <!-- 8 — enviando -->
+  <section class="step" id="s8">
+    <h2>Reservando seu lugar no grid…</h2>
+    <p class="sub">Um segundo.</p>
+  </section>
+
+  <!-- 9 — credencial -->
+  <section class="step" id="s9">
+    <div class="pass">
+      <div class="chk"></div>
+      <div class="in">
+        <div class="hd"><span>Mansão Empreendedora</span><span>Credencial · GP Out</span></div>
+        <h3 id="rTitle">Você está <em>no grid.</em></h3>
+        <p id="rSub">Último passo: chama a gente no WhatsApp pra receber o investimento e confirmar sua vaga.</p>
+        <a class="btn wa" id="waBtn" href="#" rel="noopener">Confirmar vaga no WhatsApp</a>
+        <p class="count" id="count"></p>
+        <ul class="rows" id="rRows"></ul>
+      </div>
+      <div class="chk"></div>
+    </div>
+  </section>
+
+  <!-- 11 — não é dono nem sócio. Fim do fluxo: nada vai pro CRM. -->
+  <section class="step" id="s11">
+    <div class="pass"><div class="chk"></div><div class="in">
+      <h3>A Mansão é <em>só pra empresário.</em></h3>
+      <p>O dia inteiro é montado em cima da operação de quem decide o rumo da empresa: agenda, comercial, caixa e equipe. Sem isso, a bancada não entrega o que promete.</p>
+      <a class="btn" href="https://instagram.com/ofabricionunnes" target="_blank" rel="noopener" style="margin-top:18px;display:block;text-align:center;text-decoration:none;line-height:1.4">Acompanhar no Instagram</a>
+      <p class="hint">Se você trabalha numa empresa e acha que isso serve pro seu dono, manda esse link pra ele.</p>
+    </div><div class="chk"></div></div>
+  </section>
+
+</main>
+
+<div class="ftr"><small>Mansão Empreendedora · Grupo UNV Holdings</small></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ── config ── */
+var FORM_TOKEN = "e735fc7d80e18c7136a9c5678bf334d2";              // funil Mansão Empreendedora
+var SUPA = "https://xrncvhzxjmddqluxoosu.supabase.co";
+var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+var PIXEL = "247392077001023";     // mesmo pixel das campanhas da conta UNV
+var WA_NUMBER = "5531994622556";   // WhatsApp do Fabrício
+var WA_DELAY = 4;                  // segundos até abrir o WhatsApp sozinho
+
+var EMP = [
+  {v:"Sim, a empresa é minha",   s:"dono"},
+  {v:"Sou sócio da empresa",     s:"socio"},
+  {v:"Não tenho empresa",        s:"nao"}
+];
+var FAT = [
+  {v:"Até R$ 50 mil por mês",           s:"ate50k"},
+  {v:"Entre R$ 50 mil e R$ 150 mil",    s:"50a150k"},
+  {v:"Entre R$ 150 mil e R$ 300 mil",   s:"150a300k"},
+  {v:"Entre R$ 300 mil e R$ 500 mil",   s:"300a500k"},
+  {v:"Acima de R$ 500 mil por mês",     s:"500k+"}
+];
+var IA = [
+  {v:"Ainda não uso IA",                       s:"nao_usa"},
+  {v:"Uso o ChatGPT ou o Claude de vez em quando", s:"eventual"},
+  {v:"Uso todo dia, mas só pra mim",           s:"diario"},
+  {v:"Já tenho processos rodando com IA",      s:"processos"}
+];
+// Sem "financeiro", "tráfego" ou "social" nos textos: a mensagem do WhatsApp é lida pelo Nexus
+// (crm_wa_lead_from_form_text) e essas palavras puxariam o lead pros funis de Finance/Ads/Social.
+var AG = [
+  {v:"Agenda e reuniões que não precisavam de mim", s:"agenda"},
+  {v:"Follow-up comercial e lead parado",          s:"comercial"},
+  {v:"Caixa, contas e cobrança",                   s:"caixa"},
+  {v:"Conteúdo e comunicação",                     s:"conteudo"}
+];
+
+/* ── util ── */
+function $(id){ return document.getElementById(id); }
+function qp(n){ try { return new URLSearchParams(location.search).get(n) || undefined; } catch(e){ return undefined; } }
+function buzz(ms){ try { if(navigator.vibrate) navigator.vibrate(ms||12); } catch(e){} }
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+var MINUS = ["de","da","do","das","dos","e"];
+function capitalize(s){
+  return s.toLowerCase().split(" ").map(function(w,i){
+    if(i > 0 && MINUS.indexOf(w) !== -1) return w;
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }).join(" ");
+}
+function fb(){ if(!PIXEL) return; try { fbq.apply(null, arguments); } catch(e){} }
+
+/* ── Meta Pixel ── */
+if(PIXEL){
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");
+  fb("set", "autoConfig", false, PIXEL);
+  fb("init", PIXEL);
+  fb("track","PageView");
+}
+
+/* ── estado ── */
+var A = { nome:"", tel:"", email:"", empresa:"", fat:null, ia:null, ag:null, emp:null, prefill:"" };
+var cur = 0, maxSeen = 0;
+var STEP_NAMES = { 10:"empresario", 1:"nome", 2:"whatsapp", 3:"email", 4:"empresa",
+                   5:"faturamento", 6:"ia_hoje", 7:"tirar_da_mao" };
+var ORDEM = [10, 1, 2, 3, 4, 5, 6, 7];
+var TOTAL = ORDEM.length;
+function numPergunta(i){
+  var k = ORDEM.indexOf(i === undefined ? cur : i);
+  return k < 0 ? 0 : k + 1;
+}
+
+function paint(){
+  var q = numPergunta();
+  var fim = cur === 9;
+  var pct = fim ? 100 : Math.round(Math.max(0, q - 1) / TOTAL * 100);
+  var luzes = $("lights").children;
+  for(var k = 0; k < luzes.length; k++) luzes[k].classList.toggle("on", k < q);
+  $("lights").classList.toggle("go", fim);
+  $("ppct").textContent = pct + "%";
+  $("pstep").textContent = fim ? "Bandeirada" : q ? (q === TOTAL ? "Última volta" : "Volta " + q + " de " + TOTAL) : "";
+  $("pwrap").hidden = !(q || cur === 9);
+}
+
+/* ── rastreio de onde a pessoa para (CRM > Dashboard > Formulários) ──────────
+   Igual aos formulários UNV Ads/Social/Finance. Nome e WhatsApp só vão depois que a
+   pessoa passa da pergunta do WhatsApp (pra recuperar quem abandona). E-mail nunca.
+   Falha calada: nunca trava o formulário. */
+var TRK_FORM = "mansao";
+var TRK_SID = (function(){
+  var k = "frm_sid_" + TRK_FORM, v = null;
+  try { v = sessionStorage.getItem(k); } catch(e){}
+  if(!v){
+    v = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+      : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c){ var r = Math.random()*16|0; return (c === "x" ? r : (r&3|8)).toString(16); });
+    try { sessionStorage.setItem(k, v); } catch(e){}
+  }
+  return v;
+})();
+var TRK_NOMES = { 0:"abertura", 8:"enviando", 9:"concluido", 11:"saida_perfil" };
+function trkRespostas(){
+  var r = {};
+  try { for(var k in A){ if(A[k] && typeof A[k] === "object" && A[k].s) r[k] = A[k].s; } } catch(e){}
+  return r;
+}
+function trk(o){
+  try {
+    var body = {
+      p_session: TRK_SID, p_form: TRK_FORM,
+      p_step: (o.step === undefined ? null : o.step), p_step_name: o.name || null,
+      p_question: (o.q === undefined ? null : o.q),
+      p_total: ORDEM.length,
+      p_status: o.status || null, p_lead: o.lead || null,
+      p_meta: { respostas: trkRespostas() }
+    };
+    var trkTel = String(A.tel || "").replace(/\D/g, "");
+    if(trkTel.length >= 10) body.p_meta.contato = { nome: A.nome || "", whatsapp: trkTel };
+    if(o.inicio){
+      body.p_meta.utm_source = qp("utm_source"); body.p_meta.utm_medium = qp("utm_medium");
+      body.p_meta.utm_campaign = qp("utm_campaign") || qp("campaign_name"); body.p_meta.utm_content = qp("utm_content");
+      body.p_meta.ad_name = qp("ad_name"); body.p_meta.referrer = (document.referrer || "").slice(0, 300);
+      body.p_meta.device = window.matchMedia("(max-width:767px)").matches ? "celular" : "computador";
+    }
+    fetch(SUPA + "/rest/v1/rpc/form_track", {
+      method: "POST", keepalive: true,
+      headers: { "Content-Type":"application/json", "Authorization":"Bearer " + ANON, "apikey": ANON },
+      body: JSON.stringify(body)
+    }).catch(function(){});
+  } catch(e){}
+}
+
+function show(i){
+  var el = document.querySelector(".step.on");
+  if(el) el.classList.remove("on");
+  $("s" + i).classList.add("on");
+  cur = i;
+  paint();
+  var q = numPergunta();
+  if(q && q > maxSeen && i !== 10){
+    maxSeen = q;
+    fb("trackCustom","FormStep",{ step:q, step_name:STEP_NAMES[i], form:"mansao-gp-outubro" });
+  }
+  var inp = $("s" + i).querySelector("input");
+  if(inp && window.matchMedia("(min-width:768px)").matches) setTimeout(function(){ inp.focus(); }, 260);
+  trk({ step:i, name: STEP_NAMES[i] || TRK_NOMES[i] || ("s"+i), q: numPergunta(i),
+        status: i === 11 ? "cortado_perfil" : null });
+  try { window.scrollTo(0,0); } catch(e){}
+}
+
+function err(i, msg){
+  var e = $("e" + i); if(e) e.textContent = msg || "";
+  var inp = $("s" + i).querySelector("input");
+  if(inp){ inp.classList.toggle("bad", !!msg); if(msg) inp.focus(); }
+  if(msg) buzz(40);
+}
+
+/* ── máscara de telefone (tolera DDI colado pelo autofill) ── */
+function maskPhone(v){
+  var d = v.replace(/\D/g,"");
+  if(d.length > 11 && d.slice(0,2) === "55") d = d.slice(2);
+  d = d.slice(0,11);
+  if(d.length <= 2) return d.length ? "(" + d : d;
+  if(d.length <= 6) return "(" + d.slice(0,2) + ") " + d.slice(2);
+  if(d.length <= 10) return "(" + d.slice(0,2) + ") " + d.slice(2,6) + "-" + d.slice(6);
+  return "(" + d.slice(0,2) + ") " + d.slice(2,7) + "-" + d.slice(7);
+}
+$("tel").addEventListener("input", function(){ this.value = maskPhone(this.value); });
+
+/* ── pré-preenchimento: link (prioridade) ou o que a pessoa já digitou neste aparelho ── */
+var LS = "mansao_lead", LS_TTL = 90 * 24 * 3600 * 1000;
+function lsGet(){
+  try {
+    var o = JSON.parse(localStorage.getItem(LS) || "{}");
+    if(!o.t || Date.now() - o.t > LS_TTL) return {};
+    return o;
+  } catch(e){ return {}; }
+}
+function lsSet(k, v){
+  try { var o = lsGet(); o[k] = v; o.t = Date.now(); localStorage.setItem(LS, JSON.stringify(o)); } catch(e){}
+}
+function firstQp(){
+  for(var i = 0; i < arguments.length; i++){ var v = qp(arguments[i]); if(v) return v; }
+}
+var PESSOAIS = ["nome","name","full_name","tel","telefone","phone","whatsapp","email","e_mail","empresa","company"];
+
+function prefill(){
+  var saved = lsGet(), achou = [];
+  var nome = firstQp("nome","name","full_name") || saved.nome;
+  if(nome && nome.trim().length >= 2){ $("nome").value = capitalize(nome.trim().replace(/\s+/g," ")); achou.push("nome"); }
+  var tel = firstQp("tel","telefone","phone","whatsapp") || saved.tel;
+  if(tel && String(tel).replace(/\D/g,"").length >= 10){ $("tel").value = maskPhone(String(tel)); achou.push("tel"); }
+  var mail = firstQp("email","e_mail") || saved.email;
+  if(mail && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(mail).trim())){ $("email").value = String(mail).trim(); achou.push("email"); }
+  var emp = firstQp("empresa","company") || saved.empresa;
+  if(emp) $("empresa").value = String(emp).trim();
+  // Tira os dados pessoais da barra de endereço depois de ler. UTMs ficam.
+  try {
+    var u = new URL(location.href), mexeu = false;
+    PESSOAIS.forEach(function(k){ if(u.searchParams.has(k)){ u.searchParams.delete(k); mexeu = true; } });
+    if(mexeu){
+      var q = u.searchParams.toString();
+      history.replaceState(null, "", u.pathname + (q ? "?" + q : "") + u.hash);
+    }
+  } catch(e){}
+  A.prefill = achou.join(",");
+}
+
+/* ── cards de opção ── */
+function buildOpts(box, items, onPick){
+  box.innerHTML = "";
+  items.forEach(function(it){
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "opt";
+    b.innerHTML = '<span class="dot"><i></i></span><span>' + it.v + '</span>';
+    b.addEventListener("click", function(){
+      Array.prototype.forEach.call(box.children, function(c){ c.classList.remove("sel"); });
+      b.classList.add("sel"); buzz(14);
+      setTimeout(function(){ onPick(it); }, 190);
+    });
+    box.appendChild(b);
+  });
+}
+
+buildOpts($("optEmp"), EMP, function(it){
+  A.emp = it; err(10,"");
+  if(it.s === "nao"){ show(11); return; }   // fim de linha: nada vai pro CRM nem pro pixel
+  fb("trackCustom","FormStart",{ form:"mansao-gp-outubro" });
+  fb("trackCustom","FormAnswer",{ field:"empresario", value:it.s });
+  if(A.prefill) fb("trackCustom","FormPrefill",{ campos:A.prefill, form:"mansao-gp-outubro" });
+  show(1);
+});
+buildOpts($("optFat"), FAT, function(it){
+  A.fat = it; err(5,"");
+  fb("trackCustom","FormAnswer",{ field:"faturamento", value:it.s });
+  show(6);
+});
+buildOpts($("optIa"), IA, function(it){
+  A.ia = it; err(6,"");
+  fb("trackCustom","FormAnswer",{ field:"ia_hoje", value:it.s });
+  show(7);
+});
+buildOpts($("optAg"), AG, function(it){
+  A.ag = it; err(7,"");
+  fb("trackCustom","FormAnswer",{ field:"tirar_da_mao", value:it.s });
+  finish();
+});
+
+/* ── navegação ── */
+$("go").addEventListener("click", function(){ show(10); });
+
+function validate(i){
+  if(i === 1){
+    var v = $("nome").value.trim().replace(/\s+/g," ");
+    if(v.length < 2){ err(1,"Escreve seu nome pra gente montar sua credencial."); return false; }
+    A.nome = capitalize(v); lsSet("nome", A.nome); err(1,""); return true;
+  }
+  if(i === 2){
+    var d = $("tel").value.replace(/\D/g,"");
+    if(d.length < 10){ err(2,"Coloca seu WhatsApp com DDD."); return false; }
+    A.tel = d; lsSet("tel", d); err(2,""); return true;
+  }
+  if(i === 3){
+    var e = $("email").value.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)){ err(3,"Confere o e-mail, parece que faltou algo."); return false; }
+    A.email = e; lsSet("email", e); err(3,""); return true;
+  }
+  if(i === 4){
+    var em = $("empresa").value.trim().replace(/\s+/g," ");
+    if(em.length < 2){ err(4,"Coloca o nome da empresa."); return false; }
+    A.empresa = em; lsSet("empresa", em); err(4,""); return true;
+  }
+  return true;
+}
+
+Array.prototype.forEach.call(document.querySelectorAll("[data-next]"), function(b){
+  b.addEventListener("click", function(){
+    var i = +b.getAttribute("data-next");
+    if(validate(i)) show(i + 1);
+  });
+});
+Array.prototype.forEach.call(document.querySelectorAll("[data-back]"), function(b){
+  b.addEventListener("click", function(){
+    var to = b.getAttribute("data-back-to");
+    if(to !== null) return show(+to);
+    show(+b.getAttribute("data-back") - 1);
+  });
+});
+Array.prototype.forEach.call(document.querySelectorAll("input"), function(inp){
+  inp.addEventListener("keydown", function(ev){
+    if(ev.key === "Enter"){ ev.preventDefault(); var b = $("s" + cur).querySelector("[data-next]"); if(b) b.click(); }
+  });
+});
+
+/* ── envio ── */
+function payloadDesafio(){
+  var parts = [];
+  if(A.emp) parts.push("Perfil: " + A.emp.v);
+  if(A.fat) parts.push("Faturamento: " + A.fat.v);
+  if(A.ia) parts.push("IA hoje: " + A.ia.v);
+  if(A.ag) parts.push("Quer tirar da mão: " + A.ag.v);
+  return parts.join(" | ");
+}
+
+function waText(){
+  var t = "Olá, Fabrício! Acabei de preencher o formulário da Mansão Empreendedora (GP de Outubro, 24/10).\n\n";
+  t += "Nome: " + A.nome + "\n";
+  t += "Empresa: " + A.empresa + "\n";
+  t += "WhatsApp: " + $("tel").value + "\n";
+  t += "E-mail: " + A.email + "\n";
+  if(A.fat) t += "Faturamento: " + A.fat.v + "\n";
+  if(A.ia) t += "IA hoje: " + A.ia.v + "\n";
+  if(A.ag) t += "Quero tirar da minha mão: " + A.ag.v + "\n";
+  t += "\nQuero confirmar minha vaga no grid.";
+  return t;
+}
+
+var waTimer = null;
+function render(){
+  var primeiro = A.nome.split(" ")[0];
+  $("rTitle").innerHTML = esc(primeiro) + ", você está <em>no grid.</em>";
+  var rows = [["Piloto", A.nome], ["Empresa", A.empresa], ["WhatsApp", $("tel").value],
+              ["Data", "Sábado, 24 de outubro"], ["Largada", "08h30 · Alphaville, Nova Lima"], ["Pista", "15h · Kart em Betim"]];
+  $("rRows").innerHTML = rows.map(function(r){ return "<li><span>" + esc(r[0]) + "</span><b>" + esc(r[1]) + "</b></li>"; }).join("");
+
+  var link = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(waText());
+  var wa = $("waBtn");
+  wa.href = link;
+  wa.addEventListener("click", function(){
+    if(waTimer){ clearInterval(waTimer); waTimer = null; $("count").textContent = ""; }
+    fb("trackCustom","WhatsAppClick",{ form:"mansao-gp-outubro" });
+  });
+  show(9);
+
+  // Abre o WhatsApp sozinho depois de alguns segundos. O lead já está no CRM a essa altura.
+  var n = WA_DELAY;
+  $("count").textContent = "Abrindo seu WhatsApp em " + n + "…";
+  waTimer = setInterval(function(){
+    n--;
+    if(n > 0){ $("count").textContent = "Abrindo seu WhatsApp em " + n + "…"; return; }
+    clearInterval(waTimer); waTimer = null;
+    $("count").textContent = "Se não abriu, toque no botão acima.";
+    fb("trackCustom","WhatsAppAuto",{ form:"mansao-gp-outubro" });
+    try { location.href = link; } catch(e){}
+  }, 1000);
+}
+
+var sending = false;
+function finish(){
+  if(sending) return;
+  sending = true;
+  show(8);
+
+  var payload = {
+    form_token: FORM_TOKEN,
+    nome: A.nome,
+    telefone: A.tel,
+    email: A.email,
+    empresa: A.empresa,
+    desafio: payloadDesafio(),
+    utm_source: qp("utm_source") || "mansao-forms", utm_medium: qp("utm_medium"),
+    utm_campaign: qp("utm_campaign"), utm_content: qp("utm_content"), utm_term: qp("utm_term"),
+    fbclid: qp("fbclid"),
+    ad_name: qp("ad_name"), adset_name: qp("adset_name"), campaign_name: qp("campaign_name"),
+    meta_campaign_id: qp("meta_campaign_id") || qp("campaign_id"),
+    meta_adset_id: qp("meta_adset_id") || qp("adset_id"),
+    meta_ad_id: qp("meta_ad_id") || qp("ad_id")
+  };
+
+  fetch(SUPA + "/functions/v1/submit-pipeline-form", {
+    method: "POST",
+    headers: { "Content-Type":"application/json", "Authorization":"Bearer " + ANON, "apikey": ANON },
+    body: JSON.stringify(payload)
+  }).then(function(r){
+    return r.json().then(function(d){ return { ok:r.ok, data:d }; });
+  }).then(function(res){
+    if(!res.ok) throw new Error((res.data && res.data.error) || "Erro ao enviar");
+    var leadId = res.data && res.data.lead_id;
+    trk({ status: "enviou", lead: leadId });
+    fb("track","Lead", { content_name:"Mansão Empreendedora · GP de Outubro", content_category:A.fat ? A.fat.s : "", value:1, currency:"BRL" },
+       leadId ? { eventID: leadId + ":Lead" } : undefined);
+    render();
+  }).catch(function(e){
+    sending = false;
+    // Não perde o lead: mostra a credencial e joga pro WhatsApp do mesmo jeito.
+    fb("trackCustom","FormError",{ msg: String(e && e.message || e).slice(0,100) });
+    trk({ status: "erro_envio" });
+    render();
+  });
+}
+
+prefill();
+paint();
+trk({ step:0, name:"abertura", q:0, inicio:true });
+})();
+</script>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=247392077001023&ev=PageView&noscript=1"/></noscript>
+</body>
+</html>
