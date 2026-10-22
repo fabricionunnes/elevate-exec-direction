@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-22T10:01:20",
+ "gerado_em": "2026-10-22T15:01:02",
  "posts": [
+  {
+   "slug": "vendedor-confuso-com-ferramenta-mostra-falta-treino",
+   "url": "/blog/vendedor-confuso-com-ferramenta-mostra-falta-treino/",
+   "titulo": "Vendedor confuso com a ferramenta mostra falta de treino",
+   "resumo": "Quando o vendedor não sabe onde está a informação ou como usar o sistema, o problema não é a ferramenta. É que ninguém treinou ele direito.",
+   "tags": [
+    "treino de vendedor",
+    "ferramenta",
+    "crm",
+    "estrutura comercial",
+    "processo comercial"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-22",
+   "ts": 2199
+  },
   {
    "slug": "passar-contato-cliente-mostra-falta-processo-indicacao",
    "url": "/blog/passar-contato-cliente-mostra-falta-processo-indicacao/",
