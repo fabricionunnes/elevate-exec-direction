@@ -741,7 +741,10 @@ export const CRMInboxPage = () => {
     if (!pend || selectedConversation?.id !== pend.conv) return;
     textoDaUrl.current = null;
     draftRef.current = pend.texto; // se a caixa ainda não montou, ela nasce com o texto
-    requestAnimationFrame(() => composerRef.current?.setText(pend.texto));
+    // efeito roda depois da tela montar: a caixa já existe. Sem requestAnimationFrame (não roda
+    // com a aba em segundo plano); o setTimeout cobre a caixa que monta um instante depois.
+    composerRef.current?.setText(pend.texto);
+    setTimeout(() => { if (!draftRef.current || draftRef.current === pend.texto) composerRef.current?.setText(pend.texto); }, 300);
   }, [selectedConversation?.id, conversationIdFromUrl]);
 
   // Fila "Esperando resposta": a conversa só sai da fila quando o usuário SAI dela (abre outra,
