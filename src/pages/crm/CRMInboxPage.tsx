@@ -680,6 +680,12 @@ export const CRMInboxPage = () => {
     }
   }, [conversations]);
 
+  // o Atendimento pode já estar aberto quando chega um link novo (?conversation=&texto=)
+  useEffect(() => {
+    const t = searchParams.get("texto");
+    if (conversationIdFromUrl && t) textoDaUrl.current = { conv: conversationIdFromUrl, texto: t };
+  }, [conversationIdFromUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Auto-select conversation from URL parameter
   const limparConvDaUrl = () => {
     urlConvAplicada.current = conversationIdFromUrl;
@@ -736,7 +742,7 @@ export const CRMInboxPage = () => {
     textoDaUrl.current = null;
     draftRef.current = pend.texto; // se a caixa ainda não montou, ela nasce com o texto
     requestAnimationFrame(() => composerRef.current?.setText(pend.texto));
-  }, [selectedConversation?.id]);
+  }, [selectedConversation?.id, conversationIdFromUrl]);
 
   // Fila "Esperando resposta": a conversa só sai da fila quando o usuário SAI dela (abre outra,
   // fecha ou troca de tela) — não no clique, senão ela some da lista na mão de quem está lendo.
