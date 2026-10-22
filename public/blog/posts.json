@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-22T15:01:02",
+ "gerado_em": "2026-10-22T21:00:55",
  "posts": [
+  {
+   "slug": "escala-comercial-depende-processo-nao-contratar",
+   "url": "/blog/escala-comercial-depende-processo-nao-contratar/",
+   "titulo": "Escala comercial depende de processo, não de contratar mais gente",
+   "resumo": "Empresa que escala contratando vendedor toda vez que cresce está travada no improviso. Crescer sem precisar de mais gente é consequência de ter estrutura que faz o time atual render mais.",
+   "tags": [
+    "escala",
+    "estrutura comercial",
+    "processo comercial",
+    "crescimento",
+    "dependência operacional"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-22",
+   "ts": 2200
+  },
   {
    "slug": "vendedor-confuso-com-ferramenta-mostra-falta-treino",
    "url": "/blog/vendedor-confuso-com-ferramenta-mostra-falta-treino/",
