@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-23T15:01:07",
+ "gerado_em": "2026-10-23T21:00:50",
  "posts": [
+  {
+   "slug": "prazo-curto-nao-da-tempo-estruturar",
+   "url": "/blog/prazo-curto-nao-da-tempo-estruturar/",
+   "titulo": "Prazo curto não dá tempo de estruturar nada",
+   "resumo": "Três meses só cabe diagnóstico. Estruturar área comercial exige tempo de implementação, treino e acompanhamento até o vendedor bater meta sozinho.",
+   "tags": [
+    "prazo mínimo",
+    "implementação",
+    "estrutura comercial",
+    "treino de vendedor",
+    "contrato"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-23",
+   "ts": 2203
+  },
   {
    "slug": "planejamento-curto-estrutura-rapido-corrige-andando",
    "url": "/blog/planejamento-curto-estrutura-rapido-corrige-andando/",
