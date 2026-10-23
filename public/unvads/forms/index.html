@@ -148,13 +148,14 @@ input.bad{border-color:var(--red-soft)}
 </div>
 
 <main>
+<form id="lf" autocomplete="on" novalidate style="display:contents">
 
   <!-- 0 — abertura -->
   <section class="step on" id="s0">
     <p class="kicker">Antes de falar de proposta</p>
     <h1>Descubra em 1 minuto por que seu tráfego não vira venda.</h1>
     <p class="sub">São <strong>8 perguntas rápidas</strong>. No final você recebe um diagnóstico do seu cenário e fala direto comigo no WhatsApp.</p>
-    <button class="btn" id="go">Começar o diagnóstico</button>
+    <button type="button" class="btn" id="go">Começar o diagnóstico</button>
     <p class="hint">Leva menos de 1 minuto. Seus dados não vão pra lista nenhuma.</p>
   </section>
 
@@ -166,7 +167,7 @@ input.bad{border-color:var(--red-soft)}
     <p class="sub">Esse diagnóstico parte de faturamento, verba e time comercial. Só faz sentido pra quem decide isso.</p>
     <div class="opts" id="optEmp"></div>
     <p class="err" id="e10"></p>
-    <button class="back" data-back="10" data-back-to="0">← Voltar</button>
+    <button type="button" class="back" data-back="10" data-back-to="0">← Voltar</button>
   </section>
 
   <!-- 1 — nome -->
@@ -175,9 +176,9 @@ input.bad{border-color:var(--red-soft)}
     <h2>Como você se chama?</h2>
     <p class="sub">Pra eu te chamar pelo nome, e não de "olá, tudo bem?".</p>
     <label class="f"><input id="nome" type="text" name="name" autocomplete="name" autocapitalize="words" placeholder="Seu nome completo" maxlength="80" enterkeyhint="next" /></label>
-    <button class="btn" data-next="1">Continuar</button>
+    <button type="button" class="btn" data-next="1">Continuar</button>
     <p class="err" id="e1"></p>
-    <button class="back" data-back="1" data-back-to="10">← Voltar</button>
+    <button type="button" class="back" data-back="1" data-back-to="10">← Voltar</button>
   </section>
 
   <!-- 2 — whatsapp -->
@@ -186,9 +187,9 @@ input.bad{border-color:var(--red-soft)}
     <h2>Qual seu WhatsApp?</h2>
     <p class="sub">É por ali que eu te mando o diagnóstico completo.</p>
     <label class="f"><input id="tel" type="tel" name="tel" inputmode="numeric" autocomplete="tel" placeholder="(31) 99999-9999" maxlength="24" enterkeyhint="next" /></label>
-    <button class="btn" data-next="2">Continuar</button>
+    <button type="button" class="btn" data-next="2">Continuar</button>
     <p class="err" id="e2"></p>
-    <button class="back" data-back="2">← Voltar</button>
+    <button type="button" class="back" data-back="2">← Voltar</button>
   </section>
 
   <!-- 3 — email -->
@@ -197,9 +198,9 @@ input.bad{border-color:var(--red-soft)}
     <h2>E seu melhor e-mail?</h2>
     <p class="sub">Só pra registrar no sistema. Nada de spam.</p>
     <label class="f"><input id="email" type="email" name="email" inputmode="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="voce@suaempresa.com.br" maxlength="120" enterkeyhint="next" /></label>
-    <button class="btn" data-next="3">Continuar</button>
+    <button type="button" class="btn" data-next="3">Continuar</button>
     <p class="err" id="e3"></p>
-    <button class="back" data-back="3">← Voltar</button>
+    <button type="button" class="back" data-back="3">← Voltar</button>
   </section>
 
   <!-- 4 — instagram -->
@@ -208,9 +209,9 @@ input.bad{border-color:var(--red-soft)}
     <h2>Qual o Instagram da sua empresa?</h2>
     <p class="sub">Eu dou uma olhada antes de falar com você. Se não tiver, é só pular.</p>
     <label class="f"><input id="insta" type="text" inputmode="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="@suaempresa" maxlength="60" enterkeyhint="next" /></label>
-    <button class="btn" data-next="4">Continuar</button>
+    <button type="button" class="btn" data-next="4">Continuar</button>
     <p class="err" id="e4"></p>
-    <button class="back" data-back="4">← Voltar</button>
+    <button type="button" class="back" data-back="4">← Voltar</button>
   </section>
 
   <!-- 5 — investimento -->
@@ -220,7 +221,7 @@ input.bad{border-color:var(--red-soft)}
     <p class="sub">Por mês, somando todas as plataformas.</p>
     <div class="opts" id="optInvest"></div>
     <p class="err" id="e5"></p>
-    <button class="back" data-back="5">← Voltar</button>
+    <button type="button" class="back" data-back="5">← Voltar</button>
   </section>
 
   <!-- 6 — dificuldade (só pra quem investe) -->
@@ -230,7 +231,7 @@ input.bad{border-color:var(--red-soft)}
     <p class="sub">Escolhe a que mais te incomoda.</p>
     <div class="opts" id="optDor"></div>
     <p class="err" id="e6"></p>
-    <button class="back" data-back="6">← Voltar</button>
+    <button type="button" class="back" data-back="6">← Voltar</button>
   </section>
 
   <!-- 7 — faturamento -->
@@ -240,7 +241,7 @@ input.bad{border-color:var(--red-soft)}
     <p class="sub">É o que me diz qual estratégia faz sentido pro seu caso.</p>
     <div class="opts" id="optFat"></div>
     <p class="err" id="e7"></p>
-    <button class="back" data-back="7">← Voltar</button>
+    <button type="button" class="back" data-back="7">← Voltar</button>
   </section>
 
   <!-- 8 — enviando -->
@@ -273,6 +274,7 @@ input.bad{border-color:var(--red-soft)}
     </div>
   </section>
 
+</form>
 </main>
 
 <div class="ftr"><small>UNV Ads · Universidade Nacional de Vendas</small></div>
@@ -444,15 +446,22 @@ function err(i, msg){
 
 /* ── máscara de telefone (tolera DDI colado pelo autofill) ── */
 function maskPhone(v){
-  var d = v.replace(/\D/g,"");
-  if(d.length > 11 && d.slice(0,2) === "55") d = d.slice(2);
+  var raw = String(v || "").replace(/\D/g,"");
+  var d = raw.replace(/^0+/,"");                       // "031..." ou "0 21 31...": zero na frente nunca é DDD
+  if(d.length > 11 && d.slice(0,2) === "55") d = d.slice(2);   // +55 do autofill: DDI, não DDD
+  else if(/^0/.test(raw) && d.length > 11) d = d.slice(-11);   // 0 + operadora + DDD + número
   d = d.slice(0,11);
   if(d.length <= 2) return d.length ? "(" + d : d;
   if(d.length <= 6) return "(" + d.slice(0,2) + ") " + d.slice(2);
   if(d.length <= 10) return "(" + d.slice(0,2) + ") " + d.slice(2,6) + "-" + d.slice(6);
   return "(" + d.slice(0,2) + ") " + d.slice(2,7) + "-" + d.slice(7);
 }
-$("tel").addEventListener("input", function(){ this.value = maskPhone(this.value); });
+["input","change","blur"].forEach(function(ev){
+  $("tel").addEventListener(ev, function(){ var m = maskPhone(this.value); if(m !== this.value) this.value = m; });
+});
+// os campos ficam dentro de um <form> só pro autofill (Safari, Chrome e navegador do Instagram/Facebook)
+// reconhecer nome, WhatsApp e e-mail; ele nunca é enviado de verdade.
+$("lf").addEventListener("submit", function(ev){ ev.preventDefault(); });
 
 /* ── pré-preenchimento ──────────────────────────────────────────────
    Duas fontes: o que veio no link (e-mail, WhatsApp, remarketing) e o que
@@ -520,7 +529,7 @@ function buildOpts(box, items, onPick){
   box.innerHTML = "";
   items.forEach(function(it){
     var label = typeof it === "string" ? it : it.v;
-    var b = document.createElement("button");
+    var b = document.createElement("button"); b.type = "button";
     b.type = "button"; b.className = "opt";
     b.innerHTML = '<span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><span>' + label + '</span>';
     b.addEventListener("click", function(){
