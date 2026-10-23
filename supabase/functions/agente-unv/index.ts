@@ -24,12 +24,13 @@ const NEXUS_KEY_DIRETOR = Deno.env.get("NEXUS_KEY_DIRETOR") ?? "";
 const NSM_API_KEY = Deno.env.get("NSM_API_KEY") ?? "";
 const NSM_URL = `${SUPABASE_URL}/functions/v1/nsm-api`;
 
+// Tokens dos bots só vêm dos secrets do Supabase. Bot sem token fica mudo (as funções de envio checam).
 const TELEGRAM_TOKENS: Record<string, string> = {
-  financeiro: Deno.env.get("TELEGRAM_TOKEN_FINANCEIRO") ?? "8302241725:AAG9FT9vUtWPhs4zE-0P2tp5-LJCnBorQtE",
-  crm:        Deno.env.get("TELEGRAM_TOKEN_CRM")        ?? "8690436126:AAED3kFZgonruvAZg9wVYt_ltcQ2fqGL_zI",
-  projetos:   Deno.env.get("TELEGRAM_TOKEN_PROJETOS")   ?? "8731972632:AAFUT8lkyxYrSaouq5lew9p9N-kCgsZdl5U",
-  ceo:        Deno.env.get("TELEGRAM_TOKEN_CEO")        ?? "8663785814:AAESc_KL4xMLQlwbrFNYI6WlZocZlMkWAKk",
-  marketing:  Deno.env.get("TELEGRAM_TOKEN_MARKETING")  ?? "8340028321:AAH-tSxNw4BpEPgWVdibo5m1HSlDDrZarwc",
+  financeiro: Deno.env.get("TELEGRAM_TOKEN_FINANCEIRO") ?? "",
+  crm:        Deno.env.get("TELEGRAM_TOKEN_CRM")        ?? "",
+  projetos:   Deno.env.get("TELEGRAM_TOKEN_PROJETOS")   ?? "",
+  ceo:        Deno.env.get("TELEGRAM_TOKEN_CEO")        ?? "",
+  marketing:  Deno.env.get("TELEGRAM_TOKEN_MARKETING")  ?? "",
   gerente:    Deno.env.get("TELEGRAM_TOKEN_GERENTE")    ?? "",
 };
 
@@ -904,6 +905,7 @@ async function transcribeVoice(fileId: string, agentType: AgentType): Promise<st
   if (!ANTHROPIC_API_KEY) return null;
   try {
     const token = TELEGRAM_TOKENS[agentType];
+    if (!token) return null;
     // 1. Pegar URL do arquivo no Telegram
     const fileInfoRes = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`);
     const fileInfo = await fileInfoRes.json();
