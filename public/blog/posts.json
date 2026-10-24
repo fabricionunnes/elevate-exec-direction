@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-24T21:01:12",
+ "gerado_em": "2026-10-24T22:31:02",
  "posts": [
+  {
+   "slug": "reuniao-comercial-sem-compromisso-vira-cafe",
+   "url": "/blog/reuniao-comercial-sem-compromisso-vira-cafe/",
+   "titulo": "Reunião comercial sem compromisso definido vira café com cliente",
+   "resumo": "Você lê isso e entende por que deixar formato e frequência soltos trava a implementação. E por que isso sangra dinheiro todo mês.",
+   "tags": [
+    "implementação",
+    "estrutura comercial",
+    "decisão",
+    "rotina de cobrança",
+    "contrato"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-24",
+   "ts": 2205
+  },
   {
    "slug": "desconto-urgencia-mostra-falta-estrutura-conversao",
    "url": "/blog/desconto-urgencia-mostra-falta-estrutura-conversao/",
