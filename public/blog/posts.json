@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-24T22:31:02",
+ "gerado_em": "2026-10-25T01:31:06",
  "posts": [
+  {
+   "slug": "pagamento-duplicado-mostra-falta-estrutura-cobranca",
+   "url": "/blog/pagamento-duplicado-mostra-falta-estrutura-cobranca/",
+   "titulo": "Pagamento duplicado mostra falta de estrutura de cobrança",
+   "resumo": "Quando o vendedor gera o mesmo boleto duas vezes, o problema não é o sistema. É o processo de cobrança que não está claro.",
+   "tags": [
+    "conversão",
+    "processo comercial",
+    "treino de vendedor",
+    "estrutura comercial",
+    "oferta"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-25",
+   "ts": 2206
+  },
   {
    "slug": "reuniao-comercial-sem-compromisso-vira-cafe",
    "url": "/blog/reuniao-comercial-sem-compromisso-vira-cafe/",
