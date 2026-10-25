@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-25T01:31:06",
+ "gerado_em": "2026-10-25T10:01:18",
  "posts": [
+  {
+   "slug": "evento-grande-nao-vende-sem-processo-conversao",
+   "url": "/blog/evento-grande-nao-vende-sem-processo-conversao/",
+   "titulo": "Evento grande não vende sem processo de conversão pronto",
+   "resumo": "Evento caro com ingresso alto exige estrutura de conversão montada antes. Convidar clientes para evento pequeno funciona, escalar sem processo trava.",
+   "tags": [
+    "evento",
+    "conversão",
+    "processo comercial",
+    "estrutura comercial",
+    "escala"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-25",
+   "ts": 2207
+  },
   {
    "slug": "pagamento-duplicado-mostra-falta-estrutura-cobranca",
    "url": "/blog/pagamento-duplicado-mostra-falta-estrutura-cobranca/",
