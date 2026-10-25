@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-25T15:01:01",
+ "gerado_em": "2026-10-25T21:01:01",
  "posts": [
+  {
+   "slug": "dono-treina-produto-vendedor-treina-venda",
+   "url": "/blog/dono-treina-produto-vendedor-treina-venda/",
+   "titulo": "Dono treina produto, vendedor precisa treinar a venda",
+   "resumo": "Produto vem do dono, venda vem de quem ensina o método. A confusão entre os dois trava conversão e depende de improviso.",
+   "tags": [
+    "treino de vendedor",
+    "estrutura comercial",
+    "conversão",
+    "processo comercial",
+    "dependência operacional"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-25",
+   "ts": 2209
+  },
   {
    "slug": "marketing-bonito-nao-resolve-gestao-bagunçada",
    "url": "/blog/marketing-bonito-nao-resolve-gestao-bagunçada/",
