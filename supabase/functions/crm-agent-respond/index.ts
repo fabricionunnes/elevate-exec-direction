@@ -230,7 +230,7 @@ async function sendWhatsAppText(supabase, instanceId, phone, message, digitarMs 
 // ---------- Estilo humano (pedido do Fabrício 13/09/2026) ----------
 // Vale pra TODOS os agentes, na resposta e no follow-up. A IA vinha com cara de IA:
 // "Opa, bora!", "Me conta uma coisa: ...", "Boa, Roberto.", nome em toda frase.
-const ESTILO_HUMANO = `\n\nESTILO (obrigatório, vale acima do tom do agente): escreva como uma pessoa escreve no WhatsApp. Frases curtas, no máximo 2 parágrafos pequenos. Nunca use dois-pontos, travessão, listas, negrito, títulos ou emojis. Não abra com interjeição de animação ("Opa, bora!", "Que massa", "Boa!", "Show", "Perfeito", "Fala, Fulano!") e não elogie a resposta do lead. Use o nome do lead no máximo uma vez a cada três mensagens. Não anuncie a pergunta ("me conta uma coisa", "fiquei curioso aqui", "só uma dúvida rápida"), pergunte direto. Uma pergunta por mensagem. Varie a abertura entre mensagens. Nada de fórmula repetida. Se for retomar, retome pelo assunto, não pelo aviso de que está retomando.
+const ESTILO_HUMANO = `\n\nESTILO (obrigatório, vale acima do tom do agente): escreva como uma pessoa escreve no WhatsApp. Frases curtas, no máximo 2 parágrafos pequenos. Nunca use dois-pontos, travessão, listas, negrito, títulos ou emojis. Não abra com interjeição de animação ("Opa, bora!", "Que massa", "Boa!", "Show", "Perfeito", "Fala, Fulano!") e não elogie a resposta do lead. Use o nome do lead no máximo uma vez a cada três mensagens. Não anuncie a pergunta ("me conta uma coisa", "fiquei curioso aqui", "só uma dúvida rápida"), pergunte direto. Uma pergunta por mensagem. Nunca peça a mesma informação mais de duas vezes na conversa (contando follow-ups): se ela não veio, siga sem ela ou puxe outro assunto. Varie a abertura entre mensagens. Nada de fórmula repetida. Se for retomar, retome pelo assunto, não pelo aviso de que está retomando.
 
 O QUE ENTREGA ROBÔ (leads perceberam, 20/10/2026), evite sempre:
 (1) Toda mensagem no formato "reconhecimento + pergunta". Não comece com "Entendi", "Saquei", "Certo", "Show", "Legal", "Bacana", "Faz sentido", "Boa", "Ótimo". Quando quiser reagir, reaja ao que ELE disse, com algo específico e curto ("puts, constância é o que mais pega"), e às vezes nem pergunte nada, só comente e espere.
@@ -2895,6 +2895,8 @@ Deno.serve(async (req)=>{
               agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
               `\n\nAGENDA: neste follow-up você NÃO tem acesso à agenda. É proibido citar dia ou horário específico de reunião (nada de "segunda às 10h"). Se for puxar reagendamento, pergunte qual dia e período funcionam melhor pra ele; os horários reais você oferece quando ele responder.`,
               `\n\nO lead parou de responder. Escreva UMA mensagem CURTA de follow-up (1-2 frases), humana, sem pressão e sem repetir perguntas já respondidas. Não use markdown. Nunca revele que é uma IA.`,
+              isBIG && cv.contact?.username ? `\n\nVocê JÁ TEM o @ do Instagram desta pessoa (@${cv.contact.username}): é o perfil pelo qual ela fala com você. NUNCA peça o @ do Instagram.` : "",
+              `\n\nSe você já pediu a mesma informação duas vezes nesta conversa (contando follow-ups) e ela não veio, NÃO peça de novo: puxe outro assunto leve ligado ao negócio dela.`,
               ESTILO_HUMANO,
               `\n\nAgora é ${agoraFu} (Brasília). Cada linha do histórico traz [dia/mês hora] de quando foi enviada: "amanhã", "hoje" ou dia da semana escritos ali valem praquela data, não pra agora. Nunca repita "amanhã" de uma mensagem antiga — calcule a data real ou não cite data.`,
               mtgCtx.texto,
@@ -3928,6 +3930,7 @@ Deno.serve(async (req)=>{
       // não claro → pergunta se é empresário).
       const igPersonalization = isIG ? [
         `\n\nPERFIL DO CONTATO (Instagram): @${conv.contact?.username || "desconhecido"}${conv.contact?.name ? `, nome "${conv.contact.name}"` : ""}.`,
+        conv.contact?.username ? `\nREGRA COM PRIORIDADE SOBRE AS INSTRUÇÕES ACIMA: você JÁ TEM o @ desta pessoa (@${conv.contact.username}), porque ela está falando com você por esse perfil. NUNCA peça o @ do Instagram dela. Se esse perfil parecer pessoal, pergunte UMA única vez se a empresa tem outro perfil; se ela não responder isso, siga a conversa sem esse dado.` : "",
         `\nABORDAGEM PERSONALIZADA (siga à risca):`,
         `- Primeiro descubra se a pessoa é EMPRESÁRIA / dona de negócio. Use o @, o nome e o que ela escrever.${temBusca ? " Se precisar de mais contexto, use a ferramenta web_search pesquisando o @ ou o nome dela para identificar a empresa e o segmento." : ""}`,
         `- Se ficar claro que tem empresa: comente algo ESPECÍFICO e verdadeiro sobre o negócio/segmento dela e conecte com o que oferecemos — nada genérico, nada de "vi que você tem uma empresa".`,
@@ -4039,7 +4042,10 @@ Deno.serve(async (req)=>{
             }
           ],
           messages: apiMessages,
-          max_tokens: 900
+          // 26/10/2026 (caso Luma): o modelo pensa antes de responder e 900 tokens acabavam no
+          // raciocínio; vinha só o bloco "thinking", sem texto nem ferramenta, e o lead que mandou
+          // o e-mail pra agendar ficou sem resposta 4 vezes seguidas.
+          max_tokens: 4000
         };
         if (tools.length) {
           body.tools = tools.map((t, i)=>i === tools.length - 1 ? {
