@@ -8,9 +8,13 @@
 // Exige JWT com acesso à empresa (ai_team_has_access) ou service role.
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import {
-  corsHeaders, SUPABASE_URL, SERVICE_KEY, MODEL, type Agent, type Company,
+  corsHeaders, SUPABASE_URL, SERVICE_KEY, MODEL, type Agent, type Company, type Ctx,
   json, jwtRole, logUsoIA, buildContext, dadosBlock, brNow,
 } from "./shared.ts";
+
+// contexto de dados vale por 5 min dentro do isolate: a conversa por voz não pode
+// esperar as consultas a cada frase (o orquestrador continua pedindo fresco)
+const CTX_CACHE_MS = 5 * 60 * 1000;
 
 const CHAT_MODEL = Deno.env.get("AI_TEAM_CHAT_MODEL") || MODEL;
 const MAX_TOOL_ROUNDS = 6;
@@ -24,6 +28,11 @@ const TOOLS = [
       properties: { agent_key: { type: "string", enum: ["briefing", "anuncios", "conteudo", "reativacao", "trafego", "qualificacao"] } },
       required: ["agent_key"],
     },
+  },
+  {
+    name: "ver_negociacoes",
+    description: "Lista as negociações abertas do CRM com valor, etapa, dono, dias sem contato e próxima atividade (até 40, da maior pra menor). Use quando o dono falar em meta, bater número, fechar venda, 'preciso vender X', ou perguntar o que tem pra fechar.",
+    input_schema: { type: "object", properties: { minimo: { type: "number", description: "filtra por valor mínimo em reais (opcional)" } } },
   },
   {
     name: "ver_fila",
@@ -76,7 +85,14 @@ async function loadTeamState(supabase: SupabaseClient, companyId: string) {
   return { agents: (agentsR.data || []) as Agent[], fila: (filaR.data || []) as any[], runs: (runsR.data || []) as any[] };
 }
 
-async function runTool(supabase: SupabaseClient, c: Company, name: string, input: any, userId: string | null): Promise<any> {
+async function runTool(supabase: SupabaseClient, c: Company, name: string, input: any, userId: string | null, ctx: Ctx): Promise<any> {
+  if (name === "ver_negociacoes") {
+    const min = Number(input?.minimo || 0);
+    return ctx.negociacoes.filter((n) => n.valor >= min).map((n) => ({
+      lead_id: n.id, nome: n.name, valor: n.valor, funil: n.pipeline, etapa: n.stage,
+      dias_sem_contato: n.dias === 999 ? null : n.dias, dono: n.dono, proxima_atividade: n.proximaAtividade,
+    }));
+  }
   if (name === "ver_fila") {
     const { fila } = await loadTeamState(supabase, c.id);
     return fila.map((f) => ({ id: f.id, agente: f.agent_key, tipo: f.kind, titulo: f.title, conteudo: f.payload }));
@@ -147,6 +163,8 @@ Como agir:
 - Quando o dono pedir pra alguém do time fazer algo, use rodar_agente e depois conte o que saiu (resuma a entrega, não copie inteira).
 - Quando o dono pedir pra aprovar/rejeitar, use ver_fila se precisar achar o item certo e depois decidir_item. Confirme o que fez em uma linha.
 - Quando ele perguntar "o que eu faço", opine: escolha, priorize, discorde se for o caso. Você tem opinião.
+- Quando ele colocar uma META ("preciso vender 40 mil hoje", "tenho que fechar 3 contratos essa semana"), NÃO responda com teoria: vá nas negociações abertas (estão nos dados; use ver_negociacoes se precisar da lista completa), some quais fecham a meta, diga NOME, VALOR e ETAPA de cada uma, quem está cuidando, e o que fazer AGORA com cada uma (ligar, mandar proposta, cobrar resposta). Ofereça deixar as mensagens prontas pelo Theo ou pelo time.
+- Primeiro responda exatamente o que foi perguntado; só depois, se couber, acrescente o que você acha.
 - Se ele pedir algo que o time não faz (ligar pra cliente, publicar anúncio na Meta, mandar WhatsApp), diga com clareza que isso ainda é mão humana e deixe pronto o que der (texto, lista, prioridade).
 - Respostas de 2 a 8 linhas. Só alongue quando ele pedir detalhe.`;
 }
@@ -154,7 +172,7 @@ Como agir:
 // Em voz alta a conversa precisa caber no ouvido: curto, redondo, sem lista.
 const MODO_VOZ = `
 
-MODO VOZ: o dono está falando com você por áudio e vai OUVIR sua resposta. Responda em 1 a 4 frases faladas, como numa ligação: sem lista, sem hífen, sem número com centavos (arredonde: "quarenta e dois mil"), sem sigla sem explicar, sem URL. Se tiver muita coisa, dê o essencial e pergunte se ele quer que você continue. Quando acionar alguém do time, avise antes em uma frase ("vou pedir pro Theo escrever, me dá uns segundos") e depois conte o resultado em uma ou duas frases.`;
+MODO VOZ: o dono está falando com você por áudio e vai OUVIR sua resposta. A transcrição pode vir com erro de reconhecimento: interprete pelo contexto ("vender quarenta mil" = meta de R$ 40 mil) e, se ficar em dúvida real, pergunte em uma frase curta. Responda em 1 a 5 frases faladas, como numa ligação: sem lista, sem hífen, sem número com centavos (arredonde: "quarenta e dois mil"), sem sigla sem explicar, sem URL. A primeira frase já tem que ser a resposta, nunca um preâmbulo. Se tiver muita coisa, dê as 2 ou 3 mais importantes e pergunte se ele quer o resto. Quando acionar alguém do time, avise antes em uma frase ("vou pedir pro Theo escrever, me dá uns segundos") e depois conte o resultado em uma ou duas frases.`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -185,7 +203,7 @@ Deno.serve(async (req) => {
 
     const { agents, fila, runs } = await loadTeamState(supabase, c.id);
     if (!agents.length) return json({ error: "time não montado" }, 400);
-    const ctx = await buildContext(supabase, c as Company, agents);
+    const ctx = await buildContext(supabase, c as Company, agents, { cacheMs: CTX_CACHE_MS });
     const dados = ctx.modo === "nexus_unv" ? dadosBlock(ctx, ["financeiro", "comercial", "carteira", "trafego", "catalogo"]) : (ctx.kpis ? dadosBlock(ctx, ["kpis"]) : "") ;
     const system = systemPrompt(c as Company, agents, fila, runs, `${ctx.oferta}\n\n${dados}`, donoNome) + (body.modo === "voz" ? MODO_VOZ : "");
 
@@ -215,7 +233,7 @@ Deno.serve(async (req) => {
       messages.push({ role: "assistant", content });
       const results: any[] = [];
       for (const tu of toolUses) {
-        const result = await runTool(supabase, c as Company, tu.name, tu.input || {}, userId);
+        const result = await runTool(supabase, c as Company, tu.name, tu.input || {}, userId, ctx);
         actions.push({ tool: tu.name, input: tu.input, result });
         results.push({ type: "tool_result", tool_use_id: tu.id, content: JSON.stringify(result).slice(0, 12000) });
       }

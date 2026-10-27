@@ -140,6 +140,9 @@ export type Ctx = {
   clientesPerdidos: { nome: string; mes: string; motivo: string }[];
   leadsNovos: { id: string; name: string; pipeline: string; origem: string | null; horas: number; semDono: boolean; semAtividade: boolean }[];
   campanhas: { nome: string; gasto: number; leads: number; cpl: number | null }[];
+  // negociações abertas (fora de etapa final) com valor, da maior pra menor — pra "preciso vender X hoje"
+  negociacoes: { id: string; name: string; pipeline: string; stage: string; valor: number; dias: number; dono: string | null; proximaAtividade: string | null }[];
+  geradoEm: number;
 };
 
 export function ofertaBlock(c: Company, cfg: Record<string, any>): string {
@@ -250,6 +253,31 @@ export async function unvContext(supabase: SupabaseClient, ctx: Ctx): Promise<vo
   const totalParados = ((parados || []) as any[]).filter((l) => !stageInfo.get(l.stage_id)?.is_final).length;
   ctx.comercial += `\nLeads parados (30 a 90 dias sem atividade, fora de etapa final): ${totalParados}.`;
 
+  // negociações abertas com valor: quem pode fechar agora
+  const { data: staffRows } = await supabase.from("onboarding_staff").select("id, name").eq("is_active", true).limit(300);
+  const staffName = new Map(((staffRows || []) as any[]).map((s) => [s.id, s.name]));
+  const { data: abertas } = await supabase.from("crm_leads")
+    .select("id, name, pipeline_id, stage_id, opportunity_value, last_activity_at, owner_staff_id, closer_staff_id, loss_reason_id")
+    .is("tenant_id", null).is("loss_reason_id", null).gt("opportunity_value", 0)
+    .order("opportunity_value", { ascending: false }).limit(200);
+  const negIds = ((abertas || []) as any[]).filter((l) => l.name && !stageInfo.get(l.stage_id)?.is_final).slice(0, 40).map((l) => l.id);
+  const { data: proxAtiv } = negIds.length
+    ? await supabase.from("crm_activities").select("lead_id, type, scheduled_at").in("lead_id", negIds).eq("status", "pending").gte("scheduled_at", iso(new Date(now.getTime() - 864e5))).order("scheduled_at", { ascending: true }).limit(200)
+    : { data: [] as any[] };
+  const proxByLead = new Map<string, string>();
+  for (const a of (proxAtiv || []) as any[]) if (!proxByLead.has(a.lead_id)) proxByLead.set(a.lead_id, `${a.type} ${new Date(a.scheduled_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`);
+  ctx.negociacoes = ((abertas || []) as any[])
+    .filter((l) => l.name && !stageInfo.get(l.stage_id)?.is_final)
+    .slice(0, 40)
+    .map((l) => ({
+      id: l.id, name: l.name, pipeline: pipeName.get(l.pipeline_id) || "?", stage: stageInfo.get(l.stage_id)?.name || "?",
+      valor: num(l.opportunity_value), dias: l.last_activity_at ? Math.round((now.getTime() - new Date(l.last_activity_at).getTime()) / 864e5) : 999,
+      dono: staffName.get(l.closer_staff_id || l.owner_staff_id) || null, proximaAtividade: proxByLead.get(l.id) || null,
+    }));
+  const totalAberto = ctx.negociacoes.reduce((s, n) => s + n.valor, 0);
+  ctx.comercial += `\nNegociações abertas com valor (${ctx.negociacoes.length} maiores somam ${brl(totalAberto)}), da maior pra menor:\n` +
+    ctx.negociacoes.slice(0, 15).map((n) => `- ${n.name}: ${brl(n.valor)} · ${n.pipeline} / ${n.stage} · ${n.dias === 999 ? "sem atividade" : `último contato há ${n.dias}d`}${n.dono ? ` · com ${n.dono}` : " · SEM DONO"}${n.proximaAtividade ? ` · próxima: ${n.proximaAtividade}` : ""}`).join("\n");
+
   // leads novos sem dono / sem atividade (24h) — qualificação
   const d1 = iso(new Date(now.getTime() - 864e5));
   ctx.leadsNovos = leads30.filter((l) => l.created_at >= d1).slice(0, 30).map((l) => ({
@@ -329,17 +357,25 @@ export async function unvContext(supabase: SupabaseClient, ctx: Ctx): Promise<vo
   ctx.catalogo = ((cat || []) as any[]).map((s) => `- ${s.name}: ${brl(num(s.price))}${s.billing_type === "monthly" ? "/mês" : ""}${s.description ? ` — ${s.description}` : ""}`).join("\n");
 }
 
-export async function buildContext(supabase: SupabaseClient, c: Company, agents: Agent[]): Promise<Ctx> {
+// Cache por empresa dentro do isolate: o chat por voz não pode esperar 3-4 s de
+// consultas a cada frase. O orquestrador (rodadas) pede sempre fresco.
+const ctxCache = new Map<string, Ctx>();
+
+export async function buildContext(supabase: SupabaseClient, c: Company, agents: Agent[], opts: { cacheMs?: number } = {}): Promise<Ctx> {
+  const cached = ctxCache.get(c.id);
+  if (opts.cacheMs && cached && Date.now() - cached.geradoEm < opts.cacheMs) return cached;
   const max = agents.find((a) => a.agent_key === "orquestrador");
   const rafa = agents.find((a) => a.agent_key === "anuncios");
   const ctx: Ctx = {
     modo: max?.config?.dados === "nexus_unv" ? "nexus_unv" : "kpis",
     empresa: c.name, oferta: ofertaBlock(c, rafa?.config || {}),
     kpis: "", comercial: "", financeiro: "", carteira: "", trafego: "", catalogo: "",
-    leadsParados: [], clientesPerdidos: [], leadsNovos: [], campanhas: [],
+    leadsParados: [], clientesPerdidos: [], leadsNovos: [], campanhas: [], negociacoes: [],
+    geradoEm: Date.now(),
   };
   ctx.kpis = await kpiBlock(supabase, c.id);
   if (ctx.modo === "nexus_unv") await unvContext(supabase, ctx);
+  ctxCache.set(c.id, ctx);
   return ctx;
 }
 

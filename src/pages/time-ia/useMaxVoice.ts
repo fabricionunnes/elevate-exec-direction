@@ -29,13 +29,8 @@ export function useMaxVoice(ask: (text: string) => Promise<string>) {
     try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
   }, []);
 
-  /** Fala um texto (TTS do servidor; fallback navegador). Resolve quando termina. */
-  const falar = useCallback(async (texto: string): Promise<void> => {
-    if (!texto.trim()) return;
-    pararAudio();
-    setFalaAtual(texto);
-    setFaseSafe("falando");
-    let ok = false;
+  /** Pede o áudio de um texto ao servidor (null se não der). */
+  const sintetizar = useCallback(async (texto: string): Promise<Blob | null> => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-team-tts`, {
@@ -43,20 +38,56 @@ export function useMaxVoice(ask: (text: string) => Promise<string>) {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token || ""}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
         body: JSON.stringify({ text: texto }),
       });
-      if (r.ok && (r.headers.get("Content-Type") || "").includes("audio")) {
-        const blob = await r.blob();
+      if (r.ok && (r.headers.get("Content-Type") || "").includes("audio")) return await r.blob();
+    } catch { /* cai pro sintetizador */ }
+    return null;
+  }, []);
+
+  const tocar = useCallback((blob: Blob): Promise<void> => new Promise<void>((resolve) => {
+    if (!vivoRef.current) return resolve();
+    const a = new Audio(URL.createObjectURL(blob));
+    audioRef.current = a;
+    a.onended = () => resolve();
+    a.onerror = () => resolve();
+    a.play().catch(() => resolve());
+  }), []);
+
+  // "deixa eu olhar aqui": toca na hora em que você termina de falar, enquanto o Max pensa
+  const fillerRef = useRef<Blob | null>(null);
+  const fillerTocando = useRef<Promise<void> | null>(null);
+  const prepararFiller = useCallback(async () => {
+    if (fillerRef.current) return;
+    fillerRef.current = await sintetizar("Deixa eu olhar aqui.");
+  }, [sintetizar]);
+
+  /** Divide em primeira frase + resto: o áudio da primeira sai antes, o resto chega enquanto ela toca. */
+  const partir = (texto: string): string[] => {
+    const t = texto.trim();
+    const m = t.match(/^(.{20,220}?[.!?])\s+([\s\S]+)$/);
+    return m ? [m[1], m[2]] : [t];
+  };
+
+  /** Fala um texto (TTS do servidor; fallback navegador). Resolve quando termina. */
+  const falar = useCallback(async (texto: string): Promise<void> => {
+    if (!texto.trim()) return;
+    setFalaAtual(texto);
+    setFaseSafe("falando");
+    let ok = false;
+    try {
+      const partes = partir(texto);
+      const pedidos = partes.map((p) => sintetizar(p));
+      // espera o "deixa eu olhar" terminar pra não falar por cima
+      if (fillerTocando.current) { await fillerTocando.current; fillerTocando.current = null; }
+      for (const pedido of pedidos) {
+        const blob = await pedido;
+        if (!blob) { ok = false; break; }
         if (!vivoRef.current) return;
-        await new Promise<void>((resolve) => {
-          const a = new Audio(URL.createObjectURL(blob));
-          audioRef.current = a;
-          a.onended = () => resolve();
-          a.onerror = () => resolve();
-          a.play().catch(() => resolve());
-        });
+        await tocar(blob);
         ok = true;
       }
-    } catch { /* cai pro sintetizador */ }
+    } catch { ok = false; }
     if (!ok) {
+      pararAudio();
       await new Promise<void>((resolve) => {
         try {
           const u = new SpeechSynthesisUtterance(texto);
@@ -71,7 +102,7 @@ export function useMaxVoice(ask: (text: string) => Promise<string>) {
       });
     }
     if (faseRef.current === "falando") setFaseSafe("parado");
-  }, [pararAudio]);
+  }, [pararAudio, sintetizar, tocar]);
 
   const ouvir = useCallback(() => {
     if (!SR) { setErro("Seu navegador não tem reconhecimento de voz. Use Chrome ou Safari."); return; }
@@ -103,6 +134,7 @@ export function useMaxVoice(ask: (text: string) => Promise<string>) {
       setParcial("");
       if (!texto) { setTimeout(ouvir, 200); return; }
       setFaseSafe("pensando");
+      if (fillerRef.current) fillerTocando.current = tocar(fillerRef.current);
       try {
         const resposta = await ask(texto);
         if (!vivoRef.current) return;
@@ -119,8 +151,9 @@ export function useMaxVoice(ask: (text: string) => Promise<string>) {
     recRef.current = rec;
     setErro(null);
     setFaseSafe("ouvindo");
+    prepararFiller();
     try { rec.start(); } catch { setTimeout(ouvir, 300); }
-  }, [ask, falar, pararAudio]);
+  }, [ask, falar, pararAudio, prepararFiller, tocar]);
 
   const parar = useCallback(() => {
     setFaseSafe("parado");
