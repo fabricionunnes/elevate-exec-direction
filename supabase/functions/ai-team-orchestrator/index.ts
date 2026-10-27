@@ -643,11 +643,9 @@ Deno.serve(async (req) => {
         const asUser = createClient(SUPABASE_URL, SERVICE_KEY, { global: { headers: { Authorization: authHeader } } });
         const { data: { user } } = await asUser.auth.getUser(token);
         if (!user) return json({ error: "não autenticado" }, 401);
-        const [cli, staff] = await Promise.all([
-          asUser.rpc("client_has_company_access", { check_company_id: body.companyId }),
-          asUser.rpc("staff_has_company_access", { check_company_id: body.companyId }),
-        ]);
-        if (!cli.data && !staff.data) return json({ error: "sem acesso à empresa" }, 403);
+        // mesma regra da RLS: cliente da empresa, staff alocado, ou master/admin
+        const { data: ok } = await asUser.rpc("ai_team_has_access", { p_company_id: body.companyId });
+        if (!ok) return json({ error: "sem acesso à empresa" }, 403);
       }
       companyIds = [body.companyId];
     }
