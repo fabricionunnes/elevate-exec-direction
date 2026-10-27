@@ -1,0 +1,73 @@
+// ai-team-tts: a voz do Max. Recebe texto e devolve áudio (audio/mpeg).
+// Provedor por secret, nesta ordem: ELEVENLABS_API_KEY (voz em AI_TEAM_TTS_VOICE,
+// modelo eleven_flash_v2_5, pt-BR natural) → OPENAI_API_KEY (tts-1, voz AI_TEAM_TTS_VOICE
+// ou "onyx") → 501 (a tela cai pro sintetizador do navegador).
+// Exige usuário logado (qualquer autenticado) ou service role: áudio custa dinheiro.
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+function jwtRole(token: string): string {
+  try {
+    const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return String(JSON.parse(atob(payload))?.role || "");
+  } catch { return ""; }
+}
+
+/** Limpa o texto pra fala: tira markdown residual, URLs e espaços duplos. */
+function paraFala(text: string): string {
+  return text
+    .replace(/[*_#`>]+/g, "")
+    .replace(/https?:\/\/\S+/g, "link")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 2500);
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  try {
+    const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+    const role = jwtRole(token);
+    if (!["authenticated", "service_role"].includes(role)) return json({ error: "exige usuário logado" }, 401);
+
+    const body = await req.json().catch(() => ({}));
+    const text = paraFala(String(body.text || ""));
+    if (!text) return json({ error: "text obrigatório" }, 400);
+
+    const eleven = Deno.env.get("ELEVENLABS_API_KEY");
+    const openai = Deno.env.get("OPENAI_API_KEY");
+    const voice = Deno.env.get("AI_TEAM_TTS_VOICE");
+
+    if (eleven) {
+      const voiceId = voice || "pNInz6obpgDQGcFmaJgB"; // Adam (premade), multilingual
+      const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_64`, {
+        method: "POST",
+        headers: { "xi-api-key": eleven, "Content-Type": "application/json", Accept: "audio/mpeg" },
+        body: JSON.stringify({ text, model_id: "eleven_flash_v2_5", voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.2, use_speaker_boost: true } }),
+      });
+      if (r.ok) return new Response(r.body, { headers: { ...corsHeaders, "Content-Type": "audio/mpeg", "X-Tts-Provider": "elevenlabs" } });
+      console.error("elevenlabs", r.status, (await r.text()).slice(0, 200));
+      // cai pro OpenAI se tiver
+    }
+
+    if (openai) {
+      const r = await fetch("https://api.openai.com/v1/audio/speech", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${openai}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "tts-1", voice: (eleven ? "onyx" : voice) || "onyx", input: text, response_format: "mp3", speed: 1.05 }),
+      });
+      if (r.ok) return new Response(r.body, { headers: { ...corsHeaders, "Content-Type": "audio/mpeg", "X-Tts-Provider": "openai" } });
+      const err = (await r.text()).slice(0, 200);
+      console.error("openai tts", r.status, err);
+      return json({ error: `openai ${r.status}: ${err}` }, 502);
+    }
+
+    return json({ error: "nenhum provedor de voz configurado (ELEVENLABS_API_KEY ou OPENAI_API_KEY)" }, 501);
+  } catch (e) {
+    console.error("ai-team-tts", e);
+    return json({ error: (e as Error).message }, 500);
+  }
+});

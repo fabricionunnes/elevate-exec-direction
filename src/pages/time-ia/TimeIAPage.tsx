@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Play, Check, X, Bot, Clock, SendHorizontal, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { ArrowLeft, Loader2, Play, Check, X, Bot, Clock, SendHorizontal, ChevronDown, ChevronUp, RefreshCw, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
+import VoiceMode from "./VoiceMode";
 
 // tabelas novas ainda não estão no types.ts gerado pelo Lovable
 const db = supabase as any;
@@ -73,6 +74,7 @@ export default function TimeIAPage() {
   const [input, setInput] = useState("");
   const [tab, setTab] = useState<"conversa" | "time" | "fila">("conversa");
   const [openItem, setOpenItem] = useState<string | null>(null);
+  const [voz, setVoz] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -141,11 +143,9 @@ export default function TimeIAPage() {
   const maxRun = lastRunByKey.get("orquestrador");
 
   // ── conversa ──
-  const send = async (text?: string) => {
-    const msg = (text ?? input).trim();
-    if (!msg || !company || sending) return;
-    setInput("");
-    setSending(true);
+  /** Manda uma mensagem pro Max e devolve a resposta em texto (texto e voz usam o mesmo caminho). */
+  const ask = useCallback(async (msg: string): Promise<string> => {
+    if (!company) throw new Error("empresa não carregada");
     const tempId = `tmp-${Date.now()}`;
     setMessages((prev) => [...prev, { id: tempId, role: "user", content: msg, created_at: new Date().toISOString(), pending: true }]);
     try {
@@ -155,9 +155,22 @@ export default function TimeIAPage() {
       const acted = (data?.actions || []).some((a: any) => ["rodar_agente", "decidir_item", "atualizar_agente"].includes(a.tool));
       await loadData(company.id);
       if (acted) toast.success("O Max mexeu no time; painel atualizado");
+      return String(data?.reply || "");
+    } catch (e) {
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      throw e;
+    }
+  }, [company, loadData]);
+
+  const send = async (text?: string) => {
+    const msg = (text ?? input).trim();
+    if (!msg || !company || sending) return;
+    setInput("");
+    setSending(true);
+    try {
+      await ask(msg);
     } catch (e: any) {
       toast.error(e?.message || "O Max não respondeu");
-      setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setInput(msg);
     } finally {
       setSending(false);
@@ -215,6 +228,7 @@ export default function TimeIAPage() {
 
   return (
     <div className="h-[100dvh] flex flex-col" style={{ background: "#F4F6FA" }}>
+      {voz && <VoiceMode maxName={max?.name || "Max"} ask={ask} onClose={() => setVoz(false)} />}
       {/* Header navy */}
       <header className="shrink-0 text-white" style={{ background: NAVY }}>
         <div className="flex items-center justify-between px-3 md:px-5 py-2.5 gap-2">
@@ -266,6 +280,9 @@ export default function TimeIAPage() {
               </div>
             </div>
             {maxRun && <span className="text-[11px] text-muted-foreground hidden sm:flex items-center gap-1"><Clock className="h-3 w-3" />última rodada {timeAgo(maxRun.finished_at || maxRun.started_at)}</span>}
+            <Button size="sm" variant="outline" className="gap-1.5" style={{ borderColor: NAVY, color: NAVY }} onClick={() => setVoz(true)} title="Conversar por voz com o Max">
+              <Mic className="h-4 w-4" /><span className="hidden sm:inline">Falar com o {max?.name || "Max"}</span><span className="sm:hidden">Voz</span>
+            </Button>
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto px-3 md:px-5 py-4 space-y-4">
