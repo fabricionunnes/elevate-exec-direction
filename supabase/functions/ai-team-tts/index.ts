@@ -54,11 +54,18 @@ Deno.serve(async (req) => {
     }
 
     if (openai) {
-      const r = await fetch("https://api.openai.com/v1/audio/speech", {
+      // gpt-4o-mini-tts aceita instrução de tom e soa bem menos robótico que o tts-1;
+      // se o modelo não estiver disponível na conta, cai pro tts-1.
+      const voz = (eleven ? "ash" : voice) || "ash";
+      const call = (model: string, extra: Record<string, unknown>) => fetch("https://api.openai.com/v1/audio/speech", {
         method: "POST",
         headers: { Authorization: `Bearer ${openai}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "tts-1", voice: (eleven ? "onyx" : voice) || "onyx", input: text, response_format: "mp3", speed: 1.05 }),
+        body: JSON.stringify({ model, voice: voz, input: text, response_format: "mp3", ...extra }),
       });
+      let r = await call("gpt-4o-mini-tts", {
+        instructions: "Fale em português do Brasil, sotaque neutro brasileiro. Voz masculina, grave, calma e segura, como um sócio experiente conversando no escritório: ritmo natural de fala, pausas curtas entre frases, sem entonação de locutor, sem soar como leitura. Energia média, nunca animado demais.",
+      });
+      if (!r.ok) { console.error("gpt-4o-mini-tts", r.status, (await r.text()).slice(0, 200)); r = await call("tts-1", { speed: 1.03 }); }
       if (r.ok) return new Response(r.body, { headers: { ...corsHeaders, "Content-Type": "audio/mpeg", "X-Tts-Provider": "openai" } });
       const err = (await r.text()).slice(0, 200);
       console.error("openai tts", r.status, err);
