@@ -17,9 +17,34 @@ import {
 const CTX_CACHE_MS = 5 * 60 * 1000;
 
 const CHAT_MODEL = Deno.env.get("AI_TEAM_CHAT_MODEL") || MODEL;
-const MAX_TOOL_ROUNDS = 6;
+const MAX_TOOL_ROUNDS = 8;
+
+// Mapa do Nexus pro Max saber onde cada coisa mora antes de consultar.
+const MAPA_NEXUS = `MAPA DO NEXUS (Postgres; use consultar(sql) com SELECT; ver_tabelas(busca) mostra colunas):
+- Clientes da UNV: onboarding_companies (id, name, status active/inactive, segment, cnpj, phone, consultant_id, cs_id, contract_value). Projetos/contratos: onboarding_projects (id, onboarding_company_id → empresa, product_name, status active/closed/cancellation_signaled, contract_value, contract_start_date, contract_end_date, churn_date, churn_reason, churn_risk, consultant_id, cs_id, current_nps). Time da UNV: onboarding_staff (id, name, role, is_active). Usuários do cliente: onboarding_users (user_id, project_id, role).
+- CRM da UNV (tenant_id IS NULL): crm_leads (id, name, phone, pipeline_id, stage_id, opportunity_value, owner_staff_id, closer_staff_id, sdr_staff_id, origin, campaign_name, created_at, last_activity_at, stage_entered_at, loss_reason_id, product_id), crm_pipelines (id, name, tenant_id), crm_stages (id, pipeline_id, name, is_final, final_type won/lost), crm_activities (lead_id, type meeting/call/followup/whatsapp, status pending/completed/cancelled, scheduled_at, responsible_staff_id, notes), crm_loss_reasons. Conversas: crm_conversations / crm_messages, instagram_conversations / instagram_messages.
+- Financeiro da UNV: company_invoices (company_id → cliente, description, amount_cents, due_date, status paid/pending/overdue/cancelled, paid_at), financial_receivables (amount, due_date, status, company_id), financial_payables (supplier_name, amount, due_date, status paid/pending/partial, category_id, tenant_id IS NULL), financial_bank_transactions, financial_categories, financial_budgets.
+- KPIs dos clientes: company_kpis (id, company_id, name, kpi_type monetary/number, is_active), kpi_entries (company_id, kpi_id, entry_date, value, salesperson_id), company_salespeople (company_id, name, is_active). Metas: kpi_goals se existir (ver_tabelas kpi).
+- Saúde/retenção: client_health_scores (project_id, total_score, risk_level, trend_direction), onboarding_nps_responses (score, created_at, project_id), churn_predictions, retention_attempts.
+- Tráfego pago: da UNV → crm_meta_ads_campaigns (tenant_id IS NULL: campaign_name, spend, leads, clicks, date_start, date_stop); dos clientes → meta_ads_accounts (project_id, ad_account_name), meta_ads_campaigns (project_id, spend, leads, roas...), trafego_diario (project_id, dia, campaign_name, spend, leads, conversas, receita).
+- Serviços e preços: service_catalog. Time de IA: ai_team_agents, ai_team_runs, ai_team_approvals, ai_team_messages.
+Regras de consulta: sempre LIMIT; datas com current_date; dinheiro de company_invoices está em centavos (amount_cents/100); nomes de cliente ficam em onboarding_companies.name (junte por onboarding_company_id nos projetos e company_id nas faturas/KPIs); valores de lead em crm_leads.opportunity_value.`;
 
 const TOOLS = [
+  {
+    name: "consultar",
+    description: "Roda um SELECT no banco do Nexus (todas as empresas, financeiro, CRM, KPIs, tráfego, carteira). Use SEMPRE que a pergunta pedir um dado que não está no contexto ou que envolva um cliente específico, um período específico ou um detalhe. Somente leitura, máximo 200 linhas, 10 segundos. Prefira agregações (count, sum, avg) a listas longas.",
+    input_schema: {
+      type: "object",
+      properties: { sql: { type: "string", description: "SELECT/WITH em PostgreSQL, uma consulta, sem ponto e vírgula, com LIMIT" }, motivo: { type: "string", description: "o que você quer descobrir, em uma frase" } },
+      required: ["sql"],
+    },
+  },
+  {
+    name: "ver_tabelas",
+    description: "Procura tabelas e colunas do Nexus por palavra (ex: 'kpi', 'invoice', 'meta', 'nps'). Use antes de consultar uma tabela que não está no mapa, ou quando uma consulta falhar por coluna inexistente.",
+    input_schema: { type: "object", properties: { busca: { type: "string" } }, required: ["busca"] },
+  },
   {
     name: "rodar_agente",
     description: "Coloca um agente do time pra trabalhar agora. Use quando o dono pedir pra rodar/acionar alguém ou quando a pergunta dele exige uma entrega nova (anúncios, posts, mensagens, análise de tráfego, briefing). Demora de 5 a 60 segundos.",
@@ -86,6 +111,24 @@ async function loadTeamState(supabase: SupabaseClient, companyId: string) {
 }
 
 async function runTool(supabase: SupabaseClient, c: Company, name: string, input: any, userId: string | null, ctx: Ctx): Promise<any> {
+  if (name === "consultar") {
+    const sql = String(input?.sql || "").trim();
+    if (!sql) return { erro: "sql vazio" };
+    const { data, error } = await supabase.rpc("ai_team_sql", { q: sql });
+    if (error) return { erro: error.message, dica: "confira colunas com ver_tabelas; só SELECT, sem ponto e vírgula" };
+    const rows = Array.isArray(data) ? data : [];
+    return { linhas: rows.length, truncado: rows.length >= 200, dados: rows };
+  }
+  if (name === "ver_tabelas") {
+    const busca = String(input?.busca || "").replace(/[^a-z0-9_ ]/gi, "").trim().toLowerCase();
+    if (!busca) return { erro: "busca vazia" };
+    const { data, error } = await supabase.rpc("ai_team_sql", { q:
+      `select table_name, string_agg(column_name || ' ' || data_type, ', ' order by ordinal_position) as colunas
+       from information_schema.columns where table_schema = 'public' and (table_name ilike '%${busca.replace(/ /g, "%")}%' or column_name ilike '%${busca.replace(/ /g, "%")}%')
+       group by table_name order by table_name limit 40` });
+    if (error) return { erro: error.message };
+    return data;
+  }
   if (name === "ver_negociacoes") {
     const min = Number(input?.minimo || 0);
     return ctx.negociacoes.filter((n) => n.valor >= min).map((n) => ({
@@ -155,11 +198,14 @@ ${filaTxt}
 ÚLTIMAS RODADAS:
 ${rodadas}
 
-DADOS DA EMPRESA (lidos agora do Nexus):
+RESUMO DE HOJE (lido agora do Nexus; é um recorte, não o banco inteiro):
 ${dados || "nenhum dado além da oferta"}
 
+${MAPA_NEXUS}
+
 Como agir:
-- Responda com número quando tiver número. Nunca invente dado; se não está acima, diga que não tem e o que faltaria lançar.
+- Você tem acesso de leitura a TODO o Nexus: a UNV e todas as empresas clientes. Se a pergunta pede algo que não está no resumo (um cliente específico, um período, um vendedor, uma campanha, um detalhe), use consultar(sql) antes de responder. Não diga "não tenho esse dado" sem antes tentar uma consulta; se a consulta não encontrar, aí sim diga que o dado não está lançado no sistema.
+- Responda com número quando tiver número. Nunca invente dado.
 - Quando o dono pedir pra alguém do time fazer algo, use rodar_agente e depois conte o que saiu (resuma a entrega, não copie inteira).
 - Quando o dono pedir pra aprovar/rejeitar, use ver_fila se precisar achar o item certo e depois decidir_item. Confirme o que fez em uma linha.
 - Quando ele perguntar "o que eu faço", opine: escolha, priorize, discorde se for o caso. Você tem opinião.
