@@ -73,15 +73,30 @@ export function CompanyFinancialSidePanel({
           throw new Error("Instância não encontrada");
         }
 
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({ instanceName: instById.instance_name, number: contactPhone, text: msg }),
-        });
+        // Grupo (ex.: "MARTINS ... - Gestão"): o send-text põe 55 na frente de todo número e o id do
+        // grupo virava um número inexistente, a cobrança não saía (27/10/2026). O sendText é o mesmo
+        // envio do Atendimento e reconhece grupo (120363..., manda pra @g.us).
+        const digitos = String(contactPhone || "").replace(/\D/g, "");
+        const ehGrupo = digitos.startsWith("120363") && digitos.length > 15;
+        const response = ehGrupo
+          ? await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=sendText`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+                'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              },
+              body: JSON.stringify({ instanceId, phone: digitos, message: msg }),
+            })
+          : await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+                'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              },
+              body: JSON.stringify({ instanceName: instById.instance_name, number: contactPhone, text: msg }),
+            });
 
         if (!response.ok) {
           const err = await response.json().catch(() => ({}));
