@@ -11,10 +11,12 @@ import {
   corsHeaders, SUPABASE_URL, SERVICE_KEY, MODEL, type Agent, type Company, type Ctx,
   json, jwtRole, logUsoIA, buildContext, dadosBlock, brNow,
 } from "./shared.ts";
+import { contaMetaUNV, criarAnuncioPausado, mudarStatus, linkGerenciador } from "./meta.ts";
 
 // contexto de dados vale por 5 min dentro do isolate: a conversa por voz não pode
 // esperar as consultas a cada frase (o orquestrador continua pedindo fresco)
 const CTX_CACHE_MS = 5 * 60 * 1000;
+const LINK_PADRAO = "https://unvholdings.com.br/sessao-estrategica";
 
 const CHAT_MODEL = Deno.env.get("AI_TEAM_CHAT_MODEL") || MODEL;
 const MAX_TOOL_ROUNDS = 8;
@@ -53,6 +55,40 @@ const TOOLS = [
       properties: { agent_key: { type: "string", enum: ["briefing", "anuncios", "conteudo", "reativacao", "trafego", "qualificacao"] } },
       required: ["agent_key"],
     },
+  },
+  {
+    name: "criar_anuncio_meta",
+    description: "Cria um anúncio REAL na conta Meta Ads da UNV, PAUSADO: gera a imagem, sobe campanha, conjunto (Brasil, idade, posicionamentos manuais, sem Advantage+), criativo e anúncio. Demora 30 a 60 s. Use só quando o dono mandar criar/subir anúncio. Pode partir de um item aprovado da fila (approval_id) ou de copy nova. Nunca ativa: ativar é ativar_anuncio_meta, só com ordem explícita.",
+    input_schema: {
+      type: "object",
+      properties: {
+        nome: { type: "string", description: "nome interno da campanha, ex: 'DCT · vendedor figurante · out/26'" },
+        headline: { type: "string", description: "título do anúncio, até 40 caracteres" },
+        texto: { type: "string", description: "texto principal, 3 a 5 linhas, sem emoji" },
+        cta: { type: "string", enum: ["LEARN_MORE", "SIGN_UP", "CONTACT_US", "GET_QUOTE"], description: "botão; padrão LEARN_MORE" },
+        link: { type: "string", description: "destino; padrão a página de sessão estratégica da UNV" },
+        orcamento_diario: { type: "number", description: "em reais; padrão 50" },
+        idade_min: { type: "integer" }, idade_max: { type: "integer" },
+        imagem_briefing: { type: "string", description: "cena da foto em 1 frase (ex: 'dono de empresa sozinho na mesa de reunião olhando um painel de metas vazio')" },
+        approval_id: { type: "string", description: "id de um anúncio da fila pra reaproveitar headline/texto/cta" },
+      },
+      required: ["nome", "imagem_briefing"],
+    },
+  },
+  {
+    name: "ativar_anuncio_meta",
+    description: "Liga (ACTIVE) uma campanha que o Max criou pausada. Só quando o dono mandar ativar explicitamente. Começa a gastar dinheiro.",
+    input_schema: { type: "object", properties: { campaign_id: { type: "string" } }, required: ["campaign_id"] },
+  },
+  {
+    name: "pausar_anuncio_meta",
+    description: "Pausa uma campanha que o Max criou. Use quando o dono mandar pausar/parar.",
+    input_schema: { type: "object", properties: { campaign_id: { type: "string" } }, required: ["campaign_id"] },
+  },
+  {
+    name: "listar_anuncios_meta",
+    description: "Lista os anúncios que o Max criou na Meta (status, orçamento, link do Gerenciador).",
+    input_schema: { type: "object", properties: {} },
   },
   {
     name: "ver_negociacoes",
@@ -111,6 +147,47 @@ async function loadTeamState(supabase: SupabaseClient, companyId: string) {
 }
 
 async function runTool(supabase: SupabaseClient, c: Company, name: string, input: any, userId: string | null, ctx: Ctx): Promise<any> {
+  if (name === "criar_anuncio_meta") {
+    try {
+      let headline = String(input.headline || "").trim(), texto = String(input.texto || "").trim(), cta = String(input.cta || "LEARN_MORE");
+      if (input.approval_id) {
+        const { data: ap } = await supabase.from("ai_team_approvals").select("payload, title").eq("id", input.approval_id).eq("company_id", c.id).maybeSingle();
+        if (ap?.payload) { headline = headline || ap.payload.headline || ap.title; texto = texto || ap.payload.texto || ""; }
+      }
+      if (!headline || !texto) return { erro: "faltou headline ou texto (ou approval_id de um anúncio da fila)" };
+      const conta = await contaMetaUNV(supabase);
+      const ids = await criarAnuncioPausado(conta, {
+        nome: String(input.nome), headline: headline.slice(0, 40), texto, cta, link: String(input.link || LINK_PADRAO),
+        orcamentoDiario: Number(input.orcamento_diario || 50), idadeMin: Number(input.idade_min || 25), idadeMax: Number(input.idade_max || 60),
+        imagemBriefing: String(input.imagem_briefing),
+      });
+      await supabase.from("ai_team_meta_ads").insert({
+        company_id: c.id, ad_account_id: conta.ad_account_id, ...ids, headline: headline.slice(0, 40), texto,
+        link: String(input.link || LINK_PADRAO), orcamento_diario: Number(input.orcamento_diario || 50), status: "paused", created_by: userId,
+      });
+      if (input.approval_id) await supabase.from("ai_team_approvals").update({ status: "approved", decided_at: new Date().toISOString(), decided_by: userId, note: `subiu na Meta: campanha ${ids.campaign_id}` }).eq("id", input.approval_id).eq("company_id", c.id);
+      return { ok: true, conta: conta.nome, ...ids, status: "PAUSADO", orcamento_diario: Number(input.orcamento_diario || 50), link_gerenciador: linkGerenciador(conta.ad_account_id, ids.campaign_id) };
+    } catch (e) {
+      return { erro: (e as Error).message };
+    }
+  }
+  if (name === "ativar_anuncio_meta" || name === "pausar_anuncio_meta") {
+    const ativar = name === "ativar_anuncio_meta";
+    const { data: row } = await supabase.from("ai_team_meta_ads").select("*").eq("company_id", c.id).eq("campaign_id", String(input.campaign_id)).maybeSingle();
+    if (!row) return { erro: "campanha não encontrada entre as que o Max criou" };
+    try {
+      const conta = await contaMetaUNV(supabase);
+      await mudarStatus(conta, row, ativar ? "ACTIVE" : "PAUSED");
+      await supabase.from("ai_team_meta_ads").update({ status: ativar ? "active" : "paused", activated_at: ativar ? new Date().toISOString() : row.activated_at }).eq("id", row.id);
+      return { ok: true, campaign_id: row.campaign_id, status: ativar ? "ATIVA" : "PAUSADA", headline: row.headline, orcamento_diario: row.orcamento_diario, link_gerenciador: linkGerenciador(row.ad_account_id, row.campaign_id) };
+    } catch (e) {
+      return { erro: (e as Error).message };
+    }
+  }
+  if (name === "listar_anuncios_meta") {
+    const { data } = await supabase.from("ai_team_meta_ads").select("campaign_id, headline, status, orcamento_diario, link, created_at, activated_at, ad_account_id").eq("company_id", c.id).order("created_at", { ascending: false }).limit(20);
+    return (data || []).map((r: any) => ({ ...r, link_gerenciador: linkGerenciador(r.ad_account_id, r.campaign_id) }));
+  }
   if (name === "consultar") {
     const sql = String(input?.sql || "").trim();
     if (!sql) return { erro: "sql vazio" };
@@ -211,6 +288,7 @@ Como agir:
 - Quando ele perguntar "o que eu faço", opine: escolha, priorize, discorde se for o caso. Você tem opinião.
 - Quando ele colocar uma META ("preciso vender 40 mil hoje", "tenho que fechar 3 contratos essa semana"), NÃO responda com teoria: vá nas negociações abertas (estão nos dados; use ver_negociacoes se precisar da lista completa), some quais fecham a meta, diga NOME, VALOR e ETAPA de cada uma, quem está cuidando, e o que fazer AGORA com cada uma (ligar, mandar proposta, cobrar resposta). Ofereça deixar as mensagens prontas pelo Theo ou pelo time.
 - Primeiro responda exatamente o que foi perguntado; só depois, se couber, acrescente o que você acha.
+- ORDENS DE EXECUÇÃO na Meta: quando o dono mandar criar/subir anúncio, crie de verdade com criar_anuncio_meta (copy do Rafa, de um item da fila ou escrita por você agora, sem nome de cliente, sem preço salvo se ele pedir), SEMPRE pausado, e devolva: headline, orçamento diário, público e o link do Gerenciador. Se ele não disser orçamento, use 50 reais por dia e avise. NUNCA chame ativar_anuncio_meta sem uma ordem explícita de ativar ("ativa", "pode ligar", "sobe pra valer"); se a ordem de criar vier junto com "e ativa", crie, confirme o que criou e pergunte se ativa mesmo. Pausar pode ser imediato quando ele mandar.
 - Se ele pedir algo que o time não faz (ligar pra cliente, publicar anúncio na Meta, mandar WhatsApp), diga com clareza que isso ainda é mão humana e deixe pronto o que der (texto, lista, prioridade).
 - Respostas de 2 a 8 linhas. Só alongue quando ele pedir detalhe.`;
 }
