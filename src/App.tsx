@@ -226,6 +226,7 @@ const B2BProspectionPage = lazy(() => import("./pages/onboarding-tasks/B2BProspe
 const ConsultoriasAdminPage = lazy(() => import("./pages/onboarding-tasks/ConsultoriasAdminPage"));
 const MasterAIConsultPage = lazy(() => import("./pages/onboarding-tasks/MasterAIConsultPage"));
 const MRRDashboardPage = lazy(() => import("./pages/onboarding-tasks/MRRDashboardPage"));
+const CarteiraConsultorPage = lazy(() => import("./pages/onboarding-tasks/CarteiraConsultorPage"));
 const SignaturesAdminPage = lazy(() => import("./pages/onboarding-tasks/SignaturesAdminPage"));
 const FacunicampsDashboardPage = lazy(() => import("./pages/onboarding-tasks/FacunicampsDashboardPage"));
 const JuridicoPage = lazy(() => import("./pages/onboarding-tasks/JuridicoPage"));
@@ -537,6 +538,7 @@ const AppShell = () => {
               <Route path="/office" element={<OfficePage />} />
               <Route path="/onboarding-tasks/reschedule" element={<RescheduleTasks />} />
               <Route path="/onboarding-tasks/renewals" element={<OnboardingRenewalsPage />} />
+              <Route path="/onboarding-tasks/carteira" element={<CarteiraConsultorPage />} />
               <Route path="/onboarding-tasks/cancellations" element={<OnboardingCancellationsPage />} />
               <Route path="/onboarding-tasks/cancellations-retention" element={<CancellationsRetentionModulePage />} />
               <Route path="/onboarding-tasks/activity-history" element={<OnboardingActivityHistoryPage />} />
