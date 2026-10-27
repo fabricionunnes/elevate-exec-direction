@@ -39,6 +39,7 @@ import {
   Target,
   Building,
   DollarSign,
+  Bot,
 } from "lucide-react";
 import { ShoppingCart } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -571,6 +572,8 @@ const ClientOnboardingPage = () => {
       { id: "instagram" as ViewType, icon: Instagram, label: "Instagram", menuKey: CLIENT_MENU_KEYS.instagram },
       { id: "social" as const, icon: Instagram, label: "UNV Social IA", href: `/social/${projectId}`, menuKey: CLIENT_MENU_KEYS.unv_social },
       { id: "commercial_director" as ViewType, icon: BrainCircuit, label: "Diretor Comercial IA", menuKey: CLIENT_MENU_KEYS.diretor_comercial_ia },
+      // Time de IA usa a mesma permissão do Diretor Comercial IA (mesmo domínio: IA pro dono)
+      { id: "ai_team" as const, icon: Bot, label: "Time de IA", href: `/time-ia/${projectId}`, menuKey: CLIENT_MENU_KEYS.diretor_comercial_ia },
       { id: "other_services" as ViewType, icon: ShoppingCart, label: "Outros Serviços", menuKey: CLIENT_MENU_KEYS.outros_servicos },
       { id: "crm_comercial" as ViewType, icon: Briefcase, label: "CRM Comercial", menuKey: CLIENT_MENU_KEYS.crm_comercial },
       { id: "b2b_prospection" as ViewType, icon: Target, label: "Prospecção B2B", menuKey: CLIENT_MENU_KEYS.prospeccao_b2b },
