@@ -126,8 +126,8 @@ begin
            else 0::bigint
          end)::bigint,
          (case
-           when ca.mvc is not null then 'definido na mao'
-           when ca.np = 1 and ca.rt is not null then 'faturado no mes'
+           when ca.mvc is not null then 'valor definido manualmente'
+           when ca.np = 1 and ca.rt is not null then 'faturado no mês'
            when ca.pcv is not null and ca.meses is not null and ca.meses > 1 then 'contrato do projeto dividido pelos meses'
            when ca.pcv is not null then 'contrato do projeto'
            when ca.ecv is not null and ca.meses_emp is not null and ca.meses_emp > 1 then 'contrato da empresa dividido pelos meses'
