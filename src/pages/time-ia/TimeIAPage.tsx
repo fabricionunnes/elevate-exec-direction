@@ -80,10 +80,11 @@ export default function TimeIAPage() {
 
         const { data: project, error } = await supabase
           .from("onboarding_projects")
-          .select("id, company_id, onboarding_company_id, product_name, onboarding_companies(id, name)")
+          .select("id, onboarding_company_id, product_name, onboarding_companies(id, name)")
           .eq("id", projectId).single();
         if (error) throw error;
-        const companyId = (project as any).company_id || (project as any).onboarding_company_id;
+        // onboarding_company_id aponta pra onboarding_companies; company_id é FK de portal_companies (outra coisa)
+        const companyId = (project as any).onboarding_company_id;
         if (!companyId) { toast.error("Projeto sem empresa vinculada"); return; }
         setCompany({ id: companyId, name: (project as any).onboarding_companies?.name || project.product_name });
 
