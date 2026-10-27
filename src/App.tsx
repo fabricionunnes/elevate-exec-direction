@@ -371,6 +371,9 @@ const SocialSettingsPageComponent = lazy(() => import("./pages/social").then(m =
 const SocialApprovalPageComponent = lazy(() => import("./pages/social").then(m => ({ default: m.SocialApprovalPage })));
 const SocialStrategyPageComponent = lazy(() => import("./pages/social").then(m => ({ default: m.SocialStrategyPage })));
 
+// Time de IA (Max + 7 especialistas)
+const TimeIAPage = lazy(() => import("./pages/time-ia/TimeIAPage"));
+
 // Customer Points
 const CustomerPointsLayout = lazy(() => import("./pages/customer-points/CustomerPointsLayout"));
 const CustomerPointsDashboard = lazy(() => import("./pages/customer-points/CustomerPointsDashboard"));
@@ -726,7 +729,10 @@ const AppShell = () => {
               <Route path="settings" element={<SocialSettingsPageComponent />} />
             </Route>
             <Route path="/social/approval" element={<SocialApprovalPageComponent />} />
-            
+
+            {/* Time de IA */}
+            <Route path="/time-ia/:projectId" element={<TimeIAPage />} />
+
             {/* System Showcase */}
             <Route path="/sistema" element={<SystemShowcasePage />} />
             
