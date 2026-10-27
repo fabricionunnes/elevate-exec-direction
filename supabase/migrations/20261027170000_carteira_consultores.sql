@@ -27,7 +27,9 @@ returns table (
   project_status text,
   contrato_vencido boolean,
   dias_para_vencer int,
-  health_score int
+  recorrente boolean,
+  proxima_renovacao date,
+  plano text
 )
 language plpgsql
 security definer
@@ -99,6 +101,8 @@ begin
            coalesce(com.teto, 0) as teto,
            ec.contract_value as ecv,
            ec.contract_end_date as efim,
+           ec.renewal_plan_type as plano,
+           coalesce(ec.billing_day, extract(day from coalesce(pr.pini, ec.contract_start_date))::int) as dia_cob,
            case when pr.pini is not null and pr.pfim is not null
                 then greatest(round((pr.pfim - pr.pini) / 30.0)::int, 1) end as meses,
            case when ec.contract_start_date is not null and ec.contract_end_date is not null
@@ -140,9 +144,25 @@ begin
          ca.meses,
          ca.teto,
          ca.st::text,
-         (coalesce(ca.pfim, ca.efim) is not null and coalesce(ca.pfim, ca.efim) < current_date),
-         (coalesce(ca.pfim, ca.efim) - current_date)::int,
-         null::int
+         (coalesce(ca.plano, 'monthly') <> 'monthly'
+            and coalesce(ca.pfim, ca.efim) is not null
+            and coalesce(ca.pfim, ca.efim) < current_date),
+         case when coalesce(ca.plano, 'monthly') <> 'monthly'
+              then (coalesce(ca.pfim, ca.efim) - current_date)::int end,
+         (coalesce(ca.plano, 'monthly') = 'monthly'),
+         case when coalesce(ca.plano, 'monthly') = 'monthly' and ca.dia_cob is not null then
+           (select min(d)::date from (
+              select make_date(
+                       extract(year from m)::int,
+                       extract(month from m)::int,
+                       least(ca.dia_cob, extract(day from (m + interval '1 month - 1 day'))::int)
+                     ) as d
+                from generate_series(date_trunc('month', current_date),
+                                     date_trunc('month', current_date) + interval '1 month',
+                                     interval '1 month') m
+            ) x where x.d >= current_date)
+         end,
+         coalesce(ca.plano, 'monthly')::text
     from calc ca
     join onboarding_companies c on c.id = ca.cid
     join onboarding_staff st on st.id = ca.sid
