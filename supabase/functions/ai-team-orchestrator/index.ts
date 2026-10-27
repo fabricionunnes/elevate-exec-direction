@@ -19,7 +19,6 @@ const corsHeaders = {
 const MODEL = Deno.env.get("AI_TEAM_MODEL") || "claude-haiku-4-5";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 type AgentKey = "orquestrador" | "atendimento" | "briefing" | "anuncios" | "conteudo" | "reativacao" | "trafego" | "qualificacao";
 type Agent = { id: string; agent_key: AgentKey; name: string; role_title: string; is_active: boolean; schedule: { hour?: string; days?: number[] } | null; config: Record<string, any> };
@@ -57,6 +56,14 @@ function daysAgo(iso: string, n: number): string {
 }
 const brl = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 const json = (b: any, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+/** Papel (claim "role") de um JWT já validado pelo gateway; "" se não der pra ler. */
+function jwtRole(token: string): string {
+  try {
+    const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return String(JSON.parse(atob(payload))?.role || "");
+  } catch { return ""; }
+}
 
 /** medidor de tokens (fire-and-forget), mesmo padrão das outras funções */
 function logUsoIA(fn: string, usage: any, meta?: Record<string, unknown>) {
@@ -335,8 +342,9 @@ Deno.serve(async (req) => {
 
     if (body.scheduled === true) {
       // cron do projeto chama com a anon key (padrão dos outros crons); service role também vale.
+      // O gateway já validou a assinatura do JWT (verify_jwt), então basta olhar o papel.
       // Modo agendado é idempotente (1 rodada por agente/dia), então não há o que abusar.
-      if (token !== SERVICE_KEY && token !== ANON_KEY) return json({ error: "cron exige chave do projeto" }, 401);
+      if (!["anon", "service_role"].includes(jwtRole(token))) return json({ error: "cron exige chave do projeto" }, 401);
       trigger = "cron";
       const { data } = await supabase.from("ai_team_agents").select("company_id")
         .eq("agent_key", "orquestrador").eq("is_active", true);
@@ -344,7 +352,8 @@ Deno.serve(async (req) => {
     } else {
       if (!body.companyId) return json({ error: "companyId obrigatório" }, 400);
       // quem chama precisa ter acesso à empresa (cliente ou staff) — checado com o JWT do próprio usuário
-      const asUser = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } });
+      // (apikey = service role só pra passar no gateway; o Authorization do usuário é o que manda no RLS)
+      const asUser = createClient(SUPABASE_URL, SERVICE_KEY, { global: { headers: { Authorization: authHeader } } });
       const { data: { user } } = await asUser.auth.getUser(token);
       if (!user) return json({ error: "não autenticado" }, 401);
       const [cli, staff] = await Promise.all([
