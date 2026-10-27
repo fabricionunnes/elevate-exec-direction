@@ -1,20 +1,12 @@
+// Carteira do consultor: quanto cada empresa vale por mês, com contrato anual
+// já dividido pelos meses. Mesma linguagem visual do Painel de Controle.
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { SearchableSelect } from "@/components/ui/searchable-select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ArrowLeft, Briefcase, Loader2, Users, Wallet, Target, AlertTriangle } from "lucide-react";
+import "@/components/painel-controle/painel.css";
+import { Tile, Panel, Tabela, Barras, BarrasItens, Combo, Lk, Nd, St } from "@/components/painel-controle/ui";
+import { brl, brlFull, mesAno, plural } from "@/components/painel-controle/fmt";
 
 interface LinhaCarteira {
   consultant_id: string;
@@ -32,52 +24,34 @@ interface LinhaCarteira {
   commission_max_cents: number;
   project_status: string;
   contrato_vencido: boolean;
+  dias_para_vencer: number | null;
 }
 
-const brl = (cents: number) =>
-  (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-
-const brlExato = (cents: number) =>
-  (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+interface LinhaHistorico {
+  mes: string;
+  faturado_cents: number;
+  recebido_cents: number;
+  comissao_cents: number;
+  clientes: number;
+}
 
 const rotuloStatus: Record<string, string> = {
-  active: "Ativo",
-  cancellation_signaled: "Sinalizou cancelamento",
-  notice_period: "Em aviso",
+  active: "ativo",
+  cancellation_signaled: "sinalizou cancelamento",
+  notice_period: "em aviso",
 };
 
 export default function CarteiraConsultorPage() {
   const navigate = useNavigate();
   const { currentStaff, isMaster, loading: carregandoPerm } = useStaffPermissions();
   const [linhas, setLinhas] = useState<LinhaCarteira[]>([]);
+  const [historico, setHistorico] = useState<LinhaHistorico[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [consultorFiltro, setConsultorFiltro] = useState("none");
+  const [consultor, setConsultor] = useState("");
   const [consultores, setConsultores] = useState<{ value: string; label: string }[]>([]);
+  const [mesFoco, setMesFoco] = useState("");
 
   const podeFiltrar = isMaster || currentStaff?.role === "admin";
-
-  useEffect(() => {
-    if (carregandoPerm) return;
-    let cancelado = false;
-    (async () => {
-      setCarregando(true);
-      const alvo = consultorFiltro && consultorFiltro !== "none" ? consultorFiltro : null;
-      const { data, error } = await supabase.rpc("carteira_consultores", {
-        p_consultant_id: alvo,
-      });
-      if (cancelado) return;
-      if (error) {
-        console.error("carteira_consultores", error);
-        setLinhas([]);
-      } else {
-        setLinhas((data || []) as LinhaCarteira[]);
-      }
-      setCarregando(false);
-    })();
-    return () => {
-      cancelado = true;
-    };
-  }, [consultorFiltro, carregandoPerm]);
 
   useEffect(() => {
     if (carregandoPerm || !podeFiltrar) return;
@@ -86,14 +60,91 @@ export default function CarteiraConsultorPage() {
         .from("onboarding_staff")
         .select("id, name")
         .eq("is_active", true)
-        .eq("role", "consultant")
+        .in("role", ["consultant", "master", "admin"])
         .order("name");
       setConsultores((data || []).map((s: any) => ({ value: s.id, label: s.name })));
     })();
   }, [carregandoPerm, podeFiltrar]);
 
-  // Com filtro ligado a lista ja vem de um consultor so; sem filtro, o master ve
-  // todos e a gente agrupa pra ele comparar as carteiras lado a lado.
+  useEffect(() => {
+    if (carregandoPerm) return;
+    let cancelado = false;
+    (async () => {
+      setCarregando(true);
+      const alvo = consultor || null;
+      const [carteira, hist] = await Promise.all([
+        supabase.rpc("carteira_consultores", { p_consultant_id: alvo }),
+        supabase.rpc("carteira_consultores_historico", { p_consultant_id: alvo, p_meses: 12 }),
+      ]);
+      if (cancelado) return;
+      if (carteira.error) console.error("carteira_consultores", carteira.error);
+      if (hist.error) console.error("carteira_consultores_historico", hist.error);
+      const h = (hist.data || []) as LinhaHistorico[];
+      setLinhas((carteira.data || []) as LinhaCarteira[]);
+      setHistorico(h);
+      const comDado = h.filter((x) => Number(x.faturado_cents) > 0);
+      setMesFoco(comDado.length ? comDado[comDado.length - 1].mes : h[h.length - 1]?.mes || "");
+      setCarregando(false);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [consultor, carregandoPerm]);
+
+  const total = useMemo(() => linhas.reduce((s, l) => s + Number(l.monthly_cents || 0), 0) / 100, [linhas]);
+  const successFee = useMemo(
+    () => linhas.reduce((s, l) => s + Number(l.commission_max_cents || 0), 0) / 100,
+    [linhas],
+  );
+  const empresas = useMemo(() => new Set(linhas.map((l) => l.company_id)).size, [linhas]);
+  const ticket = linhas.length ? total / linhas.length : 0;
+  const vencidos = useMemo(() => linhas.filter((l) => l.contrato_vencido), [linhas]);
+  const vencendo = useMemo(
+    () => linhas.filter((l) => !l.contrato_vencido && l.dias_para_vencer !== null && l.dias_para_vencer <= 60),
+    [linhas],
+  );
+  const saindo = useMemo(() => linhas.filter((l) => l.project_status !== "active"), [linhas]);
+  const valorEmRisco = useMemo(
+    () => saindo.reduce((s, l) => s + Number(l.monthly_cents || 0), 0) / 100,
+    [saindo],
+  );
+
+  // o componente de barras do painel espera uma serie com campo `mes`
+  const serie = useMemo(
+    () =>
+      historico.map((h) => ({
+        mes: h.mes,
+        faturado: Number(h.faturado_cents || 0) / 100,
+        recebido: Number(h.recebido_cents || 0) / 100,
+        fee: Number(h.comissao_cents || 0) / 100,
+        clientes: h.clientes,
+      })),
+    [historico],
+  ) as any[];
+
+  const foco = useMemo(() => serie.find((s) => s.mes === mesFoco), [serie, mesFoco]);
+  const anterior = useMemo(() => {
+    const i = serie.findIndex((s) => s.mes === mesFoco);
+    return i > 0 ? serie[i - 1] : null;
+  }, [serie, mesFoco]);
+  const variacao =
+    foco && anterior && anterior.faturado > 0
+      ? ((foco.faturado - anterior.faturado) / anterior.faturado) * 100
+      : null;
+
+  const inadimplencia = foco && foco.faturado > 0 ? (foco.faturado - foco.recebido) / foco.faturado : null;
+
+  const porProduto = useMemo(() => {
+    const mapa = new Map<string, number>();
+    linhas.forEach((l) => {
+      const k = l.product_name || "sem produto";
+      mapa.set(k, (mapa.get(k) || 0) + Number(l.monthly_cents || 0) / 100);
+    });
+    return Array.from(mapa, ([rot, v]) => ({ k: rot, rot, v, tip: `${rot}: ${brl(v)}` })).sort(
+      (a, b) => b.v - a.v,
+    );
+  }, [linhas]);
+
   const porConsultor = useMemo(() => {
     const mapa = new Map<string, { nome: string; linhas: LinhaCarteira[] }>();
     linhas.forEach((l) => {
@@ -104,190 +155,230 @@ export default function CarteiraConsultorPage() {
     return Array.from(mapa, ([id, v]) => ({
       id,
       nome: v.nome,
-      linhas: v.linhas.sort((a, b) => b.monthly_cents - a.monthly_cents),
-      total: v.linhas.reduce((s, l) => s + Number(l.monthly_cents || 0), 0),
-      comissao: v.linhas.reduce((s, l) => s + Number(l.commission_max_cents || 0), 0),
+      linhas: v.linhas.sort((a, b) => Number(b.monthly_cents) - Number(a.monthly_cents)),
+      total: v.linhas.reduce((s, l) => s + Number(l.monthly_cents || 0), 0) / 100,
+      fee: v.linhas.reduce((s, l) => s + Number(l.commission_max_cents || 0), 0) / 100,
     })).sort((a, b) => b.total - a.total);
   }, [linhas]);
 
-  const totalGeral = useMemo(
-    () => linhas.reduce((s, l) => s + Number(l.monthly_cents || 0), 0),
-    [linhas],
-  );
-  const comissaoGeral = useMemo(
-    () => linhas.reduce((s, l) => s + Number(l.commission_max_cents || 0), 0),
-    [linhas],
-  );
-  const vencidos = useMemo(() => linhas.filter((l) => l.contrato_vencido).length, [linhas]);
-
   if (carregandoPerm) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="pc">
+        <div className="wrap">
+          <div className="empty">Carregando...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto space-y-6 px-4 py-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-semibold sm:text-2xl">Carteira do consultor</h1>
-            <p className="text-sm text-muted-foreground">
-              Quanto cada empresa representa por mês. Contrato anual entra já dividido pelos meses.
-            </p>
+    <div className="pc">
+      <div className="wrap">
+        <div className="top">
+          <button type="button" className="brand" onClick={() => navigate("/onboarding-tasks")}>
+            <span className="lg">UNV</span>
+            <span className="wm">
+              CARTEIRA
+              <small>DO CONSULTOR</small>
+            </span>
+          </button>
+          <div className="ctl">
+            {podeFiltrar && consultores.length > 0 && (
+              <Combo
+                k="consultor"
+                label="Consultor"
+                value={consultor}
+                opts={consultores}
+                todos="Todos"
+                onChange={setConsultor}
+              />
+            )}
+            <button type="button" className="back" onClick={() => navigate("/onboarding-tasks")}>
+              Voltar
+            </button>
           </div>
         </div>
-        {podeFiltrar && consultores.length > 0 && (
-          <div className="w-full sm:w-72">
-            <SearchableSelect
-              value={consultorFiltro}
-              onValueChange={setConsultorFiltro}
-              options={consultores}
-              placeholder="Todos os consultores"
-              allowNone
-              noneLabel="Todos os consultores"
-            />
-          </div>
+
+        <div className="src">
+          Valor mensal de cada empresa. Contrato anual ou semestral entra dividido pelos meses, então
+          cliente que pagou no cartão também aparece com o que representa por mês.
+        </div>
+
+        {carregando ? (
+          <div className="empty">Carregando...</div>
+        ) : (
+          <>
+            <div className="grid k5">
+              <Tile main label="Carteira por mês" valor={brl(total)} sub={plural(empresas, "empresa", "empresas")} />
+              <Tile
+                label="Contratos"
+                valor={String(linhas.length)}
+                sub={`ticket ${brl(ticket)}`}
+              />
+              <Tile
+                label="Faturado no mês"
+                valor={foco ? brl(foco.faturado) : "-"}
+                sub={
+                  <>
+                    {mesFoco ? mesAno(mesFoco) : ""}
+                    {variacao != null && (
+                      <>
+                        {" · "}
+                        <span className={variacao >= 0 ? "pos" : "neg"}>
+                          {variacao >= 0 ? "+" : ""}
+                          {variacao.toFixed(0)}% vs anterior
+                        </span>
+                      </>
+                    )}
+                  </>
+                }
+              />
+              <Tile
+                label="Inadimplência"
+                valor={inadimplencia == null ? "-" : `${Math.round(inadimplencia * 100)}%`}
+                cls={inadimplencia != null && inadimplencia > 0.15 ? "neg" : undefined}
+                sub={foco ? `recebido ${brl(foco.recebido)}` : <Nd />}
+              />
+              <Tile
+                label="Success fee possível"
+                valor={brl(successFee)}
+                sub="o cliente paga isso a mais quando bate a meta"
+              />
+            </div>
+
+            {(vencidos.length > 0 || saindo.length > 0 || vencendo.length > 0) && (
+              <div className="grid r4" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+                <Panel titulo="Contratos vencidos" sub={String(vencidos.length)}>
+                  {vencidos.length ? (
+                    <Tabela
+                      cols={[{ h: "Empresa", tl: true }, "Por mês"]}
+                      rows={vencidos.slice(0, 6).map((l) => [l.company_name, brl(Number(l.monthly_cents) / 100)])}
+                    />
+                  ) : (
+                    <div className="empty">Nenhum</div>
+                  )}
+                </Panel>
+                <Panel titulo="Vencendo em 60 dias" sub={String(vencendo.length)}>
+                  {vencendo.length ? (
+                    <Tabela
+                      cols={[{ h: "Empresa", tl: true }, "Vence em"]}
+                      rows={vencendo.slice(0, 6).map((l) => [l.company_name, `${l.dias_para_vencer} dias`])}
+                    />
+                  ) : (
+                    <div className="empty">Nenhum</div>
+                  )}
+                </Panel>
+                <Panel titulo="Clientes saindo" sub={saindo.length ? brl(valorEmRisco) : "0"}>
+                  {saindo.length ? (
+                    <Tabela
+                      cols={[{ h: "Empresa", tl: true }, "Por mês"]}
+                      rows={saindo.slice(0, 6).map((l) => [l.company_name, brl(Number(l.monthly_cents) / 100)])}
+                    />
+                  ) : (
+                    <div className="empty">Nenhum</div>
+                  )}
+                </Panel>
+              </div>
+            )}
+
+            <Panel
+              titulo="Faturado mês a mês"
+              sub="clique no mês para ver os números dele acima"
+            >
+              <Barras
+                serie={serie}
+                mes={mesFoco}
+                fn={(m: any) => m.faturado}
+                fmt={(v) => brl(v)}
+                sub={(m: any) => (m.fee > 0 ? <i className="tag">fee {brl(m.fee)}</i> : null)}
+                onMes={setMesFoco}
+              />
+            </Panel>
+
+            <div className="grid g2">
+              <Panel titulo="Recebido mês a mês" sub="o que entrou de verdade">
+                <Barras
+                  serie={serie}
+                  mes={mesFoco}
+                  fn={(m: any) => m.recebido}
+                  fmt={(v) => brl(v)}
+                  onMes={setMesFoco}
+                />
+              </Panel>
+              <Panel titulo="Carteira por produto" sub={brl(total)}>
+                <BarrasItens itens={porProduto} fmt={(v) => brl(v)} denso />
+              </Panel>
+            </div>
+
+            <Panel titulo="Histórico" sub="12 meses">
+              <Tabela
+                cols={[
+                  { h: "Mês", tl: true },
+                  "Faturado",
+                  "Recebido",
+                  "Inadimplência",
+                  "Success fee",
+                  "Clientes",
+                ]}
+                rows={historico
+                  .filter((h) => Number(h.faturado_cents) > 0)
+                  .slice()
+                  .reverse()
+                  .map((h) => {
+                    const fat = Number(h.faturado_cents || 0) / 100;
+                    const rec = Number(h.recebido_cents || 0) / 100;
+                    const inad = fat > 0 ? (fat - rec) / fat : 0;
+                    return [
+                      <Lk onClick={() => setMesFoco(h.mes)}>{mesAno(h.mes)}</Lk>,
+                      brlFull(fat),
+                      brlFull(rec),
+                      <St ok={inad <= 0.1} warn={inad <= 0.25} tg={`${Math.round(inad * 100)}%`} tw={`${Math.round(inad * 100)}%`} tb={`${Math.round(inad * 100)}%`} />,
+                      Number(h.comissao_cents) > 0 ? brlFull(Number(h.comissao_cents) / 100) : <Nd />,
+                      String(h.clientes),
+                    ];
+                  })}
+                vazio="Sem histórico de faturamento."
+              />
+            </Panel>
+
+            {porConsultor.map((g) => (
+              <Panel key={g.id} titulo={g.nome} sub={`${plural(g.linhas.length, "contrato", "contratos")} · ${brlFull(g.total)} por mês`}>
+                <Tabela
+                  cols={[
+                    { h: "Empresa", tl: true },
+                    { h: "Produto", tl: true },
+                    "Por mês",
+                    { h: "Como foi calculado", tl: true },
+                    "Se bater meta",
+                  ]}
+                  rows={g.linhas.map((l) => [
+                    <span>
+                      {l.company_name}
+                      {l.project_status !== "active" && (
+                        <i className="tag neg"> {rotuloStatus[l.project_status] || l.project_status}</i>
+                      )}
+                      {l.contrato_vencido && <i className="tag warn"> contrato vencido</i>}
+                      {!l.contrato_vencido && l.dias_para_vencer !== null && l.dias_para_vencer <= 60 && (
+                        <i className="tag"> vence em {l.dias_para_vencer} dias</i>
+                      )}
+                    </span>,
+                    l.product_name || <Nd />,
+                    brlFull(Number(l.monthly_cents || 0) / 100),
+                    <small className="nd">
+                      {l.origem}
+                      {l.origem.startsWith("contrato") && l.contract_months && l.contract_months > 1 && l.contract_value
+                        ? ` (${brl(Number(l.contract_value))} em ${l.contract_months} meses)`
+                        : ""}
+                    </small>,
+                    Number(l.commission_max_cents) > 0 ? brlFull(Number(l.commission_max_cents) / 100) : <Nd />,
+                  ])}
+                  vazio="Nenhuma empresa na carteira."
+                />
+              </Panel>
+            ))}
+          </>
         )}
       </div>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Wallet className="h-4 w-4" /> Carteira por mês
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">{brl(totalGeral)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Briefcase className="h-4 w-4" /> Contratos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">{linhas.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Target className="h-4 w-4" /> Comissão possível
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">{brl(comissaoGeral)}</p>
-            <p className="text-xs text-muted-foreground">quando o cliente bate a meta</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {vencidos > 0 && (
-        <div className="flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          {vencidos === 1
-            ? "1 contrato está com a data de término vencida."
-            : `${vencidos} contratos estão com a data de término vencida.`}
-        </div>
-      )}
-
-      {carregando ? (
-        <div className="flex min-h-[30vh] items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : linhas.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Nenhuma empresa na carteira.
-          </CardContent>
-        </Card>
-      ) : (
-        porConsultor.map((grupo) => (
-          <Card key={grupo.id}>
-            <CardHeader className="pb-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Users className="h-4 w-4" /> {grupo.nome}
-                </CardTitle>
-                <div className="flex items-center gap-3 text-sm">
-                  <span className="text-muted-foreground">{grupo.linhas.length} contratos</span>
-                  <span className="font-semibold">{brlExato(grupo.total)} por mês</span>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="px-0 sm:px-6">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Empresa</TableHead>
-                      <TableHead className="hidden sm:table-cell">Produto</TableHead>
-                      <TableHead className="text-right">Por mês</TableHead>
-                      <TableHead className="hidden lg:table-cell">Como foi calculado</TableHead>
-                      <TableHead className="hidden md:table-cell text-right">Comissão</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {grupo.linhas.map((l) => (
-                      <TableRow key={l.project_id}>
-                        <TableCell className="font-medium">
-                          <div className="flex flex-col gap-1">
-                            <span>{l.company_name}</span>
-                            <div className="flex flex-wrap items-center gap-1">
-                              {l.project_status !== "active" && (
-                                <Badge variant="outline" className="text-[10px]">
-                                  {rotuloStatus[l.project_status] || l.project_status}
-                                </Badge>
-                              )}
-                              {l.contrato_vencido && (
-                                <Badge variant="destructive" className="text-[10px]">
-                                  Contrato vencido
-                                </Badge>
-                              )}
-                              <span className="text-xs text-muted-foreground sm:hidden">
-                                {l.product_name}
-                              </span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-                          {l.product_name || "-"}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold tabular-nums">
-                          {brlExato(Number(l.monthly_cents || 0))}
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
-                          {l.origem}
-                          {l.contract_months && l.contract_months > 1 && l.contract_value
-                            ? ` (${Number(l.contract_value).toLocaleString("pt-BR", {
-                                style: "currency",
-                                currency: "BRL",
-                                maximumFractionDigits: 0,
-                              })} em ${l.contract_months} meses)`
-                            : ""}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-right text-sm text-muted-foreground tabular-nums">
-                          {Number(l.commission_max_cents) > 0
-                            ? brlExato(Number(l.commission_max_cents))
-                            : "-"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        ))
-      )}
     </div>
   );
 }
