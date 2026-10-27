@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain, Network, AudioLines, Radar, Gauge, ClipboardCheck } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain, Network, AudioLines, Radar, Gauge, ClipboardCheck, Bot } from "lucide-react";
 import { GlobalAccessControlPanel } from "@/components/onboarding-tasks/GlobalAccessControlPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -1893,6 +1893,8 @@ const OnboardingTasksPage = () => {
   // Catálogo da busca de aplicativos: mesmas regras de acesso dos menus da tela (21/10/2026).
   const ehCEO = currentUserEmail === "fabricio@universidadevendas.com.br";
   const ehStaffInterno = isMaster || isAdmin || isCS || isConsultant || ["closer", "sdr", "social_setter", "bdr", "head_comercial", "rh", "financeiro", "marketing", "juridico"].includes(currentUserRole || "");
+  // Projeto "Time de IA" da própria UNV (onboarding_projects); enquanto o módulo é só interno, o atalho aponta direto pra ele
+  const TIME_IA_UNV_PATH = "/time-ia/30991de4-61d1-4261-af7e-d814b812c4ad";
   const appsDaBusca: AppDaBusca[] = [
     ...(isMaster ? [{ titulo: "Painel de Controle", caminho: "/painel-de-controle", grupo: "Gestão", palavras: "caixa vendas tráfego clientes atendimento ia dashboard" },
                     { titulo: "Painel ao vivo", caminho: "/painel-de-controle/ao-vivo", grupo: "Gestão", palavras: "gestão à vista tv tela" }] : []),
@@ -1902,6 +1904,7 @@ const OnboardingTasksPage = () => {
                  { titulo: "Agenda Fabrício", caminho: "/onboarding-tasks/agenda-fabricio", grupo: "Gestão" },
                  { titulo: "White-Label", caminho: "/whitelabel-gestao", grupo: "Gestão" }] : []),
     ...((isMaster || isAdmin || hasMenuPerm("trafego_pago")) ? [{ titulo: "Tráfego pago dos clientes", caminho: "/onboarding-tasks/trafego-pago", grupo: "Gestão", palavras: "meta ads cac roas anúncios saldo" }] : []),
+    ...(isMaster ? [{ titulo: "Time de IA (UNV)", caminho: TIME_IA_UNV_PATH, grupo: "Gestão", palavras: "agentes max sophia luna mika briefing anúncios reativação" }] : []),
     ...(isMaster ? [{ titulo: "MRR do Mês", caminho: "/onboarding-tasks/mrr", grupo: "Gestão", palavras: "receita recorrente" },
                     { titulo: "Custo de IA", caminho: "/onboarding-tasks/custo-ia", grupo: "Gestão" },
                     { titulo: "Escritório Agentes", caminho: "/office", grupo: "Operações", palavras: "3d agentes ia" }] : []),
@@ -3038,6 +3041,20 @@ const OnboardingTasksPage = () => {
               >
                 <Gauge className="h-4 w-4" />
                 Painel de Controle
+              </Button>
+            )}
+
+            {/* Time de IA da própria UNV: só o master vê, enquanto o módulo está em teste interno */}
+            {isMaster && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => navigate(TIME_IA_UNV_PATH)}
+                title="Time de IA: Max, Sophia, Luna, Mika e os outros agentes da UNV"
+              >
+                <Bot className="h-4 w-4" />
+                Time de IA
               </Button>
             )}
 
