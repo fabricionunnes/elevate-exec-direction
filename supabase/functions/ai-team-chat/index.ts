@@ -151,6 +151,11 @@ Como agir:
 - Respostas de 2 a 8 linhas. Só alongue quando ele pedir detalhe.`;
 }
 
+// Em voz alta a conversa precisa caber no ouvido: curto, redondo, sem lista.
+const MODO_VOZ = `
+
+MODO VOZ: o dono está falando com você por áudio e vai OUVIR sua resposta. Responda em 1 a 4 frases faladas, como numa ligação: sem lista, sem hífen, sem número com centavos (arredonde: "quarenta e dois mil"), sem sigla sem explicar, sem URL. Se tiver muita coisa, dê o essencial e pergunte se ele quer que você continue. Quando acionar alguém do time, avise antes em uma frase ("vou pedir pro Theo escrever, me dá uns segundos") e depois conte o resultado em uma ou duas frases.`;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
@@ -182,7 +187,7 @@ Deno.serve(async (req) => {
     if (!agents.length) return json({ error: "time não montado" }, 400);
     const ctx = await buildContext(supabase, c as Company, agents);
     const dados = ctx.modo === "nexus_unv" ? dadosBlock(ctx, ["financeiro", "comercial", "carteira", "trafego", "catalogo"]) : (ctx.kpis ? dadosBlock(ctx, ["kpis"]) : "") ;
-    const system = `${systemPrompt(c as Company, agents, fila, runs, `${ctx.oferta}\n\n${dados}`, donoNome)}`;
+    const system = systemPrompt(c as Company, agents, fila, runs, `${ctx.oferta}\n\n${dados}`, donoNome) + (body.modo === "voz" ? MODO_VOZ : "");
 
     // histórico (últimas 30 mensagens, ordem cronológica)
     const { data: hist } = await supabase.from("ai_team_messages").select("role, content").eq("company_id", c.id).order("created_at", { ascending: false }).limit(30);
