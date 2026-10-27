@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain, Network, AudioLines, Radar, Gauge, ClipboardCheck, Bot } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain, Network, AudioLines, Radar, Gauge, ClipboardCheck, Bot, Wallet } from "lucide-react";
 import { GlobalAccessControlPanel } from "@/components/onboarding-tasks/GlobalAccessControlPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -1979,6 +1979,7 @@ const OnboardingTasksPage = () => {
       { titulo: "Checkup do Produto", caminho: "/onboarding-tasks/checkup", grupo: "Sucesso do Cliente" },
       { titulo: "Cancelamento & Retenção", caminho: "/onboarding-tasks/cancellations-retention", grupo: "Sucesso do Cliente", palavras: "churn cancelamentos" },
       { titulo: "Renovações", caminho: "/onboarding-tasks/renewals", grupo: "Sucesso do Cliente" },
+      { titulo: "Carteira do consultor", caminho: "/onboarding-tasks/carteira", grupo: "Sucesso do Cliente", palavras: "carteira consultor valor mensal empresas comissão" },
       { titulo: "Régua de Pesquisas", caminho: "/onboarding-tasks/survey-send-config", grupo: "Sucesso do Cliente", palavras: "nps csat" },
       { titulo: "Relatório de Empresas", caminho: "/onboarding-tasks/companies-report", grupo: "Administrar" },
       { titulo: "Histórico de Atividades", caminho: "/onboarding-tasks/activity-history", grupo: "Administrar" },
@@ -2211,6 +2212,10 @@ const OnboardingTasksPage = () => {
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/renewals")}>
                         <RefreshCw className="h-4 w-4 mr-2" />
                         Renovações
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/carteira")}>
+                        <Wallet className="h-4 w-4 mr-2" />
+                        Carteira do consultor
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations-retention")}>
                         <AlertTriangle className="h-4 w-4 mr-2" />
