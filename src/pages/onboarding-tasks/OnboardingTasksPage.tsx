@@ -1974,12 +1974,12 @@ const OnboardingTasksPage = () => {
     ...((canCreateCompany || canAccessResults) ? [{ titulo: "Resultados", caminho: "/onboarding-tasks/results", grupo: "Engajamento" }] : []),
     ...((canCreateCompany || canAccessCircle) ? [{ titulo: "UNV Circle", caminho: "/circle", grupo: "Engajamento", palavras: "comunidade" }] : []),
     ...(canAccessAnalytics ? [{ titulo: "Radar", caminho: "/onboarding-tasks/radar", grupo: "Sucesso do Cliente", palavras: "risco clientes" },
-                              { titulo: "Cérebro do Cliente", caminho: "/onboarding-tasks/cerebro", grupo: "Sucesso do Cliente" }] : []),
+                              { titulo: "Cérebro do Cliente", caminho: "/onboarding-tasks/cerebro", grupo: "Sucesso do Cliente" },
+                              { titulo: "Carteira do consultor", caminho: "/onboarding-tasks/carteira", grupo: "Sucesso do Cliente", palavras: "carteira consultor valor mensal empresas comissão ticket" }] : []),
     ...((isAdmin || isCS) ? [
       { titulo: "Checkup do Produto", caminho: "/onboarding-tasks/checkup", grupo: "Sucesso do Cliente" },
       { titulo: "Cancelamento & Retenção", caminho: "/onboarding-tasks/cancellations-retention", grupo: "Sucesso do Cliente", palavras: "churn cancelamentos" },
       { titulo: "Renovações", caminho: "/onboarding-tasks/renewals", grupo: "Sucesso do Cliente" },
-      { titulo: "Carteira do consultor", caminho: "/onboarding-tasks/carteira", grupo: "Sucesso do Cliente", palavras: "carteira consultor valor mensal empresas comissão" },
       { titulo: "Régua de Pesquisas", caminho: "/onboarding-tasks/survey-send-config", grupo: "Sucesso do Cliente", palavras: "nps csat" },
       { titulo: "Relatório de Empresas", caminho: "/onboarding-tasks/companies-report", grupo: "Administrar" },
       { titulo: "Histórico de Atividades", caminho: "/onboarding-tasks/activity-history", grupo: "Administrar" },
@@ -2212,10 +2212,6 @@ const OnboardingTasksPage = () => {
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/renewals")}>
                         <RefreshCw className="h-4 w-4 mr-2" />
                         Renovações
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/carteira")}>
-                        <Wallet className="h-4 w-4 mr-2" />
-                        Carteira do consultor
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations-retention")}>
                         <AlertTriangle className="h-4 w-4 mr-2" />
@@ -2688,6 +2684,10 @@ const OnboardingTasksPage = () => {
                   <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cerebro")} className="text-primary focus:text-primary font-semibold">
                     <Brain className="h-4 w-4 mr-2" />
                     Cérebro da Carteira
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/carteira")}>
+                    <Wallet className="h-4 w-4 mr-2" />
+                    Carteira do consultor
                   </DropdownMenuItem>
                   {(isAdmin || isCS) && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/checkup")}>
