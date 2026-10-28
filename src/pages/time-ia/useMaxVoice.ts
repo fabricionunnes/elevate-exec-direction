@@ -45,7 +45,7 @@ export function useMaxVoice(ask: (text: string) => Promise<string>) {
   }, []);
   const pararVigia = () => { try { vigiaRef.current?.abort(); } catch { /* noop */ } vigiaRef.current = null; };
 
-  /** Pede o áudio de um texto ao servidor (null se não der). */
+  /** Pede o áudio de um texto ao servidor (null se não der; o motivo vai pra `erro`). */
   const sintetizar = useCallback(async (texto: string): Promise<Blob | null> => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -55,9 +55,21 @@ export function useMaxVoice(ask: (text: string) => Promise<string>) {
         body: JSON.stringify({ text: texto }),
       });
       if (r.ok && (r.headers.get("Content-Type") || "").includes("audio")) return await r.blob();
-    } catch { /* cai pro sintetizador */ }
+      let motivo = `HTTP ${r.status}`;
+      try { const j = await r.json(); motivo = [j?.error, ...(j?.falhas || [])].filter(Boolean).join(" · ") || motivo; } catch { /* sem corpo */ }
+      setErro(`Voz do servidor falhou (${motivo}). Usando a voz do navegador por enquanto.`);
+    } catch (e: any) {
+      setErro(`Voz do servidor fora do ar (${e?.message || "rede"}). Usando a voz do navegador por enquanto.`);
+    }
     return null;
   }, []);
+
+  /** Voz do navegador (reserva): a mais masculina em pt-BR que existir. */
+  const vozNavegador = () => {
+    const vozes = window.speechSynthesis.getVoices().filter((v) => v.lang?.toLowerCase().replace("_", "-").startsWith("pt-br"));
+    const masc = vozes.find((v) => /daniel|felipe|ricardo|eddy|rocko|reed|male|masc/i.test(v.name));
+    return masc || vozes.find((v) => !/luciana|joana|fernanda|female|femin/i.test(v.name)) || vozes[0] || null;
+  };
 
   const tocar = useCallback((blob: Blob): Promise<void> => new Promise<void>((resolve) => {
     if (!vivoRef.current) return resolve();
@@ -70,13 +82,29 @@ export function useMaxVoice(ask: (text: string) => Promise<string>) {
     a.play().catch(fim);
   }), []);
 
-  // "deixa eu olhar aqui": toca na hora em que você termina de falar, enquanto o Max pensa
-  const fillerRef = useRef<Blob | null>(null);
+  // Resposta imediata enquanto o Max pensa: uma frase curta, escolhida pelo assunto,
+  // sai no mesmo segundo em que você termina de falar (áudios pré-gerados na entrada).
+  const FILLERS: { re: RegExp; frases: string[] }[] = [
+    { re: /caixa|financ|fatur|dinheiro|receb|pagar|conta|boleto/i, frases: ["Deixa eu puxar o financeiro aqui.", "Um segundo, olhando o caixa."] },
+    { re: /lead|ligar|negocia|fechar|venda|vender|meta|cliente|pipeline|funil/i, frases: ["Vou olhar o CRM, um segundo.", "Deixa eu ver as negociações."] },
+    { re: /manda|envia|cobra|mensagem|whats|avisa|tarefa|cria|agenda|roda|sobe|an[uú]ncio/i, frases: ["Beleza, vou preparar isso.", "Deixa comigo, já faço."] },
+    { re: /tr[aá]fego|campanha|anúncio|meta ads|cpl|verba/i, frases: ["Olhando as campanhas aqui.", "Um segundo, puxando o tráfego."] },
+    { re: /.*/, frases: ["Deixa eu olhar aqui.", "Um segundo.", "Já te falo."] },
+  ];
+  const fillerCache = useRef<Map<string, Blob | null>>(new Map());
   const fillerTocando = useRef<Promise<void> | null>(null);
   const prepararFiller = useCallback(async () => {
-    if (fillerRef.current) return;
-    fillerRef.current = await sintetizar("Deixa eu olhar aqui.");
+    if (fillerCache.current.size) return;
+    for (const f of FILLERS) for (const frase of f.frases) {
+      if (!fillerCache.current.has(frase)) fillerCache.current.set(frase, await sintetizar(frase));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sintetizar]);
+  const escolherFiller = (texto: string): Blob | null => {
+    const grupo = FILLERS.find((f) => f.re.test(texto)) || FILLERS[FILLERS.length - 1];
+    const frase = grupo.frases[Math.floor(Math.random() * grupo.frases.length)];
+    return fillerCache.current.get(frase) || null;
+  };
 
   /** Divide em primeira frase + resto: o áudio da primeira sai antes, o resto chega enquanto ela toca. */
   const partir = (texto: string): string[] => {
@@ -88,7 +116,8 @@ export function useMaxVoice(ask: (text: string) => Promise<string>) {
   /** Processa o que o dono disse: pensa, fala a resposta e decide se volta a ouvir. */
   const processar = useCallback(async (texto: string) => {
     setFaseSafe("pensando");
-    if (fillerRef.current) fillerTocando.current = tocar(fillerRef.current);
+    const filler = escolherFiller(texto);
+    if (filler) fillerTocando.current = tocar(filler);
     try {
       const resposta = await ask(texto);
       if (!vivoRef.current) return;
@@ -177,9 +206,10 @@ export function useMaxVoice(ask: (text: string) => Promise<string>) {
         try {
           const u = new SpeechSynthesisUtterance(texto);
           u.lang = "pt-BR";
-          const voz = window.speechSynthesis.getVoices().find((v) => v.lang?.toLowerCase().startsWith("pt-br")) || null;
+          const voz = vozNavegador();
           if (voz) u.voice = voz;
-          u.rate = 1.05;
+          u.rate = 1.0;
+          u.pitch = 0.85;
           u.onend = () => resolve();
           u.onerror = () => resolve();
           window.speechSynthesis.speak(u);

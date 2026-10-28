@@ -96,11 +96,17 @@ export function parseJson<T>(text: string): T {
 }
 
 /** Envia texto pela instância padrão (mesma lógica do resumo-diario-gestao). */
-export async function sendWhatsApp(supabase: SupabaseClient, number: string, text: string): Promise<boolean> {
+export async function sendWhatsApp(supabase: SupabaseClient, number: string, text: string, preferInstance?: string | null): Promise<boolean> {
   try {
     let { data: inst } = await supabase
       .from("whatsapp_instances").select("instance_name, api_url, api_key, provider_type")
-      .eq("instance_name", "fabricionunnes").eq("status", "connected").maybeSingle();
+      .eq("instance_name", preferInstance || "fabricionunnes").eq("status", "connected").maybeSingle();
+    if (!inst && preferInstance) {
+      const { data: def } = await supabase
+        .from("whatsapp_instances").select("instance_name, api_url, api_key, provider_type")
+        .eq("instance_name", "fabricionunnes").eq("status", "connected").maybeSingle();
+      inst = def;
+    }
     if (!inst) {
       const { data: fb } = await supabase
         .from("whatsapp_instances").select("instance_name, api_url, api_key, provider_type")
@@ -121,6 +127,28 @@ export async function sendWhatsApp(supabase: SupabaseClient, number: string, tex
     });
     return resp.ok;
   } catch { return false; }
+}
+
+/** Grupo de gestão de cada cliente no WhatsApp (projeto Marcelo, cross-account, só leitura).
+ * Mesma regra do resumo-diario-gestao: prefere grupo com "gest" no tipo/nome. */
+export async function fetchGestaoGroups(): Promise<Map<string, { jid: string; name: string }>> {
+  const MARCELO_URL = Deno.env.get("MARCELO_SUPABASE_URL") || "";
+  const MARCELO_KEY = Deno.env.get("MARCELO_SERVICE_KEY") || "";
+  const out = new Map<string, { jid: string; name: string }>();
+  if (!MARCELO_URL || !MARCELO_KEY) return out;
+  const r = await fetch(`${MARCELO_URL}/rest/v1/marcelo_groups?select=company_id,group_jid,group_name,group_type`, { headers: { apikey: MARCELO_KEY, Authorization: `Bearer ${MARCELO_KEY}` } });
+  if (!r.ok) return out;
+  for (const g of (await r.json()) || []) {
+    if (!g.company_id || !g.group_jid) continue;
+    const name = String(g.group_name || "");
+    const type = String(g.group_type || "").toLowerCase();
+    const isBoard = /unv\s*board/i.test(name);
+    const isVend = /vend/i.test(type) || /vend/i.test(name);
+    if (!(/gest/i.test(type) || (!isBoard && !isVend))) continue;
+    const prev = out.get(g.company_id);
+    if (!prev || /gest/i.test(type) || /gest/i.test(name)) out.set(g.company_id, { jid: g.group_jid, name });
+  }
+  return out;
 }
 
 // ───────────────────────── contexto (dados reais) ─────────────────────────

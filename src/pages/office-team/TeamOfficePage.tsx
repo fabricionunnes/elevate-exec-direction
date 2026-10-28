@@ -22,6 +22,8 @@ import DeskNotes from './components/DeskNotes'
 import Parking from './components/Parking'
 import AgentNpcs from './components/AgentNpc'
 import AgentChatPanel from './components/AgentChatPanel'
+import TeamStatusSync from './components/TeamStatusSync'
+import MaxVoiceDock from './components/MaxVoiceDock'
 import DataTvs from './components/DataTvs'
 import SaleCelebration from './components/SaleCelebration'
 import MusicPlayer from './components/MusicPlayer'
@@ -742,6 +744,9 @@ export default function TeamOfficePage() {
       <AvatarEditor realtime={managers.realtime} />
       {!me.isGuest && <MarceloChatPanel realtime={managers.realtime} />}
       {!me.isGuest && <AgentChatPanel realtime={managers.realtime} />}
+      {/* Time de IA: status real dos agentes + voz com o MAX */}
+      {!me.isGuest && <TeamStatusSync />}
+      {!me.isGuest && <MaxVoiceDock realtime={managers.realtime} />}
       {!me.isGuest && <SaleCelebration />}
       <MusicPlayer realtime={managers.realtime} />
       <OfficeToasts />
