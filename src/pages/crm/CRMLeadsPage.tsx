@@ -86,6 +86,10 @@ export const CRMLeadsPage = () => {
   const [importLeadsOpen, setImportLeadsOpen] = useState(false);
   const [listsOpen, setListsOpen] = useState(false);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  // Fabrício (28/10/2026): "quero poder selecionar todos os leads do filtro, só consigo os da página".
+  // Marcado = a seleção é o filtro inteiro (todas as páginas); as ações em massa vão pelo filtro no banco.
+  const [todosDoFiltro, setTodosDoFiltro] = useState(false);
+  const limparSelecao = () => { setSelectedLeads([]); setTodosDoFiltro(false); };
   // Disparo de template pela API oficial a partir daqui (Fabrício, 13/10/2026): nos marcados ou em todo o filtro
   const [templateOpen, setTemplateOpen] = useState(false);
   const [templateIds, setTemplateIds] = useState<string[]>([]);
@@ -193,6 +197,7 @@ export const CRMLeadsPage = () => {
     if (filterDdd.length) f.ddds = filterDdd;
     return f;
   }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd]);
+  useEffect(() => { setTodosDoFiltro(false); }, [rpcFilters]);
 
   // Contagem de duplicados (em paralelo, não segura a tabela)
   const loadDupCounts = useCallback(async () => {
@@ -277,7 +282,7 @@ export const CRMLeadsPage = () => {
     setFilterList(arr(v.list));
     setFilterDdd(arr(v.ddd));
     if ([10, 50, 100].includes(Number(v.pageSize))) setPageSize(Number(v.pageSize));
-    setSelectedLeads([]);
+    limparSelecao();
   };
 
   const duplicatePhoneCount = dupCounts.phone;
@@ -294,15 +299,22 @@ export const CRMLeadsPage = () => {
     }).format(value);
   };
 
+  const paginaToda = paginatedLeads.length > 0 && paginatedLeads.every((l) => selectedLeads.includes(l.id));
   const toggleSelectAll = () => {
-    if (selectedLeads.length === paginatedLeads.length) {
-      setSelectedLeads([]);
+    if (todosDoFiltro || paginaToda) {
+      limparSelecao();
     } else {
       setSelectedLeads(paginatedLeads.map(l => l.id));
     }
   };
 
   const toggleSelectLead = (leadId: string) => {
+    // desmarcar um com o filtro inteiro marcado: volta pra seleção da página, sem esse
+    if (todosDoFiltro) {
+      setTodosDoFiltro(false);
+      setSelectedLeads(paginatedLeads.map((l) => l.id).filter((id) => id !== leadId));
+      return;
+    }
     setSelectedLeads(prev =>
       prev.includes(leadId)
         ? prev.filter(id => id !== leadId)
@@ -356,11 +368,11 @@ export const CRMLeadsPage = () => {
   }, [selectedLeads, knownLeads]);
 
   // ----------------------------------------------------------------- ações em massa
-  // Sem seleção, o alvo é o filtro inteiro.
-  const bulkOnFilter = selectedLeads.length === 0;
+  // Sem seleção, ou com "todos do filtro" marcado, o alvo é o filtro inteiro.
+  const bulkOnFilter = todosDoFiltro || selectedLeads.length === 0;
   const TEMPLATE_MAX = 3000;
   const openTemplateSend = async () => {
-    if (selectedLeads.length) { setTemplateIds(selectedLeads); setTemplateOpen(true); return; }
+    if (!bulkOnFilter) { setTemplateIds(selectedLeads); setTemplateOpen(true); return; }
     if (total > TEMPLATE_MAX) { toast.error(`O filtro tem ${nf(total)} leads. Pra disparar de uma vez o limite é ${nf(TEMPLATE_MAX)}: aperte mais o filtro.`); return; }
     setTemplateLoading(true);
     try {
@@ -453,7 +465,7 @@ export const CRMLeadsPage = () => {
   }, [bulkKind, staff, tags, lossReasons]);
 
   const afterBulk = () => {
-    setSelectedLeads([]);
+    limparSelecao();
     loadPage();
     loadDupCounts();
     loadLists();
@@ -691,10 +703,17 @@ export const CRMLeadsPage = () => {
 
       {/* Ações em massa: nos marcados ou, sem nenhum marcado, em todos os leads do filtro */}
       {(selectedLeads.length > 0 || total > 0) && (
-        <Card className={bulkOnFilter ? "border-dashed" : "bg-primary/5 border-primary/20"}>
+        <Card className={bulkOnFilter && !todosDoFiltro ? "border-dashed" : "bg-primary/5 border-primary/20"}>
           <CardContent className="p-3 sm:p-4 flex flex-wrap items-center gap-2 sm:gap-3">
             <span className="text-sm font-medium">
-              {bulkOnFilter ? (
+              {todosDoFiltro ? (
+                <>
+                  Todos os {nf(total)} leads do filtro selecionados
+                  <button type="button" className="ml-2 text-xs font-normal text-muted-foreground underline" onClick={limparSelecao}>
+                    limpar
+                  </button>
+                </>
+              ) : bulkOnFilter ? (
                 <>
                   Nenhum selecionado
                   <span className="font-normal text-muted-foreground">
@@ -704,7 +723,7 @@ export const CRMLeadsPage = () => {
               ) : (
                 <>
                   {nf(selectedLeads.length)} selecionado(s)
-                  <button type="button" className="ml-2 text-xs font-normal text-muted-foreground underline" onClick={() => setSelectedLeads([])}>
+                  <button type="button" className="ml-2 text-xs font-normal text-muted-foreground underline" onClick={limparSelecao}>
                     limpar
                   </button>
                 </>
@@ -730,7 +749,7 @@ export const CRMLeadsPage = () => {
                 Tirar da lista
               </Button>
             )}
-            {isAdmin && selectedLeads.length >= 2 && (
+            {isAdmin && !todosDoFiltro && selectedLeads.length >= 2 && (
               <Button variant="outline" size="sm" onClick={handleOpenMerge} className="text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30">
                 <Merge className="h-4 w-4 mr-2" />
                 Mesclar ({selectedLeads.length})
@@ -760,6 +779,14 @@ export const CRMLeadsPage = () => {
               Marcar Perdido
             </Button>
           </CardContent>
+          {!todosDoFiltro && paginaToda && total > paginatedLeads.length && (
+            <div className="border-t px-3 sm:px-4 py-2 text-sm text-center bg-muted/40">
+              Os {nf(paginatedLeads.length)} leads desta página estão selecionados.{" "}
+              <button type="button" className="font-medium text-primary underline" onClick={() => { setSelectedLeads([]); setTodosDoFiltro(true); }}>
+                Selecionar todos os {nf(total)} leads do filtro
+              </button>
+            </div>
+          )}
         </Card>
       )}
 
@@ -767,7 +794,7 @@ export const CRMLeadsPage = () => {
         open={templateOpen}
         onOpenChange={setTemplateOpen}
         leadIds={templateIds}
-        onSent={() => { setSelectedLeads([]); loadPage(); }}
+        onSent={() => { limparSelecao(); loadPage(); }}
       />
 
       {/* Leads Table */}
@@ -780,7 +807,7 @@ export const CRMLeadsPage = () => {
                 <TableRow>
                   <TableHead className="w-[40px]">
                     <Checkbox
-                      checked={selectedLeads.length === paginatedLeads.length && paginatedLeads.length > 0}
+                      checked={todosDoFiltro || paginaToda}
                       onCheckedChange={toggleSelectAll}
                     />
                   </TableHead>
@@ -801,7 +828,7 @@ export const CRMLeadsPage = () => {
                     <TableRow key={lead.id} className={isPhoneDup || isEmailDup ? "bg-amber-50/50 dark:bg-amber-950/10" : ""}>
                       <TableCell>
                         <Checkbox
-                          checked={selectedLeads.includes(lead.id)}
+                          checked={todosDoFiltro || selectedLeads.includes(lead.id)}
                           onCheckedChange={() => toggleSelectLead(lead.id)}
                         />
                       </TableCell>
@@ -917,7 +944,7 @@ export const CRMLeadsPage = () => {
                 className="flex items-center gap-3 px-3 py-3 hover:bg-muted/50 transition-colors"
               >
                 <div className="pt-1" onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleSelectLead(lead.id); }}>
-                  <Checkbox checked={selectedLeads.includes(lead.id)} />
+                  <Checkbox checked={todosDoFiltro || selectedLeads.includes(lead.id)} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -1061,7 +1088,7 @@ export const CRMLeadsPage = () => {
                 <DialogTitle>{bulkTitles[bulkKind].title}</DialogTitle>
                 <DialogDescription>
                   {bulkOnFilter
-                    ? <>Nada selecionado: vale para <strong className="text-foreground">todos os {bulkPreview ? nf(bulkPreview.count) : "..."} leads do filtro atual</strong>.</>
+                    ? <>{todosDoFiltro ? "Todos do filtro selecionados" : "Nada selecionado"}: vale para <strong className="text-foreground">todos os {bulkPreview ? nf(bulkPreview.count) : "..."} leads do filtro atual</strong>.</>
                     : <>{nf(selectedLeads.length)} lead(s) selecionado(s).</>}
                   {bulkKind === "lost" && " Cada lead vai para a etapa de perdido do próprio funil, com o motivo escolhido."}
                   {bulkKind === "remove_from_list" && activeList && ` Saem da lista "${activeList.name}". Os leads continuam no CRM.`}
@@ -1167,7 +1194,7 @@ export const CRMLeadsPage = () => {
         leadIds={selectedLeads}
         onPick={addToListPicked}
         countLabel={bulkOnFilter
-          ? `Nada selecionado: entram todos os ${addToListCount === null ? "..." : nf(addToListCount)} leads do filtro atual`
+          ? `${todosDoFiltro ? "Todos do filtro selecionados" : "Nada selecionado"}: entram todos os ${addToListCount === null ? "..." : nf(addToListCount)} leads do filtro atual`
           : undefined}
       />
 
@@ -1177,7 +1204,7 @@ export const CRMLeadsPage = () => {
         staffId={staffId}
         canManageAll={staffRole === "master" || staffRole === "admin"}
         canExport={isAdmin}
-        onOpenList={(l) => { setFilterList(l.id); setSelectedLeads([]); }}
+        onOpenList={(l) => { setFilterList(l.id); limparSelecao(); }}
         onChanged={loadLists}
       />
 
