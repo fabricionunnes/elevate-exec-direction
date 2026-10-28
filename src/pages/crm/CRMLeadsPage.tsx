@@ -804,7 +804,8 @@ export const CRMLeadsPage = () => {
                 Tirar da lista
               </Button>
             )}
-            {isAdmin && !todosDoFiltro && selectedLeads.length >= 2 && (
+            {/* mesclar à mão só faz sentido com poucos marcados; seleção grande por quantidade não pode virar um lead só */}
+            {isAdmin && !todosDoFiltro && selectedLeads.length >= 2 && selectedLeads.length <= 20 && (
               <Button variant="outline" size="sm" onClick={handleOpenMerge} className="text-amber-600 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30">
                 <Merge className="h-4 w-4 mr-2" />
                 Mesclar ({selectedLeads.length})
