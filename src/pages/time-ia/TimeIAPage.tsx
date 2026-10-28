@@ -143,8 +143,13 @@ export default function TimeIAPage() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       await loadData(company.id);
-      // "Max, abre o escritório" → escritório 3D com o time trabalhando
-      if ((data?.actions || []).some((a: any) => a.tool === "abrir_escritorio")) setTimeout(() => navigate("/office"), 1500);
+      // Ordens de navegação: abrir o UNV Office (opcionalmente já indo pra uma sala), cliente ou tela
+      for (const a of (data?.actions || []) as any[]) {
+        const r = a.result || {};
+        if (r.acao === "abrir_escritorio") { setTimeout(() => navigate("/onboarding-tasks/unv-office"), 1500); break; }
+        if (r.acao === "ir_sala" && r.destino) { setTimeout(() => navigate(`/onboarding-tasks/unv-office?ir=${encodeURIComponent(r.destino)}`), 1500); break; }
+        if ((r.acao === "abrir_cliente" || r.acao === "abrir_tela") && r.rota) { setTimeout(() => navigate(r.rota), 1500); break; }
+      }
       return String(data?.reply || "");
     } catch (e) {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));

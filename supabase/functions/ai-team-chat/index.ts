@@ -103,8 +103,23 @@ const TOOLS = [
   },
   {
     name: "abrir_escritorio",
-    description: "Abre o escritório 3D do time na tela do dono (ele vê os agentes trabalhando). Use quando ele pedir 'abre o escritório', 'mostra o time', 'vamos pro escritório'.",
+    description: "Abre o UNV Office (escritório 3D) na tela do dono. Use quando ele pedir 'abre o escritório', 'mostra o time', 'vamos pro escritório'.",
     input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "ir_para_sala",
+    description: "Leva o avatar do dono até uma sala do UNV Office: sala de alguém do time ('sala do Ricardo'), sala de reunião pelo nome ('Reunião Principal', 'Sala CRESCER'), setor ('comercial', 'marketing'), café/lounge, auditório, recepção. Executa na hora; a tela resolve o nome.",
+    input_schema: { type: "object", properties: { destino: { type: "string", description: "como o dono falou: 'sala do Ricardo', 'reunião principal', 'café'" } }, required: ["destino"] },
+  },
+  {
+    name: "abrir_cliente",
+    description: "Abre a página de um cliente da UNV no Nexus (projeto/onboarding). Informe a empresa pelo nome. Executa na hora.",
+    input_schema: { type: "object", properties: { empresa: { type: "string" } }, required: ["empresa"] },
+  },
+  {
+    name: "abrir_tela",
+    description: "Abre uma tela do Nexus: crm, clientes, financeiro, trafego, painel (painel de controle), mrr, agenda, time_ia, escritorio. Executa na hora.",
+    input_schema: { type: "object", properties: { tela: { type: "string", enum: ["crm", "clientes", "financeiro", "trafego", "painel", "mrr", "agenda", "time_ia", "escritorio", "custo_ia"] } }, required: ["tela"] },
   },
   {
     name: "criar_anuncio_meta",
@@ -227,7 +242,23 @@ async function loadTeamState(supabase: SupabaseClient, companyId: string) {
 }
 
 async function runTool(supabase: SupabaseClient, c: Company, name: string, input: any, userId: string | null, ctx: Ctx): Promise<any> {
-  if (name === "abrir_escritorio") return { ok: true, nota: "a tela do dono vai abrir o escritório 3D" };
+  if (name === "abrir_escritorio") return { ok: true, acao: "abrir_escritorio", nota: "a tela do dono vai abrir o UNV Office" };
+  if (name === "ir_para_sala") return { ok: true, acao: "ir_sala", destino: String(input.destino || ""), nota: "a tela leva o avatar até lá" };
+  if (name === "abrir_tela") {
+    const rotas: Record<string, string> = {
+      crm: "/crm", clientes: "/onboarding-tasks", financeiro: "/onboarding-tasks/financeiro", trafego: "/onboarding-tasks/trafego-pago",
+      painel: "/painel-de-controle", mrr: "/onboarding-tasks/mrr", agenda: "/onboarding-tasks/agenda-fabricio",
+      time_ia: "/time-ia/30991de4-61d1-4261-af7e-d814b812c4ad", escritorio: "/onboarding-tasks/unv-office", custo_ia: "/onboarding-tasks/custo-ia",
+    };
+    const rota = rotas[String(input.tela)];
+    return rota ? { ok: true, acao: "abrir_tela", rota, tela: input.tela } : { erro: "tela desconhecida" };
+  }
+  if (name === "abrir_cliente") {
+    const emp = await acharEmpresa(supabase, String(input.empresa || ""));
+    if ("erro" in emp) return emp;
+    const { data: proj } = await supabase.from("onboarding_projects").select("id, product_name, status").eq("onboarding_company_id", emp.id).order("status").order("created_at", { ascending: false }).limit(1).maybeSingle();
+    return { ok: true, acao: "abrir_cliente", empresa: emp.name, company_id: emp.id, project_id: proj?.id || null, rota: proj ? `/onboarding-tasks/${proj.id}` : "/onboarding-tasks" };
+  }
   if (name === "enviar_whatsapp") {
     if (!input.confirmado) return { erro: "sem confirmação do dono: mostre o rascunho e o destinatário e pergunte se pode mandar" };
     let numero = String(input.telefone || "").replace(/\D/g, "");
@@ -446,6 +477,7 @@ Como agir:
 - Quando ele colocar uma META ("preciso vender 40 mil hoje", "tenho que fechar 3 contratos essa semana"), NÃO responda com teoria: vá nas negociações abertas (estão nos dados; use ver_negociacoes se precisar da lista completa), some quais fecham a meta, diga NOME, VALOR e ETAPA de cada uma, quem está cuidando, e o que fazer AGORA com cada uma (ligar, mandar proposta, cobrar resposta). Ofereça deixar as mensagens prontas pelo Theo ou pelo time.
 - Primeiro responda exatamente o que foi perguntado; só depois, se couber, acrescente o que você acha.
 - ORDENS DE EXECUÇÃO na Meta: quando o dono mandar criar/subir anúncio, crie de verdade com criar_anuncio_meta (copy do Rafa, de um item da fila ou escrita por você agora, sem nome de cliente, sem preço salvo se ele pedir), SEMPRE pausado, e devolva: headline, orçamento diário, público e o link do Gerenciador. Se ele não disser orçamento, use 50 reais por dia e avise. NUNCA chame ativar_anuncio_meta sem uma ordem explícita de ativar ("ativa", "pode ligar", "sobe pra valer"); se a ordem de criar vier junto com "e ativa", crie, confirme o que criou e pergunte se ativa mesmo. Pausar pode ser imediato quando ele mandar.
+- NAVEGAÇÃO POR VOZ: "abre o escritório", "vai na sala do Ricardo", "vai pra reunião principal", "abre a 3D Cure", "abre o CRM" → use abrir_escritorio / ir_para_sala / abrir_cliente / abrir_tela NA HORA, sem perguntar, e responda em UMA frase curta ("indo pra sala do Ricardo"). Não explique.
 - VOCÊ EXECUTA. O dono dá ordem, você faz: mandar mensagem pra lead, cliente ou alguém do time (enviar_whatsapp), cobrar alguém (enviar_whatsapp com o texto da cobrança), mandar recado no grupo de gestão de um cliente (enviar_grupo_cliente), criar tarefa pra lead ou pra projeto de cliente (criar_tarefa, na hora, sem perguntar), rodar agente, aprovar item, subir anúncio. Nunca responda "não consigo" pra essas; se faltar um dado (quem, qual empresa), pergunte só isso, em uma frase.
 - Mensagem pra terceiro (lead, cliente, grupo, pessoa do time) tem UMA confirmação curta: ache o contato (ver_negociacoes/consultar/pessoa), escreva o texto final e diga "pra <nome>: <texto>. Mando?". Na resposta seguinte, com o OK dele, chame a ferramenta com confirmado=true. Nunca diga que mandou se a ferramenta não devolveu enviado=true; se devolveu erro, diga o erro em uma frase.
 - Se ele pedir algo que o time ainda não faz (ligar pra cliente, publicar post), diga com clareza que isso ainda é mão humana e deixe pronto o que der (texto, lista, prioridade).

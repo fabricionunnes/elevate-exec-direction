@@ -3,9 +3,11 @@
 // aciona alguém do time o robô vai pra mesa trabalhar. Mesmo cérebro da tela
 // Time de IA (ai-team-chat, modo voz).
 import { useCallback, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/integrations/supabase/client'
 import { useTeamStore } from '../store/useTeamStore'
 import { fetchUnvCompanyId } from '../lib/agents'
+import { resolverDestino, irPara } from '../lib/voiceNav'
 import type { TeamRealtime } from '../lib/realtime'
 import { useMaxVoice, temReconhecimento } from '@/pages/time-ia/useMaxVoice'
 
@@ -17,6 +19,23 @@ export default function MaxVoiceDock({ realtime }: { realtime: TeamRealtime }) {
   const setMaxSpeech = useTeamStore((s) => s.setMaxSpeech)
   const setTeamStatus = useTeamStore((s) => s.setTeamStatus)
   const summonTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const navigate = useNavigate()
+
+  // Ordens de navegação que o Max devolve: andar até uma sala, abrir cliente ou tela
+  const executarAcoes = useCallback(async (actions: Array<{ tool: string; input?: any; result?: any }>) => {
+    for (const a of actions) {
+      const r = a.result || {}
+      if (a.tool === 'rodar_agente' && a.input?.agent_key) {
+        setTeamStatus(a.input.agent_key, { working: false, lastSummary: r.entrega ?? null, lastAt: Date.now() })
+      } else if (r.acao === 'ir_sala' && r.destino) {
+        const d = await resolverDestino(String(r.destino))
+        if (d) irPara(d)
+        else useTeamStore.getState().addToast(`Não achei "${r.destino}" no escritório`, 'out')
+      } else if ((r.acao === 'abrir_cliente' || r.acao === 'abrir_tela') && r.rota) {
+        setTimeout(() => navigate(r.rota), 1200)
+      }
+    }
+  }, [setTeamStatus, navigate])
 
   const ask = useCallback(async (msg: string): Promise<string> => {
     const companyId = await fetchUnvCompanyId()
@@ -26,13 +45,24 @@ export default function MaxVoiceDock({ realtime }: { realtime: TeamRealtime }) {
     })
     if (error) throw error
     if (data?.error) throw new Error(data.error)
-    for (const a of (data?.actions ?? []) as Array<{ tool: string; input?: { agent_key?: string }; result?: { entrega?: string } }>) {
-      if (a.tool === 'rodar_agente' && a.input?.agent_key) {
-        setTeamStatus(a.input.agent_key, { working: false, lastSummary: a.result?.entrega ?? null, lastAt: Date.now() })
-      }
-    }
+    void executarAcoes(data?.actions ?? [])
     return String(data?.reply || '')
-  }, [setTeamStatus])
+  }, [executarAcoes])
+
+  // Chegou com "?ir=<sala>" (ex.: vindo da tela Time de IA por voz): já anda pra lá
+  useEffect(() => {
+    const hash = window.location.hash || ''
+    const m = hash.match(/[?&]ir=([^&]+)/)
+    if (!m) return
+    const destino = decodeURIComponent(m[1])
+    const t = setTimeout(async () => {
+      const d = await resolverDestino(destino)
+      if (d) irPara(d)
+      else useTeamStore.getState().addToast(`Não achei "${destino}" no escritório`, 'out')
+      window.history.replaceState(null, '', hash.replace(/[?&]ir=[^&]+/, ''))
+    }, 2500)
+    return () => clearTimeout(t)
+  }, [])
 
   const voz = useMaxVoice(ask)
 
