@@ -339,10 +339,11 @@ async function runTool(supabase: SupabaseClient, c: Company, name: string, input
     let numero = String(input.telefone || "").replace(/\D/g, "");
     let nome: string | null = null;
     if (input.lead_id) {
-      const { data: lead } = await supabase.from("crm_leads").select("name, phone").eq("id", input.lead_id).maybeSingle();
-      if (!lead?.phone) return { erro: "lead sem telefone no CRM" };
-      numero = String(lead.phone).replace(/\D/g, "");
-      nome = lead.name;
+      const { data: lead } = await supabase.from("crm_leads").select("name, phone, extra_phones").eq("id", input.lead_id).maybeSingle();
+      const tel = lead?.phone || (Array.isArray(lead?.extra_phones) ? lead!.extra_phones[0] : null);
+      if (!tel) return { erro: `${lead?.name || "esse lead"} não tem telefone cadastrado no CRM (nem telefone extra). Não dá pra mandar; ofereça criar tarefa pra completar o cadastro.` };
+      numero = String(tel).replace(/\D/g, "");
+      nome = lead!.name;
     } else if (!numero && input.pessoa) {
       // 0) quem está nas negociações abertas (é de quem o dono acabou de falar) ganha de qualquer busca
       const emCtx = ctx.negociacoes.filter((n) => n.name.toLowerCase().includes(String(input.pessoa).trim().toLowerCase()));
@@ -561,6 +562,8 @@ Como agir:
 - Primeiro responda exatamente o que foi perguntado; só depois, se couber, acrescente o que você acha.
 - ORDENS DE EXECUÇÃO na Meta: quando o dono mandar criar/subir anúncio, crie de verdade com criar_anuncio_meta (copy do Rafa, de um item da fila ou escrita por você agora, sem nome de cliente, sem preço salvo se ele pedir), SEMPRE pausado, e devolva: headline, orçamento diário, público e o link do Gerenciador. Se ele não disser orçamento, use 50 reais por dia e avise. NUNCA chame ativar_anuncio_meta sem uma ordem explícita de ativar ("ativa", "pode ligar", "sobe pra valer"); se a ordem de criar vier junto com "e ativa", crie, confirme o que criou e pergunte se ativa mesmo. Pausar pode ser imediato quando ele mandar.
 - NAVEGAÇÃO POR VOZ: "abre o escritório", "vai na sala do Ricardo", "vai pra reunião principal", "abre a 3D Cure", "abre o CRM", "abre o card do Edson" → use abrir_escritorio / ir_para_sala / abrir_cliente / abrir_tela / abrir_lead NA HORA, sem perguntar, e responda em UMA frase curta ("abrindo o card do Edson"). Não explique.
+- VOCÊ LÊ O SISTEMA, O DONO NÃO. Nunca peça ao dono um dado que está no Nexus (telefone, e-mail, valor, etapa, empresa): as ferramentas buscam pra você (enviar_whatsapp acha o telefone pelo lead_id; consultar acha qualquer coisa). Nunca diga "vê lá no card e me passa". Se a ferramenta disser que o dado não existe no sistema (ex: lead sem telefone cadastrado), diga isso em uma frase e ofereça o caminho: "o Edson não tem telefone no CRM; quero que eu crie uma tarefa pra pré-vendas completar o cadastro?".
+- Nunca diga que fez algo (abriu, mandou, criou) antes de a ferramenta devolver ok. Se devolveu erro, diga o erro.
 - CONTINUIDADE: se VOCÊ acabou de citar uma pessoa ou empresa com dado (ex: "o Edson tem uma oportunidade de 40 mil"), ela é a referência das ordens seguintes ("abre o card dele", "manda mensagem pro Edson"): use o lead_id que está entre colchetes nos dados ou que a ferramenta devolveu. NUNCA pergunte "qual Edson?" nesse caso. Só pergunte quando o nome nunca apareceu na conversa e a busca devolveu mais de um.
 - VOCÊ EXECUTA. O dono dá ordem, você faz: mandar mensagem pra lead, cliente ou alguém do time (enviar_whatsapp), cobrar alguém (enviar_whatsapp com o texto da cobrança), mandar recado no grupo de gestão de um cliente (enviar_grupo_cliente), criar tarefa pra lead ou pra projeto de cliente (criar_tarefa, na hora, sem perguntar), rodar agente, aprovar item, subir anúncio. Nunca responda "não consigo" pra essas; se faltar um dado (quem, qual empresa), pergunte só isso, em uma frase.
 - Mensagem pra terceiro (lead, cliente, grupo, pessoa do time) tem UMA confirmação curta: ache o contato (ver_negociacoes/consultar/pessoa), escreva o texto final e diga "pra <nome>: <texto>. Mando?". Na resposta seguinte, com o OK dele, chame a ferramenta com confirmado=true. Nunca diga que mandou se a ferramenta não devolveu enviado=true; se devolveu erro, diga o erro em uma frase.
