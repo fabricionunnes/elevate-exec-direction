@@ -40,6 +40,8 @@ Deno.serve(async (req) => {
     const eleven = Deno.env.get("ELEVENLABS_API_KEY");
     const openai = Deno.env.get("OPENAI_API_KEY");
     const voice = Deno.env.get("AI_TEAM_TTS_VOICE");
+    // cada tentativa que falhar entra aqui e volta pro navegador: a tela mostra o motivo
+    const falhas: string[] = [];
 
     if (eleven) {
       const voiceId = voice || "pNInz6obpgDQGcFmaJgB"; // Adam (premade), multilingual
@@ -49,8 +51,12 @@ Deno.serve(async (req) => {
         body: JSON.stringify({ text, model_id: "eleven_flash_v2_5", voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.2, use_speaker_boost: true } }),
       });
       if (r.ok) return new Response(r.body, { headers: { ...corsHeaders, "Content-Type": "audio/mpeg", "X-Tts-Provider": "elevenlabs" } });
-      console.error("elevenlabs", r.status, (await r.text()).slice(0, 200));
+      const err = (await r.text()).slice(0, 300);
+      console.error("elevenlabs", r.status, err);
+      falhas.push(`elevenlabs ${r.status}: ${err.replace(/\s+/g, " ").slice(0, 160)}`);
       // cai pro OpenAI se tiver
+    } else {
+      falhas.push("elevenlabs: ELEVENLABS_API_KEY não configurada");
     }
 
     if (openai) {
@@ -65,14 +71,21 @@ Deno.serve(async (req) => {
       let r = await call("gpt-4o-mini-tts", {
         instructions: "Fale em português do Brasil, sotaque neutro brasileiro. Voz masculina, grave, calma e segura, como um sócio experiente conversando no escritório: ritmo natural de fala, pausas curtas entre frases, sem entonação de locutor, sem soar como leitura. Energia média, nunca animado demais.",
       });
-      if (!r.ok) { console.error("gpt-4o-mini-tts", r.status, (await r.text()).slice(0, 200)); r = await call("tts-1", { speed: 1.03 }); }
+      if (!r.ok) {
+        const e1 = (await r.text()).slice(0, 200);
+        console.error("gpt-4o-mini-tts", r.status, e1);
+        falhas.push(`openai gpt-4o-mini-tts ${r.status}: ${e1.replace(/\s+/g, " ").slice(0, 120)}`);
+        r = await call("tts-1", { speed: 1.03 });
+      }
       if (r.ok) return new Response(r.body, { headers: { ...corsHeaders, "Content-Type": "audio/mpeg", "X-Tts-Provider": "openai" } });
       const err = (await r.text()).slice(0, 200);
       console.error("openai tts", r.status, err);
-      return json({ error: `openai ${r.status}: ${err}` }, 502);
+      falhas.push(`openai tts-1 ${r.status}: ${err.replace(/\s+/g, " ").slice(0, 120)}`);
+      return json({ error: "nenhum provedor de voz respondeu", falhas }, 502);
     }
 
-    return json({ error: "nenhum provedor de voz configurado (ELEVENLABS_API_KEY ou OPENAI_API_KEY)" }, 501);
+    falhas.push("openai: OPENAI_API_KEY não configurada");
+    return json({ error: "nenhum provedor de voz configurado", falhas }, 501);
   } catch (e) {
     console.error("ai-team-tts", e);
     return json({ error: (e as Error).message }, 500);

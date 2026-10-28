@@ -9,7 +9,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import {
   corsHeaders, SUPABASE_URL, SERVICE_KEY, MODEL, type Agent, type Company, type Ctx,
-  json, jwtRole, logUsoIA, buildContext, dadosBlock, brNow,
+  json, jwtRole, logUsoIA, buildContext, dadosBlock, brNow, sendWhatsApp, fetchGestaoGroups,
 } from "./shared.ts";
 import { contaMetaUNV, criarAnuncioPausado, mudarStatus, linkGerenciador } from "./meta.ts";
 
@@ -54,6 +54,51 @@ const TOOLS = [
       type: "object",
       properties: { agent_key: { type: "string", enum: ["briefing", "anuncios", "conteudo", "reativacao", "trafego", "qualificacao"] } },
       required: ["agent_key"],
+    },
+  },
+  {
+    name: "enviar_whatsapp",
+    description: "Manda uma mensagem de WhatsApp de verdade, pelo número da UNV, pra um lead do CRM (lead_id), pra alguém do time da UNV (pessoa = nome, acha em onboarding_staff) ou pra um telefone. Serve pra cobrar, avisar, reativar. SÓ chame com confirmado=true depois que o dono ouviu o texto e o destinatário e disse que pode mandar.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lead_id: { type: "string", description: "id do lead no CRM (o telefone sai de crm_leads.phone)" },
+        pessoa: { type: "string", description: "nome de alguém do time da UNV (onboarding_staff) ou de um lead, quando não tiver o id" },
+        telefone: { type: "string", description: "telefone com DDD, se não for lead nem staff" },
+        mensagem: { type: "string" },
+        confirmado: { type: "boolean", description: "true só depois do OK explícito do dono" },
+      },
+      required: ["mensagem", "confirmado"],
+    },
+  },
+  {
+    name: "enviar_grupo_cliente",
+    description: "Manda uma mensagem no GRUPO DE GESTÃO do WhatsApp de um cliente da UNV (o grupo onde o Marcelo fala com o time do cliente). Informe a empresa pelo nome ou id. SÓ com confirmado=true depois do OK do dono ao texto.",
+    input_schema: {
+      type: "object",
+      properties: {
+        empresa: { type: "string", description: "nome (parte) ou id da empresa cliente em onboarding_companies" },
+        mensagem: { type: "string" },
+        confirmado: { type: "boolean" },
+      },
+      required: ["empresa", "mensagem", "confirmado"],
+    },
+  },
+  {
+    name: "criar_tarefa",
+    description: "Cria uma tarefa de verdade: pra um lead do CRM (lead_id → atividade em crm_activities: ligar, follow-up, reunião, whatsapp) ou pra um projeto de cliente (empresa → onboarding_tasks). Pode atribuir a alguém do time pelo nome. Executa na hora, sem confirmação.",
+    input_schema: {
+      type: "object",
+      properties: {
+        titulo: { type: "string" },
+        descricao: { type: "string" },
+        lead_id: { type: "string", description: "tarefa ligada a um lead do CRM" },
+        empresa: { type: "string", description: "nome (parte) ou id da empresa cliente, pra tarefa de projeto" },
+        tipo: { type: "string", enum: ["call", "followup", "meeting", "whatsapp", "other"], description: "só pra lead; padrão followup" },
+        quando: { type: "string", description: "data/hora ISO ou 'hoje', 'amanhã'; padrão hoje" },
+        responsavel: { type: "string", description: "nome de alguém do time da UNV (onboarding_staff)" },
+      },
+      required: ["titulo"],
     },
   },
   {
@@ -142,6 +187,36 @@ const timeAgo = (iso?: string | null) => {
   return m < 60 ? `há ${m} min` : m < 1440 ? `há ${Math.round(m / 60)}h` : `há ${Math.round(m / 1440)}d`;
 };
 
+/** Empresa cliente por id ou pedaço do nome (só uma; se der empate, pergunta). */
+async function acharEmpresa(supabase: SupabaseClient, ref: string): Promise<{ id: string; name: string } | { erro: string }> {
+  const r = ref.trim();
+  if (!r) return { erro: "empresa não informada" };
+  if (/^[0-9a-f-]{36}$/i.test(r)) {
+    const { data } = await supabase.from("onboarding_companies").select("id, name").eq("id", r).maybeSingle();
+    return data ? data : { erro: "empresa não encontrada" };
+  }
+  const { data } = await supabase.from("onboarding_companies").select("id, name, status").ilike("name", `%${r}%`).order("status").limit(4);
+  const ativas = (data || []).filter((c: any) => c.status === "active");
+  const lista = ativas.length ? ativas : (data || []);
+  if (lista.length === 1) return { id: lista[0].id, name: lista[0].name };
+  if (lista.length > 1) return { erro: `mais de uma empresa bate com "${r}": ${lista.map((c: any) => c.name).join(", ")}. Qual?` };
+  return { erro: `não achei empresa com "${r}"` };
+}
+
+/** "hoje", "amanhã", "sexta", ISO → Date (BRT, 10h se não tiver hora). */
+function parseQuando(v: unknown): Date {
+  const s = String(v || "").trim().toLowerCase();
+  const base = new Date();
+  const at = (d: Date, h = 10) => { const x = new Date(d); x.setUTCHours(h + 3, 0, 0, 0); return x; }; // BRT = UTC-3
+  if (!s || s === "hoje") return at(base, 14);
+  if (s === "amanhã" || s === "amanha") { const d = new Date(base); d.setDate(d.getDate() + 1); return at(d); }
+  const dias = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+  const di = dias.findIndex((d) => s.startsWith(d.slice(0, 3)));
+  if (di >= 0) { const d = new Date(base); const delta = (di - d.getDay() + 7) % 7 || 7; d.setDate(d.getDate() + delta); return at(d); }
+  const p = new Date(s);
+  return isNaN(p.getTime()) ? at(base, 14) : p;
+}
+
 async function loadTeamState(supabase: SupabaseClient, companyId: string) {
   const [agentsR, filaR, runsR] = await Promise.all([
     supabase.from("ai_team_agents").select("*").eq("company_id", companyId),
@@ -153,6 +228,75 @@ async function loadTeamState(supabase: SupabaseClient, companyId: string) {
 
 async function runTool(supabase: SupabaseClient, c: Company, name: string, input: any, userId: string | null, ctx: Ctx): Promise<any> {
   if (name === "abrir_escritorio") return { ok: true, nota: "a tela do dono vai abrir o escritório 3D" };
+  if (name === "enviar_whatsapp") {
+    if (!input.confirmado) return { erro: "sem confirmação do dono: mostre o rascunho e o destinatário e pergunte se pode mandar" };
+    let numero = String(input.telefone || "").replace(/\D/g, "");
+    let nome: string | null = null;
+    if (input.lead_id) {
+      const { data: lead } = await supabase.from("crm_leads").select("name, phone").eq("id", input.lead_id).maybeSingle();
+      if (!lead?.phone) return { erro: "lead sem telefone no CRM" };
+      numero = String(lead.phone).replace(/\D/g, "");
+      nome = lead.name;
+    } else if (!numero && input.pessoa) {
+      // primeiro alguém do time da UNV, depois lead do CRM com esse nome
+      const { data: staff } = await supabase.from("onboarding_staff").select("name, phone").eq("is_active", true).ilike("name", `%${String(input.pessoa).trim()}%`).limit(2);
+      if (staff?.length === 1 && staff[0].phone) { numero = String(staff[0].phone).replace(/\D/g, ""); nome = staff[0].name; }
+      else if ((staff?.length || 0) > 1) return { erro: `mais de uma pessoa do time chama ${input.pessoa}: ${staff!.map((s: any) => s.name).join(", ")}. Qual?` };
+      else {
+        const { data: leads } = await supabase.from("crm_leads").select("id, name, phone").is("tenant_id", null).ilike("name", `%${String(input.pessoa).trim()}%`).not("phone", "is", null).order("last_activity_at", { ascending: false, nullsFirst: false }).limit(3);
+        if (leads?.length === 1) { numero = String(leads[0].phone).replace(/\D/g, ""); nome = leads[0].name; input.lead_id = leads[0].id; }
+        else if ((leads?.length || 0) > 1) return { erro: `achei mais de um lead com esse nome: ${leads!.map((l: any) => `${l.name} (${l.id})`).join("; ")}. Qual?` };
+        else return { erro: `não achei ${input.pessoa} no time nem no CRM` };
+      }
+    }
+    if (numero.length < 10) return { erro: "telefone inválido" };
+    if (!numero.startsWith("55")) numero = `55${numero}`;
+    const ok = await sendWhatsApp(supabase, numero, String(input.mensagem));
+    if (ok && input.lead_id) {
+      await supabase.from("crm_activities").insert({ lead_id: input.lead_id, type: "whatsapp", title: "Mensagem enviada pelo Max (Time de IA)", description: String(input.mensagem).slice(0, 2000), status: "completed", scheduled_at: new Date().toISOString(), completed_at: new Date().toISOString(), created_by: userId }).then(() => {}, () => {});
+    }
+    return ok ? { ok: true, para: nome || numero, enviado: true } : { erro: "a instância de WhatsApp da UNV não respondeu (número desconectado?)" };
+  }
+  if (name === "enviar_grupo_cliente") {
+    if (!input.confirmado) return { erro: "sem confirmação do dono: mostre o texto e o nome do cliente e pergunte se pode mandar" };
+    const emp = await acharEmpresa(supabase, String(input.empresa || ""));
+    if ("erro" in emp) return emp;
+    const grupos = await fetchGestaoGroups();
+    const g = grupos.get(emp.id);
+    if (!g) return { erro: `${emp.name} não tem grupo de gestão cadastrado no WhatsApp` };
+    const { data: cfg } = await supabase.from("company_automation_settings").select("instance_name").eq("company_id", emp.id).eq("automation_key", "resumo_diario").maybeSingle();
+    const ok = await sendWhatsApp(supabase, g.jid, String(input.mensagem), cfg?.instance_name || null);
+    return ok ? { ok: true, grupo: g.name, empresa: emp.name, enviado: true } : { erro: "a instância de WhatsApp não respondeu" };
+  }
+  if (name === "criar_tarefa") {
+    const quando = parseQuando(input.quando);
+    let responsavelId: string | null = null;
+    let responsavelNome: string | null = null;
+    if (input.responsavel) {
+      const { data: staff } = await supabase.from("onboarding_staff").select("id, name").eq("is_active", true).ilike("name", `%${String(input.responsavel).trim()}%`).limit(2);
+      if (staff?.length === 1) { responsavelId = staff[0].id; responsavelNome = staff[0].name; }
+      else if ((staff?.length || 0) > 1) return { erro: `mais de uma pessoa chama ${input.responsavel}: ${staff!.map((s: any) => s.name).join(", ")}. Qual?` };
+    }
+    if (input.lead_id) {
+      const { data, error } = await supabase.from("crm_activities").insert({
+        lead_id: input.lead_id, type: input.tipo || "followup", title: String(input.titulo), description: input.descricao || null,
+        status: "pending", scheduled_at: quando.toISOString(), responsible_staff_id: responsavelId, created_by: userId, notes: "criada pelo Max (Time de IA)",
+      }).select("id").single();
+      return error ? { erro: error.message } : { ok: true, tarefa_id: data.id, onde: "CRM (atividade do lead)", quando: quando.toISOString(), responsavel: responsavelNome };
+    }
+    if (input.empresa) {
+      const emp = await acharEmpresa(supabase, String(input.empresa));
+      if ("erro" in emp) return emp;
+      const { data: proj } = await supabase.from("onboarding_projects").select("id, product_name").eq("onboarding_company_id", emp.id).eq("status", "active").order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (!proj) return { erro: `${emp.name} não tem projeto ativo` };
+      const { data, error } = await supabase.from("onboarding_tasks").insert({
+        project_id: proj.id, title: String(input.titulo), description: input.descricao || "Criada pelo Max (Time de IA)",
+        due_date: quando.toISOString().slice(0, 10), status: "pending", responsible_staff_id: responsavelId, priority: "medium",
+      }).select("id").single();
+      return error ? { erro: error.message } : { ok: true, tarefa_id: data.id, onde: `projeto ${proj.product_name} da ${emp.name}`, quando: quando.toISOString().slice(0, 10), responsavel: responsavelNome };
+    }
+    return { erro: "diga pra quem é a tarefa: um lead (lead_id) ou uma empresa cliente" };
+  }
   if (name === "criar_anuncio_meta") {
     try {
       let headline = String(input.headline || "").trim(), texto = String(input.texto || "").trim(), cta = String(input.cta || "LEARN_MORE");
@@ -302,7 +446,9 @@ Como agir:
 - Quando ele colocar uma META ("preciso vender 40 mil hoje", "tenho que fechar 3 contratos essa semana"), NÃO responda com teoria: vá nas negociações abertas (estão nos dados; use ver_negociacoes se precisar da lista completa), some quais fecham a meta, diga NOME, VALOR e ETAPA de cada uma, quem está cuidando, e o que fazer AGORA com cada uma (ligar, mandar proposta, cobrar resposta). Ofereça deixar as mensagens prontas pelo Theo ou pelo time.
 - Primeiro responda exatamente o que foi perguntado; só depois, se couber, acrescente o que você acha.
 - ORDENS DE EXECUÇÃO na Meta: quando o dono mandar criar/subir anúncio, crie de verdade com criar_anuncio_meta (copy do Rafa, de um item da fila ou escrita por você agora, sem nome de cliente, sem preço salvo se ele pedir), SEMPRE pausado, e devolva: headline, orçamento diário, público e o link do Gerenciador. Se ele não disser orçamento, use 50 reais por dia e avise. NUNCA chame ativar_anuncio_meta sem uma ordem explícita de ativar ("ativa", "pode ligar", "sobe pra valer"); se a ordem de criar vier junto com "e ativa", crie, confirme o que criou e pergunte se ativa mesmo. Pausar pode ser imediato quando ele mandar.
-- Se ele pedir algo que o time não faz (ligar pra cliente, publicar anúncio na Meta, mandar WhatsApp), diga com clareza que isso ainda é mão humana e deixe pronto o que der (texto, lista, prioridade).
+- VOCÊ EXECUTA. O dono dá ordem, você faz: mandar mensagem pra lead, cliente ou alguém do time (enviar_whatsapp), cobrar alguém (enviar_whatsapp com o texto da cobrança), mandar recado no grupo de gestão de um cliente (enviar_grupo_cliente), criar tarefa pra lead ou pra projeto de cliente (criar_tarefa, na hora, sem perguntar), rodar agente, aprovar item, subir anúncio. Nunca responda "não consigo" pra essas; se faltar um dado (quem, qual empresa), pergunte só isso, em uma frase.
+- Mensagem pra terceiro (lead, cliente, grupo, pessoa do time) tem UMA confirmação curta: ache o contato (ver_negociacoes/consultar/pessoa), escreva o texto final e diga "pra <nome>: <texto>. Mando?". Na resposta seguinte, com o OK dele, chame a ferramenta com confirmado=true. Nunca diga que mandou se a ferramenta não devolveu enviado=true; se devolveu erro, diga o erro em uma frase.
+- Se ele pedir algo que o time ainda não faz (ligar pra cliente, publicar post), diga com clareza que isso ainda é mão humana e deixe pronto o que der (texto, lista, prioridade).
 - Respostas de 2 a 8 linhas. Só alongue quando ele pedir detalhe.`;
 }
 
