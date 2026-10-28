@@ -26,11 +26,45 @@ function paraFala(text: string): string {
     .slice(0, 2500);
 }
 
+/** Diagnóstico (?diag=1): testa cada provedor com 3 palavras e devolve só o status, sem chave. */
+async function diagnostico(): Promise<Record<string, unknown>> {
+  const out: Record<string, unknown> = {};
+  const eleven = Deno.env.get("ELEVENLABS_API_KEY");
+  const openai = Deno.env.get("OPENAI_API_KEY");
+  out.elevenlabs_key = eleven ? `presente (${eleven.length} chars, começa com ${eleven.slice(0, 3)})` : "ausente";
+  out.openai_key = openai ? `presente (${openai.length} chars, começa com ${openai.slice(0, 3)})` : "ausente";
+  out.voice = Deno.env.get("AI_TEAM_TTS_VOICE") || "(padrão Adam)";
+  if (eleven) {
+    try {
+      const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${Deno.env.get("AI_TEAM_TTS_VOICE") || "pNInz6obpgDQGcFmaJgB"}?output_format=mp3_22050_32`, {
+        method: "POST", headers: { "xi-api-key": eleven, "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "teste de voz", model_id: "eleven_flash_v2_5" }),
+      });
+      out.elevenlabs = r.ok ? `ok (${r.headers.get("Content-Type")})` : `${r.status}: ${(await r.text()).slice(0, 200)}`;
+    } catch (e) { out.elevenlabs = `erro: ${(e as Error).message}`; }
+  }
+  if (openai) {
+    for (const model of ["gpt-4o-mini-tts", "tts-1"]) {
+      try {
+        const r = await fetch("https://api.openai.com/v1/audio/speech", {
+          method: "POST", headers: { Authorization: `Bearer ${openai}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model, voice: "ash", input: "teste de voz", response_format: "mp3" }),
+        });
+        out[`openai_${model}`] = r.ok ? `ok (${r.headers.get("Content-Type")})` : `${r.status}: ${(await r.text()).slice(0, 200)}`;
+      } catch (e) { out[`openai_${model}`] = `erro: ${(e as Error).message}`; }
+    }
+  }
+  return out;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   try {
     const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
     const role = jwtRole(token);
+    if (new URL(req.url).searchParams.get("diag") === "1" && ["anon", "authenticated", "service_role"].includes(role)) {
+      return json(await diagnostico());
+    }
     if (!["authenticated", "service_role"].includes(role)) return json({ error: "exige usuário logado" }, 401);
 
     const body = await req.json().catch(() => ({}));
