@@ -10,6 +10,7 @@ import { useMaxVoice, temReconhecimento } from "@/pages/time-ia/useMaxVoice";
 const NAVY = "#0D2B5E";
 const RED = "#CC1B1B";
 const UNV_CNPJ = "51356237000140";
+const UNV_COMPANY_ID = "4d3e83ba-4521-4a3d-839f-21dd53dc8554";
 // telas com microfone próprio (ou públicas) — o global não aparece
 const SEM_MIC = [/^\/time-ia/, /^\/office/, /^\/onboarding-tasks\/unv-office/, /^\/onboarding-tasks\/login/, /^\/portal/, /^\/start/, /^\/sessao-estrategica/, /^\/checkout/, /^\/$/];
 
@@ -36,13 +37,15 @@ export default function MaxVoiceGlobal() {
     return () => { vivo = false; };
   }, [location.pathname]);
 
-  // empresa da UNV (dona do Time de IA): resolvida na primeira fala, não trava o microfone
+  // empresa da UNV (dona do Time de IA): id fixo (a leitura por CNPJ dependia de RLS e falhava);
+  // se um dia mudar, cai na busca por CNPJ
   const getCompanyId = useCallback(async (): Promise<string> => {
     if (companyId) return companyId;
-    const { data: c } = await supabase.from("onboarding_companies").select("id").eq("cnpj", UNV_CNPJ).maybeSingle();
-    if (!c?.id) throw new Error("empresa UNV não encontrada no Nexus");
-    setCompanyId(c.id as string);
-    return c.id as string;
+    const { data: fixo } = await supabase.from("onboarding_companies").select("id").eq("id", UNV_COMPANY_ID).maybeSingle();
+    const { data: c } = fixo ? { data: fixo } : await supabase.from("onboarding_companies").select("id").eq("cnpj", UNV_CNPJ).maybeSingle();
+    const id = (c?.id as string) || UNV_COMPANY_ID;
+    setCompanyId(id);
+    return id;
   }, [companyId]);
 
   const ask = useCallback(async (msg: string): Promise<string> => {

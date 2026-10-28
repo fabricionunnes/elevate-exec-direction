@@ -207,60 +207,127 @@ const timeAgo = (iso?: string | null) => {
   return m < 60 ? `há ${m} min` : m < 1440 ? `há ${Math.round(m / 60)}h` : `há ${Math.round(m / 1440)}d`;
 };
 
-// Telas do Nexus por apelido (como o dono fala) → rota. Primeira que bater ganha.
-const TELAS: { nome: string; rota: string; re: RegExp }[] = [
-  { nome: "Escritório (UNV Office)", rota: "/onboarding-tasks/unv-office", re: /escrit|office/ },
-  { nome: "Time de IA", rota: "/time-ia/30991de4-61d1-4261-af7e-d814b812c4ad", re: /time de ia|agentes de ia|\bmax\b/ },
-  { nome: "Painel ao vivo", rota: "/painel-de-controle/ao-vivo", re: /ao vivo|tv|telao/ },
-  { nome: "Painel de Controle", rota: "/painel-de-controle", re: /painel|controle|dashboard/ },
-  { nome: "Atendimento (inbox)", rota: "/crm/inbox", re: /atendimento|inbox|conversas|caixa de entrada/ },
-  { nome: "Pipeline do CRM", rota: "/crm/pipeline", re: /pipeline|funil|kanban/ },
-  { nome: "Leads", rota: "/crm/leads", re: /\bleads?\b|contatos/ },
-  { nome: "Atividades do CRM", rota: "/crm/activities", re: /atividade|tarefas do crm/ },
-  { nome: "Discador", rota: "/crm/dialer", re: /discador|ligac/ },
-  { nome: "Reuniões", rota: "/crm/meetings", re: /reuni/ },
-  { nome: "Forecast", rota: "/crm/forecast", re: /forecast|previs/ },
-  { nome: "Cadências", rota: "/crm/cadences", re: /cadenc|follow/ },
-  { nome: "Disparos", rota: "/crm/disparos", re: /dispar|campanha de whats/ },
-  { nome: "Prospecção B2B", rota: "/crm/prospeccao", re: /prospec/ },
-  { nome: "Agentes do CRM", rota: "/crm/agents", re: /agentes do crm|agente de ia|sdr/ },
-  { nome: "Automações do CRM", rota: "/crm/automacoes", re: /automa/ },
-  { nome: "Transcrições", rota: "/crm/transcriptions", re: /transcri/ },
-  { nome: "Relatórios do CRM", rota: "/crm/reports", re: /relat/ },
-  { nome: "Configurações do CRM", rota: "/crm/settings", re: /config.*crm|crm.*config/ },
-  { nome: "CRM", rota: "/crm", re: /\bcrm\b|comercial/ },
-  { nome: "Contas a pagar", rota: "/onboarding-tasks/financeiro", re: /contas? a pagar|pagar|fornecedor/ },
-  { nome: "Recebimentos", rota: "/recebimento", re: /receb|cobran/ },
-  { nome: "Nota fiscal", rota: "/onboarding-tasks/nota-fiscal", re: /nota fiscal|nfs?e|nf\b/ },
-  { nome: "MRR", rota: "/onboarding-tasks/mrr", re: /\bmrr\b|recorrente/ },
-  { nome: "Carteira", rota: "/onboarding-tasks/carteira", re: /carteira/ },
-  { nome: "Renovações", rota: "/onboarding-tasks/renovacoes", re: /renova/ },
-  { nome: "Cancelamentos e retenção", rota: "/onboarding-tasks/cancellations-retention", re: /cancel|reten|distrato/ },
-  { nome: "Previsão de churn", rota: "/onboarding-tasks/churn-prediction", re: /churn/ },
-  { nome: "Financeiro", rota: "/onboarding-tasks/financeiro", re: /financ|caixa|fluxo/ },
-  { nome: "Tráfego pago dos clientes", rota: "/onboarding-tasks/trafego-pago", re: /trafego|meta ads|anuncio|campanha/ },
-  { nome: "Agenda", rota: "/onboarding-tasks/agenda-fabricio", re: /agenda|calend/ },
-  { nome: "Custo de IA", rota: "/onboarding-tasks/custo-ia", re: /custo de ia|tokens|consumo/ },
-  { nome: "Assinaturas e contratos", rota: "/onboarding-tasks/assinaturas", re: /assinatura|contrato/ },
-  { nome: "Equipe (staff)", rota: "/onboarding-tasks/staff", re: /staff|equipe|colaborador|time da unv/ },
-  { nome: "Vagas", rota: "/onboarding-tasks/vagas", re: /vaga|recrut|contrata/ },
-  { nome: "Processos", rota: "/onboarding-tasks/processos", re: /processo/ },
-  { nome: "Cockpit", rota: "/onboarding-tasks/cockpit", re: /cockpit/ },
-  { nome: "Painel do CEO", rota: "/onboarding-tasks/ceo", re: /\bceo\b/ },
-  { nome: "Radar", rota: "/onboarding-tasks/radar", re: /radar/ },
-  { nome: "ROI dos clientes", rota: "/onboarding-tasks/roi-clientes", re: /\broi\b/ },
-  { nome: "Resultados", rota: "/onboarding-tasks/results", re: /resultado/ },
-  { nome: "Conexões WhatsApp", rota: "/onboarding-tasks/conexoes-whatsapp", re: /conex|instancia/ },
-  { nome: "WhatsApp Hub", rota: "/onboarding-tasks/whatsapp-hub", re: /whats/ },
-  { nome: "Task manager", rota: "/onboarding-tasks/task-manager", re: /task|tarefas/ },
-  { nome: "Academy", rota: "/academy", re: /academy|curso|treinamento/ },
-  { nome: "UNV Social", rota: "/social", re: /social|instagram|post/ },
-  { nome: "Relatório de empresas", rota: "/onboarding-tasks/companies-report", re: /relatorio de empresas/ },
-  { nome: "Clientes", rota: "/onboarding-tasks", re: /cliente|empresa|projeto|onboarding|inicio|home|principal/ },
+// Quem está falando com o Max e o que pode. Master/admin = tudo. Os demais só o que
+// o master liberou: menus (staff_menu_permissions), CRM (has_crm_access) e a carteira
+// (empresas em que é consultor ou CS). Checado no servidor, não no front.
+type Perfil = {
+  userId: string; staffId: string | null; nome: string; role: string;
+  tudo: boolean;                 // master/admin da UNV
+  cliente?: boolean;             // dono/usuário de uma empresa cliente: só o time dele, sem telas nem dados da UNV
+  menus: Set<string>;            // staff_menu_permissions.menu_key
+  crm: boolean;                  // has_crm_access()
+  empresas: { id: string; name: string }[]; // carteira
+};
+const perfilTudo = (userId: string, nome: string, role: string): Perfil => ({ userId, staffId: null, nome, role, tudo: true, menus: new Set(), crm: true, empresas: [] });
+const perfilCliente = (userId: string, nome: string, companyId: string): Perfil => ({ userId, staffId: null, nome, role: "cliente", tudo: false, cliente: true, menus: new Set(), crm: false, empresas: [{ id: companyId, name: "" }] });
+const podeEmpresa = (p: Perfil, id: string) => p.tudo || p.empresas.some((e) => e.id === id);
+
+// Telas do Nexus por apelido (como o dono fala) → rota + permissão exigida.
+// perm: 'todos' (qualquer staff) · 'crm' (has_crm_access) · 'admin' (master/admin) · <menu_key> (staff_menu_permissions)
+const TELAS: { nome: string; rota: string; re: RegExp; perm: string }[] = [
+  { nome: "Escritório (UNV Office)", rota: "/onboarding-tasks/unv-office", re: /escrit|office/, perm: "todos" },
+  { nome: "Time de IA", rota: "/time-ia/30991de4-61d1-4261-af7e-d814b812c4ad", re: /time de ia|agentes de ia|\bmax\b/, perm: "admin" },
+  { nome: "Painel ao vivo", rota: "/painel-de-controle/ao-vivo", re: /ao vivo|tv|telao/, perm: "admin" },
+  { nome: "Painel de Controle", rota: "/painel-de-controle", re: /painel|controle|dashboard/, perm: "admin" },
+  { nome: "Atendimento (inbox)", rota: "/crm/inbox", re: /atendimento|inbox|conversas|caixa de entrada/, perm: "crm" },
+  { nome: "Pipeline do CRM", rota: "/crm/pipeline", re: /pipeline|funil|kanban/, perm: "crm" },
+  { nome: "Leads", rota: "/crm/leads", re: /\bleads?\b|contatos/, perm: "crm" },
+  { nome: "Atividades do CRM", rota: "/crm/activities", re: /atividade|tarefas do crm/, perm: "crm" },
+  { nome: "Discador", rota: "/crm/dialer", re: /discador|ligac/, perm: "crm" },
+  { nome: "Reuniões", rota: "/crm/meetings", re: /reuni/, perm: "crm" },
+  { nome: "Forecast", rota: "/crm/forecast", re: /forecast|previs/, perm: "crm" },
+  { nome: "Cadências", rota: "/crm/cadences", re: /cadenc|follow/, perm: "crm" },
+  { nome: "Disparos", rota: "/crm/disparos", re: /dispar|campanha de whats/, perm: "crm" },
+  { nome: "Prospecção B2B", rota: "/crm/prospeccao", re: /prospec/, perm: "crm" },
+  { nome: "Agentes do CRM", rota: "/crm/agents", re: /agentes do crm|agente de ia|sdr/, perm: "admin" },
+  { nome: "Automações do CRM", rota: "/crm/automacoes", re: /automa/, perm: "admin" },
+  { nome: "Transcrições", rota: "/crm/transcriptions", re: /transcri/, perm: "crm" },
+  { nome: "Relatórios do CRM", rota: "/crm/reports", re: /relat/, perm: "crm" },
+  { nome: "Configurações do CRM", rota: "/crm/settings", re: /config.*crm|crm.*config/, perm: "admin" },
+  { nome: "CRM", rota: "/crm", re: /\bcrm\b|comercial/, perm: "crm" },
+  { nome: "Contas a pagar", rota: "/onboarding-tasks/financeiro", re: /contas? a pagar|pagar|fornecedor/, perm: "financial" },
+  { nome: "Recebimentos", rota: "/recebimento", re: /receb|cobran/, perm: "financial" },
+  { nome: "Nota fiscal", rota: "/onboarding-tasks/nota-fiscal", re: /nota fiscal|nfs?e|nf\b/, perm: "financial" },
+  { nome: "MRR", rota: "/onboarding-tasks/mrr", re: /\bmrr\b|recorrente/, perm: "admin" },
+  { nome: "Carteira", rota: "/onboarding-tasks/carteira", re: /carteira/, perm: "admin" },
+  { nome: "Renovações", rota: "/onboarding-tasks/renovacoes", re: /renova/, perm: "admin" },
+  { nome: "Cancelamentos e retenção", rota: "/onboarding-tasks/cancellations-retention", re: /cancel|reten|distrato/, perm: "admin" },
+  { nome: "Previsão de churn", rota: "/onboarding-tasks/churn-prediction", re: /churn/, perm: "admin" },
+  { nome: "Financeiro", rota: "/onboarding-tasks/financeiro", re: /financ|caixa|fluxo/, perm: "financial" },
+  { nome: "Tráfego pago dos clientes", rota: "/onboarding-tasks/trafego-pago", re: /trafego|meta ads|anuncio|campanha/, perm: "trafego_pago" },
+  { nome: "Agenda", rota: "/onboarding-tasks/agenda-fabricio", re: /agenda|calend/, perm: "calendar" },
+  { nome: "Custo de IA", rota: "/onboarding-tasks/custo-ia", re: /custo de ia|tokens|consumo/, perm: "admin" },
+  { nome: "Assinaturas e contratos", rota: "/onboarding-tasks/assinaturas", re: /assinatura|contrato/, perm: "admin" },
+  { nome: "Equipe (staff)", rota: "/onboarding-tasks/staff", re: /staff|equipe|colaborador|time da unv/, perm: "admin" },
+  { nome: "Vagas", rota: "/onboarding-tasks/vagas", re: /vaga|recrut|contrata/, perm: "hr" },
+  { nome: "Processos", rota: "/onboarding-tasks/processos", re: /processo/, perm: "todos" },
+  { nome: "Cockpit", rota: "/onboarding-tasks/cockpit", re: /cockpit/, perm: "admin" },
+  { nome: "Painel do CEO", rota: "/onboarding-tasks/ceo", re: /\bceo\b/, perm: "admin" },
+  { nome: "Radar", rota: "/onboarding-tasks/radar", re: /radar/, perm: "admin" },
+  { nome: "ROI dos clientes", rota: "/onboarding-tasks/roi-clientes", re: /\broi\b/, perm: "admin" },
+  { nome: "Resultados", rota: "/onboarding-tasks/results", re: /resultado/, perm: "results" },
+  { nome: "Conexões WhatsApp", rota: "/onboarding-tasks/conexoes-whatsapp", re: /conex|instancia/, perm: "admin" },
+  { nome: "WhatsApp Hub", rota: "/onboarding-tasks/whatsapp-hub", re: /whats/, perm: "admin" },
+  { nome: "Task manager", rota: "/onboarding-tasks/task-manager", re: /task|tarefas/, perm: "todos" },
+  { nome: "Academy", rota: "/academy", re: /academy|curso|treinamento/, perm: "academy" },
+  { nome: "UNV Social", rota: "/social", re: /social|instagram|post/, perm: "admin" },
+  { nome: "Relatório de empresas", rota: "/onboarding-tasks/companies-report", re: /relatorio de empresas/, perm: "admin" },
+  { nome: "Clientes", rota: "/onboarding-tasks", re: /cliente|empresa|projeto|onboarding|inicio|home|principal/, perm: "todos" },
 ];
-function resolverTela(fala: string): { nome: string; rota: string } | null {
+function resolverTela(fala: string): { nome: string; rota: string; perm: string } | null {
   const q = fala.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   return TELAS.find((t) => t.re.test(q)) || null;
+}
+function podeTela(p: Perfil, perm: string): boolean {
+  if (p.tudo) return true;
+  if (perm === "todos") return true;
+  if (perm === "admin") return false;
+  if (perm === "crm") return p.crm;
+  return p.menus.has(perm);
+}
+
+/** Monta o perfil de quem fala: papel, menus liberados, acesso ao CRM e carteira. */
+async function montarPerfil(supabase: SupabaseClient, asUser: SupabaseClient, userId: string, nomeMeta: string | null): Promise<Perfil | null> {
+  const { data: st } = await supabase.from("onboarding_staff").select("id, name, role, is_active").eq("user_id", userId).limit(1).maybeSingle();
+  if (!st || st.is_active === false) return null;
+  const role = String(st.role || "");
+  if (["master", "admin"].includes(role)) return perfilTudo(userId, st.name || nomeMeta || "", role);
+  const [{ data: menus }, { data: crmOk }, { data: empDiretas }, { data: proj }] = await Promise.all([
+    supabase.from("staff_menu_permissions").select("menu_key").eq("staff_id", st.id),
+    asUser.rpc("has_crm_access"),
+    supabase.from("onboarding_companies").select("id, name").or(`consultant_id.eq.${st.id},cs_id.eq.${st.id}`).limit(200),
+    supabase.from("onboarding_projects").select("onboarding_company_id, onboarding_companies!onboarding_projects_onboarding_company_id_fkey(id, name)").or(`consultant_id.eq.${st.id},cs_id.eq.${st.id}`).limit(300),
+  ]);
+  const empresas = new Map<string, string>();
+  for (const e of (empDiretas || []) as any[]) empresas.set(e.id, e.name);
+  for (const p of (proj || []) as any[]) if (p.onboarding_companies?.id) empresas.set(p.onboarding_companies.id, p.onboarding_companies.name);
+  return {
+    userId, staffId: st.id, nome: st.name || nomeMeta || "", role, tudo: false,
+    menus: new Set(((menus || []) as any[]).map((m) => m.menu_key)), crm: !!crmOk,
+    empresas: Array.from(empresas.entries()).map(([id, name]) => ({ id, name })),
+  };
+}
+
+/** Ferramentas que esse perfil pode usar (as outras nem aparecem pro modelo). */
+function toolsPara(p: Perfil) {
+  if (p.tudo) return TOOLS;
+  if (p.cliente) {
+    const doTime = new Set(["rodar_agente", "ver_fila", "decidir_item", "atualizar_agente"]);
+    return TOOLS.filter((t) => doTime.has(t.name));
+  }
+  const comuns = new Set(["abrir_escritorio", "ir_para_sala", "abrir_tela", "abrir_cliente", "criar_tarefa", "enviar_whatsapp", "enviar_grupo_cliente"]);
+  const crm = new Set(["abrir_lead", "ver_negociacoes"]);
+  return TOOLS.filter((t) => comuns.has(t.name) || (p.crm && crm.has(t.name)));
+}
+
+function perfilBlock(p: Perfil): string {
+  if (p.tudo) return `QUEM FALA: ${p.nome} (${p.role}) — dono/admin: acesso total.`;
+  if (p.cliente) return `QUEM FALA: ${p.nome}, dono/usuário da empresa cliente. Você coordena o time de IA DELE: rodar agentes, fila de aprovação, ligar/desligar agentes. Não existe aqui CRM da UNV, financeiro da UNV, telas do Nexus nem envio de WhatsApp; se pedir, diga que isso é com o consultor da UNV.`;
+  return `QUEM FALA: ${p.nome} (${p.role}). ESTE USUÁRIO NÃO É O DONO. Ele só pode o que está liberado:
+- Telas: ${[...p.menus].join(", ") || "nenhum menu extra"}; CRM: ${p.crm ? "sim" : "NÃO"}; Financeiro, carteira geral, tráfego e painel: só se o menu estiver na lista acima.
+- Carteira (clientes dele): ${p.empresas.length ? p.empresas.map((e) => e.name).join(", ") : "nenhum cliente atribuído"}.
+- Ele NÃO vê números do financeiro da UNV, carteira geral, churn, NPS ou tráfego da UNV a menos que o menu esteja liberado. Não cite esses dados.
+- Se pedir algo fora disso (abrir financeiro, cliente que não é dele, dado da empresa toda), responda em uma frase: "você não tem acesso a isso; fala com o Fabrício". Não tente contornar com consultas.`;
 }
 
 /** Empresa cliente por id ou pedaço do nome (só uma; se der empate, pergunta). */
@@ -302,12 +369,22 @@ async function loadTeamState(supabase: SupabaseClient, companyId: string) {
   return { agents: (agentsR.data || []) as Agent[], fila: (filaR.data || []) as any[], runs: (runsR.data || []) as any[] };
 }
 
-async function runTool(supabase: SupabaseClient, c: Company, name: string, input: any, userId: string | null, ctx: Ctx): Promise<any> {
+async function runTool(supabase: SupabaseClient, c: Company, name: string, input: any, userId: string | null, ctx: Ctx, perfil: Perfil): Promise<any> {
+  const SEM_ACESSO = (o: string) => ({ erro: `${perfil.nome || "este usuário"} não tem acesso a ${o}. Diga isso e oriente a falar com o Fabrício.` });
+  if (perfil.cliente && !["rodar_agente", "ver_fila", "decidir_item", "atualizar_agente"].includes(name)) return SEM_ACESSO("essa função (é com o consultor da UNV)");
+  if (!perfil.tudo && !perfil.cliente) {
+    // ferramentas de dono: nem deveriam chegar aqui (filtradas), mas o servidor manda
+    if (["consultar", "ver_tabelas", "ver_fila", "decidir_item", "atualizar_agente", "rodar_agente", "criar_anuncio_meta", "ativar_anuncio_meta", "pausar_anuncio_meta", "listar_anuncios_meta"].includes(name)) return SEM_ACESSO("essa função (só o dono/admin)");
+    if (["abrir_lead", "ver_negociacoes"].includes(name) && !perfil.crm) return SEM_ACESSO("o CRM");
+    if (name === "enviar_whatsapp" && (input.lead_id || input.pessoa) && !perfil.crm) return SEM_ACESSO("o CRM (contatos de leads)");
+  }
   if (name === "abrir_escritorio") return { ok: true, acao: "abrir_escritorio", nota: "a tela do dono vai abrir o UNV Office" };
   if (name === "ir_para_sala") return { ok: true, acao: "ir_sala", destino: String(input.destino || ""), nota: "a tela leva o avatar até lá" };
   if (name === "abrir_tela") {
     const rota = resolverTela(String(input.tela || ""));
-    return rota ? { ok: true, acao: "abrir_tela", rota: rota.rota, tela: rota.nome } : { erro: `não achei a tela "${input.tela}"` };
+    if (!rota) return { erro: `não achei a tela "${input.tela}"` };
+    if (!podeTela(perfil, rota.perm)) return SEM_ACESSO(`a tela ${rota.nome}`);
+    return { ok: true, acao: "abrir_tela", rota: rota.rota, tela: rota.nome };
   }
   if (name === "abrir_lead") {
     let id = String(input.lead_id || "").trim();
@@ -331,6 +408,7 @@ async function runTool(supabase: SupabaseClient, c: Company, name: string, input
   if (name === "abrir_cliente") {
     const emp = await acharEmpresa(supabase, String(input.empresa || ""));
     if ("erro" in emp) return emp;
+    if (!podeEmpresa(perfil, emp.id)) return SEM_ACESSO(`o cliente ${emp.name} (não está na carteira dele)`);
     const { data: proj } = await supabase.from("onboarding_projects").select("id, product_name, status").eq("onboarding_company_id", emp.id).order("status").order("created_at", { ascending: false }).limit(1).maybeSingle();
     return { ok: true, acao: "abrir_cliente", empresa: emp.name, company_id: emp.id, project_id: proj?.id || null, rota: proj ? `/onboarding-tasks/${proj.id}` : "/onboarding-tasks" };
   }
@@ -376,6 +454,7 @@ async function runTool(supabase: SupabaseClient, c: Company, name: string, input
     if (!input.confirmado) return { erro: "sem confirmação do dono: mostre o texto e o nome do cliente e pergunte se pode mandar" };
     const emp = await acharEmpresa(supabase, String(input.empresa || ""));
     if ("erro" in emp) return emp;
+    if (!podeEmpresa(perfil, emp.id)) return SEM_ACESSO(`o cliente ${emp.name} (não está na carteira dele)`);
     const grupos = await fetchGestaoGroups();
     const g = grupos.get(emp.id);
     if (!g) return { erro: `${emp.name} não tem grupo de gestão cadastrado no WhatsApp` };
@@ -402,6 +481,7 @@ async function runTool(supabase: SupabaseClient, c: Company, name: string, input
     if (input.empresa) {
       const emp = await acharEmpresa(supabase, String(input.empresa));
       if ("erro" in emp) return emp;
+      if (!podeEmpresa(perfil, emp.id)) return SEM_ACESSO(`o cliente ${emp.name} (não está na carteira dele)`);
       const { data: proj } = await supabase.from("onboarding_projects").select("id, product_name").eq("onboarding_company_id", emp.id).eq("status", "active").order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (!proj) return { erro: `${emp.name} não tem projeto ativo` };
       const { data, error } = await supabase.from("onboarding_tasks").insert({
@@ -589,14 +669,22 @@ Deno.serve(async (req) => {
 
     let userId: string | null = null;
     let donoNome: string | null = null;
+    let perfil: Perfil = perfilTudo("service", "sistema", "service_role");
     if (role !== "service_role") {
       const asUser = createClient(SUPABASE_URL, SERVICE_KEY, { global: { headers: { Authorization: authHeader } } });
       const { data: { user } } = await asUser.auth.getUser(token);
       if (!user) return json({ error: "não autenticado" }, 401);
-      const { data: ok } = await asUser.rpc("ai_team_has_access", { p_company_id: body.companyId });
-      if (!ok) return json({ error: "sem acesso à empresa" }, 403);
       userId = user.id;
       donoNome = (user.user_metadata?.full_name || user.user_metadata?.name || null) as string | null;
+      // staff da UNV (qualquer papel ativo) fala com o Max dentro do que pode; quem não é staff
+      // precisa de acesso à empresa (cliente do Nexus falando com o time dele)
+      const p = await montarPerfil(supabase, asUser, user.id, donoNome);
+      if (p) perfil = p;
+      else {
+        const { data: ok } = await asUser.rpc("ai_team_has_access", { p_company_id: body.companyId });
+        if (!ok) return json({ error: "sem acesso à empresa" }, 403);
+        perfil = perfilCliente(user.id, donoNome || "", String(body.companyId));
+      }
     }
 
     const { data: c } = await supabase.from("onboarding_companies").select("id, name, segment, phone").eq("id", body.companyId).maybeSingle();
@@ -606,17 +694,25 @@ Deno.serve(async (req) => {
     const { agents, fila, runs } = await loadTeamState(supabase, c.id);
     if (!agents.length) return json({ error: "time não montado" }, 400);
     const ctx = await buildContext(supabase, c as Company, agents, { cacheMs: CTX_CACHE_MS });
-    const dados = ctx.modo === "nexus_unv" ? dadosBlock(ctx, ["financeiro", "comercial", "carteira", "trafego", "catalogo"]) : (ctx.kpis ? dadosBlock(ctx, ["kpis"]) : "") ;
+    // o que entra no prompt depende de quem fala: dono vê tudo; os demais só o que o menu libera
+    const partes: ("kpis" | "comercial" | "financeiro" | "carteira" | "trafego" | "catalogo")[] = perfil.tudo
+      ? ["financeiro", "comercial", "carteira", "trafego", "catalogo"]
+      : perfil.cliente ? []
+      : [...(perfil.crm ? ["comercial" as const] : []), ...(perfil.menus.has("financial") ? ["financeiro" as const] : []), ...(perfil.menus.has("trafego_pago") ? ["trafego" as const] : []), "catalogo" as const];
+    const dados = ctx.modo === "nexus_unv" ? dadosBlock(ctx, partes) : (ctx.kpis ? dadosBlock(ctx, ["kpis"]) : "");
     // com quem o dono está falando: o Max (padrão) ou um especialista do escritório 3D
     const agenteKey = String(body.agente || "orquestrador");
     const agenteRow = agents.find((a) => a.agent_key === agenteKey) || agents.find((a) => a.agent_key === "orquestrador")!;
     const maxRow = agents.find((a) => a.agent_key === "orquestrador");
-    const system = systemPrompt(c as Company, agents, fila, runs, `${ctx.oferta}\n\n${dados}`, donoNome)
+    const system = systemPrompt(c as Company, agents, perfil.tudo ? fila : [], perfil.tudo ? runs : [], `${ctx.oferta}\n\n${dados}`, donoNome)
+      + `\n\n${perfilBlock(perfil)}`
       + (agenteRow.agent_key !== "orquestrador" ? `\n\n${personaEspecialista(agenteRow, maxRow)}` : "")
       + (body.modo === "voz" ? MODO_VOZ : "");
 
-    // histórico (últimas 30 mensagens dessa conversa, ordem cronológica)
-    const { data: hist } = await supabase.from("ai_team_messages").select("role, content").eq("company_id", c.id).eq("agent_key", agenteRow.agent_key).order("created_at", { ascending: false }).limit(30);
+    // histórico (últimas 30 mensagens dessa conversa, ordem cronológica); quem não é dono só vê a própria
+    let histQ = supabase.from("ai_team_messages").select("role, content").eq("company_id", c.id).eq("agent_key", agenteRow.agent_key);
+    if (!perfil.tudo && userId) histQ = histQ.eq("user_id", userId);
+    const { data: hist } = await histQ.order("created_at", { ascending: false }).limit(30);
     const messages: any[] = ((hist || []) as any[]).reverse().map((m) => ({ role: m.role, content: m.content }));
     messages.push({ role: "user", content: message });
     await supabase.from("ai_team_messages").insert({ company_id: c.id, user_id: userId, role: "user", content: message, agent_key: agenteRow.agent_key });
@@ -629,7 +725,7 @@ Deno.serve(async (req) => {
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-        body: JSON.stringify({ model: CHAT_MODEL, max_tokens: 1200, temperature: 0.7, system, tools: TOOLS, messages }),
+        body: JSON.stringify({ model: CHAT_MODEL, max_tokens: 1200, temperature: 0.7, system, tools: toolsPara(perfil), messages }),
       });
       if (!resp.ok) throw new Error(`Claude ${resp.status}: ${(await resp.text()).slice(0, 300)}`);
       const data = await resp.json();
@@ -641,7 +737,7 @@ Deno.serve(async (req) => {
       messages.push({ role: "assistant", content });
       const results: any[] = [];
       for (const tu of toolUses) {
-        const result = await runTool(supabase, c as Company, tu.name, tu.input || {}, userId, ctx);
+        const result = await runTool(supabase, c as Company, tu.name, tu.input || {}, userId, ctx, perfil);
         actions.push({ tool: tu.name, input: tu.input, result });
         results.push({ type: "tool_result", tool_use_id: tu.id, content: JSON.stringify(result).slice(0, 12000) });
       }

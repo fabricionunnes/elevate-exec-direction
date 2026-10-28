@@ -45,13 +45,17 @@ export function agentByTeamKey(teamKey: string | null): OfficeAgent | null {
   return OFFICE_AGENTS.find((a) => a.teamKey === teamKey) ?? null
 }
 
-/** Empresa da própria UNV no Nexus (dona do Time de IA). Cacheada na sessão. */
+/** Empresa da própria UNV no Nexus (dona do Time de IA): id fixo; a leitura por
+ * CNPJ dependia de RLS e falhava pro master. Cai na busca só se o id sumir. */
+export const UNV_COMPANY_ID = '4d3e83ba-4521-4a3d-839f-21dd53dc8554'
 const UNV_CNPJ = '51356237000140'
 let unvCompanyId: string | null | undefined
 export async function fetchUnvCompanyId(): Promise<string | null> {
   if (unvCompanyId !== undefined) return unvCompanyId
+  const { data: fixo } = await supabase.from('onboarding_companies').select('id').eq('id', UNV_COMPANY_ID).maybeSingle()
+  if (fixo?.id) { unvCompanyId = fixo.id as string; return unvCompanyId }
   const { data } = await supabase.from('onboarding_companies').select('id').eq('cnpj', UNV_CNPJ).maybeSingle()
-  unvCompanyId = (data?.id as string | undefined) ?? null
+  unvCompanyId = (data?.id as string | undefined) ?? UNV_COMPANY_ID
   return unvCompanyId
 }
 
