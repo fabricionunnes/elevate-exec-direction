@@ -117,9 +117,14 @@ const TOOLS = [
     input_schema: { type: "object", properties: { empresa: { type: "string" } }, required: ["empresa"] },
   },
   {
+    name: "abrir_lead",
+    description: "Abre o card de um lead no CRM (a tela do lead). Use quando o dono pedir 'abre o card do Edson', 'mostra o lead', 'abre a negociação'. Passe o lead_id que você já tem (das negociações/consultas) ou o nome.",
+    input_schema: { type: "object", properties: { lead_id: { type: "string" }, nome: { type: "string" } } },
+  },
+  {
     name: "abrir_tela",
-    description: "Abre uma tela do Nexus: crm, clientes, financeiro, trafego, painel (painel de controle), mrr, agenda, time_ia, escritorio. Executa na hora.",
-    input_schema: { type: "object", properties: { tela: { type: "string", enum: ["crm", "clientes", "financeiro", "trafego", "painel", "mrr", "agenda", "time_ia", "escritorio", "custo_ia"] } }, required: ["tela"] },
+    description: "Abre uma tela do Nexus pelo nome que o dono falou: crm, pipeline/funil, leads, atendimento/inbox, atividades, discador, reuniões, forecast, cadências, disparos, prospecção, agentes, automações, clientes/empresas, financeiro, contas a pagar, recebimentos, nota fiscal, mrr, carteira, renovações, cancelamentos, churn, tráfego, painel de controle, painel ao vivo, agenda, custo de ia, transcrições, assinaturas/contratos, staff/equipe, vagas, processos, academy, cockpit, ceo, radar, roi, resultados, whatsapp, conexões, social, time de ia, escritório. Executa na hora.",
+    input_schema: { type: "object", properties: { tela: { type: "string", description: "como o dono falou" } }, required: ["tela"] },
   },
   {
     name: "criar_anuncio_meta",
@@ -202,6 +207,62 @@ const timeAgo = (iso?: string | null) => {
   return m < 60 ? `há ${m} min` : m < 1440 ? `há ${Math.round(m / 60)}h` : `há ${Math.round(m / 1440)}d`;
 };
 
+// Telas do Nexus por apelido (como o dono fala) → rota. Primeira que bater ganha.
+const TELAS: { nome: string; rota: string; re: RegExp }[] = [
+  { nome: "Escritório (UNV Office)", rota: "/onboarding-tasks/unv-office", re: /escrit|office/ },
+  { nome: "Time de IA", rota: "/time-ia/30991de4-61d1-4261-af7e-d814b812c4ad", re: /time de ia|agentes de ia|\bmax\b/ },
+  { nome: "Painel ao vivo", rota: "/painel-de-controle/ao-vivo", re: /ao vivo|tv|telao/ },
+  { nome: "Painel de Controle", rota: "/painel-de-controle", re: /painel|controle|dashboard/ },
+  { nome: "Atendimento (inbox)", rota: "/crm/inbox", re: /atendimento|inbox|conversas|caixa de entrada/ },
+  { nome: "Pipeline do CRM", rota: "/crm/pipeline", re: /pipeline|funil|kanban/ },
+  { nome: "Leads", rota: "/crm/leads", re: /\bleads?\b|contatos/ },
+  { nome: "Atividades do CRM", rota: "/crm/activities", re: /atividade|tarefas do crm/ },
+  { nome: "Discador", rota: "/crm/dialer", re: /discador|ligac/ },
+  { nome: "Reuniões", rota: "/crm/meetings", re: /reuni/ },
+  { nome: "Forecast", rota: "/crm/forecast", re: /forecast|previs/ },
+  { nome: "Cadências", rota: "/crm/cadences", re: /cadenc|follow/ },
+  { nome: "Disparos", rota: "/crm/disparos", re: /dispar|campanha de whats/ },
+  { nome: "Prospecção B2B", rota: "/crm/prospeccao", re: /prospec/ },
+  { nome: "Agentes do CRM", rota: "/crm/agents", re: /agentes do crm|agente de ia|sdr/ },
+  { nome: "Automações do CRM", rota: "/crm/automacoes", re: /automa/ },
+  { nome: "Transcrições", rota: "/crm/transcriptions", re: /transcri/ },
+  { nome: "Relatórios do CRM", rota: "/crm/reports", re: /relat/ },
+  { nome: "Configurações do CRM", rota: "/crm/settings", re: /config.*crm|crm.*config/ },
+  { nome: "CRM", rota: "/crm", re: /\bcrm\b|comercial/ },
+  { nome: "Contas a pagar", rota: "/onboarding-tasks/financeiro", re: /contas? a pagar|pagar|fornecedor/ },
+  { nome: "Recebimentos", rota: "/recebimento", re: /receb|cobran/ },
+  { nome: "Nota fiscal", rota: "/onboarding-tasks/nota-fiscal", re: /nota fiscal|nfs?e|nf\b/ },
+  { nome: "MRR", rota: "/onboarding-tasks/mrr", re: /\bmrr\b|recorrente/ },
+  { nome: "Carteira", rota: "/onboarding-tasks/carteira", re: /carteira/ },
+  { nome: "Renovações", rota: "/onboarding-tasks/renovacoes", re: /renova/ },
+  { nome: "Cancelamentos e retenção", rota: "/onboarding-tasks/cancellations-retention", re: /cancel|reten|distrato/ },
+  { nome: "Previsão de churn", rota: "/onboarding-tasks/churn-prediction", re: /churn/ },
+  { nome: "Financeiro", rota: "/onboarding-tasks/financeiro", re: /financ|caixa|fluxo/ },
+  { nome: "Tráfego pago dos clientes", rota: "/onboarding-tasks/trafego-pago", re: /trafego|meta ads|anuncio|campanha/ },
+  { nome: "Agenda", rota: "/onboarding-tasks/agenda-fabricio", re: /agenda|calend/ },
+  { nome: "Custo de IA", rota: "/onboarding-tasks/custo-ia", re: /custo de ia|tokens|consumo/ },
+  { nome: "Assinaturas e contratos", rota: "/onboarding-tasks/assinaturas", re: /assinatura|contrato/ },
+  { nome: "Equipe (staff)", rota: "/onboarding-tasks/staff", re: /staff|equipe|colaborador|time da unv/ },
+  { nome: "Vagas", rota: "/onboarding-tasks/vagas", re: /vaga|recrut|contrata/ },
+  { nome: "Processos", rota: "/onboarding-tasks/processos", re: /processo/ },
+  { nome: "Cockpit", rota: "/onboarding-tasks/cockpit", re: /cockpit/ },
+  { nome: "Painel do CEO", rota: "/onboarding-tasks/ceo", re: /\bceo\b/ },
+  { nome: "Radar", rota: "/onboarding-tasks/radar", re: /radar/ },
+  { nome: "ROI dos clientes", rota: "/onboarding-tasks/roi-clientes", re: /\broi\b/ },
+  { nome: "Resultados", rota: "/onboarding-tasks/results", re: /resultado/ },
+  { nome: "Conexões WhatsApp", rota: "/onboarding-tasks/conexoes-whatsapp", re: /conex|instancia/ },
+  { nome: "WhatsApp Hub", rota: "/onboarding-tasks/whatsapp-hub", re: /whats/ },
+  { nome: "Task manager", rota: "/onboarding-tasks/task-manager", re: /task|tarefas/ },
+  { nome: "Academy", rota: "/academy", re: /academy|curso|treinamento/ },
+  { nome: "UNV Social", rota: "/social", re: /social|instagram|post/ },
+  { nome: "Relatório de empresas", rota: "/onboarding-tasks/companies-report", re: /relatorio de empresas/ },
+  { nome: "Clientes", rota: "/onboarding-tasks", re: /cliente|empresa|projeto|onboarding|inicio|home|principal/ },
+];
+function resolverTela(fala: string): { nome: string; rota: string } | null {
+  const q = fala.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  return TELAS.find((t) => t.re.test(q)) || null;
+}
+
 /** Empresa cliente por id ou pedaço do nome (só uma; se der empate, pergunta). */
 async function acharEmpresa(supabase: SupabaseClient, ref: string): Promise<{ id: string; name: string } | { erro: string }> {
   const r = ref.trim();
@@ -245,13 +306,27 @@ async function runTool(supabase: SupabaseClient, c: Company, name: string, input
   if (name === "abrir_escritorio") return { ok: true, acao: "abrir_escritorio", nota: "a tela do dono vai abrir o UNV Office" };
   if (name === "ir_para_sala") return { ok: true, acao: "ir_sala", destino: String(input.destino || ""), nota: "a tela leva o avatar até lá" };
   if (name === "abrir_tela") {
-    const rotas: Record<string, string> = {
-      crm: "/crm", clientes: "/onboarding-tasks", financeiro: "/onboarding-tasks/financeiro", trafego: "/onboarding-tasks/trafego-pago",
-      painel: "/painel-de-controle", mrr: "/onboarding-tasks/mrr", agenda: "/onboarding-tasks/agenda-fabricio",
-      time_ia: "/time-ia/30991de4-61d1-4261-af7e-d814b812c4ad", escritorio: "/onboarding-tasks/unv-office", custo_ia: "/onboarding-tasks/custo-ia",
-    };
-    const rota = rotas[String(input.tela)];
-    return rota ? { ok: true, acao: "abrir_tela", rota, tela: input.tela } : { erro: "tela desconhecida" };
+    const rota = resolverTela(String(input.tela || ""));
+    return rota ? { ok: true, acao: "abrir_tela", rota: rota.rota, tela: rota.nome } : { erro: `não achei a tela "${input.tela}"` };
+  }
+  if (name === "abrir_lead") {
+    let id = String(input.lead_id || "").trim();
+    let nome: string | null = null;
+    if (!/^[0-9a-f-]{36}$/i.test(id)) {
+      id = "";
+      const q = String(input.nome || "").trim();
+      if (!q) return { erro: "diga o lead (nome) ou passe o lead_id" };
+      // primeiro quem está nas negociações abertas (é de quem o dono costuma falar), depois o CRM todo
+      const emCtx = ctx.negociacoes.filter((n) => n.name.toLowerCase().includes(q.toLowerCase()));
+      if (emCtx.length >= 1) { id = emCtx[0].id; nome = emCtx[0].name; }
+      else {
+        const { data: leads } = await supabase.from("crm_leads").select("id, name, opportunity_value").is("tenant_id", null).ilike("name", `%${q}%`).order("opportunity_value", { ascending: false, nullsFirst: false }).order("last_activity_at", { ascending: false, nullsFirst: false }).limit(3);
+        if (!leads?.length) return { erro: `não achei lead com "${q}"` };
+        id = leads[0].id; nome = leads[0].name;
+        if (leads.length > 1) nome = `${leads[0].name} (o de maior valor; também existem ${leads.slice(1).map((l: any) => l.name).join(", ")})`;
+      }
+    }
+    return { ok: true, acao: "abrir_lead", lead_id: id, nome, rota: `/crm/leads/${id}` };
   }
   if (name === "abrir_cliente") {
     const emp = await acharEmpresa(supabase, String(input.empresa || ""));
@@ -269,7 +344,15 @@ async function runTool(supabase: SupabaseClient, c: Company, name: string, input
       numero = String(lead.phone).replace(/\D/g, "");
       nome = lead.name;
     } else if (!numero && input.pessoa) {
-      // primeiro alguém do time da UNV, depois lead do CRM com esse nome
+      // 0) quem está nas negociações abertas (é de quem o dono acabou de falar) ganha de qualquer busca
+      const emCtx = ctx.negociacoes.filter((n) => n.name.toLowerCase().includes(String(input.pessoa).trim().toLowerCase()));
+      if (emCtx.length) {
+        const { data: lead } = await supabase.from("crm_leads").select("id, name, phone").eq("id", emCtx[0].id).maybeSingle();
+        if (lead?.phone) { numero = String(lead.phone).replace(/\D/g, ""); nome = lead.name; input.lead_id = lead.id; }
+      }
+    }
+    if (!numero && input.pessoa) {
+      // 1) alguém do time da UNV, 2) lead do CRM com esse nome
       const { data: staff } = await supabase.from("onboarding_staff").select("name, phone").eq("is_active", true).ilike("name", `%${String(input.pessoa).trim()}%`).limit(2);
       if (staff?.length === 1 && staff[0].phone) { numero = String(staff[0].phone).replace(/\D/g, ""); nome = staff[0].name; }
       else if ((staff?.length || 0) > 1) return { erro: `mais de uma pessoa do time chama ${input.pessoa}: ${staff!.map((s: any) => s.name).join(", ")}. Qual?` };
@@ -477,7 +560,8 @@ Como agir:
 - Quando ele colocar uma META ("preciso vender 40 mil hoje", "tenho que fechar 3 contratos essa semana"), NÃO responda com teoria: vá nas negociações abertas (estão nos dados; use ver_negociacoes se precisar da lista completa), some quais fecham a meta, diga NOME, VALOR e ETAPA de cada uma, quem está cuidando, e o que fazer AGORA com cada uma (ligar, mandar proposta, cobrar resposta). Ofereça deixar as mensagens prontas pelo Theo ou pelo time.
 - Primeiro responda exatamente o que foi perguntado; só depois, se couber, acrescente o que você acha.
 - ORDENS DE EXECUÇÃO na Meta: quando o dono mandar criar/subir anúncio, crie de verdade com criar_anuncio_meta (copy do Rafa, de um item da fila ou escrita por você agora, sem nome de cliente, sem preço salvo se ele pedir), SEMPRE pausado, e devolva: headline, orçamento diário, público e o link do Gerenciador. Se ele não disser orçamento, use 50 reais por dia e avise. NUNCA chame ativar_anuncio_meta sem uma ordem explícita de ativar ("ativa", "pode ligar", "sobe pra valer"); se a ordem de criar vier junto com "e ativa", crie, confirme o que criou e pergunte se ativa mesmo. Pausar pode ser imediato quando ele mandar.
-- NAVEGAÇÃO POR VOZ: "abre o escritório", "vai na sala do Ricardo", "vai pra reunião principal", "abre a 3D Cure", "abre o CRM" → use abrir_escritorio / ir_para_sala / abrir_cliente / abrir_tela NA HORA, sem perguntar, e responda em UMA frase curta ("indo pra sala do Ricardo"). Não explique.
+- NAVEGAÇÃO POR VOZ: "abre o escritório", "vai na sala do Ricardo", "vai pra reunião principal", "abre a 3D Cure", "abre o CRM", "abre o card do Edson" → use abrir_escritorio / ir_para_sala / abrir_cliente / abrir_tela / abrir_lead NA HORA, sem perguntar, e responda em UMA frase curta ("abrindo o card do Edson"). Não explique.
+- CONTINUIDADE: se VOCÊ acabou de citar uma pessoa ou empresa com dado (ex: "o Edson tem uma oportunidade de 40 mil"), ela é a referência das ordens seguintes ("abre o card dele", "manda mensagem pro Edson"): use o lead_id que está entre colchetes nos dados ou que a ferramenta devolveu. NUNCA pergunte "qual Edson?" nesse caso. Só pergunte quando o nome nunca apareceu na conversa e a busca devolveu mais de um.
 - VOCÊ EXECUTA. O dono dá ordem, você faz: mandar mensagem pra lead, cliente ou alguém do time (enviar_whatsapp), cobrar alguém (enviar_whatsapp com o texto da cobrança), mandar recado no grupo de gestão de um cliente (enviar_grupo_cliente), criar tarefa pra lead ou pra projeto de cliente (criar_tarefa, na hora, sem perguntar), rodar agente, aprovar item, subir anúncio. Nunca responda "não consigo" pra essas; se faltar um dado (quem, qual empresa), pergunte só isso, em uma frase.
 - Mensagem pra terceiro (lead, cliente, grupo, pessoa do time) tem UMA confirmação curta: ache o contato (ver_negociacoes/consultar/pessoa), escreva o texto final e diga "pra <nome>: <texto>. Mando?". Na resposta seguinte, com o OK dele, chame a ferramenta com confirmado=true. Nunca diga que mandou se a ferramenta não devolveu enviado=true; se devolveu erro, diga o erro em uma frase.
 - Se ele pedir algo que o time ainda não faz (ligar pra cliente, publicar post), diga com clareza que isso ainda é mão humana e deixe pronto o que der (texto, lista, prioridade).
