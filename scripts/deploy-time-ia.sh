@@ -32,7 +32,7 @@ deploy() {
   curl -s -X POST "https://api.supabase.com/v1/projects/$REF/functions/deploy?slug=$fn" \
     -H "Authorization: Bearer $TOK" \
     -F "metadata=$meta;type=application/json" \
-    -F "file=@supabase/functions/$fn/index.ts;filename=index.ts" "${extra[@]}" \
+    -F "file=@supabase/functions/$fn/index.ts;filename=index.ts" ${extra[@]+"${extra[@]}"} \
     | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("status"), "v" + str(d.get("version")), d.get("message") or "")'
 }
 if [ "$ALVO" = "all" ]; then
