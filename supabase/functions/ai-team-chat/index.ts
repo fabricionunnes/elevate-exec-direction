@@ -86,17 +86,18 @@ const TOOLS = [
   },
   {
     name: "criar_tarefa",
-    description: "Cria uma tarefa de verdade: pra um lead do CRM (lead_id → atividade em crm_activities: ligar, follow-up, reunião, whatsapp) ou pra um projeto de cliente (empresa → onboarding_tasks). Pode atribuir a alguém do time pelo nome. Executa na hora, sem confirmação.",
+    description: "Cria uma tarefa/atividade de verdade, NA HORA e sem perguntar: pra um lead do CRM (lead_id ou lead = nome → atividade: ligar, follow-up, reunião, whatsapp) ou pra um cliente (empresa = nome → tarefa do projeto). Padrões: responsável = quem está falando; data = hoje; tipo = followup. Só passe responsavel se o dono disser outro nome.",
     input_schema: {
       type: "object",
       properties: {
         titulo: { type: "string" },
         descricao: { type: "string" },
-        lead_id: { type: "string", description: "tarefa ligada a um lead do CRM" },
-        empresa: { type: "string", description: "nome (parte) ou id da empresa cliente, pra tarefa de projeto" },
+        lead_id: { type: "string", description: "id do lead, se você já tem" },
+        lead: { type: "string", description: "nome do lead como o dono falou ('lead digital', 'Edson')" },
+        empresa: { type: "string", description: "nome (parte) da empresa cliente como o dono falou ('Sobrado')" },
         tipo: { type: "string", enum: ["call", "followup", "meeting", "whatsapp", "other"], description: "só pra lead; padrão followup" },
-        quando: { type: "string", description: "data/hora ISO ou 'hoje', 'amanhã'; padrão hoje" },
-        responsavel: { type: "string", description: "nome de alguém do time da UNV (onboarding_staff)" },
+        quando: { type: "string", description: "'hoje', 'amanhã', 'sexta', '30/10', '30/10 15h' ou ISO; padrão hoje" },
+        responsavel: { type: "string", description: "nome de alguém do time, SÓ se o dono pediu outra pessoa; senão é quem fala" },
       },
       required: ["titulo"],
     },
@@ -291,7 +292,7 @@ async function montarPerfil(supabase: SupabaseClient, asUser: SupabaseClient, us
   const { data: st } = await supabase.from("onboarding_staff").select("id, name, role, is_active").eq("user_id", userId).limit(1).maybeSingle();
   if (!st || st.is_active === false) return null;
   const role = String(st.role || "");
-  if (["master", "admin"].includes(role)) return perfilTudo(userId, st.name || nomeMeta || "", role);
+  if (["master", "admin"].includes(role)) return { ...perfilTudo(userId, st.name || nomeMeta || "", role), staffId: st.id };
   const [{ data: menus }, { data: crmOk }, { data: empDiretas }, { data: proj }] = await Promise.all([
     supabase.from("staff_menu_permissions").select("menu_key").eq("staff_id", st.id),
     asUser.rpc("has_crm_access"),
@@ -331,31 +332,62 @@ function perfilBlock(p: Perfil): string {
 }
 
 /** Empresa cliente por id ou pedaço do nome (só uma; se der empate, pergunta). */
-async function acharEmpresa(supabase: SupabaseClient, ref: string): Promise<{ id: string; name: string } | { erro: string }> {
+async function acharEmpresa(supabase: SupabaseClient, ref: string): Promise<{ id: string; name: string; aviso?: string } | { erro: string }> {
   const r = ref.trim();
   if (!r) return { erro: "empresa não informada" };
   if (/^[0-9a-f-]{36}$/i.test(r)) {
     const { data } = await supabase.from("onboarding_companies").select("id, name").eq("id", r).maybeSingle();
     return data ? data : { erro: "empresa não encontrada" };
   }
-  const { data } = await supabase.from("onboarding_companies").select("id, name, status").ilike("name", `%${r}%`).order("status").limit(4);
-  const ativas = (data || []).filter((c: any) => c.status === "active");
-  const lista = ativas.length ? ativas : (data || []);
-  if (lista.length === 1) return { id: lista[0].id, name: lista[0].name };
-  if (lista.length > 1) return { erro: `mais de uma empresa bate com "${r}": ${lista.map((c: any) => c.name).join(", ")}. Qual?` };
-  return { erro: `não achei empresa com "${r}"` };
+  // busca por pedaço do nome; se vier mais de uma, fica com a mais provável (ativa, nome mais
+  // parecido) e segue — o Max avisa qual escolheu em vez de perguntar
+  const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const termos = norm(r).split(/\s+/).filter((t) => t.length > 1);
+  let { data } = await supabase.from("onboarding_companies").select("id, name, status").ilike("name", `%${r}%`).limit(8);
+  if (!data?.length && termos.length) {
+    const { data: d2 } = await supabase.from("onboarding_companies").select("id, name, status").ilike("name", `%${termos[0]}%`).limit(8);
+    data = d2;
+  }
+  if (!data?.length) return { erro: `não achei empresa com "${r}"` };
+  const score = (c: any) => (c.status === "active" ? 100 : 0) + termos.filter((t) => norm(c.name).includes(t)).length * 10 - norm(c.name).length / 50 + (norm(c.name).startsWith(norm(r)) ? 5 : 0);
+  const lista = [...data].sort((a: any, b: any) => score(b) - score(a));
+  return { id: lista[0].id, name: lista[0].name, ...(lista.length > 1 ? { aviso: `escolhi ${lista[0].name}; também existe ${lista.slice(1, 3).map((c: any) => c.name).join(", ")}` } : {}) };
 }
 
-/** "hoje", "amanhã", "sexta", ISO → Date (BRT, 10h se não tiver hora). */
+/** Lead por nome, rápido e sem perguntar: primeiro quem está nas negociações abertas,
+ * depois o CRM da UNV (maior valor e contato mais recente ganham). */
+async function acharLead(supabase: SupabaseClient, ctx: Ctx, nome: string): Promise<{ id: string; name: string; aviso?: string } | { erro: string }> {
+  const q = nome.trim().toLowerCase();
+  if (!q) return { erro: "lead não informado" };
+  const emCtx = ctx.negociacoes.filter((n) => n.name.toLowerCase().includes(q));
+  if (emCtx.length) return { id: emCtx[0].id, name: emCtx[0].name, ...(emCtx.length > 1 ? { aviso: `escolhi ${emCtx[0].name} (maior oportunidade)` } : {}) };
+  const { data: leads } = await supabase.from("crm_leads").select("id, name").is("tenant_id", null).ilike("name", `%${q}%`)
+    .order("opportunity_value", { ascending: false, nullsFirst: false }).order("last_activity_at", { ascending: false, nullsFirst: false }).limit(3);
+  if (!leads?.length) return { erro: `não achei lead com "${nome}" no CRM` };
+  return { id: leads[0].id, name: leads[0].name, ...(leads.length > 1 ? { aviso: `escolhi ${leads[0].name} (mais recente/maior valor); também existe ${leads.slice(1).map((l: any) => l.name).join(", ")}` } : {}) };
+}
+
+/** "hoje", "amanhã", "sexta", "30/10", "30/10 15h", "dia 5", ISO → Date (BRT; 10h se não tiver hora). */
 function parseQuando(v: unknown): Date {
-  const s = String(v || "").trim().toLowerCase();
-  const base = new Date();
-  const at = (d: Date, h = 10) => { const x = new Date(d); x.setUTCHours(h + 3, 0, 0, 0); return x; }; // BRT = UTC-3
-  if (!s || s === "hoje") return at(base, 14);
-  if (s === "amanhã" || s === "amanha") { const d = new Date(base); d.setDate(d.getDate() + 1); return at(d); }
-  const dias = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
-  const di = dias.findIndex((d) => s.startsWith(d.slice(0, 3)));
+  const s = String(v || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const base = brNow();
+  const hora = (() => { const m = s.match(/(\d{1,2})\s*(?:h|:)\s*(\d{2})?/); return m ? [Number(m[1]), Number(m[2] || 0)] : null; })();
+  const at = (d: Date, h = 10, mi = 0) => { const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), (hora ? hora[0] : h) + 3, hora ? hora[1] : mi, 0)); return x; }; // BRT = UTC-3
+  if (!s || /^hoje/.test(s)) return at(base, hora ? hora[0] : 14);
+  if (/^amanha/.test(s)) { const d = new Date(base); d.setDate(d.getDate() + 1); return at(d); }
+  if (/depois de amanha/.test(s)) { const d = new Date(base); d.setDate(d.getDate() + 2); return at(d); }
+  const dias = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+  const di = dias.findIndex((d) => s.includes(d.slice(0, 3)));
   if (di >= 0) { const d = new Date(base); const delta = (di - d.getDay() + 7) % 7 || 7; d.setDate(d.getDate() + delta); return at(d); }
+  const dm = s.match(/(\d{1,2})\s*[\/-]\s*(\d{1,2})(?:\s*[\/-]\s*(\d{2,4}))?/) || s.match(/dia\s+(\d{1,2})/);
+  if (dm) {
+    const d = new Date(base);
+    const dia = Number(dm[1]); const mes = dm[2] ? Number(dm[2]) - 1 : d.getMonth();
+    const ano = dm[3] ? (Number(dm[3]) < 100 ? 2000 + Number(dm[3]) : Number(dm[3])) : d.getFullYear();
+    const alvo = new Date(ano, mes, dia);
+    if (!dm[2] && alvo < d) alvo.setMonth(alvo.getMonth() + 1); // "dia 5" já passou → mês que vem
+    return at(alvo);
+  }
   const p = new Date(s);
   return isNaN(p.getTime()) ? at(base, 14) : p;
 }
@@ -464,33 +496,51 @@ async function runTool(supabase: SupabaseClient, c: Company, name: string, input
   }
   if (name === "criar_tarefa") {
     const quando = parseQuando(input.quando);
-    let responsavelId: string | null = null;
-    let responsavelNome: string | null = null;
-    if (input.responsavel) {
-      const { data: staff } = await supabase.from("onboarding_staff").select("id, name").eq("is_active", true).ilike("name", `%${String(input.responsavel).trim()}%`).limit(2);
-      if (staff?.length === 1) { responsavelId = staff[0].id; responsavelNome = staff[0].name; }
-      else if ((staff?.length || 0) > 1) return { erro: `mais de uma pessoa chama ${input.responsavel}: ${staff!.map((s: any) => s.name).join(", ")}. Qual?` };
+    // responsável: quem está falando, a menos que o dono tenha nomeado outra pessoa
+    let responsavelId: string | null = perfil.staffId;
+    let responsavelNome: string | null = perfil.staffId ? perfil.nome : null;
+    if (input.responsavel && !/^(eu|mim|meu nome|pra mim|para mim)$/i.test(String(input.responsavel).trim())) {
+      const { data: staff } = await supabase.from("onboarding_staff").select("id, name").eq("is_active", true).ilike("name", `%${String(input.responsavel).trim()}%`).order("name").limit(3);
+      if (staff?.length) { responsavelId = staff[0].id; responsavelNome = staff[0].name + (staff.length > 1 ? ` (escolhi entre ${staff.map((s: any) => s.name).join(", ")})` : ""); }
     }
-    if (input.lead_id) {
+    const aviso: string[] = [];
+    // lead: por id, ou por nome (negociações primeiro, depois o CRM)
+    let leadId = /^[0-9a-f-]{36}$/i.test(String(input.lead_id || "")) ? String(input.lead_id) : "";
+    let leadNome: string | null = null;
+    if (!leadId && input.lead) {
+      const l = await acharLead(supabase, ctx, String(input.lead));
+      if ("erro" in l) return l;
+      leadId = l.id; leadNome = l.name; if (l.aviso) aviso.push(l.aviso);
+    }
+    if (leadId) {
+      if (!perfil.tudo && !perfil.crm) return SEM_ACESSO("o CRM");
       const { data, error } = await supabase.from("crm_activities").insert({
-        lead_id: input.lead_id, type: input.tipo || "followup", title: String(input.titulo), description: input.descricao || null,
+        lead_id: leadId, type: input.tipo || "followup", title: String(input.titulo), description: input.descricao || null,
         status: "pending", scheduled_at: quando.toISOString(), responsible_staff_id: responsavelId, created_by: userId, notes: "criada pelo Max (Time de IA)",
       }).select("id").single();
-      return error ? { erro: error.message } : { ok: true, tarefa_id: data.id, onde: "CRM (atividade do lead)", quando: quando.toISOString(), responsavel: responsavelNome };
+      return error ? { erro: error.message } : { ok: true, tarefa_id: data.id, onde: `CRM, atividade do lead ${leadNome || ""}`.trim(), quando: quando.toISOString(), responsavel: responsavelNome, aviso: aviso.join("; ") || undefined };
     }
     if (input.empresa) {
       const emp = await acharEmpresa(supabase, String(input.empresa));
       if ("erro" in emp) return emp;
+      if (emp.aviso) aviso.push(emp.aviso);
       if (!podeEmpresa(perfil, emp.id)) return SEM_ACESSO(`o cliente ${emp.name} (não está na carteira dele)`);
-      const { data: proj } = await supabase.from("onboarding_projects").select("id, product_name").eq("onboarding_company_id", emp.id).eq("status", "active").order("created_at", { ascending: false }).limit(1).maybeSingle();
-      if (!proj) return { erro: `${emp.name} não tem projeto ativo` };
+      const { data: proj } = await supabase.from("onboarding_projects").select("id, product_name, status").eq("onboarding_company_id", emp.id).order("status").order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (!proj) return { erro: `${emp.name} não tem projeto no Nexus` };
       const { data, error } = await supabase.from("onboarding_tasks").insert({
         project_id: proj.id, title: String(input.titulo), description: input.descricao || "Criada pelo Max (Time de IA)",
         due_date: quando.toISOString().slice(0, 10), status: "pending", responsible_staff_id: responsavelId, priority: "medium",
       }).select("id").single();
-      return error ? { erro: error.message } : { ok: true, tarefa_id: data.id, onde: `projeto ${proj.product_name} da ${emp.name}`, quando: quando.toISOString().slice(0, 10), responsavel: responsavelNome };
+      return error ? { erro: error.message } : { ok: true, tarefa_id: data.id, onde: `projeto ${proj.product_name} da ${emp.name}`, quando: quando.toISOString().slice(0, 10), responsavel: responsavelNome, aviso: aviso.join("; ") || undefined };
     }
-    return { erro: "diga pra quem é a tarefa: um lead (lead_id) ou uma empresa cliente" };
+    // sem lead nem empresa: tarefa pessoal, no projeto da própria UNV
+    const { data: projUnv } = await supabase.from("onboarding_projects").select("id, product_name").eq("onboarding_company_id", c.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (!projUnv) return { erro: "não achei projeto pra pendurar a tarefa; diga o lead ou a empresa" };
+    const { data, error } = await supabase.from("onboarding_tasks").insert({
+      project_id: projUnv.id, title: String(input.titulo), description: input.descricao || "Criada pelo Max (Time de IA)",
+      due_date: quando.toISOString().slice(0, 10), status: "pending", responsible_staff_id: responsavelId, priority: "medium",
+    }).select("id").single();
+    return error ? { erro: error.message } : { ok: true, tarefa_id: data.id, onde: "tarefas da UNV (pessoal)", quando: quando.toISOString().slice(0, 10), responsavel: responsavelNome };
   }
   if (name === "criar_anuncio_meta") {
     try {
@@ -645,6 +695,7 @@ Como agir:
 - VOCÊ LÊ O SISTEMA, O DONO NÃO. Nunca peça ao dono um dado que está no Nexus (telefone, e-mail, valor, etapa, empresa): as ferramentas buscam pra você (enviar_whatsapp acha o telefone pelo lead_id; consultar acha qualquer coisa). Nunca diga "vê lá no card e me passa". Se a ferramenta disser que o dado não existe no sistema (ex: lead sem telefone cadastrado), diga isso em uma frase e ofereça o caminho: "o Edson não tem telefone no CRM; quero que eu crie uma tarefa pra pré-vendas completar o cadastro?".
 - Nunca diga que fez algo (abriu, mandou, criou) antes de a ferramenta devolver ok. Se devolveu erro, diga o erro.
 - CONTINUIDADE: se VOCÊ acabou de citar uma pessoa ou empresa com dado (ex: "o Edson tem uma oportunidade de 40 mil"), ela é a referência das ordens seguintes ("abre o card dele", "manda mensagem pro Edson"): use o lead_id que está entre colchetes nos dados ou que a ferramenta devolveu. NUNCA pergunte "qual Edson?" nesse caso. Só pergunte quando o nome nunca apareceu na conversa e a busca devolveu mais de um.
+- SEM INTERROGATÓRIO. Toda ordem tem padrões: tarefa é pra quem está falando, data é hoje, tipo é follow-up, empresa e lead são achados pelo nome como ele falou ("Sobrado" acha "Sobrado e Cia"; "lead digital" acha o lead "Digital"). Você NÃO pergunta "pra quem", "qual cliente", "que dia" se der pra assumir; executa e, se escolheu entre opções, diz em meia frase o que escolheu ("criei pra sexta, no Sobrado e Cia, no seu nome"). Só pergunta quando falta algo que não dá pra assumir (ex: o texto da mensagem).
 - VOCÊ EXECUTA. O dono dá ordem, você faz: mandar mensagem pra lead, cliente ou alguém do time (enviar_whatsapp), cobrar alguém (enviar_whatsapp com o texto da cobrança), mandar recado no grupo de gestão de um cliente (enviar_grupo_cliente), criar tarefa pra lead ou pra projeto de cliente (criar_tarefa, na hora, sem perguntar), rodar agente, aprovar item, subir anúncio. Nunca responda "não consigo" pra essas; se faltar um dado (quem, qual empresa), pergunte só isso, em uma frase.
 - Mensagem pra terceiro (lead, cliente, grupo, pessoa do time) tem UMA confirmação curta: ache o contato (ver_negociacoes/consultar/pessoa), escreva o texto final e diga "pra <nome>: <texto>. Mando?". Na resposta seguinte, com o OK dele, chame a ferramenta com confirmado=true. Nunca diga que mandou se a ferramenta não devolveu enviado=true; se devolveu erro, diga o erro em uma frase.
 - Se ele pedir algo que o time ainda não faz (ligar pra cliente, publicar post), diga com clareza que isso ainda é mão humana e deixe pronto o que der (texto, lista, prioridade).
