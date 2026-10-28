@@ -25,6 +25,9 @@ interface LinhaCarteira {
   project_status: string;
   contrato_vencido: boolean;
   dias_para_vencer: number | null;
+  recorrente: boolean;
+  proxima_renovacao: string | null;
+  plano: string;
 }
 
 interface LinhaHistorico {
@@ -100,9 +103,18 @@ export default function CarteiraConsultorPage() {
   const ticket = linhas.length ? total / linhas.length : 0;
   const vencidos = useMemo(() => linhas.filter((l) => l.contrato_vencido), [linhas]);
   const vencendo = useMemo(
-    () => linhas.filter((l) => !l.contrato_vencido && l.dias_para_vencer !== null && l.dias_para_vencer <= 60),
+    () =>
+      linhas.filter(
+        (l) =>
+          !l.recorrente &&
+          !l.contrato_vencido &&
+          l.dias_para_vencer !== null &&
+          l.dias_para_vencer >= 0 &&
+          l.dias_para_vencer <= 60,
+      ),
     [linhas],
   );
+  const recorrentes = useMemo(() => linhas.filter((l) => l.recorrente).length, [linhas]);
   const saindo = useMemo(() => linhas.filter((l) => l.project_status !== "active"), [linhas]);
   const valorEmRisco = useMemo(
     () => saindo.reduce((s, l) => s + Number(l.monthly_cents || 0), 0) / 100,
@@ -213,7 +225,7 @@ export default function CarteiraConsultorPage() {
               <Tile
                 label="Contratos"
                 valor={String(linhas.length)}
-                sub={`ticket ${brl(ticket)}`}
+                sub={`${recorrentes} recorrentes · ticket ${brl(ticket)}`}
               />
               <Tile
                 label="Faturado no mês"
@@ -248,7 +260,7 @@ export default function CarteiraConsultorPage() {
 
             {(vencidos.length > 0 || saindo.length > 0 || vencendo.length > 0) && (
               <div className="grid r4" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-                <Panel titulo="Contratos vencidos" sub={String(vencidos.length)}>
+                <Panel titulo="Contratos de prazo vencidos" sub={String(vencidos.length)}>
                   {vencidos.length ? (
                     <Tabela
                       cols={[{ h: "Empresa", tl: true }, "Por mês"]}
@@ -258,7 +270,7 @@ export default function CarteiraConsultorPage() {
                     <div className="empty">Nenhum</div>
                   )}
                 </Panel>
-                <Panel titulo="Vencendo em 60 dias" sub={String(vencendo.length)}>
+                <Panel titulo="Contratos de prazo vencendo" sub={`${vencendo.length} em 60 dias`}>
                   {vencendo.length ? (
                     <Tabela
                       cols={[{ h: "Empresa", tl: true }, "Vence em"]}
@@ -358,7 +370,7 @@ export default function CarteiraConsultorPage() {
                         <i className="tag neg"> {rotuloStatus[l.project_status] || l.project_status}</i>
                       )}
                       {l.contrato_vencido && <i className="tag warn"> contrato vencido</i>}
-                      {!l.contrato_vencido && l.dias_para_vencer !== null && l.dias_para_vencer <= 60 && (
+                      {!l.recorrente && !l.contrato_vencido && l.dias_para_vencer !== null && l.dias_para_vencer <= 60 && (
                         <i className="tag"> vence em {l.dias_para_vencer} dias</i>
                       )}
                     </span>,
