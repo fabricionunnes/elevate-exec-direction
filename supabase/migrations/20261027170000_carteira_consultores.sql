@@ -66,6 +66,7 @@ begin
            p.contract_value as pcv,
            p.contract_start_date as pini,
            p.contract_end_date as pfim,
+           p.contract_term as termo,
            count(*) over (partition by p.onboarding_company_id) as np
       from onboarding_projects p
      where p.tenant_id is null
@@ -101,7 +102,15 @@ begin
            coalesce(com.teto, 0) as teto,
            ec.contract_value as ecv,
            ec.contract_end_date as efim,
-           ec.renewal_plan_type as plano,
+           lower(coalesce(pr.termo,
+                          case ec.renewal_plan_type
+                            when 'monthly' then 'mensal'
+                            when 'annual' then 'anual'
+                            when 'semiannual' then 'semestral'
+                            when 'quarterly' then 'trimestral'
+                            else ec.renewal_plan_type
+                          end,
+                          'mensal')) as plano,
            coalesce(ec.billing_day, extract(day from coalesce(pr.pini, ec.contract_start_date))::int) as dia_cob,
            case when pr.pini is not null and pr.pfim is not null
                 then greatest(round((pr.pfim - pr.pini) / 30.0)::int, 1) end as meses,
@@ -144,13 +153,13 @@ begin
          ca.meses,
          ca.teto,
          ca.st::text,
-         (coalesce(ca.plano, 'monthly') <> 'monthly'
+         (coalesce(ca.plano, 'mensal') <> 'mensal'
             and coalesce(ca.pfim, ca.efim) is not null
             and coalesce(ca.pfim, ca.efim) < current_date),
-         case when coalesce(ca.plano, 'monthly') <> 'monthly'
+         case when coalesce(ca.plano, 'mensal') <> 'mensal'
               then (coalesce(ca.pfim, ca.efim) - current_date)::int end,
-         (coalesce(ca.plano, 'monthly') = 'monthly'),
-         case when coalesce(ca.plano, 'monthly') = 'monthly' and ca.dia_cob is not null then
+         (coalesce(ca.plano, 'mensal') = 'mensal'),
+         case when coalesce(ca.plano, 'mensal') = 'mensal' and ca.dia_cob is not null then
            (select min(d)::date from (
               select make_date(
                        extract(year from m)::int,
@@ -162,7 +171,7 @@ begin
                                      interval '1 month') m
             ) x where x.d >= current_date)
          end,
-         coalesce(ca.plano, 'monthly')::text
+         coalesce(ca.plano, 'mensal')::text
     from calc ca
     join onboarding_companies c on c.id = ca.cid
     join onboarding_staff st on st.id = ca.sid
