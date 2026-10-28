@@ -50,6 +50,8 @@ async function diagnostico(): Promise<Record<string, unknown>> {
           method: "POST", headers: { Authorization: `Bearer ${openai}`, "Content-Type": "application/json" },
           body: JSON.stringify({ model, voice: "ash", input: "teste de voz", response_format: "mp3" }),
         });
+        // a organização dona da chave vem no header: ajuda a achar em qual conta colocar crédito
+        out.openai_org = r.headers.get("openai-organization") || out.openai_org || "(não informado)";
         out[`openai_${model}`] = r.ok ? `ok (${r.headers.get("Content-Type")})` : `${r.status}: ${(await r.text()).slice(0, 200)}`;
       } catch (e) { out[`openai_${model}`] = `erro: ${(e as Error).message}`; }
     }
