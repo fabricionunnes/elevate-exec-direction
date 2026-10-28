@@ -8,6 +8,7 @@ import { useGameStore } from '../store/useGameStore'
 import { AGENTS, agentByTeamKey } from '../config/agents'
 
 const UNV_CNPJ = '51356237000140'
+const UNV_COMPANY_ID = '4d3e83ba-4521-4a3d-839f-21dd53dc8554'
 const db = supabase as any
 
 export default function TeamSync() {
@@ -20,9 +21,11 @@ export default function TeamSync() {
     let cancelled = false
 
     ;(async () => {
-      const { data: empresa } = await supabase.from('onboarding_companies').select('id').eq('cnpj', UNV_CNPJ).maybeSingle()
-      if (cancelled || !empresa?.id) return
-      const companyId = empresa.id as string
+      // id fixo da UNV; a busca por CNPJ fica só de reserva (RLS escondia a linha)
+      const { data: fixo } = await supabase.from('onboarding_companies').select('id').eq('id', UNV_COMPANY_ID).maybeSingle()
+      const { data: empresa } = fixo ? { data: fixo } : await supabase.from('onboarding_companies').select('id').eq('cnpj', UNV_CNPJ).maybeSingle()
+      if (cancelled) return
+      const companyId = (empresa?.id as string) || UNV_COMPANY_ID
       setTeamCompanyId(companyId)
 
       const tick = async () => {
