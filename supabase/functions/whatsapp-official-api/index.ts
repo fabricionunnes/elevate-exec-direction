@@ -219,7 +219,15 @@ async function getLimits(instance: any) {
   const tiers: Record<string, number | null> = {
     TIER_50: 50, TIER_250: 250, TIER_1K: 1000, TIER_2K: 2000, TIER_10K: 10000, TIER_100K: 100000, TIER_UNLIMITED: null,
   };
-  const tier = data.messaging_limit_tier || null;
+  // 28/10/2026: a Meta parou de devolver messaging_limit_tier no número; o limite agora é da conta
+  // (WABA, whatsapp_business_manager_messaging_limit). Sem isso o card mostrava "Ilimitado" com TIER_2K.
+  let tier = data.messaging_limit_tier || null;
+  if (!tier && instance.waba_id) {
+    const w = await fetch(`https://graph.facebook.com/v21.0/${instance.waba_id}?fields=whatsapp_business_manager_messaging_limit`, {
+      headers: { 'Authorization': `Bearer ${instance.access_token}` },
+    }).then((r) => r.json()).catch(() => ({}));
+    tier = w?.whatsapp_business_manager_messaging_limit || null;
+  }
   const phoneEntity = (data.health_status?.entities || []).find((e: any) => e.entity_type === 'PHONE_NUMBER');
   return new Response(
     JSON.stringify({
