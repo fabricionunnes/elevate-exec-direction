@@ -213,7 +213,7 @@ function LimiteDiarioCard({ instanceId, refreshKey }: { instanceId: string | nul
         <div>
           <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Limite diário liberado</div>
           <div className="text-xl font-semibold tabular-nums">
-            {lim ? (limite == null ? "Ilimitado" : limite.toLocaleString("pt-BR")) : erro ? "—" : <Loader2 className="h-4 w-4 animate-spin" />}
+            {lim ? (limite != null ? limite.toLocaleString("pt-BR") : lim.tier === "TIER_UNLIMITED" ? "Ilimitado" : "Não informado") : erro ? "—" : <Loader2 className="h-4 w-4 animate-spin" />}
             {limite != null && <span className="ml-1 text-xs font-normal text-muted-foreground">contatos a cada 24h</span>}
           </div>
           {lim && (
