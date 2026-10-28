@@ -86,6 +86,9 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
             instance:whatsapp_instances(id, instance_name, display_name),
             official_instance:whatsapp_official_instances(id, display_name, phone_number)
           `)
+          // conversa do WhatsApp pessoal do Fabrício nunca entra no Atendimento, nem depois que o número
+          // é excluído e a conversa fica sem instância (28/10/2026: 654 órfãs de fabricio-pessoal apareciam)
+          .eq('pessoal', false)
           .order('last_message_at', { ascending: false, nullsFirst: false })
           .order('id', { ascending: true })
           .range(from, to);
@@ -199,6 +202,7 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
       console.error('Error fetching single conversation:', error);
       return null;
     }
+    if ((data as any)?.pessoal) return null;
 
     return data;
   };
