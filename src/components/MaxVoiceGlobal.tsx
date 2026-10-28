@@ -26,9 +26,12 @@ export default function MaxVoiceGlobal() {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session || !vivo) { setStaff(false); return; }
-      const { data: st } = await supabase.from("onboarding_staff").select("id").eq("user_id", session.user.id).limit(1).maybeSingle();
+      // staff da UNV: linha em onboarding_staff OU e-mail da casa (caso a RLS esconda a linha)
+      const { data: st, error } = await supabase.from("onboarding_staff").select("id").eq("user_id", session.user.id).limit(1).maybeSingle();
       if (!vivo) return;
-      setStaff(!!st);
+      const daCasa = /@universidadevendas\.com\.br$/i.test(session.user.email || "");
+      setStaff(!!st || daCasa);
+      if (!st) console.info("[Max] microfone global:", error ? `erro ao ler staff: ${error.message}` : "sem linha em onboarding_staff", daCasa ? "(liberado pelo e-mail)" : "");
     })();
     return () => { vivo = false; };
   }, [location.pathname]);
@@ -76,7 +79,7 @@ export default function MaxVoiceGlobal() {
   }[voz.fase];
 
   return (
-    <div style={{ position: "fixed", right: 18, bottom: 18, zIndex: 9999, display: "flex", alignItems: "flex-end", gap: 10, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+    <div style={{ position: "fixed", left: 18, bottom: 18, zIndex: 2147483000, display: "flex", flexDirection: "row-reverse", alignItems: "flex-end", gap: 10, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       {(aberto || voz.fase !== "parado") && (
         <div style={{ maxWidth: 320, background: NAVY, color: "#fff", borderRadius: 14, padding: "10px 12px", boxShadow: "0 8px 28px rgba(0,0,0,.35)", fontSize: 13, lineHeight: 1.35 }}>
           <div style={{ fontSize: 10, letterSpacing: ".18em", textTransform: "uppercase", opacity: .7, marginBottom: 3 }}>Max · Time de IA</div>
@@ -95,14 +98,15 @@ export default function MaxVoiceGlobal() {
         disabled={voz.fase === "pensando"}
         title="Falar com o Max"
         style={{
-          width: 58, height: 58, borderRadius: "50%", border: "none", cursor: "pointer",
+          height: 54, padding: "0 18px 0 14px", borderRadius: 27, border: "2px solid rgba(255,255,255,.85)", cursor: "pointer",
           background: voz.fase === "ouvindo" ? RED : NAVY, color: "#fff",
           boxShadow: voz.fase === "ouvindo" ? `0 0 0 8px ${RED}33, 0 8px 24px rgba(0,0,0,.4)` : "0 8px 24px rgba(0,0,0,.4)",
-          fontSize: 24, display: "flex", alignItems: "center", justifyContent: "center",
-          transform: voz.fase === "falando" ? "scale(1.06)" : "scale(1)", transition: "transform .1s",
+          fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", gap: 8,
+          transform: voz.fase === "falando" ? "scale(1.04)" : "scale(1)", transition: "transform .1s",
         }}
       >
-        {voz.fase === "pensando" ? "…" : voz.fase === "ouvindo" ? "■" : "🎙"}
+        <span style={{ fontSize: 22 }}>{voz.fase === "pensando" ? "…" : voz.fase === "ouvindo" ? "■" : "🎙"}</span>
+        <span>{voz.fase === "ouvindo" ? "Ouvindo" : "Max"}</span>
       </button>
     </div>
   );
