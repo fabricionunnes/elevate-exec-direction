@@ -18,8 +18,14 @@ import { contaMetaUNV, criarAnuncioPausado, mudarStatus, linkGerenciador } from 
 const CTX_CACHE_MS = 5 * 60 * 1000;
 const LINK_PADRAO = "https://unvholdings.com.br/sessao-estrategica";
 
-const CHAT_MODEL = Deno.env.get("AI_TEAM_CHAT_MODEL") || MODEL;
+// Chat usa um modelo mais forte que as rodadas (obedece ferramentas melhor); se o id não
+// existir na conta, cai pro modelo das rodadas.
+const CHAT_MODEL = Deno.env.get("AI_TEAM_CHAT_MODEL") || "claude-sonnet-5";
+const CHAT_MODEL_RESERVA = MODEL;
 const MAX_TOOL_ROUNDS = 8;
+// Frase que é ORDEM (abrir, criar, mandar, rodar...): o modelo é obrigado a usar uma ferramenta
+// no primeiro passo — sem isso o Haiku respondia "abrindo financeiro" e não abria nada.
+const RE_ORDEM = /\b(abr[aei]r?|abre|vai|v[aá] (pra|para|na|no)|mostra|cria|criar|manda|mandar|envia|enviar|roda|rodar|aprova|aprovar|rejeita|pausa|ativa|liga|desliga|agenda|marca|cobra|cobrar|lista|listar|busca|procura|consulta|quanto|quantos|quem)\b/i;
 
 // Mapa do Nexus pro Max saber onde cada coisa mora antes de consultar.
 const MAPA_NEXUS = `MAPA DO NEXUS (Postgres; use consultar(sql) com SELECT; ver_tabelas(busca) mostra colunas):
@@ -693,7 +699,7 @@ Como agir:
 - ORDENS DE EXECUÇÃO na Meta: quando o dono mandar criar/subir anúncio, crie de verdade com criar_anuncio_meta (copy do Rafa, de um item da fila ou escrita por você agora, sem nome de cliente, sem preço salvo se ele pedir), SEMPRE pausado, e devolva: headline, orçamento diário, público e o link do Gerenciador. Se ele não disser orçamento, use 50 reais por dia e avise. NUNCA chame ativar_anuncio_meta sem uma ordem explícita de ativar ("ativa", "pode ligar", "sobe pra valer"); se a ordem de criar vier junto com "e ativa", crie, confirme o que criou e pergunte se ativa mesmo. Pausar pode ser imediato quando ele mandar.
 - NAVEGAÇÃO POR VOZ: "abre o escritório", "vai na sala do Ricardo", "vai pra reunião principal", "abre a 3D Cure", "abre o CRM", "abre o card do Edson" → use abrir_escritorio / ir_para_sala / abrir_cliente / abrir_tela / abrir_lead NA HORA, sem perguntar, e responda em UMA frase curta ("abrindo o card do Edson"). Não explique.
 - VOCÊ LÊ O SISTEMA, O DONO NÃO. Nunca peça ao dono um dado que está no Nexus (telefone, e-mail, valor, etapa, empresa): as ferramentas buscam pra você (enviar_whatsapp acha o telefone pelo lead_id; consultar acha qualquer coisa). Nunca diga "vê lá no card e me passa". Se a ferramenta disser que o dado não existe no sistema (ex: lead sem telefone cadastrado), diga isso em uma frase e ofereça o caminho: "o Edson não tem telefone no CRM; quero que eu crie uma tarefa pra pré-vendas completar o cadastro?".
-- Nunca diga que fez algo (abriu, mandou, criou) antes de a ferramenta devolver ok. Se devolveu erro, diga o erro.
+- Nunca diga que fez algo (abriu, mandou, criou) antes de a ferramenta devolver ok. Dizer "abrindo o financeiro" SEM chamar abrir_tela é mentir: a tela só muda quando a ferramenta roda. Se devolveu erro, diga o erro.
 - CONTINUIDADE: se VOCÊ acabou de citar uma pessoa ou empresa com dado (ex: "o Edson tem uma oportunidade de 40 mil"), ela é a referência das ordens seguintes ("abre o card dele", "manda mensagem pro Edson"): use o lead_id que está entre colchetes nos dados ou que a ferramenta devolveu. NUNCA pergunte "qual Edson?" nesse caso. Só pergunte quando o nome nunca apareceu na conversa e a busca devolveu mais de um.
 - SEM INTERROGATÓRIO. Toda ordem tem padrões: tarefa é pra quem está falando, data é hoje, tipo é follow-up, empresa e lead são achados pelo nome como ele falou ("Sobrado" acha "Sobrado e Cia"; "lead digital" acha o lead "Digital"). Você NÃO pergunta "pra quem", "qual cliente", "que dia" se der pra assumir; executa e, se escolheu entre opções, diz em meia frase o que escolheu ("criei pra sexta, no Sobrado e Cia, no seu nome"). Só pergunta quando falta algo que não dá pra assumir (ex: o texto da mensagem).
 - VOCÊ EXECUTA. O dono dá ordem, você faz: mandar mensagem pra lead, cliente ou alguém do time (enviar_whatsapp), cobrar alguém (enviar_whatsapp com o texto da cobrança), mandar recado no grupo de gestão de um cliente (enviar_grupo_cliente), criar tarefa pra lead ou pra projeto de cliente (criar_tarefa, na hora, sem perguntar), rodar agente, aprovar item, subir anúncio. Nunca responda "não consigo" pra essas; se faltar um dado (quem, qual empresa), pergunte só isso, em uma frase.
@@ -772,15 +778,27 @@ Deno.serve(async (req) => {
     if (!key) return json({ error: "ANTHROPIC_API_KEY não configurada" }, 500);
     const actions: any[] = [];
     let reply = "";
+    let modelo = CHAT_MODEL;
+    const ferramentas = toolsPara(perfil);
+    const ehOrdem = ferramentas.length > 0 && RE_ORDEM.test(message);
     for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      const chamar = (m: string) => fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-        body: JSON.stringify({ model: CHAT_MODEL, max_tokens: 1200, temperature: 0.7, system, tools: toolsPara(perfil), messages }),
+        body: JSON.stringify({
+          model: m, max_tokens: 1200, temperature: 0.5, system, tools: ferramentas, messages,
+          ...(round === 0 && ehOrdem ? { tool_choice: { type: "any" } } : {}),
+        }),
       });
+      let resp = await chamar(modelo);
+      if (resp.status === 404 || resp.status === 400) {
+        const txt = await resp.text();
+        if (/model/i.test(txt) && modelo !== CHAT_MODEL_RESERVA) { modelo = CHAT_MODEL_RESERVA; resp = await chamar(modelo); }
+        else throw new Error(`Claude ${resp.status}: ${txt.slice(0, 300)}`);
+      }
       if (!resp.ok) throw new Error(`Claude ${resp.status}: ${(await resp.text()).slice(0, 300)}`);
       const data = await resp.json();
-      logUsoIA("ai-team-chat", CHAT_MODEL, data?.usage, { company: c.id, round });
+      logUsoIA("ai-team-chat", modelo, data?.usage, { company: c.id, round });
       const content = data.content || [];
       const toolUses = content.filter((b: any) => b.type === "tool_use");
       const text = content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n").trim();
