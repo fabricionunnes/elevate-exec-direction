@@ -190,15 +190,17 @@ export default function AgentCharacter({ agent, playerPosition, meetingTriggered
   // Path (list of [x, z] waypoints) toward the current target, routed through doorways
   const pathRef = useRef<[number, number][] | null>(null)
   const pathGoalRef = useRef<string | null>(null)
-  const { agentStates, setAgentState, nearbyAgentId, chat, currentSpeech } = useGameStore()
+  const { agentStates, setAgentState, nearbyAgentId, chat, currentSpeech, teamSpeech, teamStatus } = useGameStore()
 
   const runtime = agentStates[agent.id]
   // Em conversa, o agente fica parado olhando pro player até o chat fechar.
   // REUNIÃO TEM PRIORIDADE: se o Max convocou, o agente se levanta e vai
   // pra sala mesmo com o chat aberto (era o bug do Max preso no chat).
   const isChatting = chat.isOpen && chat.activeAgentId === agent.id && !meetingTriggered
-  // Fala da reunião sendo exibida por este agente (balão sobre a cabeça)
-  const isSpeaking = currentSpeech?.agent === agent.id
+  // Fala da reunião OU do Time de IA (voz do Max, entrega de um agente) sendo exibida por este agente
+  const speech = currentSpeech?.agent === agent.id ? currentSpeech : teamSpeech?.agent === agent.id ? teamSpeech : null
+  const isSpeaking = !!speech
+  const team = teamStatus[agent.id]
 
   // Initialize runtime state
   useEffect(() => {
@@ -422,12 +424,12 @@ export default function AgentCharacter({ agent, playerPosition, meetingTriggered
           outlineWidth={0.015}
           outlineColor="#000000"
         >
-          {STATE_LABELS[state] || state}
+          {team?.working ? 'trabalhando…' : team?.pending ? `${team.pending} pra aprovar` : (STATE_LABELS[state] || state)}
         </Text>
       </Billboard>
 
-      {/* Balão de diálogo da reunião */}
-      {isSpeaking && currentSpeech && (
+      {/* Balão de diálogo (reunião ou Time de IA) */}
+      {isSpeaking && speech && (
         <Html position={[0, 3.0, 0]} center distanceFactor={14} style={{ pointerEvents: 'none' }} zIndexRange={[60, 40]}>
           <div
             style={{
@@ -447,11 +449,11 @@ export default function AgentCharacter({ agent, playerPosition, meetingTriggered
             <div style={{ color: agent.color, fontWeight: 700, fontSize: '11px', marginBottom: '4px' }}>
               {agent.name}
             </div>
-            {currentSpeech.content
+            {speech.content
               .replace(/[*#_`>]/g, '')
               .replace(/\n{2,}/g, '\n')
               .slice(0, 220)}
-            {currentSpeech.content.length > 220 ? '…' : ''}
+            {speech.content.length > 220 ? '…' : ''}
             {/* Rabicho do balão */}
             <div
               style={{

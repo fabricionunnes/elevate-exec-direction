@@ -143,12 +143,14 @@ export default function TimeIAPage() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       await loadData(company.id);
+      // "Max, abre o escritório" → escritório 3D com o time trabalhando
+      if ((data?.actions || []).some((a: any) => a.tool === "abrir_escritorio")) setTimeout(() => navigate("/office"), 1500);
       return String(data?.reply || "");
     } catch (e) {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       throw e;
     }
-  }, [company, loadData]);
+  }, [company, loadData, navigate]);
 
   const askVoz = useCallback((msg: string) => ask(msg, "voz"), [ask]);
   const voz = useMaxVoice(askVoz);

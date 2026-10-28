@@ -57,6 +57,11 @@ const TOOLS = [
     },
   },
   {
+    name: "abrir_escritorio",
+    description: "Abre o escritório 3D do time na tela do dono (ele vê os agentes trabalhando). Use quando ele pedir 'abre o escritório', 'mostra o time', 'vamos pro escritório'.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
     name: "criar_anuncio_meta",
     description: "Cria um anúncio REAL na conta Meta Ads da UNV, PAUSADO: gera a imagem, sobe campanha, conjunto (Brasil, idade, posicionamentos manuais, sem Advantage+), criativo e anúncio. Demora 30 a 60 s. Use só quando o dono mandar criar/subir anúncio. Pode partir de um item aprovado da fila (approval_id) ou de copy nova. Nunca ativa: ativar é ativar_anuncio_meta, só com ordem explícita.",
     input_schema: {
@@ -147,6 +152,7 @@ async function loadTeamState(supabase: SupabaseClient, companyId: string) {
 }
 
 async function runTool(supabase: SupabaseClient, c: Company, name: string, input: any, userId: string | null, ctx: Ctx): Promise<any> {
+  if (name === "abrir_escritorio") return { ok: true, nota: "a tela do dono vai abrir o escritório 3D" };
   if (name === "criar_anuncio_meta") {
     try {
       let headline = String(input.headline || "").trim(), texto = String(input.texto || "").trim(), cta = String(input.cta || "LEARN_MORE");
@@ -253,6 +259,13 @@ async function runTool(supabase: SupabaseClient, c: Company, name: string, input
   return { erro: `ferramenta desconhecida: ${name}` };
 }
 
+// Quando a conversa é com um especialista (escritório 3D), ele fala em primeira pessoa
+// do papel dele, com os mesmos dados e ferramentas, e manda pro Max o que não é dele.
+function personaEspecialista(agente: Agent, max: Agent | undefined): string {
+  return `ATENÇÃO: nesta conversa você NÃO é ${max?.name || "Max"}. Você é ${agente.name}, ${agente.role_title} do Time de IA. ${agente.description || ""}
+Fale em primeira pessoa como ${agente.name}: foque no seu papel (${agente.role_title}), use os dados e as ferramentas pra responder sobre a sua área com profundidade, e, se pedirem algo de outro papel, diga em uma frase que isso é com ${max?.name || "Max"} ou com o colega certo (cite o nome). Quando fizer sentido rodar a sua própria rodada, use rodar_agente com a sua chave (${agente.agent_key}).`;
+}
+
 function systemPrompt(c: Company, agents: Agent[], fila: any[], runs: any[], dados: string, donoNome: string | null): string {
   const max = agents.find((a) => a.agent_key === "orquestrador");
   const time = agents.filter((a) => a.agent_key !== "orquestrador").map((a) =>
@@ -329,13 +342,19 @@ Deno.serve(async (req) => {
     if (!agents.length) return json({ error: "time não montado" }, 400);
     const ctx = await buildContext(supabase, c as Company, agents, { cacheMs: CTX_CACHE_MS });
     const dados = ctx.modo === "nexus_unv" ? dadosBlock(ctx, ["financeiro", "comercial", "carteira", "trafego", "catalogo"]) : (ctx.kpis ? dadosBlock(ctx, ["kpis"]) : "") ;
-    const system = systemPrompt(c as Company, agents, fila, runs, `${ctx.oferta}\n\n${dados}`, donoNome) + (body.modo === "voz" ? MODO_VOZ : "");
+    // com quem o dono está falando: o Max (padrão) ou um especialista do escritório 3D
+    const agenteKey = String(body.agente || "orquestrador");
+    const agenteRow = agents.find((a) => a.agent_key === agenteKey) || agents.find((a) => a.agent_key === "orquestrador")!;
+    const maxRow = agents.find((a) => a.agent_key === "orquestrador");
+    const system = systemPrompt(c as Company, agents, fila, runs, `${ctx.oferta}\n\n${dados}`, donoNome)
+      + (agenteRow.agent_key !== "orquestrador" ? `\n\n${personaEspecialista(agenteRow, maxRow)}` : "")
+      + (body.modo === "voz" ? MODO_VOZ : "");
 
-    // histórico (últimas 30 mensagens, ordem cronológica)
-    const { data: hist } = await supabase.from("ai_team_messages").select("role, content").eq("company_id", c.id).order("created_at", { ascending: false }).limit(30);
+    // histórico (últimas 30 mensagens dessa conversa, ordem cronológica)
+    const { data: hist } = await supabase.from("ai_team_messages").select("role, content").eq("company_id", c.id).eq("agent_key", agenteRow.agent_key).order("created_at", { ascending: false }).limit(30);
     const messages: any[] = ((hist || []) as any[]).reverse().map((m) => ({ role: m.role, content: m.content }));
     messages.push({ role: "user", content: message });
-    await supabase.from("ai_team_messages").insert({ company_id: c.id, user_id: userId, role: "user", content: message });
+    await supabase.from("ai_team_messages").insert({ company_id: c.id, user_id: userId, role: "user", content: message, agent_key: agenteRow.agent_key });
 
     const key = Deno.env.get("ANTHROPIC_API_KEY");
     if (!key) return json({ error: "ANTHROPIC_API_KEY não configurada" }, 500);
@@ -364,8 +383,8 @@ Deno.serve(async (req) => {
       messages.push({ role: "user", content: results });
     }
 
-    await supabase.from("ai_team_messages").insert({ company_id: c.id, user_id: userId, role: "assistant", content: reply, meta: actions.length ? { actions } : null });
-    return json({ ok: true, reply, actions });
+    await supabase.from("ai_team_messages").insert({ company_id: c.id, user_id: userId, role: "assistant", content: reply, meta: actions.length ? { actions } : null, agent_key: agenteRow.agent_key });
+    return json({ ok: true, reply, actions, agente: agenteRow.agent_key });
   } catch (e) {
     console.error("ai-team-chat", e);
     return json({ error: (e as Error).message }, 500);

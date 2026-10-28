@@ -4,7 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 export { supabase };
 
-export const AGENT_API_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agente-unv`;
+// Cérebro dos agentes: ai-team-chat (Time de IA). O agente-unv antigo segue nos
+// canais Telegram/WhatsApp e na reunião matinal.
+export const AGENT_API_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-team-chat`;
 
 // Token da sessão logada — a edge function exige usuário staff master
 export async function getAgentAuthToken(): Promise<string | null> {

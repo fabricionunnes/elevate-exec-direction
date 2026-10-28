@@ -32,12 +32,15 @@ export default function ChatPanel() {
     if (!chat.isOpen || !agent || chat.historyLoaded[agent.id]) return
     let cancelled = false
     ;(async () => {
-      const { data, error } = await supabase
-        .from('office_agent_chats')
+      // Histórico do Time de IA (uma conversa por agente da UNV)
+      const companyId = useGameStore.getState().teamCompanyId
+      const q = (supabase as any)
+        .from('ai_team_messages')
         .select('role, content, created_at')
-        .eq('agent', agent.apiType)
+        .eq('agent_key', agent.teamKey)
         .order('created_at', { ascending: true })
         .limit(200)
+      const { data, error } = companyId ? await q.eq('company_id', companyId) : await q
       if (cancelled) return
       const saved: Message[] = (error || !data ? [] : data).map((m, i) => ({
         id: `saved-${i}-${new Date(m.created_at).getTime()}`,
@@ -83,21 +86,26 @@ export default function ChatPanel() {
     try {
       const token = await getAgentAuthToken()
       if (!token) throw new Error('Sessão expirada — faça login novamente.')
+      const companyId = useGameStore.getState().teamCompanyId
+      if (!companyId) throw new Error('Time de IA da UNV não encontrado.')
 
-      const response = await fetch(`${AGENT_API_URL}?agent=${agent.apiType}`, {
+      // Mesmo cérebro da tela Time de IA: dados reais do Nexus + ordens (Meta, fila, agentes)
+      const response = await fetch(AGENT_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({
+          companyId,
           message: sentInput,
-          agent: agent.apiType,
+          agente: agent.teamKey,
         }),
       })
 
       if (!response.ok) {
-        throw new Error(response.status === 403 ? 'sessao-invalida' : `HTTP ${response.status}`)
+        throw new Error(response.status === 403 || response.status === 401 ? 'sessao-invalida' : `HTTP ${response.status}`)
       }
 
       const data = await response.json()

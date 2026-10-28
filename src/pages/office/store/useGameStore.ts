@@ -35,6 +35,14 @@ interface ChatState {
   historyLoaded: Record<string, boolean>
 }
 
+// Estado vindo do Time de IA (rodadas reais): quem está trabalhando, última entrega, fila
+export interface TeamAgentStatus {
+  working: boolean
+  lastSummary: string | null
+  lastAt: number | null
+  pending: number
+}
+
 interface GameState {
   playerPosition: [number, number, number]
   playerRotation: number
@@ -49,6 +57,14 @@ interface GameState {
   meetingQueue: MeetingMessage[]
   // Fala sendo exibida agora no balão sobre a cabeça do agente
   currentSpeech: MeetingMessage | null
+  // Balão do Time de IA (voz do Max, entrega de um agente) — independente da reunião
+  teamSpeech: { agent: string; content: string } | null
+  // Empresa do Time de IA no escritório (a UNV) e status por personagem
+  teamCompanyId: string | null
+  teamStatus: Record<string, TeamAgentStatus>
+  setTeamSpeech: (s: { agent: string; content: string } | null) => void
+  setTeamCompanyId: (id: string | null) => void
+  setTeamStatus: (id: string, s: Partial<TeamAgentStatus>) => void
 
   // Actions
   setPlayerPosition: (pos: [number, number, number]) => void
@@ -82,6 +98,18 @@ export const useGameStore = create<GameState>((set, get) => ({
   meetingPanelVisible: false,
   meetingQueue: [],
   currentSpeech: null,
+  teamSpeech: null,
+  teamCompanyId: null,
+  teamStatus: {},
+  setTeamSpeech: (s) => set({ teamSpeech: s }),
+  setTeamCompanyId: (id) => set({ teamCompanyId: id }),
+  setTeamStatus: (id, s) =>
+    set((prev) => ({
+      teamStatus: {
+        ...prev.teamStatus,
+        [id]: { working: false, lastSummary: null, lastAt: null, pending: 0, ...prev.teamStatus[id], ...s },
+      },
+    })),
   chat: {
     isOpen: false,
     activeAgentId: null,
