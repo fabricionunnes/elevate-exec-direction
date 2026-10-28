@@ -303,8 +303,8 @@ export async function unvContext(supabase: SupabaseClient, ctx: Ctx): Promise<vo
       dono: staffName.get(l.closer_staff_id || l.owner_staff_id) || null, proximaAtividade: proxByLead.get(l.id) || null,
     }));
   const totalAberto = ctx.negociacoes.reduce((s, n) => s + n.valor, 0);
-  ctx.comercial += `\nNegociações abertas com valor (${ctx.negociacoes.length} maiores somam ${brl(totalAberto)}), da maior pra menor:\n` +
-    ctx.negociacoes.slice(0, 15).map((n) => `- ${n.name}: ${brl(n.valor)} · ${n.pipeline} / ${n.stage} · ${n.dias === 999 ? "sem atividade" : `último contato há ${n.dias}d`}${n.dono ? ` · com ${n.dono}` : " · SEM DONO"}${n.proximaAtividade ? ` · próxima: ${n.proximaAtividade}` : ""}`).join("\n");
+  ctx.comercial += `\nNegociações abertas com valor (${ctx.negociacoes.length} maiores somam ${brl(totalAberto)}), da maior pra menor (lead_id entre colchetes — use nas ferramentas):\n` +
+    ctx.negociacoes.slice(0, 15).map((n) => `- ${n.name} [${n.id}]: ${brl(n.valor)} · ${n.pipeline} / ${n.stage} · ${n.dias === 999 ? "sem atividade" : `último contato há ${n.dias}d`}${n.dono ? ` · com ${n.dono}` : " · SEM DONO"}${n.proximaAtividade ? ` · próxima: ${n.proximaAtividade}` : ""}`).join("\n");
 
   // leads novos sem dono / sem atividade (24h) — qualificação
   const d1 = iso(new Date(now.getTime() - 864e5));
