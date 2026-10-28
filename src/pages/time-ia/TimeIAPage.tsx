@@ -148,7 +148,7 @@ export default function TimeIAPage() {
         const r = a.result || {};
         if (r.acao === "abrir_escritorio") { setTimeout(() => navigate("/onboarding-tasks/unv-office"), 1500); break; }
         if (r.acao === "ir_sala" && r.destino) { setTimeout(() => navigate(`/onboarding-tasks/unv-office?ir=${encodeURIComponent(r.destino)}`), 1500); break; }
-        if ((r.acao === "abrir_cliente" || r.acao === "abrir_tela") && r.rota) { setTimeout(() => navigate(r.rota), 1500); break; }
+        if ((r.acao === "abrir_cliente" || r.acao === "abrir_tela" || r.acao === "abrir_lead") && r.rota) { setTimeout(() => navigate(r.rota), 1500); break; }
       }
       return String(data?.reply || "");
     } catch (e) {

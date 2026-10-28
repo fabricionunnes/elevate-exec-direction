@@ -20,24 +20,31 @@ export default function MaxVoiceGlobal() {
   const [staff, setStaff] = useState(false);
   const [aberto, setAberto] = useState(false);
 
-  // só staff logado; empresa = UNV
+  // só staff logado (checa de novo quando a rota muda: o login pode acontecer depois)
   useEffect(() => {
     let vivo = true;
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session || !vivo) return;
-      const { data: st } = await supabase.from("onboarding_staff").select("id").eq("user_id", session.user.id).eq("is_active", true).maybeSingle();
-      if (!st || !vivo) return;
-      setStaff(true);
-      const { data: c } = await supabase.from("onboarding_companies").select("id").eq("cnpj", UNV_CNPJ).maybeSingle();
-      if (vivo) setCompanyId((c?.id as string) || null);
+      if (!session || !vivo) { setStaff(false); return; }
+      const { data: st } = await supabase.from("onboarding_staff").select("id").eq("user_id", session.user.id).limit(1).maybeSingle();
+      if (!vivo) return;
+      setStaff(!!st);
     })();
     return () => { vivo = false; };
-  }, []);
+  }, [location.pathname]);
+
+  // empresa da UNV (dona do Time de IA): resolvida na primeira fala, não trava o microfone
+  const getCompanyId = useCallback(async (): Promise<string> => {
+    if (companyId) return companyId;
+    const { data: c } = await supabase.from("onboarding_companies").select("id").eq("cnpj", UNV_CNPJ).maybeSingle();
+    if (!c?.id) throw new Error("empresa UNV não encontrada no Nexus");
+    setCompanyId(c.id as string);
+    return c.id as string;
+  }, [companyId]);
 
   const ask = useCallback(async (msg: string): Promise<string> => {
-    if (!companyId) throw new Error("Time de IA da UNV não encontrado");
-    const { data, error } = await supabase.functions.invoke("ai-team-chat", { body: { companyId, message: msg, modo: "voz", agente: "orquestrador" } });
+    const cid = await getCompanyId();
+    const { data, error } = await supabase.functions.invoke("ai-team-chat", { body: { companyId: cid, message: msg, modo: "voz", agente: "orquestrador" } });
     if (error) throw error;
     if (data?.error) throw new Error(data.error);
     for (const a of (data?.actions || []) as any[]) {
@@ -47,11 +54,11 @@ export default function MaxVoiceGlobal() {
       if ((r.acao === "abrir_cliente" || r.acao === "abrir_tela" || r.acao === "abrir_lead") && r.rota) { setTimeout(() => navigate(r.rota), 1200); break; }
     }
     return String(data?.reply || "");
-  }, [companyId, navigate]);
+  }, [getCompanyId, navigate]);
 
   const voz = useMaxVoice(ask);
 
-  const esconder = !staff || !companyId || SEM_MIC.some((re) => re.test(location.pathname));
+  const esconder = !staff || SEM_MIC.some((re) => re.test(location.pathname));
   if (esconder) return null;
 
   const onMic = () => {

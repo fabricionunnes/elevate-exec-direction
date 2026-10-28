@@ -31,7 +31,7 @@ export default function MaxVoiceDock({ realtime }: { realtime: TeamRealtime }) {
         const d = await resolverDestino(String(r.destino))
         if (d) irPara(d)
         else useTeamStore.getState().addToast(`Não achei "${r.destino}" no escritório`, 'out')
-      } else if ((r.acao === 'abrir_cliente' || r.acao === 'abrir_tela') && r.rota) {
+      } else if ((r.acao === 'abrir_cliente' || r.acao === 'abrir_tela' || r.acao === 'abrir_lead') && r.rota) {
         setTimeout(() => navigate(r.rota), 1200)
       }
     }
