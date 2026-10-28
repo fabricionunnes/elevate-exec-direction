@@ -90,6 +90,9 @@ export const CRMLeadsPage = () => {
   // Marcado = a seleção é o filtro inteiro (todas as páginas); as ações em massa vão pelo filtro no banco.
   const [todosDoFiltro, setTodosDoFiltro] = useState(false);
   const limparSelecao = () => { setSelectedLeads([]); setTodosDoFiltro(false); };
+  // Fabrício (28/10/2026): escolher QUANTOS leads do filtro selecionar (ex.: 1.000, 1.256): marca os N primeiros na ordem da lista
+  const [qtdSelecionar, setQtdSelecionar] = useState("");
+  const [selecionandoQtd, setSelecionandoQtd] = useState<{ done: number; total: number } | null>(null);
   // Disparo de template pela API oficial a partir daqui (Fabrício, 13/10/2026): nos marcados ou em todo o filtro
   const [templateOpen, setTemplateOpen] = useState(false);
   const [templateIds, setTemplateIds] = useState<string[]>([]);
@@ -306,6 +309,40 @@ export const CRMLeadsPage = () => {
     } else {
       setSelectedLeads(paginatedLeads.map(l => l.id));
     }
+  };
+
+  const QTD_MAX = 10000;
+  const selecionarQuantidade = async () => {
+    const pedido = Math.floor(Number(qtdSelecionar.replace(/\D/g, "")));
+    if (!pedido || pedido < 1 || selecionandoQtd) return;
+    if (pedido >= total) { setSelectedLeads([]); setTodosDoFiltro(true); setQtdSelecionar(""); return; }
+    if (pedido > QTD_MAX) { toast.error(`Pra mais de ${nf(QTD_MAX)} leads, use "Selecionar todos do filtro" ou aperte o filtro.`); return; }
+    const filtroNaHora = JSON.stringify(rpcFilters);
+    setSelecionandoQtd({ done: 0, total: pedido });
+    try {
+      // ids na mesma ordem da tabela, em páginas de 200 (limite da RPC), 5 chamadas por vez
+      const offsets: number[] = [];
+      for (let off = 0; off < pedido; off += 200) offsets.push(off);
+      const partes: string[][] = new Array(offsets.length);
+      let feitos = 0;
+      for (let i = 0; i < offsets.length; i += 5) {
+        await Promise.all(offsets.slice(i, i + 5).map(async (off, k) => {
+          const { data, error } = await (supabase as any).rpc("crm_leads_page_v2", { p_filters: rpcFilters, p_limit: Math.min(200, pedido - off), p_offset: off });
+          if (error) throw error;
+          partes[i + k] = ((data || []) as { id: string }[]).map((r) => r.id);
+          feitos += partes[i + k].length;
+          setSelecionandoQtd({ done: Math.min(feitos, pedido), total: pedido });
+        }));
+      }
+      if (JSON.stringify(rpcFilters) !== filtroNaHora) return; // filtro mudou no meio: descarta
+      const ids = [...new Set(partes.flat())].slice(0, pedido);
+      setTodosDoFiltro(false);
+      setSelectedLeads(ids);
+      setQtdSelecionar("");
+      toast.success(`${nf(ids.length)} leads selecionados (os primeiros do filtro)`);
+    } catch (e: any) {
+      toast.error("Erro ao selecionar os leads: " + (e?.message || ""));
+    } finally { setSelecionandoQtd(null); }
   };
 
   const toggleSelectLead = (leadId: string) => {
@@ -729,6 +766,24 @@ export const CRMLeadsPage = () => {
                 </>
               )}
             </span>
+            {total > 1 && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Selecionar</span>
+                <Input
+                  inputMode="numeric"
+                  placeholder="quantos?"
+                  className="h-8 w-24 text-sm"
+                  value={qtdSelecionar}
+                  onChange={(e) => setQtdSelecionar(e.target.value.replace(/\D/g, ""))}
+                  onKeyDown={(e) => { if (e.key === "Enter") selecionarQuantidade(); }}
+                  disabled={!!selecionandoQtd || bulkLoading}
+                />
+                <span className="text-xs text-muted-foreground">do filtro</span>
+                <Button variant="outline" size="sm" onClick={selecionarQuantidade} disabled={!qtdSelecionar || !!selecionandoQtd || bulkLoading}>
+                  {selecionandoQtd ? `${nf(selecionandoQtd.done)} de ${nf(selecionandoQtd.total)}...` : "Selecionar"}
+                </Button>
+              </div>
+            )}
             {isAdmin && (
               <Button variant="outline" size="sm" onClick={() => openBulk("assign")} disabled={bulkLoading}>
                 <UserPlus className="h-4 w-4 mr-2" />
@@ -779,7 +834,7 @@ export const CRMLeadsPage = () => {
               Marcar Perdido
             </Button>
           </CardContent>
-          {!todosDoFiltro && paginaToda && total > paginatedLeads.length && (
+          {!todosDoFiltro && paginaToda && selectedLeads.length === paginatedLeads.length && total > paginatedLeads.length && (
             <div className="border-t px-3 sm:px-4 py-2 text-sm text-center bg-muted/40">
               Os {nf(paginatedLeads.length)} leads desta página estão selecionados.{" "}
               <button type="button" className="font-medium text-primary underline" onClick={() => { setSelectedLeads([]); setTodosDoFiltro(true); }}>
