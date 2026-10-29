@@ -66,6 +66,7 @@ interface LinhaComissao {
   total_cents: number;
   acima_teto: boolean;
   peso: number | null;
+  percentual_venda: number | null;
 }
 
 interface Config {
@@ -247,6 +248,27 @@ export default function CarteiraConsultorPage() {
     () => comissao.length > 0 || linhas.some((l) => l.comissao_cents != null),
     [comissao, linhas],
   );
+  // A tabela de parâmetros tem RLS de master. Quem não é master lê piso e
+  // percentuais da própria linha do resumo, senão a tela escreveria "piso R$ 0".
+  const params = useMemo(() => {
+    if (config) {
+      return {
+        piso: Number(config.piso_cents) / 100,
+        pct: Number(config.percentual),
+        pctVenda: Number(config.percentual_venda ?? 0),
+        semVenda: config.produtos_sem_venda || [],
+      };
+    }
+    const c = comissao[0];
+    if (!c) return null;
+    return {
+      piso: Number(c.piso_cents) / 100,
+      pct: Number(c.percentual),
+      pctVenda: Number(c.percentual_venda ?? 0),
+      semVenda: [] as string[],
+    };
+  }, [config, comissao]);
+
   const soConsultores = useMemo(() => comissao.filter((c) => c.papel === "consultant"), [comissao]);
   const mediaConsultores = soConsultores.length
     ? soConsultores.reduce((s, c) => s + Number(c.total_cents || 0), 0) / 100 / soConsultores.length
@@ -396,10 +418,10 @@ export default function CarteiraConsultorPage() {
                 <Tile
                   main
                   label="Comissão do mês"
-                  valor={brl(comissaoTotal)}
+                  valor={brlFull(comissaoTotal)}
                   sub={
                     isMaster && mediaConsultores > 0
-                      ? `média ${brl(mediaConsultores)} por consultor`
+                      ? `média ${brlFull(mediaConsultores)} por consultor`
                       : "sobre a base paga do mês"
                   }
                 />
@@ -409,7 +431,11 @@ export default function CarteiraConsultorPage() {
             {veComissao && (
               <Panel
                 titulo={isMaster ? "Comissão dos consultores" : "Sua comissão"}
-                sub={isMaster ? `${brl(comissaoTotal)} no mês · só o master enxerga` : `${brl(comissaoTotal)} no mês`}
+                sub={
+                  isMaster
+                    ? `${brlFull(comissaoTotal)} no mês · só o master enxerga`
+                    : `${brlFull(comissaoTotal)} no mês`
+                }
               >
                 {comissao.length === 0 && (
                   <div className="empty">
@@ -463,8 +489,8 @@ export default function CarteiraConsultorPage() {
                   vazio="Sem comissão calculada."
                 />
                 <div className="nd" style={{ fontSize: 11, marginTop: 10, lineHeight: 1.6 }}>
-                  <b>Entrega:</b> piso {brl(Number(config?.piso_cents ?? 0) / 100)} mais{" "}
-                  {config?.percentual ?? 0}% da base de quem é responsável pelo cliente.
+                  <b>Entrega:</b> piso {brlFull(params?.piso ?? 0)} mais {params?.pct ?? 0}% da base
+                  de quem é responsável pelo cliente.
                   <br />
                   <b>Base:</b> o valor mensalizado, zerado na parte que o cliente não pagou. Quem
                   quitou adiantado não tem fatura no mês e conta cheio; quem está com fatura em
@@ -472,19 +498,25 @@ export default function CarteiraConsultorPage() {
                   pedido, não ao dia em que o contrato encerra. Cliente que pediu e foi retido volta
                   a valer cheio.
                   <br />
-                  <b>Venda:</b> {config?.percentual_venda ?? 0}% pra quem vendeu o serviço, por cima do
+                  <b>Venda:</b> {params?.pctVenda ?? 0}% pra quem vendeu o serviço, por cima do
                   mesmo projeto e enquanto o cliente ficar. Não tira nada de quem entrega, os dois
                   recebem. Para se a pessoa sair da equipe.
-                  {config?.produtos_sem_venda?.length
-                    ? ` Fora da comissão de venda: ${config.produtos_sem_venda.join(", ")}.`
+                  {params?.semVenda?.length
+                    ? ` Fora da comissão de venda: ${params.semVenda.join(", ")}.`
                     : ""}
                   <br />
-                  Média dos consultores hoje: <b>{brl(mediaConsultores)}</b>
-                  {vendaTotal > 0 ? ` · ${brl(vendaTotal)} vieram de venda` : ""}
-                  {config?.teto_cents
-                    ? ` · referência de ${brl(Number(config.teto_cents) / 100)} por cabeça, pode passar`
+                  {isMaster && (
+                    <>
+                      Média dos consultores hoje: <b>{brlFull(mediaConsultores)}</b>
+                      {config?.teto_cents
+                        ? ` · referência de ${brlFull(Number(config.teto_cents) / 100)} por cabeça, pode passar`
+                        : ""}
+                    </>
+                  )}
+                  {vendaTotal > 0 ? `${isMaster ? " · " : ""}${brlFull(vendaTotal)} de venda` : ""}
+                  {perdidoTotal > 0
+                    ? `${isMaster || vendaTotal > 0 ? " · " : ""}${brlFull(perdidoTotal)} a menos por cancelamento no mês`
                     : ""}
-                  {perdidoTotal > 0 ? ` · ${brl(perdidoTotal)} a menos por cancelamento no mês` : ""}
                 </div>
                 {isMaster && (editando ? (
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-end", marginTop: 12, flexWrap: "wrap" }}>
