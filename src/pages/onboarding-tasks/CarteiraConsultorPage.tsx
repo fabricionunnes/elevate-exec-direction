@@ -41,6 +41,7 @@ interface LinhaCarteira {
   comissao_venda_cents: number | null;
   fator_pago: number | null;
   nao_pago_cents: number | null;
+  venda_primeiro_mes: boolean;
 }
 
 // Só o master recebe isso: a RPC devolve vazio para qualquer outro papel.
@@ -67,6 +68,7 @@ interface LinhaComissao {
   acima_teto: boolean;
   peso: number | null;
   percentual_venda: number | null;
+  percentual_venda_unica: number | null;
 }
 
 interface Config {
@@ -76,6 +78,7 @@ interface Config {
   percentual: number;
   teto_cents: number | null;
   percentual_venda: number;
+  percentual_venda_unica: number;
   produtos_sem_venda: string[] | null;
 }
 
@@ -124,7 +127,14 @@ export default function CarteiraConsultorPage() {
   const [erroComissao, setErroComissao] = useState<string | null>(null);
   const [configs, setConfigs] = useState<Record<string, Config>>({});
   const [editando, setEditando] = useState<string | null>(null);
-  const [form, setForm] = useState({ piso: "", pct: "", pctVenda: "", teto: "", semVenda: "" });
+  const [form, setForm] = useState({
+    piso: "",
+    pct: "",
+    pctVenda: "",
+    pctVendaUnica: "",
+    teto: "",
+    semVenda: "",
+  });
   const [salvando, setSalvando] = useState(false);
   const [recarregar, setRecarregar] = useState(0);
   const [drill, setDrill] = useState<Drill>(null);
@@ -188,7 +198,9 @@ export default function CarteiraConsultorPage() {
     (async () => {
       const { data } = await supabase
         .from("consultant_commission_config" as any)
-        .select("id, consultant_id, piso_cents, percentual, teto_cents, percentual_venda, produtos_sem_venda");
+        .select(
+          "id, consultant_id, piso_cents, percentual, teto_cents, percentual_venda, percentual_venda_unica, produtos_sem_venda",
+        );
       const mapa: Record<string, Config> = {};
       ((data || []) as Config[]).forEach((c) => {
         mapa[c.consultant_id || PADRAO] = c;
@@ -227,6 +239,7 @@ export default function CarteiraConsultorPage() {
       piso: String(Number(c?.piso_cents ?? (linha ? linha.piso_cents : 0)) / 100),
       pct: String(c?.percentual ?? linha?.percentual ?? ""),
       pctVenda: String(c?.percentual_venda ?? linha?.percentual_venda ?? ""),
+      pctVendaUnica: String(c?.percentual_venda_unica ?? linha?.percentual_venda_unica ?? ""),
       teto: c?.teto_cents == null ? "" : String(Number(c.teto_cents) / 100),
       semVenda: (configs[PADRAO]?.produtos_sem_venda || []).join(", "),
     });
@@ -255,6 +268,7 @@ export default function CarteiraConsultorPage() {
     const piso = Math.round(Number(form.piso.replace(",", ".")) * 100);
     const pct = Number(form.pct.replace(",", "."));
     const pctVenda = Number(form.pctVenda.replace(",", "."));
+    const pctVendaUnica = Number(form.pctVendaUnica.replace(",", ".") || "0");
     const teto = form.teto.trim() === "" ? null : Math.round(Number(form.teto.replace(",", ".")) * 100);
     if (!Number.isFinite(piso) || !Number.isFinite(pct) || !Number.isFinite(pctVenda)) return;
 
@@ -262,6 +276,7 @@ export default function CarteiraConsultorPage() {
       piso_cents: piso,
       percentual: pct,
       percentual_venda: pctVenda,
+      percentual_venda_unica: Number.isFinite(pctVendaUnica) ? pctVendaUnica : 0,
       teto_cents: teto,
       updated_at: new Date().toISOString(),
     };
@@ -339,6 +354,7 @@ export default function CarteiraConsultorPage() {
         piso: Number(config.piso_cents) / 100,
         pct: Number(config.percentual),
         pctVenda: Number(config.percentual_venda ?? 0),
+        pctVendaUnica: Number(config.percentual_venda_unica ?? 0),
         semVenda: config.produtos_sem_venda || [],
       };
     }
@@ -348,6 +364,7 @@ export default function CarteiraConsultorPage() {
       piso: Number(c.piso_cents) / 100,
       pct: Number(c.percentual),
       pctVenda: Number(c.percentual_venda ?? 0),
+      pctVendaUnica: Number(c.percentual_venda_unica ?? 0),
       semVenda: [] as string[],
     };
   }, [config, comissao]);
@@ -752,9 +769,22 @@ export default function CarteiraConsultorPage() {
                   <b>Venda:</b> {params?.pctVenda ?? 0}% pra quem vendeu o serviço, por cima do
                   mesmo projeto e enquanto o cliente ficar. Não tira nada de quem entrega, os dois
                   recebem. Para se a pessoa sair da equipe.
-                  {params?.semVenda?.length
-                    ? ` Fora da comissão de venda: ${params.semVenda.join(", ")}.`
-                    : ""}
+                  {params?.semVenda?.length ? (
+                    <>
+                      {" "}
+                      {params.semVenda.join(", ")}{" "}
+                      {params.pctVendaUnica > 0 ? (
+                        <>
+                          não paga recorrência: quem vende leva {params.pctVendaUnica}% uma vez só, no
+                          mês em que o contrato começa.
+                        </>
+                      ) : (
+                        <>fica fora da comissão de venda.</>
+                      )}
+                    </>
+                  ) : (
+                    ""
+                  )}
                   <br />
                   {isMaster && (
                     <>
@@ -789,6 +819,7 @@ export default function CarteiraConsultorPage() {
                         { k: "piso", rot: "Piso (R$)", w: 110 },
                         { k: "pct", rot: "% da entrega", w: 110 },
                         { k: "pctVenda", rot: "% da venda", w: 110 },
+                        { k: "pctVendaUnica", rot: "% da venda 1º mês", w: 130 },
                         { k: "teto", rot: "Referência (R$)", w: 120 },
                         ...(editando === PADRAO
                           ? [{ k: "semVenda" as const, rot: "Produtos sem comissão de venda", w: 230 }]
@@ -1063,6 +1094,7 @@ export default function CarteiraConsultorPage() {
                                   <i className="tag pos">
                                     {" "}
                                     +{brlFull(Number(l.comissao_venda_cents) / 100)}
+                                    {l.venda_primeiro_mes ? " 1º mês" : ""}
                                   </i>
                                 )}
                               </span>
