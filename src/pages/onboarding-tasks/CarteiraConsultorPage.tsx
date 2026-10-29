@@ -39,6 +39,8 @@ interface LinhaCarteira {
   vendido_por: string | null;
   vendido_por_nome: string | null;
   comissao_venda_cents: number | null;
+  fator_pago: number | null;
+  nao_pago_cents: number | null;
 }
 
 // Só o master recebe isso: a RPC devolve vazio para qualquer outro papel.
@@ -50,6 +52,8 @@ interface LinhaComissao {
   clientes: number;
   saindo: number;
   carteira_cents: number;
+  base_cents: number;
+  nao_pago_cents: number;
   piso_cents: number;
   percentual: number;
   teto_cents: number | null;
@@ -412,6 +416,7 @@ export default function CarteiraConsultorPage() {
                   cols={[
                     { h: "Consultor", tl: true },
                     "Carteira",
+                    "Base paga",
                     "Piso",
                     "Entrega",
                     "Venda",
@@ -425,6 +430,12 @@ export default function CarteiraConsultorPage() {
                       {c.saindo > 0 && <i className="tag neg"> {c.saindo} saindo</i>}
                     </span>,
                     brlFull(Number(c.carteira_cents) / 100),
+                    <span>
+                      {brlFull(Number(c.base_cents) / 100)}
+                      {Number(c.nao_pago_cents) > 0 && (
+                        <i className="tag warn"> -{brl(Number(c.nao_pago_cents) / 100)} não pago</i>
+                      )}
+                    </span>,
                     Number(c.piso_cents) > 0 ? brlFull(Number(c.piso_cents) / 100) : <Nd />,
                     <span>
                       {brlFull(Number(c.variavel_cents) / 100)}
@@ -447,9 +458,13 @@ export default function CarteiraConsultorPage() {
                 />
                 <div className="nd" style={{ fontSize: 11, marginTop: 10, lineHeight: 1.6 }}>
                   <b>Entrega:</b> piso {brl(Number(config?.piso_cents ?? 0) / 100)} mais{" "}
-                  {config?.percentual ?? 0}% da carteira mensalizada de quem é responsável pelo
-                  cliente. Quem pede cancelamento entra proporcional ao dia do pedido, não ao dia em
-                  que o contrato encerra. Cliente que pediu e foi retido volta a valer cheio.
+                  {config?.percentual ?? 0}% da base de quem é responsável pelo cliente.
+                  <br />
+                  <b>Base:</b> o valor mensalizado, zerado na parte que o cliente não pagou. Quem
+                  quitou adiantado não tem fatura no mês e conta cheio; quem está com fatura em
+                  aberto entra só pelo que pagou. Quem pede cancelamento entra proporcional ao dia do
+                  pedido, não ao dia em que o contrato encerra. Cliente que pediu e foi retido volta
+                  a valer cheio.
                   <br />
                   <b>Venda:</b> {config?.percentual_venda ?? 0}% pra quem vendeu o serviço, por cima do
                   mesmo projeto e enquanto o cliente ficar. Não tira nada de quem entrega, os dois
@@ -664,6 +679,9 @@ export default function CarteiraConsultorPage() {
                           </i>
                         )}
                         {l.retido && <i className="tag pos"> pediu e foi retido</i>}
+                        {Number(l.nao_pago_cents) > 0 && (
+                          <i className="tag warn"> não pagou {brl(Number(l.nao_pago_cents) / 100)}</i>
+                        )}
                         {l.contrato_vencido && <i className="tag warn"> contrato vencido</i>}
                         {!l.contrato_vencido &&
                           l.vence_em_dias !== null &&
