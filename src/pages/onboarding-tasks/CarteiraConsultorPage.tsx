@@ -140,6 +140,7 @@ export default function CarteiraConsultorPage() {
   const [drill, setDrill] = useState<Drill>(null);
   const [faturas, setFaturas] = useState<Fatura[]>([]);
   const [carregandoFaturas, setCarregandoFaturas] = useState(false);
+  const [produtos, setProdutos] = useState<string[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [consultor, setConsultor] = useState("");
   const [consultores, setConsultores] = useState<{ value: string; label: string }[]>([]);
@@ -210,6 +211,19 @@ export default function CarteiraConsultorPage() {
   }, [carregandoPerm, isMaster, recarregar]);
 
   const config = configs[PADRAO] || null;
+
+  // lista de produtos pra escolher quais ficam fora da comissão de venda
+  useEffect(() => {
+    if (carregandoPerm || !isMaster) return;
+    (async () => {
+      const { data } = await supabase
+        .from("onboarding_projects")
+        .select("product_name")
+        .not("product_name", "is", null);
+      const nomes = Array.from(new Set(((data || []) as any[]).map((p) => p.product_name as string)));
+      setProdutos(nomes.sort((a, b) => a.localeCompare(b, "pt-BR")));
+    })();
+  }, [carregandoPerm, isMaster]);
 
   useEffect(() => {
     if (drill?.tipo !== "faturas") return;
@@ -821,9 +835,6 @@ export default function CarteiraConsultorPage() {
                         { k: "pctVenda", rot: "% da venda", w: 110 },
                         { k: "pctVendaUnica", rot: "% da venda 1º mês", w: 130 },
                         { k: "teto", rot: "Referência (R$)", w: 120 },
-                        ...(editando === PADRAO
-                          ? [{ k: "semVenda" as const, rot: "Produtos sem comissão de venda", w: 230 }]
-                          : []),
                       ] as const).map((campo) => (
                         <label key={campo.k} style={{ display: "grid", gap: 4, fontSize: 11 }}>
                           <span className="nd">{campo.rot}</span>
@@ -859,6 +870,50 @@ export default function CarteiraConsultorPage() {
                         Cancelar
                       </button>
                     </div>
+                    {editando === PADRAO && (
+                      <div style={{ marginTop: 14 }}>
+                        <div className="nd" style={{ fontSize: 11, marginBottom: 6 }}>
+                          Produtos sem comissão de venda recorrente. Clique pra marcar. O que estiver
+                          marcado paga só no primeiro mês, no percentual acima.
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {produtos.map((p) => {
+                            const lista = form.semVenda.split(",").map((x) => x.trim()).filter(Boolean);
+                            const marcado = lista.includes(p);
+                            return (
+                              <button
+                                key={p}
+                                type="button"
+                                onClick={() =>
+                                  setForm({
+                                    ...form,
+                                    semVenda: (marcado
+                                      ? lista.filter((x) => x !== p)
+                                      : [...lista, p]
+                                    ).join(", "),
+                                  })
+                                }
+                                style={{
+                                  padding: "5px 10px",
+                                  borderRadius: 999,
+                                  fontSize: 11,
+                                  cursor: "pointer",
+                                  font: "inherit",
+                                  border: marcado
+                                    ? "1px solid #6a2a2a"
+                                    : "1px solid rgba(255,255,255,.15)",
+                                  background: marcado ? "#1C1214" : "rgba(255,255,255,.04)",
+                                  color: marcado ? "var(--ink)" : "var(--mute)",
+                                }}
+                              >
+                                {marcado ? "✓ " : ""}
+                                {p}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <button
