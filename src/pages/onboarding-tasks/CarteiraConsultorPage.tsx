@@ -82,6 +82,25 @@ interface Config {
 // chave "padrao" é a regra que vale pra quem não tem ajuste próprio
 const PADRAO = "padrao";
 
+interface Fatura {
+  company_id: string;
+  company_name: string;
+  consultant_name: string | null;
+  descricao: string;
+  valor_cents: number;
+  vencimento: string;
+  status: string;
+  pago_em: string | null;
+  dias_atraso: number | null;
+}
+
+// Regra do dono: clicou no card, o detalhe mostra EXATAMENTE aquilo que foi
+// clicado, nada além. Por isso cada foco carrega o próprio recorte.
+type Drill =
+  | { tipo: "contratos"; titulo: string; sub: string; linhas: LinhaCarteira[] }
+  | { tipo: "faturas"; titulo: string; sub: string; filtro?: (f: Fatura) => boolean }
+  | null;
+
 interface LinhaHistorico {
   mes: string;
   faturado_cents: number;
@@ -108,6 +127,9 @@ export default function CarteiraConsultorPage() {
   const [form, setForm] = useState({ piso: "", pct: "", pctVenda: "", teto: "", semVenda: "" });
   const [salvando, setSalvando] = useState(false);
   const [recarregar, setRecarregar] = useState(0);
+  const [drill, setDrill] = useState<Drill>(null);
+  const [faturas, setFaturas] = useState<Fatura[]>([]);
+  const [carregandoFaturas, setCarregandoFaturas] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [consultor, setConsultor] = useState("");
   const [consultores, setConsultores] = useState<{ value: string; label: string }[]>([]);
@@ -176,6 +198,25 @@ export default function CarteiraConsultorPage() {
   }, [carregandoPerm, isMaster, recarregar]);
 
   const config = configs[PADRAO] || null;
+
+  useEffect(() => {
+    if (drill?.tipo !== "faturas") return;
+    let cancelado = false;
+    (async () => {
+      setCarregandoFaturas(true);
+      const { data, error } = await supabase.rpc("carteira_faturas", {
+        p_consultant_id: consultor || null,
+        p_mes: mesFoco || null,
+      });
+      if (cancelado) return;
+      if (error) console.error("carteira_faturas", error);
+      setFaturas((data || []) as Fatura[]);
+      setCarregandoFaturas(false);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [drill, consultor, mesFoco]);
 
   // abre o formulário com o que já vale pra aquela pessoa, mesmo que ela ainda
   // não tenha linha própria: assim o master edita a partir do número real.
@@ -402,10 +443,17 @@ export default function CarteiraConsultorPage() {
                 value={consultor}
                 opts={consultores}
                 todos="Todos"
-                onChange={setConsultor}
+                onChange={(v) => {
+                  setDrill(null);
+                  setConsultor(v);
+                }}
               />
             )}
-            <button type="button" className="back" onClick={() => navigate("/onboarding-tasks")}>
+            <button
+              type="button"
+              className="back"
+              onClick={() => (drill ? setDrill(null) : navigate("/onboarding-tasks"))}
+            >
               Voltar
             </button>
           </div>
@@ -418,18 +466,144 @@ export default function CarteiraConsultorPage() {
 
         {carregando ? (
           <div className="empty">Carregando...</div>
+        ) : drill ? (
+          <>
+            <div className="crumbs">
+              <Lk onClick={() => setDrill(null)}>Carteira</Lk>
+              <span className="nd"> › {drill.titulo}</span>
+            </div>
+            {drill.tipo === "contratos" ? (
+              <Panel titulo={drill.titulo} sub={drill.sub}>
+                <Tabela
+                  cols={[
+                    { h: "Empresa", tl: true },
+                    { h: "Produto", tl: true },
+                    { h: "Consultor", tl: true },
+                    "Por mês",
+                    "Plano",
+                    { h: "De onde vem", tl: true },
+                    ...(veComissao ? ["Comissão"] : []),
+                  ]}
+                  rows={drill.linhas
+                    .slice()
+                    .sort((a, b) => Number(b.monthly_cents) - Number(a.monthly_cents))
+                    .map((l) => [
+                      <span>
+                        {l.company_name}
+                        {l.saindo && <i className="tag neg"> saindo</i>}
+                        {l.contrato_vencido && <i className="tag warn"> vencido</i>}
+                        {Number(l.nao_pago_cents) > 0 && (
+                          <i className="tag warn"> não pagou {brl(Number(l.nao_pago_cents) / 100)}</i>
+                        )}
+                      </span>,
+                      l.product_name || <Nd />,
+                      l.consultant_name,
+                      brlFull(Number(l.monthly_cents || 0) / 100),
+                      <span>
+                        {l.plano}
+                        {!l.recorrente && l.dias_para_vencer !== null && (
+                          <i className="tag">
+                            {" "}
+                            {l.dias_para_vencer < 0
+                              ? `venceu há ${Math.abs(l.dias_para_vencer)} dias`
+                              : `${l.dias_para_vencer} dias`}
+                          </i>
+                        )}
+                      </span>,
+                      <small className="nd">{l.origem}</small>,
+                      ...(veComissao
+                        ? [
+                            <span>
+                              {brlFull(Number(l.comissao_cents || 0) / 100)}
+                              {Number(l.comissao_venda_cents) > 0 && (
+                                <i className="tag pos">
+                                  {" "}
+                                  +{brlFull(Number(l.comissao_venda_cents) / 100)} venda
+                                </i>
+                              )}
+                            </span>,
+                          ]
+                        : []),
+                    ])}
+                  vazio="Nada neste recorte."
+                />
+              </Panel>
+            ) : (
+              <Panel titulo={drill.titulo} sub={drill.sub}>
+                {carregandoFaturas ? (
+                  <div className="empty">Carregando...</div>
+                ) : (
+                  <Tabela
+                    cols={[
+                      { h: "Empresa", tl: true },
+                      { h: "Cobrança", tl: true },
+                      { h: "Consultor", tl: true },
+                      "Valor",
+                      "Vencimento",
+                      "Situação",
+                    ]}
+                    rows={faturas
+                      .filter((x) => (drill.filtro ? drill.filtro(x) : true))
+                      .map((x) => [
+                        x.company_name,
+                        <small className="nd">{x.descricao}</small>,
+                        x.consultant_name || <Nd />,
+                        brlFull(Number(x.valor_cents) / 100),
+                        dataBR(x.vencimento),
+                        x.status === "pago" ? (
+                          <span className="pos">pago {x.pago_em ? dataBR(x.pago_em) : ""}</span>
+                        ) : x.status === "vencido" ? (
+                          <span className="neg">vencido há {x.dias_atraso} dias</span>
+                        ) : (
+                          <span className="nd">a vencer</span>
+                        ),
+                      ])}
+                    vazio="Nenhuma cobrança neste recorte."
+                  />
+                )}
+              </Panel>
+            )}
+          </>
         ) : (
           <>
             <div className={`grid ${veComissao ? "k6" : "k5"}`}>
-              <Tile main label="Carteira por mês" valor={brl(total)} sub={plural(empresas, "empresa", "empresas")} />
+              <Tile
+                main
+                label="Carteira por mês"
+                valor={brl(total)}
+                sub={plural(empresas, "empresa", "empresas")}
+                onClick={() =>
+                  setDrill({
+                    tipo: "contratos",
+                    titulo: "Carteira por mês",
+                    sub: `${brlFull(total)} em ${plural(linhas.length, "contrato", "contratos")}`,
+                    linhas,
+                  })
+                }
+              />
               <Tile
                 label="Contratos"
                 valor={String(linhas.length)}
                 sub={`${recorrentes} recorrentes · ticket ${brl(ticket)}`}
+                onClick={() =>
+                  setDrill({
+                    tipo: "contratos",
+                    titulo: "Contratos",
+                    sub: `${recorrentes} recorrentes · ticket ${brlFull(ticket)}`,
+                    linhas,
+                  })
+                }
               />
               <Tile
                 label="Faturado no mês"
                 valor={foco ? brl(foco.faturado) : "-"}
+                onClick={() =>
+                  setDrill({
+                    tipo: "faturas",
+                    titulo: "Faturado no mês",
+                    sub: mesFoco ? mesAno(mesFoco) : "",
+                  })
+                }
                 sub={
                   <>
                     {mesFoco ? mesAno(mesFoco) : ""}
@@ -450,17 +624,43 @@ export default function CarteiraConsultorPage() {
                 valor={inadimplencia == null ? "-" : `${Math.round(inadimplencia * 100)}%`}
                 cls={inadimplencia != null && inadimplencia > 0.15 ? "neg" : undefined}
                 sub={foco ? `recebido ${brl(foco.recebido)}` : <Nd />}
+                onClick={() =>
+                  setDrill({
+                    tipo: "faturas",
+                    titulo: "Faturas em aberto",
+                    sub: mesFoco ? mesAno(mesFoco) : "",
+                    filtro: (x) => x.status !== "pago",
+                  })
+                }
               />
               <Tile
                 label="Success fee possível"
                 valor={brl(successFee)}
                 sub="o cliente paga isso a mais quando bate a meta"
+                onClick={() =>
+                  setDrill({
+                    tipo: "contratos",
+                    titulo: "Success fee possível",
+                    sub: `${brlFull(successFee)} se todos baterem a meta`,
+                    linhas: linhas.filter((l) => Number(l.commission_max_cents) > 0),
+                  })
+                }
               />
               {veComissao && (
                 <Tile
                   main
                   label="Comissão do mês"
                   valor={brlFull(comissaoTotal)}
+                  onClick={() =>
+                    setDrill({
+                      tipo: "contratos",
+                      titulo: "Comissão do mês",
+                      sub: `${brlFull(comissaoTotal)} sobre a base paga`,
+                      linhas: linhas.filter(
+                        (l) => Number(l.comissao_cents) > 0 || Number(l.comissao_venda_cents) > 0,
+                      ),
+                    })
+                  }
                   sub={
                     isMaster && mediaConsultores > 0
                       ? `média ${brlFull(mediaConsultores)} por consultor`
@@ -643,7 +843,21 @@ export default function CarteiraConsultorPage() {
             )}
 
             <div className="grid r4" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-              <Panel titulo="Contratos de prazo vencidos" sub={String(vencidos.length)}>
+              <Panel
+                titulo="Contratos de prazo vencidos"
+                sub={String(vencidos.length)}
+                onClick={
+                  vencidos.length
+                    ? () =>
+                        setDrill({
+                          tipo: "contratos",
+                          titulo: "Contratos de prazo vencidos",
+                          sub: plural(vencidos.length, "contrato", "contratos"),
+                          linhas: vencidos,
+                        })
+                    : undefined
+                }
+              >
                 {vencidos.length ? (
                   <Tabela
                     cols={[{ h: "Empresa", tl: true }, "Venceu", "Por mês"]}
@@ -660,7 +874,21 @@ export default function CarteiraConsultorPage() {
                   <div className="empty">Nenhum</div>
                 )}
               </Panel>
-              <Panel titulo="Vence nos próximos 30 dias" sub={plural(vencendo.length, "contrato", "contratos")}>
+              <Panel
+                titulo="Vence nos próximos 30 dias"
+                sub={plural(vencendo.length, "contrato", "contratos")}
+                onClick={
+                  vencendo.length
+                    ? () =>
+                        setDrill({
+                          tipo: "contratos",
+                          titulo: "Vence nos próximos 30 dias",
+                          sub: plural(vencendo.length, "contrato", "contratos"),
+                          linhas: vencendo,
+                        })
+                    : undefined
+                }
+              >
                 {vencendo.length ? (
                   <Tabela
                     cols={[{ h: "Empresa", tl: true }, "Em", "Por mês"]}
@@ -680,6 +908,17 @@ export default function CarteiraConsultorPage() {
               <Panel
                 titulo="Clientes saindo"
                 sub={saindo.length ? brl(valorEmRisco) : "0"}
+                onClick={
+                  saindo.length
+                    ? () =>
+                        setDrill({
+                          tipo: "contratos",
+                          titulo: "Clientes saindo",
+                          sub: `${brlFull(valorEmRisco)} em risco`,
+                          linhas: saindo,
+                        })
+                    : undefined
+                }
               >
                 {saindo.length ? (
                   <Tabela
