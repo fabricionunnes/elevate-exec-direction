@@ -84,6 +84,7 @@ export default function CarteiraConsultorPage() {
   const [linhas, setLinhas] = useState<LinhaCarteira[]>([]);
   const [historico, setHistorico] = useState<LinhaHistorico[]>([]);
   const [comissao, setComissao] = useState<LinhaComissao[]>([]);
+  const [erroComissao, setErroComissao] = useState<string | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState({ piso: "", pct: "", teto: "" });
@@ -123,8 +124,10 @@ export default function CarteiraConsultorPage() {
       if (cancelado) return;
       if (carteira.error) console.error("carteira_consultores", carteira.error);
       if (hist.error) console.error("carteira_consultores_historico", hist.error);
-      // a RPC de comissão devolve vazio pra quem não é master, erro aqui não trava a tela
+      // a RPC de comissão devolve vazio pra quem não é master. Erro aqui não trava
+      // a tela, mas aparece no painel: esconder em silêncio já me custou tempo.
       if (com.error) console.error("carteira_comissao_resumo", com.error);
+      setErroComissao(com.error ? com.error.message || String(com.error) : null);
       setComissao((com.data || []) as LinhaComissao[]);
       const h = (hist.data || []) as LinhaHistorico[];
       setLinhas((carteira.data || []) as LinhaCarteira[]);
@@ -358,71 +361,18 @@ export default function CarteiraConsultorPage() {
               />
             </div>
 
-            <div className="grid r4" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-              <Panel titulo="Contratos de prazo vencidos" sub={String(vencidos.length)}>
-                {vencidos.length ? (
-                  <Tabela
-                    cols={[{ h: "Empresa", tl: true }, "Venceu", "Por mês"]}
-                    rows={vencidos.slice(0, 6).map((l) => [
-                      <span>
-                        {l.company_name}
-                        <i className="tag"> {l.plano}</i>
-                      </span>,
-                      `${Math.abs(Number(l.dias_para_vencer))} dias`,
-                      brl(Number(l.monthly_cents) / 100),
-                    ])}
-                  />
-                ) : (
-                  <div className="empty">Nenhum</div>
-                )}
-              </Panel>
-              <Panel titulo="Vence nos próximos 30 dias" sub={plural(vencendo.length, "contrato", "contratos")}>
-                {vencendo.length ? (
-                  <Tabela
-                    cols={[{ h: "Empresa", tl: true }, "Em", "Por mês"]}
-                    rows={vencendo.slice(0, 8).map((l) => [
-                      <span>
-                        {l.company_name}
-                        <i className="tag">{l.recorrente ? " renovação mensal" : ` ${l.plano}`}</i>
-                      </span>,
-                      `${l.vence_em_dias} dias`,
-                      brl(Number(l.monthly_cents) / 100),
-                    ])}
-                  />
-                ) : (
-                  <div className="empty">Nenhum</div>
-                )}
-              </Panel>
-              <Panel
-                titulo="Clientes saindo"
-                sub={saindo.length ? brl(valorEmRisco) : "0"}
-              >
-                {saindo.length ? (
-                  <Tabela
-                    cols={[{ h: "Empresa", tl: true }, "Pediu em", "Por mês"]}
-                    rows={saindo.slice(0, 6).map((l) => [
-                      l.company_name,
-                      l.cancelamento_solicitado ? dataBR(l.cancelamento_solicitado) : <Nd />,
-                      brl(Number(l.monthly_cents) / 100),
-                    ])}
-                  />
-                ) : (
-                  <div className="empty">Nenhum</div>
-                )}
-                {retidos.length > 0 && (
-                  <span className="more">
-                    {plural(retidos.length, "cliente pediu e foi retido", "clientes pediram e foram retidos")}:{" "}
-                    {retidos.map((l) => l.company_name).join(", ")}
-                  </span>
-                )}
-              </Panel>
-            </div>
-
-            {isMaster && comissao.length > 0 && (
+            {isMaster && (
               <Panel
                 titulo="Comissão dos consultores"
                 sub={`${brl(comissaoTotal)} no mês · só o master enxerga`}
               >
+                {comissao.length === 0 && (
+                  <div className="empty">
+                    {erroComissao
+                      ? `A API recusou a consulta: ${erroComissao}`
+                      : "Nenhum consultor com carteira neste filtro."}
+                  </div>
+                )}
                 <Tabela
                   cols={[
                     { h: "Consultor", tl: true },
@@ -505,6 +455,66 @@ export default function CarteiraConsultorPage() {
                 )}
               </Panel>
             )}
+
+            <div className="grid r4" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+              <Panel titulo="Contratos de prazo vencidos" sub={String(vencidos.length)}>
+                {vencidos.length ? (
+                  <Tabela
+                    cols={[{ h: "Empresa", tl: true }, "Venceu", "Por mês"]}
+                    rows={vencidos.slice(0, 6).map((l) => [
+                      <span>
+                        {l.company_name}
+                        <i className="tag"> {l.plano}</i>
+                      </span>,
+                      `${Math.abs(Number(l.dias_para_vencer))} dias`,
+                      brl(Number(l.monthly_cents) / 100),
+                    ])}
+                  />
+                ) : (
+                  <div className="empty">Nenhum</div>
+                )}
+              </Panel>
+              <Panel titulo="Vence nos próximos 30 dias" sub={plural(vencendo.length, "contrato", "contratos")}>
+                {vencendo.length ? (
+                  <Tabela
+                    cols={[{ h: "Empresa", tl: true }, "Em", "Por mês"]}
+                    rows={vencendo.slice(0, 8).map((l) => [
+                      <span>
+                        {l.company_name}
+                        <i className="tag">{l.recorrente ? " renovação mensal" : ` ${l.plano}`}</i>
+                      </span>,
+                      `${l.vence_em_dias} dias`,
+                      brl(Number(l.monthly_cents) / 100),
+                    ])}
+                  />
+                ) : (
+                  <div className="empty">Nenhum</div>
+                )}
+              </Panel>
+              <Panel
+                titulo="Clientes saindo"
+                sub={saindo.length ? brl(valorEmRisco) : "0"}
+              >
+                {saindo.length ? (
+                  <Tabela
+                    cols={[{ h: "Empresa", tl: true }, "Pediu em", "Por mês"]}
+                    rows={saindo.slice(0, 6).map((l) => [
+                      l.company_name,
+                      l.cancelamento_solicitado ? dataBR(l.cancelamento_solicitado) : <Nd />,
+                      brl(Number(l.monthly_cents) / 100),
+                    ])}
+                  />
+                ) : (
+                  <div className="empty">Nenhum</div>
+                )}
+                {retidos.length > 0 && (
+                  <span className="more">
+                    {plural(retidos.length, "cliente pediu e foi retido", "clientes pediram e foram retidos")}:{" "}
+                    {retidos.map((l) => l.company_name).join(", ")}
+                  </span>
+                )}
+              </Panel>
+            </div>
 
             <Panel
               titulo="Faturado mês a mês"
