@@ -323,7 +323,7 @@ export default function CarteiraConsultorPage() {
           <div className="empty">Carregando...</div>
         ) : (
           <>
-            <div className="grid k5">
+            <div className={`grid ${isMaster ? "k6" : "k5"}`}>
               <Tile main label="Carteira por mês" valor={brl(total)} sub={plural(empresas, "empresa", "empresas")} />
               <Tile
                 label="Contratos"
@@ -359,6 +359,18 @@ export default function CarteiraConsultorPage() {
                 valor={brl(successFee)}
                 sub="o cliente paga isso a mais quando bate a meta"
               />
+              {isMaster && (
+                <Tile
+                  label="Comissão do mês"
+                  valor={brl(comissaoTotal)}
+                  cls="warn"
+                  sub={
+                    mediaConsultores > 0
+                      ? `média ${brl(mediaConsultores)} por consultor`
+                      : "só o master enxerga"
+                  }
+                />
+              )}
             </div>
 
             {isMaster && (
