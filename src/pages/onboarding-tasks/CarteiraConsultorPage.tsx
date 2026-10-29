@@ -42,6 +42,7 @@ interface LinhaCarteira {
   fator_pago: number | null;
   nao_pago_cents: number | null;
   venda_primeiro_mes: boolean;
+  atraso_pago_cents: number | null;
 }
 
 // Só o master recebe isso: a RPC devolve vazio para qualquer outro papel.
@@ -55,6 +56,7 @@ interface LinhaComissao {
   carteira_cents: number;
   base_cents: number;
   nao_pago_cents: number;
+  atraso_pago_cents: number;
   piso_cents: number;
   percentual: number;
   teto_cents: number | null;
@@ -526,6 +528,12 @@ export default function CarteiraConsultorPage() {
                         {Number(l.nao_pago_cents) > 0 && (
                           <i className="tag warn"> não pagou {brl(Number(l.nao_pago_cents) / 100)}</i>
                         )}
+                        {Number(l.atraso_pago_cents) > 0 && (
+                          <i className="tag pos">
+                            {" "}
+                            quitou {brl(Number(l.atraso_pago_cents) / 100)} atrasado
+                          </i>
+                        )}
                       </span>,
                       l.product_name || <Nd />,
                       l.consultant_name,
@@ -742,6 +750,12 @@ export default function CarteiraConsultorPage() {
                       {Number(c.nao_pago_cents) > 0 && (
                         <i className="tag warn"> -{brl(Number(c.nao_pago_cents) / 100)} não pago</i>
                       )}
+                      {Number(c.atraso_pago_cents) > 0 && (
+                        <i className="tag pos">
+                          {" "}
+                          +{brl(Number(c.atraso_pago_cents) / 100)} atrasado quitado
+                        </i>
+                      )}
                     </span>,
                     Number(c.piso_cents) > 0 ? brlFull(Number(c.piso_cents) / 100) : <Nd />,
                     <span>
@@ -774,7 +788,9 @@ export default function CarteiraConsultorPage() {
                   <b>Entrega:</b> piso {brlFull(params?.piso ?? 0)} mais {params?.pct ?? 0}% da base
                   de quem é responsável pelo cliente.
                   <br />
-                  <b>Base:</b> o valor mensalizado, zerado na parte que o cliente não pagou. Quem
+                  <b>Base:</b> o valor mensalizado, menos o que o cliente venceu e não pagou no mês.
+                  Atrasado de mês anterior que ele quita agora volta pra base deste mês, que é quando
+                  o dinheiro entrou. Quem
                   quitou adiantado não tem fatura no mês e conta cheio; quem está com fatura em
                   aberto entra só pelo que pagou. Quem pede cancelamento entra proporcional ao dia do
                   pedido, não ao dia em que o contrato encerra. Cliente que pediu e foi retido volta
