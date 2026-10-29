@@ -194,6 +194,7 @@ interface Project {
   onboarding_company?: { name: string; segment?: string | null } | null;
   consultant_id: string | null;
   cs_id: string | null;
+  sold_by_staff_id: string | null;
   crm_link: string | null;
   crm_login: string | null;
   crm_password: string | null;
@@ -537,7 +538,7 @@ const OnboardingProjectPage = () => {
       // Fetch project
       const { data: projectData, error: projectError } = await supabase
         .from("onboarding_projects")
-        .select(`*, onboarding_company_id, current_nps, crm_link, crm_login, crm_password, documents_link, consultant_id, cs_id, onboarding_company:onboarding_companies(name, segment, consultant_id, cs_id)`)
+        .select(`*, onboarding_company_id, current_nps, crm_link, crm_login, crm_password, documents_link, consultant_id, cs_id, sold_by_staff_id, onboarding_company:onboarding_companies(name, segment, consultant_id, cs_id)`)
         .eq("id", projectId)
         .single();
 
@@ -1551,6 +1552,25 @@ const OnboardingProjectPage = () => {
                   </SelectTrigger>
                   <SelectContent className="bg-background">
                     <SelectItem value="none">Nenhum</SelectItem>
+                    {staffList.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* quem vendeu ganha comissao de venda por cima deste projeto,
+                  sem tirar nada de quem entrega. Vazio = veio do comercial. */}
+              <div className="flex items-center gap-2 min-w-fit">
+                <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap w-20 sm:w-auto">Vendido por:</span>
+                <Select
+                  value={project.sold_by_staff_id || "none"}
+                  onValueChange={(value) => handleProjectUpdate("sold_by_staff_id", value === "none" ? null : value)}
+                >
+                  <SelectTrigger className="flex-1 sm:w-[180px] h-9 sm:h-10 text-xs sm:text-sm">
+                    <SelectValue placeholder="Selecionar..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background">
+                    <SelectItem value="none">Veio do comercial</SelectItem>
                     {staffList.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}

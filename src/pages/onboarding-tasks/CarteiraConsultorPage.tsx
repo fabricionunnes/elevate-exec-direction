@@ -36,6 +36,9 @@ interface LinhaCarteira {
   comissao_cents: number | null;
   comissao_cheia_cents: number | null;
   vence_em_dias: number | null;
+  vendido_por: string | null;
+  vendido_por_nome: string | null;
+  comissao_venda_cents: number | null;
 }
 
 // Só o master recebe isso: a RPC devolve vazio para qualquer outro papel.
@@ -53,6 +56,9 @@ interface LinhaComissao {
   variavel_cents: number;
   variavel_cheia_cents: number;
   perdido_cents: number;
+  vendas: number;
+  carteira_vendida_cents: number;
+  venda_cents: number;
   total_cents: number;
   acima_teto: boolean;
   peso: number | null;
@@ -62,6 +68,8 @@ interface Config {
   piso_cents: number;
   percentual: number;
   teto_cents: number | null;
+  percentual_venda: number;
+  produtos_sem_venda: string[] | null;
 }
 
 interface LinhaHistorico {
@@ -87,7 +95,7 @@ export default function CarteiraConsultorPage() {
   const [erroComissao, setErroComissao] = useState<string | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
   const [editando, setEditando] = useState(false);
-  const [form, setForm] = useState({ piso: "", pct: "", teto: "" });
+  const [form, setForm] = useState({ piso: "", pct: "", pctVenda: "", teto: "", semVenda: "" });
   const [salvando, setSalvando] = useState(false);
   const [recarregar, setRecarregar] = useState(0);
   const [carregando, setCarregando] = useState(true);
@@ -147,7 +155,7 @@ export default function CarteiraConsultorPage() {
     (async () => {
       const { data } = await supabase
         .from("consultant_commission_config" as any)
-        .select("piso_cents, percentual, teto_cents")
+        .select("piso_cents, percentual, teto_cents, percentual_venda, produtos_sem_venda")
         .is("consultant_id", null)
         .maybeSingle();
       if (!data) return;
@@ -155,7 +163,9 @@ export default function CarteiraConsultorPage() {
       setForm({
         piso: String(Number(data.piso_cents) / 100),
         pct: String(data.percentual),
+        pctVenda: String(data.percentual_venda ?? ""),
         teto: data.teto_cents == null ? "" : String(Number(data.teto_cents) / 100),
+        semVenda: (data.produtos_sem_venda || []).join(", "),
       });
     })();
   }, [carregandoPerm, isMaster, recarregar]);
@@ -163,12 +173,21 @@ export default function CarteiraConsultorPage() {
   const salvarConfig = async () => {
     const piso = Math.round(Number(form.piso.replace(",", ".")) * 100);
     const pct = Number(form.pct.replace(",", "."));
+    const pctVenda = Number(form.pctVenda.replace(",", "."));
     const teto = form.teto.trim() === "" ? null : Math.round(Number(form.teto.replace(",", ".")) * 100);
-    if (!Number.isFinite(piso) || !Number.isFinite(pct)) return;
+    const semVenda = form.semVenda.split(",").map((x) => x.trim()).filter(Boolean);
+    if (!Number.isFinite(piso) || !Number.isFinite(pct) || !Number.isFinite(pctVenda)) return;
     setSalvando(true);
     const { error } = await supabase
       .from("consultant_commission_config" as any)
-      .update({ piso_cents: piso, percentual: pct, teto_cents: teto, updated_at: new Date().toISOString() })
+      .update({
+        piso_cents: piso,
+        percentual: pct,
+        percentual_venda: pctVenda,
+        teto_cents: teto,
+        produtos_sem_venda: semVenda,
+        updated_at: new Date().toISOString(),
+      })
       .is("consultant_id", null);
     setSalvando(false);
     if (error) {
@@ -208,6 +227,10 @@ export default function CarteiraConsultorPage() {
 
   const comissaoTotal = useMemo(
     () => comissao.reduce((s, c) => s + Number(c.total_cents || 0), 0) / 100,
+    [comissao],
+  );
+  const vendaTotal = useMemo(
+    () => comissao.reduce((s, c) => s + Number(c.venda_cents || 0), 0) / 100,
     [comissao],
   );
   const perdidoTotal = useMemo(
@@ -390,9 +413,10 @@ export default function CarteiraConsultorPage() {
                     { h: "Consultor", tl: true },
                     "Carteira",
                     "Piso",
-                    "Variável",
+                    "Entrega",
+                    "Venda",
                     "Comissão do mês",
-                    "Peso na carteira",
+                    "Peso",
                   ]}
                   rows={comissao.map((c) => [
                     <span>
@@ -401,35 +425,54 @@ export default function CarteiraConsultorPage() {
                       {c.saindo > 0 && <i className="tag neg"> {c.saindo} saindo</i>}
                     </span>,
                     brlFull(Number(c.carteira_cents) / 100),
-                    brlFull(Number(c.piso_cents) / 100),
+                    Number(c.piso_cents) > 0 ? brlFull(Number(c.piso_cents) / 100) : <Nd />,
                     <span>
                       {brlFull(Number(c.variavel_cents) / 100)}
                       {Number(c.perdido_cents) > 0 && (
                         <i className="tag warn"> -{brl(Number(c.perdido_cents) / 100)} cancelamento</i>
                       )}
                     </span>,
-                    <b className={c.acima_teto ? "neg" : "pos"}>{brlFull(Number(c.total_cents) / 100)}</b>,
+                    Number(c.venda_cents) > 0 ? (
+                      <span>
+                        {brlFull(Number(c.venda_cents) / 100)}
+                        <i className="tag"> {plural(c.vendas, "venda", "vendas")}</i>
+                      </span>
+                    ) : (
+                      <Nd />
+                    ),
+                    <b className="pos">{brlFull(Number(c.total_cents) / 100)}</b>,
                     c.peso == null ? <Nd /> : `${(Number(c.peso) * 100).toFixed(1)}%`,
                   ])}
                   vazio="Sem comissão calculada."
                 />
                 <div className="nd" style={{ fontSize: 11, marginTop: 10, lineHeight: 1.6 }}>
-                  Piso {brl(Number(config?.piso_cents ?? 0) / 100)} mais {config?.percentual ?? 0}% da
-                  carteira mensalizada. Quem pede cancelamento entra proporcional ao dia do pedido, não
-                  ao dia em que o contrato encerra. Cliente que pediu e foi retido volta a valer cheio.
+                  <b>Entrega:</b> piso {brl(Number(config?.piso_cents ?? 0) / 100)} mais{" "}
+                  {config?.percentual ?? 0}% da carteira mensalizada de quem é responsável pelo
+                  cliente. Quem pede cancelamento entra proporcional ao dia do pedido, não ao dia em
+                  que o contrato encerra. Cliente que pediu e foi retido volta a valer cheio.
+                  <br />
+                  <b>Venda:</b> {config?.percentual_venda ?? 0}% pra quem vendeu o serviço, por cima do
+                  mesmo projeto e enquanto o cliente ficar. Não tira nada de quem entrega, os dois
+                  recebem. Para se a pessoa sair da equipe.
+                  {config?.produtos_sem_venda?.length
+                    ? ` Fora da comissão de venda: ${config.produtos_sem_venda.join(", ")}.`
+                    : ""}
                   <br />
                   Média dos consultores hoje: <b>{brl(mediaConsultores)}</b>
+                  {vendaTotal > 0 ? ` · ${brl(vendaTotal)} vieram de venda` : ""}
                   {config?.teto_cents
-                    ? ` · teto combinado ${brl(Number(config.teto_cents) / 100)} por cabeça`
+                    ? ` · referência de ${brl(Number(config.teto_cents) / 100)} por cabeça, pode passar`
                     : ""}
                   {perdidoTotal > 0 ? ` · ${brl(perdidoTotal)} a menos por cancelamento no mês` : ""}
                 </div>
                 {editando ? (
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-end", marginTop: 12, flexWrap: "wrap" }}>
                     {([
-                      { k: "piso", rot: "Piso (R$)" },
-                      { k: "pct", rot: "% da carteira" },
-                      { k: "teto", rot: "Teto por cabeça (R$)" },
+                      { k: "piso", rot: "Piso (R$)", w: 110 },
+                      { k: "pct", rot: "% da entrega", w: 110 },
+                      { k: "pctVenda", rot: "% da venda", w: 110 },
+                      { k: "teto", rot: "Referência (R$)", w: 120 },
+                      { k: "semVenda", rot: "Produtos sem comissão de venda", w: 230 },
                     ] as const).map((campo) => (
                       <label key={campo.k} style={{ display: "grid", gap: 4, fontSize: 11 }}>
                         <span className="nd">{campo.rot}</span>
@@ -437,7 +480,7 @@ export default function CarteiraConsultorPage() {
                           value={form[campo.k]}
                           onChange={(e) => setForm({ ...form, [campo.k]: e.target.value })}
                           style={{
-                            width: 120,
+                            width: campo.w,
                             padding: "6px 8px",
                             borderRadius: 6,
                             border: "1px solid rgba(255,255,255,.18)",
@@ -608,7 +651,7 @@ export default function CarteiraConsultorPage() {
                       "Por mês",
                       { h: "Como foi calculado", tl: true },
                       "Se bater meta",
-                      ...(isMaster ? ["Comissão"] : []),
+                      ...(isMaster ? [{ h: "Vendido por", tl: true }, "Comissão"] : []),
                     ]}
                     rows={g.linhas.map((l) => [
                       <span>
@@ -640,6 +683,19 @@ export default function CarteiraConsultorPage() {
                       Number(l.commission_max_cents) > 0 ? brlFull(Number(l.commission_max_cents) / 100) : <Nd />,
                       ...(isMaster
                         ? [
+                            l.vendido_por_nome ? (
+                              <span>
+                                <small>{l.vendido_por_nome}</small>
+                                {Number(l.comissao_venda_cents) > 0 && (
+                                  <i className="tag pos">
+                                    {" "}
+                                    +{brlFull(Number(l.comissao_venda_cents) / 100)}
+                                  </i>
+                                )}
+                              </span>
+                            ) : (
+                              <Nd />
+                            ),
                             l.comissao_cents == null ? (
                               <Nd />
                             ) : (
