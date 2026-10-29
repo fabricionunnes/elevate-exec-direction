@@ -69,7 +69,10 @@
 @media (prefers-reduced-motion: reduce) { .pc .fn-anel.entra, .pc .fn-guias, .pc .fn-rot { animation: none; } }
 .pc .grid { display: grid; gap: 12px; }
 .pc .k5 { grid-template-columns: 1.35fr 1fr 1fr 1fr 1fr; }
-.pc .k6 { grid-template-columns: 1.35fr 1fr 1fr 1fr 1fr 1fr; }
+.pc .k6 { grid-template-columns: 1.25fr .95fr .95fr .95fr .95fr 1.25fr; }
+/* seis colunas e coluna estreita: o valor em destaque nao cabe em 36px e o
+   .val e nowrap, entao transborda o card. Aqui ele usa o tamanho normal. */
+.pc .k6 .p.main .val { font-size: clamp(20px, 1.9vw, 30px); }
 .pc .r2 { grid-template-columns: 1.55fr 1fr; }
 .pc .r4 { grid-template-columns: repeat(4, 1fr); }
 .pc .r3 { grid-template-columns: 2.1fr 1fr; }
