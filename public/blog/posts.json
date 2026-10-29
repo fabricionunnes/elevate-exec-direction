@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-28T21:00:57",
+ "gerado_em": "2026-10-29T10:01:02",
  "posts": [
+  {
+   "slug": "produto-validado-nao-garante-venda-sem-processo",
+   "url": "/blog/produto-validado-nao-garante-venda-sem-processo/",
+   "titulo": "Produto validado não garante venda sem processo comercial",
+   "resumo": "Ter produto que funciona não resolve o problema de quem não bate meta. O que faz o número subir é ter processo comercial estruturado e alguém cobrando toda semana.",
+   "tags": [
+    "produto validado",
+    "processo comercial",
+    "estrutura comercial",
+    "conversão",
+    "meta mensal"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-29",
+   "ts": 2219
+  },
   {
    "slug": "experiencia-operacional-vale-mais-teoria-dar-clareza",
    "url": "/blog/experiencia-operacional-vale-mais-teoria-dar-clareza/",
