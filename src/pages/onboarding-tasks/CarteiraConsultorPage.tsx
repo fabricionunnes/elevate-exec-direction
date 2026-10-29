@@ -70,12 +70,17 @@ interface LinhaComissao {
 }
 
 interface Config {
+  id: string;
+  consultant_id: string | null;
   piso_cents: number;
   percentual: number;
   teto_cents: number | null;
   percentual_venda: number;
   produtos_sem_venda: string[] | null;
 }
+
+// chave "padrao" é a regra que vale pra quem não tem ajuste próprio
+const PADRAO = "padrao";
 
 interface LinhaHistorico {
   mes: string;
@@ -98,8 +103,8 @@ export default function CarteiraConsultorPage() {
   const [historico, setHistorico] = useState<LinhaHistorico[]>([]);
   const [comissao, setComissao] = useState<LinhaComissao[]>([]);
   const [erroComissao, setErroComissao] = useState<string | null>(null);
-  const [config, setConfig] = useState<Config | null>(null);
-  const [editando, setEditando] = useState(false);
+  const [configs, setConfigs] = useState<Record<string, Config>>({});
+  const [editando, setEditando] = useState<string | null>(null);
   const [form, setForm] = useState({ piso: "", pct: "", pctVenda: "", teto: "", semVenda: "" });
   const [salvando, setSalvando] = useState(false);
   const [recarregar, setRecarregar] = useState(0);
@@ -154,52 +159,89 @@ export default function CarteiraConsultorPage() {
     };
   }, [consultor, carregandoPerm, recarregar]);
 
-  // os parâmetros da comissão ficam numa linha padrão da config; só o master lê.
+  // Os parâmetros ficam na config: a linha de consultant_id nulo é o padrão e
+  // cada consultor pode ter a própria linha por cima. Só o master lê.
   useEffect(() => {
     if (carregandoPerm || !isMaster) return;
     (async () => {
       const { data } = await supabase
         .from("consultant_commission_config" as any)
-        .select("piso_cents, percentual, teto_cents, percentual_venda, produtos_sem_venda")
-        .is("consultant_id", null)
-        .maybeSingle();
-      if (!data) return;
-      setConfig(data as Config);
-      setForm({
-        piso: String(Number(data.piso_cents) / 100),
-        pct: String(data.percentual),
-        pctVenda: String(data.percentual_venda ?? ""),
-        teto: data.teto_cents == null ? "" : String(Number(data.teto_cents) / 100),
-        semVenda: (data.produtos_sem_venda || []).join(", "),
+        .select("id, consultant_id, piso_cents, percentual, teto_cents, percentual_venda, produtos_sem_venda");
+      const mapa: Record<string, Config> = {};
+      ((data || []) as Config[]).forEach((c) => {
+        mapa[c.consultant_id || PADRAO] = c;
       });
+      setConfigs(mapa);
     })();
   }, [carregandoPerm, isMaster, recarregar]);
 
-  const salvarConfig = async () => {
-    const piso = Math.round(Number(form.piso.replace(",", ".")) * 100);
-    const pct = Number(form.pct.replace(",", "."));
-    const pctVenda = Number(form.pctVenda.replace(",", "."));
-    const teto = form.teto.trim() === "" ? null : Math.round(Number(form.teto.replace(",", ".")) * 100);
-    const semVenda = form.semVenda.split(",").map((x) => x.trim()).filter(Boolean);
-    if (!Number.isFinite(piso) || !Number.isFinite(pct) || !Number.isFinite(pctVenda)) return;
+  const config = configs[PADRAO] || null;
+
+  // abre o formulário com o que já vale pra aquela pessoa, mesmo que ela ainda
+  // não tenha linha própria: assim o master edita a partir do número real.
+  const abrirEdicao = (alvo: string) => {
+    const c = configs[alvo] || configs[PADRAO];
+    const linha = alvo === PADRAO ? null : comissao.find((x) => x.consultant_id === alvo);
+    setForm({
+      piso: String(Number(c?.piso_cents ?? (linha ? linha.piso_cents : 0)) / 100),
+      pct: String(c?.percentual ?? linha?.percentual ?? ""),
+      pctVenda: String(c?.percentual_venda ?? linha?.percentual_venda ?? ""),
+      teto: c?.teto_cents == null ? "" : String(Number(c.teto_cents) / 100),
+      semVenda: (configs[PADRAO]?.produtos_sem_venda || []).join(", "),
+    });
+    setEditando(alvo);
+  };
+
+  const voltarAoPadrao = async (alvo: string) => {
+    const atual = configs[alvo];
+    if (!atual) return;
     setSalvando(true);
     const { error } = await supabase
       .from("consultant_commission_config" as any)
-      .update({
-        piso_cents: piso,
-        percentual: pct,
-        percentual_venda: pctVenda,
-        teto_cents: teto,
-        produtos_sem_venda: semVenda,
-        updated_at: new Date().toISOString(),
-      })
-      .is("consultant_id", null);
+      .delete()
+      .eq("id", atual.id);
     setSalvando(false);
     if (error) {
       console.error("config comissão", error);
       return;
     }
-    setEditando(false);
+    setEditando(null);
+    setRecarregar((n) => n + 1);
+  };
+
+  const salvarConfig = async () => {
+    if (!editando) return;
+    const piso = Math.round(Number(form.piso.replace(",", ".")) * 100);
+    const pct = Number(form.pct.replace(",", "."));
+    const pctVenda = Number(form.pctVenda.replace(",", "."));
+    const teto = form.teto.trim() === "" ? null : Math.round(Number(form.teto.replace(",", ".")) * 100);
+    if (!Number.isFinite(piso) || !Number.isFinite(pct) || !Number.isFinite(pctVenda)) return;
+
+    const campos: Record<string, unknown> = {
+      piso_cents: piso,
+      percentual: pct,
+      percentual_venda: pctVenda,
+      teto_cents: teto,
+      updated_at: new Date().toISOString(),
+    };
+    // a lista de produtos sem comissão de venda é da empresa toda, não de uma pessoa
+    if (editando === PADRAO) {
+      campos.produtos_sem_venda = form.semVenda.split(",").map((x) => x.trim()).filter(Boolean);
+    }
+
+    setSalvando(true);
+    const atual = configs[editando];
+    const tabela = supabase.from("consultant_commission_config" as any);
+    // upsert não serve: o índice de unicidade do consultor é parcial
+    const { error } = atual
+      ? await tabela.update(campos).eq("id", atual.id)
+      : await tabela.insert({ ...campos, consultant_id: editando });
+    setSalvando(false);
+    if (error) {
+      console.error("config comissão", error);
+      return;
+    }
+    setEditando(null);
     setRecarregar((n) => n + 1);
   };
 
@@ -454,11 +496,13 @@ export default function CarteiraConsultorPage() {
                     "Venda",
                     "Comissão do mês",
                     "Peso",
+                    ...(isMaster ? [""] : []),
                   ]}
                   rows={comissao.map((c) => [
                     <span>
                       {c.consultant_name}
                       {c.papel !== "consultant" && <i className="tag"> {c.papel}</i>}
+                      {isMaster && configs[c.consultant_id] && <i className="tag pos"> regra própria</i>}
                       {c.saindo > 0 && <i className="tag neg"> {c.saindo} saindo</i>}
                     </span>,
                     brlFull(Number(c.carteira_cents) / 100),
@@ -485,6 +529,13 @@ export default function CarteiraConsultorPage() {
                     ),
                     <b className="pos">{brlFull(Number(c.total_cents) / 100)}</b>,
                     c.peso == null ? <Nd /> : `${(Number(c.peso) * 100).toFixed(1)}%`,
+                    ...(isMaster
+                      ? [
+                          <Lk onClick={() => abrirEdicao(c.consultant_id)}>
+                            {configs[c.consultant_id] ? "ajustado" : "ajustar"}
+                          </Lk>,
+                        ]
+                      : []),
                   ])}
                   vazio="Sem comissão calculada."
                 />
@@ -519,46 +570,73 @@ export default function CarteiraConsultorPage() {
                     : ""}
                 </div>
                 {isMaster && (editando ? (
-                  <div style={{ display: "flex", gap: 10, alignItems: "flex-end", marginTop: 12, flexWrap: "wrap" }}>
-                    {([
-                      { k: "piso", rot: "Piso (R$)", w: 110 },
-                      { k: "pct", rot: "% da entrega", w: 110 },
-                      { k: "pctVenda", rot: "% da venda", w: 110 },
-                      { k: "teto", rot: "Referência (R$)", w: 120 },
-                      { k: "semVenda", rot: "Produtos sem comissão de venda", w: 230 },
-                    ] as const).map((campo) => (
-                      <label key={campo.k} style={{ display: "grid", gap: 4, fontSize: 11 }}>
-                        <span className="nd">{campo.rot}</span>
-                        <input
-                          value={form[campo.k]}
-                          onChange={(e) => setForm({ ...form, [campo.k]: e.target.value })}
-                          style={{
-                            width: campo.w,
-                            padding: "6px 8px",
-                            borderRadius: 6,
-                            border: "1px solid rgba(255,255,255,.18)",
-                            background: "rgba(255,255,255,.05)",
-                            color: "inherit",
-                            font: "inherit",
-                          }}
-                        />
-                      </label>
-                    ))}
-                    <button type="button" className="back" onClick={salvarConfig} disabled={salvando}>
-                      {salvando ? "Salvando" : "Salvar"}
-                    </button>
-                    <button type="button" className="back" onClick={() => setEditando(false)}>
-                      Cancelar
-                    </button>
+                  <div style={{ marginTop: 14, borderTop: "1px solid rgba(255,255,255,.1)", paddingTop: 12 }}>
+                    <div className="nd" style={{ fontSize: 11, marginBottom: 8 }}>
+                      {editando === PADRAO ? (
+                        <>
+                          Ajustando a <b>regra padrão</b>, que vale pra quem não tem regra própria.
+                        </>
+                      ) : (
+                        <>
+                          Ajustando só{" "}
+                          <b>{comissao.find((x) => x.consultant_id === editando)?.consultant_name}</b>.
+                          {!configs[editando] && " Ele ainda segue o padrão; salvar cria a regra dele."}
+                        </>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+                      {([
+                        { k: "piso", rot: "Piso (R$)", w: 110 },
+                        { k: "pct", rot: "% da entrega", w: 110 },
+                        { k: "pctVenda", rot: "% da venda", w: 110 },
+                        { k: "teto", rot: "Referência (R$)", w: 120 },
+                        ...(editando === PADRAO
+                          ? [{ k: "semVenda" as const, rot: "Produtos sem comissão de venda", w: 230 }]
+                          : []),
+                      ] as const).map((campo) => (
+                        <label key={campo.k} style={{ display: "grid", gap: 4, fontSize: 11 }}>
+                          <span className="nd">{campo.rot}</span>
+                          <input
+                            value={form[campo.k]}
+                            onChange={(e) => setForm({ ...form, [campo.k]: e.target.value })}
+                            style={{
+                              width: campo.w,
+                              padding: "6px 8px",
+                              borderRadius: 6,
+                              border: "1px solid rgba(255,255,255,.18)",
+                              background: "rgba(255,255,255,.05)",
+                              color: "inherit",
+                              font: "inherit",
+                            }}
+                          />
+                        </label>
+                      ))}
+                      <button type="button" className="back" onClick={salvarConfig} disabled={salvando}>
+                        {salvando ? "Salvando" : "Salvar"}
+                      </button>
+                      {editando !== PADRAO && configs[editando] && (
+                        <button
+                          type="button"
+                          className="back"
+                          onClick={() => voltarAoPadrao(editando)}
+                          disabled={salvando}
+                        >
+                          Voltar ao padrão
+                        </button>
+                      )}
+                      <button type="button" className="back" onClick={() => setEditando(null)}>
+                        Cancelar
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <button
                     type="button"
                     className="back"
                     style={{ marginTop: 12 }}
-                    onClick={() => setEditando(true)}
+                    onClick={() => abrirEdicao(PADRAO)}
                   >
-                    Ajustar piso e percentual
+                    Ajustar a regra padrão
                   </button>
                 ))}
               </Panel>
