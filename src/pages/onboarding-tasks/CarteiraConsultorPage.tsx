@@ -241,6 +241,12 @@ export default function CarteiraConsultorPage() {
     () => comissao.reduce((s, c) => s + Number(c.perdido_cents || 0), 0) / 100,
     [comissao],
   );
+  // Quem pode ver a comissão é decidido no banco (master, ou consultor com
+  // ve_comissao ligado). A tela só reflete: se veio valor, mostra.
+  const veComissao = useMemo(
+    () => comissao.length > 0 || linhas.some((l) => l.comissao_cents != null),
+    [comissao, linhas],
+  );
   const soConsultores = useMemo(() => comissao.filter((c) => c.papel === "consultant"), [comissao]);
   const mediaConsultores = soConsultores.length
     ? soConsultores.reduce((s, c) => s + Number(c.total_cents || 0), 0) / 100 / soConsultores.length
@@ -350,7 +356,7 @@ export default function CarteiraConsultorPage() {
           <div className="empty">Carregando...</div>
         ) : (
           <>
-            <div className={`grid ${isMaster ? "k6" : "k5"}`}>
+            <div className={`grid ${veComissao ? "k6" : "k5"}`}>
               <Tile main label="Carteira por mês" valor={brl(total)} sub={plural(empresas, "empresa", "empresas")} />
               <Tile
                 label="Contratos"
@@ -386,24 +392,24 @@ export default function CarteiraConsultorPage() {
                 valor={brl(successFee)}
                 sub="o cliente paga isso a mais quando bate a meta"
               />
-              {isMaster && (
+              {veComissao && (
                 <Tile
                   main
                   label="Comissão do mês"
                   valor={brl(comissaoTotal)}
                   sub={
-                    mediaConsultores > 0
-                      ? `média ${brl(mediaConsultores)} por consultor · só o master enxerga`
-                      : "só o master enxerga"
+                    isMaster && mediaConsultores > 0
+                      ? `média ${brl(mediaConsultores)} por consultor`
+                      : "sobre a base paga do mês"
                   }
                 />
               )}
             </div>
 
-            {isMaster && (
+            {veComissao && (
               <Panel
-                titulo="Comissão dos consultores"
-                sub={`${brl(comissaoTotal)} no mês · só o master enxerga`}
+                titulo={isMaster ? "Comissão dos consultores" : "Sua comissão"}
+                sub={isMaster ? `${brl(comissaoTotal)} no mês · só o master enxerga` : `${brl(comissaoTotal)} no mês`}
               >
                 {comissao.length === 0 && (
                   <div className="empty">
@@ -480,7 +486,7 @@ export default function CarteiraConsultorPage() {
                     : ""}
                   {perdidoTotal > 0 ? ` · ${brl(perdidoTotal)} a menos por cancelamento no mês` : ""}
                 </div>
-                {editando ? (
+                {isMaster && (editando ? (
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-end", marginTop: 12, flexWrap: "wrap" }}>
                     {([
                       { k: "piso", rot: "Piso (R$)", w: 110 },
@@ -522,7 +528,7 @@ export default function CarteiraConsultorPage() {
                   >
                     Ajustar piso e percentual
                   </button>
-                )}
+                ))}
               </Panel>
             )}
 
@@ -655,7 +661,7 @@ export default function CarteiraConsultorPage() {
                   sub={
                     <>
                       {plural(g.linhas.length, "contrato", "contratos")} · {brlFull(g.total)} por mês
-                      {isMaster && c ? ` · comissão ${brlFull(Number(c.total_cents) / 100)}` : ""}
+                      {veComissao && c ? ` · comissão ${brlFull(Number(c.total_cents) / 100)}` : ""}
                     </>
                   }
                 >
@@ -666,7 +672,7 @@ export default function CarteiraConsultorPage() {
                       "Por mês",
                       { h: "Como foi calculado", tl: true },
                       "Se bater meta",
-                      ...(isMaster ? [{ h: "Vendido por", tl: true }, "Comissão"] : []),
+                      ...(veComissao ? [{ h: "Vendido por", tl: true }, "Comissão"] : []),
                     ]}
                     rows={g.linhas.map((l) => [
                       <span>
@@ -699,7 +705,7 @@ export default function CarteiraConsultorPage() {
                           : ""}
                       </small>,
                       Number(l.commission_max_cents) > 0 ? brlFull(Number(l.commission_max_cents) / 100) : <Nd />,
-                      ...(isMaster
+                      ...(veComissao
                         ? [
                             l.vendido_por_nome ? (
                               <span>
