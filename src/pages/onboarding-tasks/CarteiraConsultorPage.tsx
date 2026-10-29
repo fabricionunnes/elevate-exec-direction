@@ -361,12 +361,12 @@ export default function CarteiraConsultorPage() {
               />
               {isMaster && (
                 <Tile
+                  main
                   label="Comissão do mês"
                   valor={brl(comissaoTotal)}
-                  cls="warn"
                   sub={
                     mediaConsultores > 0
-                      ? `média ${brl(mediaConsultores)} por consultor`
+                      ? `média ${brl(mediaConsultores)} por consultor · só o master enxerga`
                       : "só o master enxerga"
                   }
                 />
