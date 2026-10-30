@@ -546,13 +546,11 @@ export default function CarteiraConsultorPage() {
     });
     return out.sort((a, b) => b.valor - a.valor || a.empresa.nome.localeCompare(b.empresa.nome));
   }, [empresasAnalise, analise, medianaProduto]);
-  // lista exibida: por empresa, no máximo duas com valor (as maiores) e uma "a combinar"
+  // lista exibida: todas, agrupadas por empresa (Fabrício, 30/10: "pode por dois ou três produtos, não tem problema")
   const oportunidades = useMemo(() => {
-    const comValor = new Map<string, number>(), semValor = new Map<string, number>();
-    return oportunidadesTodas.filter((o) => {
-      const m = o.valor > 0 ? comValor : semValor, lim = o.valor > 0 ? 2 : 1;
-      const n = m.get(o.empresa.id) || 0; if (n >= lim) return false; m.set(o.empresa.id, n + 1); return true;
-    });
+    const ordemEmpresa = new Map<string, number>();
+    oportunidadesTodas.forEach((o) => { if (!ordemEmpresa.has(o.empresa.id)) ordemEmpresa.set(o.empresa.id, -o.valor); });
+    return [...oportunidadesTodas].sort((a, b) => (ordemEmpresa.get(a.empresa.id)! - ordemEmpresa.get(b.empresa.id)!) || a.empresa.nome.localeCompare(b.empresa.nome) || b.valor - a.valor);
   }, [oportunidadesTodas]);
 
   // quem pediu pra sair é o risco maior de todos: entra no card junto com o risco alto (Fabrício, 30/10)
@@ -1295,7 +1293,7 @@ export default function CarteiraConsultorPage() {
                   <Panel titulo="Oportunidades pra aumentar a receita" sub={`${brl(potencial)} por mês`}>
                     <Tabela
                       cols={[{ h: "Empresa", tl: true }, { h: "Oferecer", tl: true }, { h: "Por quê", tl: true }, "Por mês", ...(veComissao && params ? ["Sua comissão"] : [])]}
-                      rows={oportunidades.slice(0, 14).map((o) => {
+                      rows={oportunidades.slice(0, 60).map((o) => {
                         const com = comissaoDe(o);
                         return [
                           <Lk onClick={() => setFocoEmpresa(o.empresa.id)}>{o.empresa.nome}</Lk>,
@@ -1307,7 +1305,7 @@ export default function CarteiraConsultorPage() {
                       })}
                       vazio="Nenhuma oportunidade clara agora: a carteira está completa ou os clientes precisam ser segurados primeiro."
                     />
-                    {oportunidades.length > 14 && <span className="more">e mais {oportunidades.length - 14} oportunidades</span>}
+                    {oportunidades.length > 60 && <span className="more">e mais {oportunidades.length - 60} oportunidades (filtre por consultor pra ver todas)</span>}
                     <span className="more">Quem está em risco alto ou pediu pra sair fica fora desta lista: primeiro segura, depois vende. Valores: Sales Acceleration R$ 2.000 e UNV Social R$ 1.500 (tabela); os demais pela mediana da carteira.</span>
                   </Panel>
                 </div>
