@@ -790,11 +790,14 @@ export default function CarteiraConsultorPage() {
                   <br />
                   <b>Base:</b> o valor mensalizado, menos o que o cliente venceu e não pagou no mês.
                   Atrasado de mês anterior que ele quita agora volta pra base deste mês, que é quando
-                  o dinheiro entrou. Quem
-                  quitou adiantado não tem fatura no mês e conta cheio; quem está com fatura em
-                  aberto entra só pelo que pagou. Quem pede cancelamento entra proporcional ao dia do
-                  pedido, não ao dia em que o contrato encerra. Cliente que pediu e foi retido volta
-                  a valer cheio.
+                  o dinheiro entrou. Quem quitou adiantado não tem fatura no mês e conta cheio;
+                  quem está com fatura vencida entra só pelo que pagou.
+                  <br />
+                  <b>Até quando conta:</b> enquanto o cliente paga. Quem pediu cancelamento continua
+                  gerando comissão durante o aviso prévio e para no dia em que o contrato encerra. Se
+                  o cliente de saída não tiver cobrança no mês, não conta. Contrato com prazo
+                  (trimestral, semestral, anual) para no fim do prazo e só volta quando a renovação
+                  for lançada. Cliente que pediu e foi retido volta a valer cheio.
                   <br />
                   <b>Venda:</b> {params?.pctVenda ?? 0}% pra quem vendeu o serviço, por cima do
                   mesmo projeto e enquanto o cliente ficar. Não tira nada de quem entrega, os dois
