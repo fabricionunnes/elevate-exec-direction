@@ -448,13 +448,13 @@ export default function CarteiraConsultorPage() {
     return out;
   }, [linhas]);
   const precoRef = (produto: string) => TABELA_PRECO[produto] || medianaProduto.get(produto) || REF_PRECO[produto] || 0;
-  // Comissão de uma oportunidade: produto fora da recorrência (UNV Social) paga só venda única, uma vez, no 1º mês;
-  // os demais pagam entrega + venda todo mês.
+  // Comissão de uma oportunidade = receita × percentual de entrega (7,4%), e só isso (Fabrício, 30/10: "se é 1500 na
+  // receita, é multiplicar pelo valor da comissão"). Produto fora da recorrência (UNV Social) paga só venda única, uma vez.
   const comissaoDe = (o: Oportunidade): { mensal: number; unica: number } => {
     if (!params || !o.valor) return { mensal: 0, unica: 0 };
     const semRecorrencia = !!o.produtoVenda && (params.semVenda || []).includes(o.produtoVenda);
     if (semRecorrencia) return { mensal: 0, unica: o.valor * (params.pctVendaUnica || 0) / 100 };
-    return { mensal: o.valor * (params.pct + (o.produtoVenda ? params.pctVenda : 0)) / 100, unica: 0 };
+    return { mensal: o.valor * params.pct / 100, unica: 0 };
   };
 
   const empresasAnalise = useMemo((): EmpresaAnalise[] => {
@@ -1339,7 +1339,7 @@ export default function CarteiraConsultorPage() {
                       ],
                     ]}
                   />
-                  <span className="more">"Pode perder" é o que o cliente paga hoje por mês: é isso que sai da carteira se ele cancelar. "Pode ganhar" soma todas as ofertas com valor pra aquela empresa. UNV Social paga comissão uma vez só, no primeiro mês (venda única), e não entra na recorrência. Comissão − considera só o percentual de entrega.</span>
+                  <span className="more">"Pode perder" é o que o cliente paga hoje por mês: é isso que sai da carteira se ele cancelar. "Pode ganhar" soma todas as ofertas com valor pra aquela empresa. Comissão + e − usam o percentual de entrega sobre a receita; UNV Social paga uma vez só, no primeiro mês (venda única), e não entra na recorrência.</span>
                 </Panel>
 
                 <Panel titulo="Plano da semana" sub="o que fazer primeiro">
