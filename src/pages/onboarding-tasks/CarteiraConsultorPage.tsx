@@ -507,7 +507,7 @@ export default function CarteiraConsultorPage() {
     return out.sort((a, b) => (Number(b.saindo) - Number(a.saindo)) || b.risco - a.risco || b.mensal - a.mensal);
   }, [analise, linhas]);
 
-  const oportunidades = useMemo((): Oportunidade[] => {
+  const oportunidadesTodas = useMemo((): Oportunidade[] => {
     const out: Oportunidade[] = [];
     const tem = (e: EmpresaAnalise, re: RegExp) => e.produtos.some((p) => re.test(p));
     empresasAnalise.forEach((e) => {
@@ -532,28 +532,40 @@ export default function CarteiraConsultorPage() {
       }
       if (saudavel && e.meses >= 6 && analise.some((a) => a.company_id === e.id && a.recorrente && /mensal/i.test(a.plano || ""))) out.push({ empresa: e, oferta: "Migrar pra plano semestral ou anual", porque: "satisfeito e no mensal: prazo maior protege contra cancelamento por impulso", valor: 0, tipo: "protecao", produtoVenda: null });
     });
-    // por empresa: no máximo duas com valor (as maiores) e uma "a combinar": lista longa ninguém executa
-    const comValor = new Map<string, number>(), semValor = new Map<string, number>();
-    return out
-      .sort((a, b) => b.valor - a.valor || a.empresa.nome.localeCompare(b.empresa.nome))
-      .filter((o) => {
-        const m = o.valor > 0 ? comValor : semValor, lim = o.valor > 0 ? 2 : 1;
-        const n = m.get(o.empresa.id) || 0; if (n >= lim) return false; m.set(o.empresa.id, n + 1); return true;
-      });
+    return out.sort((a, b) => b.valor - a.valor || a.empresa.nome.localeCompare(b.empresa.nome));
   }, [empresasAnalise, analise, medianaProduto]);
+  // lista exibida: por empresa, no máximo duas com valor (as maiores) e uma "a combinar"
+  const oportunidades = useMemo(() => {
+    const comValor = new Map<string, number>(), semValor = new Map<string, number>();
+    return oportunidadesTodas.filter((o) => {
+      const m = o.valor > 0 ? comValor : semValor, lim = o.valor > 0 ? 2 : 1;
+      const n = m.get(o.empresa.id) || 0; if (n >= lim) return false; m.set(o.empresa.id, n + 1); return true;
+    });
+  }, [oportunidadesTodas]);
 
   const emRisco = useMemo(() => empresasAnalise.filter((e) => !e.saindo && e.nivel === "alto"), [empresasAnalise]);
   const emAtencao = useMemo(() => empresasAnalise.filter((e) => !e.saindo && e.nivel === "atencao"), [empresasAnalise]);
   const valorEmRiscoAlto = emRisco.reduce((s, e) => s + e.mensal, 0);
-  const potencial = oportunidades.reduce((s, o) => s + o.valor, 0);
+  const potencial = oportunidadesTodas.reduce((s, o) => s + o.valor, 0);
   // quanto a comissão sobe se as oportunidades fecharem: entrega sempre; venda quando o produto paga venda
   const ganhoComissao = useMemo(() => {
     if (!params) return null;
-    return oportunidades.reduce((s, o) => {
+    return oportunidadesTodas.reduce((s, o) => {
       const pagaVenda = o.produtoVenda && !(params.semVenda || []).includes(o.produtoVenda);
       return s + o.valor * (params.pct + (pagaVenda ? params.pctVenda : 0)) / 100;
     }, 0);
-  }, [oportunidades, params]);
+  }, [oportunidadesTodas, params]);
+  // Fabrício (30/10): "mostre o total e o que pode ganhar de cada cliente, e perder também"
+  const ganhoPerda = useMemo(() => {
+    const comissaoGanho = (o: Oportunidade) => params ? o.valor * (params.pct + (o.produtoVenda && !(params.semVenda || []).includes(o.produtoVenda) ? params.pctVenda : 0)) / 100 : 0;
+    const linhasGP = empresasAnalise.map((e) => {
+      const ops = oportunidadesTodas.filter((o) => o.empresa.id === e.id);
+      const ganho = ops.reduce((s, o) => s + o.valor, 0);
+      return { e, hoje: e.mensal, ganho, perda: e.mensal, comGanho: ops.reduce((s, o) => s + comissaoGanho(o), 0), comPerda: params ? e.mensal * params.pct / 100 : 0, ofertas: ops.filter((o) => o.valor > 0).map((o) => o.oferta) };
+    }).sort((a, b) => (Number(b.e.saindo) - Number(a.e.saindo)) || b.e.risco - a.e.risco || b.ganho - a.ganho);
+    const tot = linhasGP.reduce((t, l) => ({ hoje: t.hoje + l.hoje, ganho: t.ganho + l.ganho, perdaRisco: t.perdaRisco + ((l.e.saindo || l.e.nivel === "alto") ? l.perda : 0), perdaAtencao: t.perdaAtencao + (l.e.nivel === "atencao" ? l.perda : 0), comGanho: t.comGanho + l.comGanho, comPerdaRisco: t.comPerdaRisco + ((l.e.saindo || l.e.nivel === "alto") ? l.comPerda : 0) }), { hoje: 0, ganho: 0, perdaRisco: 0, perdaAtencao: 0, comGanho: 0, comPerdaRisco: 0 });
+    return { linhas: linhasGP, tot };
+  }, [empresasAnalise, oportunidadesTodas, params]);
   const empresaFoco = useMemo(() => empresasAnalise.find((e) => e.id === focoEmpresa) || null, [empresasAnalise, focoEmpresa]);
   const mostraConsultor = !consultor && empresasAnalise.some((e) => e.consultorId !== empresasAnalise[0]?.consultorId);
   const chipsRisco = (e: EmpresaAnalise) => (
@@ -1285,6 +1297,36 @@ export default function CarteiraConsultorPage() {
                     <span className="more">Quem está em risco alto ou pediu pra sair fica fora desta lista: primeiro segura, depois vende. Valores são a mediana da carteira pro produto.</span>
                   </Panel>
                 </div>
+
+                <Panel titulo="Quanto dá pra ganhar e quanto dá pra perder, cliente a cliente"
+                  sub={<>ganhar <b className="pos">+{brl(ganhoPerda.tot.ganho)}</b>/mês · em risco <b className="neg">{brl(ganhoPerda.tot.perdaRisco)}</b>/mês{ganhoPerda.tot.perdaAtencao ? <> · em atenção {brl(ganhoPerda.tot.perdaAtencao)}/mês</> : null}</>}>
+                  <Tabela
+                    cols={[{ h: "Empresa", tl: true }, ...(mostraConsultor ? [{ h: "Consultor", tl: true }] : []), "Paga hoje", "Pode ganhar", { h: "Com o quê", tl: true }, "Pode perder", "Risco", ...(veComissao && params ? ["Comissão +", "Comissão −"] : [])]}
+                    rows={[
+                      ...ganhoPerda.linhas.map((l) => [
+                        <Lk onClick={() => setFocoEmpresa(l.e.id)}>{l.e.nome}</Lk>,
+                        ...(mostraConsultor ? [l.e.consultor] : []),
+                        brl(l.hoje),
+                        l.ganho ? <span className="pos">+{brl(l.ganho)}</span> : <Nd>{l.e.saindo || l.e.nivel === "alto" ? "segurar antes" : "-"}</Nd>,
+                        <span style={{ fontSize: 12 }}>{l.ofertas.join(", ") || <Nd />}</span>,
+                        <span className={l.e.saindo || l.e.nivel === "alto" ? "neg" : l.e.nivel === "atencao" ? "warn" : ""}>{brl(l.perda)}</span>,
+                        l.e.saindo ? <span className="st r">saindo</span> : <St ok={l.e.nivel === "ok"} warn={l.e.nivel === "atencao"} tg="ok" tw={`atenção ${l.e.risco}`} tb={`alto ${l.e.risco}`} />,
+                        ...(veComissao && params ? [l.comGanho ? <span className="pos">+{brl(l.comGanho)}</span> : <Nd />, <span className={l.e.saindo || l.e.nivel === "alto" ? "neg" : ""}>−{brl(l.comPerda)}</span>] : []),
+                      ]),
+                      [
+                        <b>Total ({plural(ganhoPerda.linhas.length, "empresa", "empresas")})</b>,
+                        ...(mostraConsultor ? [""] : []),
+                        <b>{brl(ganhoPerda.tot.hoje)}</b>,
+                        <b className="pos">+{brl(ganhoPerda.tot.ganho)}</b>,
+                        <span style={{ fontSize: 12 }}>se fechar tudo: {brl(ganhoPerda.tot.hoje + ganhoPerda.tot.ganho)}/mês</span>,
+                        <b className="neg">{brl(ganhoPerda.tot.perdaRisco)}</b>,
+                        <span style={{ fontSize: 12 }}>em risco alto ou saindo</span>,
+                        ...(veComissao && params ? [<b className="pos">+{brl(ganhoPerda.tot.comGanho)}</b>, <b className="neg">−{brl(ganhoPerda.tot.comPerdaRisco)}</b>] : []),
+                      ],
+                    ]}
+                  />
+                  <span className="more">"Pode perder" é o que o cliente paga hoje por mês: é isso que sai da carteira se ele cancelar. "Pode ganhar" soma todas as ofertas com valor pra aquela empresa. Comissão − considera só o percentual de entrega.</span>
+                </Panel>
 
                 <Panel titulo="Plano da semana" sub="o que fazer primeiro">
                   <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.7 }}>
