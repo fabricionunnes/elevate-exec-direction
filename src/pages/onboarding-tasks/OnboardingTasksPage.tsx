@@ -1432,6 +1432,14 @@ const OnboardingTasksPage = () => {
     return counts;
   }, [companies, companyRag]);
 
+  // Projeto conta pro consultor em foco (filtro ou o próprio consultor logado) quando é o consultor/CS do projeto;
+  // o consultor da empresa só leva projeto sem consultor próprio (Fabrício, 30/10/2026, Agile Save x Taynon).
+  const projetoDaCarteira = (company: { consultant_id: string | null }, p: { consultant_id: string | null; cs_id?: string | null }) => {
+    if (filterConsultant === "all") return true;
+    if (p.consultant_id === filterConsultant || p.cs_id === filterConsultant) return true;
+    return !p.consultant_id && company.consultant_id === filterConsultant;
+  };
+
   const filteredCompanies = useMemo(() => {
     const filtered = companies.filter((company) => {
       // Hide inactive and closed companies entirely from dashboard
@@ -1447,7 +1455,7 @@ const OnboardingTasksPage = () => {
         }
         // Company must have projects matching the filter
         const hasCancellationProject = company.projects?.some(p => 
-          p.status === "cancellation_signaled" || p.status === "notice_period"
+          (p.status === "cancellation_signaled" || p.status === "notice_period") && projetoDaCarteira(company, p)
         );
         const hasClosedProject = company.projects?.some(p => p.status === "closed");
         const isClosedFilter = filterStatus === "closed" || activeMetricFilter?.value === "closed";
@@ -1603,11 +1611,11 @@ const OnboardingTasksPage = () => {
           // Special filter: includes both cancellation_signaled AND notice_period
           // No date filter here - matches how projectMetrics.churnSignaled is calculated
           matchesMetricFilter = company.projects?.some(p => 
-            p.status === "cancellation_signaled" || p.status === "notice_period"
+            (p.status === "cancellation_signaled" || p.status === "notice_period") && projetoDaCarteira(company, p)
           ) ?? false;
         } else if (activeMetricFilter.type === "status" && (activeMetricFilter.value === "cancellation_signaled" || activeMetricFilter.value === "notice_period")) {
           // For cancellation/notice filters, don't require date range - show all current
-          matchesMetricFilter = company.projects?.some(p => p.status === activeMetricFilter.value) ?? false;
+          matchesMetricFilter = company.projects?.some(p => p.status === activeMetricFilter.value && projetoDaCarteira(company, p)) ?? false;
         } else if (activeMetricFilter.type === "status" && activeMetricFilter.value === "all") {
           // "Total" card — mostra todas as empresas sem filtro adicional
           matchesMetricFilter = true;
