@@ -143,7 +143,9 @@ interface Oportunidade {
 }
 
 // preço de referência quando a carteira não tem mediana daquele produto
-const REF_PRECO: Record<string, number> = { "UNV Ads": 500, "UNV Social": 1000, "CRM": 400, "UNV Sales Acceleration": 1500, "UNV Partners": 2000 };
+const REF_PRECO: Record<string, number> = { "UNV Ads": 500, "UNV Social": 1500, "CRM": 400, "UNV Sales Acceleration": 1500, "UNV Partners": 2000 };
+// tabela de preço manda sobre a mediana: UNV Social é R$1.500 ou R$2.000 (Fabrício, 30/10); os R$1.000 da carteira são acordos antigos
+const TABELA_PRECO: Record<string, number> = { "UNV Social": 1500 };
 
 const diasDesde = (d: string | null) => (d ? Math.floor((Date.now() - new Date(d + (d.length === 10 ? "T12:00:00" : "")).getTime()) / 86400000) : null);
 
@@ -444,7 +446,15 @@ export default function CarteiraConsultorPage() {
     m.forEach((v, k) => { const s = v.sort((a, b) => a - b); out.set(k, s[Math.floor(s.length / 2)]); });
     return out;
   }, [linhas]);
-  const precoRef = (produto: string) => medianaProduto.get(produto) || REF_PRECO[produto] || 0;
+  const precoRef = (produto: string) => TABELA_PRECO[produto] || medianaProduto.get(produto) || REF_PRECO[produto] || 0;
+  // Comissão de uma oportunidade: produto fora da recorrência (UNV Social) paga só venda única, uma vez, no 1º mês;
+  // os demais pagam entrega + venda todo mês.
+  const comissaoDe = (o: Oportunidade): { mensal: number; unica: number } => {
+    if (!params || !o.valor) return { mensal: 0, unica: 0 };
+    const semRecorrencia = !!o.produtoVenda && (params.semVenda || []).includes(o.produtoVenda);
+    if (semRecorrencia) return { mensal: 0, unica: o.valor * (params.pctVendaUnica || 0) / 100 };
+    return { mensal: o.valor * (params.pct + (o.produtoVenda ? params.pctVenda : 0)) / 100, unica: 0 };
+  };
 
   const empresasAnalise = useMemo((): EmpresaAnalise[] => {
     const porEmpresa = new Map<string, LinhaAnalise[]>();
@@ -518,7 +528,7 @@ export default function CarteiraConsultorPage() {
       const temCrm = tem(e, /^crm$|unv sales$/i);
       const saudavel = (e.health ?? 0) >= 60 && (e.nps == null || e.nps >= 8);
       if (temAcc && !temAds) out.push({ empresa: e, oferta: "UNV Ads", porque: "processo comercial montado; tráfego enche o funil que o time já converte", valor: precoRef("UNV Ads"), tipo: "novo", produtoVenda: "UNV Ads" });
-      if (temAcc && !temSocial) out.push({ empresa: e, oferta: "UNV Social", porque: "redes alimentam a prospecção e a autoridade do dono", valor: precoRef("UNV Social"), tipo: "novo", produtoVenda: "UNV Social" });
+      if (temAcc && !temSocial) out.push({ empresa: e, oferta: "UNV Social", porque: "redes alimentam a prospecção e a autoridade do dono (plano de R$ 1.500 ou R$ 2.000)", valor: precoRef("UNV Social"), tipo: "novo", produtoVenda: "UNV Social" });
       if (!temCrm) out.push({ empresa: e, oferta: "UNV Sales (CRM)", porque: "funil, agentes de IA e disparos num lugar só", valor: precoRef("CRM"), tipo: "novo", produtoVenda: "CRM" });
       if ((temAds || temSocial) && !temAcc) out.push({ empresa: e, oferta: "UNV Sales Acceleration", porque: "já investe em demanda; falta gestão pra virar venda", valor: precoRef("UNV Sales Acceleration"), tipo: "novo", produtoVenda: "UNV Sales Acceleration" });
       // fee é variável e "a combinar": entra na lista, mas não soma no potencial
@@ -552,20 +562,16 @@ export default function CarteiraConsultorPage() {
   // quanto a comissão sobe se as oportunidades fecharem: entrega sempre; venda quando o produto paga venda
   const ganhoComissao = useMemo(() => {
     if (!params) return null;
-    return oportunidadesTodas.reduce((s, o) => {
-      const pagaVenda = o.produtoVenda && !(params.semVenda || []).includes(o.produtoVenda);
-      return s + o.valor * (params.pct + (pagaVenda ? params.pctVenda : 0)) / 100;
-    }, 0);
+    return oportunidadesTodas.reduce((s, o) => { const c = comissaoDe(o); return { mensal: s.mensal + c.mensal, unica: s.unica + c.unica }; }, { mensal: 0, unica: 0 });
   }, [oportunidadesTodas, params]);
   // Fabrício (30/10): "mostre o total e o que pode ganhar de cada cliente, e perder também"
   const ganhoPerda = useMemo(() => {
-    const comissaoGanho = (o: Oportunidade) => params ? o.valor * (params.pct + (o.produtoVenda && !(params.semVenda || []).includes(o.produtoVenda) ? params.pctVenda : 0)) / 100 : 0;
     const linhasGP = empresasAnalise.map((e) => {
       const ops = oportunidadesTodas.filter((o) => o.empresa.id === e.id);
       const ganho = ops.reduce((s, o) => s + o.valor, 0);
-      return { e, hoje: e.mensal, ganho, perda: e.mensal, comGanho: ops.reduce((s, o) => s + comissaoGanho(o), 0), comPerda: params ? e.mensal * params.pct / 100 : 0, ofertas: ops.filter((o) => o.valor > 0).map((o) => o.oferta) };
+      return { e, hoje: e.mensal, ganho, perda: e.mensal, comGanho: ops.reduce((s, o) => s + comissaoDe(o).mensal, 0), comUnica: ops.reduce((s, o) => s + comissaoDe(o).unica, 0), comPerda: params ? e.mensal * params.pct / 100 : 0, ofertas: ops.filter((o) => o.valor > 0).map((o) => o.oferta) };
     }).sort((a, b) => (Number(b.e.saindo) - Number(a.e.saindo)) || b.e.risco - a.e.risco || b.ganho - a.ganho);
-    const tot = linhasGP.reduce((t, l) => ({ hoje: t.hoje + l.hoje, ganho: t.ganho + l.ganho, perdaRisco: t.perdaRisco + ((l.e.saindo || l.e.nivel === "alto") ? l.perda : 0), perdaAtencao: t.perdaAtencao + (l.e.nivel === "atencao" ? l.perda : 0), comGanho: t.comGanho + l.comGanho, comPerdaRisco: t.comPerdaRisco + ((l.e.saindo || l.e.nivel === "alto") ? l.comPerda : 0) }), { hoje: 0, ganho: 0, perdaRisco: 0, perdaAtencao: 0, comGanho: 0, comPerdaRisco: 0 });
+    const tot = linhasGP.reduce((t, l) => ({ hoje: t.hoje + l.hoje, ganho: t.ganho + l.ganho, perdaRisco: t.perdaRisco + ((l.e.saindo || l.e.nivel === "alto") ? l.perda : 0), perdaAtencao: t.perdaAtencao + (l.e.nivel === "atencao" ? l.perda : 0), comGanho: t.comGanho + l.comGanho, comUnica: t.comUnica + l.comUnica, comPerdaRisco: t.comPerdaRisco + ((l.e.saindo || l.e.nivel === "alto") ? l.comPerda : 0) }), { hoje: 0, ganho: 0, perdaRisco: 0, perdaAtencao: 0, comGanho: 0, comUnica: 0, comPerdaRisco: 0 });
     return { linhas: linhasGP, tot };
   }, [empresasAnalise, oportunidadesTodas, params]);
   const empresaFoco = useMemo(() => empresasAnalise.find((e) => e.id === focoEmpresa) || null, [empresasAnalise, focoEmpresa]);
@@ -1236,8 +1242,8 @@ export default function CarteiraConsultorPage() {
                       : `${plural(emAtencao.length, "cliente em atenção", "clientes em atenção")}, ninguém saindo nem em risco alto`}
                     cls={emRisco.length ? "neg" : "pos"} />
                   <Tile label="Clientes saudáveis" valor={String(empresasAnalise.filter((e) => !e.saindo && e.nivel === "ok").length)} sub={`de ${plural(empresasAnalise.length, "empresa", "empresas")} na carteira`} cls="pos" />
-                  {veComissao && ganhoComissao != null && (
-                    <Tile label="Comissão pode subir" valor={`+${brl(ganhoComissao)}`} sub={`por mês, se as oportunidades fecharem · ${params ? `${params.pct}% de entrega${params.pctVenda ? ` + ${params.pctVenda}% de venda` : ""}` : ""}`} cls="pos" />
+                  {veComissao && ganhoComissao && (
+                    <Tile label="Comissão pode subir" valor={`+${brl(ganhoComissao.mensal)}`} sub={`por mês, se as oportunidades fecharem${ganhoComissao.unica ? ` · mais ${brl(ganhoComissao.unica)} uma vez só (UNV Social paga venda única, sem recorrência)` : ""}`} cls="pos" />
                   )}
                 </div>
 
@@ -1287,14 +1293,13 @@ export default function CarteiraConsultorPage() {
                     <Tabela
                       cols={[{ h: "Empresa", tl: true }, { h: "Oferecer", tl: true }, { h: "Por quê", tl: true }, "Por mês", ...(veComissao && params ? ["Sua comissão"] : [])]}
                       rows={oportunidades.slice(0, 14).map((o) => {
-                        const pagaVenda = o.produtoVenda && params && !(params.semVenda || []).includes(o.produtoVenda);
-                        const com = params ? o.valor * (params.pct + (pagaVenda ? params.pctVenda : 0)) / 100 : 0;
+                        const com = comissaoDe(o);
                         return [
                           <Lk onClick={() => setFocoEmpresa(o.empresa.id)}>{o.empresa.nome}</Lk>,
                           <span><b>{o.oferta}</b> <i className={`tag ${o.tipo === "protecao" ? "" : "pos"}`}>{o.tipo === "novo" ? "novo serviço" : o.tipo === "reajuste" ? "reajuste" : o.tipo === "fee" ? "variável" : "proteção"}</i></span>,
                           <span style={{ fontSize: 12 }}>{o.porque}</span>,
                           o.valor ? `+${brl(o.valor)}` : <Nd>{o.tipo === "fee" ? "a combinar" : "proteção"}</Nd>,
-                          ...(veComissao && params ? [o.valor ? `+${brl(com)}` : <Nd />] : []),
+                          ...(veComissao && params ? [o.valor ? (com.unica ? <span>{brl(com.unica)} <i className="tag">uma vez</i></span> : `+${brl(com.mensal)}/mês`) : <Nd />] : []),
                         ];
                       })}
                       vazio="Nenhuma oportunidade clara agora: a carteira está completa ou os clientes precisam ser segurados primeiro."
@@ -1317,7 +1322,7 @@ export default function CarteiraConsultorPage() {
                         <span style={{ fontSize: 12 }}>{l.ofertas.join(", ") || <Nd />}</span>,
                         <span className={l.e.saindo || l.e.nivel === "alto" ? "neg" : l.e.nivel === "atencao" ? "warn" : ""}>{brl(l.perda)}</span>,
                         l.e.saindo ? <span className="st r">saindo</span> : <St ok={l.e.nivel === "ok"} warn={l.e.nivel === "atencao"} tg="ok" tw={`atenção ${l.e.risco}`} tb={`alto ${l.e.risco}`} />,
-                        ...(veComissao && params ? [l.comGanho ? <span className="pos">+{brl(l.comGanho)}</span> : <Nd />, <span className={l.e.saindo || l.e.nivel === "alto" ? "neg" : ""}>−{brl(l.comPerda)}</span>] : []),
+                        ...(veComissao && params ? [l.comGanho || l.comUnica ? <span className="pos">{l.comGanho ? `+${brl(l.comGanho)}/mês` : ""}{l.comGanho && l.comUnica ? " · " : ""}{l.comUnica ? `${brl(l.comUnica)} uma vez` : ""}</span> : <Nd />, <span className={l.e.saindo || l.e.nivel === "alto" ? "neg" : ""}>−{brl(l.comPerda)}</span>] : []),
                       ]),
                       [
                         <b>Total ({plural(ganhoPerda.linhas.length, "empresa", "empresas")})</b>,
@@ -1327,11 +1332,11 @@ export default function CarteiraConsultorPage() {
                         <span style={{ fontSize: 12 }}>se fechar tudo: {brl(ganhoPerda.tot.hoje + ganhoPerda.tot.ganho)}/mês</span>,
                         <b className="neg">{brl(ganhoPerda.tot.perdaRisco)}</b>,
                         <span style={{ fontSize: 12 }}>em risco alto ou saindo</span>,
-                        ...(veComissao && params ? [<b className="pos">+{brl(ganhoPerda.tot.comGanho)}</b>, <b className="neg">−{brl(ganhoPerda.tot.comPerdaRisco)}</b>] : []),
+                        ...(veComissao && params ? [<b className="pos">+{brl(ganhoPerda.tot.comGanho)}/mês{ganhoPerda.tot.comUnica ? ` · ${brl(ganhoPerda.tot.comUnica)} uma vez` : ""}</b>, <b className="neg">−{brl(ganhoPerda.tot.comPerdaRisco)}</b>] : []),
                       ],
                     ]}
                   />
-                  <span className="more">"Pode perder" é o que o cliente paga hoje por mês: é isso que sai da carteira se ele cancelar. "Pode ganhar" soma todas as ofertas com valor pra aquela empresa. Comissão − considera só o percentual de entrega.</span>
+                  <span className="more">"Pode perder" é o que o cliente paga hoje por mês: é isso que sai da carteira se ele cancelar. "Pode ganhar" soma todas as ofertas com valor pra aquela empresa. UNV Social paga comissão uma vez só, no primeiro mês (venda única), e não entra na recorrência. Comissão − considera só o percentual de entrega.</span>
                 </Panel>
 
                 <Panel titulo="Plano da semana" sub="o que fazer primeiro">
