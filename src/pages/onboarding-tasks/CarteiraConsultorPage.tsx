@@ -543,7 +543,9 @@ export default function CarteiraConsultorPage() {
     });
   }, [oportunidadesTodas]);
 
-  const emRisco = useMemo(() => empresasAnalise.filter((e) => !e.saindo && e.nivel === "alto"), [empresasAnalise]);
+  // quem pediu pra sair é o risco maior de todos: entra no card junto com o risco alto (Fabrício, 30/10)
+  const saindoAnalise = useMemo(() => empresasAnalise.filter((e) => e.saindo), [empresasAnalise]);
+  const emRisco = useMemo(() => empresasAnalise.filter((e) => e.saindo || e.nivel === "alto"), [empresasAnalise]);
   const emAtencao = useMemo(() => empresasAnalise.filter((e) => !e.saindo && e.nivel === "atencao"), [empresasAnalise]);
   const valorEmRiscoAlto = emRisco.reduce((s, e) => s + e.mensal, 0);
   const potencial = oportunidadesTodas.reduce((s, o) => s + o.valor, 0);
@@ -1228,7 +1230,11 @@ export default function CarteiraConsultorPage() {
               <>
                 <div className={`grid ${veComissao && ganhoComissao != null ? "r4" : "r3"}`}>
                   <Tile label="Receita que dá pra somar" valor={brl(potencial)} sub={`${plural(oportunidades.filter((o) => o.valor > 0).length, "oportunidade com valor", "oportunidades com valor")} · ${plural(oportunidades.filter((o) => !o.valor).length, "a combinar", "a combinar")}`} main />
-                  <Tile label="Em risco de sair" valor={emRisco.length ? brl(valorEmRiscoAlto) : "R$ 0"} sub={emRisco.length ? `${plural(emRisco.length, "cliente", "clientes")} em risco alto · ${plural(emAtencao.length, "em atenção", "em atenção")}` : `${plural(emAtencao.length, "cliente em atenção", "clientes em atenção")}, nenhum em risco alto`} cls={emRisco.length ? "neg" : "pos"} />
+                  <Tile label="Em risco de sair" valor={emRisco.length ? brl(valorEmRiscoAlto) : "R$ 0"}
+                    sub={emRisco.length
+                      ? [saindoAnalise.length ? `${saindoAnalise.length} pediu pra sair` : "", (emRisco.length - saindoAnalise.length) ? `${emRisco.length - saindoAnalise.length} em risco alto` : "", `${emAtencao.length} em atenção`].filter(Boolean).join(" · ")
+                      : `${plural(emAtencao.length, "cliente em atenção", "clientes em atenção")}, ninguém saindo nem em risco alto`}
+                    cls={emRisco.length ? "neg" : "pos"} />
                   <Tile label="Clientes saudáveis" valor={String(empresasAnalise.filter((e) => !e.saindo && e.nivel === "ok").length)} sub={`de ${plural(empresasAnalise.length, "empresa", "empresas")} na carteira`} cls="pos" />
                   {veComissao && ganhoComissao != null && (
                     <Tile label="Comissão pode subir" valor={`+${brl(ganhoComissao)}`} sub={`por mês, se as oportunidades fecharem · ${params ? `${params.pct}% de entrega${params.pctVenda ? ` + ${params.pctVenda}% de venda` : ""}` : ""}`} cls="pos" />
@@ -1261,7 +1267,7 @@ export default function CarteiraConsultorPage() {
                 )}
 
                 <div className="grid g2">
-                  <Panel titulo="Atenção pra não perder cliente" sub={`${plural(emRisco.length, "em risco alto", "em risco alto")} · ${plural(emAtencao.length, "em atenção", "em atenção")}`}>
+                  <Panel titulo="Atenção pra não perder cliente" sub={`${saindoAnalise.length} saindo · ${emRisco.length - saindoAnalise.length} em risco alto · ${emAtencao.length} em atenção`}>
                     <Tabela
                       cols={[{ h: "Empresa", tl: true }, ...(mostraConsultor ? [{ h: "Consultor", tl: true }] : []), "Por mês", "Risco", { h: "Sinais", tl: true }, { h: "Próxima ação", tl: true }]}
                       rows={empresasAnalise.filter((e) => e.saindo || e.nivel !== "ok").map((e) => [
@@ -1330,7 +1336,7 @@ export default function CarteiraConsultorPage() {
 
                 <Panel titulo="Plano da semana" sub="o que fazer primeiro">
                   <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.7 }}>
-                    {empresasAnalise.filter((e) => e.saindo || e.nivel === "alto").slice(0, 3).map((e) => (
+                    {emRisco.slice(0, 3).map((e) => (
                       <li key={e.id}><b>{e.nome}</b> ({brl(e.mensal)}/mês): {e.acao}</li>
                     ))}
                     {emAtencao.slice(0, 2).map((e) => (
