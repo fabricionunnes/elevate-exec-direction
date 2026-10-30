@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   FileText, CalendarIcon, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightSmall,
-  Download, Info, AlertTriangle, TrendingUp, TrendingDown, Minus, Wallet, Target, Receipt,
+  Download, Info, AlertTriangle, TrendingUp, TrendingDown, Minus, Wallet, Target, Receipt, Box, BarChart3, FileDown, Loader2,
 } from "lucide-react";
 import { format, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -19,6 +19,9 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, Legend, ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import { FinCategory, isVariableCategory } from "@/pages/onboarding-tasks/financial/financeClassification";
+import DreGrafico3D from "./DreGrafico3D";
+import { gerarDrePdf, type LinhaPdf } from "./gerarDrePdf";
+import { toast } from "sonner";
 
 // DRE gerencial (30/10/2026, Fabrício: "esse DRE está muito básico, quero que melhore drasticamente").
 // Estrutura: Receita bruta por linha de negócio → Deduções → Receita líquida → Custos variáveis →
@@ -159,6 +162,8 @@ export default function FinancialDRETab({ invoices, payables, formatCurrency }: 
   const [regime, setRegime] = useState<Regime>("caixa");
   const [fechados, setFechados] = useState<Set<string>>(new Set());
   const [detalhe, setDetalhe] = useState<{ titulo: string; itens: Movimento[] } | null>(null);
+  const [grafico3d, setGrafico3d] = useState(true);
+  const [gerandoPdf, setGerandoPdf] = useState(false);
   const hoje = new Date();
   const [mes, setMes] = useState(`${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}`);
 
@@ -364,28 +369,58 @@ export default function FinancialDRETab({ invoices, payables, formatCurrency }: 
     setDetalhe({ titulo, itens });
   };
 
+  const mesLabel = rotuloMes(mes);
   const semCategoria = useMemo(() => (movimentosPorMes.get(mes) || []).filter((m) => m.linha === "cat:none"), [movimentosPorMes, mes]);
   const emprestimosRecebidos = atual.porLinha["nonop_in"] || 0;
   const pontoEquilibrio = atual.rl > 0 && atual.mc > 0 ? atual.fixos / (atual.mc / atual.rl) : null;
   const deltaRL = anterior.rl ? ((atual.rl - anterior.rl) / anterior.rl) * 100 : null;
 
+  // mesma lista de linhas que a tabela mostra, pro CSV e pro PDF
+  const linhasExport = useMemo((): LinhaPdf[] => {
+    const out: LinhaPdf[] = [];
+    const push = (label: string, id: string, nivel: LinhaPdf["nivel"], natureza: LinhaPdf["natureza"], final = false) => {
+      const a = valorLinha(atual, id), p = valorLinha(anterior, id), y = valorLinha(acumulado, id);
+      out.push({ label, nivel, natureza, atual: a, pct: id === "rl" ? 100 : pct(Math.abs(a), atual.rl), anterior: p,
+        delta: p ? ((a - p) / Math.abs(p)) * 100 : null, acumulado: y, pctAcum: id === "rl" ? 100 : pct(Math.abs(y), acumulado.rl), final });
+    };
+    for (const id of ORDEM) {
+      if (id in TOTAIS) { push(TOTAIS[id].label, id, "total", "neutro", id === "resultado"); continue; }
+      const g = GRUPOS.find((x) => x.id === id)!;
+      const a = valorLinha(atual, g.id), p = valorLinha(anterior, g.id), y = valorLinha(acumulado, g.id);
+      if (g.id === "op_outros" && !a && !p && !y) continue;
+      push(g.label, g.id, "grupo", g.natureza);
+      for (const s of subsPorGrupo[g.id] || []) {
+        if (!valorLinha(atual, s.id) && !valorLinha(anterior, s.id) && !valorLinha(acumulado, s.id)) continue;
+        push(s.label, s.id, "sub", s.id === "fin_receitas" ? "receita" : g.natureza);
+      }
+    }
+    return out;
+  }, [atual, anterior, acumulado, subsPorGrupo]);
+
+  const exportarPDF = async () => {
+    setGerandoPdf(true);
+    try {
+      await gerarDrePdf({
+        mesLabel, mesCurto: rotuloMes(mes, true), mesAnteriorCurto: rotuloMes(mesAnterior, true), ano: mes.slice(0, 4), regime,
+        linhas: linhasExport,
+        kpis: { rl: atual.rl, mc: atual.mc, ebitda: atual.ebitda, resultado: atual.resultado, rlAnterior: anterior.rl },
+        serie: serie12.map((s) => ({ label: s.label, receita: s.receita, despesas: s.despesas, resultado: s.resultado })),
+        leitura: { pontoEquilibrio, fixos: atual.fixos, variaveis: atual.porGrupo["var"] || 0, semCategoriaN: semCategoria.length,
+          semCategoriaTotal: semCategoria.reduce((s, m) => s + m.valor, 0), emprestimos: emprestimosRecebidos },
+        formatCurrency,
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error("Não consegui gerar o PDF");
+    } finally { setGerandoPdf(false); }
+  };
+
   const exportarCSV = () => {
     const linhas: string[][] = [["Linha", rotuloMes(mes), "% RL", rotuloMes(mesAnterior), "Variação", `Acumulado ${mes.slice(0, 4)}`, "% RL acumulado"]];
     const num = (v: number) => v.toFixed(2).replace(".", ",");
-    const pctTxt = (v: number, base: number) => fmtPct(pct(v, base));
-    const push = (label: string, id: string, sinal: 1 | -1) => {
-      const a = valorLinha(atual, id) * sinal, p = valorLinha(anterior, id) * sinal, y = valorLinha(acumulado, id) * sinal;
-      linhas.push([label, num(a), pctTxt(Math.abs(a), atual.rl), num(p), fmtPct(p ? ((a - p) / Math.abs(p)) * 100 : null), num(y), pctTxt(Math.abs(y), acumulado.rl)]);
-    };
-    for (const id of ORDEM) {
-      if (id in TOTAIS) { push(TOTAIS[id].label, id, 1); continue; }
-      const g = GRUPOS.find((x) => x.id === id)!;
-      const sinal = g.natureza === "receita" ? 1 : -1;
-      push(g.label, g.id, sinal);
-      for (const s of subsPorGrupo[g.id] || []) {
-        if (!valorLinha(atual, s.id) && !valorLinha(anterior, s.id) && !valorLinha(acumulado, s.id)) continue;
-        push(`  ${s.label}`, s.id, s.id === "fin_receitas" ? 1 : sinal);
-      }
+    for (const l of linhasExport) {
+      const sinal = l.natureza === "despesa" ? -1 : 1;
+      linhas.push([(l.nivel === "sub" ? "  " : "") + l.label, num(l.atual * sinal), fmtPct(l.pct), num(l.anterior * sinal), l.delta == null ? "—" : fmtPct(l.delta), num(l.acumulado * sinal), fmtPct(l.pctAcum)]);
     }
     linhas.push([]);
     linhas.push([`Regime: ${regime === "caixa" ? "caixa (pago no mês)" : "competência (vencimento no mês)"}`]);
@@ -419,7 +454,6 @@ export default function FinancialDRETab({ invoices, payables, formatCurrency }: 
   const mostraValor = (v: number, natureza: LinhaDef["natureza"]) => (natureza === "despesa" && v ? `(${formatCurrency(v)})` : formatCurrency(v));
 
   // ------------------------------------------------------------------ render
-  const mesLabel = rotuloMes(mes);
   const dataSel = parse(mes, "yyyy-MM", new Date());
   const kpis = [
     { titulo: "Receita líquida", valor: formatCurrency(atual.rl), sub: <Delta a={atual.rl} p={anterior.rl} />, icone: Receipt, cor: "text-emerald-600" },
@@ -465,6 +499,9 @@ export default function FinancialDRETab({ invoices, payables, formatCurrency }: 
               <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setMes(addMeses(mes, 1))} aria-label="Próximo mês"><ChevronRight className="h-4 w-4" /></Button>
             </div>
             <Button variant="outline" size="sm" onClick={exportarCSV}><Download className="h-4 w-4 mr-2" />CSV</Button>
+            <Button size="sm" onClick={exportarPDF} disabled={gerandoPdf} className="bg-[#0D2B5E] hover:bg-[#0D2B5E]/90 text-white">
+              {gerandoPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}PDF
+            </Button>
           </div>
         </div>
 
@@ -489,8 +526,14 @@ export default function FinancialDRETab({ invoices, payables, formatCurrency }: 
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-medium">Evolução nos últimos 12 meses</p>
-              <p className="text-xs text-muted-foreground">Clique numa coluna pra abrir o mês</p>
+              <div className="inline-flex rounded-md border overflow-hidden text-xs">
+                <button type="button" onClick={() => setGrafico3d(true)} className={cn("px-2.5 py-1 inline-flex items-center gap-1", grafico3d ? "bg-primary text-primary-foreground" : "hover:bg-muted")}><Box className="h-3.5 w-3.5" />3D</button>
+                <button type="button" onClick={() => setGrafico3d(false)} className={cn("px-2.5 py-1 inline-flex items-center gap-1", !grafico3d ? "bg-primary text-primary-foreground" : "hover:bg-muted")}><BarChart3 className="h-3.5 w-3.5" />2D</button>
+              </div>
             </div>
+            {grafico3d ? (
+              <DreGrafico3D serie={serie12} mesSel={mes} onMes={setMes} formatCurrency={formatCurrency} altura={320} />
+            ) : (
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={serie12} margin={{ top: 8, right: 8, left: 8, bottom: 0 }} onClick={(e: any) => { const ym = e?.activePayload?.[0]?.payload?.ym; if (ym) setMes(ym); }}>
@@ -506,6 +549,7 @@ export default function FinancialDRETab({ invoices, payables, formatCurrency }: 
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
+            )}
           </CardContent>
         </Card>
 
