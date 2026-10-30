@@ -532,11 +532,14 @@ export default function CarteiraConsultorPage() {
       }
       if (saudavel && e.meses >= 6 && analise.some((a) => a.company_id === e.id && a.recorrente && /mensal/i.test(a.plano || ""))) out.push({ empresa: e, oferta: "Migrar pra plano semestral ou anual", porque: "satisfeito e no mensal: prazo maior protege contra cancelamento por impulso", valor: 0, tipo: "protecao", produtoVenda: null });
     });
-    // no máximo duas por empresa, as de maior valor primeiro: lista longa ninguém executa
-    const porEmpresa = new Map<string, number>();
+    // por empresa: no máximo duas com valor (as maiores) e uma "a combinar": lista longa ninguém executa
+    const comValor = new Map<string, number>(), semValor = new Map<string, number>();
     return out
       .sort((a, b) => b.valor - a.valor || a.empresa.nome.localeCompare(b.empresa.nome))
-      .filter((o) => { const n = porEmpresa.get(o.empresa.id) || 0; if (n >= 2) return false; porEmpresa.set(o.empresa.id, n + 1); return true; });
+      .filter((o) => {
+        const m = o.valor > 0 ? comValor : semValor, lim = o.valor > 0 ? 2 : 1;
+        const n = m.get(o.empresa.id) || 0; if (n >= lim) return false; m.set(o.empresa.id, n + 1); return true;
+      });
   }, [empresasAnalise, analise, medianaProduto]);
 
   const emRisco = useMemo(() => empresasAnalise.filter((e) => !e.saindo && e.nivel === "alto"), [empresasAnalise]);
