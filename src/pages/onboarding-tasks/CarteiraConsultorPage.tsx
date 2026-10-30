@@ -145,7 +145,8 @@ interface Oportunidade {
 // preço de referência quando a carteira não tem mediana daquele produto
 const REF_PRECO: Record<string, number> = { "UNV Ads": 500, "UNV Social": 1500, "CRM": 400, "UNV Sales Acceleration": 1500, "UNV Partners": 2000 };
 // tabela de preço manda sobre a mediana: UNV Social é R$1.500 ou R$2.000 (Fabrício, 30/10); os R$1.000 da carteira são acordos antigos
-const TABELA_PRECO: Record<string, number> = { "UNV Social": 1500 };
+// Sales Acceleration sempre considera R$2.000 por mês (Fabrício, 30/10)
+const TABELA_PRECO: Record<string, number> = { "UNV Social": 1500, "UNV Sales Acceleration": 2000 };
 
 const diasDesde = (d: string | null) => (d ? Math.floor((Date.now() - new Date(d + (d.length === 10 ? "T12:00:00" : "")).getTime()) / 86400000) : null);
 
@@ -536,9 +537,10 @@ export default function CarteiraConsultorPage() {
       const prodPrincipal = e.produtos.find((p) => /acceleration|partners/i.test(p));
       const linhaPrincipal = analise.find((a) => a.company_id === e.id && a.product_name === prodPrincipal);
       if (prodPrincipal && linhaPrincipal && saudavel && e.meses >= 6) {
-        const med = medianaProduto.get(prodPrincipal) || 0;
+        // referência: tabela quando existe (Acceleration R$2.000), senão a mediana da carteira
+        const med = precoRef(prodPrincipal);
         const atual = Number(linhaPrincipal.monthly_cents) / 100;
-        if (med && atual < med * 0.85) out.push({ empresa: e, oferta: `Reajuste do ${prodPrincipal}`, porque: `paga ${brl(atual)}; mediana da carteira é ${brl(med)}, ${e.meses} meses de casa, saúde ${e.health}`, valor: med - atual, tipo: "reajuste", produtoVenda: null });
+        if (med && atual < med * 0.85) out.push({ empresa: e, oferta: `Reajuste do ${prodPrincipal}`, porque: `paga ${brl(atual)}; ${TABELA_PRECO[prodPrincipal] ? "tabela" : "mediana da carteira"} é ${brl(med)}, ${e.meses} meses de casa, saúde ${e.health}`, valor: med - atual, tipo: "reajuste", produtoVenda: null });
       }
       if (saudavel && e.meses >= 6 && analise.some((a) => a.company_id === e.id && a.recorrente && /mensal/i.test(a.plano || ""))) out.push({ empresa: e, oferta: "Migrar pra plano semestral ou anual", porque: "satisfeito e no mensal: prazo maior protege contra cancelamento por impulso", valor: 0, tipo: "protecao", produtoVenda: null });
     });
@@ -1305,7 +1307,7 @@ export default function CarteiraConsultorPage() {
                       vazio="Nenhuma oportunidade clara agora: a carteira está completa ou os clientes precisam ser segurados primeiro."
                     />
                     {oportunidades.length > 14 && <span className="more">e mais {oportunidades.length - 14} oportunidades</span>}
-                    <span className="more">Quem está em risco alto ou pediu pra sair fica fora desta lista: primeiro segura, depois vende. Valores são a mediana da carteira pro produto.</span>
+                    <span className="more">Quem está em risco alto ou pediu pra sair fica fora desta lista: primeiro segura, depois vende. Valores: Sales Acceleration R$ 2.000 e UNV Social R$ 1.500 (tabela); os demais pela mediana da carteira.</span>
                   </Panel>
                 </div>
 
