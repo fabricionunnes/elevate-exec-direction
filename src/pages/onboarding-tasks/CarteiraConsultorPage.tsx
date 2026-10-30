@@ -1240,7 +1240,8 @@ export default function CarteiraConsultorPage() {
                   <Tile label="Receita que dá pra somar" valor={brl(potencial)} sub={`${plural(oportunidades.filter((o) => o.valor > 0).length, "oportunidade com valor", "oportunidades com valor")} · ${plural(oportunidades.filter((o) => !o.valor).length, "a combinar", "a combinar")}`} main />
                   <Tile label="Em risco de sair" valor={emRisco.length ? brl(valorEmRiscoAlto) : "R$ 0"}
                     sub={emRisco.length
-                      ? [saindoAnalise.length ? `${saindoAnalise.length} pediu pra sair` : "", (emRisco.length - saindoAnalise.length) ? `${emRisco.length - saindoAnalise.length} em risco alto` : "", `${emAtencao.length} em atenção`].filter(Boolean).join(" · ")
+                      ? <>{[saindoAnalise.length ? `${saindoAnalise.length} pediu pra sair` : "", (emRisco.length - saindoAnalise.length) ? `${emRisco.length - saindoAnalise.length} em risco alto` : "", `${emAtencao.length} em atenção`].filter(Boolean).join(" · ")}
+                          {veComissao && params ? <><br /><b className="neg">−{brl(ganhoPerda.tot.comPerdaRisco)}</b> de comissão por mês se esses saírem</> : null}</>
                       : `${plural(emAtencao.length, "cliente em atenção", "clientes em atenção")}, ninguém saindo nem em risco alto`}
                     cls={emRisco.length ? "neg" : "pos"} />
                   <Tile label="Clientes saudáveis" valor={String(empresasAnalise.filter((e) => !e.saindo && e.nivel === "ok").length)} sub={`de ${plural(empresasAnalise.length, "empresa", "empresas")} na carteira`} cls="pos" />
