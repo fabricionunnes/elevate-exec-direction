@@ -517,21 +517,26 @@ export default function CarteiraConsultorPage() {
       const temSocial = tem(e, /unv social/i);
       const temCrm = tem(e, /^crm$|unv sales$/i);
       const saudavel = (e.health ?? 0) >= 60 && (e.nps == null || e.nps >= 8);
-      if (temAcc && !temAds) out.push({ empresa: e, oferta: "UNV Ads", porque: "o processo comercial já está montado; tráfego pago enche o funil que o time aprendeu a converter", valor: precoRef("UNV Ads"), tipo: "novo", produtoVenda: "UNV Ads" });
-      if (temAcc && !temSocial) out.push({ empresa: e, oferta: "UNV Social", porque: "presença nas redes alimenta a prospecção e sustenta a autoridade do dono", valor: precoRef("UNV Social"), tipo: "novo", produtoVenda: "UNV Social" });
-      if (!temCrm) out.push({ empresa: e, oferta: "UNV Sales (CRM)", porque: "funil, agentes de IA e disparos num lugar só; dá visibilidade do que o time faz", valor: precoRef("CRM"), tipo: "novo", produtoVenda: "CRM" });
-      if ((temAds || temSocial) && !temAcc) out.push({ empresa: e, oferta: "UNV Sales Acceleration", porque: "o cliente já investe em demanda; falta gestão comercial pra transformar lead em venda", valor: precoRef("UNV Sales Acceleration"), tipo: "novo", produtoVenda: "UNV Sales Acceleration" });
-      if (temAcc && e.temMeta && !e.temFee) out.push({ empresa: e, oferta: "Success fee por meta", porque: e.metaPct != null && e.metaPct >= 100 ? `cliente batendo a meta (${Math.round(e.metaPct)}%): hora de atrelar parte da remuneração ao resultado` : "meta cadastrada, mas sem taxa de sucesso: alinha o ganho da UNV ao do cliente", valor: 2000, tipo: "fee", produtoVenda: null });
+      if (temAcc && !temAds) out.push({ empresa: e, oferta: "UNV Ads", porque: "processo comercial montado; tráfego enche o funil que o time já converte", valor: precoRef("UNV Ads"), tipo: "novo", produtoVenda: "UNV Ads" });
+      if (temAcc && !temSocial) out.push({ empresa: e, oferta: "UNV Social", porque: "redes alimentam a prospecção e a autoridade do dono", valor: precoRef("UNV Social"), tipo: "novo", produtoVenda: "UNV Social" });
+      if (!temCrm) out.push({ empresa: e, oferta: "UNV Sales (CRM)", porque: "funil, agentes de IA e disparos num lugar só", valor: precoRef("CRM"), tipo: "novo", produtoVenda: "CRM" });
+      if ((temAds || temSocial) && !temAcc) out.push({ empresa: e, oferta: "UNV Sales Acceleration", porque: "já investe em demanda; falta gestão pra virar venda", valor: precoRef("UNV Sales Acceleration"), tipo: "novo", produtoVenda: "UNV Sales Acceleration" });
+      // fee é variável e "a combinar": entra na lista, mas não soma no potencial
+      if (temAcc && e.temMeta && !e.temFee) out.push({ empresa: e, oferta: "Success fee por meta", porque: e.metaPct != null && e.metaPct >= 100 ? "cliente acima da meta: hora de atrelar parte do ganho ao resultado" : "tem meta, não tem taxa de sucesso: alinha o ganho da UNV ao do cliente", valor: 0, tipo: "fee", produtoVenda: null });
       const prodPrincipal = e.produtos.find((p) => /acceleration|partners/i.test(p));
       const linhaPrincipal = analise.find((a) => a.company_id === e.id && a.product_name === prodPrincipal);
       if (prodPrincipal && linhaPrincipal && saudavel && e.meses >= 6) {
         const med = medianaProduto.get(prodPrincipal) || 0;
         const atual = Number(linhaPrincipal.monthly_cents) / 100;
-        if (med && atual < med * 0.85) out.push({ empresa: e, oferta: `Reajuste do ${prodPrincipal}`, porque: `paga ${brl(atual)} e a mediana da carteira é ${brl(med)}; ${e.meses} meses de casa e saúde ${e.health}`, valor: med - atual, tipo: "reajuste", produtoVenda: null });
+        if (med && atual < med * 0.85) out.push({ empresa: e, oferta: `Reajuste do ${prodPrincipal}`, porque: `paga ${brl(atual)}; mediana da carteira é ${brl(med)}, ${e.meses} meses de casa, saúde ${e.health}`, valor: med - atual, tipo: "reajuste", produtoVenda: null });
       }
-      if (saudavel && e.meses >= 6 && analise.some((a) => a.company_id === e.id && a.recorrente && /mensal/i.test(a.plano || ""))) out.push({ empresa: e, oferta: "Migrar pra plano semestral ou anual", porque: "cliente satisfeito e no plano mensal: fechar prazo maior protege a carteira (e a sua comissão) contra cancelamento por impulso", valor: 0, tipo: "protecao", produtoVenda: null });
+      if (saudavel && e.meses >= 6 && analise.some((a) => a.company_id === e.id && a.recorrente && /mensal/i.test(a.plano || ""))) out.push({ empresa: e, oferta: "Migrar pra plano semestral ou anual", porque: "satisfeito e no mensal: prazo maior protege contra cancelamento por impulso", valor: 0, tipo: "protecao", produtoVenda: null });
     });
-    return out.sort((a, b) => b.valor - a.valor || a.empresa.nome.localeCompare(b.empresa.nome));
+    // no máximo duas por empresa, as de maior valor primeiro: lista longa ninguém executa
+    const porEmpresa = new Map<string, number>();
+    return out
+      .sort((a, b) => b.valor - a.valor || a.empresa.nome.localeCompare(b.empresa.nome))
+      .filter((o) => { const n = porEmpresa.get(o.empresa.id) || 0; if (n >= 2) return false; porEmpresa.set(o.empresa.id, n + 1); return true; });
   }, [empresasAnalise, analise, medianaProduto]);
 
   const emRisco = useMemo(() => empresasAnalise.filter((e) => !e.saindo && e.nivel === "alto"), [empresasAnalise]);
@@ -1207,7 +1212,7 @@ export default function CarteiraConsultorPage() {
             {analise.length > 0 && (
               <>
                 <div className={`grid ${veComissao && ganhoComissao != null ? "r4" : "r3"}`}>
-                  <Tile label="Receita que dá pra somar" valor={brl(potencial)} sub={`${plural(oportunidades.filter((o) => o.valor > 0).length, "oportunidade mapeada", "oportunidades mapeadas")} por mês`} main />
+                  <Tile label="Receita que dá pra somar" valor={brl(potencial)} sub={`${plural(oportunidades.filter((o) => o.valor > 0).length, "oportunidade com valor", "oportunidades com valor")} · ${plural(oportunidades.filter((o) => !o.valor).length, "a combinar", "a combinar")}`} main />
                   <Tile label="Em risco de sair" valor={emRisco.length ? brl(valorEmRiscoAlto) : "R$ 0"} sub={emRisco.length ? `${plural(emRisco.length, "cliente", "clientes")} em risco alto · ${plural(emAtencao.length, "em atenção", "em atenção")}` : `${plural(emAtencao.length, "cliente em atenção", "clientes em atenção")}, nenhum em risco alto`} cls={emRisco.length ? "neg" : "pos"} />
                   <Tile label="Clientes saudáveis" valor={String(empresasAnalise.filter((e) => !e.saindo && e.nivel === "ok").length)} sub={`de ${plural(empresasAnalise.length, "empresa", "empresas")} na carteira`} cls="pos" />
                   {veComissao && ganhoComissao != null && (
@@ -1267,7 +1272,7 @@ export default function CarteiraConsultorPage() {
                           <Lk onClick={() => setFocoEmpresa(o.empresa.id)}>{o.empresa.nome}</Lk>,
                           <span><b>{o.oferta}</b> <i className={`tag ${o.tipo === "protecao" ? "" : "pos"}`}>{o.tipo === "novo" ? "novo serviço" : o.tipo === "reajuste" ? "reajuste" : o.tipo === "fee" ? "variável" : "proteção"}</i></span>,
                           <span style={{ fontSize: 12 }}>{o.porque}</span>,
-                          o.valor ? `+${brl(o.valor)}` : <Nd>sem receita direta</Nd>,
+                          o.valor ? `+${brl(o.valor)}` : <Nd>{o.tipo === "fee" ? "a combinar" : "proteção"}</Nd>,
                           ...(veComissao && params ? [o.valor ? `+${brl(com)}` : <Nd />] : []),
                         ];
                       })}

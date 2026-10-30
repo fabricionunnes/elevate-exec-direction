@@ -149,7 +149,7 @@ export default function DreGrafico3D({ serie, mesSel, onMes, formatCurrency, alt
         <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: VERMELHO }} />Despesas e custos</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ background: NAVY }} />Resultado líquido</span>
       </div>
-      <div className="pointer-events-none absolute right-3 bottom-2 text-[11px] text-muted-foreground">arraste pra girar · clique na coluna pra abrir o mês</div>
+      <div className="pointer-events-none absolute left-3 top-2 text-[11px] text-muted-foreground">arraste pra girar · passe o mouse pra ver os valores · clique na coluna pra abrir o mês</div>
     </div>
   );
 }
