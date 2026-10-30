@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-29T21:01:10",
+ "gerado_em": "2026-10-30T10:01:17",
  "posts": [
+  {
+   "slug": "metodologia-pronta-nao-resolve-sem-personalizar",
+   "url": "/blog/metodologia-pronta-nao-resolve-sem-personalizar/",
+   "titulo": "Metodologia pronta não resolve sem personalizar para o cliente",
+   "resumo": "Cada empresa funciona diferente. Aplicar metodologia sem ajustar para a realidade do cliente trava resultado e desperdiça tempo.",
+   "tags": [
+    "estrutura comercial",
+    "implementação",
+    "diagnóstico",
+    "processo comercial",
+    "decisão"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-30",
+   "ts": 2222
+  },
   {
    "slug": "intermediario-vira-vendedor-produto-quando-nao-fala-decisor",
    "url": "/blog/intermediario-vira-vendedor-produto-quando-nao-fala-decisor/",
