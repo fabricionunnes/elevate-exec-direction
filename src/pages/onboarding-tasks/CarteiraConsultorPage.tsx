@@ -114,6 +114,39 @@ interface LinhaHistorico {
   clientes: number;
 }
 
+// Sinais por contrato pra análise de risco e oportunidade (RPC carteira_analise, 30/10/2026)
+interface LinhaAnalise {
+  consultant_id: string; company_id: string; company_name: string; project_id: string; product_name: string | null;
+  monthly_cents: number; saindo: boolean; retido: boolean; recorrente: boolean; plano: string;
+  contract_start_date: string | null; contract_end_date: string | null; vence_em_dias: number | null; tem_success_fee: boolean;
+  health_score: number | null; health_risk: string | null; health_trend: string | null;
+  churn_prob: number | null; churn_risk: string | null; churn_factors: any; churn_actions: any;
+  nps_score: number | null; nps_date: string | null;
+  tarefas_atrasadas: number; tarefas_abertas: number;
+  ultima_reuniao: string | null; reunioes_90d: number; noshows_90d: number;
+  wa_rag: string | null; wa_last: string | null; wa_msgs_7d: number;
+  inadimplente_cents: number;
+  meta_nome: string | null; meta_alvo: number | null; meta_realizado: number | null;
+  produtos: string[]; segmento: string | null; meses_cliente: number;
+}
+
+interface EmpresaAnalise {
+  id: string; nome: string; consultor: string; consultorId: string; mensal: number; produtos: string[];
+  saindo: boolean; risco: number; nivel: "alto" | "atencao" | "ok"; sinais: string[]; acao: string;
+  health: number | null; churn: number | null; nps: number | null; atrasadas: number; diasSemReuniao: number | null;
+  wa: string | null; inad: number; metaPct: number | null; metaNome: string | null; meses: number; venceEm: number | null;
+  temFee: boolean; temMeta: boolean; fatores: string[]; acoesIA: string[]; segmento: string | null;
+}
+
+interface Oportunidade {
+  empresa: EmpresaAnalise; oferta: string; porque: string; valor: number; tipo: "novo" | "reajuste" | "fee" | "protecao"; produtoVenda: string | null;
+}
+
+// preço de referência quando a carteira não tem mediana daquele produto
+const REF_PRECO: Record<string, number> = { "UNV Ads": 500, "UNV Social": 1000, "CRM": 400, "UNV Sales Acceleration": 1500, "UNV Partners": 2000 };
+
+const diasDesde = (d: string | null) => (d ? Math.floor((Date.now() - new Date(d + (d.length === 10 ? "T12:00:00" : "")).getTime()) / 86400000) : null);
+
 const rotuloStatus: Record<string, string> = {
   active: "ativo",
   cancellation_signaled: "sinalizou cancelamento",
@@ -147,6 +180,8 @@ export default function CarteiraConsultorPage() {
   const [consultor, setConsultor] = useState("");
   const [consultores, setConsultores] = useState<{ value: string; label: string }[]>([]);
   const [mesFoco, setMesFoco] = useState("");
+  const [analise, setAnalise] = useState<LinhaAnalise[]>([]);
+  const [focoEmpresa, setFocoEmpresa] = useState<string | null>(null);
 
   const podeFiltrar = isMaster || currentStaff?.role === "admin";
 
@@ -169,12 +204,16 @@ export default function CarteiraConsultorPage() {
     (async () => {
       setCarregando(true);
       const alvo = consultor || null;
-      const [carteira, hist, com] = await Promise.all([
+      const [carteira, hist, com, ana] = await Promise.all([
         supabase.rpc("carteira_consultores", { p_consultant_id: alvo }),
         supabase.rpc("carteira_consultores_historico", { p_consultant_id: alvo, p_meses: 12 }),
         supabase.rpc("carteira_comissao_resumo", { p_consultant_id: alvo }),
+        (supabase as any).rpc("carteira_analise", { p_consultant_id: alvo }),
       ]);
       if (cancelado) return;
+      if (ana.error) console.error("carteira_analise", ana.error);
+      setAnalise((ana.data || []) as LinhaAnalise[]);
+      setFocoEmpresa(null);
       if (carteira.error) console.error("carteira_consultores", carteira.error);
       if (hist.error) console.error("carteira_consultores_historico", hist.error);
       // a RPC de comissão devolve vazio pra quem não é master. Erro aqui não trava
@@ -394,6 +433,124 @@ export default function CarteiraConsultorPage() {
     comissao.forEach((c) => m.set(c.consultant_id, c));
     return m;
   }, [comissao]);
+
+  // ---------------------------------------------------------------- análise: risco e oportunidade
+  // Fabrício (30/10/2026): "como o consultor faz pra ganhar mais, o que tem que ficar atento pra não
+  // perder cliente, e oferecer novos serviços pra aumentar a receita de cada cliente".
+  const medianaProduto = useMemo(() => {
+    const m = new Map<string, number[]>();
+    linhas.forEach((l) => { if (l.product_name && Number(l.monthly_cents) > 0) m.set(l.product_name, [...(m.get(l.product_name) || []), Number(l.monthly_cents) / 100]); });
+    const out = new Map<string, number>();
+    m.forEach((v, k) => { const s = v.sort((a, b) => a - b); out.set(k, s[Math.floor(s.length / 2)]); });
+    return out;
+  }, [linhas]);
+  const precoRef = (produto: string) => medianaProduto.get(produto) || REF_PRECO[produto] || 0;
+
+  const empresasAnalise = useMemo((): EmpresaAnalise[] => {
+    const porEmpresa = new Map<string, LinhaAnalise[]>();
+    analise.forEach((a) => porEmpresa.set(a.company_id, [...(porEmpresa.get(a.company_id) || []), a]));
+    const out: EmpresaAnalise[] = [];
+    porEmpresa.forEach((ls, id) => {
+      const vivos = ls.filter((l) => !l.saindo || l.retido);
+      const base = vivos.length ? vivos : ls;
+      const mensal = base.reduce((s, l) => s + Number(l.monthly_cents || 0), 0) / 100;
+      const health = base.reduce<number | null>((m, l) => (l.health_score == null ? m : m == null ? l.health_score : Math.min(m, l.health_score)), null);
+      const churn = base.reduce<number | null>((m, l) => (l.churn_prob == null ? m : m == null ? Number(l.churn_prob) : Math.max(m, Number(l.churn_prob))), null);
+      const npsL = base.filter((l) => l.nps_score != null).sort((a, b) => (b.nps_date || "").localeCompare(a.nps_date || ""))[0];
+      const atrasadas = base.reduce((s, l) => s + Number(l.tarefas_atrasadas || 0), 0);
+      const ultReu = base.map((l) => l.ultima_reuniao).filter(Boolean).sort().reverse()[0] || null;
+      const diasSemReuniao = diasDesde(ultReu);
+      const wa = base[0].wa_rag;
+      const inad = Number(base[0].inadimplente_cents || 0) / 100;
+      const metaL = base.find((l) => l.meta_alvo != null && Number(l.meta_alvo) > 0);
+      const metaPct = metaL ? Math.min(999, (Number(metaL.meta_realizado || 0) / Number(metaL.meta_alvo)) * 100) : null;
+      const meses = Math.max(...base.map((l) => Number(l.meses_cliente || 0)));
+      const venceEm = base.filter((l) => !l.recorrente && l.vence_em_dias != null && l.vence_em_dias >= 0).map((l) => Number(l.vence_em_dias)).sort((a, b) => a - b)[0] ?? null;
+      const saindo = ls.every((l) => l.saindo && !l.retido);
+      const produtos = Array.from(new Set(ls.flatMap((l) => l.produtos || [])));
+      const fatores: string[] = Array.from(new Set(base.flatMap((l) => Array.isArray(l.churn_factors) ? l.churn_factors.filter((f: any) => Number(f?.score) >= 60).map((f: any) => String(f.details || f.factor)) : [])));
+      const acoesIA: string[] = Array.from(new Set(base.flatMap((l) => Array.isArray(l.churn_actions) ? l.churn_actions.map(String) : [])));
+
+      // pontuação de risco: cada sinal pesa de acordo com o quanto costuma anteceder um cancelamento
+      let risco = 0; const sinais: string[] = [];
+      if (base[0].health_risk === "critical") { risco += 35; sinais.push(`saúde crítica (${health})`); }
+      else if (base[0].health_risk === "at_risk") { risco += 25; sinais.push(`saúde em risco (${health})`); }
+      else if (base[0].health_risk === "attention") { risco += 12; sinais.push(`saúde em atenção (${health})`); }
+      if (churn != null) { if (churn >= 50) { risco += 25; sinais.push(`churn previsto ${Math.round(churn)}%`); } else if (churn >= 35) { risco += 15; sinais.push(`churn previsto ${Math.round(churn)}%`); } else if (churn >= 25) { risco += 8; } }
+      if (npsL) { if (npsL.nps_score! <= 6) { risco += 15; sinais.push(`NPS ${npsL.nps_score}`); } else if (npsL.nps_score! <= 8) { risco += 5; sinais.push(`NPS ${npsL.nps_score}`); } }
+      else if (meses >= 2) { risco += 4; sinais.push("sem NPS respondido"); }
+      if (atrasadas >= 15) { risco += 12; sinais.push(`${atrasadas} tarefas atrasadas`); } else if (atrasadas >= 5) { risco += 6; sinais.push(`${atrasadas} tarefas atrasadas`); }
+      if (diasSemReuniao == null) { risco += 10; sinais.push("nenhuma reunião registrada"); }
+      else if (diasSemReuniao > 45) { risco += 15; sinais.push(`sem reunião há ${diasSemReuniao} dias`); }
+      else if (diasSemReuniao > 30) { risco += 8; sinais.push(`sem reunião há ${diasSemReuniao} dias`); }
+      if (wa === "red") { risco += 15; sinais.push("WhatsApp parado"); } else if (wa === "yellow") { risco += 7; sinais.push("WhatsApp esfriando"); }
+      if (inad > 0) { risco += 12; sinais.push(`${brl(inad)} vencido sem pagar`); }
+      if (metaPct != null && metaPct < 60) { risco += 8; sinais.push(`meta em ${Math.round(metaPct)}%`); }
+      if (venceEm != null && venceEm <= 30) { risco += 10; sinais.push(`renova em ${venceEm} dias`); }
+      const nivel: EmpresaAnalise["nivel"] = risco >= 55 ? "alto" : risco >= 30 ? "atencao" : "ok";
+
+      // próxima ação: a mais urgente primeiro, e só uma, pra virar tarefa de verdade
+      let acao = acoesIA[0] || "Manter a rotina de reunião e acompanhamento da meta";
+      if (saindo) acao = "Cliente pediu pra sair: reunião de retenção com o dono ainda esta semana";
+      else if (inad > 0) acao = `Resolver os ${brl(inad)} em aberto antes de qualquer conversa comercial`;
+      else if (diasSemReuniao == null || diasSemReuniao > 30) acao = "Agendar reunião de resultado com o dono esta semana";
+      else if (atrasadas >= 5) acao = `Destravar as ${atrasadas} tarefas atrasadas (ou renegociar os prazos com o cliente)`;
+      else if (npsL && npsL.nps_score! <= 6) acao = `Ligar pro dono e entender a nota ${npsL.nps_score} do NPS`;
+      else if (wa === "red") acao = "Retomar a conversa no grupo do cliente hoje";
+      else if (metaPct != null && metaPct < 60) acao = `Plano de ação pra meta (${Math.round(metaPct)}% do alvo): revisar funil e rotina do time`;
+      else if (venceEm != null && venceEm <= 30) acao = `Antecipar a conversa de renovação (vence em ${venceEm} dias) com os resultados na mão`;
+
+      out.push({ id, nome: base[0].company_name, consultor: linhas.find((l) => l.company_id === id)?.consultant_name || "", consultorId: base[0].consultant_id,
+        mensal, produtos, saindo, risco, nivel, sinais, acao, health, churn, nps: npsL?.nps_score ?? null, atrasadas, diasSemReuniao, wa, inad, metaPct,
+        metaNome: metaL?.meta_nome || null, meses, venceEm, temFee: ls.some((l) => l.tem_success_fee), temMeta: !!metaL, fatores, acoesIA, segmento: base[0].segmento });
+    });
+    return out.sort((a, b) => (Number(b.saindo) - Number(a.saindo)) || b.risco - a.risco || b.mensal - a.mensal);
+  }, [analise, linhas]);
+
+  const oportunidades = useMemo((): Oportunidade[] => {
+    const out: Oportunidade[] = [];
+    const tem = (e: EmpresaAnalise, re: RegExp) => e.produtos.some((p) => re.test(p));
+    empresasAnalise.forEach((e) => {
+      if (e.saindo || e.nivel === "alto") return; // primeiro segura, depois vende
+      const temAcc = tem(e, /acceleration|partners|board|advisor/i);
+      const temAds = tem(e, /unv ads/i);
+      const temSocial = tem(e, /unv social/i);
+      const temCrm = tem(e, /^crm$|unv sales$/i);
+      const saudavel = (e.health ?? 0) >= 60 && (e.nps == null || e.nps >= 8);
+      if (temAcc && !temAds) out.push({ empresa: e, oferta: "UNV Ads", porque: "o processo comercial já está montado; tráfego pago enche o funil que o time aprendeu a converter", valor: precoRef("UNV Ads"), tipo: "novo", produtoVenda: "UNV Ads" });
+      if (temAcc && !temSocial) out.push({ empresa: e, oferta: "UNV Social", porque: "presença nas redes alimenta a prospecção e sustenta a autoridade do dono", valor: precoRef("UNV Social"), tipo: "novo", produtoVenda: "UNV Social" });
+      if (!temCrm) out.push({ empresa: e, oferta: "UNV Sales (CRM)", porque: "funil, agentes de IA e disparos num lugar só; dá visibilidade do que o time faz", valor: precoRef("CRM"), tipo: "novo", produtoVenda: "CRM" });
+      if ((temAds || temSocial) && !temAcc) out.push({ empresa: e, oferta: "UNV Sales Acceleration", porque: "o cliente já investe em demanda; falta gestão comercial pra transformar lead em venda", valor: precoRef("UNV Sales Acceleration"), tipo: "novo", produtoVenda: "UNV Sales Acceleration" });
+      if (temAcc && e.temMeta && !e.temFee) out.push({ empresa: e, oferta: "Success fee por meta", porque: e.metaPct != null && e.metaPct >= 100 ? `cliente batendo a meta (${Math.round(e.metaPct)}%): hora de atrelar parte da remuneração ao resultado` : "meta cadastrada, mas sem taxa de sucesso: alinha o ganho da UNV ao do cliente", valor: 2000, tipo: "fee", produtoVenda: null });
+      const prodPrincipal = e.produtos.find((p) => /acceleration|partners/i.test(p));
+      const linhaPrincipal = analise.find((a) => a.company_id === e.id && a.product_name === prodPrincipal);
+      if (prodPrincipal && linhaPrincipal && saudavel && e.meses >= 6) {
+        const med = medianaProduto.get(prodPrincipal) || 0;
+        const atual = Number(linhaPrincipal.monthly_cents) / 100;
+        if (med && atual < med * 0.85) out.push({ empresa: e, oferta: `Reajuste do ${prodPrincipal}`, porque: `paga ${brl(atual)} e a mediana da carteira é ${brl(med)}; ${e.meses} meses de casa e saúde ${e.health}`, valor: med - atual, tipo: "reajuste", produtoVenda: null });
+      }
+      if (saudavel && e.meses >= 6 && analise.some((a) => a.company_id === e.id && a.recorrente && /mensal/i.test(a.plano || ""))) out.push({ empresa: e, oferta: "Migrar pra plano semestral ou anual", porque: "cliente satisfeito e no plano mensal: fechar prazo maior protege a carteira (e a sua comissão) contra cancelamento por impulso", valor: 0, tipo: "protecao", produtoVenda: null });
+    });
+    return out.sort((a, b) => b.valor - a.valor || a.empresa.nome.localeCompare(b.empresa.nome));
+  }, [empresasAnalise, analise, medianaProduto]);
+
+  const emRisco = useMemo(() => empresasAnalise.filter((e) => !e.saindo && e.nivel === "alto"), [empresasAnalise]);
+  const emAtencao = useMemo(() => empresasAnalise.filter((e) => !e.saindo && e.nivel === "atencao"), [empresasAnalise]);
+  const valorEmRiscoAlto = emRisco.reduce((s, e) => s + e.mensal, 0);
+  const potencial = oportunidades.reduce((s, o) => s + o.valor, 0);
+  // quanto a comissão sobe se as oportunidades fecharem: entrega sempre; venda quando o produto paga venda
+  const ganhoComissao = useMemo(() => {
+    if (!params) return null;
+    return oportunidades.reduce((s, o) => {
+      const pagaVenda = o.produtoVenda && !(params.semVenda || []).includes(o.produtoVenda);
+      return s + o.valor * (params.pct + (pagaVenda ? params.pctVenda : 0)) / 100;
+    }, 0);
+  }, [oportunidades, params]);
+  const empresaFoco = useMemo(() => empresasAnalise.find((e) => e.id === focoEmpresa) || null, [empresasAnalise, focoEmpresa]);
+  const mostraConsultor = !consultor && empresasAnalise.some((e) => e.consultorId !== empresasAnalise[0]?.consultorId);
+  const chipsRisco = (e: EmpresaAnalise) => (
+    <span>{e.sinais.length ? e.sinais.slice(0, 4).map((x, i) => <i key={i} className={`tag ${e.nivel === "alto" ? "neg" : e.nivel === "atencao" ? "warn" : ""}`}>{x}</i>) : <Nd>sem sinal de alerta</Nd>}{e.sinais.length > 4 && <i className="tag">+{e.sinais.length - 4}</i>}</span>
+  );
 
   // o componente de barras do painel espera uma serie com campo `mes`
   const serie = useMemo(
@@ -1045,6 +1202,98 @@ export default function CarteiraConsultorPage() {
                 )}
               </Panel>
             </div>
+
+            {/* ── Como ganhar mais com a carteira ─────────────────────────────── */}
+            {analise.length > 0 && (
+              <>
+                <div className={`grid ${veComissao && ganhoComissao != null ? "r4" : "r3"}`}>
+                  <Tile label="Receita que dá pra somar" valor={brl(potencial)} sub={`${plural(oportunidades.filter((o) => o.valor > 0).length, "oportunidade mapeada", "oportunidades mapeadas")} por mês`} main />
+                  <Tile label="Em risco de sair" valor={emRisco.length ? brl(valorEmRiscoAlto) : "R$ 0"} sub={emRisco.length ? `${plural(emRisco.length, "cliente", "clientes")} em risco alto · ${plural(emAtencao.length, "em atenção", "em atenção")}` : `${plural(emAtencao.length, "cliente em atenção", "clientes em atenção")}, nenhum em risco alto`} cls={emRisco.length ? "neg" : "pos"} />
+                  <Tile label="Clientes saudáveis" valor={String(empresasAnalise.filter((e) => !e.saindo && e.nivel === "ok").length)} sub={`de ${plural(empresasAnalise.length, "empresa", "empresas")} na carteira`} cls="pos" />
+                  {veComissao && ganhoComissao != null && (
+                    <Tile label="Comissão pode subir" valor={`+${brl(ganhoComissao)}`} sub={`por mês, se as oportunidades fecharem · ${params ? `${params.pct}% de entrega${params.pctVenda ? ` + ${params.pctVenda}% de venda` : ""}` : ""}`} cls="pos" />
+                  )}
+                </div>
+
+                {empresaFoco && (
+                  <Panel titulo={<>{empresaFoco.nome} <i className={`tag ${empresaFoco.nivel === "alto" ? "neg" : empresaFoco.nivel === "atencao" ? "warn" : "pos"}`}>risco {empresaFoco.risco}</i></>}
+                    sub={<Lk onClick={() => setFocoEmpresa(null)}>fechar</Lk>}>
+                    <div className="grid r4">
+                      <Tile label="Saúde" valor={empresaFoco.health != null ? String(empresaFoco.health) : "-"} sub="score 0 a 100" cls={empresaFoco.health != null && empresaFoco.health < 50 ? "neg" : ""} />
+                      <Tile label="Churn previsto" valor={empresaFoco.churn != null ? `${Math.round(empresaFoco.churn)}%` : "-"} sub="próximos 90 dias" cls={empresaFoco.churn != null && empresaFoco.churn >= 35 ? "neg" : ""} />
+                      <Tile label="NPS" valor={empresaFoco.nps != null ? String(empresaFoco.nps) : "-"} sub={empresaFoco.nps == null ? "sem resposta" : "última resposta"} cls={empresaFoco.nps != null && empresaFoco.nps <= 6 ? "neg" : ""} />
+                      <Tile label="Meta do mês" valor={empresaFoco.metaPct != null ? `${Math.round(empresaFoco.metaPct)}%` : "-"} sub={empresaFoco.metaNome || "sem meta principal"} cls={empresaFoco.metaPct != null && empresaFoco.metaPct < 60 ? "neg" : ""} />
+                    </div>
+                    <div className="grid r4">
+                      <Tile label="Tarefas atrasadas" valor={String(empresaFoco.atrasadas)} sub="no projeto" cls={empresaFoco.atrasadas >= 5 ? "neg" : ""} />
+                      <Tile label="Última reunião" valor={empresaFoco.diasSemReuniao == null ? "-" : `${empresaFoco.diasSemReuniao} dias`} sub="atrás" cls={empresaFoco.diasSemReuniao == null || empresaFoco.diasSemReuniao > 30 ? "neg" : ""} />
+                      <Tile label="WhatsApp" valor={empresaFoco.wa === "green" ? "ativo" : empresaFoco.wa === "yellow" ? "esfriando" : empresaFoco.wa === "red" ? "parado" : "-"} sub="grupo do cliente" cls={empresaFoco.wa === "red" ? "neg" : ""} />
+                      <Tile label="Em aberto" valor={empresaFoco.inad ? brl(empresaFoco.inad) : "R$ 0"} sub="faturas vencidas" cls={empresaFoco.inad ? "neg" : ""} />
+                    </div>
+                    <p className="note"><b>Próxima ação:</b> {empresaFoco.acao}</p>
+                    {empresaFoco.fatores.length > 0 && <p className="note"><b>O que pesa:</b> {empresaFoco.fatores.join(" · ")}</p>}
+                    {empresaFoco.acoesIA.length > 0 && <p className="note"><b>Sugestões da previsão de churn:</b> {empresaFoco.acoesIA.join(" · ")}</p>}
+                    <p className="note"><b>Produtos:</b> {empresaFoco.produtos.join(", ") || "-"} · {plural(empresaFoco.meses, "mês", "meses")} de casa · {brlFull(empresaFoco.mensal)} por mês{empresaFoco.segmento ? ` · ${empresaFoco.segmento}` : ""}</p>
+                    {oportunidades.filter((o) => o.empresa.id === empresaFoco.id).length > 0 && (
+                      <p className="note"><b>Dá pra oferecer:</b> {oportunidades.filter((o) => o.empresa.id === empresaFoco.id).map((o) => `${o.oferta}${o.valor ? ` (+${brl(o.valor)}/mês)` : ""}`).join(" · ")}</p>
+                    )}
+                  </Panel>
+                )}
+
+                <div className="grid g2">
+                  <Panel titulo="Atenção pra não perder cliente" sub={`${plural(emRisco.length, "em risco alto", "em risco alto")} · ${plural(emAtencao.length, "em atenção", "em atenção")}`}>
+                    <Tabela
+                      cols={[{ h: "Empresa", tl: true }, ...(mostraConsultor ? [{ h: "Consultor", tl: true }] : []), "Por mês", "Risco", { h: "Sinais", tl: true }, { h: "Próxima ação", tl: true }]}
+                      rows={empresasAnalise.filter((e) => e.saindo || e.nivel !== "ok").map((e) => [
+                        <Lk onClick={() => setFocoEmpresa(e.id)}>{e.nome}</Lk>,
+                        ...(mostraConsultor ? [e.consultor] : []),
+                        brl(e.mensal),
+                        e.saindo ? <span className="st r">saindo</span> : <St ok={e.nivel === "ok"} warn={e.nivel === "atencao"} tg="ok" tw={`atenção ${e.risco}`} tb={`alto ${e.risco}`} />,
+                        chipsRisco(e),
+                        <span style={{ fontSize: 12 }}>{e.acao}</span>,
+                      ])}
+                      onRow={(i) => setFocoEmpresa(empresasAnalise.filter((e) => e.saindo || e.nivel !== "ok")[i].id)}
+                      vazio="Nenhum cliente com sinal de alerta. Mantém a rotina."
+                    />
+                    <span className="more">Risco soma saúde do cliente, previsão de churn, NPS, tarefas atrasadas, tempo sem reunião, WhatsApp do grupo, fatura vencida, meta do mês e renovação próxima. Clique na empresa pra ver tudo.</span>
+                  </Panel>
+                  <Panel titulo="Oportunidades pra aumentar a receita" sub={`${brl(potencial)} por mês`}>
+                    <Tabela
+                      cols={[{ h: "Empresa", tl: true }, { h: "Oferecer", tl: true }, { h: "Por quê", tl: true }, "Por mês", ...(veComissao && params ? ["Sua comissão"] : [])]}
+                      rows={oportunidades.slice(0, 14).map((o) => {
+                        const pagaVenda = o.produtoVenda && params && !(params.semVenda || []).includes(o.produtoVenda);
+                        const com = params ? o.valor * (params.pct + (pagaVenda ? params.pctVenda : 0)) / 100 : 0;
+                        return [
+                          <Lk onClick={() => setFocoEmpresa(o.empresa.id)}>{o.empresa.nome}</Lk>,
+                          <span><b>{o.oferta}</b> <i className={`tag ${o.tipo === "protecao" ? "" : "pos"}`}>{o.tipo === "novo" ? "novo serviço" : o.tipo === "reajuste" ? "reajuste" : o.tipo === "fee" ? "variável" : "proteção"}</i></span>,
+                          <span style={{ fontSize: 12 }}>{o.porque}</span>,
+                          o.valor ? `+${brl(o.valor)}` : <Nd>sem receita direta</Nd>,
+                          ...(veComissao && params ? [o.valor ? `+${brl(com)}` : <Nd />] : []),
+                        ];
+                      })}
+                      vazio="Nenhuma oportunidade clara agora: a carteira está completa ou os clientes precisam ser segurados primeiro."
+                    />
+                    {oportunidades.length > 14 && <span className="more">e mais {oportunidades.length - 14} oportunidades</span>}
+                    <span className="more">Quem está em risco alto ou pediu pra sair fica fora desta lista: primeiro segura, depois vende. Valores são a mediana da carteira pro produto.</span>
+                  </Panel>
+                </div>
+
+                <Panel titulo="Plano da semana" sub="o que fazer primeiro">
+                  <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.7 }}>
+                    {empresasAnalise.filter((e) => e.saindo || e.nivel === "alto").slice(0, 3).map((e) => (
+                      <li key={e.id}><b>{e.nome}</b> ({brl(e.mensal)}/mês): {e.acao}</li>
+                    ))}
+                    {emAtencao.slice(0, 2).map((e) => (
+                      <li key={e.id}><b>{e.nome}</b>: {e.acao}</li>
+                    ))}
+                    {oportunidades.filter((o) => o.valor > 0).slice(0, 3).map((o, i) => (
+                      <li key={`o${i}`}><b>{o.empresa.nome}</b>: levar a proposta de <b>{o.oferta}</b> (+{brl(o.valor)}/mês) na próxima reunião</li>
+                    ))}
+                    {!empresasAnalise.some((e) => e.saindo || e.nivel !== "ok") && !oportunidades.some((o) => o.valor > 0) && <li>Carteira estável e completa. Foque em NPS e indicação.</li>}
+                  </ol>
+                </Panel>
+              </>
+            )}
 
             <Panel
               titulo="Faturado mês a mês"
