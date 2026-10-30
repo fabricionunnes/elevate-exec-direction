@@ -895,7 +895,9 @@ const OnboardingTasksPage = () => {
         : new Set(
             companies
               .filter((c) => c.consultant_id === filterConsultant)
-              .flatMap((c) => c.projects?.map((p) => p.id) ?? [])
+              // projeto com consultor próprio é só desse consultor (Fabrício, 30/10/2026: o aviso prévio do
+              // UNV Ads da Agile Save, que é do Weslley, aparecia no "Solicitou Canc." do Taynon, consultor da empresa)
+              .flatMap((c) => c.projects?.filter((p) => !p.consultant_id || p.consultant_id === filterConsultant).map((p) => p.id) ?? [])
           );
 
     // Also include projects where consultant is set at the project level
@@ -1724,7 +1726,9 @@ const OnboardingTasksPage = () => {
         : new Set(
             companies
               .filter((c) => c.consultant_id === filterConsultant)
-              .flatMap((c) => c.projects?.map((p) => p.id) ?? [])
+              // projeto com consultor próprio é só desse consultor (Fabrício, 30/10/2026: o aviso prévio do
+              // UNV Ads da Agile Save, que é do Weslley, aparecia no "Solicitou Canc." do Taynon, consultor da empresa)
+              .flatMap((c) => c.projects?.filter((p) => !p.consultant_id || p.consultant_id === filterConsultant).map((p) => p.id) ?? [])
           );
 
     const projectPortfolioProjectIds =
