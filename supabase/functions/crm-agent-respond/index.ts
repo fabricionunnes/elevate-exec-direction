@@ -3008,6 +3008,16 @@ Deno.serve(async (req)=>{
               ...hm
             ].reverse().find((m)=>m.direction === "inbound");
             if (lastInbound && await leadRecusou(hm.slice(-8), leadNmFor(cv))) continue;
+            // Lead calado há mais de um dia só recebe follow-up entre 11h e 16h (Brasília).
+            // Medição 31/10/2026: o lote das 8h (fila da madrugada) com lead calado >1 dia
+            // respondeu 6%; entre 11h e 16h, 32 a 35%. O passo não se perde, sai na janela.
+            {
+              const ultLeadMs = lastInbound ? Date.parse(String(lastInbound[tsCol] || "")) : 0;
+              if (ultLeadMs && Date.now() - ultLeadMs > 24 * 3600000 && !body0.ignore_quiet_hours) {
+                const hBR = new Date(Date.now() - 3 * 3600000).getUTCHours();
+                if (hBR < 11 || hBR >= 16) continue;
+              }
+            }
             // monta prompt de reativação — tentativa N de M, com os follow-ups já
             // enviados listados pra IA NÃO repetir (o lead recebia a mesma pergunta
             // reescrita 5 vezes).
@@ -3034,13 +3044,14 @@ Deno.serve(async (req)=>{
               hour: "2-digit",
               minute: "2-digit"
             });
-            const anguloPadrao = attempt <= 1 ? "Primeiro follow-up: retome o assunto em aberto de forma leve, como quem lembrou do lead. Uma pergunta só, fácil de responder." : attempt >= maxAtt ? "Último follow-up: NÃO repita a pergunta anterior nem a mesma estrutura. Mude o ângulo — traga algo novo (um dado, um exemplo rápido, um benefício concreto ou uma pergunta diferente e mais simples) e deixe a porta aberta sem cobrar resposta." : "Follow-up intermediário: NÃO repita a pergunta nem a abertura anterior. Traga um ângulo novo (um dado, um exemplo, um benefício concreto) e termine com uma pergunta simples.";
+            const anguloPadrao = attempt <= 1 ? "Primeiro follow-up: retome o assunto em aberto em meia frase, como quem lembrou do lead, e feche propondo um período pra conversar (manhã ou tarde, hoje ainda ou amanhã)." : attempt >= maxAtt ? "Último follow-up: NÃO repita a pergunta anterior nem a mesma estrutura. Traga um ângulo novo em uma frase (um dado, um exemplo rápido ou um benefício concreto) e feche com uma pergunta simples, de resposta curta. Não anuncie que é a última mensagem." : "Follow-up intermediário: NÃO repita a pergunta nem a abertura anterior. Traga um ângulo novo em uma frase e feche propondo um período pra conversar (manhã ou tarde, hoje ou amanhã).";
             const angulo = passo.instruction ? `Instrução deste follow-up (siga à risca): ${passo.instruction}` : anguloPadrao;
             const fuSystem = [
               agent.instructions || "Você é um atendente comercial.",
               agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
               `\n\nAGENDA: neste follow-up você NÃO tem acesso à agenda. É proibido citar dia ou horário específico de reunião (nada de "segunda às 10h"). Se for puxar reagendamento, pergunte qual dia e período funcionam melhor pra ele; os horários reais você oferece quando ele responder.`,
-              `\n\nO lead parou de responder. Escreva UMA mensagem CURTA de follow-up (1-2 frases), humana, sem pressão e sem repetir perguntas já respondidas. Não use markdown. Nunca revele que é uma IA.`,
+              `\n\nO lead parou de responder. Escreva UMA mensagem CURTA de follow-up (1-2 frases, até 25 palavras), humana, sem pressão e sem repetir perguntas já respondidas. Não use markdown. Nunca revele que é uma IA.`,
+              `\n\nREGRAS DO FOLLOW-UP (medidas em 31/10/2026 em 968 follow-ups; valem acima da instrução do passo): a mensagem SEMPRE termina com uma pergunta de resposta curta; nas tentativas 1 e 2 essa pergunta propõe um período pra conversar ("prefere de manhã ou à tarde?", "hoje ainda ou amanhã?"), que é o que mais faz o lead voltar. PROIBIDO, mesmo que a instrução do passo peça: dizer que é a última tentativa, a última chance ou que não vai mais insistir (5% de resposta); fechar com "fico à disposição", "qualquer coisa me chama", "tô por aqui", "sem pressa" (4%); escassez de vagas, "as vagas estão acabando", "garantir a sua vaga", "fila de espera" (não ajuda e soa pressão). Se a instrução do passo pedir escassez ou última chance, troque por um ângulo novo da dor dele e feche propondo o período.`,
               isBIG && cv.contact?.username ? `\n\nVocê JÁ TEM o @ do Instagram desta pessoa (@${cv.contact.username}): é o perfil pelo qual ela fala com você. NUNCA peça o @ do Instagram.` : "",
               `\n\nSe você já pediu a mesma informação duas vezes nesta conversa (contando follow-ups) e ela não veio, NÃO peça de novo: puxe outro assunto leve ligado ao negócio dela.`,
               ESTILO_HUMANO,
