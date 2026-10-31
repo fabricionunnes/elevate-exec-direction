@@ -174,6 +174,13 @@ export default function PlanejamentoPage() {
     return { recP, recR, cusP, cusR, recPA, recRA, cusPA, cusRA, lucroP, lucroR, fechados, recPAte, recRAte };
   }, [linhas, realizado, ano, anoCorrente]);
 
+  // o pró-labore do sócio vive dentro da composição do time fixo; aqui é só o
+  // número para mostrar quanto sai para ele somando com a participação
+  const proLaboreAno = 19200 * 12;
+
+  // ano sem nenhum lançamento mostra "-", não zero falso: é a regra do Painel de Controle
+  const temRealizado = Object.keys(realizado).length > 0 && (resumo.recRA > 0 || resumo.cusRA > 0);
+
   if (authLoading) return null;
   if (!isMaster) return <Navigate to="/" replace />;
 
@@ -256,7 +263,9 @@ export default function PlanejamentoPage() {
                 main
                 label={`Receita planejada ${ano}`}
                 valor={brl(resumo.recPA)}
-                sub={<>realizado {brl(resumo.recRA)} · {fp(resumo.recPA ? resumo.recRA / resumo.recPA : null)} do ano</>}
+                sub={temRealizado
+                  ? <>realizado {brl(resumo.recRA)} · {fp(resumo.recPA ? resumo.recRA / resumo.recPA : null)} do ano</>
+                  : "ainda sem nada lançado neste ano"}
               />
               <Tile
                 label="No que já fechou"
@@ -266,7 +275,11 @@ export default function PlanejamentoPage() {
                   : "o ano ainda não começou"}
                 cls={resumo.fechados && resumo.recPAte && resumo.recRAte / resumo.recPAte < 0.9 ? "neg" : resumo.fechados ? "pos" : undefined}
               />
-              <Tile label="Custos planejados" valor={brl(resumo.cusPA)} sub={<>realizado {brl(resumo.cusRA)}</>} />
+              <Tile
+                label="Custos planejados"
+                valor={brl(resumo.cusPA)}
+                sub={temRealizado ? <>realizado {brl(resumo.cusRA)}</> : "sem despesa baixada neste ano"}
+              />
               <Tile
                 label="Lucro planejado"
                 valor={brl(resumo.lucroP)}
@@ -274,9 +287,9 @@ export default function PlanejamentoPage() {
               />
               <Tile
                 label="Lucro realizado"
-                valor={resumo.recRA || resumo.cusRA ? brl(resumo.lucroR) : "-"}
-                sub={resumo.recRA || resumo.cusRA ? <>receita menos despesa paga</> : "sem lançamento no ano"}
-                cls={resumo.lucroR < 0 ? "neg" : "pos"}
+                valor={temRealizado ? brl(resumo.lucroR) : "-"}
+                sub={temRealizado ? <>receita menos despesa paga</> : "sem lançamento no ano"}
+                cls={temRealizado ? (resumo.lucroR < 0 ? "neg" : "pos") : undefined}
               />
             </div>
 
