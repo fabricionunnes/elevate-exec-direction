@@ -25,6 +25,8 @@ export type Ano = {
   titulo: string;
   /** saldo de caixa no início do ano, ponto de partida do acúmulo */
   caixa_inicial: number;
+  /** 1 a 12: primeiro mês com dado. 2026 só tem registro a partir de maio */
+  mes_inicial: number;
   observacao: string | null;
   atualizado_em: string;
 };
