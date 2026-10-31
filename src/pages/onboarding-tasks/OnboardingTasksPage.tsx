@@ -1909,7 +1909,8 @@ const OnboardingTasksPage = () => {
   const TIME_IA_UNV_PATH = "/time-ia/30991de4-61d1-4261-af7e-d814b812c4ad";
   const appsDaBusca: AppDaBusca[] = [
     ...(isMaster ? [{ titulo: "Painel de Controle", caminho: "/painel-de-controle", grupo: "Gestão", palavras: "caixa vendas tráfego clientes atendimento ia dashboard" },
-                    { titulo: "Painel ao vivo", caminho: "/painel-de-controle/ao-vivo", grupo: "Gestão", palavras: "gestão à vista tv tela" }] : []),
+                    { titulo: "Painel ao vivo", caminho: "/painel-de-controle/ao-vivo", grupo: "Gestão", palavras: "gestão à vista tv tela" },
+                    { titulo: "Planejamento", caminho: "/planejamento", grupo: "Gestão", palavras: "plano anual meta orçamento planejado realizado 2027 estratégico" }] : []),
     ...(ehCEO ? [{ titulo: "Cockpit UNV", caminho: "/onboarding-tasks/cockpit", grupo: "Gestão", palavras: "escada comercial plano estratégico" },
                  { titulo: "Painel do CEO", caminho: "/onboarding-tasks/ceo", grupo: "Gestão" },
                  { titulo: "IA (Master)", caminho: "/onboarding-tasks/master-ai", grupo: "Gestão" },
@@ -3058,6 +3059,19 @@ const OnboardingTasksPage = () => {
               >
                 <Gauge className="h-4 w-4" />
                 Painel de Controle
+              </Button>
+            )}
+
+            {/* Planejamento: o plano do ano contra o que o sistema já realizou. Só o master. */}
+            {isMaster && (
+              <Button
+                size="sm"
+                className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+                onClick={() => navigate("/planejamento")}
+                title="Planejamento do ano: planejado contra realizado, editável"
+              >
+                <Target className="h-4 w-4" />
+                Planejamento
               </Button>
             )}
 

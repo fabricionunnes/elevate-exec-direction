@@ -48,6 +48,7 @@ const ProdutoCheckupPage = lazy(() => import("./pages/onboarding-tasks/ProdutoCh
 const PainelControlePage = lazy(() => import("./pages/PainelControlePage"));
 const TrafegoPagoClientesPage = lazy(() => import("./pages/onboarding-tasks/TrafegoPagoClientesPage"));
 const PainelAoVivoPage = lazy(() => import("./pages/PainelAoVivoPage"));
+const PlanejamentoPage = lazy(() => import("./pages/PlanejamentoPage"));
 const AgendaFabricioPage = lazy(() => import("./pages/onboarding-tasks/AgendaFabricioPage"));
 const CertificateVerifyPage = lazy(() => import("./pages/CertificateVerifyPage"));
 const GlobalGraphPage = lazy(() => import("./pages/onboarding-tasks/GlobalGraphPage"));
@@ -587,6 +588,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/checkup" element={<ProdutoCheckupPage />} />
               <Route path="/painel-de-controle" element={<PainelControlePage />} />
               <Route path="/painel-de-controle/ao-vivo" element={<PainelAoVivoPage />} />
+              <Route path="/planejamento" element={<PlanejamentoPage />} />
               <Route path="/onboarding-tasks/processos" element={<ProcessosPage />} />
               <Route path="/onboarding-tasks/agenda-fabricio" element={<AgendaFabricioPage />} />
               <Route path="/onboarding-tasks/automations" element={<AutomationsPage />} />
