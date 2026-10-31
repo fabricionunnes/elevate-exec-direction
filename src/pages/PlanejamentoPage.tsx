@@ -15,8 +15,9 @@ import "@/components/painel-controle/painel.css";
 import "@/components/planejamento/planejamento.css";
 import { brl, fp } from "@/components/painel-controle/fmt";
 import { Combo, Panel, Tile } from "@/components/painel-controle/ui";
-import { Grade, planejadoDe, realizadoDa, receitaPlanejadaMes, soma, type Visao } from "@/components/planejamento/Grade";
+import { Grade, planejadoDe, realizadoDa, receitaPlanejadaMes, soma, visiveis, type Visao } from "@/components/planejamento/Grade";
 import { BarrasPlano } from "@/components/planejamento/BarrasPlano";
+import { CruzaReceitaDespesa } from "@/components/planejamento/CruzaReceitaDespesa";
 import { GRUPOS, type Ano, type Linha, type Realizado } from "@/components/planejamento/tipos";
 import { Participacao, type SocioConfig, type Trimestre } from "@/components/planejamento/Participacao";
 import { PlanoSetores, type Acao } from "@/components/planejamento/PlanoSetores";
@@ -140,7 +141,10 @@ export default function PlanejamentoPage() {
       if (e2) toast.error("Ano criado, mas as linhas não copiaram: " + e2.message);
     }
     toast.success(`Planejamento de ${novo} criado com as mesmas linhas, zerado`);
-    setAnos((a) => [{ ano: novo, titulo: `Planejamento ${novo}`, observacao: null, atualizado_em: new Date().toISOString() }, ...a]);
+    setAnos((a) => [{
+      ano: novo, titulo: `Planejamento ${novo}`, observacao: null,
+      caixa_inicial: 0, mes_inicial: 1, atualizado_em: new Date().toISOString(),
+    }, ...a]);
     setAno(novo);
   };
 
@@ -315,6 +319,16 @@ export default function PlanejamentoPage() {
                 <BarrasPlano plan={resumo.cusP} real={resumo.cusR} fmt={(v) => (v == null ? "-" : brl(v))} bomSubir={false} />
               </Panel>
             </div>
+
+            <Panel titulo="Receita contra despesa" sub="o que entrou contra o que saiu, no mesmo mês">
+              <CruzaReceitaDespesa
+                recP={resumo.recP}
+                recR={resumo.recR}
+                cusP={resumo.cusP}
+                cusR={resumo.cusR}
+                meses={visiveis(mesInicial)}
+              />
+            </Panel>
 
             <Panel
               titulo="O plano linha por linha"

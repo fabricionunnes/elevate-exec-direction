@@ -8,7 +8,7 @@ import { GRUPOS, type Linha, type Realizado, type Unidade } from "./tipos";
 const MES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
 /** Índices dos meses a exibir: ano sem dado desde janeiro não mostra zero falso. */
-const visiveis = (mesInicial: number) =>
+export const visiveis = (mesInicial: number) =>
   Array.from({ length: 12 - mesInicial + 1 }, (_, k) => mesInicial - 1 + k);
 
 export type Visao = "ambos" | "planejado" | "realizado";
