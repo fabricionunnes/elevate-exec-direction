@@ -473,21 +473,22 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
             <div className="space-y-1">
               <Label>Template</Label>
               {templates.length ? (
-                <div className="rounded-md border">
-                  <button type="button" onClick={() => setTplOpen((v) => !v)} className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-muted/50 rounded-md">
-                    {template ? (
-                      <span className="flex flex-col items-start min-w-0">
-                        <span className="flex items-center gap-2"><span className="font-medium text-sm">{template.name}</span><Badge variant="outline" className="text-[10px]">{template.category.toLowerCase()}</Badge></span>
-                        <span className="text-xs text-muted-foreground truncate max-w-full">{corpoDe(template).slice(0, 110)}{corpoDe(template).length > 110 ? "…" : ""}</span>
-                      </span>
-                    ) : <span className="text-sm text-muted-foreground">Escolha o template</span>}
-                    <span className="text-xs text-primary shrink-0 inline-flex items-center gap-1">{tplOpen ? "fechar" : "trocar"}<ChevronsUpDown className="h-3.5 w-3.5 opacity-60" /></span>
-                  </button>
-                  {tplOpen && (
-                    // lista embutida na própria janela (não flutua): assim a largura é a da janela e o scroll do mouse funciona
-                    <Command className="border-t rounded-none rounded-b-md" filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                <Popover open={tplOpen} onOpenChange={setTplOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" className="w-full justify-between h-auto min-h-10 py-2 font-normal">
+                      {template ? (
+                        <span className="flex flex-col items-start text-left min-w-0">
+                          <span className="flex items-center gap-2"><span className="font-medium">{template.name}</span><Badge variant="outline" className="text-[10px]">{template.category.toLowerCase()}</Badge></span>
+                          <span className="text-xs text-muted-foreground truncate max-w-[520px]">{corpoDe(template).slice(0, 110)}{corpoDe(template).length > 110 ? "…" : ""}</span>
+                        </span>
+                      ) : <span className="text-muted-foreground">Escolha o template</span>}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)] min-w-[420px]" align="start">
+                    <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
                       <CommandInput placeholder="Busque pelo nome ou por uma palavra da mensagem..." autoFocus />
-                      <CommandList className="max-h-[300px] overflow-y-auto overscroll-contain">
+                      <CommandList className="max-h-[360px]">
                         <CommandEmpty>Nenhum template com isso no nome ou no texto.</CommandEmpty>
                         {recentes.length > 0 && (
                           <CommandGroup heading="Usados recentemente">
@@ -499,8 +500,8 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
                         </CommandGroup>
                       </CommandList>
                     </Command>
-                  )}
-                </div>
+                  </PopoverContent>
+                </Popover>
               ) : (
                 <p className="text-sm text-muted-foreground">Nenhum template aprovado ainda. A Meta aprova em minutos ou horas; tente de novo depois.</p>
               )}
