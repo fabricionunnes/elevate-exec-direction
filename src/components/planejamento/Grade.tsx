@@ -7,6 +7,10 @@ import { GRUPOS, type Linha, type Realizado, type Unidade } from "./tipos";
 
 const MES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
+/** Índices dos meses a exibir: ano sem dado desde janeiro não mostra zero falso. */
+const visiveis = (mesInicial: number) =>
+  Array.from({ length: 12 - mesInicial + 1 }, (_, k) => mesInicial - 1 + k);
+
 export type Visao = "ambos" | "planejado" | "realizado";
 
 export const soma = (v: number[]) => v.reduce((a, b) => a + (Number(b) || 0), 0);
@@ -45,7 +49,7 @@ const fmtPor = (u: Unidade) => (v: number | null) =>
 const fmtCurto = (u: Unidade) => (v: number | null) =>
   v == null ? "-" : u === "brl" ? kfmt(v) : num(v, 0);
 
-export function Grade({ linhas, realizado, visao, editando, mesAtual, anoCorrente, onValor, onDetalhe }: {
+export function Grade({ linhas, realizado, visao, editando, mesAtual, anoCorrente, mesInicial = 1, onValor, onDetalhe }: {
   linhas: Linha[];
   realizado: Realizado;
   visao: Visao;
@@ -53,6 +57,8 @@ export function Grade({ linhas, realizado, visao, editando, mesAtual, anoCorrent
   /** 0 a 11; -1 quando o ano exibido não é o corrente */
   mesAtual: number;
   anoCorrente: boolean;
+  /** primeiro mês com dado */
+  mesInicial?: number;
   onValor: (id: string, mes: number, valor: number) => void;
   onDetalhe: (l: Linha) => void;
 }) {
@@ -125,7 +131,7 @@ export function Grade({ linhas, realizado, visao, editando, mesAtual, anoCorrent
     return (
       <tr className={cls}>
         <td className="nome"><b>{nome}</b></td>
-        {Array.from({ length: 12 }, (_, i) => (
+        {visiveis(mesInicial).map((i) => (
           <td key={i} className={anoCorrente && i === mesAtual ? "hoje" : undefined}>
             {mostraPlan && fmt(plan[i])}
             {mostraRz && <span className="pl-rz">{fmt(rz[i])}</span>}
@@ -145,14 +151,14 @@ export function Grade({ linhas, realizado, visao, editando, mesAtual, anoCorrent
         <thead>
           <tr>
             <th className="nome">Linha</th>
-            {MES.map((m, i) => <th key={m} className={anoCorrente && i === mesAtual ? "hoje" : undefined}>{m}</th>)}
+            {visiveis(mesInicial).map((i) => <th key={i} className={anoCorrente && i === mesAtual ? "hoje" : undefined}>{MES[i]}</th>)}
             <th className="tot">Ano</th>
           </tr>
         </thead>
         <tbody>
           {porGrupo.map((g) => (
             <Fragment key={g.k}>
-              <tr className="gr"><td className="nome" colSpan={14}>{g.nome}</td></tr>
+              <tr className="gr"><td className="nome" colSpan={visiveis(mesInicial).length + 2}>{g.nome}</td></tr>
               {g.itens.map((l) => {
                 const fmtT = fmtPor(l.unidade);
                 return (
@@ -165,7 +171,7 @@ export function Grade({ linhas, realizado, visao, editando, mesAtual, anoCorrent
                         ? <small>acompanha a receita: {num(l.formula_pct, 2)}% dela</small>
                         : !l.fonte && <small>só no plano, o sistema não tem essa conta</small>}
                     </td>
-                    {Array.from({ length: 12 }, (_, i) => celula(l, i))}
+                    {visiveis(mesInicial).map((i) => celula(l, i))}
                     <td className="tot">
                       {mostraPlan && fmtT(totalAno(planDe(l), l.acumulacao))}
                       {mostraRz && <span className="pl-rz">{fmtT(totalAno(rzDe(l), l.acumulacao))}</span>}

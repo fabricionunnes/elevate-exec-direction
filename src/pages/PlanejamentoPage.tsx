@@ -179,6 +179,9 @@ export default function PlanejamentoPage() {
   // número para mostrar quanto sai para ele somando com a participação
   const proLaboreAno = 19200 * 12;
 
+  // ano que não tem registro desde janeiro (2026 começa em maio)
+  const mesInicial = Number(anos.find((a) => a.ano === ano)?.mes_inicial ?? 1);
+
   // ano sem nenhum lançamento mostra "-", não zero falso: é a regra do Painel de Controle
   const temRealizado = Object.keys(realizado).length > 0 && (resumo.recRA > 0 || resumo.cusRA > 0);
 
@@ -329,6 +332,7 @@ export default function PlanejamentoPage() {
                 editando={editando}
                 mesAtual={mesAtual}
                 anoCorrente={anoCorrente}
+                mesInicial={mesInicial}
                 onValor={mudarValor}
                 onDetalhe={(l) => toast.message(l.linha, { description: l.observacao ?? (l.fonte ? `realizado vem de ${l.fonte}` : "linha só do plano") })}
               />
