@@ -65,9 +65,11 @@ export default function PlanejamentoPage() {
   const carregar = useCallback(async (a: number) => {
     setCarregando(true);
     setErro(null);
-    const [ls, rz] = await Promise.all([
+    const [ls, rz, pt, ac] = await Promise.all([
       (supabase as any).from("planejamento_linhas").select("*").eq("ano", a).order("grupo").order("ordem"),
       (supabase as any).rpc("planejamento_realizado", { p_ano: a }),
+      (supabase as any).rpc("planejamento_participacao", { p_ano: a }),
+      (supabase as any).from("planejamento_acoes").select("*").eq("ano", a).order("setor").order("mes"),
     ]);
     if (ls.error) { setErro(ls.error.message); setCarregando(false); return; }
     setLinhas((ls.data ?? []).map((l: any) => ({ ...l, valores: (l.valores ?? []).map(Number) })) as Linha[]);
