@@ -589,6 +589,28 @@ function ferramentaLigada(agent, nome) {
       ]
     }
   });
+  // Retorno combinado (Fabrício, 31/10/2026: "quando o cliente pedir pra chamar em determinado horário, já
+  // agende um follow-up no horário pra seguir a conversa, em qualquer agente"). Sempre ligada.
+  extras.push({
+    name: "agendar_retorno",
+    description: "Marca um retorno automático SEU nesta conversa pra um horário combinado com o lead. Use SEMPRE que o lead pedir pra falar depois, em outro horário ou outro dia ('me chama depois das 15h', 'amanhã de manhã', 'tô em aula, mais tarde', 'semana que vem'). Calcule a data e hora exatas a partir da data/hora atual: 'depois das 15h' = 15:05 do mesmo dia; 'de manhã' = 09:00; 'à tarde' = 14:00; 'à noite' = 19:00; 'mais tarde' = daqui a 2 horas; 'amanhã' sem hora = 09:00; 'semana que vem' = próxima segunda 09:00. Depois de chamar, responda com UMA frase curta confirmando o horário e encerre, sem pergunta. Na hora marcada você mesmo retoma a conversa. Não é tarefa pro vendedor.",
+    input_schema: {
+      type: "object",
+      properties: {
+        quando: {
+          type: "string",
+          description: "Data e hora do retorno, formato YYYY-MM-DDTHH:MM (horário de Brasília)"
+        },
+        motivo: {
+          type: "string",
+          description: "Em uma frase, o que o lead disse e o assunto a retomar. Ex: 'pediu pra falar depois das 15h, estava em aula; retomar a conversa sobre o comercial da empresa dele'"
+        }
+      },
+      required: [
+        "quando"
+      ]
+    }
+  });
   return extras;
 }
 // ---------- Ferramentas do agente (agenda + funil) ----------
@@ -1804,6 +1826,48 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
       ].join("\n");
       return txt.slice(0, 3500);
     }
+    if (name === "agendar_retorno") {
+      const convId = ctx?.conversationId;
+      if (!convId) return "Erro: sem conversa pra marcar o retorno.";
+      const q = String(input?.quando || "").trim();
+      const mq = q.match(/^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}):(\d{2}))?/);
+      const ms = mq ? Date.parse(`${mq[1]}T${mq[2] || "09"}:${mq[3] || "00"}:00-03:00`) : NaN;
+      if (!Number.isFinite(ms)) return "Erro: data inválida. Use YYYY-MM-DDTHH:MM (horário de Brasília).";
+      if (ms < Date.now() + 4 * 60000) return "Erro: esse horário já passou ou é agora. Informe um horário futuro.";
+      if (ms > Date.now() + 45 * 86400000) return "Erro: horário longe demais. Use até 45 dias.";
+      const isIGc = ctx?.channel === "instagram";
+      let canal = "whatsapp", instId = null, offId = null;
+      if (isIGc) {
+        const { data: c } = await supabase.from("instagram_conversations").select("instance_id").eq("id", convId).maybeSingle();
+        canal = "instagram"; instId = c?.instance_id || null;
+      } else {
+        const { data: c } = await supabase.from("crm_whatsapp_conversations").select("instance_id, official_instance_id").eq("id", convId).maybeSingle();
+        instId = c?.instance_id || null; offId = c?.official_instance_id || null;
+        canal = offId && !instId ? "whatsapp_official" : "whatsapp";
+      }
+      const motivo = String(input?.motivo || "").replace(/\s+/g, " ").trim().slice(0, 400);
+      // um retorno pendente por conversa: o novo substitui o anterior
+      await supabase.from("crm_ai_agent_retornos").update({ status: "superseded" }).eq("conversation_id", convId).eq("status", "pending");
+      let activityId = null;
+      if (leadId) {
+        const { data: lead } = await supabase.from("crm_leads").select("owner_staff_id, closer_staff_id, sdr_staff_id").eq("id", leadId).maybeSingle();
+        const hora = new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+        const { data: act } = await supabase.from("crm_activities").insert({
+          lead_id: leadId, type: "followup", title: `Retomar conversa ${hora} (combinado com o lead)`,
+          description: [`Criada pelo agente IA "${agent.name}". O próprio agente retoma a conversa nesse horário.`, motivo].filter(Boolean).join("\n"),
+          scheduled_at: new Date(ms).toISOString(), status: "pending",
+          responsible_staff_id: lead?.owner_staff_id || lead?.closer_staff_id || lead?.sdr_staff_id || null, ai_agent_id: agent.id
+        }).select("id").maybeSingle();
+        activityId = act?.id || null;
+      }
+      const { error } = await supabase.from("crm_ai_agent_retornos").insert({
+        conversation_id: convId, channel: canal, agent_id: agent.id, lead_id: leadId || null,
+        instance_id: instId, official_instance_id: offId, due_at: new Date(ms).toISOString(), motivo, activity_id: activityId
+      });
+      if (error) return `Erro ao marcar o retorno: ${error.message}`;
+      const quandoTxt = new Date(ms).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "long", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      return `Retorno marcado pra ${quandoTxt}. Você mesmo vai retomar a conversa nesse horário. Agora responda com UMA frase curta confirmando que fala com ele nesse horário, sem fazer pergunta.`;
+    }
     if (name === "criar_tarefa_para_vendedor") {
       if (!leadId) return "Erro: conversa sem negócio vinculado.";
       const titulo = String(input?.titulo || "").replace(/\s+/g, " ").trim().slice(0, 140);
@@ -2682,6 +2746,81 @@ Deno.serve(async (req)=>{
     if (body0.action === "followups") {
       const results = [];
       const silencio = [];
+      // RETORNO COMBINADO (31/10/2026): chegou a hora que o lead pediu. Roda antes da reativação
+      // e ignora a cadência; respeita só a janela do dia (7h-22h) e as travas de agente/lead.
+      try {
+        const agoraR = Date.now();
+        const { data: devidos } = await supabase.from("crm_ai_agent_retornos").select("*").eq("status", "pending").lte("due_at", new Date(agoraR).toISOString()).order("due_at").limit(10);
+        for (const r of devidos || []){
+          const marcar = (status, extra = {})=>supabase.from("crm_ai_agent_retornos").update({ status, ...extra }).eq("id", r.id);
+          if (agoraR - Date.parse(r.due_at) > 3 * 3600000) { await marcar("expired", { erro: "passou mais de 3h da hora combinada" }); continue; }
+          const horaBRr = new Date(agoraR - 3 * 3600000).getUTCHours();
+          if (!body0.ignore_quiet_hours && (horaBRr < 7 || horaBRr >= 22)) { silencio.push(`retorno ${r.id}: fora da janela 7h-22h`); continue; }
+          const { data: agent } = await supabase.from("crm_ai_agents").select("*").eq("id", r.agent_id).maybeSingle();
+          if (!agent || !agent.is_active) { await marcar("cancelled", { erro: "agente inativo" }); continue; }
+          const isBIG = r.channel === "instagram";
+          const isOFF = r.channel === "whatsapp_official";
+          const convTable = isBIG ? "instagram_conversations" : "crm_whatsapp_conversations";
+          const msgTable = isBIG ? "instagram_messages" : "crm_whatsapp_messages";
+          const tsCol = isBIG ? "timestamp" : "created_at";
+          const { data: cv } = await supabase.from(convTable).select(isBIG ? "id, instance_id, lead_id, last_message_at, contact:instagram_contacts(name, username)" : "id, instance_id, official_instance_id, lead_id, last_message_at, contact:crm_whatsapp_contacts(name, phone)").eq("id", r.conversation_id).maybeSingle();
+          if (!cv) { await marcar("cancelled", { erro: "conversa não encontrada" }); continue; }
+          const { data: ov } = await supabase.from("crm_ai_agent_conversation_overrides").select("enabled, agent_id, locked").eq("conversation_id", cv.id).eq("channel", isBIG ? "instagram" : "whatsapp").maybeSingle();
+          if (ov && ov.enabled === false) { await marcar("cancelled", { erro: "agente desligado na conversa" }); continue; }
+          if (ov?.locked && ov.agent_id && ov.agent_id !== agent.id) { await marcar("cancelled", { erro: "conversa travada em outro agente" }); continue; }
+          if (await resolveAgentMode(supabase, agent, cv.lead_id, ov) !== "auto") { await marcar("cancelled", { erro: "agente não está em modo automático" }); continue; }
+          if (cv.lead_id) {
+            const { data: ld } = await supabase.from("crm_leads").select("closed_at, stage:crm_stages(final_type, name)").eq("id", cv.lead_id).maybeSingle();
+            if (ld?.stage?.final_type === "lost" || ld?.stage?.final_type === "won" || ld?.closed_at || /fora do icp|fora de icp|fora do perfil/i.test(String(ld?.stage?.name || ""))) { await marcar("cancelled", { erro: "lead encerrado" }); continue; }
+          }
+          const { data: hist } = await supabase.from(msgTable).select(`direction, content, ${tsCol}`).eq("conversation_id", cv.id).order(tsCol, { ascending: false }).limit(40);
+          const h = (hist || []).slice().reverse();
+          // o lead voltou a falar depois de combinar: a conversa seguiu, o retorno perdeu o sentido
+          const criadoMs = Date.parse(r.created_at);
+          if (h.some((m)=>m.direction === "inbound" && Date.parse(String(m[tsCol] || "")) > criadoMs + 2 * 60000)) { await marcar("superseded", { erro: "lead falou depois do combinado" }); continue; }
+          const hm = semAutomaticas(h.filter((m)=>(m.content || "").trim().length > 0)).lista;
+          const leadNm = cv.contact?.name || cv.contact?.username || "o lead";
+          const carimboR = (m)=>{ const t = Date.parse(String(m[tsCol] || "")); return t ? new Date(t).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "sem data"; };
+          const histTxt = hm.slice(-14).map((m)=>`[${carimboR(m)}] ${m.direction === "inbound" ? leadNm : "Você"}: ${m.content}`).join("\n");
+          const agoraTxt = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "long", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+          const sysR = [
+            agent.instructions || "Você é um atendente comercial.",
+            agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
+            `\n\nAGENDA: nesta mensagem você NÃO tem acesso à agenda. Não cite dia nem horário de reunião.`,
+            ESTILO_HUMANO,
+            `\n\nAgora é ${agoraTxt} (Brasília). Vocês combinaram que você voltaria a falar com ${leadNm} AGORA${r.motivo ? ` (${r.motivo})` : ""}. Escreva UMA mensagem curta (1-2 frases) retomando a conversa exatamente de onde parou: pergunte se agora é um bom momento ou vá direto ao assunto que ficou em aberto. Não diga "como combinado", não peça desculpa, não repita perguntas já respondidas. Sem markdown. Nunca revele que é uma IA.`
+          ].join("");
+          const aiR = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+            body: JSON.stringify({ model: agent.model || "claude-sonnet-5", system: sysR, max_tokens: 300, messages: [{ role: "user", content: `Histórico:\n${histTxt || "(sem histórico)"}\n\nEscreva a mensagem de retomada agora.` }] })
+          });
+          if (!aiR.ok) { await marcar("failed", { erro: `IA ${aiR.status}` }); continue; }
+          const aiD = await aiR.json();
+          const texto = humanizar([...new Set((Array.isArray(aiD?.content) ? aiD.content : []).filter((x)=>x?.type === "text").map((x)=>String(x.text)))].join("").trim());
+          if (!texto) { await marcar("failed", { erro: "IA sem texto" }); continue; }
+          if (body0.dry_run) { results.push(`[dry retorno] ${r.channel}/${cv.id}: ${texto.slice(0, 80)}`); continue; }
+          let okR = false, remoteIdR = null, isV2R = false;
+          if (isBIG) {
+            const { error: se } = await supabase.functions.invoke("instagram-send", { body: { conversationId: cv.id, message: texto, staffId: null } });
+            okR = !se;
+          } else {
+            const ph = String(cv.contact?.phone || "").replace(/\D/g, "");
+            const viaOficial = isOFF || (!cv.instance_id && cv.official_instance_id);
+            const sent = viaOficial ? await sendOfficialText(supabase, cv.official_instance_id || r.official_instance_id, ph, texto) : await sendWhatsAppText(supabase, cv.instance_id || r.instance_id, ph, texto);
+            okR = !!sent.ok; remoteIdR = sent.remoteId || null; isV2R = !!sent.isV2;
+          }
+          if (!okR) { await marcar("failed", { erro: "envio falhou" }); continue; }
+          if (!isBIG && !isV2R) await supabase.from("crm_whatsapp_messages").insert({ conversation_id: cv.id, content: texto, type: "text", direction: "outbound", status: "sent", remote_id: remoteIdR, is_ai: true, sent_by: null });
+          if (!isBIG) await supabase.from("crm_whatsapp_conversations").update({ last_message: texto.substring(0, 255), last_message_at: new Date().toISOString() }).eq("id", cv.id);
+          await supabase.from("crm_ai_agent_runs").insert({ agent_id: agent.id, channel: isBIG ? "instagram" : "whatsapp", conversation_id: cv.id, mode: "retorno", outcome: "sent (retorno combinado)", reply: texto }).then(()=>{}, ()=>{});
+          await marcar("sent", { sent_at: new Date().toISOString(), reply: texto });
+          if (r.activity_id) await supabase.from("crm_activities").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", r.activity_id).then(()=>{}, ()=>{});
+          results.push(`retorno ${r.channel}/${cv.id}: enviado`);
+        }
+      } catch (e) {
+        silencio.push(`retornos: ${String(e?.message || e).slice(0, 120)}`);
+      }
       // RESGATE (19/09/2026): lead falou por último, o agente está ligado e nenhuma execução
       // aconteceu depois da mensagem dele (disparo perdido, erro da IA, debounce antigo).
       // Reenvia a conversa pro fluxo normal, que aplica todas as travas de sempre.
@@ -2802,6 +2941,11 @@ Deno.serve(async (req)=>{
             if (ov?.locked && ov.agent_id && ov.agent_id !== agent.id) continue; // conversa travada em outro agente
             const fmode = await resolveAgentMode(supabase, agent, cv.lead_id, ov);
             if (fmode !== "auto") continue;
+            // retorno combinado pendente: a cadência de reativação espera a hora marcada
+            {
+              const { count: pendR } = await supabase.from("crm_ai_agent_retornos").select("id", { count: "exact", head: true }).eq("conversation_id", cv.id).eq("status", "pending");
+              if (pendR) continue;
+            }
             let mtgCtx = {
               ativas: [],
               texto: ""
@@ -3950,6 +4094,7 @@ Deno.serve(async (req)=>{
         tools.some((t)=>t.name === "marcar_fora_do_perfil") ? `\nFORA DO PERFIL: se durante a conversa ficar claro que o lead não é do nosso perfil (outro segmento, sem time comercial, pessoa procurando emprego, curioso, concorrente), chame marcar_fora_do_perfil com o motivo e encerre com educação — sem insistir e sem agendar. Falta de orçamento agora ou "vou pensar" NÃO é fora de perfil: isso você trabalha como objeção.` : "",
         // valem sempre, mesmo sem a ferramenta de fora do perfil (ex.: Instagram sem negócio vinculado)
         `\n\nHORÁRIO QUE NÃO ENCAIXA (regra obrigatória): quando o lead disser que nenhum horário oferecido serve ("não", "nenhum funciona", "não consigo"), isso NÃO é recusa e a conversa NÃO termina. Nunca se despeça, nunca agradeça o retorno e nunca marque como perdido por causa de horário. Faça assim: (1) pergunte qual dia e período funcionam melhor pra ele, ou ofereça você mesmo o próximo dia útil; (2) consulte a agenda desse dia e ofereça 2 ou 3 horários reais; (3) se esse dia também não der, passe pro dia seguinte, e assim por diante, até encaixar; (4) se ele sugerir um dia ("quarta"), consulte a agenda desse dia na hora e ofereça os horários livres. Só pare se ele disser com todas as letras que não quer mais a reunião.`,
+        `\n\nRETORNO COMBINADO (regra obrigatória, vale pra qualquer agente): se o lead pedir pra falar depois, em outro horário ou outro dia ("me chama depois das 15h", "amanhã de manhã", "tô em aula, mais tarde", "semana que vem"), chame agendar_retorno com a data e hora exatas calculadas a partir da data/hora atual e responda só com UMA frase curta confirmando ("Combinado, falo com você depois das 15h então"), sem pergunta e sem insistir. Não crie tarefa pro vendedor nesse caso: o retorno é seu.`,
         (Number(agent?.min_revenue) > 0
           ? `\n\nPISO DE FATURAMENTO (regra do Fabrício, vale ACIMA de qualquer instrução sua em contrário): você só agenda empresa que fatura ${Number(agent.min_revenue).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })} POR MÊS ou mais. Descubra isso em três passos, um por vez, sem parecer interrogatório: (1) pergunte quanto a empresa fatura por mês; (2) se ele não quiser passar o número, pergunte qual a meta de faturamento dele; (3) se ainda assim não vier, pergunte quantas pessoas trabalham com ele ou se tem time comercial — empresa com time montado já fatura acima do piso, então considere DENTRO e pare de perguntar. Assim que ele disser qualquer uma dessas coisas, chame salvar_dados_lead com o campo faturamento. Se ele DECLARAR faturamento abaixo do piso, NÃO agende nem que ele diga que tem dinheiro, que está animado ou que é só uma conversa: disposição de investir não substitui faturamento. Encerre com educação, sem humilhar e sem prometer retorno, e chame marcar_fora_do_perfil com tipo iniciante_ou_faturamento_baixo. Se ele se recusar a falar de faturamento, meta e porte depois de você ter tentado os três passos, aí sim agende e passe faturamento_nao_informado na chamada, pro closer saber que o lead veio sem qualificação. Não confunda faturamento com ticket nem com verba de tráfego.`
           : `\n\nSONDAGEM ANTES DE DISPENSAR (esta regra vale ACIMA de qualquer corte de faturamento escrito nas suas instruções): quando o lead disser que está começando, que ainda não fatura, que fatura pouco, que ainda não tem time ou que está atrás dos primeiros clientes, NÃO encerre, NÃO diga que "não é o momento" e NÃO suma. Faça a sondagem: (1) reconheça o momento dele em uma frase, sem julgamento; (2) pergunte de forma direta e natural se, mesmo nessa fase, ele tem disposição e condição de investir agora para estruturar isso do jeito certo — sem citar valores; (3) se ele disser que SIM, trate como lead qualificado e conduza para o agendamento normalmente; (4) se disser que NÃO ou que agora não tem como, aí sim encerre com educação deixando a porta aberta e chame marcar_fora_do_perfil com tipo iniciante_ou_faturamento_baixo e disposto_a_investir "nao"; (5) se ele desconversar, pergunte uma segunda vez de outro jeito antes de decidir. Nunca dispense alguém por faturamento sem ter feito essa pergunta.`),
