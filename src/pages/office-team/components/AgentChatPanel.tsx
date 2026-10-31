@@ -7,12 +7,14 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { supabase } from '@/integrations/supabase/client'
 import { useTeamStore } from '../store/useTeamStore'
-import { agentByKey, fetchAgentPermissions, fetchMyAgentKeys, grantAgentPermission, revokeAgentPermission } from '../lib/agents'
+import { agentByKey, fetchAgentPermissions, fetchMyAgentKeys, fetchUnvCompanyId, grantAgentPermission, revokeAgentPermission } from '../lib/agents'
 import { bistroTablesFor, bistroSeatsFor } from './CoffeeChat'
 import { personalVisitorSeat, roomAt } from '../lib/rooms'
 import type { TeamRealtime } from '../lib/realtime'
 
-const AGENT_URL = 'https://xrncvhzxjmddqluxoosu.supabase.co/functions/v1/agente-unv'
+// Cérebro dos agentes = Time de IA (ai-team-chat): dados do Nexus inteiro + ordens
+// (rodar agente, aprovar item, subir anúncio na Meta). Persona por agente (agente=).
+const AGENT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-team-chat`
 /** user_ids master (Fabrício) — mesmos com poder de delete nas gravações */
 export const MASTER_IDS = ['98f3de7f-6d6f-4f3c-b2da-b9e479ce96e3', '61688e2e-00f7-4d11-a59d-eb3617ae44f5']
 
@@ -212,12 +214,24 @@ export default function AgentChatPanel({ realtime }: { realtime: TeamRealtime })
         data: { session },
       } = await supabase.auth.getSession()
       if (!session) throw new Error('sem sessão')
-      const res = await fetch(`${AGENT_URL}?agent=${encodeURIComponent(key)}`, {
+      const companyId = await fetchUnvCompanyId()
+      if (!companyId) throw new Error('empresa UNV não encontrada no Nexus')
+      const res = await fetch(AGENT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ message: text, agent: key }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ companyId, message: text, agente: agent.teamKey }),
       })
       const data = await res.json()
+      // o agente acionou alguém (ou a si mesmo): o personagem vai pra mesa trabalhar
+      for (const a of (data?.actions ?? []) as Array<{ tool: string; input?: { agent_key?: string }; result?: { entrega?: string } }>) {
+        if (a.tool === 'rodar_agente' && a.input?.agent_key) {
+          useTeamStore.getState().setTeamStatus(a.input.agent_key, { working: false, lastSummary: a.result?.entrega ?? null, lastAt: Date.now() })
+        }
+      }
       const reply =
         data?.reply || (data?.ok === false ? `Não consegui responder agora (${data.error}).` : 'Não consegui responder agora.')
       setByAgent((prev) => ({

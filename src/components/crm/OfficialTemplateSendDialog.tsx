@@ -25,7 +25,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Loader2, ShieldCheck, Check, Plus, Tag as TagIcon, X } from "lucide-react";
+import { Loader2, ShieldCheck, Check, Plus, Tag as TagIcon, X, ChevronsUpDown, Clock } from "lucide-react";
 
 export interface OfficialTemplateLead {
   id: string | null;
@@ -97,6 +97,22 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
   const [instanceId, setInstanceId] = useState<string>("");
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templateName, setTemplateName] = useState<string>("");
+  // Fabrício (31/10/2026): "sempre dá um trabalhão localizar o template". Buscador por nome e pelo texto
+  // da mensagem, prévia de cada um e os usados recentemente no topo (whatsapp_official_campaigns).
+  const [tplOpen, setTplOpen] = useState(false);
+  const [usoTpl, setUsoTpl] = useState<Record<string, { n: number; ult: string }>>({});
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data } = await supabase.from("whatsapp_official_campaigns").select("template_name, created_at").order("created_at", { ascending: false }).limit(500);
+      const m: Record<string, { n: number; ult: string }> = {};
+      for (const r of (data || []) as any[]) {
+        if (!r.template_name) continue;
+        m[r.template_name] = { n: (m[r.template_name]?.n || 0) + 1, ult: m[r.template_name]?.ult || r.created_at };
+      }
+      setUsoTpl(m);
+    })();
+  }, [open]);
   const [values, setValues] = useState<string[]>([]);
   const [targets, setTargets] = useState<OfficialTemplateLead[]>([]);
   const [optOutTargets, setOptOutTargets] = useState<OfficialTemplateLead[]>([]);
@@ -244,6 +260,26 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
 
   const template = useMemo(() => templates.find((t) => t.name === templateName) || null, [templates, templateName]);
   const body = template?.components.find((c) => c.type === "BODY")?.text || "";
+  const corpoDe = (t: Template) => (t.components.find((c) => c.type === "BODY")?.text || "").replace(/\s+/g, " ").trim();
+  const haQuanto = (iso: string) => { const d = Math.floor((Date.now() - new Date(iso).getTime()) / 864e5); return d === 0 ? "hoje" : d === 1 ? "ontem" : `há ${d} dias`; };
+  const recentes = useMemo(() => templates.filter((t) => usoTpl[t.name]).sort((a, b) => usoTpl[b.name].ult.localeCompare(usoTpl[a.name].ult)).slice(0, 6), [templates, usoTpl]);
+  const todosTpl = useMemo(() => [...templates].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")), [templates]);
+  const ItemTpl = ({ t }: { t: Template }) => (
+    <CommandItem
+      key={t.id}
+      value={`${t.name} ${t.category} ${corpoDe(t)}`}
+      onSelect={() => { setTemplateName(t.name); setTplOpen(false); }}
+      className="flex flex-col items-start gap-0.5 py-2 w-full min-w-0 overflow-hidden whitespace-normal"
+    >
+      <div className="flex w-full min-w-0 items-center gap-2">
+        <Check className={`h-3.5 w-3.5 shrink-0 ${templateName === t.name ? "opacity-100" : "opacity-0"}`} />
+        <span className="font-medium text-sm truncate min-w-0">{t.name}</span>
+        <Badge variant="outline" className="ml-auto text-[10px] shrink-0">{t.category.toLowerCase()}</Badge>
+        {usoTpl[t.name] && <span className="text-[10px] text-muted-foreground shrink-0 inline-flex items-center gap-1"><Clock className="h-3 w-3" />{usoTpl[t.name].n}x · {haQuanto(usoTpl[t.name].ult)}</span>}
+      </div>
+      <p className="pl-[22px] w-full text-xs text-muted-foreground line-clamp-2 text-left break-words whitespace-normal">{corpoDe(t) || "sem texto"}</p>
+    </CommandItem>
+  );
   const varCount = useMemo(() => {
     const m = body.match(/\{\{\d+\}\}/g) || [];
     return new Set(m).size;
@@ -376,7 +412,8 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
 
   return (
     <Dialog open={open} onOpenChange={(o) => !sending && onOpenChange(o)}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      {/* [&>*]:min-w-0: a janela é um grid e texto sem quebra (truncate) esticava a coluna além da largura dela */}
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-emerald-600" /> Enviar template (API oficial)
@@ -437,14 +474,35 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
             <div className="space-y-1">
               <Label>Template</Label>
               {templates.length ? (
-                <Select value={templateName} onValueChange={setTemplateName}>
-                  <SelectTrigger><SelectValue placeholder="Escolha" /></SelectTrigger>
-                  <SelectContent>
-                    {templates.map((t) => (
-                      <SelectItem key={t.id} value={t.name}>{t.name} <span className="text-muted-foreground">· {t.category.toLowerCase()}</span></SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="rounded-md border w-full min-w-0 overflow-hidden">
+                  <button type="button" onClick={() => setTplOpen((v) => !v)} className="w-full min-w-0 flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-muted/50 rounded-md">
+                    {template ? (
+                      <span className="flex flex-col items-start min-w-0 flex-1">
+                        <span className="flex items-center gap-2 min-w-0 max-w-full"><span className="font-medium text-sm truncate">{template.name}</span><Badge variant="outline" className="text-[10px] shrink-0">{template.category.toLowerCase()}</Badge></span>
+                        <span className="text-xs text-muted-foreground truncate w-full">{corpoDe(template).slice(0, 110)}{corpoDe(template).length > 110 ? "…" : ""}</span>
+                      </span>
+                    ) : <span className="text-sm text-muted-foreground">Escolha o template</span>}
+                    <span className="text-xs text-primary shrink-0 inline-flex items-center gap-1">{tplOpen ? "fechar" : "trocar"}<ChevronsUpDown className="h-3.5 w-3.5 opacity-60" /></span>
+                  </button>
+                  {tplOpen && (
+                    // lista embutida na própria janela (não flutua): largura da janela e o scroll do mouse funciona.
+                    // Popover em portal dentro do Dialog estourava a largura e o wheel era bloqueado pelo trava-scroll.
+                    <Command className="border-t rounded-none rounded-b-md" filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                      <CommandInput placeholder="Busque pelo nome ou por uma palavra da mensagem..." autoFocus />
+                      <CommandList className="max-h-[300px] overflow-y-auto overscroll-contain">
+                        <CommandEmpty>Nenhum template com isso no nome ou no texto.</CommandEmpty>
+                        {recentes.length > 0 && (
+                          <CommandGroup heading="Usados recentemente">
+                            {recentes.map((t) => <ItemTpl key={`r-${t.id}`} t={t} />)}
+                          </CommandGroup>
+                        )}
+                        <CommandGroup heading={`Todos os templates (${todosTpl.length})`}>
+                          {todosTpl.map((t) => <ItemTpl key={t.id} t={t} />)}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  )}
+                </div>
               ) : (
                 <p className="text-sm text-muted-foreground">Nenhum template aprovado ainda. A Meta aprova em minutos ou horas; tente de novo depois.</p>
               )}

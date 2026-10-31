@@ -226,8 +226,14 @@ interface TeamState {
   saleEvent: { lead: string; value: number; by: string; ts: number } | null
   /** user_ids com reunião agendada acontecendo agora (status "Em reunião") */
   inMeetingIds: string[]
-  /** agente IA com painel de chat aberto (key: ceo, financeiro, crm...) */
+  /** agente IA com painel de chat aberto (key: ceo, crm, marketing...) */
   agentChatFor: string | null
+  /** Time de IA: status real por agente (chave = ai_team_agents.agent_key) */
+  teamStatus: Record<string, { working: boolean; lastSummary: string | null; lastAt: number | null; pending: number }>
+  setTeamStatus: (teamKey: string, s: Partial<{ working: boolean; lastSummary: string | null; lastAt: number | null; pending: number }>) => void
+  /** o que o MAX está dizendo por voz (balão sobre a cabeça dele) */
+  maxSpeech: string | null
+  setMaxSpeech: (t: string | null) => void
   /** auditório: o palestrante me chamou pra falar (broadcast 'stage-call') */
   stageCall: { fromName: string; ts: number } | null
   /** reservas das salas de cliente de HOJE (convites com scheduled_at hoje) */
@@ -541,6 +547,16 @@ export const useTeamStore = create<TeamState>((set, get) => ({
   setSaleEvent: (s) => set({ saleEvent: s }),
   setInMeetingIds: (ids) => set({ inMeetingIds: ids }),
   setAgentChatFor: (key) => set({ agentChatFor: key }),
+  teamStatus: {},
+  setTeamStatus: (teamKey, s) =>
+    set((prev) => ({
+      teamStatus: {
+        ...prev.teamStatus,
+        [teamKey]: { working: false, lastSummary: null, lastAt: null, pending: 0, ...prev.teamStatus[teamKey], ...s },
+      },
+    })),
+  maxSpeech: null,
+  setMaxSpeech: (t) => set({ maxSpeech: t }),
   setStageCall: (c) => set({ stageCall: c }),
   setClientReservations: (list) => set({ clientReservations: list }),
 

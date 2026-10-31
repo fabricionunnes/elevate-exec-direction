@@ -71,9 +71,9 @@ const MetricCard = ({
     <CardContent className="min-w-0 space-y-1.5 p-3 sm:p-4">
       <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
         <Icon className="h-3.5 w-3.5 shrink-0" />
-        <span className="min-w-0 truncate text-xs font-medium">{label}</span>
+        <span className="fin-lbl min-w-0 truncate text-xs font-medium">{label}</span>
       </div>
-      <p className={`min-w-0 break-words text-[clamp(1rem,4.2vw,1.25rem)] font-bold leading-tight ${valueClass}`}>{value}</p>
+      <p className={`fin-val min-w-0 break-words text-[clamp(1rem,4.2vw,1.25rem)] font-bold leading-tight ${valueClass}`}>{value}</p>
       {sub && <p className="break-words text-[11px] leading-snug text-muted-foreground">{sub}</p>}
       {badge}
     </CardContent>
@@ -84,7 +84,7 @@ const MetricCard = ({
 const Section = ({ title, icon: Icon }: { title: string; icon: React.ElementType }) => (
   <div className="flex items-center gap-2 pt-2">
     <Icon className="h-4 w-4 text-muted-foreground" />
-    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{title}</h3>
+    <h3 className="fin-sec text-xs font-semibold text-muted-foreground uppercase tracking-widest">{title}</h3>
     <div className="flex-1 h-px bg-border" />
   </div>
 );

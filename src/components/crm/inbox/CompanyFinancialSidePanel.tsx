@@ -61,6 +61,13 @@ export function CompanyFinancialSidePanel({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { toast.error("Sessão expirada"); return; }
 
+      // Cobrança NUNCA vai pra grupo (Fabrício, 27/10/2026): só no privado do cliente.
+      const digitosContato = String(contactPhone || "").replace(/\D/g, "");
+      if (String(contactPhone || "").includes("@g.us") || (digitosContato.startsWith("120363") && digitosContato.length > 15)) {
+        toast.error("Cobrança não é enviada em grupo. Abra a conversa no privado do cliente.");
+        return;
+      }
+
       // Try Evolution API first, then Official
       if (instanceId) {
         const { data: instById } = await supabase

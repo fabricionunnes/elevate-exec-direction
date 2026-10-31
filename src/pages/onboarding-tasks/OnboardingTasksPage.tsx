@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain, Network, AudioLines, Radar, Gauge, ClipboardCheck } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain, Network, AudioLines, Radar, Gauge, ClipboardCheck, Bot, Wallet } from "lucide-react";
 import { GlobalAccessControlPanel } from "@/components/onboarding-tasks/GlobalAccessControlPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -895,7 +895,9 @@ const OnboardingTasksPage = () => {
         : new Set(
             companies
               .filter((c) => c.consultant_id === filterConsultant)
-              .flatMap((c) => c.projects?.map((p) => p.id) ?? [])
+              // projeto com consultor próprio é só desse consultor (Fabrício, 30/10/2026: o aviso prévio do
+              // UNV Ads da Agile Save, que é do Weslley, aparecia no "Solicitou Canc." do Taynon, consultor da empresa)
+              .flatMap((c) => c.projects?.filter((p) => !p.consultant_id || p.consultant_id === filterConsultant).map((p) => p.id) ?? [])
           );
 
     // Also include projects where consultant is set at the project level
@@ -1430,6 +1432,14 @@ const OnboardingTasksPage = () => {
     return counts;
   }, [companies, companyRag]);
 
+  // Projeto conta pro consultor em foco (filtro ou o próprio consultor logado) quando é o consultor/CS do projeto;
+  // o consultor da empresa só leva projeto sem consultor próprio (Fabrício, 30/10/2026, Agile Save x Taynon).
+  const projetoDaCarteira = (company: { consultant_id: string | null }, p: { consultant_id: string | null; cs_id?: string | null }) => {
+    if (filterConsultant === "all") return true;
+    if (p.consultant_id === filterConsultant || p.cs_id === filterConsultant) return true;
+    return !p.consultant_id && company.consultant_id === filterConsultant;
+  };
+
   const filteredCompanies = useMemo(() => {
     const filtered = companies.filter((company) => {
       // Hide inactive and closed companies entirely from dashboard
@@ -1445,7 +1455,7 @@ const OnboardingTasksPage = () => {
         }
         // Company must have projects matching the filter
         const hasCancellationProject = company.projects?.some(p => 
-          p.status === "cancellation_signaled" || p.status === "notice_period"
+          (p.status === "cancellation_signaled" || p.status === "notice_period") && projetoDaCarteira(company, p)
         );
         const hasClosedProject = company.projects?.some(p => p.status === "closed");
         const isClosedFilter = filterStatus === "closed" || activeMetricFilter?.value === "closed";
@@ -1601,11 +1611,11 @@ const OnboardingTasksPage = () => {
           // Special filter: includes both cancellation_signaled AND notice_period
           // No date filter here - matches how projectMetrics.churnSignaled is calculated
           matchesMetricFilter = company.projects?.some(p => 
-            p.status === "cancellation_signaled" || p.status === "notice_period"
+            (p.status === "cancellation_signaled" || p.status === "notice_period") && projetoDaCarteira(company, p)
           ) ?? false;
         } else if (activeMetricFilter.type === "status" && (activeMetricFilter.value === "cancellation_signaled" || activeMetricFilter.value === "notice_period")) {
           // For cancellation/notice filters, don't require date range - show all current
-          matchesMetricFilter = company.projects?.some(p => p.status === activeMetricFilter.value) ?? false;
+          matchesMetricFilter = company.projects?.some(p => p.status === activeMetricFilter.value && projetoDaCarteira(company, p)) ?? false;
         } else if (activeMetricFilter.type === "status" && activeMetricFilter.value === "all") {
           // "Total" card — mostra todas as empresas sem filtro adicional
           matchesMetricFilter = true;
@@ -1724,7 +1734,9 @@ const OnboardingTasksPage = () => {
         : new Set(
             companies
               .filter((c) => c.consultant_id === filterConsultant)
-              .flatMap((c) => c.projects?.map((p) => p.id) ?? [])
+              // projeto com consultor próprio é só desse consultor (Fabrício, 30/10/2026: o aviso prévio do
+              // UNV Ads da Agile Save, que é do Weslley, aparecia no "Solicitou Canc." do Taynon, consultor da empresa)
+              .flatMap((c) => c.projects?.filter((p) => !p.consultant_id || p.consultant_id === filterConsultant).map((p) => p.id) ?? [])
           );
 
     const projectPortfolioProjectIds =
@@ -1893,6 +1905,8 @@ const OnboardingTasksPage = () => {
   // Catálogo da busca de aplicativos: mesmas regras de acesso dos menus da tela (21/10/2026).
   const ehCEO = currentUserEmail === "fabricio@universidadevendas.com.br";
   const ehStaffInterno = isMaster || isAdmin || isCS || isConsultant || ["closer", "sdr", "social_setter", "bdr", "head_comercial", "rh", "financeiro", "marketing", "juridico"].includes(currentUserRole || "");
+  // Projeto "Time de IA" da própria UNV (onboarding_projects); enquanto o módulo é só interno, o atalho aponta direto pra ele
+  const TIME_IA_UNV_PATH = "/time-ia/30991de4-61d1-4261-af7e-d814b812c4ad";
   const appsDaBusca: AppDaBusca[] = [
     ...(isMaster ? [{ titulo: "Painel de Controle", caminho: "/painel-de-controle", grupo: "Gestão", palavras: "caixa vendas tráfego clientes atendimento ia dashboard" },
                     { titulo: "Painel ao vivo", caminho: "/painel-de-controle/ao-vivo", grupo: "Gestão", palavras: "gestão à vista tv tela" },
@@ -1903,6 +1917,7 @@ const OnboardingTasksPage = () => {
                  { titulo: "Agenda Fabrício", caminho: "/onboarding-tasks/agenda-fabricio", grupo: "Gestão" },
                  { titulo: "White-Label", caminho: "/whitelabel-gestao", grupo: "Gestão" }] : []),
     ...((isMaster || isAdmin || hasMenuPerm("trafego_pago")) ? [{ titulo: "Tráfego pago dos clientes", caminho: "/onboarding-tasks/trafego-pago", grupo: "Gestão", palavras: "meta ads cac roas anúncios saldo" }] : []),
+    ...(isMaster ? [{ titulo: "Time de IA (UNV)", caminho: TIME_IA_UNV_PATH, grupo: "Gestão", palavras: "agentes max sophia luna mika briefing anúncios reativação" }] : []),
     ...(isMaster ? [{ titulo: "MRR do Mês", caminho: "/onboarding-tasks/mrr", grupo: "Gestão", palavras: "receita recorrente" },
                     { titulo: "Custo de IA", caminho: "/onboarding-tasks/custo-ia", grupo: "Gestão" },
                     { titulo: "Escritório Agentes", caminho: "/office", grupo: "Operações", palavras: "3d agentes ia" }] : []),
@@ -1972,7 +1987,8 @@ const OnboardingTasksPage = () => {
     ...((canCreateCompany || canAccessResults) ? [{ titulo: "Resultados", caminho: "/onboarding-tasks/results", grupo: "Engajamento" }] : []),
     ...((canCreateCompany || canAccessCircle) ? [{ titulo: "UNV Circle", caminho: "/circle", grupo: "Engajamento", palavras: "comunidade" }] : []),
     ...(canAccessAnalytics ? [{ titulo: "Radar", caminho: "/onboarding-tasks/radar", grupo: "Sucesso do Cliente", palavras: "risco clientes" },
-                              { titulo: "Cérebro do Cliente", caminho: "/onboarding-tasks/cerebro", grupo: "Sucesso do Cliente" }] : []),
+                              { titulo: "Cérebro do Cliente", caminho: "/onboarding-tasks/cerebro", grupo: "Sucesso do Cliente" },
+                              { titulo: "Carteira do consultor", caminho: "/onboarding-tasks/carteira", grupo: "Sucesso do Cliente", palavras: "carteira consultor valor mensal empresas comissão ticket" }] : []),
     ...((isAdmin || isCS) ? [
       { titulo: "Checkup do Produto", caminho: "/onboarding-tasks/checkup", grupo: "Sucesso do Cliente" },
       { titulo: "Cancelamento & Retenção", caminho: "/onboarding-tasks/cancellations-retention", grupo: "Sucesso do Cliente", palavras: "churn cancelamentos" },
@@ -2682,6 +2698,10 @@ const OnboardingTasksPage = () => {
                     <Brain className="h-4 w-4 mr-2" />
                     Cérebro da Carteira
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/carteira")}>
+                    <Wallet className="h-4 w-4 mr-2" />
+                    Carteira do consultor
+                  </DropdownMenuItem>
                   {(isAdmin || isCS) && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/checkup")}>
                       <ClipboardCheck className="h-4 w-4 mr-2" /> Checkup do Produto
@@ -3052,6 +3072,20 @@ const OnboardingTasksPage = () => {
               >
                 <Target className="h-4 w-4" />
                 Planejamento
+              </Button>
+            )}
+
+            {/* Time de IA da própria UNV: só o master vê, enquanto o módulo está em teste interno */}
+            {isMaster && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => navigate(TIME_IA_UNV_PATH)}
+                title="Time de IA: Max, Sophia, Luna, Mika e os outros agentes da UNV"
+              >
+                <Bot className="h-4 w-4" />
+                Time de IA
               </Button>
             )}
 

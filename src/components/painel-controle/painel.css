@@ -69,6 +69,10 @@
 @media (prefers-reduced-motion: reduce) { .pc .fn-anel.entra, .pc .fn-guias, .pc .fn-rot { animation: none; } }
 .pc .grid { display: grid; gap: 12px; }
 .pc .k5 { grid-template-columns: 1.35fr 1fr 1fr 1fr 1fr; }
+.pc .k6 { grid-template-columns: 1.25fr .95fr .95fr .95fr .95fr 1.25fr; }
+/* seis colunas e coluna estreita: o valor em destaque nao cabe em 36px e o
+   .val e nowrap, entao transborda o card. Aqui ele usa o tamanho normal. */
+.pc .k6 .p.main .val { font-size: clamp(20px, 1.9vw, 30px); }
 .pc .r2 { grid-template-columns: 1.55fr 1fr; }
 .pc .r4 { grid-template-columns: repeat(4, 1fr); }
 .pc .r3 { grid-template-columns: 2.1fr 1fr; }
@@ -188,12 +192,12 @@
 .pc .barh .n { width: 200px; color: var(--ink2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pc .barh .v { width: 90px; text-align: right; font-weight: 700; }
 @media (max-width: 980px) {
-  .pc .k5 { grid-template-columns: 1fr 1fr; } .pc .k5 .main { grid-column: 1 / -1; }
+  .pc .k5, .pc .k6 { grid-template-columns: 1fr 1fr; } .pc .k5 .main:first-child, .pc .k6 .main:first-child { grid-column: 1 / -1; }
   .pc .r2, .pc .r3, .pc .fin, .pc .g2 { grid-template-columns: 1fr; } .pc .r4 { grid-template-columns: 1fr 1fr; }
   .pc .p.alertas { height: auto; min-height: 0; } .pc .p.alertas .alertas-lista { max-height: 340px; }
 }
 @media (max-width: 560px) {
-  .pc .r4, .pc .k5 { grid-template-columns: 1fr; }
+  .pc .r4, .pc .k5, .pc .k6 { grid-template-columns: 1fr; }
   .pc .fr { grid-template-columns: 104px 1fr 46px 62px; gap: 6px; }
   .pc .ft { grid-template-columns: 1fr 1fr; }
   .pc .src { text-align: left; }

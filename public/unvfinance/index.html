@@ -830,6 +830,23 @@
       if(tel.length < 10) return showErr("Informe seu WhatsApp com DDD.");
       if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showErr("Informe um e-mail válido.");
 
+      // 28/10/2026 (Fabrício): todo lead do UNV Finance passa pelo diagnóstico (/unvfinance/forms), que
+      // qualifica (dono? faturamento, dor, quem cuida) e grava as respostas. Antes este formulário curto
+      // criava o lead sem qualificação nenhuma (6 de 9 leads em 30 dias). Os dados digitados aqui vão
+      // pelo localStorage que o diagnóstico já lê ("unvfinance_lead"); nada pessoal vai na URL, só os UTMs.
+      try {
+        var LS = "unvfinance_lead", salvo = JSON.parse(localStorage.getItem(LS) || "{}");
+        salvo.nome = nome; salvo.tel = tel; salvo.email = email;
+        if(empresa) salvo.empresa = empresa;
+        salvo.t = Date.now();
+        localStorage.setItem(LS, JSON.stringify(salvo));
+      } catch(e){}
+      fb("trackCustom", "LandingParaDiagnostico", { form: "unvfinance-landing" });
+      btn.disabled = true;
+      btn.textContent = "Abrindo o diagnóstico...";
+      location.href = "/unvfinance/forms/" + location.search;
+      return;
+
       var resumo = "Olá, acabei de preencher o formulário da UNV Finance e quero agendar uma reunião de alinhamento." +
         "\nNome: " + nome + (empresa ? "\nEmpresa: " + empresa : "") + (fat ? "\nFaturamento: " + fat : "");
       var link = waUrl(resumo);

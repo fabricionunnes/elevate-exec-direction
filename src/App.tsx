@@ -227,6 +227,7 @@ const B2BProspectionPage = lazy(() => import("./pages/onboarding-tasks/B2BProspe
 const ConsultoriasAdminPage = lazy(() => import("./pages/onboarding-tasks/ConsultoriasAdminPage"));
 const MasterAIConsultPage = lazy(() => import("./pages/onboarding-tasks/MasterAIConsultPage"));
 const MRRDashboardPage = lazy(() => import("./pages/onboarding-tasks/MRRDashboardPage"));
+const CarteiraConsultorPage = lazy(() => import("./pages/onboarding-tasks/CarteiraConsultorPage"));
 const SignaturesAdminPage = lazy(() => import("./pages/onboarding-tasks/SignaturesAdminPage"));
 const FacunicampsDashboardPage = lazy(() => import("./pages/onboarding-tasks/FacunicampsDashboardPage"));
 const JuridicoPage = lazy(() => import("./pages/onboarding-tasks/JuridicoPage"));
@@ -372,6 +373,9 @@ const SocialSettingsPageComponent = lazy(() => import("./pages/social").then(m =
 const SocialApprovalPageComponent = lazy(() => import("./pages/social").then(m => ({ default: m.SocialApprovalPage })));
 const SocialStrategyPageComponent = lazy(() => import("./pages/social").then(m => ({ default: m.SocialStrategyPage })));
 
+// Time de IA (Max + 7 especialistas)
+const TimeIAPage = lazy(() => import("./pages/time-ia/TimeIAPage"));
+
 // Customer Points
 const CustomerPointsLayout = lazy(() => import("./pages/customer-points/CustomerPointsLayout"));
 const CustomerPointsDashboard = lazy(() => import("./pages/customer-points/CustomerPointsDashboard"));
@@ -389,6 +393,7 @@ const WhitelabelUNVAdminPage = lazy(() => import("./pages/whitelabel/WhitelabelU
 const WhitelabelSignupPage = lazy(() => import("./pages/whitelabel/WhitelabelSignupPage"));
 
 import { ModuleGuard } from "./components/whitelabel/ModuleGuard";
+import MaxVoiceGlobal from "./components/MaxVoiceGlobal";
 
 // OnboardingStaffLayout needs to be lazy too
 const OnboardingStaffLayout = lazy(() => import("./components/onboarding-tasks/OnboardingStaffLayout").then(m => ({ default: m.OnboardingStaffLayout })));
@@ -416,6 +421,8 @@ const AppShell = () => {
               <ScrollToTop />
               <OAuthRedirectHandler />
               <InviteRedirectHandler />
+              {/* Max por voz em qualquer tela do staff (Time de IA) */}
+              <MaxVoiceGlobal />
               <Suspense fallback={<PageLoader />}>
               <Routes>
             <Route path="/" element={<HomePage />} />
@@ -535,6 +542,7 @@ const AppShell = () => {
               <Route path="/office" element={<OfficePage />} />
               <Route path="/onboarding-tasks/reschedule" element={<RescheduleTasks />} />
               <Route path="/onboarding-tasks/renewals" element={<OnboardingRenewalsPage />} />
+              <Route path="/onboarding-tasks/carteira" element={<CarteiraConsultorPage />} />
               <Route path="/onboarding-tasks/cancellations" element={<OnboardingCancellationsPage />} />
               <Route path="/onboarding-tasks/cancellations-retention" element={<CancellationsRetentionModulePage />} />
               <Route path="/onboarding-tasks/activity-history" element={<OnboardingActivityHistoryPage />} />
@@ -728,7 +736,10 @@ const AppShell = () => {
               <Route path="settings" element={<SocialSettingsPageComponent />} />
             </Route>
             <Route path="/social/approval" element={<SocialApprovalPageComponent />} />
-            
+
+            {/* Time de IA */}
+            <Route path="/time-ia/:projectId" element={<TimeIAPage />} />
+
             {/* System Showcase */}
             <Route path="/sistema" element={<SystemShowcasePage />} />
             

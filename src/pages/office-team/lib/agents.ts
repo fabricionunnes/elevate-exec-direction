@@ -1,11 +1,19 @@
 // Agentes IA da UNV no escritório — config dos NPCs + permissões de acesso.
 // O master (Fabrício) escolhe quem pode falar com cada agente
-// (office_agent_permissions); o agente-unv valida o mesmo no servidor.
+// (office_agent_permissions); o chat (ai-team-chat) valida o acesso à empresa.
+// Elenco = Time de IA (ai_team_agents da UNV): cada NPC tem a chave do agente
+// real (teamKey), que liga rodadas, fila de aprovação e conversa.
 import { supabase } from '@/integrations/supabase/client'
 
+export type TeamKey =
+  | 'orquestrador' | 'atendimento' | 'briefing' | 'anuncios'
+  | 'conteudo' | 'reativacao' | 'trafego' | 'qualificacao'
+
 export interface OfficeAgent {
-  /** key enviada ao agente-unv (?agent=) e gravada em office_agent_permissions */
+  /** key de permissão (office_agent_permissions) e id do NPC */
   key: string
+  /** agente do Time de IA (ai_team_agents.agent_key) */
+  teamKey: TeamKey
   name: string
   title: string
   /** setor da sala onde o robô fica */
@@ -14,23 +22,41 @@ export interface OfficeAgent {
   body: string
   /** cor das luzes */
   accent: string
-  /** deslocamento dentro da sala (a partir do canto noroeste interno) */
+  /** posição dentro da sala (0 = canto noroeste, 1 = canto nordeste, 2+ = meio) */
   slot: number
   intro: string
 }
 
 export const OFFICE_AGENTS: OfficeAgent[] = [
-  { key: 'ceo', name: 'MAX', title: 'CEO · IA', sector: 'lideranca', body: '#0D2B5E', accent: '#FFD700', slot: 0, intro: 'Fala com o MAX — visão geral do negócio, reuniões de alinhamento e direcionamento dos agentes.' },
-  { key: 'gerente', name: 'Cris', title: 'Gerente · IA', sector: 'lideranca', body: '#37474F', accent: '#80cbc4', slot: 1, intro: 'Fala com a Cris — gestão do dia a dia, cobranças e acompanhamento do time.' },
-  { key: 'crm', name: 'Sophia', title: 'Comercial · IA', sector: 'comercial', body: '#1B6B3A', accent: '#7CFC9A', slot: 0, intro: 'Fala com a Sophia — leads, pipeline, follow-ups e atividades do CRM.' },
-  { key: 'financeiro', name: 'Noah', title: 'Financeiro · IA', sector: 'financeiro', body: '#4E342E', accent: '#FFB74D', slot: 0, intro: 'Fala com o Noah — contas, fluxo de caixa, cobranças e indicadores financeiros.' },
-  { key: 'projetos', name: 'Melissa', title: 'Projetos · IA', sector: 'produto', body: '#4A148C', accent: '#CE93D8', slot: 0, intro: 'Fala com a Melissa — projetos, tarefas, entregas e onboarding de clientes.' },
-  { key: 'marketing', name: 'Luna', title: 'Marketing · IA', sector: 'marketing', body: '#880E4F', accent: '#F48FB1', slot: 0, intro: 'Fala com a Luna — tráfego pago, campanhas e métricas de marketing.' },
-  { key: 'social', name: 'Mika', title: 'Social Media · IA', sector: 'marketing', body: '#0277BD', accent: '#81D4FA', slot: 1, intro: 'Fala com a Mika — conteúdo, calendário editorial e redes sociais.' },
+  { key: 'ceo', teamKey: 'orquestrador', name: 'MAX', title: 'Coordenador · IA', sector: 'lideranca', body: '#0D2B5E', accent: '#FFD700', slot: 0, intro: 'Fala com o MAX — ele lê o Nexus inteiro (caixa, CRM, carteira, tráfego), coordena o time e executa ordens: roda agentes, aprova itens, sobe anúncio na Meta.' },
+  { key: 'crm', teamKey: 'briefing', name: 'Sophia', title: 'Head comercial · IA', sector: 'comercial', body: '#1A4A8A', accent: '#7CB8FF', slot: 0, intro: 'Fala com a Sophia — briefing do dia: financeiro, leads, reuniões, fechamentos, carteira e onde apertar hoje.' },
+  { key: 'atendimento', teamKey: 'atendimento', name: 'Lia', title: 'Atendimento · IA', sector: 'comercial', body: '#CC1B1B', accent: '#FF8A8A', slot: 1, intro: 'Fala com a Lia — atendimento 24h no Direct e no WhatsApp, qualificação e agendamento.' },
+  { key: 'reativacao', teamKey: 'reativacao', name: 'Theo', title: 'Reativação · IA', sector: 'comercial', body: '#0F766E', accent: '#5EEAD4', slot: 2, intro: 'Fala com o Theo — leads parados e clientes que saíram: mensagens com nome, prontas pra disparar.' },
+  { key: 'qualificacao', teamKey: 'qualificacao', name: 'Júlia', title: 'Qualificação · IA', sector: 'comercial', body: '#9D174D', accent: '#F9A8D4', slot: 3, intro: 'Fala com a Júlia — leads das últimas 24h: quem está sem dono, sem contato e quem ligar primeiro.' },
+  { key: 'marketing', teamKey: 'trafego', name: 'Luna', title: 'Head de marketing · IA', sector: 'marketing', body: '#6D28D9', accent: '#C4B5FD', slot: 0, intro: 'Fala com a Luna — campanhas da Meta: o que merece verba, o que está queimando dinheiro, CPL por campanha.' },
+  { key: 'social', teamKey: 'conteudo', name: 'Mika', title: 'Conteúdo · IA', sector: 'marketing', body: '#0277BD', accent: '#81D4FA', slot: 1, intro: 'Fala com a Mika — posts e calendário editorial a partir do que o comercial está vivendo.' },
+  { key: 'anuncios', teamKey: 'anuncios', name: 'Rafa', title: 'Anúncios · IA', sector: 'marketing', body: '#B45309', accent: '#FCD34D', slot: 2, intro: 'Fala com o Rafa — anúncios prontos (copy, CTA, público) apoiados nas campanhas que já trazem lead barato.' },
 ]
 
 export function agentByKey(key: string | null): OfficeAgent | null {
   return OFFICE_AGENTS.find((a) => a.key === key) ?? null
+}
+export function agentByTeamKey(teamKey: string | null): OfficeAgent | null {
+  return OFFICE_AGENTS.find((a) => a.teamKey === teamKey) ?? null
+}
+
+/** Empresa da própria UNV no Nexus (dona do Time de IA): id fixo; a leitura por
+ * CNPJ dependia de RLS e falhava pro master. Cai na busca só se o id sumir. */
+export const UNV_COMPANY_ID = '4d3e83ba-4521-4a3d-839f-21dd53dc8554'
+const UNV_CNPJ = '51356237000140'
+let unvCompanyId: string | null | undefined
+export async function fetchUnvCompanyId(): Promise<string | null> {
+  if (unvCompanyId !== undefined) return unvCompanyId
+  const { data: fixo } = await supabase.from('onboarding_companies').select('id').eq('id', UNV_COMPANY_ID).maybeSingle()
+  if (fixo?.id) { unvCompanyId = fixo.id as string; return unvCompanyId }
+  const { data } = await supabase.from('onboarding_companies').select('id').eq('cnpj', UNV_CNPJ).maybeSingle()
+  unvCompanyId = (data?.id as string | undefined) ?? UNV_COMPANY_ID
+  return unvCompanyId
 }
 
 /** user_ids com permissão pra falar com o agente. */

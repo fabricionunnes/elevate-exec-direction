@@ -1,5 +1,11 @@
 export type AgentState = 'IDLE' | 'WALKING' | 'COFFEE' | 'MEETING' | 'WORKING'
 
+// Chave do agente no Time de IA (ai_team_agents.agent_key): liga o personagem 3D
+// ao agente que roda de verdade (rodadas, fila de aprovação, chat ai-team-chat).
+export type TeamKey =
+  | 'orquestrador' | 'atendimento' | 'briefing' | 'anuncios'
+  | 'conteudo' | 'reativacao' | 'trafego' | 'qualificacao'
+
 export interface AgentConfig {
   id: string
   name: string
@@ -7,7 +13,8 @@ export interface AgentConfig {
   color: string
   pantsColor: string
   room: string
-  apiType: string
+  apiType: string          // persona no backend antigo (agente-unv) e histórico legado
+  teamKey: TeamKey         // agente do Time de IA
   homePosition: [number, number, number]
   meetingPosition: [number, number, number]
   coffeePosition: [number, number, number]
@@ -15,15 +22,19 @@ export interface AgentConfig {
   deskRotation: number
 }
 
+// Elenco = Time de IA. Max, Sophia, Luna e Mika mantêm as mesas antigas;
+// Rafa, Theo e Júlia ocupam as mesas que eram de Noah, Melissa e Cris; Lia
+// (atendimento) senta na sala do CRM, ao lado da Sophia.
 export const AGENTS: AgentConfig[] = [
   {
     id: 'max',
     name: 'MAX',
-    role: 'CEO',
-    color: '#1B2951',
+    role: 'Coordenador',
+    color: '#0D2B5E',
     pantsColor: '#0e1a36',
     room: 'CEO Office',
     apiType: 'ceo',
+    teamKey: 'orquestrador',
     homePosition: [-14, 0, -8],
     meetingPosition: [-4.8, 0, 5.2],
     coffeePosition: [-12, 0, 11],
@@ -36,13 +47,14 @@ export const AGENTS: AgentConfig[] = [
     deskRotation: 0,
   },
   {
-    id: 'noah',
-    name: 'Noah',
-    role: 'Financeiro',
-    color: '#1B6B3A',
-    pantsColor: '#0f3d21',
+    id: 'rafa',
+    name: 'Rafa',
+    role: 'Anúncios',
+    color: '#B45309',
+    pantsColor: '#6b3200',
     room: 'Finance Room',
     apiType: 'financeiro',
+    teamKey: 'anuncios',
     homePosition: [4, 0, -8],
     meetingPosition: [-3.6, 0, 5.2],
     coffeePosition: [-11, 0, 11.8],
@@ -57,11 +69,12 @@ export const AGENTS: AgentConfig[] = [
   {
     id: 'sophia',
     name: 'Sophia',
-    role: 'CRM',
+    role: 'Head comercial',
     color: '#1A4A8A',
     pantsColor: '#0e2d57',
     room: 'CRM Room',
     apiType: 'crm',
+    teamKey: 'briefing',
     homePosition: [-14, 0, 0],
     meetingPosition: [-2.4, 0, 5.2],
     coffeePosition: [-10, 0, 12],
@@ -74,13 +87,34 @@ export const AGENTS: AgentConfig[] = [
     deskRotation: Math.PI / 2,
   },
   {
-    id: 'melissa',
-    name: 'Melissa',
-    role: 'Projetos',
-    color: '#6B2FA0',
-    pantsColor: '#3d1a5c',
+    id: 'lia',
+    name: 'Lia',
+    role: 'Atendimento',
+    color: '#CC1B1B',
+    pantsColor: '#7a1010',
+    room: 'CRM Room',
+    apiType: 'crm',
+    teamKey: 'atendimento',
+    homePosition: [-11, 0, -2],
+    meetingPosition: [-4.8, 0, 7.8],
+    coffeePosition: [-10.5, 0, 14],
+    waypoints: [
+      [-12, 0, -1],
+      [-11, 0, 1],
+      [-13, 0, 1],
+      [-11, 0, -2],
+    ],
+    deskRotation: Math.PI / 2,
+  },
+  {
+    id: 'theo',
+    name: 'Theo',
+    role: 'Reativação',
+    color: '#0F766E',
+    pantsColor: '#07403c',
     room: 'Projects Room',
     apiType: 'projetos',
+    teamKey: 'reativacao',
     homePosition: [4, 0, 0],
     meetingPosition: [-1.2, 0, 5.2],
     coffeePosition: [-12, 0, 13],
@@ -93,16 +127,17 @@ export const AGENTS: AgentConfig[] = [
     deskRotation: Math.PI,
   },
   {
-    id: 'cris',
-    name: 'Cris',
-    role: 'Gerente',
-    color: '#006B6B',
-    pantsColor: '#003d3d',
+    id: 'julia',
+    name: 'Júlia',
+    role: 'Qualificação',
+    color: '#DB2777',
+    pantsColor: '#7a1445',
     room: 'Projects Room',
     apiType: 'gerente',
+    teamKey: 'qualificacao',
     homePosition: [10, 0, 0],
-    meetingPosition: [-4.8, 0, 7.8],
-    coffeePosition: [-10.5, 0, 14],
+    meetingPosition: [-3.6, 0, 7.8],
+    coffeePosition: [-13, 0, 14],
     waypoints: [
       [8, 0, -2],
       [12, 0, 2],
@@ -114,13 +149,14 @@ export const AGENTS: AgentConfig[] = [
   {
     id: 'luna',
     name: 'Luna',
-    role: 'Marketing',
-    color: '#B85C00',
-    pantsColor: '#6b3500',
+    role: 'Head de marketing',
+    color: '#9333EA',
+    pantsColor: '#4c1d95',
     room: 'Marketing Room',
     apiType: 'marketing',
+    teamKey: 'trafego',
     homePosition: [-6, 0, 10],
-    meetingPosition: [-3.6, 0, 7.8],
+    meetingPosition: [-2.4, 0, 7.8],
     coffeePosition: [-11.5, 0, 14.5],
     waypoints: [
       [-5, 0, 10.5],
@@ -133,11 +169,12 @@ export const AGENTS: AgentConfig[] = [
   {
     id: 'mika',
     name: 'Mika',
-    role: 'Social Media',
-    color: '#C2185B',
-    pantsColor: '#7a0f39',
+    role: 'Conteúdo e social',
+    color: '#7C3AED',
+    pantsColor: '#3d1a5c',
     room: 'Creative Room',
     apiType: 'social',
+    teamKey: 'conteudo',
     homePosition: [6, 0, 10],
     meetingPosition: [-1.2, 0, 7.8],
     coffeePosition: [-13, 0, 14],
@@ -150,6 +187,11 @@ export const AGENTS: AgentConfig[] = [
     deskRotation: -Math.PI / 2,
   },
 ]
+
+// Falas de reunião gravadas com os ids antigos continuam achando um personagem
+export const LEGACY_AGENT_IDS: Record<string, string> = { noah: 'rafa', melissa: 'theo', cris: 'julia' }
+export const agentIdFromLegacy = (id: string) => LEGACY_AGENT_IDS[id] || id
+export const agentByTeamKey = (key: string) => AGENTS.find((a) => a.teamKey === key)
 
 export const PLAYER_CONFIG = {
   id: 'fabricio',

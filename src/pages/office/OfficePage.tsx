@@ -12,7 +12,9 @@ import OfficeLayout from './components/OfficeLayout'
 import ChatPanel from './components/ChatPanel'
 import MeetingPanel from './components/MeetingPanel'
 import HUD from './components/HUD'
-import { AGENTS } from './config/agents'
+import OfficeVoice from './components/OfficeVoice'
+import TeamSync from './components/TeamSync'
+import { AGENTS, agentIdFromLegacy } from './config/agents'
 import { useGameStore } from './store/useGameStore'
 import { supabase } from './lib/supabase'
 
@@ -83,7 +85,7 @@ function SupabaseRealtimeHandler() {
       if (data && data.length > 0) {
         const msgs = data.map((m: any) => ({
           id: m.id,
-          agent: m.agent,
+          agent: agentIdFromLegacy(m.agent),
           content: m.content,
           kind: m.kind,
           timestamp: new Date(m.created_at).getTime(),
@@ -111,7 +113,7 @@ function SupabaseRealtimeHandler() {
           const row = payload.new
           enqueueMeetingMessage({
             id: row.id,
-            agent: row.agent,
+            agent: agentIdFromLegacy(row.agent),
             content: row.content,
             kind: row.kind,
             timestamp: new Date(row.created_at).getTime(),
@@ -304,6 +306,9 @@ function OfficeApp() {
       <MeetingPanel />
       <MeetingDirector />
       <HUD />
+      {/* Time de IA: status real dos agentes + voz com o Max */}
+      <TeamSync />
+      <OfficeVoice />
     </div>
   )
 }

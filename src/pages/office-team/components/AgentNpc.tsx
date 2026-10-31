@@ -255,6 +255,16 @@ function AgentFigure({
       return
     }
 
+    // ── Time de IA: rodada em andamento → vai pra mesa e senta pra trabalhar ──
+    if (stNow.teamStatus[agent.teamKey]?.working) {
+      planPath('team:working', baseX, baseZ)
+      if (!followPath()) {
+        if (Math.hypot(g.position.x - baseX, g.position.z - baseZ) > 0.3) g.position.set(baseX, 0, baseZ)
+        setPoseIfChanged('sit')
+      }
+      return
+    }
+
     // ── Escalado pro café: sobrepõe a rotina individual ──
     if (cafeSeat && cafePhase) {
       if (cafePhase === 'go') {
@@ -440,6 +450,34 @@ function SummonTalk() {
   return <SpeechBubble x={pos.x} z={pos.z} y={summon.seat ? 1.75 : 2.3} text={text} isDots={false} />
 }
 
+/** Balões do Time de IA: "trabalhando…" em cima de quem está em rodada, resumo da
+ * entrega por 15 s, e a voz do MAX (o que ele está falando) seguindo o robô. */
+function TeamBubbles() {
+  const teamStatus = useTeamStore((s) => s.teamStatus)
+  const maxSpeech = useTeamStore((s) => s.maxSpeech)
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const i = setInterval(() => setTick((v) => v + 1), 500)
+    return () => clearInterval(i)
+  }, [])
+  const now = Date.now()
+  return (
+    <>
+      {OFFICE_AGENTS.map((agent) => {
+        const st = teamStatus[agent.teamKey]
+        const pos = agentPosState[agent.key]
+        if (!st || !pos) return null
+        if (agent.key === 'ceo' && maxSpeech) return null
+        const entregou = st.lastAt && now - st.lastAt < 15000 && st.lastSummary
+        if (!st.working && !entregou) return null
+        const text = st.working ? 'trabalhando…' : String(st.lastSummary).replace(/[*#_`>]/g, '').slice(0, 160)
+        return <SpeechBubble key={agent.key} x={pos.x} z={pos.z} y={st.working ? 1.75 : 2.3} text={text} isDots={false} />
+      })}
+      {maxSpeech && <SpeechBubble x={maxNpcState.x} z={maxNpcState.z} y={2.55} text={maxSpeech.slice(0, 220)} isDots={false} />}
+    </>
+  )
+}
+
 /** Balão do MAX durante o tour (segue a posição dele). */
 function TourBubble() {
   const tour = useTeamStore((s) => s.tour)
@@ -468,7 +506,10 @@ export default function AgentNpcs() {
     return OFFICE_AGENTS.flatMap((agent, idx) => {
       const room = rooms.find((r) => r.roomType === 'sector' && r.sector === agent.sector)
       if (room) {
-        const x = agent.slot === 0 ? room.x - room.width / 2 + 1.5 : room.x + room.width / 2 - 1.5
+        // slot 0 = canto noroeste, 1 = canto nordeste, 2+ = distribuídos no fundo da sala
+        const left = room.x - room.width / 2 + 1.5
+        const right = room.x + room.width / 2 - 1.5
+        const x = agent.slot === 0 ? left : agent.slot === 1 ? right : left + ((right - left) * (agent.slot - 1)) / 4
         const z = room.z - room.depth / 2 + 1.1
         return [{ agent, x, z, idx }]
       }
@@ -546,6 +587,7 @@ export default function AgentNpcs() {
       )}
       <TourBubble />
       <SummonTalk />
+      <TeamBubbles />
     </>
   )
 }

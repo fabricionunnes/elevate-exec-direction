@@ -1,0 +1,835 @@
+// ai-team-chat: conversa com o Max, coordenador do Time de IA da empresa.
+// O Max responde com os mesmos dados reais que o orquestrador lê (buildContext) e tem
+// ferramentas pra agir: rodar um agente, aprovar/rejeitar item da fila, ligar/desligar
+// ou reconfigurar um agente. Histórico em ai_team_messages (uma thread por empresa).
+//
+// body: {companyId, message}            -> responde e grava user + assistant
+//       {companyId, message, reset:true} -> apaga a thread antes de responder
+// Exige JWT com acesso à empresa (ai_team_has_access) ou service role.
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import {
+  corsHeaders, SUPABASE_URL, SERVICE_KEY, MODEL, type Agent, type Company, type Ctx,
+  json, jwtRole, logUsoIA, buildContext, dadosBlock, brNow, sendWhatsApp, fetchGestaoGroups,
+} from "./shared.ts";
+import { contaMetaUNV, criarAnuncioPausado, mudarStatus, linkGerenciador } from "./meta.ts";
+
+// contexto de dados vale por 5 min dentro do isolate: a conversa por voz não pode
+// esperar as consultas a cada frase (o orquestrador continua pedindo fresco)
+const CTX_CACHE_MS = 5 * 60 * 1000;
+const LINK_PADRAO = "https://unvholdings.com.br/sessao-estrategica";
+
+// Chat usa um modelo mais forte que as rodadas (obedece ferramentas melhor); se o id não
+// existir na conta, cai pro modelo das rodadas.
+const CHAT_MODEL = Deno.env.get("AI_TEAM_CHAT_MODEL") || "claude-sonnet-5";
+const CHAT_MODEL_RESERVA = MODEL;
+const MAX_TOOL_ROUNDS = 8;
+// Frase que é ORDEM (abrir, criar, mandar, rodar...): o modelo é obrigado a usar uma ferramenta
+// no primeiro passo — sem isso o Haiku respondia "abrindo financeiro" e não abria nada.
+const RE_ORDEM = /\b(abr[aei]r?|abre|vai|v[aá] (pra|para|na|no)|mostra|cria|criar|manda|mandar|envia|enviar|roda|rodar|aprova|aprovar|rejeita|pausa|ativa|liga|desliga|agenda|marca|cobra|cobrar|lista|listar|busca|procura|consulta|quanto|quantos|quem)\b/i;
+
+// Mapa do Nexus pro Max saber onde cada coisa mora antes de consultar.
+const MAPA_NEXUS = `MAPA DO NEXUS (Postgres; use consultar(sql) com SELECT; ver_tabelas(busca) mostra colunas):
+- Clientes da UNV: onboarding_companies (id, name, status active/inactive, segment, cnpj, phone, consultant_id, cs_id, contract_value). Projetos/contratos: onboarding_projects (id, onboarding_company_id → empresa, product_name, status active/closed/cancellation_signaled, contract_value, contract_start_date, contract_end_date, churn_date, churn_reason, churn_risk, consultant_id, cs_id, current_nps). Time da UNV: onboarding_staff (id, name, role, is_active). Usuários do cliente: onboarding_users (user_id, project_id, role).
+- CRM da UNV (tenant_id IS NULL): crm_leads (id, name, phone, pipeline_id, stage_id, opportunity_value, owner_staff_id, closer_staff_id, sdr_staff_id, origin, campaign_name, created_at, last_activity_at, stage_entered_at, loss_reason_id, product_id), crm_pipelines (id, name, tenant_id), crm_stages (id, pipeline_id, name, is_final, final_type won/lost), crm_activities (lead_id, type meeting/call/followup/whatsapp, status pending/completed/cancelled, scheduled_at, responsible_staff_id, notes), crm_loss_reasons. Conversas: crm_conversations / crm_messages, instagram_conversations / instagram_messages.
+- Financeiro da UNV: company_invoices (company_id → cliente, description, amount_cents, due_date, status paid/pending/overdue/cancelled, paid_at), financial_receivables (amount, due_date, status, company_id), financial_payables (supplier_name, amount, due_date, status paid/pending/partial, category_id, tenant_id IS NULL), financial_bank_transactions, financial_categories, financial_budgets.
+- KPIs dos clientes: company_kpis (id, company_id, name, kpi_type monetary/number, is_active), kpi_entries (company_id, kpi_id, entry_date, value, salesperson_id), company_salespeople (company_id, name, is_active). Metas: kpi_goals se existir (ver_tabelas kpi).
+- Saúde/retenção: client_health_scores (project_id, total_score, risk_level, trend_direction), onboarding_nps_responses (score, created_at, project_id), churn_predictions, retention_attempts.
+- Tráfego pago: da UNV → crm_meta_ads_campaigns (tenant_id IS NULL: campaign_name, spend, leads, clicks, date_start, date_stop); dos clientes → meta_ads_accounts (project_id, ad_account_name), meta_ads_campaigns (project_id, spend, leads, roas...), trafego_diario (project_id, dia, campaign_name, spend, leads, conversas, receita).
+- Serviços e preços: service_catalog. Time de IA: ai_team_agents, ai_team_runs, ai_team_approvals, ai_team_messages.
+Regras de consulta: sempre LIMIT; datas com current_date; dinheiro de company_invoices está em centavos (amount_cents/100); nomes de cliente ficam em onboarding_companies.name (junte por onboarding_company_id nos projetos e company_id nas faturas/KPIs); valores de lead em crm_leads.opportunity_value.`;
+
+const TOOLS = [
+  {
+    name: "consultar",
+    description: "Roda um SELECT no banco do Nexus (todas as empresas, financeiro, CRM, KPIs, tráfego, carteira). Use SEMPRE que a pergunta pedir um dado que não está no contexto ou que envolva um cliente específico, um período específico ou um detalhe. Somente leitura, máximo 200 linhas, 10 segundos. Prefira agregações (count, sum, avg) a listas longas.",
+    input_schema: {
+      type: "object",
+      properties: { sql: { type: "string", description: "SELECT/WITH em PostgreSQL, uma consulta, sem ponto e vírgula, com LIMIT" }, motivo: { type: "string", description: "o que você quer descobrir, em uma frase" } },
+      required: ["sql"],
+    },
+  },
+  {
+    name: "ver_tabelas",
+    description: "Procura tabelas e colunas do Nexus por palavra (ex: 'kpi', 'invoice', 'meta', 'nps'). Use antes de consultar uma tabela que não está no mapa, ou quando uma consulta falhar por coluna inexistente.",
+    input_schema: { type: "object", properties: { busca: { type: "string" } }, required: ["busca"] },
+  },
+  {
+    name: "rodar_agente",
+    description: "Coloca um agente do time pra trabalhar agora. Use quando o dono pedir pra rodar/acionar alguém ou quando a pergunta dele exige uma entrega nova (anúncios, posts, mensagens, análise de tráfego, briefing). Demora de 5 a 60 segundos.",
+    input_schema: {
+      type: "object",
+      properties: { agent_key: { type: "string", enum: ["briefing", "anuncios", "conteudo", "reativacao", "trafego", "qualificacao"] } },
+      required: ["agent_key"],
+    },
+  },
+  {
+    name: "enviar_whatsapp",
+    description: "Manda uma mensagem de WhatsApp de verdade, pelo número da UNV, pra um lead do CRM (lead_id), pra alguém do time da UNV (pessoa = nome, acha em onboarding_staff) ou pra um telefone. Serve pra cobrar, avisar, reativar. SÓ chame com confirmado=true depois que o dono ouviu o texto e o destinatário e disse que pode mandar.",
+    input_schema: {
+      type: "object",
+      properties: {
+        lead_id: { type: "string", description: "id do lead no CRM (o telefone sai de crm_leads.phone)" },
+        pessoa: { type: "string", description: "nome de alguém do time da UNV (onboarding_staff) ou de um lead, quando não tiver o id" },
+        telefone: { type: "string", description: "telefone com DDD, se não for lead nem staff" },
+        mensagem: { type: "string" },
+        confirmado: { type: "boolean", description: "true só depois do OK explícito do dono" },
+      },
+      required: ["mensagem", "confirmado"],
+    },
+  },
+  {
+    name: "enviar_grupo_cliente",
+    description: "Manda uma mensagem no GRUPO DE GESTÃO do WhatsApp de um cliente da UNV (o grupo onde o Marcelo fala com o time do cliente). Informe a empresa pelo nome ou id. SÓ com confirmado=true depois do OK do dono ao texto.",
+    input_schema: {
+      type: "object",
+      properties: {
+        empresa: { type: "string", description: "nome (parte) ou id da empresa cliente em onboarding_companies" },
+        mensagem: { type: "string" },
+        confirmado: { type: "boolean" },
+      },
+      required: ["empresa", "mensagem", "confirmado"],
+    },
+  },
+  {
+    name: "criar_tarefa",
+    description: "Cria uma tarefa/atividade de verdade, NA HORA e sem perguntar: pra um lead do CRM (lead_id ou lead = nome → atividade: ligar, follow-up, reunião, whatsapp) ou pra um cliente (empresa = nome → tarefa do projeto). Padrões: responsável = quem está falando; data = hoje; tipo = followup. Só passe responsavel se o dono disser outro nome.",
+    input_schema: {
+      type: "object",
+      properties: {
+        titulo: { type: "string" },
+        descricao: { type: "string" },
+        lead_id: { type: "string", description: "id do lead, se você já tem" },
+        lead: { type: "string", description: "nome do lead como o dono falou ('lead digital', 'Edson')" },
+        empresa: { type: "string", description: "nome (parte) da empresa cliente como o dono falou ('Sobrado')" },
+        tipo: { type: "string", enum: ["call", "followup", "meeting", "whatsapp", "other"], description: "só pra lead; padrão followup" },
+        quando: { type: "string", description: "'hoje', 'amanhã', 'sexta', '30/10', '30/10 15h' ou ISO; padrão hoje" },
+        responsavel: { type: "string", description: "nome de alguém do time, SÓ se o dono pediu outra pessoa; senão é quem fala" },
+      },
+      required: ["titulo"],
+    },
+  },
+  {
+    name: "abrir_escritorio",
+    description: "Abre o UNV Office (escritório 3D) na tela do dono. Use quando ele pedir 'abre o escritório', 'mostra o time', 'vamos pro escritório'.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "ir_para_sala",
+    description: "Leva o avatar do dono até uma sala do UNV Office: sala de alguém do time ('sala do Ricardo'), sala de reunião pelo nome ('Reunião Principal', 'Sala CRESCER'), setor ('comercial', 'marketing'), café/lounge, auditório, recepção. Executa na hora; a tela resolve o nome.",
+    input_schema: { type: "object", properties: { destino: { type: "string", description: "como o dono falou: 'sala do Ricardo', 'reunião principal', 'café'" } }, required: ["destino"] },
+  },
+  {
+    name: "abrir_cliente",
+    description: "Abre a página de um cliente da UNV no Nexus (projeto/onboarding). Informe a empresa pelo nome. Executa na hora.",
+    input_schema: { type: "object", properties: { empresa: { type: "string" } }, required: ["empresa"] },
+  },
+  {
+    name: "abrir_lead",
+    description: "Abre o card de um lead no CRM (a tela do lead). Use quando o dono pedir 'abre o card do Edson', 'mostra o lead', 'abre a negociação'. Passe o lead_id que você já tem (das negociações/consultas) ou o nome.",
+    input_schema: { type: "object", properties: { lead_id: { type: "string" }, nome: { type: "string" } } },
+  },
+  {
+    name: "abrir_tela",
+    description: "Abre uma tela do Nexus pelo nome que o dono falou: crm, pipeline/funil, leads, atendimento/inbox, atividades, discador, reuniões, forecast, cadências, disparos, prospecção, agentes, automações, clientes/empresas, financeiro (= botão da tela inicial: recorrências/mensalidades), contas a pagar, contas a receber, fornecedores, cobranças, bancos/saldos, extrato, conciliação, DRE/DFC, fluxo de caixa, monitor de parcelas, recebimentos, nota fiscal, mrr, carteira, renovações, cancelamentos, churn, tráfego, painel de controle, painel ao vivo, agenda, custo de ia, transcrições, assinaturas/contratos, staff/equipe, vagas, processos, academy, cockpit, ceo, radar, roi, resultados, whatsapp, conexões, social, time de ia, escritório. Executa na hora.",
+    input_schema: { type: "object", properties: { tela: { type: "string", description: "como o dono falou" } }, required: ["tela"] },
+  },
+  {
+    name: "criar_anuncio_meta",
+    description: "Cria um anúncio REAL na conta Meta Ads da UNV, PAUSADO: gera a imagem, sobe campanha, conjunto (Brasil, idade, posicionamentos manuais, sem Advantage+), criativo e anúncio. Demora 30 a 60 s. Use só quando o dono mandar criar/subir anúncio. Pode partir de um item aprovado da fila (approval_id) ou de copy nova. Nunca ativa: ativar é ativar_anuncio_meta, só com ordem explícita.",
+    input_schema: {
+      type: "object",
+      properties: {
+        nome: { type: "string", description: "nome interno da campanha, ex: 'DCT · vendedor figurante · out/26'" },
+        headline: { type: "string", description: "título do anúncio, até 40 caracteres" },
+        texto: { type: "string", description: "texto principal, 3 a 5 linhas, sem emoji" },
+        cta: { type: "string", enum: ["LEARN_MORE", "SIGN_UP", "CONTACT_US", "GET_QUOTE"], description: "botão; padrão LEARN_MORE" },
+        link: { type: "string", description: "destino; padrão a página de sessão estratégica da UNV" },
+        orcamento_diario: { type: "number", description: "em reais; padrão 50" },
+        idade_min: { type: "integer" }, idade_max: { type: "integer" },
+        imagem_briefing: { type: "string", description: "cena da foto em 1 frase (ex: 'dono de empresa sozinho na mesa de reunião olhando um painel de metas vazio')" },
+        approval_id: { type: "string", description: "id de um anúncio da fila pra reaproveitar headline/texto/cta" },
+      },
+      required: ["nome", "imagem_briefing"],
+    },
+  },
+  {
+    name: "ativar_anuncio_meta",
+    description: "Liga (ACTIVE) uma campanha que o Max criou pausada. Só quando o dono mandar ativar explicitamente. Começa a gastar dinheiro.",
+    input_schema: { type: "object", properties: { campaign_id: { type: "string" } }, required: ["campaign_id"] },
+  },
+  {
+    name: "pausar_anuncio_meta",
+    description: "Pausa uma campanha que o Max criou. Use quando o dono mandar pausar/parar.",
+    input_schema: { type: "object", properties: { campaign_id: { type: "string" } }, required: ["campaign_id"] },
+  },
+  {
+    name: "listar_anuncios_meta",
+    description: "Lista os anúncios que o Max criou na Meta (status, orçamento, link do Gerenciador).",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "ver_negociacoes",
+    description: "Lista as negociações abertas do CRM com valor, etapa, dono, dias sem contato e próxima atividade (até 40, da maior pra menor). Use quando o dono falar em meta, bater número, fechar venda, 'preciso vender X', ou perguntar o que tem pra fechar.",
+    input_schema: { type: "object", properties: { minimo: { type: "number", description: "filtra por valor mínimo em reais (opcional)" } } },
+  },
+  {
+    name: "ver_fila",
+    description: "Lê os itens pendentes de aprovação com o conteúdo completo (texto do anúncio, legenda do post, mensagem). Use antes de opinar sobre um item ou quando o dono perguntar o que tem na fila.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "decidir_item",
+    description: "Aprova ou rejeita um item da fila em nome do dono. Só use quando o dono mandar explicitamente (ex: 'aprova o anúncio 2', 'joga fora os posts').",
+    input_schema: {
+      type: "object",
+      properties: {
+        approval_id: { type: "string" },
+        decisao: { type: "string", enum: ["approved", "rejected"] },
+        nota: { type: "string" },
+      },
+      required: ["approval_id", "decisao"],
+    },
+  },
+  {
+    name: "atualizar_agente",
+    description: "Liga/desliga um agente, muda o horário dele ou ajusta oferta/público/tom usados nos anúncios, posts e mensagens. Só quando o dono pedir.",
+    input_schema: {
+      type: "object",
+      properties: {
+        agent_key: { type: "string", enum: ["atendimento", "briefing", "anuncios", "conteudo", "reativacao", "trafego", "qualificacao"] },
+        is_active: { type: "boolean" },
+        schedule: { type: "object", properties: { hour: { type: "string" }, days: { type: "array", items: { type: "integer" } } } },
+        oferta: { type: "string" }, publico: { type: "string" }, tom: { type: "string" },
+      },
+      required: ["agent_key"],
+    },
+  },
+];
+
+const DOW = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+const agendaLabel = (s: Agent["schedule"]) => !s?.hour ? "por canal / sob demanda" : `${(s.days?.length || 0) >= 6 ? "seg a sáb" : (s.days || []).map((d) => DOW[d]).join(", ")} às ${s.hour}`;
+const timeAgo = (iso?: string | null) => {
+  if (!iso) return "nunca rodou";
+  const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  return m < 60 ? `há ${m} min` : m < 1440 ? `há ${Math.round(m / 60)}h` : `há ${Math.round(m / 1440)}d`;
+};
+
+// Quem está falando com o Max e o que pode. Master/admin = tudo. Os demais só o que
+// o master liberou: menus (staff_menu_permissions), CRM (has_crm_access) e a carteira
+// (empresas em que é consultor ou CS). Checado no servidor, não no front.
+type Perfil = {
+  userId: string; staffId: string | null; nome: string; role: string;
+  tudo: boolean;                 // master/admin da UNV
+  cliente?: boolean;             // dono/usuário de uma empresa cliente: só o time dele, sem telas nem dados da UNV
+  menus: Set<string>;            // staff_menu_permissions.menu_key
+  crm: boolean;                  // has_crm_access()
+  empresas: { id: string; name: string }[]; // carteira
+};
+const perfilTudo = (userId: string, nome: string, role: string): Perfil => ({ userId, staffId: null, nome, role, tudo: true, menus: new Set(), crm: true, empresas: [] });
+const perfilCliente = (userId: string, nome: string, companyId: string): Perfil => ({ userId, staffId: null, nome, role: "cliente", tudo: false, cliente: true, menus: new Set(), crm: false, empresas: [{ id: companyId, name: "" }] });
+const podeEmpresa = (p: Perfil, id: string) => p.tudo || p.empresas.some((e) => e.id === id);
+
+// Telas do Nexus por apelido (como o dono fala) → rota + permissão exigida.
+// perm: 'todos' (qualquer staff) · 'crm' (has_crm_access) · 'admin' (master/admin) · <menu_key> (staff_menu_permissions)
+const TELAS: { nome: string; rota: string; re: RegExp; perm: string }[] = [
+  { nome: "Escritório (UNV Office)", rota: "/onboarding-tasks/unv-office", re: /escrit|office/, perm: "todos" },
+  { nome: "Time de IA", rota: "/time-ia/30991de4-61d1-4261-af7e-d814b812c4ad", re: /time de ia|agentes de ia|\bmax\b/, perm: "admin" },
+  { nome: "Painel ao vivo", rota: "/painel-de-controle/ao-vivo", re: /ao vivo|tv|telao/, perm: "admin" },
+  { nome: "Painel de Controle", rota: "/painel-de-controle", re: /painel|controle|dashboard/, perm: "admin" },
+  { nome: "Atendimento (inbox)", rota: "/crm/inbox", re: /atendimento|inbox|conversas|caixa de entrada/, perm: "crm" },
+  { nome: "Pipeline do CRM", rota: "/crm/pipeline", re: /pipeline|funil|kanban/, perm: "crm" },
+  { nome: "Leads", rota: "/crm/leads", re: /\bleads?\b|contatos/, perm: "crm" },
+  { nome: "Atividades do CRM", rota: "/crm/activities", re: /atividade|tarefas do crm/, perm: "crm" },
+  { nome: "Discador", rota: "/crm/dialer", re: /discador|ligac/, perm: "crm" },
+  { nome: "Reuniões", rota: "/crm/meetings", re: /reuni/, perm: "crm" },
+  { nome: "Forecast", rota: "/crm/forecast", re: /forecast|previs/, perm: "crm" },
+  { nome: "Cadências", rota: "/crm/cadences", re: /cadenc|follow/, perm: "crm" },
+  { nome: "Disparos", rota: "/crm/disparos", re: /dispar|campanha de whats/, perm: "crm" },
+  { nome: "Prospecção B2B", rota: "/crm/prospeccao", re: /prospec/, perm: "crm" },
+  { nome: "Agentes do CRM", rota: "/crm/agents", re: /agentes do crm|agente de ia|sdr/, perm: "admin" },
+  { nome: "Automações do CRM", rota: "/crm/automacoes", re: /automa/, perm: "admin" },
+  { nome: "Transcrições", rota: "/crm/transcriptions", re: /transcri/, perm: "crm" },
+  { nome: "Relatórios do CRM", rota: "/crm/reports", re: /relat/, perm: "crm" },
+  { nome: "Configurações do CRM", rota: "/crm/settings", re: /config.*crm|crm.*config/, perm: "admin" },
+  { nome: "CRM", rota: "/crm", re: /\bcrm\b|comercial/, perm: "crm" },
+  // abas do módulo financeiro (/onboarding-tasks/financeiro?tab=…) — mesmas da busca Ctrl+K
+  { nome: "Contas a pagar", rota: "/onboarding-tasks/financeiro?tab=payables", re: /contas? a pagar|a pagar|pagar|despesa/, perm: "financial" },
+  { nome: "Fornecedores", rota: "/onboarding-tasks/financeiro?tab=suppliers", re: /fornecedor/, perm: "financial" },
+  { nome: "Contas a receber", rota: "/onboarding-tasks/financeiro?tab=receivables", re: /contas? a receber|a receber|fatura/, perm: "financial" },
+  { nome: "Conciliação bancária", rota: "/onboarding-tasks/financeiro?tab=reconciliation", re: /concilia/, perm: "financial" },
+  { nome: "Extrato bancário", rota: "/onboarding-tasks/financeiro?tab=bank-statement", re: /extrato/, perm: "financial" },
+  { nome: "Bancos e saldos", rota: "/onboarding-tasks/financeiro?tab=banks", re: /bancos?|saldo/, perm: "financial" },
+  { nome: "Régua de cobranças", rota: "/onboarding-tasks/financeiro?tab=billing-rules", re: /regua/, perm: "financial" },
+  { nome: "Cobranças", rota: "/onboarding-tasks/financeiro?tab=billing", re: /cobran|boleto|\bpix\b/, perm: "financial" },
+  { nome: "Planejamento financeiro", rota: "/onboarding-tasks/financeiro?tab=planning", re: /orcamento|planejamento financ/, perm: "financial" },
+  { nome: "Relatórios financeiros (DRE/DFC)", rota: "/onboarding-tasks/financeiro?tab=reports", re: /\bdre\b|\bdfc\b|relatorio financ/, perm: "financial" },
+  { nome: "Visão geral do financeiro", rota: "/onboarding-tasks/financeiro?tab=overview", re: /fluxo de caixa|caixa|visao geral/, perm: "financial" },
+  { nome: "Monitor de parcelas", rota: "/onboarding-tasks/financeiro/monitor-parcelas", re: /monitor|parcela/, perm: "admin" },
+  { nome: "Recebimentos", rota: "/recebimento", re: /receb/, perm: "financial" },
+  { nome: "Nota fiscal", rota: "/onboarding-tasks/nota-fiscal", re: /nota fiscal|nfs?e|nf\b/, perm: "financial" },
+  { nome: "MRR", rota: "/onboarding-tasks/mrr", re: /\bmrr\b|recorrente/, perm: "admin" },
+  { nome: "Carteira", rota: "/onboarding-tasks/carteira", re: /carteira/, perm: "admin" },
+  { nome: "Renovações", rota: "/onboarding-tasks/renovacoes", re: /renova/, perm: "admin" },
+  { nome: "Cancelamentos e retenção", rota: "/onboarding-tasks/cancellations-retention", re: /cancel|reten|distrato/, perm: "admin" },
+  { nome: "Previsão de churn", rota: "/onboarding-tasks/churn-prediction", re: /churn/, perm: "admin" },
+  // "financeiro" seco = o botão Financeiro da tela inicial do staff (recorrências/mensalidades)
+  { nome: "Financeiro", rota: "/onboarding-tasks/financeiro/recorrencias", re: /financ|recorr|mensalidade|assinaturas? dos clientes/, perm: "financial" },
+  { nome: "Tráfego pago dos clientes", rota: "/onboarding-tasks/trafego-pago", re: /trafego|meta ads|anuncio|campanha/, perm: "trafego_pago" },
+  { nome: "Agenda", rota: "/onboarding-tasks/agenda-fabricio", re: /agenda|calend/, perm: "calendar" },
+  { nome: "Custo de IA", rota: "/onboarding-tasks/custo-ia", re: /custo de ia|tokens|consumo/, perm: "admin" },
+  { nome: "Assinaturas e contratos", rota: "/onboarding-tasks/assinaturas", re: /assinatura|contrato/, perm: "admin" },
+  { nome: "Equipe (staff)", rota: "/onboarding-tasks/staff", re: /staff|equipe|colaborador|time da unv/, perm: "admin" },
+  { nome: "Vagas", rota: "/onboarding-tasks/vagas", re: /vaga|recrut|contrata/, perm: "hr" },
+  { nome: "Processos", rota: "/onboarding-tasks/processos", re: /processo/, perm: "todos" },
+  { nome: "Cockpit", rota: "/onboarding-tasks/cockpit", re: /cockpit/, perm: "admin" },
+  { nome: "Painel do CEO", rota: "/onboarding-tasks/ceo", re: /\bceo\b/, perm: "admin" },
+  { nome: "Radar", rota: "/onboarding-tasks/radar", re: /radar/, perm: "admin" },
+  { nome: "ROI dos clientes", rota: "/onboarding-tasks/roi-clientes", re: /\broi\b/, perm: "admin" },
+  { nome: "Resultados", rota: "/onboarding-tasks/results", re: /resultado/, perm: "results" },
+  { nome: "Conexões WhatsApp", rota: "/onboarding-tasks/conexoes-whatsapp", re: /conex|instancia/, perm: "admin" },
+  { nome: "WhatsApp Hub", rota: "/onboarding-tasks/whatsapp-hub", re: /whats/, perm: "admin" },
+  { nome: "Task manager", rota: "/onboarding-tasks/task-manager", re: /task|tarefas/, perm: "todos" },
+  { nome: "Academy", rota: "/academy", re: /academy|curso|treinamento/, perm: "academy" },
+  { nome: "UNV Social", rota: "/social", re: /social|instagram|post/, perm: "admin" },
+  { nome: "Relatório de empresas", rota: "/onboarding-tasks/companies-report", re: /relatorio de empresas/, perm: "admin" },
+  { nome: "Clientes", rota: "/onboarding-tasks", re: /cliente|empresa|projeto|onboarding|inicio|home|principal/, perm: "todos" },
+];
+function resolverTela(fala: string): { nome: string; rota: string; perm: string } | null {
+  const q = fala.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  return TELAS.find((t) => t.re.test(q)) || null;
+}
+function podeTela(p: Perfil, perm: string): boolean {
+  if (p.tudo) return true;
+  if (perm === "todos") return true;
+  if (perm === "admin") return false;
+  if (perm === "crm") return p.crm;
+  return p.menus.has(perm);
+}
+
+/** Monta o perfil de quem fala: papel, menus liberados, acesso ao CRM e carteira. */
+async function montarPerfil(supabase: SupabaseClient, asUser: SupabaseClient, userId: string, nomeMeta: string | null): Promise<Perfil | null> {
+  const { data: st } = await supabase.from("onboarding_staff").select("id, name, role, is_active").eq("user_id", userId).limit(1).maybeSingle();
+  if (!st || st.is_active === false) return null;
+  const role = String(st.role || "");
+  if (["master", "admin"].includes(role)) return { ...perfilTudo(userId, st.name || nomeMeta || "", role), staffId: st.id };
+  const [{ data: menus }, { data: crmOk }, { data: empDiretas }, { data: proj }] = await Promise.all([
+    supabase.from("staff_menu_permissions").select("menu_key").eq("staff_id", st.id),
+    asUser.rpc("has_crm_access"),
+    supabase.from("onboarding_companies").select("id, name").or(`consultant_id.eq.${st.id},cs_id.eq.${st.id}`).limit(200),
+    supabase.from("onboarding_projects").select("onboarding_company_id, onboarding_companies!onboarding_projects_onboarding_company_id_fkey(id, name)").or(`consultant_id.eq.${st.id},cs_id.eq.${st.id}`).limit(300),
+  ]);
+  const empresas = new Map<string, string>();
+  for (const e of (empDiretas || []) as any[]) empresas.set(e.id, e.name);
+  for (const p of (proj || []) as any[]) if (p.onboarding_companies?.id) empresas.set(p.onboarding_companies.id, p.onboarding_companies.name);
+  return {
+    userId, staffId: st.id, nome: st.name || nomeMeta || "", role, tudo: false,
+    menus: new Set(((menus || []) as any[]).map((m) => m.menu_key)), crm: !!crmOk,
+    empresas: Array.from(empresas.entries()).map(([id, name]) => ({ id, name })),
+  };
+}
+
+/** Ferramentas que esse perfil pode usar (as outras nem aparecem pro modelo). */
+function toolsPara(p: Perfil) {
+  if (p.tudo) return TOOLS;
+  if (p.cliente) {
+    const doTime = new Set(["rodar_agente", "ver_fila", "decidir_item", "atualizar_agente"]);
+    return TOOLS.filter((t) => doTime.has(t.name));
+  }
+  const comuns = new Set(["abrir_escritorio", "ir_para_sala", "abrir_tela", "abrir_cliente", "criar_tarefa", "enviar_whatsapp", "enviar_grupo_cliente"]);
+  const crm = new Set(["abrir_lead", "ver_negociacoes"]);
+  return TOOLS.filter((t) => comuns.has(t.name) || (p.crm && crm.has(t.name)));
+}
+
+function perfilBlock(p: Perfil): string {
+  if (p.tudo) return `QUEM FALA: ${p.nome} (${p.role}) — dono/admin: acesso total.`;
+  if (p.cliente) return `QUEM FALA: ${p.nome}, dono/usuário da empresa cliente. Você coordena o time de IA DELE: rodar agentes, fila de aprovação, ligar/desligar agentes. Não existe aqui CRM da UNV, financeiro da UNV, telas do Nexus nem envio de WhatsApp; se pedir, diga que isso é com o consultor da UNV.`;
+  return `QUEM FALA: ${p.nome} (${p.role}). ESTE USUÁRIO NÃO É O DONO. Ele só pode o que está liberado:
+- Telas: ${[...p.menus].join(", ") || "nenhum menu extra"}; CRM: ${p.crm ? "sim" : "NÃO"}; Financeiro, carteira geral, tráfego e painel: só se o menu estiver na lista acima.
+- Carteira (clientes dele): ${p.empresas.length ? p.empresas.map((e) => e.name).join(", ") : "nenhum cliente atribuído"}.
+- Ele NÃO vê números do financeiro da UNV, carteira geral, churn, NPS ou tráfego da UNV a menos que o menu esteja liberado. Não cite esses dados.
+- Se pedir algo fora disso (abrir financeiro, cliente que não é dele, dado da empresa toda), responda em uma frase: "você não tem acesso a isso; fala com o Fabrício". Não tente contornar com consultas.`;
+}
+
+/** Empresa cliente por id ou pedaço do nome (só uma; se der empate, pergunta). */
+async function acharEmpresa(supabase: SupabaseClient, ref: string): Promise<{ id: string; name: string; aviso?: string } | { erro: string }> {
+  const r = ref.trim();
+  if (!r) return { erro: "empresa não informada" };
+  if (/^[0-9a-f-]{36}$/i.test(r)) {
+    const { data } = await supabase.from("onboarding_companies").select("id, name").eq("id", r).maybeSingle();
+    return data ? data : { erro: "empresa não encontrada" };
+  }
+  // busca por pedaço do nome; se vier mais de uma, fica com a mais provável (ativa, nome mais
+  // parecido) e segue — o Max avisa qual escolheu em vez de perguntar
+  const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const termos = norm(r).split(/\s+/).filter((t) => t.length > 1);
+  let { data } = await supabase.from("onboarding_companies").select("id, name, status").ilike("name", `%${r}%`).limit(8);
+  if (!data?.length && termos.length) {
+    const { data: d2 } = await supabase.from("onboarding_companies").select("id, name, status").ilike("name", `%${termos[0]}%`).limit(8);
+    data = d2;
+  }
+  if (!data?.length) return { erro: `não achei empresa com "${r}"` };
+  const score = (c: any) => (c.status === "active" ? 100 : 0) + termos.filter((t) => norm(c.name).includes(t)).length * 10 - norm(c.name).length / 50 + (norm(c.name).startsWith(norm(r)) ? 5 : 0);
+  const lista = [...data].sort((a: any, b: any) => score(b) - score(a));
+  return { id: lista[0].id, name: lista[0].name, ...(lista.length > 1 ? { aviso: `escolhi ${lista[0].name}; também existe ${lista.slice(1, 3).map((c: any) => c.name).join(", ")}` } : {}) };
+}
+
+/** Lead por nome, rápido e sem perguntar: primeiro quem está nas negociações abertas,
+ * depois o CRM da UNV (maior valor e contato mais recente ganham). */
+async function acharLead(supabase: SupabaseClient, ctx: Ctx, nome: string): Promise<{ id: string; name: string; aviso?: string } | { erro: string }> {
+  const q = nome.trim().toLowerCase();
+  if (!q) return { erro: "lead não informado" };
+  const emCtx = ctx.negociacoes.filter((n) => n.name.toLowerCase().includes(q));
+  if (emCtx.length) return { id: emCtx[0].id, name: emCtx[0].name, ...(emCtx.length > 1 ? { aviso: `escolhi ${emCtx[0].name} (maior oportunidade)` } : {}) };
+  const { data: leads } = await supabase.from("crm_leads").select("id, name").is("tenant_id", null).ilike("name", `%${q}%`)
+    .order("opportunity_value", { ascending: false, nullsFirst: false }).order("last_activity_at", { ascending: false, nullsFirst: false }).limit(3);
+  if (!leads?.length) return { erro: `não achei lead com "${nome}" no CRM` };
+  return { id: leads[0].id, name: leads[0].name, ...(leads.length > 1 ? { aviso: `escolhi ${leads[0].name} (mais recente/maior valor); também existe ${leads.slice(1).map((l: any) => l.name).join(", ")}` } : {}) };
+}
+
+/** "hoje", "amanhã", "sexta", "30/10", "30/10 15h", "dia 5", ISO → Date (BRT; 10h se não tiver hora). */
+function parseQuando(v: unknown): Date {
+  const s = String(v || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const base = brNow();
+  const hora = (() => { const m = s.match(/(\d{1,2})\s*(?:h|:)\s*(\d{2})?/); return m ? [Number(m[1]), Number(m[2] || 0)] : null; })();
+  const at = (d: Date, h = 10, mi = 0) => { const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), (hora ? hora[0] : h) + 3, hora ? hora[1] : mi, 0)); return x; }; // BRT = UTC-3
+  if (!s || /^hoje/.test(s)) return at(base, hora ? hora[0] : 14);
+  if (/^amanha/.test(s)) { const d = new Date(base); d.setDate(d.getDate() + 1); return at(d); }
+  if (/depois de amanha/.test(s)) { const d = new Date(base); d.setDate(d.getDate() + 2); return at(d); }
+  const dias = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+  const di = dias.findIndex((d) => s.includes(d.slice(0, 3)));
+  if (di >= 0) { const d = new Date(base); const delta = (di - d.getDay() + 7) % 7 || 7; d.setDate(d.getDate() + delta); return at(d); }
+  const dm = s.match(/(\d{1,2})\s*[\/-]\s*(\d{1,2})(?:\s*[\/-]\s*(\d{2,4}))?/) || s.match(/dia\s+(\d{1,2})/);
+  if (dm) {
+    const d = new Date(base);
+    const dia = Number(dm[1]); const mes = dm[2] ? Number(dm[2]) - 1 : d.getMonth();
+    const ano = dm[3] ? (Number(dm[3]) < 100 ? 2000 + Number(dm[3]) : Number(dm[3])) : d.getFullYear();
+    const alvo = new Date(ano, mes, dia);
+    if (!dm[2] && alvo < d) alvo.setMonth(alvo.getMonth() + 1); // "dia 5" já passou → mês que vem
+    return at(alvo);
+  }
+  const p = new Date(s);
+  return isNaN(p.getTime()) ? at(base, 14) : p;
+}
+
+async function loadTeamState(supabase: SupabaseClient, companyId: string) {
+  const [agentsR, filaR, runsR] = await Promise.all([
+    supabase.from("ai_team_agents").select("*").eq("company_id", companyId),
+    supabase.from("ai_team_approvals").select("id, agent_key, kind, title, payload, created_at").eq("company_id", companyId).eq("status", "pending").order("created_at", { ascending: false }).limit(30),
+    supabase.from("ai_team_runs").select("agent_key, status, summary, finished_at, started_at").eq("company_id", companyId).order("started_at", { ascending: false }).limit(12),
+  ]);
+  return { agents: (agentsR.data || []) as Agent[], fila: (filaR.data || []) as any[], runs: (runsR.data || []) as any[] };
+}
+
+async function runTool(supabase: SupabaseClient, c: Company, name: string, input: any, userId: string | null, ctx: Ctx, perfil: Perfil): Promise<any> {
+  const SEM_ACESSO = (o: string) => ({ erro: `${perfil.nome || "este usuário"} não tem acesso a ${o}. Diga isso e oriente a falar com o Fabrício.` });
+  if (perfil.cliente && !["rodar_agente", "ver_fila", "decidir_item", "atualizar_agente"].includes(name)) return SEM_ACESSO("essa função (é com o consultor da UNV)");
+  if (!perfil.tudo && !perfil.cliente) {
+    // ferramentas de dono: nem deveriam chegar aqui (filtradas), mas o servidor manda
+    if (["consultar", "ver_tabelas", "ver_fila", "decidir_item", "atualizar_agente", "rodar_agente", "criar_anuncio_meta", "ativar_anuncio_meta", "pausar_anuncio_meta", "listar_anuncios_meta"].includes(name)) return SEM_ACESSO("essa função (só o dono/admin)");
+    if (["abrir_lead", "ver_negociacoes"].includes(name) && !perfil.crm) return SEM_ACESSO("o CRM");
+    if (name === "enviar_whatsapp" && (input.lead_id || input.pessoa) && !perfil.crm) return SEM_ACESSO("o CRM (contatos de leads)");
+  }
+  if (name === "abrir_escritorio") return { ok: true, acao: "abrir_escritorio", nota: "a tela do dono vai abrir o UNV Office" };
+  if (name === "ir_para_sala") return { ok: true, acao: "ir_sala", destino: String(input.destino || ""), nota: "a tela leva o avatar até lá" };
+  if (name === "abrir_tela") {
+    const rota = resolverTela(String(input.tela || ""));
+    if (!rota) return { erro: `não achei a tela "${input.tela}"` };
+    if (!podeTela(perfil, rota.perm)) return SEM_ACESSO(`a tela ${rota.nome}`);
+    return { ok: true, acao: "abrir_tela", rota: rota.rota, tela: rota.nome };
+  }
+  if (name === "abrir_lead") {
+    let id = String(input.lead_id || "").trim();
+    let nome: string | null = null;
+    if (!/^[0-9a-f-]{36}$/i.test(id)) {
+      id = "";
+      const q = String(input.nome || "").trim();
+      if (!q) return { erro: "diga o lead (nome) ou passe o lead_id" };
+      // primeiro quem está nas negociações abertas (é de quem o dono costuma falar), depois o CRM todo
+      const emCtx = ctx.negociacoes.filter((n) => n.name.toLowerCase().includes(q.toLowerCase()));
+      if (emCtx.length >= 1) { id = emCtx[0].id; nome = emCtx[0].name; }
+      else {
+        const { data: leads } = await supabase.from("crm_leads").select("id, name, opportunity_value").is("tenant_id", null).ilike("name", `%${q}%`).order("opportunity_value", { ascending: false, nullsFirst: false }).order("last_activity_at", { ascending: false, nullsFirst: false }).limit(3);
+        if (!leads?.length) return { erro: `não achei lead com "${q}"` };
+        id = leads[0].id; nome = leads[0].name;
+        if (leads.length > 1) nome = `${leads[0].name} (o de maior valor; também existem ${leads.slice(1).map((l: any) => l.name).join(", ")})`;
+      }
+    }
+    return { ok: true, acao: "abrir_lead", lead_id: id, nome, rota: `/crm/leads/${id}` };
+  }
+  if (name === "abrir_cliente") {
+    const emp = await acharEmpresa(supabase, String(input.empresa || ""));
+    if ("erro" in emp) return emp;
+    if (!podeEmpresa(perfil, emp.id)) return SEM_ACESSO(`o cliente ${emp.name} (não está na carteira dele)`);
+    const { data: proj } = await supabase.from("onboarding_projects").select("id, product_name, status").eq("onboarding_company_id", emp.id).order("status").order("created_at", { ascending: false }).limit(1).maybeSingle();
+    return { ok: true, acao: "abrir_cliente", empresa: emp.name, company_id: emp.id, project_id: proj?.id || null, rota: proj ? `/onboarding-tasks/${proj.id}` : "/onboarding-tasks" };
+  }
+  if (name === "enviar_whatsapp") {
+    if (!input.confirmado) return { erro: "sem confirmação do dono: mostre o rascunho e o destinatário e pergunte se pode mandar" };
+    let numero = String(input.telefone || "").replace(/\D/g, "");
+    let nome: string | null = null;
+    if (input.lead_id) {
+      const { data: lead } = await supabase.from("crm_leads").select("name, phone, extra_phones").eq("id", input.lead_id).maybeSingle();
+      const tel = lead?.phone || (Array.isArray(lead?.extra_phones) ? lead!.extra_phones[0] : null);
+      if (!tel) return { erro: `${lead?.name || "esse lead"} não tem telefone cadastrado no CRM (nem telefone extra). Não dá pra mandar; ofereça criar tarefa pra completar o cadastro.` };
+      numero = String(tel).replace(/\D/g, "");
+      nome = lead!.name;
+    } else if (!numero && input.pessoa) {
+      // 0) quem está nas negociações abertas (é de quem o dono acabou de falar) ganha de qualquer busca
+      const emCtx = ctx.negociacoes.filter((n) => n.name.toLowerCase().includes(String(input.pessoa).trim().toLowerCase()));
+      if (emCtx.length) {
+        const { data: lead } = await supabase.from("crm_leads").select("id, name, phone").eq("id", emCtx[0].id).maybeSingle();
+        if (lead?.phone) { numero = String(lead.phone).replace(/\D/g, ""); nome = lead.name; input.lead_id = lead.id; }
+      }
+    }
+    if (!numero && input.pessoa) {
+      // 1) alguém do time da UNV, 2) lead do CRM com esse nome
+      const { data: staff } = await supabase.from("onboarding_staff").select("name, phone").eq("is_active", true).ilike("name", `%${String(input.pessoa).trim()}%`).limit(2);
+      if (staff?.length === 1 && staff[0].phone) { numero = String(staff[0].phone).replace(/\D/g, ""); nome = staff[0].name; }
+      else if ((staff?.length || 0) > 1) return { erro: `mais de uma pessoa do time chama ${input.pessoa}: ${staff!.map((s: any) => s.name).join(", ")}. Qual?` };
+      else {
+        const { data: leads } = await supabase.from("crm_leads").select("id, name, phone").is("tenant_id", null).ilike("name", `%${String(input.pessoa).trim()}%`).not("phone", "is", null).order("last_activity_at", { ascending: false, nullsFirst: false }).limit(3);
+        if (leads?.length === 1) { numero = String(leads[0].phone).replace(/\D/g, ""); nome = leads[0].name; input.lead_id = leads[0].id; }
+        else if ((leads?.length || 0) > 1) return { erro: `achei mais de um lead com esse nome: ${leads!.map((l: any) => `${l.name} (${l.id})`).join("; ")}. Qual?` };
+        else return { erro: `não achei ${input.pessoa} no time nem no CRM` };
+      }
+    }
+    if (numero.length < 10) return { erro: "telefone inválido" };
+    if (!numero.startsWith("55")) numero = `55${numero}`;
+    const ok = await sendWhatsApp(supabase, numero, String(input.mensagem));
+    if (ok && input.lead_id) {
+      await supabase.from("crm_activities").insert({ lead_id: input.lead_id, type: "whatsapp", title: "Mensagem enviada pelo Max (Time de IA)", description: String(input.mensagem).slice(0, 2000), status: "completed", scheduled_at: new Date().toISOString(), completed_at: new Date().toISOString(), created_by: userId }).then(() => {}, () => {});
+    }
+    return ok ? { ok: true, para: nome || numero, enviado: true } : { erro: "a instância de WhatsApp da UNV não respondeu (número desconectado?)" };
+  }
+  if (name === "enviar_grupo_cliente") {
+    if (!input.confirmado) return { erro: "sem confirmação do dono: mostre o texto e o nome do cliente e pergunte se pode mandar" };
+    const emp = await acharEmpresa(supabase, String(input.empresa || ""));
+    if ("erro" in emp) return emp;
+    if (!podeEmpresa(perfil, emp.id)) return SEM_ACESSO(`o cliente ${emp.name} (não está na carteira dele)`);
+    const grupos = await fetchGestaoGroups();
+    const g = grupos.get(emp.id);
+    if (!g) return { erro: `${emp.name} não tem grupo de gestão cadastrado no WhatsApp` };
+    const { data: cfg } = await supabase.from("company_automation_settings").select("instance_name").eq("company_id", emp.id).eq("automation_key", "resumo_diario").maybeSingle();
+    const ok = await sendWhatsApp(supabase, g.jid, String(input.mensagem), cfg?.instance_name || null);
+    return ok ? { ok: true, grupo: g.name, empresa: emp.name, enviado: true } : { erro: "a instância de WhatsApp não respondeu" };
+  }
+  if (name === "criar_tarefa") {
+    const quando = parseQuando(input.quando);
+    // responsável: quem está falando, a menos que o dono tenha nomeado outra pessoa
+    let responsavelId: string | null = perfil.staffId;
+    let responsavelNome: string | null = perfil.staffId ? perfil.nome : null;
+    if (input.responsavel && !/^(eu|mim|meu nome|pra mim|para mim)$/i.test(String(input.responsavel).trim())) {
+      const { data: staff } = await supabase.from("onboarding_staff").select("id, name").eq("is_active", true).ilike("name", `%${String(input.responsavel).trim()}%`).order("name").limit(3);
+      if (staff?.length) { responsavelId = staff[0].id; responsavelNome = staff[0].name + (staff.length > 1 ? ` (escolhi entre ${staff.map((s: any) => s.name).join(", ")})` : ""); }
+    }
+    const aviso: string[] = [];
+    // lead: por id, ou por nome (negociações primeiro, depois o CRM)
+    let leadId = /^[0-9a-f-]{36}$/i.test(String(input.lead_id || "")) ? String(input.lead_id) : "";
+    let leadNome: string | null = null;
+    if (!leadId && input.lead) {
+      const l = await acharLead(supabase, ctx, String(input.lead));
+      if ("erro" in l) return l;
+      leadId = l.id; leadNome = l.name; if (l.aviso) aviso.push(l.aviso);
+    }
+    if (leadId) {
+      if (!perfil.tudo && !perfil.crm) return SEM_ACESSO("o CRM");
+      const { data, error } = await supabase.from("crm_activities").insert({
+        lead_id: leadId, type: input.tipo || "followup", title: String(input.titulo), description: input.descricao || null,
+        status: "pending", scheduled_at: quando.toISOString(), responsible_staff_id: responsavelId, created_by: userId, notes: "criada pelo Max (Time de IA)",
+      }).select("id").single();
+      return error ? { erro: error.message } : { ok: true, tarefa_id: data.id, onde: `CRM, atividade do lead ${leadNome || ""}`.trim(), quando: quando.toISOString(), responsavel: responsavelNome, aviso: aviso.join("; ") || undefined };
+    }
+    if (input.empresa) {
+      const emp = await acharEmpresa(supabase, String(input.empresa));
+      if ("erro" in emp) return emp;
+      if (emp.aviso) aviso.push(emp.aviso);
+      if (!podeEmpresa(perfil, emp.id)) return SEM_ACESSO(`o cliente ${emp.name} (não está na carteira dele)`);
+      const { data: proj } = await supabase.from("onboarding_projects").select("id, product_name, status").eq("onboarding_company_id", emp.id).order("status").order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (!proj) return { erro: `${emp.name} não tem projeto no Nexus` };
+      const { data, error } = await supabase.from("onboarding_tasks").insert({
+        project_id: proj.id, title: String(input.titulo), description: input.descricao || "Criada pelo Max (Time de IA)",
+        due_date: quando.toISOString().slice(0, 10), status: "pending", responsible_staff_id: responsavelId, priority: "medium",
+      }).select("id").single();
+      return error ? { erro: error.message } : { ok: true, tarefa_id: data.id, onde: `projeto ${proj.product_name} da ${emp.name}`, quando: quando.toISOString().slice(0, 10), responsavel: responsavelNome, aviso: aviso.join("; ") || undefined };
+    }
+    // sem lead nem empresa: tarefa pessoal, no projeto da própria UNV
+    const { data: projUnv } = await supabase.from("onboarding_projects").select("id, product_name").eq("onboarding_company_id", c.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (!projUnv) return { erro: "não achei projeto pra pendurar a tarefa; diga o lead ou a empresa" };
+    const { data, error } = await supabase.from("onboarding_tasks").insert({
+      project_id: projUnv.id, title: String(input.titulo), description: input.descricao || "Criada pelo Max (Time de IA)",
+      due_date: quando.toISOString().slice(0, 10), status: "pending", responsible_staff_id: responsavelId, priority: "medium",
+    }).select("id").single();
+    return error ? { erro: error.message } : { ok: true, tarefa_id: data.id, onde: "tarefas da UNV (pessoal)", quando: quando.toISOString().slice(0, 10), responsavel: responsavelNome };
+  }
+  if (name === "criar_anuncio_meta") {
+    try {
+      let headline = String(input.headline || "").trim(), texto = String(input.texto || "").trim(), cta = String(input.cta || "LEARN_MORE");
+      if (input.approval_id) {
+        const { data: ap } = await supabase.from("ai_team_approvals").select("payload, title").eq("id", input.approval_id).eq("company_id", c.id).maybeSingle();
+        if (ap?.payload) { headline = headline || ap.payload.headline || ap.title; texto = texto || ap.payload.texto || ""; }
+      }
+      if (!headline || !texto) return { erro: "faltou headline ou texto (ou approval_id de um anúncio da fila)" };
+      const conta = await contaMetaUNV(supabase);
+      const ids = await criarAnuncioPausado(conta, {
+        nome: String(input.nome), headline: headline.slice(0, 40), texto, cta, link: String(input.link || LINK_PADRAO),
+        orcamentoDiario: Number(input.orcamento_diario || 50), idadeMin: Number(input.idade_min || 25), idadeMax: Number(input.idade_max || 60),
+        imagemBriefing: String(input.imagem_briefing),
+      });
+      await supabase.from("ai_team_meta_ads").insert({
+        company_id: c.id, ad_account_id: conta.ad_account_id, ...ids, headline: headline.slice(0, 40), texto,
+        link: String(input.link || LINK_PADRAO), orcamento_diario: Number(input.orcamento_diario || 50), status: "paused", created_by: userId,
+      });
+      if (input.approval_id) await supabase.from("ai_team_approvals").update({ status: "approved", decided_at: new Date().toISOString(), decided_by: userId, note: `subiu na Meta: campanha ${ids.campaign_id}` }).eq("id", input.approval_id).eq("company_id", c.id);
+      return { ok: true, conta: conta.nome, ...ids, status: "PAUSADO", orcamento_diario: Number(input.orcamento_diario || 50), link_gerenciador: linkGerenciador(conta.ad_account_id, ids.campaign_id) };
+    } catch (e) {
+      return { erro: (e as Error).message };
+    }
+  }
+  if (name === "ativar_anuncio_meta" || name === "pausar_anuncio_meta") {
+    const ativar = name === "ativar_anuncio_meta";
+    const { data: row } = await supabase.from("ai_team_meta_ads").select("*").eq("company_id", c.id).eq("campaign_id", String(input.campaign_id)).maybeSingle();
+    if (!row) return { erro: "campanha não encontrada entre as que o Max criou" };
+    try {
+      const conta = await contaMetaUNV(supabase);
+      await mudarStatus(conta, row, ativar ? "ACTIVE" : "PAUSED");
+      await supabase.from("ai_team_meta_ads").update({ status: ativar ? "active" : "paused", activated_at: ativar ? new Date().toISOString() : row.activated_at }).eq("id", row.id);
+      return { ok: true, campaign_id: row.campaign_id, status: ativar ? "ATIVA" : "PAUSADA", headline: row.headline, orcamento_diario: row.orcamento_diario, link_gerenciador: linkGerenciador(row.ad_account_id, row.campaign_id) };
+    } catch (e) {
+      return { erro: (e as Error).message };
+    }
+  }
+  if (name === "listar_anuncios_meta") {
+    const { data } = await supabase.from("ai_team_meta_ads").select("campaign_id, headline, status, orcamento_diario, link, created_at, activated_at, ad_account_id").eq("company_id", c.id).order("created_at", { ascending: false }).limit(20);
+    return (data || []).map((r: any) => ({ ...r, link_gerenciador: linkGerenciador(r.ad_account_id, r.campaign_id) }));
+  }
+  if (name === "consultar") {
+    const sql = String(input?.sql || "").trim();
+    if (!sql) return { erro: "sql vazio" };
+    const { data, error } = await supabase.rpc("ai_team_sql", { q: sql });
+    if (error) return { erro: error.message, dica: "confira colunas com ver_tabelas; só SELECT, sem ponto e vírgula" };
+    const rows = Array.isArray(data) ? data : [];
+    return { linhas: rows.length, truncado: rows.length >= 200, dados: rows };
+  }
+  if (name === "ver_tabelas") {
+    const busca = String(input?.busca || "").replace(/[^a-z0-9_ ]/gi, "").trim().toLowerCase();
+    if (!busca) return { erro: "busca vazia" };
+    const { data, error } = await supabase.rpc("ai_team_sql", { q:
+      `select table_name, string_agg(column_name || ' ' || data_type, ', ' order by ordinal_position) as colunas
+       from information_schema.columns where table_schema = 'public' and (table_name ilike '%${busca.replace(/ /g, "%")}%' or column_name ilike '%${busca.replace(/ /g, "%")}%')
+       group by table_name order by table_name limit 40` });
+    if (error) return { erro: error.message };
+    return data;
+  }
+  if (name === "ver_negociacoes") {
+    const min = Number(input?.minimo || 0);
+    return ctx.negociacoes.filter((n) => n.valor >= min).map((n) => ({
+      lead_id: n.id, nome: n.name, valor: n.valor, funil: n.pipeline, etapa: n.stage,
+      dias_sem_contato: n.dias === 999 ? null : n.dias, dono: n.dono, proxima_atividade: n.proximaAtividade,
+    }));
+  }
+  if (name === "ver_fila") {
+    const { fila } = await loadTeamState(supabase, c.id);
+    return fila.map((f) => ({ id: f.id, agente: f.agent_key, tipo: f.kind, titulo: f.title, conteudo: f.payload }));
+  }
+  if (name === "decidir_item") {
+    const { data, error } = await supabase.from("ai_team_approvals")
+      .update({ status: input.decisao, note: input.nota || "decidido pelo Max no chat", decided_at: new Date().toISOString(), decided_by: userId })
+      .eq("id", input.approval_id).eq("company_id", c.id).eq("status", "pending").select("id, title").maybeSingle();
+    if (error) return { erro: error.message };
+    if (!data) return { erro: "item não encontrado ou já decidido" };
+    return { ok: true, item: data.title, status: input.decisao };
+  }
+  if (name === "atualizar_agente") {
+    const { data: ag } = await supabase.from("ai_team_agents").select("id, config, schedule").eq("company_id", c.id).eq("agent_key", input.agent_key).maybeSingle();
+    if (!ag) return { erro: "agente não encontrado" };
+    const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+    if (typeof input.is_active === "boolean") patch.is_active = input.is_active;
+    if (input.schedule?.hour) patch.schedule = { hour: input.schedule.hour, days: input.schedule.days || ag.schedule?.days || [1, 2, 3, 4, 5] };
+    const cfg = { ...(ag.config || {}) };
+    for (const k of ["oferta", "publico", "tom"]) if (typeof input[k] === "string") cfg[k] = input[k];
+    patch.config = cfg;
+    const { error } = await supabase.from("ai_team_agents").update(patch).eq("id", ag.id);
+    return error ? { erro: error.message } : { ok: true, agent_key: input.agent_key, alterado: Object.keys(patch).filter((k) => k !== "updated_at") };
+  }
+  if (name === "rodar_agente") {
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/ai-team-orchestrator`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY },
+      body: JSON.stringify({ companyId: c.id, agentKey: input.agent_key }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    const r = data?.results?.[0];
+    if (!resp.ok || !r) return { erro: data?.error || `orquestrador respondeu ${resp.status}` };
+    if (r.error) return { erro: r.error };
+    const ran = (r.ran || [])[0];
+    return { ok: true, agente: ran?.name || input.agent_key, status: ran?.status, entrega: ran?.summary, novos_itens_na_fila: r.novasAprovacoes || 0 };
+  }
+  return { erro: `ferramenta desconhecida: ${name}` };
+}
+
+// Quando a conversa é com um especialista (escritório 3D), ele fala em primeira pessoa
+// do papel dele, com os mesmos dados e ferramentas, e manda pro Max o que não é dele.
+function personaEspecialista(agente: Agent, max: Agent | undefined): string {
+  return `ATENÇÃO: nesta conversa você NÃO é ${max?.name || "Max"}. Você é ${agente.name}, ${agente.role_title} do Time de IA. ${agente.description || ""}
+Fale em primeira pessoa como ${agente.name}: foque no seu papel (${agente.role_title}), use os dados e as ferramentas pra responder sobre a sua área com profundidade, e, se pedirem algo de outro papel, diga em uma frase que isso é com ${max?.name || "Max"} ou com o colega certo (cite o nome). Quando fizer sentido rodar a sua própria rodada, use rodar_agente com a sua chave (${agente.agent_key}).`;
+}
+
+function systemPrompt(c: Company, agents: Agent[], fila: any[], runs: any[], dados: string, donoNome: string | null): string {
+  const max = agents.find((a) => a.agent_key === "orquestrador");
+  const time = agents.filter((a) => a.agent_key !== "orquestrador").map((a) =>
+    `- ${a.name} (${a.role_title}, chave ${a.agent_key}): ${a.is_active ? "ligado" : "DESLIGADO"}, agenda ${agendaLabel(a.schedule)}, última rodada ${timeAgo(a.last_run_at)}`).join("\n");
+  const filaTxt = fila.length
+    ? fila.map((f) => `- [${f.id}] ${f.kind} de ${agents.find((a) => a.agent_key === f.agent_key)?.name || f.agent_key}: "${f.title}"`).join("\n")
+    : "vazia";
+  const rodadas = runs.slice(0, 8).map((r) => `- ${agents.find((a) => a.agent_key === r.agent_key)?.name || r.agent_key} (${timeAgo(r.finished_at || r.started_at)}, ${r.status}): ${String(r.summary || "").slice(0, 350)}`).join("\n") || "nenhuma ainda";
+  const agora = brNow();
+  return `Você é ${max?.name || "Max"}, coordenador do Time de IA da ${c.name}. Você conversa com o dono da empresa${donoNome ? ` (${donoNome})` : ""} como um sócio operador: direto, humano, sem enrolação, sem emoji, sem markdown (nada de #, **, listas com asterisco; se precisar enumerar, use linhas simples com hífen ou números). Português do Brasil. Frases curtas. Você entende de vendas, gestão comercial, marketing e caixa.
+
+Hoje é ${DOW[agora.getDay()]}, ${agora.toLocaleDateString("pt-BR")} ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} (Brasília).
+
+SEU TIME:
+${time}
+
+FILA DE APROVAÇÃO (itens que o dono ainda não decidiu):
+${filaTxt}
+
+ÚLTIMAS RODADAS:
+${rodadas}
+
+RESUMO DE HOJE (lido agora do Nexus; é um recorte, não o banco inteiro):
+${dados || "nenhum dado além da oferta"}
+
+${MAPA_NEXUS}
+
+Como agir:
+- Você tem acesso de leitura a TODO o Nexus: a UNV e todas as empresas clientes. Se a pergunta pede algo que não está no resumo (um cliente específico, um período, um vendedor, uma campanha, um detalhe), use consultar(sql) antes de responder. Não diga "não tenho esse dado" sem antes tentar uma consulta; se a consulta não encontrar, aí sim diga que o dado não está lançado no sistema.
+- Responda com número quando tiver número. Nunca invente dado.
+- Quando o dono pedir pra alguém do time fazer algo, use rodar_agente e depois conte o que saiu (resuma a entrega, não copie inteira).
+- Quando o dono pedir pra aprovar/rejeitar, use ver_fila se precisar achar o item certo e depois decidir_item. Confirme o que fez em uma linha.
+- Quando ele perguntar "o que eu faço", opine: escolha, priorize, discorde se for o caso. Você tem opinião.
+- Quando ele colocar uma META ("preciso vender 40 mil hoje", "tenho que fechar 3 contratos essa semana"), NÃO responda com teoria: vá nas negociações abertas (estão nos dados; use ver_negociacoes se precisar da lista completa), some quais fecham a meta, diga NOME, VALOR e ETAPA de cada uma, quem está cuidando, e o que fazer AGORA com cada uma (ligar, mandar proposta, cobrar resposta). Ofereça deixar as mensagens prontas pelo Theo ou pelo time.
+- Primeiro responda exatamente o que foi perguntado; só depois, se couber, acrescente o que você acha.
+- ORDENS DE EXECUÇÃO na Meta: quando o dono mandar criar/subir anúncio, crie de verdade com criar_anuncio_meta (copy do Rafa, de um item da fila ou escrita por você agora, sem nome de cliente, sem preço salvo se ele pedir), SEMPRE pausado, e devolva: headline, orçamento diário, público e o link do Gerenciador. Se ele não disser orçamento, use 50 reais por dia e avise. NUNCA chame ativar_anuncio_meta sem uma ordem explícita de ativar ("ativa", "pode ligar", "sobe pra valer"); se a ordem de criar vier junto com "e ativa", crie, confirme o que criou e pergunte se ativa mesmo. Pausar pode ser imediato quando ele mandar.
+- NAVEGAÇÃO POR VOZ: "abre o escritório", "vai na sala do Ricardo", "vai pra reunião principal", "abre a 3D Cure", "abre o CRM", "abre o card do Edson" → use abrir_escritorio / ir_para_sala / abrir_cliente / abrir_tela / abrir_lead NA HORA, sem perguntar, e responda em UMA frase curta ("abrindo o card do Edson"). Não explique.
+- VOCÊ LÊ O SISTEMA, O DONO NÃO. Nunca peça ao dono um dado que está no Nexus (telefone, e-mail, valor, etapa, empresa): as ferramentas buscam pra você (enviar_whatsapp acha o telefone pelo lead_id; consultar acha qualquer coisa). Nunca diga "vê lá no card e me passa". Se a ferramenta disser que o dado não existe no sistema (ex: lead sem telefone cadastrado), diga isso em uma frase e ofereça o caminho: "o Edson não tem telefone no CRM; quero que eu crie uma tarefa pra pré-vendas completar o cadastro?".
+- Nunca diga que fez algo (abriu, mandou, criou) antes de a ferramenta devolver ok. Dizer "abrindo o financeiro" SEM chamar abrir_tela é mentir: a tela só muda quando a ferramenta roda. Se devolveu erro, diga o erro.
+- CONTINUIDADE: se VOCÊ acabou de citar uma pessoa ou empresa com dado (ex: "o Edson tem uma oportunidade de 40 mil"), ela é a referência das ordens seguintes ("abre o card dele", "manda mensagem pro Edson"): use o lead_id que está entre colchetes nos dados ou que a ferramenta devolveu. NUNCA pergunte "qual Edson?" nesse caso. Só pergunte quando o nome nunca apareceu na conversa e a busca devolveu mais de um.
+- SEM INTERROGATÓRIO. Toda ordem tem padrões: tarefa é pra quem está falando, data é hoje, tipo é follow-up, empresa e lead são achados pelo nome como ele falou ("Sobrado" acha "Sobrado e Cia"; "lead digital" acha o lead "Digital"). Você NÃO pergunta "pra quem", "qual cliente", "que dia" se der pra assumir; executa e, se escolheu entre opções, diz em meia frase o que escolheu ("criei pra sexta, no Sobrado e Cia, no seu nome"). Só pergunta quando falta algo que não dá pra assumir (ex: o texto da mensagem).
+- VOCÊ EXECUTA. O dono dá ordem, você faz: mandar mensagem pra lead, cliente ou alguém do time (enviar_whatsapp), cobrar alguém (enviar_whatsapp com o texto da cobrança), mandar recado no grupo de gestão de um cliente (enviar_grupo_cliente), criar tarefa pra lead ou pra projeto de cliente (criar_tarefa, na hora, sem perguntar), rodar agente, aprovar item, subir anúncio. Nunca responda "não consigo" pra essas; se faltar um dado (quem, qual empresa), pergunte só isso, em uma frase.
+- Mensagem pra terceiro (lead, cliente, grupo, pessoa do time) tem UMA confirmação curta: ache o contato (ver_negociacoes/consultar/pessoa), escreva o texto final e diga "pra <nome>: <texto>. Mando?". Na resposta seguinte, com o OK dele, chame a ferramenta com confirmado=true. Nunca diga que mandou se a ferramenta não devolveu enviado=true; se devolveu erro, diga o erro em uma frase.
+- Se ele pedir algo que o time ainda não faz (ligar pra cliente, publicar post), diga com clareza que isso ainda é mão humana e deixe pronto o que der (texto, lista, prioridade).
+- Respostas de 2 a 8 linhas. Só alongue quando ele pedir detalhe.`;
+}
+
+// Em voz alta a conversa precisa caber no ouvido: curto, redondo, sem lista.
+const MODO_VOZ = `
+
+MODO VOZ: o dono está falando com você por áudio e vai OUVIR sua resposta. A transcrição pode vir com erro de reconhecimento: interprete pelo contexto ("vender quarenta mil" = meta de R$ 40 mil) e, se ficar em dúvida real, pergunte em uma frase curta. Responda em 1 a 5 frases faladas, como numa ligação: sem lista, sem hífen, sem número com centavos (arredonde: "quarenta e dois mil"), sem sigla sem explicar, sem URL. A primeira frase já tem que ser a resposta, nunca um preâmbulo. Se tiver muita coisa, dê as 2 ou 3 mais importantes e pergunte se ele quer o resto. Quando acionar alguém do time, avise antes em uma frase ("vou pedir pro Theo escrever, me dá uns segundos") e depois conte o resultado em uma ou duas frases.`;
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  try {
+    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+    const body = await req.json().catch(() => ({}));
+    const authHeader = req.headers.get("Authorization") || "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    const role = jwtRole(token);
+    if (!body.companyId || !String(body.message || "").trim()) return json({ error: "companyId e message são obrigatórios" }, 400);
+    const message = String(body.message).trim().slice(0, 4000);
+
+    let userId: string | null = null;
+    let donoNome: string | null = null;
+    let perfil: Perfil = perfilTudo("service", "sistema", "service_role");
+    if (role !== "service_role") {
+      const asUser = createClient(SUPABASE_URL, SERVICE_KEY, { global: { headers: { Authorization: authHeader } } });
+      const { data: { user } } = await asUser.auth.getUser(token);
+      if (!user) return json({ error: "não autenticado" }, 401);
+      userId = user.id;
+      donoNome = (user.user_metadata?.full_name || user.user_metadata?.name || null) as string | null;
+      // staff da UNV (qualquer papel ativo) fala com o Max dentro do que pode; quem não é staff
+      // precisa de acesso à empresa (cliente do Nexus falando com o time dele)
+      const p = await montarPerfil(supabase, asUser, user.id, donoNome);
+      if (p) perfil = p;
+      else {
+        const { data: ok } = await asUser.rpc("ai_team_has_access", { p_company_id: body.companyId });
+        if (!ok) return json({ error: "sem acesso à empresa" }, 403);
+        perfil = perfilCliente(user.id, donoNome || "", String(body.companyId));
+      }
+    }
+
+    const { data: c } = await supabase.from("onboarding_companies").select("id, name, segment, phone").eq("id", body.companyId).maybeSingle();
+    if (!c) return json({ error: "empresa não encontrada" }, 404);
+    if (body.reset === true) await supabase.from("ai_team_messages").delete().eq("company_id", c.id);
+
+    const { agents, fila, runs } = await loadTeamState(supabase, c.id);
+    if (!agents.length) return json({ error: "time não montado" }, 400);
+    const ctx = await buildContext(supabase, c as Company, agents, { cacheMs: CTX_CACHE_MS });
+    // o que entra no prompt depende de quem fala: dono vê tudo; os demais só o que o menu libera
+    const partes: ("kpis" | "comercial" | "financeiro" | "carteira" | "trafego" | "catalogo")[] = perfil.tudo
+      ? ["financeiro", "comercial", "carteira", "trafego", "catalogo"]
+      : perfil.cliente ? []
+      : [...(perfil.crm ? ["comercial" as const] : []), ...(perfil.menus.has("financial") ? ["financeiro" as const] : []), ...(perfil.menus.has("trafego_pago") ? ["trafego" as const] : []), "catalogo" as const];
+    const dados = ctx.modo === "nexus_unv" ? dadosBlock(ctx, partes) : (ctx.kpis ? dadosBlock(ctx, ["kpis"]) : "");
+    // com quem o dono está falando: o Max (padrão) ou um especialista do escritório 3D
+    const agenteKey = String(body.agente || "orquestrador");
+    const agenteRow = agents.find((a) => a.agent_key === agenteKey) || agents.find((a) => a.agent_key === "orquestrador")!;
+    const maxRow = agents.find((a) => a.agent_key === "orquestrador");
+    const system = systemPrompt(c as Company, agents, perfil.tudo ? fila : [], perfil.tudo ? runs : [], `${ctx.oferta}\n\n${dados}`, donoNome)
+      + `\n\n${perfilBlock(perfil)}`
+      + (agenteRow.agent_key !== "orquestrador" ? `\n\n${personaEspecialista(agenteRow, maxRow)}` : "")
+      + (body.modo === "voz" ? MODO_VOZ : "");
+
+    // histórico (últimas 30 mensagens dessa conversa, ordem cronológica); quem não é dono só vê a própria
+    let histQ = supabase.from("ai_team_messages").select("role, content").eq("company_id", c.id).eq("agent_key", agenteRow.agent_key);
+    if (!perfil.tudo && userId) histQ = histQ.eq("user_id", userId);
+    const { data: hist } = await histQ.order("created_at", { ascending: false }).limit(30);
+    const messages: any[] = ((hist || []) as any[]).reverse().map((m) => ({ role: m.role, content: m.content }));
+    messages.push({ role: "user", content: message });
+    await supabase.from("ai_team_messages").insert({ company_id: c.id, user_id: userId, role: "user", content: message, agent_key: agenteRow.agent_key });
+
+    const key = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!key) return json({ error: "ANTHROPIC_API_KEY não configurada" }, 500);
+    const actions: any[] = [];
+    let reply = "";
+    let modelo = CHAT_MODEL;
+    const ferramentas = toolsPara(perfil);
+    const ehOrdem = ferramentas.length > 0 && RE_ORDEM.test(message);
+    for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
+      const chamar = (m: string) => fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: m, max_tokens: 1200, temperature: 0.5, system, tools: ferramentas, messages,
+          ...(round === 0 && ehOrdem ? { tool_choice: { type: "any" } } : {}),
+        }),
+      });
+      let resp = await chamar(modelo);
+      if (resp.status === 404 || resp.status === 400) {
+        const txt = await resp.text();
+        if (/model/i.test(txt) && modelo !== CHAT_MODEL_RESERVA) { modelo = CHAT_MODEL_RESERVA; resp = await chamar(modelo); }
+        else throw new Error(`Claude ${resp.status}: ${txt.slice(0, 300)}`);
+      }
+      if (!resp.ok) throw new Error(`Claude ${resp.status}: ${(await resp.text()).slice(0, 300)}`);
+      const data = await resp.json();
+      logUsoIA("ai-team-chat", modelo, data?.usage, { company: c.id, round });
+      const content = data.content || [];
+      const toolUses = content.filter((b: any) => b.type === "tool_use");
+      const text = content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n").trim();
+      if (!toolUses.length || round === MAX_TOOL_ROUNDS) { reply = text || reply || "Feito."; break; }
+      messages.push({ role: "assistant", content });
+      const results: any[] = [];
+      for (const tu of toolUses) {
+        const result = await runTool(supabase, c as Company, tu.name, tu.input || {}, userId, ctx, perfil);
+        actions.push({ tool: tu.name, input: tu.input, result });
+        results.push({ type: "tool_result", tool_use_id: tu.id, content: JSON.stringify(result).slice(0, 12000) });
+      }
+      messages.push({ role: "user", content: results });
+    }
+
+    await supabase.from("ai_team_messages").insert({ company_id: c.id, user_id: userId, role: "assistant", content: reply, meta: actions.length ? { actions } : null, agent_key: agenteRow.agent_key });
+    return json({ ok: true, reply, actions, agente: agenteRow.agent_key });
+  } catch (e) {
+    console.error("ai-team-chat", e);
+    return json({ error: (e as Error).message }, 500);
+  }
+});

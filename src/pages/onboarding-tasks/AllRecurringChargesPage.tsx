@@ -84,6 +84,7 @@ import { PayablePaymentDialog, PayableEditDialog } from "@/components/financial/
 import { BankTransactionsDialog } from "@/components/financial/BankTransactionsDialog";
 import { getNthBusinessDayOfMonth, ensureBusinessDay } from "@/lib/businessDays";
 import { DailyFinancialSummaryDialog, shouldShowDailySummary, markDailySummaryShown } from "@/components/financial/DailyFinancialSummaryDialog";
+import "./financial/financeiro-pc.css";
 
 interface RecurringCharge {
   id: string;
@@ -239,6 +240,12 @@ export default function AllRecurringChargesPage() {
   // ?tab=... abre a seção direto (o aviso da conciliação no WhatsApp usa isso)
   const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Visual do Painel de Controle no Financeiro inteiro (31/10/2026). A classe vai no body pra
+  // alcançar também janelas e menus que abrem em portal fora desta árvore.
+  useEffect(() => {
+    document.body.classList.add("fin-pc");
+    return () => { document.body.classList.remove("fin-pc"); };
+  }, []);
   const [dashboardMenuOpen, setDashboardMenuOpen] = useState(true);
 
   // Data state

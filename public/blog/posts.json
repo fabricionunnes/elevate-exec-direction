@@ -1,6 +1,358 @@
 {
- "gerado_em": "2026-10-23T21:00:50",
+ "gerado_em": "2026-10-31T10:01:17",
  "posts": [
+  {
+   "slug": "reuniao-diaria-quinze-minutos-garante-meta-batida",
+   "url": "/blog/reuniao-diaria-quinze-minutos-garante-meta-batida/",
+   "titulo": "Reunião diária de quinze minutos garante meta batida todo mês",
+   "resumo": "Reunião diária curta mantém o vendedor na rota e o dono dentro do número. Meta que não é acompanhada toda semana vira só um número bonito no papel.",
+   "tags": [
+    "rotina de cobrança",
+    "acompanhamento",
+    "meta mensal",
+    "estrutura comercial",
+    "treino de vendedor"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-31",
+   "ts": 2225
+  },
+  {
+   "slug": "vendedor-que-nao-bate-meta-nao-pode-ser-maioria",
+   "url": "/blog/vendedor-que-nao-bate-meta-nao-pode-ser-maioria/",
+   "titulo": "Vendedor que não bate meta não pode ser maioria",
+   "resumo": "A conta do comercial fecha quando setenta e cinco por cento do time bate meta todo mês. Abaixo disso, o dono carrega o resultado sozinho.",
+   "tags": [
+    "meta mensal",
+    "estrutura comercial",
+    "treino de vendedor",
+    "rotina de cobrança",
+    "acompanhamento"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-30",
+   "ts": 2224
+  },
+  {
+   "slug": "meta-diaria-vem-divisao-mensal-por-vendedor-canal",
+   "url": "/blog/meta-diaria-vem-divisao-mensal-por-vendedor-canal/",
+   "titulo": "Meta diária vem da divisão mensal por vendedor e canal",
+   "resumo": "Meta mensal sozinha não mostra o que fazer hoje. Dividir por canal, por vendedor e por ação do dia transforma o número do mês em decisão de segunda-feira.",
+   "tags": [
+    "meta mensal",
+    "rotina de cobrança",
+    "acompanhamento",
+    "estrutura comercial",
+    "conversão"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-30",
+   "ts": 2223
+  },
+  {
+   "slug": "metodologia-pronta-nao-resolve-sem-personalizar",
+   "url": "/blog/metodologia-pronta-nao-resolve-sem-personalizar/",
+   "titulo": "Metodologia pronta não resolve sem personalizar para o cliente",
+   "resumo": "Cada empresa funciona diferente. Aplicar metodologia sem ajustar para a realidade do cliente trava resultado e desperdiça tempo.",
+   "tags": [
+    "estrutura comercial",
+    "implementação",
+    "diagnóstico",
+    "processo comercial",
+    "decisão"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-30",
+   "ts": 2222
+  },
+  {
+   "slug": "intermediario-vira-vendedor-produto-quando-nao-fala-decisor",
+   "url": "/blog/intermediario-vira-vendedor-produto-quando-nao-fala-decisor/",
+   "titulo": "Intermediário vira o vendedor do seu produto quando você não fala com decisor",
+   "resumo": "Quem compra não é quem aprova. Se você não estrutura a venda para o intermediário defender sua solução lá dentro, o pedido morre na reunião que você não participa.",
+   "tags": [
+    "conversão",
+    "treino de vendedor",
+    "processo comercial",
+    "estrutura comercial",
+    "b2b"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-29",
+   "ts": 2221
+  },
+  {
+   "slug": "sucesso-passado-nao-garante-meta-proxima-temporada",
+   "url": "/blog/sucesso-passado-nao-garante-meta-proxima-temporada/",
+   "titulo": "Sucesso passado não garante meta na próxima temporada",
+   "resumo": "Vender bem sem estrutura funciona uma vez. Na hora de repetir ou crescer, trava. O que separa quem bate meta todo mês de quem vive de ciclo é ter processo instalado no lugar de improviso.",
+   "tags": [
+    "estrutura comercial",
+    "processo comercial",
+    "crescimento",
+    "previsibilidade",
+    "meta mensal"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-29",
+   "ts": 2220
+  },
+  {
+   "slug": "produto-validado-nao-garante-venda-sem-processo",
+   "url": "/blog/produto-validado-nao-garante-venda-sem-processo/",
+   "titulo": "Produto validado não garante venda sem processo comercial",
+   "resumo": "Ter produto que funciona não resolve o problema de quem não bate meta. O que faz o número subir é ter processo comercial estruturado e alguém cobrando toda semana.",
+   "tags": [
+    "produto validado",
+    "processo comercial",
+    "estrutura comercial",
+    "conversão",
+    "meta mensal"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-29",
+   "ts": 2219
+  },
+  {
+   "slug": "experiencia-operacional-vale-mais-teoria-dar-clareza",
+   "url": "/blog/experiencia-operacional-vale-mais-teoria-dar-clareza/",
+   "titulo": "Experiência operacional vale mais que teoria para dar clareza",
+   "resumo": "Cliente contrata quem já fez, não quem estudou. Clareza comercial vem de quem sentou na cadeira do dono e bateu a meta.",
+   "tags": [
+    "experiência comercial",
+    "clareza estratégica",
+    "estrutura comercial",
+    "diagnóstico",
+    "decisão"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-28",
+   "ts": 2218
+  },
+  {
+   "slug": "treino-sem-acompanhamento-vira-gasto-perdido",
+   "url": "/blog/treino-sem-acompanhamento-vira-gasto-perdido/",
+   "titulo": "Treino sem acompanhamento diário vira gasto perdido todo mês",
+   "resumo": "Treinamento sozinho não faz vendedor bater meta. O que sustenta o número é alguém cobrando a rotina toda semana e corrigindo na hora que trava.",
+   "tags": [
+    "treino de vendedor",
+    "acompanhamento",
+    "rotina de cobrança",
+    "estrutura comercial",
+    "meta mensal"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-28",
+   "ts": 2217
+  },
+  {
+   "slug": "lead-parado-vira-dinheiro-jogado-fora",
+   "url": "/blog/lead-parado-vira-dinheiro-jogado-fora/",
+   "titulo": "Lead parado vira dinheiro jogado fora todo dia",
+   "resumo": "Lead que chega e não é convertido na hora certa é prejuízo. O problema não é falta de contato, é falta de processo de conversão e de quem cobre a execução.",
+   "tags": [
+    "conversão",
+    "processo comercial",
+    "base de leads",
+    "follow-up",
+    "rotina de cobrança"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-28",
+   "ts": 2216
+  },
+  {
+   "slug": "comercial-automatico-libera-socio-crescer",
+   "url": "/blog/comercial-automatico-libera-socio-crescer/",
+   "titulo": "Comercial automático libera o sócio para crescer a empresa",
+   "resumo": "Empresa que depende do dono na operação comercial não escala. A estrutura tem que rodar sozinha com processo, treino e cobrança, liberando quem decide para olhar o que importa.",
+   "tags": [
+    "dependência operacional",
+    "estrutura comercial",
+    "tempo do dono",
+    "liderança comercial",
+    "crescimento"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-27",
+   "ts": 2215
+  },
+  {
+   "slug": "equipe-desestruturada-vira-prejuizo-nao-importa-quanto-vende",
+   "url": "/blog/equipe-desestruturada-vira-prejuizo-nao-importa-quanto-vende/",
+   "titulo": "Equipe desestruturada vira prejuízo não importa o quanto vende",
+   "resumo": "Vendedor sem processo queima dinheiro em cada venda que faz. Estrutura comercial define se a empresa lucra ou só gira.",
+   "tags": [
+    "estrutura comercial",
+    "custo fixo",
+    "treino de vendedor",
+    "conversão",
+    "rotina de cobrança"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-27",
+   "ts": 2214
+  },
+  {
+   "slug": "terceirizar-vendas-entrega-coração-empresa-desconhecidos",
+   "url": "/blog/terceirizar-vendas-entrega-coração-empresa-desconhecidos/",
+   "titulo": "Terceirizar vendas entrega o coração da empresa para desconhecidos",
+   "resumo": "Por que contratar vendedor externo sem estrutura comercial pronta é risco financeiro direto. O que separa crescimento seguro de aposta na sorte.",
+   "tags": [
+    "terceirização",
+    "estrutura comercial",
+    "risco",
+    "treino de vendedor",
+    "contratação"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-27",
+   "ts": 2213
+  },
+  {
+   "slug": "previsibilidade-faturamento-separa-empresa-profissional",
+   "url": "/blog/previsibilidade-faturamento-separa-empresa-profissional/",
+   "titulo": "Previsibilidade de faturamento separa empresa profissional de amadora",
+   "resumo": "Empresa amadora espera o mês fechar para saber se bateu a meta. Empresa profissional sabe na primeira semana se vai bater ou não.",
+   "tags": [
+    "previsibilidade",
+    "estrutura comercial",
+    "meta mensal",
+    "acompanhamento",
+    "rotina de cobrança"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-26",
+   "ts": 2212
+  },
+  {
+   "slug": "contratar-sem-estrutura-coloca-familia-risco",
+   "url": "/blog/contratar-sem-estrutura-coloca-familia-risco/",
+   "titulo": "Contratar sem estrutura comercial coloca família em risco financeiro",
+   "resumo": "Contratar vendedor antes de ter processo, treino e rotina de cobrança não resolve meta. Só aumenta a folha e compromete o dinheiro que sustenta a família de quem trabalha na empresa.",
+   "tags": [
+    "estrutura comercial",
+    "contratação",
+    "treino de vendedor",
+    "decisão",
+    "custo fixo"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-26",
+   "ts": 2211
+  },
+  {
+   "slug": "dono-aparecer-vender-precisa-estrutura-vender-sem",
+   "url": "/blog/dono-aparecer-vender-precisa-estrutura-vender-sem/",
+   "titulo": "Dono que não quer aparecer precisa de estrutura comercial",
+   "resumo": "Aparecer vende mais, mas se você não quer ficar na linha de frente a empresa tem que ter um comercial que funcione sem você. O post mostra o que precisa estar no lugar antes de tirar o dono da venda.",
+   "tags": [
+    "dependência operacional",
+    "estrutura comercial",
+    "conversão",
+    "treino de vendedor",
+    "processo comercial"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-26",
+   "ts": 2210
+  },
+  {
+   "slug": "dono-treina-produto-vendedor-treina-venda",
+   "url": "/blog/dono-treina-produto-vendedor-treina-venda/",
+   "titulo": "Dono treina produto, vendedor precisa treinar a venda",
+   "resumo": "Produto vem do dono, venda vem de quem ensina o método. A confusão entre os dois trava conversão e depende de improviso.",
+   "tags": [
+    "treino de vendedor",
+    "estrutura comercial",
+    "conversão",
+    "processo comercial",
+    "dependência operacional"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-25",
+   "ts": 2209
+  },
+  {
+   "slug": "marketing-bonito-nao-resolve-gestao-bagunçada",
+   "url": "/blog/marketing-bonito-nao-resolve-gestao-bagunçada/",
+   "titulo": "Marketing bonito não resolve gestão comercial bagunçada",
+   "resumo": "Por que investir em imagem antes de estruturar o comercial queima caixa sem retorno. O que separa presença digital de faturamento real.",
+   "tags": [
+    "estrutura comercial",
+    "prioridade",
+    "investimento",
+    "conversão",
+    "decisão"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-25",
+   "ts": 2208
+  },
+  {
+   "slug": "evento-grande-nao-vende-sem-processo-conversao",
+   "url": "/blog/evento-grande-nao-vende-sem-processo-conversao/",
+   "titulo": "Evento grande não vende sem processo de conversão pronto",
+   "resumo": "Evento caro com ingresso alto exige estrutura de conversão montada antes. Convidar clientes para evento pequeno funciona, escalar sem processo trava.",
+   "tags": [
+    "evento",
+    "conversão",
+    "processo comercial",
+    "estrutura comercial",
+    "escala"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-25",
+   "ts": 2207
+  },
+  {
+   "slug": "pagamento-duplicado-mostra-falta-estrutura-cobranca",
+   "url": "/blog/pagamento-duplicado-mostra-falta-estrutura-cobranca/",
+   "titulo": "Pagamento duplicado mostra falta de estrutura de cobrança",
+   "resumo": "Quando o vendedor gera o mesmo boleto duas vezes, o problema não é o sistema. É o processo de cobrança que não está claro.",
+   "tags": [
+    "conversão",
+    "processo comercial",
+    "treino de vendedor",
+    "estrutura comercial",
+    "oferta"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-25",
+   "ts": 2206
+  },
+  {
+   "slug": "reuniao-comercial-sem-compromisso-vira-cafe",
+   "url": "/blog/reuniao-comercial-sem-compromisso-vira-cafe/",
+   "titulo": "Reunião comercial sem compromisso definido vira café com cliente",
+   "resumo": "Você lê isso e entende por que deixar formato e frequência soltos trava a implementação. E por que isso sangra dinheiro todo mês.",
+   "tags": [
+    "implementação",
+    "estrutura comercial",
+    "decisão",
+    "rotina de cobrança",
+    "contrato"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-24",
+   "ts": 2205
+  },
+  {
+   "slug": "desconto-urgencia-mostra-falta-estrutura-conversao",
+   "url": "/blog/desconto-urgencia-mostra-falta-estrutura-conversao/",
+   "titulo": "Desconto por urgência mostra falta de estrutura de conversão",
+   "resumo": "Quando o vendedor precisa inventar condição nova na hora do fechamento, o problema não é o cliente indeciso. É o processo comercial que não existe.",
+   "tags": [
+    "conversão",
+    "processo comercial",
+    "treino de vendedor",
+    "estrutura comercial",
+    "oferta"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-24",
+   "ts": 2204
+  },
   {
    "slug": "prazo-curto-nao-da-tempo-estruturar",
    "url": "/blog/prazo-curto-nao-da-tempo-estruturar/",
