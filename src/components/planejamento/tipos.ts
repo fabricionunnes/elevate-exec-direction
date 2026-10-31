@@ -10,6 +10,11 @@ export type Linha = {
   fonte: string | null;
   unidade: Unidade;
   ordem: number;
+  /** soma = fluxo (contratos no mês); ultimo = estoque (clientes na carteira) */
+  acumulacao: "soma" | "ultimo";
+  /** linha derivada: acompanha a receita em vez de ter valor próprio */
+  formula: "pct_receita" | null;
+  formula_pct: number | null;
   /** 12 posições, janeiro a dezembro */
   valores: number[];
   observacao: string | null;

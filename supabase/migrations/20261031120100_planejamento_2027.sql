@@ -21,6 +21,14 @@ insert into planejamento_linhas (ano, grupo, linha, fonte, unidade, ordem, valor
   (2027, 'custo', 'Custo dos eventos', null, 'brl', 100, array[0.00,500.00,2000.00,0.00,2500.00,0.00,5000.00,500.00,2000.00,0.00,2500.00,0.00]::numeric[], 'Mansao R$ 2.000, Imersao R$ 5.000, Mesa R$ 500'),
   (2027, 'custo', 'Comissao de indicacao', null, 'brl', 110, array[500.00,500.00,500.00,1000.00,1000.00,1000.00,1000.00,1000.00,1000.00,1000.00,1000.00,500.00]::numeric[], 'R$ 500 por indicacao fechada; meta de 20 no ano'),
   (2027, 'reserva', 'Reserva de emergencia', null, 'brl', 10, array[1500.00,1500.00,1500.00,1500.00,3000.00,3000.00,3000.00,3000.00,5000.00,5000.00,5000.00,5000.00]::numeric[], 'conta separada, sem cartao; so para quebra de receita acima de 20%'),
-  (2027, 'indicador', 'Clientes de consultoria', 'qtd_clientes_ativos', 'qtd', 10, array[43.00,45.00,48.00,52.00,56.00,60.00,65.00,70.00,76.00,81.00,87.00,93.00]::numeric[], 'de 43 para 93'),
+  (2027, 'indicador', 'Clientes de consultoria', 'qtd_clientes_ativos', 'qtd', 10, array[43.00,45.00,48.00,52.00,56.00,60.00,65.00,70.00,76.00,81.00,87.00,93.00]::numeric[], 'de 43 para 93; o realizado conta as empresas ativas hoje que ja existiam no mes, entao nao enxerga quem entrou e saiu dentro do ano'),
   (2027, 'indicador', 'Contratos novos no mes', null, 'qtd', 20, array[5.50,5.50,6.00,7.00,8.00,9.00,10.00,11.00,12.00,13.00,14.00,14.00]::numeric[], 'de 5,5 para 14');
 -- receita 2,265,053 | custos 1,708,108
+
+
+update planejamento_linhas set acumulacao = 'ultimo' where ano = 2027 and fonte = 'qtd_clientes_ativos';
+
+update planejamento_linhas set formula = 'pct_receita', formula_pct = 20.26
+ where ano = 2027 and fonte = 'custo_imposto';
+update planejamento_linhas set formula = 'pct_receita', formula_pct = 1
+ where ano = 2027 and linha = 'Filantropia';

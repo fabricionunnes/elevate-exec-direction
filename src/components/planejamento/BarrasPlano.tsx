@@ -31,7 +31,7 @@ export function BarrasPlano({ plan, real, fmt, bomSubir = true, onMes, ativo }: 
               <div className="pil" style={{ height: `${altP}%` }}>
                 <i className={cls} style={{ height: `${Math.min((altR / altP) * 100, 100)}%` }} />
               </div>
-              <small><b>{MES[i]}</b>{fmt(r ?? p)}</small>
+              <small><b>{MES[i]}</b>{r == null ? <span className="nd">{fmt(p)}</span> : fmt(r)}</small>
             </button>
           );
         })}

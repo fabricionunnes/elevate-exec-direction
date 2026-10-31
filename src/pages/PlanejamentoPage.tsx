@@ -15,7 +15,7 @@ import "@/components/painel-controle/painel.css";
 import "@/components/planejamento/planejamento.css";
 import { brl, fp } from "@/components/painel-controle/fmt";
 import { Combo, Panel, Tile } from "@/components/painel-controle/ui";
-import { Grade, realizadoDa, soma, type Visao } from "@/components/planejamento/Grade";
+import { Grade, planejadoDe, realizadoDa, receitaPlanejadaMes, soma, type Visao } from "@/components/planejamento/Grade";
 import { BarrasPlano } from "@/components/planejamento/BarrasPlano";
 import { GRUPOS, type Ano, type Linha, type Realizado } from "@/components/planejamento/tipos";
 
@@ -115,7 +115,7 @@ export default function PlanejamentoPage() {
     if (linhas.length) {
       const base = linhas.map((l) => ({
         ano: novo, grupo: l.grupo, linha: l.linha, fonte: l.fonte, unidade: l.unidade,
-        ordem: l.ordem, valores: Array(12).fill(0), observacao: l.observacao,
+        ordem: l.ordem, acumulacao: l.acumulacao, valores: Array(12).fill(0), observacao: l.observacao,
       }));
       const { error: e2 } = await (supabase as any).from("planejamento_linhas").insert(base);
       if (e2) toast.error("Ano criado, mas as linhas não copiaram: " + e2.message);
@@ -128,7 +128,10 @@ export default function PlanejamentoPage() {
   // ---------------------------------------------------------------- resumos
   const resumo = useMemo(() => {
     const porGrupo = (g: string) => linhas.filter((l) => l.grupo === g);
-    const planMes = (ls: Linha[]) => Array.from({ length: 12 }, (_, i) => ls.reduce((a, l) => a + (Number(l.valores[i]) || 0), 0));
+    const receitaMes = receitaPlanejadaMes(linhas);
+    // imposto e filantropia são percentual da receita: têm que acompanhar a edição
+    const planMes = (ls: Linha[]) => Array.from({ length: 12 }, (_, i) =>
+      ls.reduce((a, l) => a + planejadoDe(l, receitaMes)[i], 0));
     const rzMes = (ls: Linha[]) => Array.from({ length: 12 }, (_, i) => {
       const vs = ls.map((l) => realizadoDa(l, realizado)[i]).filter((v): v is number => v != null);
       return vs.length ? vs.reduce((a, b) => a + b, 0) : null;
@@ -267,8 +270,10 @@ export default function PlanejamentoPage() {
                 onDetalhe={(l) => toast.message(l.linha, { description: l.observacao ?? (l.fonte ? `realizado vem de ${l.fonte}` : "linha só do plano") })}
               />
               <div className="pl-aviso">
-                <b>De onde vem o realizado:</b> receita é fatura e recebível pagos no mês, pela data do pagamento.
-                Despesa é conta a pagar baixada no mês, pela data da baixa. É o mesmo regime de caixa do Painel de Controle.
+                <b>De onde vem o realizado:</b> receita é fatura e recebível com status pago, pela data do pagamento.
+                Despesa é conta a pagar baixada, pela data da baixa. White-label fica de fora dos dois.
+                É o mesmo regime de caixa do Painel de Controle; a receita aqui soma também os recebíveis avulsos,
+                que o card "Recebido" do painel não conta, igual ao DRE gerencial.
                 Linha marcada como "só no plano" não tem conta equivalente no sistema e fica sem realizado.
               </div>
             </Panel>

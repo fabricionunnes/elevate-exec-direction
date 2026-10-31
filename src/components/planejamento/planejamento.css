@@ -44,7 +44,7 @@
 .pc .pl-bars { display: flex; align-items: flex-end; gap: 6px; height: 190px; }
 .pc .pl-bc { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; text-align: center; min-width: 0; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; }
 .pc .pl-bc:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
-.pc .pl-bc .pil { position: relative; border: 1px dashed var(--line); border-radius: 4px 4px 0 0; background: var(--panel2); min-height: 3px; }
+.pc .pl-bc .pil { position: relative; border: 1px dashed #5a5a5a; border-radius: 4px 4px 0 0; background: repeating-linear-gradient(135deg, var(--panel2), var(--panel2) 4px, rgba(255,255,255,.04) 4px, rgba(255,255,255,.04) 8px); min-height: 3px; }
 .pc .pl-bc .pil i { position: absolute; left: 0; right: 0; bottom: 0; display: block; background: var(--bar); border-radius: 3px 3px 0 0; }
 .pc .pl-bc .pil i.ok { background: var(--good); }
 .pc .pl-bc .pil i.ruim { background: var(--bad); }
@@ -54,4 +54,7 @@
 .pc .pl-leg { display: flex; gap: 14px; font-size: 11px; color: var(--mute); margin-top: 10px; flex-wrap: wrap; }
 .pc .pl-leg span { display: inline-flex; align-items: center; gap: 5px; }
 .pc .pl-leg i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
-.pc .pl-leg i.plan { border: 1px dashed var(--line); background: var(--panel2); }
+.pc .pl-leg i.plan { border: 1px dashed #5a5a5a; background: var(--panel2); }
+
+/* valor que vem de fórmula, não de digitação */
+.pc .pl-grade i.pl-der { font-style: italic; color: var(--ink2); }

@@ -1,5 +1,9 @@
 -- Planejamento anual: planejado editável por linha e mês, comparado com o realizado
 -- do próprio sistema. Serve qualquer ano; 2027 entra como primeiro.
+--
+-- O realizado segue exatamente as premissas do Painel de Controle: regime de caixa,
+-- recebido = company_invoices status 'paid' por paid_at, pago = financial_payables
+-- status 'paid' por paid_date, e sempre tenant_id nulo (white-label fica de fora).
 
 create table if not exists planejamento_anos (
   ano           integer primary key,
@@ -102,7 +106,7 @@ begin
            coalesce(i.paid_amount_cents, i.amount_cents)::numeric / 100 as valor
       from company_invoices i
       left join prod p on p.company_id = i.company_id
-     where i.paid_at is not null
+     where i.status = 'paid' and i.paid_at is not null
        and (i.paid_at at time zone 'America/Sao_Paulo')::date between ini and fim
     union all
     select planejamento_fonte_receita(coalesce(r.description, ''), p.product_name),
@@ -111,6 +115,7 @@ begin
       from financial_receivables r
       left join prod p on p.company_id = r.company_id
      where r.paid_date between ini and fim
+       and r.tenant_id is null
   ),
   despesa as (
     select case
@@ -128,7 +133,8 @@ begin
            coalesce(d.paid_amount, d.amount) as valor
       from financial_payables d
       left join staff_financial_categories c on c.id = d.category_id
-     where d.paid_date between ini and fim
+     where d.status = 'paid' and d.paid_date between ini and fim
+       and d.tenant_id is null
   ),
   -- clientes ativos no fim de cada mês do ano
   clientes as (
@@ -168,3 +174,15 @@ end $$;
 revoke all on function planejamento_realizado_interno(integer) from public, authenticated, anon;
 grant execute on function planejamento_realizado(integer) to authenticated;
 grant execute on function planejamento_fonte_receita(text, text) to authenticated;
+
+-- Indicador de estoque (clientes na carteira) não soma os 12 meses: o total do
+-- ano é o saldo de dezembro. Indicador de fluxo (contratos novos) soma.
+alter table planejamento_linhas
+  add column if not exists acumulacao text not null default 'soma'
+  check (acumulacao in ('soma', 'ultimo'));
+
+-- Linha que é percentual da receita (imposto, filantropia) não pode ficar parada
+-- quando a receita muda na edição: senão o lucro na tela mente.
+alter table planejamento_linhas
+  add column if not exists formula text check (formula in ('pct_receita')),
+  add column if not exists formula_pct numeric;

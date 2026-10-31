@@ -11,6 +11,24 @@ export type Visao = "ambos" | "planejado" | "realizado";
 
 export const soma = (v: number[]) => v.reduce((a, b) => a + (Number(b) || 0), 0);
 
+/** Fluxo soma os 12 meses; estoque mostra o saldo do último mês com valor. */
+export function totalAno(v: (number | null)[], acumulacao: "soma" | "ultimo"): number | null {
+  const xs = v.filter((x): x is number => x != null);
+  if (!xs.length) return null;
+  return acumulacao === "ultimo" ? xs[xs.length - 1] : xs.reduce((a, b) => a + b, 0);
+}
+
+/** Receita planejada de cada mês: base das linhas que são percentual dela. */
+export const receitaPlanejadaMes = (linhas: Linha[]) =>
+  Array.from({ length: 12 }, (_, i) =>
+    linhas.filter((l) => l.grupo === "receita").reduce((a, l) => a + (Number(l.valores[i]) || 0), 0));
+
+/** Planejado de uma linha, mês a mês. Linha com fórmula acompanha a receita. */
+export const planejadoDe = (l: Linha, receitaMes: number[]) =>
+  (l.formula === "pct_receita"
+    ? receitaMes.map((r) => (r * (Number(l.formula_pct) || 0)) / 100)
+    : l.valores.map((v) => Number(v) || 0));
+
 /** Realizado de uma linha, mês a mês. Mês sem lançamento vem nulo, não zero. */
 export function realizadoDa(l: Linha, rz: Realizado): (number | null)[] {
   const f = l.fonte ? rz[l.fonte] : undefined;
@@ -50,7 +68,8 @@ export function Grade({ linhas, realizado, visao, editando, mesAtual, anoCorrent
       return vs.length ? vs.reduce((a, b) => a + b, 0) : null;
     });
 
-  const planDe = (l: Linha) => l.valores.map((v) => Number(v) || 0);
+  const receitaMes = useMemo(() => receitaPlanejadaMes(linhas), [linhas]);
+  const planDe = (l: Linha) => planejadoDe(l, receitaMes);
   const rzDe = (l: Linha) => realizadoDa(l, realizado);
 
   // resultado = receita − custo − reserva; indicador fica de fora
@@ -73,6 +92,7 @@ export function Grade({ linhas, realizado, visao, editando, mesAtual, anoCorrent
 
   const celula = (l: Linha, i: number) => {
     const p = planDe(l)[i];
+    const derivada = l.formula != null;
     const r = rzDe(l)[i];
     const fmt = fmtCurto(l.unidade);
     // custo acima do planejado é ruim; receita acima é bom
@@ -80,7 +100,7 @@ export function Grade({ linhas, realizado, visao, editando, mesAtual, anoCorrent
     const cls = r == null ? "vazio" : (r - p) * sinal >= 0 ? "ok" : "ruim";
     return (
       <td key={i} className={anoCorrente && i === mesAtual ? "hoje" : undefined}>
-        {mostraPlan && (editando ? (
+        {mostraPlan && (editando && !derivada ? (
           <input
             className="pl-cel"
             type="number"
@@ -89,7 +109,7 @@ export function Grade({ linhas, realizado, visao, editando, mesAtual, anoCorrent
             onChange={(e) => onValor(l.id, i, Number(e.target.value))}
             aria-label={`${l.linha}, ${MES[i]}`}
           />
-        ) : fmt(p))}
+        ) : derivada ? <i className="pl-der">{fmt(p)}</i> : fmt(p))}
         {mostraRz && <span className={`pl-rz ${cls}`}>{fmt(r)}</span>}
       </td>
     );
@@ -135,19 +155,20 @@ export function Grade({ linhas, realizado, visao, editando, mesAtual, anoCorrent
               <tr className="gr"><td className="nome" colSpan={14}>{g.nome}</td></tr>
               {g.itens.map((l) => {
                 const fmtT = fmtPor(l.unidade);
-                const rz = rzDe(l).filter((v): v is number => v != null);
                 return (
                   <tr key={l.id}>
                     <td className="nome">
                       <button type="button" className="lk" onClick={() => onDetalhe(l)} title={l.observacao ?? undefined}>
                         {l.linha}
                       </button>
-                      {!l.fonte && <small>só no plano, o sistema não tem essa conta</small>}
+                      {l.formula === "pct_receita"
+                        ? <small>acompanha a receita: {num(l.formula_pct, 2)}% dela</small>
+                        : !l.fonte && <small>só no plano, o sistema não tem essa conta</small>}
                     </td>
                     {Array.from({ length: 12 }, (_, i) => celula(l, i))}
                     <td className="tot">
-                      {mostraPlan && fmtT(soma(l.valores))}
-                      {mostraRz && <span className="pl-rz">{rz.length ? fmtT(rz.reduce((a, b) => a + b, 0)) : "-"}</span>}
+                      {mostraPlan && fmtT(totalAno(planDe(l), l.acumulacao))}
+                      {mostraRz && <span className="pl-rz">{fmtT(totalAno(rzDe(l), l.acumulacao))}</span>}
                     </td>
                   </tr>
                 );
@@ -161,7 +182,7 @@ export function Grade({ linhas, realizado, visao, editando, mesAtual, anoCorrent
               )}
             </Fragment>
           ))}
-          {linhaSoma("Resultado", resultado(planDe), resultado(rzDe), "brl", "res")}
+          {linhaSoma("Resultado, depois das reservas", resultado(planDe), resultado(rzDe), "brl", "res")}
         </tbody>
       </table>
     </div>
