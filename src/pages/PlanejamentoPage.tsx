@@ -18,6 +18,8 @@ import { Combo, Panel, Tile } from "@/components/painel-controle/ui";
 import { Grade, planejadoDe, realizadoDa, receitaPlanejadaMes, soma, type Visao } from "@/components/planejamento/Grade";
 import { BarrasPlano } from "@/components/planejamento/BarrasPlano";
 import { GRUPOS, type Ano, type Linha, type Realizado } from "@/components/planejamento/tipos";
+import { Participacao, type SocioConfig, type Trimestre } from "@/components/planejamento/Participacao";
+import { PlanoSetores, type Acao } from "@/components/planejamento/PlanoSetores";
 
 const VISOES: { k: Visao; rot: string }[] = [
   { k: "ambos", rot: "Planejado e realizado" },
@@ -38,6 +40,9 @@ export default function PlanejamentoPage() {
   const [sujo, setSujo] = useState<Set<string>>(new Set());
   const [salvando, setSalvando] = useState(false);
   const [carregando, setCarregando] = useState(true);
+  const [aba, setAba] = useState<"plano" | "acoes" | "socio">("plano");
+  const [acoes, setAcoes] = useState<Acao[]>([]);
+  const [socio, setSocio] = useState<{ config: SocioConfig; trimestres: Trimestre[] } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   const hoje = new Date();
@@ -69,6 +74,9 @@ export default function PlanejamentoPage() {
     // o realizado é extra: se falhar, o plano ainda serve
     if (rz.error) toast.error("Não consegui carregar o realizado: " + rz.error.message);
     setRealizado((rz.data ?? {}) as Realizado);
+    // a participação é opcional: ano sem regra cadastrada simplesmente não mostra a aba
+    setSocio(pt.error || !pt.data?.config ? null : (pt.data as { config: SocioConfig; trimestres: Trimestre[] }));
+    setAcoes((ac.error ? [] : ac.data ?? []) as Acao[]);
     setSujo(new Set());
     setCarregando(false);
   }, []);
@@ -103,6 +111,14 @@ export default function PlanejamentoPage() {
     toast.success(`${alterar.length} linha(s) salva(s)`);
     setSujo(new Set());
     setEditando(false);
+  };
+
+  // status da ação salva na hora: é um clique, não precisa de modo de edição
+  const mudarStatus = async (id: string, status: Acao["status"]) => {
+    const antes = acoes;
+    setAcoes((as) => as.map((a) => (a.id === id ? { ...a, status } : a)));
+    const { error } = await (supabase as any).from("planejamento_acoes").update({ status }).eq("id", id);
+    if (error) { setAcoes(antes); toast.error("Não consegui salvar: " + error.message); }
   };
 
   const descartar = () => { setEditando(false); carregar(ano); };
@@ -210,7 +226,28 @@ export default function PlanejamentoPage() {
           </div>
         )}
 
-        {!carregando && !semPlano && (
+        {!carregando && !semPlano && (socio || acoes.length > 0) && (
+          <div className="pl-abas">
+            <button type="button" className={aba === "plano" ? "on" : ""} onClick={() => setAba("plano")}>Os números</button>
+            {acoes.length > 0 && <button type="button" className={aba === "acoes" ? "on" : ""} onClick={() => setAba("acoes")}>Plano por setor</button>}
+            <button type="button" className={aba === "socio" ? "on" : ""} onClick={() => setAba("socio")}>Minha participação</button>
+          </div>
+        )}
+
+        {!carregando && !semPlano && aba === "acoes" && (
+          <PlanoSetores acoes={acoes} onStatus={mudarStatus} />
+        )}
+
+        {!carregando && !semPlano && aba === "socio" && socio && (
+          <Participacao
+            config={socio.config}
+            trimestres={socio.trimestres}
+            ano={ano}
+            proLabore={proLaboreAno}
+          />
+        )}
+
+        {!carregando && !semPlano && aba === "plano" && (
           <>
             <div className="grid k5">
               <Tile

@@ -58,3 +58,54 @@
 
 /* valor que vem de fórmula, não de digitação */
 .pc .pl-grade i.pl-der { font-style: italic; color: var(--ink2); }
+
+/* as três travas da participação, lado a lado */
+.pc .pl-regra { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.pc .pl-regra > div { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; }
+.pc .pl-regra b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink); margin-bottom: 6px; }
+.pc .pl-regra p { margin: 0; font-size: 11.5px; color: var(--ink2); line-height: 1.55; }
+@media (max-width: 900px) { .pc .pl-regra { grid-template-columns: 1fr; } }
+
+/* linha de distribuição na grade: é destinação, não custo */
+.pc .pl-grade tr.dist td { background: #101a14; }
+.pc .pl-grade tr.dist td.nome { background: #101a14; }
+
+/* ---------- plano de ação por setor ---------- */
+.pc .pl-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.pc .pl-chips button { background: var(--panel2); border: 1px solid var(--line); color: var(--ink2); border-radius: 999px; padding: 5px 12px; font: 600 11.5px var(--f); cursor: pointer; }
+.pc .pl-chips button:hover { border-color: var(--acc); color: var(--ink); }
+.pc .pl-chips button.on { background: var(--acc); border-color: var(--acc); color: #fff; }
+.pc .pl-chips button i { font-style: normal; opacity: .65; margin-left: 4px; }
+
+.pc .pl-setor { margin-bottom: 22px; }
+.pc .pl-setor h3 { font: 700 12px var(--f); text-transform: uppercase; letter-spacing: .09em; color: var(--ink); margin: 0 0 9px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.pc .pl-setor h3 i { font-style: normal; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--mute); font-size: 11px; margin-left: 8px; }
+.pc .pl-vazio { font-size: 11.5px; color: var(--mute); padding: 6px 0 2px; }
+
+.pc .pl-acao { border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 6px; margin-bottom: 7px; background: var(--panel); overflow: hidden; }
+.pc .pl-acao.alta { border-left-color: var(--acc); }
+.pc .pl-acao.feita { opacity: .55; }
+.pc .pl-acao.feita .pl-acao-tit b { text-decoration: line-through; }
+.pc .pl-acao.fazendo { border-left-color: var(--warn); }
+
+.pc .pl-acao-cab { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: 0; padding: 10px 13px; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.pc .pl-acao-cab:hover { background: rgba(255, 255, 255, .025); }
+.pc .pl-acao-mes { font: 700 10px var(--f); text-transform: uppercase; letter-spacing: .08em; color: var(--mute); background: var(--panel2); border-radius: 4px; padding: 4px 7px; flex: none; min-width: 34px; text-align: center; }
+.pc .pl-acao-tit { flex: 1; min-width: 0; }
+.pc .pl-acao-tit b { display: block; font-size: 12.5px; font-weight: 600; }
+.pc .pl-acao-tit small { display: block; font-size: 10.5px; color: var(--mute); margin-top: 2px; }
+.pc .pl-tag { font: 600 9.5px var(--f); text-transform: uppercase; letter-spacing: .07em; border-radius: 999px; padding: 3px 8px; flex: none; border: 1px solid var(--line); color: var(--mute); }
+.pc .pl-tag.alta { border-color: var(--acc); color: var(--acc); }
+.pc .pl-seta { color: var(--mute); font-size: 15px; flex: none; width: 14px; text-align: center; }
+
+.pc .pl-acao-corpo { padding: 2px 13px 13px 59px; display: grid; gap: 11px; }
+.pc .pl-acao-corpo b { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--acc); margin-bottom: 3px; }
+.pc .pl-acao-corpo p { margin: 0; font-size: 12px; line-height: 1.55; color: var(--ink2); }
+.pc .pl-acao-pe { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-size: 11px; color: var(--ink2); border-top: 1px solid var(--line); padding-top: 10px; }
+.pc .pl-acao-pe b { display: inline; text-transform: none; letter-spacing: 0; color: var(--mute); font-size: 11px; margin: 0 3px 0 0; }
+.pc .pl-status { display: inline-flex; gap: 4px; margin-left: auto; }
+.pc .pl-status button { background: var(--panel2); border: 1px solid var(--line); color: var(--mute); border-radius: 4px; padding: 3px 9px; font: 600 10.5px var(--f); cursor: pointer; }
+.pc .pl-status button:hover { color: var(--ink); border-color: var(--acc); }
+.pc .pl-status button.on { background: var(--acc); border-color: var(--acc); color: #fff; }
+
+@media (max-width: 760px) { .pc .pl-acao-corpo { padding-left: 13px; } }

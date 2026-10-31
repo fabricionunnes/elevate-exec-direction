@@ -1,4 +1,4 @@
-export type Grupo = "receita" | "custo" | "reserva" | "indicador";
+export type Grupo = "receita" | "custo" | "reserva" | "indicador" | "distribuicao";
 export type Unidade = "brl" | "qtd" | "pct";
 
 export type Linha = {
@@ -34,5 +34,6 @@ export const GRUPOS: { k: Grupo; nome: string; sinal: 1 | -1 | 0 }[] = [
   { k: "receita", nome: "Receita", sinal: 1 },
   { k: "custo", nome: "Custos e despesas", sinal: -1 },
   { k: "reserva", nome: "Reservas", sinal: -1 },
+  { k: "distribuicao", nome: "Destinação do lucro", sinal: 0 },
   { k: "indicador", nome: "Indicadores", sinal: 0 },
 ];
