@@ -1,0 +1,57 @@
+/* Grade do Planejamento. Herda o tema escuro do Painel de Controle (painel.css);
+   aqui só o que a grade de 12 meses precisa. */
+
+.pc .pl-grade { width: 100%; border-collapse: collapse; font-size: 12px; }
+.pc .pl-grade th,
+.pc .pl-grade td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.pc .pl-grade th { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--mute); font-weight: 600; }
+.pc .pl-grade th.nome,
+.pc .pl-grade td.nome { text-align: left; min-width: 220px; position: sticky; left: 0; background: var(--panel); z-index: 1; }
+.pc .pl-grade td.nome b { font-weight: 600; }
+.pc .pl-grade td.nome small { display: block; font-size: 10.5px; color: var(--mute); white-space: normal; max-width: 320px; margin-top: 2px; }
+.pc .pl-grade th.tot,
+.pc .pl-grade td.tot { border-left: 1px solid var(--line); font-weight: 700; }
+.pc .pl-grade tr.gr td { background: var(--panel2); font-size: 10.5px; text-transform: uppercase; letter-spacing: .09em; color: var(--ink2); font-weight: 700; }
+.pc .pl-grade tr.som td { font-weight: 700; border-top: 1px solid var(--line2, var(--line)); }
+.pc .pl-grade tr.res td { background: #1C1214; font-weight: 800; }
+.pc .pl-grade tr.res td.nome { background: #1C1214; }
+.pc .pl-grade tr:hover td:not(.nome) { background: rgba(255, 255, 255, .025); }
+.pc .pl-grade td.hoje { box-shadow: inset 0 0 0 1px var(--acc); }
+
+/* célula editável */
+.pc .pl-cel { width: 100%; background: none; border: 1px solid transparent; border-radius: 4px; color: inherit; font: inherit; text-align: right; padding: 2px 4px; min-width: 62px; }
+.pc .pl-cel:hover { border-color: var(--line); }
+.pc .pl-cel:focus { outline: none; border-color: var(--acc); background: var(--panel2); }
+.pc .pl-cel:disabled { border-color: transparent; color: inherit; }
+
+/* realizado contra planejado */
+.pc .pl-rz { display: block; font-size: 10.5px; margin-top: 1px; }
+.pc .pl-rz.ok { color: var(--good); }
+.pc .pl-rz.ruim { color: var(--bad); }
+.pc .pl-rz.vazio { color: var(--mute); }
+
+.pc .pl-rolagem { overflow-x: auto; margin: 0 -16px; padding: 0 16px; }
+
+.pc .pl-abas { display: flex; gap: 6px; flex-wrap: wrap; }
+.pc .pl-abas button { background: var(--panel2); border: 1px solid var(--line); color: var(--ink2); border-radius: 999px; padding: 5px 13px; font: 600 11.5px var(--f); cursor: pointer; }
+.pc .pl-abas button:hover { border-color: var(--acc); color: var(--ink); }
+.pc .pl-abas button.on { background: var(--acc); border-color: var(--acc); color: #fff; }
+
+.pc .pl-aviso { font-size: 11.5px; color: var(--mute); margin-top: 10px; line-height: 1.5; }
+.pc .pl-aviso b { color: var(--ink2); font-weight: 600; }
+
+/* barras: planejado é a moldura, realizado é o preenchimento */
+.pc .pl-bars { display: flex; align-items: flex-end; gap: 6px; height: 190px; }
+.pc .pl-bc { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; text-align: center; min-width: 0; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+.pc .pl-bc:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.pc .pl-bc .pil { position: relative; border: 1px dashed var(--line); border-radius: 4px 4px 0 0; background: var(--panel2); min-height: 3px; }
+.pc .pl-bc .pil i { position: absolute; left: 0; right: 0; bottom: 0; display: block; background: var(--bar); border-radius: 3px 3px 0 0; }
+.pc .pl-bc .pil i.ok { background: var(--good); }
+.pc .pl-bc .pil i.ruim { background: var(--bad); }
+.pc .pl-bc small { font-size: 10px; color: var(--mute); margin-top: 4px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc .pl-bc small b { display: block; color: var(--ink2); font-weight: 600; }
+.pc .pl-bc.on small b { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.pc .pl-leg { display: flex; gap: 14px; font-size: 11px; color: var(--mute); margin-top: 10px; flex-wrap: wrap; }
+.pc .pl-leg span { display: inline-flex; align-items: center; gap: 5px; }
+.pc .pl-leg i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.pc .pl-leg i.plan { border: 1px dashed var(--line); background: var(--panel2); }
