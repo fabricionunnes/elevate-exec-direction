@@ -269,15 +269,15 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
       key={t.id}
       value={`${t.name} ${t.category} ${corpoDe(t)}`}
       onSelect={() => { setTemplateName(t.name); setTplOpen(false); }}
-      className="flex flex-col items-start gap-0.5 py-2"
+      className="flex flex-col items-start gap-0.5 py-2 w-full min-w-0 overflow-hidden whitespace-normal"
     >
-      <div className="flex w-full items-center gap-2">
+      <div className="flex w-full min-w-0 items-center gap-2">
         <Check className={`h-3.5 w-3.5 shrink-0 ${templateName === t.name ? "opacity-100" : "opacity-0"}`} />
-        <span className="font-medium text-sm truncate">{t.name}</span>
+        <span className="font-medium text-sm truncate min-w-0">{t.name}</span>
         <Badge variant="outline" className="ml-auto text-[10px] shrink-0">{t.category.toLowerCase()}</Badge>
         {usoTpl[t.name] && <span className="text-[10px] text-muted-foreground shrink-0 inline-flex items-center gap-1"><Clock className="h-3 w-3" />{usoTpl[t.name].n}x · {haQuanto(usoTpl[t.name].ult)}</span>}
       </div>
-      <p className="pl-[22px] text-xs text-muted-foreground line-clamp-2 text-left">{corpoDe(t) || "sem texto"}</p>
+      <p className="pl-[22px] w-full text-xs text-muted-foreground line-clamp-2 text-left break-words whitespace-normal">{corpoDe(t) || "sem texto"}</p>
     </CommandItem>
   );
   const varCount = useMemo(() => {
@@ -473,22 +473,22 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
             <div className="space-y-1">
               <Label>Template</Label>
               {templates.length ? (
-                <Popover open={tplOpen} onOpenChange={setTplOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" role="combobox" className="w-full justify-between h-auto min-h-10 py-2 font-normal">
-                      {template ? (
-                        <span className="flex flex-col items-start text-left min-w-0">
-                          <span className="flex items-center gap-2"><span className="font-medium">{template.name}</span><Badge variant="outline" className="text-[10px]">{template.category.toLowerCase()}</Badge></span>
-                          <span className="text-xs text-muted-foreground truncate max-w-[520px]">{corpoDe(template).slice(0, 110)}{corpoDe(template).length > 110 ? "…" : ""}</span>
-                        </span>
-                      ) : <span className="text-muted-foreground">Escolha o template</span>}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)] min-w-[420px]" align="start">
-                    <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                <div className="rounded-md border w-full min-w-0 overflow-hidden">
+                  <button type="button" onClick={() => setTplOpen((v) => !v)} className="w-full min-w-0 flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-muted/50 rounded-md">
+                    {template ? (
+                      <span className="flex flex-col items-start min-w-0 flex-1">
+                        <span className="flex items-center gap-2 min-w-0 max-w-full"><span className="font-medium text-sm truncate">{template.name}</span><Badge variant="outline" className="text-[10px] shrink-0">{template.category.toLowerCase()}</Badge></span>
+                        <span className="text-xs text-muted-foreground truncate w-full">{corpoDe(template).slice(0, 110)}{corpoDe(template).length > 110 ? "…" : ""}</span>
+                      </span>
+                    ) : <span className="text-sm text-muted-foreground">Escolha o template</span>}
+                    <span className="text-xs text-primary shrink-0 inline-flex items-center gap-1">{tplOpen ? "fechar" : "trocar"}<ChevronsUpDown className="h-3.5 w-3.5 opacity-60" /></span>
+                  </button>
+                  {tplOpen && (
+                    // lista embutida na própria janela (não flutua): largura da janela e o scroll do mouse funciona.
+                    // Popover em portal dentro do Dialog estourava a largura e o wheel era bloqueado pelo trava-scroll.
+                    <Command className="border-t rounded-none rounded-b-md" filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
                       <CommandInput placeholder="Busque pelo nome ou por uma palavra da mensagem..." autoFocus />
-                      <CommandList className="max-h-[360px]">
+                      <CommandList className="max-h-[300px] overflow-y-auto overscroll-contain">
                         <CommandEmpty>Nenhum template com isso no nome ou no texto.</CommandEmpty>
                         {recentes.length > 0 && (
                           <CommandGroup heading="Usados recentemente">
@@ -500,8 +500,8 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
                         </CommandGroup>
                       </CommandList>
                     </Command>
-                  </PopoverContent>
-                </Popover>
+                  )}
+                </div>
               ) : (
                 <p className="text-sm text-muted-foreground">Nenhum template aprovado ainda. A Meta aprova em minutos ou horas; tente de novo depois.</p>
               )}
