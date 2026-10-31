@@ -122,3 +122,14 @@
 .pc .pl-cdm small b { display: block; color: var(--ink2); font-weight: 600; }
 .pc .pl-cdm small .pos { color: var(--good); }
 .pc .pl-cdm small .neg { color: var(--bad); }
+
+/* histórico: receita para cima, despesa para baixo, um par por mês */
+.pc .pl-hm { display: flex; align-items: stretch; gap: 2px; height: 220px; overflow-x: auto; padding-bottom: 14px; }
+.pc .pl-hmc { flex: 1 0 14px; min-width: 9px; display: flex; flex-direction: column; position: relative; }
+.pc .pl-hmc .cima { flex: 1; display: flex; align-items: flex-end; }
+.pc .pl-hmc .baixo { flex: 1; display: flex; align-items: flex-start; border-top: 1px solid var(--line); }
+.pc .pl-hmc i { display: block; width: 100%; min-height: 1px; }
+.pc .pl-hmc .cima i { background: var(--bar); border-radius: 2px 2px 0 0; }
+.pc .pl-hmc .baixo i { background: var(--bad); border-radius: 0 0 2px 2px; }
+.pc .pl-hmc:hover i { filter: brightness(1.35); }
+.pc .pl-hmc em { position: absolute; bottom: -14px; left: 0; font-size: 9.5px; font-style: normal; color: var(--mute); white-space: nowrap; }

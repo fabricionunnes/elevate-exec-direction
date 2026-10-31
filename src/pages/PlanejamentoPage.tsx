@@ -22,6 +22,7 @@ import { GRUPOS, type Ano, type Linha, type Realizado } from "@/components/plane
 import { Participacao, type SocioConfig, type Trimestre } from "@/components/planejamento/Participacao";
 import { PlanoSetores, type Acao } from "@/components/planejamento/PlanoSetores";
 import { SaudeEmpresa } from "@/components/planejamento/SaudeEmpresa";
+import { Historico } from "@/components/planejamento/Historico";
 
 const VISOES: { k: Visao; rot: string }[] = [
   { k: "ambos", rot: "Planejado e realizado" },
@@ -42,7 +43,7 @@ export default function PlanejamentoPage() {
   const [sujo, setSujo] = useState<Set<string>>(new Set());
   const [salvando, setSalvando] = useState(false);
   const [carregando, setCarregando] = useState(true);
-  const [aba, setAba] = useState<"plano" | "acoes" | "caixa" | "socio">("plano");
+  const [aba, setAba] = useState<"plano" | "acoes" | "caixa" | "socio" | "hist">("plano");
   const [acoes, setAcoes] = useState<Acao[]>([]);
   const [socio, setSocio] = useState<{ config: SocioConfig; trimestres: Trimestre[] } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -249,8 +250,11 @@ export default function PlanejamentoPage() {
             {acoes.length > 0 && <button type="button" className={aba === "acoes" ? "on" : ""} onClick={() => setAba("acoes")}>Plano por setor</button>}
             <button type="button" className={aba === "caixa" ? "on" : ""} onClick={() => setAba("caixa")}>Caixa da empresa</button>
             <button type="button" className={aba === "socio" ? "on" : ""} onClick={() => setAba("socio")}>Minha participação</button>
+            <button type="button" className={aba === "hist" ? "on" : ""} onClick={() => setAba("hist")}>Histórico</button>
           </div>
         )}
+
+        {!carregando && aba === "hist" && <Historico />}
 
         {!carregando && !semPlano && aba === "caixa" && (
           <SaudeEmpresa
