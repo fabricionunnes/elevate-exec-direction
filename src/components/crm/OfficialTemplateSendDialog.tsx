@@ -412,7 +412,8 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
 
   return (
     <Dialog open={open} onOpenChange={(o) => !sending && onOpenChange(o)}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      {/* [&>*]:min-w-0: a janela é um grid e texto sem quebra (truncate) esticava a coluna além da largura dela */}
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-emerald-600" /> Enviar template (API oficial)
