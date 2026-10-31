@@ -109,3 +109,16 @@
 .pc .pl-status button.on { background: var(--acc); border-color: var(--acc); color: #fff; }
 
 @media (max-width: 760px) { .pc .pl-acao-corpo { padding-left: 13px; } }
+
+/* receita contra despesa: duas barras por mês, resultado embaixo */
+.pc .pl-cd { display: flex; align-items: flex-end; gap: 7px; height: 190px; }
+.pc .pl-cdm { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; min-width: 0; text-align: center; }
+.pc .pl-cdm .par { display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 100%; }
+.pc .pl-cdm .par i { display: block; width: 46%; min-height: 2px; border-radius: 3px 3px 0 0; }
+.pc .pl-cdm .par i.rec { background: var(--bar); }
+.pc .pl-cdm .par i.des { background: var(--bad); }
+.pc .pl-cdm.prev .par i { opacity: .38; }
+.pc .pl-cdm small { font-size: 10px; margin-top: 5px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc .pl-cdm small b { display: block; color: var(--ink2); font-weight: 600; }
+.pc .pl-cdm small .pos { color: var(--good); }
+.pc .pl-cdm small .neg { color: var(--bad); }
