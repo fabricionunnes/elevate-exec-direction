@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-31T10:01:17",
+ "gerado_em": "2026-10-31T15:00:56",
  "posts": [
+  {
+   "slug": "execucao-ensina-mais-que-teoria-comercial",
+   "url": "/blog/execucao-ensina-mais-que-teoria-comercial/",
+   "titulo": "Execução ensina mais que teoria em comercial",
+   "resumo": "Por que fazer junto vale mais que aprender sozinho. O que separa implementação de consultoria.",
+   "tags": [
+    "implementação",
+    "estrutura comercial",
+    "treino de vendedor",
+    "acompanhamento",
+    "rotina de cobrança"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-31",
+   "ts": 2226
+  },
   {
    "slug": "reuniao-diaria-quinze-minutos-garante-meta-batida",
    "url": "/blog/reuniao-diaria-quinze-minutos-garante-meta-batida/",
