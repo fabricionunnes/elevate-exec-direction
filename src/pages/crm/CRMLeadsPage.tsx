@@ -142,6 +142,9 @@ export const CRMLeadsPage = () => {
   }, [searchTerm]);
   // Filtro por DDD: só os DDDs que existem na base, com a contagem (RPC crm_leads_ddd_counts)
   const [filterDdd, setFilterDdd] = useState<string[]>([]);
+  // Etiquetas (Fabrício, 31/10/2026): "filtrar por tag, inclusive poder escolher quem não tem a determinada tag"
+  const [filterTags, setFilterTags] = useState<string[]>([]);
+  const [filterSemTags, setFilterSemTags] = useState<string[]>([]);
   const [dddOptions, setDddOptions] = useState<{ ddd: string; n: number }[]>([]);
   useEffect(() => {
     (async () => {
@@ -198,8 +201,10 @@ export const CRMLeadsPage = () => {
     if (filterDuplicates !== "all") f.dups = filterDuplicates;
     if (filterList.length) f.lists = filterList;
     if (filterDdd.length) f.ddds = filterDdd;
+    if (filterTags.length) f.tags = filterTags;
+    if (filterSemTags.length) f.sem_tags = filterSemTags;
     return f;
-  }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd]);
+  }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd, filterTags, filterSemTags]);
   useEffect(() => { setTodosDoFiltro(false); }, [rpcFilters]);
 
   // Contagem de duplicados (em paralelo, não segura a tabela)
@@ -270,8 +275,10 @@ export const CRMLeadsPage = () => {
     dups: filterDuplicates,
     list: filterList,
     ddd: filterDdd,
+    tags: filterTags,
+    sem_tags: filterSemTags,
     pageSize,
-  }), [searchTerm, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd, pageSize]);
+  }), [searchTerm, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd, filterTags, filterSemTags, pageSize]);
   const applySavedView = (v: Record<string, any>) => {
     const txt = (x: unknown, d = "all") => (typeof x === "string" && x ? x : d);
     // visão salva antes de 13/10 guarda um valor só ("all" = nenhum); as novas guardam lista
@@ -284,6 +291,8 @@ export const CRMLeadsPage = () => {
     setFilterDuplicates(txt(v.dups));
     setFilterList(arr(v.list));
     setFilterDdd(arr(v.ddd));
+    setFilterTags(arr(v.tags));
+    setFilterSemTags(arr(v.sem_tags));
     if ([10, 50, 100].includes(Number(v.pageSize))) setPageSize(Number(v.pageSize));
     limparSelecao();
   };
@@ -724,6 +733,24 @@ export const CRMLeadsPage = () => {
               options={dddOptions.map((d) => ({ value: d.ddd, label: `${dddLabel(d.ddd)} (${nf(d.n)})` }))}
               placeholder="Qualquer DDD"
               emptyMessage="Nenhum lead com esse DDD."
+              className="h-9 text-xs sm:text-sm"
+            />
+
+            <MultiSearchableSelect
+              values={filterTags}
+              onChange={setFilterTags}
+              options={tags.map((t: any) => ({ value: t.id, label: t.name }))}
+              placeholder="Com etiqueta"
+              emptyMessage="Nenhuma etiqueta com esse nome."
+              className="h-9 text-xs sm:text-sm"
+            />
+
+            <MultiSearchableSelect
+              values={filterSemTags}
+              onChange={setFilterSemTags}
+              options={tags.map((t: any) => ({ value: t.id, label: t.name }))}
+              placeholder="Sem etiqueta"
+              emptyMessage="Nenhuma etiqueta com esse nome."
               className="h-9 text-xs sm:text-sm"
             />
           </div>
