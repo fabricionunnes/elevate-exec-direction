@@ -23,6 +23,8 @@ export type Linha = {
 export type Ano = {
   ano: number;
   titulo: string;
+  /** saldo de caixa no início do ano, ponto de partida do acúmulo */
+  caixa_inicial: number;
   observacao: string | null;
   atualizado_em: string;
 };
