@@ -173,7 +173,7 @@ export function Grade({ linhas, realizado, visao, editando, mesAtual, anoCorrent
                   </tr>
                 );
               })}
-              {g.k !== "indicador" && linhaSoma(
+              {g.k !== "indicador" && g.k !== "distribuicao" && linhaSoma(
                 `Total de ${g.nome.toLowerCase()}`,
                 totalGrupo(g.itens, planDe),
                 totalGrupo(g.itens, rzDe),
