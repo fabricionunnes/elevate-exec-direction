@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-31T15:00:56",
+ "gerado_em": "2026-10-31T21:01:31",
  "posts": [
+  {
+   "slug": "ensinar-cliente-vender-nao-vender-pra-ele",
+   "url": "/blog/ensinar-cliente-vender-nao-vender-pra-ele/",
+   "titulo": "Ensinar o cliente a vender vale mais que vender pra ele",
+   "resumo": "O trabalho é fazer o time do cliente fechar sozinho. Vender direto resolve o mês, treinar resolve todo mês.",
+   "tags": [
+    "treino de vendedor",
+    "estrutura comercial",
+    "dependência operacional",
+    "conversão",
+    "processo comercial"
+   ],
+   "tipo": "diario",
+   "data": "2026-10-31",
+   "ts": 2227
+  },
   {
    "slug": "execucao-ensina-mais-que-teoria-comercial",
    "url": "/blog/execucao-ensina-mais-que-teoria-comercial/",
