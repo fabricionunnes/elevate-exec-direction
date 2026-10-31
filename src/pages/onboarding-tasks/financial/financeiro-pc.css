@@ -1,0 +1,88 @@
+/* Financeiro no visual do Painel de Controle (Fabrício, 31/10/2026: "quero ele inteiro no mesmo estilo do
+   painel de controle, layout e design"). A classe fin-pc entra no <body> enquanto o Financeiro está aberto,
+   então vale pra todas as abas, janelas (portais) e gráficos. Mesmos tokens do painel.css. */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap');
+
+body.fin-pc {
+  /* tokens shadcn em HSL, na paleta do Painel */
+  --background: 0 0% 5.5%;        /* #0E0E0E */
+  --foreground: 45 29% 94%;       /* #F4F2EC */
+  --card: 0 0% 9.4%;              /* #181818 */
+  --card-foreground: 45 29% 94%;
+  --popover: 0 0% 6.3%;           /* #101010 */
+  --popover-foreground: 45 29% 94%;
+  --primary: 0 77% 45%;           /* #CC1B1B */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 14%;          /* #242424 */
+  --secondary-foreground: 45 29% 94%;
+  --muted: 0 0% 14%;
+  --muted-foreground: 42 4% 54%;  /* #8E8B84 */
+  --accent: 0 0% 14%;
+  --accent-foreground: 45 29% 94%;
+  --destructive: 0 100% 71%;      /* #FF6B6B */
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 17%;             /* #2C2C2C */
+  --input: 0 0% 17%;
+  --ring: 0 77% 45%;
+  --radius: 8px;
+  --pc-ink2: #C9C6BD; --pc-mute: #8E8B84; --pc-good: #4FD28A; --pc-warn: #F2B544; --pc-bad: #FF6B6B; --pc-bar: #3F5F9E; --pc-line: #2C2C2C; --pc-panel2: #242424;
+  color-scheme: dark;
+  background: #0E0E0E;
+  color: #F4F2EC;
+  font-family: "Archivo", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+body.fin-pc * { font-family: inherit; }
+body.fin-pc h1, body.fin-pc h2, body.fin-pc h3, body.fin-pc h4 { font-family: inherit; }
+
+/* cores semânticas do Tailwind usadas nas telas -> paleta do painel */
+body.fin-pc .text-emerald-600, body.fin-pc .text-emerald-500, body.fin-pc .text-emerald-700, body.fin-pc .text-green-600, body.fin-pc .text-green-500 { color: var(--pc-good) !important; }
+body.fin-pc .text-red-600, body.fin-pc .text-red-500, body.fin-pc .text-rose-600 { color: var(--pc-bad) !important; }
+body.fin-pc .text-amber-600, body.fin-pc .text-amber-500, body.fin-pc .text-orange-500, body.fin-pc .text-orange-600, body.fin-pc .text-yellow-600 { color: var(--pc-warn) !important; }
+body.fin-pc .text-blue-600, body.fin-pc .text-blue-500 { color: #7FA3E8 !important; }
+body.fin-pc .bg-emerald-50, body.fin-pc .bg-green-50 { background: rgba(79, 210, 138, .10) !important; }
+body.fin-pc .bg-red-50, body.fin-pc .bg-rose-50 { background: rgba(255, 107, 107, .10) !important; }
+body.fin-pc .bg-amber-50, body.fin-pc .bg-yellow-50, body.fin-pc .bg-orange-50 { background: rgba(242, 181, 68, .10) !important; }
+body.fin-pc .bg-blue-50 { background: rgba(63, 95, 158, .18) !important; }
+body.fin-pc .border-amber-200, body.fin-pc .border-emerald-200, body.fin-pc .border-red-200 { border-color: var(--pc-line) !important; }
+body.fin-pc .text-gray-500, body.fin-pc .text-gray-600, body.fin-pc .text-slate-500 { color: var(--pc-mute) !important; }
+
+/* cards e seções no padrão .p / .lbl / .val / .h do painel */
+body.fin-pc .rounded-xl.border, body.fin-pc .rounded-lg.border.bg-card { border-radius: 8px; }
+body.fin-pc .shadow-sm, body.fin-pc .shadow, body.fin-pc .shadow-md, body.fin-pc .shadow-lg { box-shadow: none !important; }
+body.fin-pc .fin-lbl { font-size: 10.5px !important; text-transform: uppercase; letter-spacing: .09em; color: var(--pc-mute) !important; font-weight: 500; }
+body.fin-pc .fin-val { font-size: clamp(20px, 1.9vw, 28px) !important; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+body.fin-pc .fin-sec { font-size: 12.5px !important; letter-spacing: .09em; color: var(--pc-ink2) !important; }
+body.fin-pc .tracking-widest, body.fin-pc .tracking-wide { color: var(--pc-mute); }
+
+/* barra lateral: brand do painel */
+body.fin-pc aside { background: #121212 !important; border-color: var(--pc-line) !important; }
+body.fin-pc aside h1 { text-transform: uppercase; letter-spacing: .06em; font-weight: 800; }
+body.fin-pc aside > div:first-child { border-bottom: 2px solid #CC1B1B !important; }
+body.fin-pc aside nav button { border-radius: 6px; font-size: 12.5px; }
+body.fin-pc aside nav button.bg-primary { background: #CC1B1B !important; color: #fff !important; font-weight: 700; }
+
+/* tabelas: cabeçalho pequeno em caixa alta, linhas finas */
+body.fin-pc th { font-size: 9.5px !important; color: var(--pc-mute) !important; text-transform: uppercase; letter-spacing: .07em; font-weight: 500 !important; }
+body.fin-pc td, body.fin-pc th { border-color: var(--pc-line) !important; }
+body.fin-pc tr:hover td { background: rgba(255,255,255,.025); }
+body.fin-pc .bg-muted\/50, body.fin-pc .bg-muted\/40, body.fin-pc .bg-muted\/30 { background: #1f1f1f !important; }
+body.fin-pc .bg-primary\/5, body.fin-pc .bg-primary\/10 { background: rgba(204, 27, 27, .10) !important; }
+
+/* controles */
+body.fin-pc input, body.fin-pc select, body.fin-pc textarea, body.fin-pc [role="combobox"] { background: #181818; border-color: var(--pc-line); color: #F4F2EC; }
+body.fin-pc button[class*="border-input"], body.fin-pc button.border { border-color: var(--pc-line); }
+body.fin-pc button[class*="border-input"]:hover { border-color: #CC1B1B; }
+body.fin-pc ::-webkit-scrollbar { width: 8px; height: 8px; }
+body.fin-pc ::-webkit-scrollbar-thumb { background: #4a4a4a; border-radius: 4px; }
+body.fin-pc ::-webkit-scrollbar-track { background: transparent; }
+
+/* gráficos recharts no escuro */
+body.fin-pc .recharts-text, body.fin-pc .recharts-legend-item-text { fill: var(--pc-ink2) !important; color: var(--pc-ink2) !important; }
+body.fin-pc .recharts-cartesian-grid line, body.fin-pc .recharts-cartesian-axis-line, body.fin-pc .recharts-cartesian-axis-tick-line { stroke: var(--pc-line) !important; }
+body.fin-pc .recharts-default-tooltip { background: #101010 !important; border: 1px solid var(--pc-line) !important; border-radius: 6px; color: #F4F2EC !important; }
+body.fin-pc .recharts-tooltip-label, body.fin-pc .recharts-tooltip-item { color: #F4F2EC !important; }
+
+/* badges claros do tema original */
+body.fin-pc .bg-secondary { background: var(--pc-panel2) !important; }
+body.fin-pc [class*="bg-white"] { background: #181818 !important; }
