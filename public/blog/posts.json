@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-10-31T21:01:31",
+ "gerado_em": "2026-11-01T10:01:02",
  "posts": [
+  {
+   "slug": "vendedor-precisa-virar-gerente-vendas",
+   "url": "/blog/vendedor-precisa-virar-gerente-vendas/",
+   "titulo": "Vendedor precisa virar gerente de vendas dentro da empresa",
+   "resumo": "Empresa que tem só vendedor não escala. Alguém da equipe tem que assumir a estrutura, o treino e a cobrança do número.",
+   "tags": [
+    "liderança comercial",
+    "estrutura comercial",
+    "treino de vendedor",
+    "escala",
+    "gerente de vendas"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-01",
+   "ts": 2228
+  },
   {
    "slug": "ensinar-cliente-vender-nao-vender-pra-ele",
    "url": "/blog/ensinar-cliente-vender-nao-vender-pra-ele/",
