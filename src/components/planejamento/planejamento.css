@@ -133,3 +133,13 @@
 .pc .pl-hmc .baixo i { background: var(--bad); border-radius: 0 0 2px 2px; }
 .pc .pl-hmc:hover i { filter: brightness(1.35); }
 .pc .pl-hmc em { position: absolute; bottom: -14px; left: 0; font-size: 9.5px; font-style: normal; color: var(--mute); white-space: nowrap; }
+
+/* um mês só: três números grandes antes da tabela de comparação */
+.pc .pl-mf-topo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+.pc .pl-mf-topo > div { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; }
+.pc .pl-mf-topo b { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--mute); margin-bottom: 5px; font-weight: 600; }
+.pc .pl-mf-topo > div > span { display: block; font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1.1; }
+.pc .pl-mf-topo > div > span.pos { color: var(--good); }
+.pc .pl-mf-topo > div > span.neg { color: var(--bad); }
+.pc .pl-mf-topo small { display: block; font-size: 11px; color: var(--ink2); margin-top: 5px; }
+@media (max-width: 820px) { .pc .pl-mf-topo { grid-template-columns: 1fr; } }

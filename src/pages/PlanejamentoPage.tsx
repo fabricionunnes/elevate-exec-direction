@@ -23,6 +23,11 @@ import { Participacao, type SocioConfig, type Trimestre } from "@/components/pla
 import { PlanoSetores, type Acao } from "@/components/planejamento/PlanoSetores";
 import { SaudeEmpresa } from "@/components/planejamento/SaudeEmpresa";
 import { Historico } from "@/components/planejamento/Historico";
+import { MesFoco } from "@/components/planejamento/MesFoco";
+
+const MES_CURTO = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const MES_LONGO = ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
+                   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
 const VISOES: { k: Visao; rot: string }[] = [
   { k: "ambos", rot: "Planejado e realizado" },
@@ -44,6 +49,8 @@ export default function PlanejamentoPage() {
   const [salvando, setSalvando] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [aba, setAba] = useState<"plano" | "acoes" | "caixa" | "socio" | "hist">("plano");
+  // null = ano inteiro; 0 a 11 = um mês só, na visão de comparação
+  const [mesFoco, setMesFoco] = useState<number | null>(null);
   const [acoes, setAcoes] = useState<Acao[]>([]);
   const [socio, setSocio] = useState<{ config: SocioConfig; trimestres: Trimestre[] } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -335,25 +342,48 @@ export default function PlanejamentoPage() {
             </Panel>
 
             <Panel
-              titulo="O plano linha por linha"
-              sub={editando ? "clique numa célula e digite; o total refaz na hora" : `${linhas.length} linhas`}
+              titulo={mesFoco == null ? "O plano linha por linha" : `O plano em ${MES_LONGO[mesFoco]}`}
+              sub={mesFoco != null
+                ? "planejado contra realizado, linha por linha"
+                : editando ? "clique numa célula e digite; o total refaz na hora" : `${linhas.length} linhas`}
             >
-              <div className="pl-abas" style={{ marginBottom: 12 }}>
-                {VISOES.map((v) => (
-                  <button key={v.k} type="button" className={visao === v.k ? "on" : ""} onClick={() => setVisao(v.k)}>{v.rot}</button>
+              <div className="pl-chips" style={{ marginBottom: 12 }}>
+                <button type="button" className={mesFoco == null ? "on" : ""} onClick={() => setMesFoco(null)}>
+                  Ano inteiro
+                </button>
+                {visiveis(mesInicial).map((i) => (
+                  <button key={i} type="button" className={mesFoco === i ? "on" : ""} onClick={() => setMesFoco(i)}>
+                    {MES_CURTO[i]}
+                  </button>
                 ))}
               </div>
-              <Grade
-                linhas={linhas}
-                realizado={realizado}
-                visao={visao}
-                editando={editando}
-                mesAtual={mesAtual}
-                anoCorrente={anoCorrente}
-                mesInicial={mesInicial}
-                onValor={mudarValor}
-                onDetalhe={(l) => toast.message(l.linha, { description: l.observacao ?? (l.fonte ? `realizado vem de ${l.fonte}` : "linha só do plano") })}
-              />
+              {mesFoco == null && (
+                <div className="pl-abas" style={{ marginBottom: 12 }}>
+                  {VISOES.map((v) => (
+                    <button key={v.k} type="button" className={visao === v.k ? "on" : ""} onClick={() => setVisao(v.k)}>{v.rot}</button>
+                  ))}
+                </div>
+              )}
+              {mesFoco == null ? (
+                <Grade
+                  linhas={linhas}
+                  realizado={realizado}
+                  visao={visao}
+                  editando={editando}
+                  mesAtual={mesAtual}
+                  anoCorrente={anoCorrente}
+                  mesInicial={mesInicial}
+                  onValor={mudarValor}
+                  onDetalhe={(l) => toast.message(l.linha, { description: l.observacao ?? (l.fonte ? `realizado vem de ${l.fonte}` : "linha só do plano") })}
+                />
+              ) : (
+                <MesFoco
+                  linhas={linhas}
+                  realizado={realizado}
+                  mes={mesFoco}
+                  fechado={ano < hoje.getFullYear() || (anoCorrente && mesFoco < hoje.getMonth())}
+                />
+              )}
               <div className="pl-aviso">
                 <b>De onde vem o realizado:</b> receita é fatura e recebível com status pago, pela data do pagamento.
                 Despesa é conta a pagar baixada, pela data da baixa. White-label fica de fora dos dois.
