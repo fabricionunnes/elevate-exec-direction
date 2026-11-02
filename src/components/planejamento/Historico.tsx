@@ -14,11 +14,25 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { brl, fp } from "@/components/painel-controle/fmt";
 import { Panel, Tile } from "@/components/painel-controle/ui";
+import { LinhaNegocio } from "@/components/planejamento/LinhaNegocio";
 
 type Mes = { ym: string; r: number; d: number; qr: number; qd: number };
 type AnoH = { ano: string; r: number; d: number; meses: number; qr: number; qd: number };
 type Corte = { ano: string; cat: string; v: number; n?: number };
-type Dados = { meses: Mes[]; anos: AnoH[]; categorias: Corte[]; centros: Corte[]; fornecedores: Corte[] };
+type LinhaMes = { ym: string; linha: string; r: number; d: number; qr: number; qd: number };
+type ClienteMes = { ym: string; linha: string; q: number };
+type FornLinha = { linha: string; cat: string; v: number; n: number };
+type Dados = {
+  meses: Mes[]; anos: AnoH[]; categorias: Corte[]; centros: Corte[]; fornecedores: Corte[];
+  linhas: LinhaMes[]; clientes: ClienteMes[]; fornecedores_linha: FornLinha[];
+};
+
+// as duas linhas que a empresa separa hoje; o resto cai em Principal
+const NEGOCIOS = [
+  { k: "tudo", rot: "A empresa inteira" },
+  { k: "UNV Ads", rot: "UNV Ads" },
+  { k: "UNV Social", rot: "UNV Social" },
+] as const;
 
 const MES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const VISOES = [
@@ -37,6 +51,7 @@ export function Historico() {
   const [d, setD] = useState<Dados | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [visao, setVisao] = useState<Visao>("ano");
+  const [negocio, setNegocio] = useState<string>("tudo");
   const [corte, setCorte] = useState<"categorias" | "centros" | "fornecedores">("categorias");
   const [parA, setParA] = useState("");
   const [parB, setParB] = useState("");
@@ -140,8 +155,33 @@ export function Historico() {
   const cheios = d.anos.filter((a) => a.meses >= 10).map((a) => a.ano);
   const nomeCorte = corte === "categorias" ? "categoria" : corte === "centros" ? "centro de custo" : "fornecedor";
 
+  const seletor = (
+    <div className="pl-chips" style={{ marginBottom: 14 }}>
+      {NEGOCIOS.map((n) => (
+        <button key={n.k} type="button" className={negocio === n.k ? "on" : ""} onClick={() => setNegocio(n.k)}>
+          {n.rot}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (negocio !== "tudo") {
+    return (
+      <>
+        {seletor}
+        <LinhaNegocio
+          nome={negocio}
+          linhas={d.linhas ?? []}
+          clientes={d.clientes ?? []}
+          fornecedores={d.fornecedores_linha ?? []}
+        />
+      </>
+    );
+  }
+
   return (
     <>
+      {seletor}
       <div className="grid k5">
         <Tile
           main
