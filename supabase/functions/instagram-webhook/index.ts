@@ -24,6 +24,71 @@ const APP_SECRETS = [
 ].filter(Boolean);
 
 const GRAPH = "https://graph.instagram.com/v21.0";
+// Token de app pro oEmbed (legenda e autor de publicação de outro perfil). Só funciona se o app
+// tiver o recurso "oEmbed Read"; sem ele cai no aviso de que o conteúdo não é acessível.
+const APP_TOKEN = (Deno.env.get("FACEBOOK_APP_ID") && Deno.env.get("FACEBOOK_APP_SECRET"))
+  ? `${Deno.env.get("FACEBOOK_APP_ID")}|${Deno.env.get("FACEBOOK_APP_SECRET")}`
+  : (Deno.env.get("IG_APP_ID") && Deno.env.get("IG_APP_SECRET")) ? `${Deno.env.get("IG_APP_ID")}|${Deno.env.get("IG_APP_SECRET")}` : "";
+
+const ehPublicacaoIg = (u?: string | null) => !!u && /instagram\.com\/(reel|reels|p)\/[A-Za-z0-9_-]+/i.test(u);
+
+async function fetchJsonTimeout(url: string, ms = 6000): Promise<any> {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), ms);
+  try {
+    const r = await fetch(url, { signal: ac.signal });
+    return await r.json();
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// Reel/post compartilhado na DM (03/11/2026, Fabrício: "os vídeos que as pessoas compartilham
+// não tem como assistir, nem eu nem a IA"). A Meta manda só o link da publicação. Se for conteúdo
+// de uma conta nossa, achamos pela API (legenda); senão tentamos o oEmbed (autor + legenda);
+// senão registramos que o conteúdo não é acessível, pra IA não fingir que viu.
+async function descreverPublicacao(url: string): Promise<string> {
+  const shortcode = url.match(/instagram\.com\/(?:reel|reels|p)\/([A-Za-z0-9_-]+)/i)?.[1] ?? "";
+  const tipoLink = /\/(reel|reels)\//i.test(url) ? "reel" : "post";
+  if (!shortcode) return `O lead compartilhou um ${tipoLink} do Instagram; o conteúdo não é acessível pela API.`;
+  try {
+    const { data: insts } = await supabase
+      .from("instagram_instances")
+      .select("instagram_username, instagram_account_id, access_token")
+      .eq("status", "active")
+      .not("access_token", "is", null);
+    const buscas = (insts ?? []).map(async (inst: any) => {
+      let next = `${GRAPH}/${inst.instagram_account_id}/media?fields=id,permalink,caption,media_type,media_product_type,username&limit=100&access_token=${encodeURIComponent(inst.access_token)}`;
+      for (let page = 0; page < 2 && next; page++) {
+        const d = await fetchJsonTimeout(next);
+        if (!d?.data) return null;
+        const hit = (d.data as any[]).find((m) => String(m.permalink ?? "").includes(`/${shortcode}/`));
+        if (hit) return { ...hit, username: hit.username ?? inst.instagram_username };
+        next = d.paging?.next ?? null;
+      }
+      return null;
+    });
+    const achado = (await Promise.all(buscas)).find(Boolean);
+    if (achado) {
+      const tipo = achado.media_product_type === "REELS" ? "reel" : achado.media_type === "VIDEO" ? "vídeo" : achado.media_type === "CAROUSEL_ALBUM" ? "carrossel" : "post";
+      const legenda = String(achado.caption ?? "").trim().slice(0, 700);
+      return `O lead compartilhou um ${tipo} do nosso perfil @${achado.username}${legenda ? `. Legenda: ${legenda}` : " (sem legenda)"}.`;
+    }
+  } catch (e) {
+    console.error("descreverPublicacao (mídia própria):", e);
+  }
+  if (APP_TOKEN) {
+    const d = await fetchJsonTimeout(`https://graph.facebook.com/v21.0/instagram_oembed?url=${encodeURIComponent(url)}&fields=author_name,title&access_token=${encodeURIComponent(APP_TOKEN)}`);
+    if (d?.author_name) {
+      const legenda = String(d.title ?? "").trim().slice(0, 700);
+      return `O lead compartilhou um ${tipoLink} do perfil @${d.author_name}${legenda ? `. Legenda: ${legenda}` : ""}.`;
+    }
+    if (d?.error) console.warn("oEmbed indisponível:", d.error?.message ?? d.error);
+  }
+  return `O lead compartilhou um ${tipoLink} de outro perfil do Instagram (${url}); o conteúdo não é acessível pela API.`;
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -603,6 +668,9 @@ async function processEvent(entryId: string, event: MessagingEvent) {
   const messageType = allowedTypes.has(rawType) ? rawType : (rawType === "ig_reel" ? "video" : "share");
   const content = msg.text ?? (attachment ? `[${attachment.type ?? "mídia"}]` : "");
   const ts = event.timestamp ? new Date(event.timestamp).toISOString() : new Date().toISOString();
+  // Descrição da publicação compartilhada entra ANTES do insert: o gatilho que chama o agente
+  // dispara no insert, e o agente lê a coluna transcription do histórico.
+  const transcription = !isEcho && ehPublicacaoIg(attachment?.payload?.url) ? await descreverPublicacao(String(attachment!.payload!.url)) : null;
 
   const { error: msgErr } = await supabase.from("instagram_messages").insert({
     conversation_id: conversation.id,
@@ -613,6 +681,7 @@ async function processEvent(entryId: string, event: MessagingEvent) {
     media_url: attachment?.payload?.url ?? msg.reply_to?.story?.url ?? null,
     status: isEcho ? "sent" : "delivered",
     timestamp: ts,
+    ...(transcription ? { transcription } : {}),
   });
   if (msgErr) {
     console.error("message insert error", msgErr);
