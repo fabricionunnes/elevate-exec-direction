@@ -905,8 +905,14 @@ function buildTools(agent, hasLead) {
   }
 }
 const isVideo = (m)=>String(m.message_type || m.type || "").toLowerCase().includes("video") || /^\[(v[ií]deo|video)\]$/i.test(String(m.content || "").trim());
+// Reel/post do Instagram compartilhado na DM: a Meta manda o LINK da publicação, não o arquivo
+// (03/11/2026, Fabrício: "nem eu nem a IA" conseguiam ver). O webhook grava a descrição em transcription.
+const ehPublicacaoIg = (m)=>/instagram\.com\/(reel|reels|p)\/[A-Za-z0-9_-]+/i.test(String(m.media_url || ""));
 const isImage = (m)=>{
   const t = String(m.message_type || m.type || "").toLowerCase();
+  if (ehPublicacaoIg(m)) return false;
+  // post compartilhado, resposta a story e menção em story chegam como imagem no CDN da Meta
+  if (["share", "story_reply", "story_mention", "ig_post"].includes(t) && m.media_url) return true;
   return t.includes("image") && !t.includes("sticker") || /^\[(imagem|image|foto)\]$/i.test(String(m.content || "").trim());
 };
 /** Legenda real da mídia (ignora o placeholder "[Vídeo]"/"[Imagem]"). */ const legendaDe = (m)=>{
@@ -3519,7 +3525,7 @@ Deno.serve(async (req)=>{
       // aceitam mp4); imagem → Claude descreve o que aparece. Guarda em
       // "transcription" pra não reprocessar. Vídeo sem fala vira "[sem fala]".
       const midiaTable = isIG ? "instagram_messages" : "crm_whatsapp_messages";
-      const videosToDo = rawHistory.filter((m)=>isVideo(m) && !m.transcription && m.media_url).slice(-2);
+      const videosToDo = rawHistory.filter((m)=>isVideo(m) && !ehPublicacaoIg(m) && !m.transcription && m.media_url).slice(-2);
       for (const m of videosToDo){
         const r = await transcribeAudioDetalhado(m.media_url);
         const text = r.text || (/vazia|no spoken audio|does not appear to contain audio/i.test(String(r.error || "")) ? "[sem fala]" : null);
@@ -3556,7 +3562,9 @@ Deno.serve(async (req)=>{
         if (reacaoQueResponde(m)) {
           content = `(o lead reagiu com ${String(m.content || "").trim()} à sua última mensagem, sem escrever nada: entenda como "sim", concordância com o que você disse ou perguntou, e siga a conversa a partir disso)`;
         }
-        if (isAudio(m)) {
+        if (ehPublicacaoIg(m)) {
+          content = m.transcription ? `(${m.transcription})` : "(o lead compartilhou uma publicação do Instagram; o conteúdo não é acessível por aqui. Não finja que viu: pergunte de forma natural o que chamou a atenção dele nela)";
+        } else if (isAudio(m)) {
           content = m.transcription ? `(áudio do lead, transcrito) ${m.transcription}` : "(o lead mandou um áudio que não consegui transcrever)";
         } else if (isVideo(m)) {
           const leg = legendaDe(m);
@@ -3564,7 +3572,8 @@ Deno.serve(async (req)=>{
           content = !m.transcription ? `(${quem}${leg ? `, legenda: ${leg}` : ""}, não consegui abrir o vídeo)` : m.transcription === "[sem fala]" ? `(${quem}${leg ? `, legenda: ${leg}` : ""}, sem fala)` : `(${quem}${leg ? `, legenda: ${leg}` : ""}, fala transcrita) ${m.transcription}`;
         } else if (isImage(m)) {
           const leg = legendaDe(m);
-          const quem = m.direction === "inbound" ? "imagem do lead" : "imagem enviada por nós";
+          const tipoImg = String(m.message_type || m.type || "").toLowerCase();
+          const quem = tipoImg === "story_reply" ? (m.direction === "inbound" ? "story nosso que o lead respondeu" : "story do lead que respondemos") : tipoImg === "story_mention" ? "story em que o lead nos marcou" : ["share", "ig_post"].includes(tipoImg) ? (m.direction === "inbound" ? "post do Instagram que o lead compartilhou" : "post que compartilhamos") : m.direction === "inbound" ? "imagem do lead" : "imagem enviada por nós";
           content = m.transcription ? `(${quem}${leg ? `, legenda: ${leg}` : ""}, o que aparece nela) ${m.transcription}` : `(${quem}${leg ? `, legenda: ${leg}` : ""}, não consegui abrir a imagem)`;
         }
         // humano = escrito por alguém do time (no sistema ou direto no celular), não pelo agente
