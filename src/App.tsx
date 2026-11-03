@@ -393,7 +393,6 @@ const WhitelabelUNVAdminPage = lazy(() => import("./pages/whitelabel/WhitelabelU
 const WhitelabelSignupPage = lazy(() => import("./pages/whitelabel/WhitelabelSignupPage"));
 
 import { ModuleGuard } from "./components/whitelabel/ModuleGuard";
-import MaxVoiceGlobal from "./components/MaxVoiceGlobal";
 
 // OnboardingStaffLayout needs to be lazy too
 const OnboardingStaffLayout = lazy(() => import("./components/onboarding-tasks/OnboardingStaffLayout").then(m => ({ default: m.OnboardingStaffLayout })));
@@ -422,7 +421,6 @@ const AppShell = () => {
               <OAuthRedirectHandler />
               <InviteRedirectHandler />
               {/* Max por voz em qualquer tela do staff (Time de IA) */}
-              <MaxVoiceGlobal />
               <Suspense fallback={<PageLoader />}>
               <Routes>
             <Route path="/" element={<HomePage />} />
