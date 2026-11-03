@@ -1,0 +1,115 @@
+// tmb-create-payment — gera o link de boleto parcelado da TMB (Tem Mais no Boleto) pro lead do CRM.
+// Fabrício, 03/11/2026: "quero que a TMB cobre o valor que está no CRM do cliente, exatamente o que
+// está lá". Por isso o valor NUNCA vem do corpo: é sempre crm_leads.opportunity_value.
+// A TMB não tem "cobrança por cliente": o que existe é OFERTA de um produto (POST api/ofertas), que
+// devolve um link de checkout. Criamos uma oferta por lead com o valor exato e guardamos o link.
+// Documentação: https://info.tmbeducacao.com.br/portal-do-produtor/central-de-ajuda/produto/integracoes/tmb-api
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const TMB_TOKEN = Deno.env.get("TMB_API_TOKEN") || "";
+const TMB_API = "https://api.tmbeducacao.com.br";
+const j = (b: unknown, s = 200) =>
+  new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
+
+async function tmb(path: string, method: string, body?: unknown) {
+  const res = await fetch(`${TMB_API}${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${TMB_TOKEN}`, "Content-Type": "application/json", Accept: "application/json" },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const text = await res.text();
+  let data: any = {};
+  try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text.slice(0, 300) }; }
+  return { ok: res.ok, status: res.status, data };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "POST") return j({ ok: false, error: "use POST" }, 405);
+  if (!req.headers.get("authorization")) return j({ ok: false, error: "não autenticado" }, 401);
+  if (!TMB_TOKEN) return j({ ok: false, error: "TMB não configurada (falta o segredo TMB_API_TOKEN no servidor)" });
+
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+  let body: any;
+  try { body = await req.json(); } catch { return j({ ok: false, error: "JSON inválido" }); }
+
+  // Lista de produtos da TMB (pra escolher em qual produto a oferta é criada)
+  if (body.action === "produtos") {
+    const r = await tmb("/api/produtos", "GET");
+    if (!r.ok) return j({ ok: false, error: r.data?.message || r.data?.error || `TMB respondeu HTTP ${r.status}` });
+    const lista = (Array.isArray(r.data) ? r.data : []).map((p: any) => ({
+      produto_id: p.produto_id, nome: p.produto_nome, descricao: p.descricao || null, valor: p.valor_total || null, ativo: p.ativo !== false,
+    }));
+    return j({ ok: true, produtos: lista });
+  }
+
+  const { lead_id } = body;
+  if (!lead_id) return j({ ok: false, error: "lead_id obrigatório" });
+
+  const { data: lead } = await supabase.from("crm_leads")
+    .select("id, name, email, phone, document, opportunity_value").eq("id", lead_id).maybeSingle();
+  if (!lead) return j({ ok: false, error: "lead não encontrado" });
+
+  // Valor: SEMPRE o valor do negócio no CRM (regra do Fabrício). O corpo não manda valor.
+  const amountCents = Math.round(Number(lead.opportunity_value || 0) * 100);
+  if (!amountCents || amountCents < 100) return j({ ok: false, error: "preencha o Valor do negócio na ficha do lead: a TMB cobra exatamente esse valor" });
+
+  // Produto da TMB: o escolhido na tela ou o padrão salvo nas configurações do provedor
+  let produtoId = Number(body.produto_id) || 0;
+  if (!produtoId) {
+    const { data: st } = await supabase.from("crm_payment_provider_settings").select("config").eq("provider", "tmb").maybeSingle();
+    produtoId = Number((st as any)?.config?.produto_id) || 0;
+  }
+  if (!produtoId) return j({ ok: false, error: "escolha o produto da TMB em que a oferta será criada" });
+
+  const installments = Math.max(1, Math.min(36, Math.round(Number(body.installments) || 12)));
+  const entryCents = Math.max(0, Math.round(Number(body.entry_cents) || 0));
+  const entryDue = String(body.entry_due || "").slice(0, 10);
+  if (entryDue && !/^\d{4}-\d{2}-\d{2}$/.test(entryDue)) return j({ ok: false, error: "vencimento da entrada inválido (use AAAA-MM-DD)" });
+  if (entryCents && entryCents >= amountCents) return j({ ok: false, error: "a entrada precisa ser menor que o valor do negócio" });
+
+  const description = String(body.description || `Boleto parcelado TMB — ${lead.name || "Cliente"}`).slice(0, 240);
+
+  // 1) Registra o pagamento do lead (o id curto vai no título da oferta pra casar o webhook)
+  const { data: row, error: insErr } = await supabase.from("crm_lead_payments").insert({
+    lead_id, amount_cents: amountCents, description, provider: "tmb",
+    billing_type: "BOLETO_PARCELADO", recurring: false, installments, status: "pending",
+  }).select("id").single();
+  if (insErr || !row) return j({ ok: false, error: "falha ao registrar pagamento" }, 500);
+
+  // 2) Cria a oferta na TMB com o valor exato do CRM
+  const titulo = `${String(lead.name || "Cliente").slice(0, 60)} · ${row.id.slice(0, 8)}`;
+  const payload: Record<string, unknown> = {
+    titulo,
+    produto_id: produtoId,
+    valor_principal: amountCents / 100,
+    qtd_parcelas: String(installments),
+  };
+  if (entryCents > 0) payload.valor_boleto_entrada = entryCents / 100;
+  if (entryDue) payload.vencimento_boleto_entrada = entryDue;
+
+  const r = await tmb("/api/ofertas", "POST", payload);
+  if (!r.ok || !r.data?.url) {
+    await supabase.from("crm_lead_payments").update({ status: "error" }).eq("id", row.id);
+    const msg = r.data?.message || r.data?.error || r.data?.status || (r.data?.errors ? JSON.stringify(r.data.errors).slice(0, 200) : "") || `TMB recusou (HTTP ${r.status})`;
+    return j({ ok: false, error: msg, detail: r.data });
+  }
+
+  const url = String(r.data.url);
+  const code = url.split("?")[0].replace(/\/+$/, "").split("/").pop() || "";
+
+  // O lançamento no Financeiro nasce pelo webhook da TMB, parcela a parcela, quando o dinheiro
+  // entra de fato (repasse). Link gerado não polui o Contas a Receber.
+  await supabase.from("crm_lead_payments").update({
+    provider_ref: code || null, url, updated_at: new Date().toISOString(),
+  }).eq("id", row.id);
+
+  return j({ ok: true, id: row.id, url, amount_cents: amountCents, installments, titulo });
+});
