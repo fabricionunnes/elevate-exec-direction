@@ -40,7 +40,7 @@ import { cn } from "@/lib/utils";
 import { getRemainingBusinessDaysInMonth } from "@/lib/businessDays";
 import { ImportSalesDialog } from "@/components/crm/ImportSalesDialog";
 import { TermVisionChart } from "@/components/crm/reports/TermVisionChart";
-import { ExportarDialog } from "@/components/crm/indicators/dashboardShared";
+import { ExportarDialog, BlocoVG, VG_CSS, VG_NAVY, VG_AZ, VG_AZ_HEX, VG_VERDE, VG_VERMELHO, VG_CINZA } from "@/components/crm/indicators/dashboardShared";
 import { CRMMarketingCostsDialog } from "@/components/crm/indicators/CRMMarketingCostsDialog";
 
 interface CloserMetrics {
@@ -786,7 +786,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       const productName = s.product?.name || s.product_name || "Outros";
       productGroups[productName] = (productGroups[productName] || 0) + (s.revenue_value || 0);
     });
-    const colors = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
+    const colors = [...VG_AZ_HEX, "#CC1B1B", "#9CA3AF"];
     const productDistribution = Object.entries(productGroups).map(([name, value], i) => ({
       name,
       value,
@@ -999,39 +999,42 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const getProgressColor = (pct: number) =>
     pct >= 100 ? "from-emerald-400 to-emerald-600" : pct >= 70 ? "from-amber-400 to-amber-600" : "from-rose-400 to-rose-600";
 
-  // Card limpo (sem glow/escala) — visual profissional e sóbrio
+  // Visual da Visão geral (03/11/2026, Fabrício): navy como cor única de destaque; as seções
+  // viram a mesma moldura (BlocoVG) e os cards de número usam o mesmo desenho. As cores por
+  // categoria (verde/azul/roxo/âmbar) saíram: vermelho só em alerta, verde só em meta batida.
   const GlowCard = ({ children, className = "" }: { children: React.ReactNode; className?: string; gradient?: string; glowColor?: string }) => (
-    <div className={cn("relative rounded-lg border border-border/60 bg-card overflow-hidden transition-colors hover:border-border", className)}>
+    <div className={cn("relative rounded-lg border border-border/60 bg-card overflow-hidden", className)}>
       {children}
     </div>
   );
-
-  // Cor por grupo (categoria) — separa/une os cards e dá leitura semântica
-  const TONE = { green: "#34d399", blue: "#60a5fa", violet: "#a78bfa", amber: "#fbbf24" };
-  const Section = ({ tone, label, children, cols }: { tone: string; label: string; children: React.ReactNode; cols?: string }) => (
-    <div className="rounded-xl border p-4" style={{ borderColor: `${tone}2e`, background: `${tone}0d` }}>
-      <div className="flex items-center gap-2 mb-3">
-        <span className="h-2 w-2 rounded-full" style={{ background: tone }} />
-        <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: tone }}>{label}</span>
-      </div>
-      <div className={cn("grid gap-3", cols || "grid-cols-2 sm:grid-cols-3")}>{children}</div>
-    </div>
+  const TONE = { green: VG_NAVY, blue: VG_NAVY, violet: VG_NAVY, amber: VG_NAVY };
+  const Section = ({ label, children, cols, sub }: { tone?: string; label: string; children: React.ReactNode; cols?: string; sub?: string }) => (
+    <BlocoVG titulo={label} sub={sub}>
+      <div className={cn("grid gap-2", cols || "grid-cols-2 sm:grid-cols-3")}>{children}</div>
+    </BlocoVG>
   );
-  const Metric = ({ tone, label, value, color }: { tone: string; label: string; value: string | number; color?: string }) => (
-    <div className="rounded-lg border bg-card p-4" style={{ borderColor: `${tone}26` }}>
-      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{label}</p>
-      <p className="text-lg font-semibold mt-1.5 tabular-nums" style={color ? { color } : undefined}>{value}</p>
+  const corMetric = (color: string | undefined, value: string | number) =>
+    color === "#f87171" || color === "#fb923c" ? VG_VERMELHO : color === "#34d399" && String(value).includes("%") ? VG_VERDE : VG_NAVY;
+  const Metric = ({ label, value, color }: { tone?: string; label: string; value: string | number; color?: string }) => (
+    <div className="rounded-lg border border-border/60 bg-card p-3 min-w-0">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground truncate">{label}</p>
+      <p className="text-lg font-semibold mt-1 tabular-nums" style={{ color: corMetric(color, value) }}>{value}</p>
     </div>
   );
 
   return (
     <>
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="vg-tab p-4 md:p-6 space-y-4 max-w-7xl">
+      <style>{VG_CSS}</style>
+      <div>
+        <h2 className="text-lg font-bold" style={{ color: VG_NAVY }}>Comercial</h2>
+        <p className="text-xs text-muted-foreground">Receita contra a meta, pipeline, custo de aquisição e desempenho dos closers no período.</p>
+      </div>
 
       {/* ── Filtros ── */}
       <div className="flex flex-wrap items-center gap-3">
         <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilterType)}>
-          <SelectTrigger className="w-[130px] h-9 rounded-xl text-xs border-border ">
+          <SelectTrigger className="w-[130px] h-9 rounded-lg text-xs border-border ">
             <SelectValue placeholder="Período" />
           </SelectTrigger>
           <SelectContent>
@@ -1047,7 +1050,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
 
         {!isCloserUser && (
           <Select value={selectedCloser} onValueChange={setSelectedCloser}>
-            <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-border ">
+            <SelectTrigger className="w-[160px] h-9 rounded-lg text-xs border-border ">
               <SelectValue placeholder="Closer" />
             </SelectTrigger>
             <SelectContent>
@@ -1058,7 +1061,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         )}
 
         <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-          <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-border ">
+          <SelectTrigger className="w-[160px] h-9 rounded-lg text-xs border-border ">
             <SelectValue placeholder="Produto" />
           </SelectTrigger>
           <SelectContent>
@@ -1073,7 +1076,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
             <div className="flex items-center gap-2">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn("h-9 w-[120px] justify-start text-left text-xs rounded-xl border-border", !customDateFrom && "text-muted-foreground")}>
+                  <Button variant="outline" size="sm" className={cn("h-9 w-[120px] justify-start text-left text-xs rounded-lg border-border", !customDateFrom && "text-muted-foreground")}>
                     <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
                     {customDateFrom ? format(customDateFrom, "dd/MM/yy") : "De"}
                   </Button>
@@ -1083,7 +1086,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
               <span className="text-xs text-muted-foreground">até</span>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn("h-9 w-[120px] justify-start text-left text-xs rounded-xl border-border", !customDateTo && "text-muted-foreground")}>
+                  <Button variant="outline" size="sm" className={cn("h-9 w-[120px] justify-start text-left text-xs rounded-lg border-border", !customDateTo && "text-muted-foreground")}>
                     <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
                     {customDateTo ? format(customDateTo, "dd/MM/yy") : "Até"}
                   </Button>
@@ -1098,11 +1101,11 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                 : `${format(getDateRange().start, "dd/MM")} - ${format(getDateRange().end, "dd/MM/yyyy")}`}
             </Badge>
           )}
-          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="h-9 text-xs rounded-xl border-border bg-card/80">
+          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="h-9 text-xs rounded-lg border-border bg-card/80">
             <Upload className="h-3.5 w-3.5 mr-1.5" />
             Importar
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setExportOpen(true)} className="h-9 text-xs rounded-xl border-border bg-card/80">
+          <Button variant="outline" size="sm" onClick={() => setExportOpen(true)} className="h-9 text-xs rounded-lg border-border bg-card/80">
             <Download className="h-3.5 w-3.5 mr-1.5" />
             Exportar
           </Button>
@@ -1113,13 +1116,13 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       {closers.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {closers.slice(0, 3).map((closer, index) => (
-            <div key={closer.id} className="rounded-lg border bg-card p-4" style={index === 0 ? { borderColor: "#f5b50a55", borderLeft: "3px solid #f5b50a", background: "#f5b50a0d" } : { borderColor: "hsl(var(--border))" }}>
+            <div key={closer.id} className="rounded-lg border border-border/60 bg-card p-4" style={index === 0 ? { borderLeft: `3px solid ${VG_NAVY}` } : undefined}>
               <div className="flex items-center gap-2 mb-3">
-                <span className="flex h-6 w-6 items-center justify-center rounded-md text-xs font-semibold shrink-0" style={index === 0 ? { background: "#f5b50a22", color: "#f5b50a" } : { background: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }}>{index + 1}</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-md text-xs font-semibold shrink-0" style={index === 0 ? { background: "rgba(var(--vg-navy-rgb),.12)", color: VG_NAVY } : { background: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }}>{index + 1}</span>
                 <p className="text-sm font-medium truncate">{closer.name}</p>
-                {index === 0 && <Trophy className="h-3.5 w-3.5 ml-auto shrink-0" style={{ color: "#f5b50a" }} />}
+                {index === 0 && <Trophy className="h-3.5 w-3.5 ml-auto shrink-0" style={{ color: VG_NAVY }} />}
               </div>
-              <p className="text-2xl font-semibold tracking-tight tabular-nums">{formatCurrency(closer.revenue)}</p>
+              <p className="text-2xl font-semibold tracking-tight tabular-nums" style={{ color: VG_NAVY }}>{formatCurrency(closer.revenue)}</p>
               <div className="flex items-center gap-4 mt-2 text-[11px] text-muted-foreground">
                 <span>TM <span className="text-foreground font-medium">{formatCurrency(closer.ticketMedio)}</span></span>
                 <span>Conv <span className="text-foreground font-medium">{closer.conversion.toFixed(1)}%</span></span>
@@ -1132,7 +1135,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
 
       {/* ── Resultados (verde) ── */}
       <Section tone={TONE.green} label="Resultados" cols="grid-cols-1 sm:grid-cols-3">
-        <div className="rounded-lg border bg-card p-4" style={{ borderColor: `${TONE.green}33` }}>
+        <div className="rounded-lg border border-border/60 bg-card p-3">
           <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Receita</p>
           <p className="text-2xl font-semibold mt-1 tabular-nums" style={{ color: TONE.green }}>{formatCurrency(metrics.receita)}</p>
           <div className="h-1.5 bg-muted rounded-full mt-2.5 overflow-hidden"><div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, metaPercent)}%`, background: TONE.green }} /></div>
@@ -1150,7 +1153,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
 
       {/* ── Performance (roxo) ── */}
       <Section tone={TONE.violet} label="Performance" cols="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-        <Metric tone={TONE.violet} label="% Meta" value={`${metaPercent.toFixed(1)}%`} color={metaPercent >= 100 ? "#34d399" : metaPercent >= 70 ? "#fbbf24" : "#f87171"} />
+        <Metric tone={TONE.violet} label="% Meta" value={`${metaPercent.toFixed(1)}%`} color={metaPercent >= 100 ? "#34d399" : metaPercent >= 70 ? undefined : "#f87171"} />
         <Metric tone={TONE.violet} label="Conversão" value={`${metrics.conversao.toFixed(1)}%`} />
         <Metric tone={TONE.violet} label="Qtd Vendas" value={metrics.vendas} />
         <Metric tone={TONE.violet} label="Ticket Médio" value={formatCurrency(metrics.ticketMedio)} />
@@ -1159,10 +1162,9 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       </Section>
 
       {/* ── Investimento e CAC (âmbar): tráfego Meta + discador + outros custos sobre o resultado do CRM ── */}
-      <div className="rounded-xl border p-4" style={{ borderColor: `${TONE.amber}2e`, background: `${TONE.amber}0d` }}>
+      <div className="rounded-lg border border-border/60 bg-card p-4">
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          <span className="h-2 w-2 rounded-full" style={{ background: TONE.amber }} />
-          <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: TONE.amber }}>Investimento e CAC</span>
+          <span className="text-sm font-semibold" style={{ color: VG_NAVY }}>Investimento e CAC</span>
           <span className="text-[11px] text-muted-foreground">
             {investimento.closerFiltrado ? (invest?.escopo?.mostrando === "equipe" ? "investimento rateado por leads da equipe" : "investimento rateado por leads do closer") : "tráfego Meta + discador + outros custos"}
           </span>
@@ -1176,7 +1178,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           </Button>
         </div>
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
-          <div className="rounded-lg border bg-card p-4" style={{ borderColor: `${TONE.amber}26` }}
+          <div className="rounded-lg border border-border/60 bg-card p-3"
             title={`Meta: ${formatCurrency(investimento.meta)}\nDiscador: ${formatCurrency(investimento.discador)}\nOutros: ${formatCurrency(investimento.outros)}`}>
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">Investimento total</p>
             <p className="text-lg font-semibold mt-1.5 tabular-nums" style={{ color: TONE.amber }}>{formatCurrency(investimento.total)}</p>
@@ -1204,10 +1206,9 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
 
       {/* ── Entradas de leads por funil (verde) — tabela ── */}
       {funnelTable.length > 0 && (
-        <div className="rounded-xl border p-4" style={{ borderColor: `${TONE.green}2e`, background: `${TONE.green}0d` }}>
+        <div className="rounded-lg border border-border/60 bg-card p-4">
           <div className="flex items-center gap-2 mb-3">
-            <span className="h-2 w-2 rounded-full" style={{ background: TONE.green }} />
-            <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: TONE.green }}>Entradas de Leads por Funil</span>
+            <span className="text-sm font-semibold" style={{ color: VG_NAVY }}>Entradas de Leads por Funil</span>
           </div>
           {/* card compacto: ~6 funis visíveis, resto por rolagem interna; cabeçalho
               congelado com <table> nativa (o wrapper do ui/Table captura o sticky) */}
@@ -1241,7 +1242,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                     <td className="text-center font-semibold py-2 px-3">{f.entradas}</td>
                     <td className="text-center py-2 px-3">{f.agendadas}</td>
                     <td className="text-center py-2 px-3">{f.realizadas}</td>
-                    <td className="text-center font-semibold text-emerald-500 py-2 px-3">{f.vendas}</td>
+                    <td className="text-center font-semibold py-2 px-3 text-[color:var(--vg-navy)]">{f.vendas}</td>
                     <td className="text-right py-2 px-3">{f.ticket > 0 ? formatCurrency(f.ticket) : "—"}</td>
                     <td className="text-right font-semibold py-2 px-3">{f.faturamento > 0 ? formatCurrency(f.faturamento) : "—"}</td>
                     <td className="text-right py-2 px-3">{f.leadtime >= 0 ? `${Math.round(f.leadtime)} dia(s)` : "—"}</td>
@@ -1253,7 +1254,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                     <td className="text-center py-2 px-3">{funnelTable.reduce((s, f) => s + f.entradas, 0)}</td>
                     <td className="text-center py-2 px-3">{funnelTable.reduce((s, f) => s + f.agendadas, 0)}</td>
                     <td className="text-center py-2 px-3">{funnelTable.reduce((s, f) => s + f.realizadas, 0)}</td>
-                    <td className="text-center text-emerald-500 py-2 px-3">{funnelTable.reduce((s, f) => s + f.vendas, 0)}</td>
+                    <td className="text-center py-2 px-3 text-[color:var(--vg-navy)]">{funnelTable.reduce((s, f) => s + f.vendas, 0)}</td>
                     <td className="text-right py-2 px-3">{(() => { const v = funnelTable.reduce((s, f) => s + f.vendas, 0); const fat = funnelTable.reduce((s, f) => s + f.faturamento, 0); return v > 0 ? formatCurrency(fat / v) : "—"; })()}</td>
                     <td className="text-right py-2 px-3">{formatCurrency(funnelTable.reduce((s, f) => s + f.faturamento, 0))}</td>
                     <td className="text-right py-2 px-3">{(() => { const n = funnelTable.reduce((s, f) => s + f.ltN, 0); const soma = funnelTable.reduce((s, f) => s + f.ltSum, 0); return n > 0 ? `${Math.round(soma / n)} dia(s)` : "—"; })()}</td>
@@ -1267,17 +1268,16 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
 
       {/* ── Quando vende: dia da semana + semana do mês + dia do mês (heatmap) ── */}
       <div className="grid gap-4">
-        <div className="rounded-xl border p-4" style={{ borderColor: `${TONE.violet}2e`, background: `${TONE.violet}0d` }}>
+        <div className="rounded-lg border border-border/60 bg-card p-4">
           <div className="flex items-center gap-2 mb-3">
-            <span className="h-2 w-2 rounded-full" style={{ background: TONE.violet }} />
-            <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: TONE.violet }}>Quando Vende — Dia da Semana × Semana do Mês</span>
+            <span className="text-sm font-semibold" style={{ color: VG_NAVY }}>Quando Vende — Dia da Semana × Semana do Mês</span>
             <span className="ml-auto text-[10px] text-muted-foreground">barra cheia = melhor período</span>
           </div>
           <div className="grid sm:grid-cols-3 gap-4">
             {([
-              { key: "vendas" as const, label: "Vendas por dia", short: "vendas", color: "#10b981", fmt: (v: number) => formatCurrency(v), data: timingCharts.weekday },
-              { key: "reunioes" as const, label: "Reuniões por dia", short: "reuniões", color: "#3b82f6", fmt: (v: number) => `${v} reunião(ões)`, data: timingCharts.weekday },
-              { key: "vendas" as const, label: "Vendas por semana", short: "vendas", color: "#8b5cf6", fmt: (v: number) => formatCurrency(v), data: timingCharts.weeks },
+              { key: "vendas" as const, label: "Vendas por dia", short: "vendas", color: VG_AZ[0], fmt: (v: number) => formatCurrency(v), data: timingCharts.weekday },
+              { key: "reunioes" as const, label: "Reuniões por dia", short: "reuniões", color: VG_AZ[1], fmt: (v: number) => `${v} reunião(ões)`, data: timingCharts.weekday },
+              { key: "vendas" as const, label: "Vendas por semana", short: "vendas", color: VG_AZ[2], fmt: (v: number) => formatCurrency(v), data: timingCharts.weeks },
             ]).map(m => {
               const max = Math.max(...m.data.map(d => d[m.key]), 0);
               const best = m.data.find(d => d[m.key] === max);
@@ -1294,7 +1294,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                         formatter={(v: number) => [m.fmt(v), m.label]} />
                       <Bar dataKey={m.key} radius={[6, 6, 0, 0]}>
                         {m.data.map((d, i) => (
-                          <Cell key={i} fill={max > 0 && d[m.key] === max ? m.color : `${m.color}55`} />
+                          <Cell key={i} fill={m.color} fillOpacity={max > 0 && d[m.key] === max ? 1 : 0.35} />
                         ))}
                       </Bar>
                     </BarChart>
@@ -1307,16 +1307,15 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
             })}
           </div>
         </div>
-        <div className="rounded-xl border p-4" style={{ borderColor: `${TONE.amber}2e`, background: `${TONE.amber}0d` }}>
+        <div className="rounded-lg border border-border/60 bg-card p-4">
           <div className="flex items-center gap-2 mb-3">
-            <span className="h-2 w-2 rounded-full" style={{ background: TONE.amber }} />
-            <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: TONE.amber }}>Dia do Mês — Mapa de Calor</span>
+            <span className="text-sm font-semibold" style={{ color: VG_NAVY }}>Dia do Mês — Mapa de Calor</span>
             <span className="ml-auto text-[10px] text-muted-foreground">mais escuro = mais volume</span>
           </div>
           <div className="space-y-3 overflow-x-auto">
             {([
-              { key: "vendas" as const, label: "Vendas", rgb: "16,185,129", fmt: (v: number) => formatCurrency(v) },
-              { key: "reunioes" as const, label: "Reuniões", rgb: "96,165,250", fmt: (v: number) => String(v) },
+              { key: "vendas" as const, label: "Vendas", rgb: "var(--vg-navy-rgb)", fmt: (v: number) => formatCurrency(v) },
+              { key: "reunioes" as const, label: "Reuniões", rgb: "var(--vg-az2-rgb)", fmt: (v: number) => String(v) },
             ]).map(m => {
               const max = Math.max(...timingCharts.monthday.map(d => d[m.key]), 1);
               return (
@@ -1351,11 +1350,11 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       {/* ── Metas (Meta / Super / Hiper) ── */}
       <GlowCard glowColor="shadow-primary/10">
         <div className="relative p-5 space-y-5">
-          <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Atingimento de Metas</h3>
+          <h3 className="text-sm font-semibold">Atingimento de Metas</h3>
           {[
-            { label: "Meta", pct: metaPercent, value: metrics.metaReceita, remaining: metrics.faltaReceita, color: "#10b981" },
-            { label: "Super Meta", pct: superPercent, value: metrics.superMeta, remaining: metrics.faltaSuper, color: "#f59e0b" },
-            { label: "Hiper Meta", pct: hiperPercent, value: metrics.hiperMeta, remaining: metrics.faltaHiper, color: "#0ea5e9" },
+            { label: "Meta", pct: metaPercent, value: metrics.metaReceita, remaining: metrics.faltaReceita, color: VG_AZ[0] },
+            { label: "Super Meta", pct: superPercent, value: metrics.superMeta, remaining: metrics.faltaSuper, color: VG_AZ[1] },
+            { label: "Hiper Meta", pct: hiperPercent, value: metrics.hiperMeta, remaining: metrics.faltaHiper, color: VG_AZ[2] },
           ].map((goal, idx) => (
             <div key={idx}>
               <div className="flex items-center justify-between text-sm mb-1.5">
@@ -1374,7 +1373,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       </GlowCard>
 
       {/* ── Meta Diária ── */}
-      <div className="rounded-lg border border-border/60 bg-card p-5">
+      <div className="rounded-lg border border-border/60 bg-card p-4">
         <div className="flex flex-col lg:flex-row lg:items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-lg bg-muted">
@@ -1404,7 +1403,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
             <span>Progresso mensal</span>
             <span className="font-semibold text-foreground tabular-nums">{dailyGoal.monthlyTarget > 0 ? Math.round((dailyGoal.achieved / dailyGoal.monthlyTarget) * 100) : 0}%</span>
           </div>
-          {(() => { const pct = dailyGoal.monthlyTarget > 0 ? (dailyGoal.achieved / dailyGoal.monthlyTarget) * 100 : 0; const c = pct >= 100 ? "#10b981" : pct >= 70 ? "#f59e0b" : "#f43f5e"; return (
+          {(() => { const pct = dailyGoal.monthlyTarget > 0 ? (dailyGoal.achieved / dailyGoal.monthlyTarget) * 100 : 0; const c = pct >= 100 ? VG_VERDE : pct >= 70 ? VG_NAVY : VG_VERMELHO; return (
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, pct)}%`, backgroundColor: c }} />
             </div>
@@ -1460,7 +1459,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                         );
                       }} />
                     </Pie>
-                    <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: "12px", fontSize: 12, border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.15)" }} />
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--popover))", color: "hsl(var(--popover-foreground))" }} />
                     <Legend formatter={(value) => <span className="text-xs">{value}</span>} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -1479,9 +1478,9 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
               Projeções vs Meta
             </h3>
             {[
-              { label: "Meta", pct: metaPercent, from: "#059669", to: "#10b981" },
-              { label: "Super Meta", pct: superPercent, from: "#d97706", to: "#f59e0b" },
-              { label: "Hiper Meta", pct: hiperPercent, from: "#0284c7", to: "#0ea5e9" },
+              { label: "Meta", pct: metaPercent, from: VG_AZ_HEX[0], to: VG_AZ_HEX[1] },
+              { label: "Super Meta", pct: superPercent, from: VG_AZ_HEX[1], to: VG_AZ_HEX[2] },
+              { label: "Hiper Meta", pct: hiperPercent, from: VG_AZ_HEX[2], to: VG_AZ_HEX[3] },
             ].map((item, idx) => (
               <div key={idx}>
                 <div className="flex justify-between text-xs mb-1.5"><span className="font-medium">{item.label}</span><span className="font-semibold tabular-nums">{item.pct.toFixed(0)}%</span></div>
@@ -1491,7 +1490,6 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                     style={{
                       width: `${Math.min(100, item.pct)}%`,
                       backgroundImage: `linear-gradient(90deg, ${item.from}, ${item.to})`,
-                      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.35), 0 1px 4px ${item.to}55`,
                     }}
                   />
                 </div>
@@ -1511,19 +1509,19 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
             Evolução de Receita
           </h3>
           <div className="flex items-center justify-center gap-5 mb-3 text-[11px] text-muted-foreground flex-wrap">
-            <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 rounded bg-rose-500 inline-block" />Meta</span>
-            <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 rounded bg-emerald-500 inline-block" />Receita</span>
-            <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 rounded bg-amber-500 inline-block" style={{ borderTop: "1.5px dashed" }} />Super</span>
-            <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 rounded bg-sky-500 inline-block" style={{ borderTop: "1.5px dashed" }} />Hiper</span>
+            <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 rounded inline-block" style={{ background: VG_CINZA }} />Meta</span>
+            <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 rounded inline-block" style={{ background: VG_NAVY }} />Receita</span>
+            <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 rounded inline-block" style={{ background: VG_AZ[2] }} />Super</span>
+            <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 rounded inline-block" style={{ background: VG_AZ[3] }} />Hiper</span>
           </div>
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={revenueEvolution} margin={{ top: 8, right: 20, left: 10, bottom: 5 }}>
                 <defs>
                   <linearGradient id="gradRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10B981" stopOpacity={0.42} />
-                    <stop offset="60%" stopColor="#10B981" stopOpacity={0.12} />
-                    <stop offset="100%" stopColor="#10B981" stopOpacity={0} />
+                    <stop offset="0%" stopColor={VG_AZ_HEX[1]} stopOpacity={0.35} />
+                    <stop offset="60%" stopColor={VG_AZ_HEX[1]} stopOpacity={0.1} />
+                    <stop offset="100%" stopColor={VG_AZ_HEX[1]} stopOpacity={0} />
                   </linearGradient>
                   <filter id="glowRevenue" x="-50%" y="-50%" width="200%" height="200%">
                     <feGaussianBlur stdDeviation="3" result="b" />
@@ -1533,11 +1531,11 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                 <CartesianGrid vertical={false} stroke="currentColor" strokeOpacity={0.08} strokeDasharray="4 4" />
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} tickFormatter={(v) => String(v).padStart(2, "0")} interval={0} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} domain={[0, "auto"]} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(value: number | null, name: string) => value === null ? ["-", name] : [formatCurrency(value), name]} labelFormatter={(day) => `Dia ${day}`} contentStyle={{ fontSize: 12, borderRadius: "12px", border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.15)" }} />
-                <Area type="monotone" dataKey="receita" name="Receita" stroke="#10B981" strokeWidth={3} strokeLinecap="round" fill="url(#gradRevenue)" dot={false} activeDot={{ r: 5, strokeWidth: 2 }} connectNulls={false} style={{ filter: "url(#glowRevenue)" }} />
-                <Line type="monotone" dataKey="meta" name="Meta" stroke="#EF4444" strokeWidth={1.5} dot={false} />
-                <Line type="monotone" dataKey="super" name="Super Meta" stroke="#F59E0B" strokeWidth={1.5} strokeDasharray="6 3" dot={false} />
-                <Line type="monotone" dataKey="hiper" name="Hiper Meta" stroke="#3B82F6" strokeWidth={1.5} strokeDasharray="6 3" dot={false} />
+                <Tooltip formatter={(value: number | null, name: string) => value === null ? ["-", name] : [formatCurrency(value), name]} labelFormatter={(day) => `Dia ${day}`} contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--popover))", color: "hsl(var(--popover-foreground))" }} />
+                <Area type="monotone" dataKey="receita" name="Receita" stroke={VG_NAVY} strokeWidth={2.5} strokeLinecap="round" fill="url(#gradRevenue)" dot={false} activeDot={{ r: 5, strokeWidth: 2 }} connectNulls={false} />
+                <Line type="monotone" dataKey="meta" name="Meta" stroke={VG_CINZA} strokeWidth={1.5} strokeDasharray="6 4" dot={false} />
+                <Line type="monotone" dataKey="super" name="Super Meta" stroke={VG_AZ[2]} strokeWidth={1.5} strokeDasharray="6 3" dot={false} />
+                <Line type="monotone" dataKey="hiper" name="Hiper Meta" stroke={VG_AZ[3]} strokeWidth={1.5} strokeDasharray="6 3" dot={false} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -1560,10 +1558,10 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                   <CartesianGrid vertical={false} stroke="currentColor" strokeOpacity={0.08} strokeDasharray="4 4" />
                   <XAxis dataKey="day" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: "12px", fontSize: 12, border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.15)" }} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--popover))", color: "hsl(var(--popover-foreground))" }} />
                   <Legend />
                   {closers.map((closer, i) => {
-                    const c = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"][i % 6];
+                    const c = [...VG_AZ, "#CC1B1B", VG_CINZA][i % 6];
                     return (
                       <Line key={closer.id} type="monotone" dataKey={closer.name} stroke={c} strokeWidth={2.5} strokeLinecap="round" dot={false} activeDot={{ r: 5, strokeWidth: 2 }} />
                     );
@@ -1610,7 +1608,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                   <TableCell className="text-center font-semibold">{closer.salesQty}</TableCell>
                   <TableCell className="text-right font-semibold text-foreground">{formatCurrency(closer.revenue)}</TableCell>
                   <TableCell className="text-center">
-                    <Badge className={cn("text-[11px] font-semibold border-0", closer.metaPercent >= 100 ? "bg-emerald-500/20 text-emerald-400" : closer.metaPercent >= 70 ? "bg-amber-500/20 text-amber-400" : "bg-rose-500/20 text-rose-400")}>
+                    <Badge className={cn("text-[11px] font-semibold border-0", closer.metaPercent >= 100 ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : closer.metaPercent >= 70 ? "bg-muted text-foreground" : "bg-rose-500/15 text-rose-700 dark:text-rose-400")}>
                       {closer.metaPercent.toFixed(1)}%
                     </Badge>
                   </TableCell>
@@ -1666,7 +1664,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
                   <TableRow key={f.id} className="text-sm border-border/50 hover:bg-muted/40">
                     <TableCell>{f.closer}</TableCell>
                     <TableCell>{f.client}</TableCell>
-                    <TableCell><Badge className="text-[11px] bg-sky-500/20 text-sky-400 border-0">{f.status}</Badge></TableCell>
+                    <TableCell><Badge className="text-[11px] bg-muted text-foreground border-0">{f.status}</Badge></TableCell>
                     <TableCell>{f.product}</TableCell>
                     <TableCell className="text-right font-semibold text-foreground">{formatCurrency(f.value)}</TableCell>
                   </TableRow>

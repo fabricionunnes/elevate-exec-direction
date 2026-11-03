@@ -33,6 +33,7 @@ import { toast } from "sonner";
 import { trackMeetingEvent, getCurrentStaffId } from "@/components/crm/LeadMeetingActions";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
+import { BlocoVG, VG_CSS, VG_NAVY, VG_AZ, VG_AZ_HEX, VG_VERDE, VG_VERMELHO, VG_CINZA } from "@/components/crm/indicators/dashboardShared";
 
 interface SDRMetrics {
   id: string;
@@ -75,7 +76,7 @@ const MultiFilter = ({ label, options, selected, onChange }: { label: string; op
   return (
     <Popover onOpenChange={(o) => { if (o) setQuery(""); }}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl text-xs border-border min-w-[160px] justify-between">
+        <Button variant="outline" size="sm" className="h-9 gap-2 rounded-lg text-xs border-border min-w-[160px] justify-between">
           <span className="truncate">
             {selected.length === 0 ? label
               : selected.length === 1 ? (options.find(o => o.id === selected[0])?.name || label)
@@ -713,10 +714,10 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
   }
 
   const getNoShowColor = (pct: number) =>
-    pct <= 10 ? "text-emerald-400" : pct <= 20 ? "text-amber-400" : "text-rose-400";
+    pct <= 10 ? "text-emerald-700 dark:text-emerald-400" : pct <= 20 ? "text-foreground" : "text-rose-700 dark:text-rose-400";
 
   const getNoShowBg = (pct: number) =>
-    pct <= 10 ? "bg-emerald-500/20" : pct <= 20 ? "bg-amber-500/20" : "bg-rose-500/20";
+    pct <= 10 ? "bg-emerald-500/15" : pct <= 20 ? "bg-muted" : "bg-rose-500/15";
 
   // Filter by SDR if selected
   const filteredSdrs = selectedSDRs.length ? sdrs.filter(s => selectedSDRs.includes(s.id)) : sdrs;
@@ -865,43 +866,45 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     }
   };
 
-  // Card limpo (sem glow/escala) — visual profissional
+  // Visual da Visão geral (03/11/2026, Fabrício): navy como cor única de destaque; as seções
+  // viram a mesma moldura (BlocoVG) e os cards de número usam o mesmo desenho. As cores por
+  // categoria (verde/azul/roxo/âmbar) saíram: vermelho só em alerta, verde só em meta batida.
   const GlowCard = ({ children, className = "" }: { children: React.ReactNode; className?: string; glowColor?: string }) => (
-    <div className={cn("relative rounded-lg border border-border/60 bg-card overflow-hidden transition-colors hover:border-border", className)}>
+    <div className={cn("relative rounded-lg border border-border/60 bg-card overflow-hidden", className)}>
       {children}
     </div>
   );
-
-  // Cor por grupo (categoria) — separa/une os cards e dá leitura semântica
-  const TONE = { green: "#34d399", blue: "#60a5fa", violet: "#a78bfa", amber: "#fbbf24" };
-  const Section = ({ tone, label, children, cols }: { tone: string; label: string; children: React.ReactNode; cols?: string }) => (
-    <div className="rounded-xl border p-4" style={{ borderColor: `${tone}2e`, background: `${tone}0d` }}>
-      <div className="flex items-center gap-2 mb-3">
-        <span className="h-2 w-2 rounded-full" style={{ background: tone }} />
-        <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: tone }}>{label}</span>
-      </div>
-      <div className={cn("grid gap-3", cols || "grid-cols-2 sm:grid-cols-3")}>{children}</div>
-    </div>
+  const TONE = { green: VG_NAVY, blue: VG_NAVY, violet: VG_NAVY, amber: VG_NAVY };
+  const Section = ({ label, children, cols, sub }: { tone?: string; label: string; children: React.ReactNode; cols?: string; sub?: string }) => (
+    <BlocoVG titulo={label} sub={sub}>
+      <div className={cn("grid gap-2", cols || "grid-cols-2 sm:grid-cols-3")}>{children}</div>
+    </BlocoVG>
   );
-  const Metric = ({ tone, label, value, color, big, onClick }: { tone: string; label: string; value: string | number; color?: string; big?: boolean; onClick?: () => void }) => (
+  const corMetric = (color: string | undefined, label: string, value: string | number) =>
+    color === "#f87171" || color === "#fb923c" ? VG_VERMELHO : color === "#34d399" && /meta|projet/i.test(label) && String(value).includes("%") ? VG_VERDE : VG_NAVY;
+  const Metric = ({ label, value, color, big, onClick }: { tone?: string; label: string; value: string | number; color?: string; big?: boolean; onClick?: () => void }) => (
     <div
-      className={cn("rounded-lg border bg-card p-4", onClick && "cursor-pointer hover:bg-muted/40 transition-colors")}
-      style={{ borderColor: `${tone}26` }}
+      className={cn("rounded-lg border border-border/60 bg-card p-3 min-w-0", onClick && "cursor-pointer hover:border-[#0D2B5E]/40 transition-colors")}
       onClick={onClick}
     >
-      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{label}{onClick ? " ›" : ""}</p>
-      <p className={cn("font-semibold mt-1.5 tabular-nums", big ? "text-2xl" : "text-lg")} style={color ? { color } : undefined}>{value}</p>
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground truncate">{label}{onClick ? " ›" : ""}</p>
+      <p className={cn("font-semibold mt-1 tabular-nums", big ? "text-2xl" : "text-lg")} style={{ color: corMetric(color, label, value) }}>{value}</p>
     </div>
   );
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="vg-tab p-4 md:p-6 space-y-4 max-w-7xl">
+      <style>{VG_CSS}</style>
+      <div>
+        <h2 className="text-lg font-bold" style={{ color: VG_NAVY }}>Pré vendas</h2>
+        <p className="text-xs text-muted-foreground">Leads, agendamentos, reuniões e desempenho dos SDRs no período.</p>
+      </div>
 
       {/* ── Filtros ── */}
       <div className="flex flex-wrap items-center gap-3">
         <Popover open={dateOpen} onOpenChange={setDateOpen}>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 gap-2 rounded-xl text-xs border-border ">
+            <Button variant="outline" size="sm" className="h-9 gap-2 rounded-lg text-xs border-border ">
               <CalendarIcon className="h-3.5 w-3.5" />
               {dateRange?.from ? (
                 dateRange.to ? (
@@ -924,7 +927,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
 
         <div className="ml-auto flex items-center gap-2">
           <CRMGoalStrategyDialog />
-          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="h-9 text-xs rounded-xl border-border bg-card/80">
+          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="h-9 text-xs rounded-lg border-border bg-card/80">
             <Upload className="h-3.5 w-3.5 mr-1.5" />
             Importar
           </Button>
@@ -947,14 +950,14 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
 
       {/* ── Detalhamento de Reuniões ── */}
       <div className="space-y-2.5">
-        <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Detalhamento das Reuniões</h3>
+        <h3 className="text-sm font-semibold">Detalhamento das reuniões</h3>
         <MeetingDetailCards events={selectedSDRs.length ? meetingEventDetails.filter(e => e.attributed_sdr_id && selectedSDRs.includes(e.attributed_sdr_id)) : meetingEventDetails} />
       </div>
 
       {/* ── Funil de Conversão 3D: Leads → Agendamentos → Realizadas → Vendas ── */}
-      <div className="rounded-xl border border-border bg-card p-4">
-        <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-foreground mb-2">
-          <Filter className="h-4 w-4 text-primary" /> Funil de Conversão
+      <div className="rounded-lg border border-border/60 bg-card p-4">
+        <div className="flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: VG_NAVY }}>
+          <Filter className="h-4 w-4" /> Funil de conversão
         </div>
         {(() => {
           const steps = [
@@ -965,10 +968,10 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
           ];
           // Cone 3D estilo infográfico (mesmo desenho do Quadro de Gestão à Vista)
           const PAL = [
-            { main: "#aab2bd", light: "#dde2e8", dark: "#7d8791" },
-            { main: "#7cb93e", light: "#a9d878", dark: "#568c22" },
-            { main: "#29a3c4", light: "#6fcbe2", dark: "#1b7a95" },
-            { main: "#e64560", light: "#f0808f", dark: "#b02742" },
+            { main: "#B9C6DA", light: "#DCE3EE", dark: "#8FA2C2" },
+            { main: "#7C93B8", light: "#A9B9D3", dark: "#5A729A" },
+            { main: "#3B5B8C", light: "#6D86AE", dark: "#2A4168" },
+            { main: "#0D2B5E", light: "#3B5B8C", dark: "#081C3F" },
           ];
           const n = steps.length;
           const sliceH = 44, gap = 10, cx = 118, top = 36;
@@ -1083,7 +1086,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
                   <TableCell className="text-center">{sdr.rescheduled}</TableCell>
                   <TableCell className="text-center font-semibold text-rose-400">{sdr.noShow}</TableCell>
                   <TableCell className="text-center">{sdr.qualified}</TableCell>
-                  <TableCell className="text-center font-semibold text-emerald-400">{sdr.meetings}</TableCell>
+                  <TableCell className="text-center font-semibold text-[color:var(--vg-navy)]">{sdr.meetings}</TableCell>
                   <TableCell className="text-center">
                     <Badge className={cn("text-[11px] font-semibold border-0", getNoShowBg(sdr.noShowPercent), getNoShowColor(sdr.noShowPercent))}>
                       {sdr.noShowPercent.toFixed(1)}%
@@ -1126,10 +1129,10 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
                 <BarChart data={dailyMeetingsData}>
                   <XAxis dataKey="day" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ borderRadius: "12px", fontSize: 12, border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.15)" }} />
+                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--popover))", color: "hsl(var(--popover-foreground))" }} />
                   <Legend />
                   {sdrs.map((sdr, i) => (
-                    <Bar key={sdr.id} dataKey={sdr.name} fill={["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"][i % 6]} stackId="a" radius={[4, 4, 0, 0]} />
+                    <Bar key={sdr.id} dataKey={sdr.name} fill={[...VG_AZ, "#CC1B1B", VG_CINZA][i % 6]} stackId="a" radius={[4, 4, 0, 0]} />
                   ))}
                 </BarChart>
               </ResponsiveContainer>
@@ -1151,10 +1154,10 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
                 <LineChart data={noShowData}>
                   <XAxis dataKey="day" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10 }} domain={[0, 50]} axisLine={false} tickLine={false} />
-                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} contentStyle={{ borderRadius: "12px", fontSize: 12, border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.15)" }} />
+                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--popover))", color: "hsl(var(--popover-foreground))" }} />
                   <Legend />
-                  <Line type="monotone" dataKey="noShow" name="No Show %" stroke="#EF4444" strokeWidth={2.5} dot={{ r: 2, fill: "#EF4444" }} />
-                  <Line type="monotone" dataKey="avg" name="Média" stroke="#6B7280" strokeDasharray="5 5" dot={false} />
+                  <Line type="monotone" dataKey="noShow" name="No Show %" stroke={VG_VERMELHO} strokeWidth={2} dot={{ r: 2, fill: VG_VERMELHO }} />
+                  <Line type="monotone" dataKey="avg" name="Média" stroke={VG_CINZA} strokeDasharray="5 5" dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -1176,12 +1179,12 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
               <LineChart data={callsVsCompletedData}>
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ borderRadius: "12px", fontSize: 12, border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.15)" }} />
+                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--popover))", color: "hsl(var(--popover-foreground))" }} />
                 <Legend />
-                <Line type="monotone" dataKey="agendamentos" name="Agendamentos" stroke="#3B82F6" strokeWidth={2.5} />
-                <Line type="monotone" dataKey="reunioes" name="Reuniões" stroke="#10B981" strokeWidth={2.5} />
-                <Line type="monotone" dataKey="cancelamentos" name="Cancelamentos" stroke="#F59E0B" strokeWidth={1.5} strokeDasharray="3 3" />
-                <Line type="monotone" dataKey="reagendamentos" name="Reagendamentos" stroke="#8B5CF6" strokeWidth={1.5} strokeDasharray="3 3" />
+                <Line type="monotone" dataKey="agendamentos" name="Agendamentos" stroke={VG_AZ[0]} strokeWidth={2.5} dot={false} />
+                <Line type="monotone" dataKey="reunioes" name="Reuniões" stroke={VG_AZ[1]} strokeWidth={2.5} dot={false} />
+                <Line type="monotone" dataKey="cancelamentos" name="Cancelamentos" stroke={VG_CINZA} strokeWidth={1.5} strokeDasharray="3 3" dot={false} />
+                <Line type="monotone" dataKey="reagendamentos" name="Reagendamentos" stroke={VG_AZ[3]} strokeWidth={1.5} strokeDasharray="3 3" dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>

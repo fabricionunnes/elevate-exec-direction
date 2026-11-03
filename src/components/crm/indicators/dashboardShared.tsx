@@ -1,7 +1,7 @@
 // Peças comuns dos dashboards de Atendimento, Atividades e Negócios (benchmark Datacrazy,
 // 30/09/2026): filtro de período (presets + intervalo livre), cards de KPI, moldura de
 // gráfico, diálogo de exportação pra Excel e lista de staff pros filtros.
-import { useEffect, useState, type ReactElement } from "react";
+import { useEffect, useState, type ReactElement, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,54 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { exportarXlsx } from "@/lib/exportXlsx";
 import { toast } from "sonner";
+
+// ---------------------------------------------------------------- visual da Visão geral
+// (03/11/2026, Fabrício: "Comercial e Pré vendas no mesmo estilo da Visão geral, cores, design").
+// Navy como cor única de destaque (variável CSS: no tema escuro clareia), tons de azul
+// acinzentado pras séries, verde/vermelho só em variação e alerta. Mesmas regras do VisaoGeralTab.
+export const VG_NAVY = "var(--vg-navy)";
+export const VG_AZ = ["var(--vg-navy)", "var(--vg-az2)", "var(--vg-az3)", "var(--vg-az4)"];
+/** mesmos tons em hex, pra SVG com gradiente (stop-color não aceita var()) */
+export const VG_AZ_HEX = ["#0D2B5E", "#3B5B8C", "#7C93B8", "#B9C6DA"];
+export const VG_VERDE = "#16a34a";
+export const VG_VERMELHO = "#dc2626";
+export const VG_CINZA = "#9CA3AF";
+export const VG_CSS = `
+:root{--vg-navy:#0D2B5E;--vg-navy-bg:#0D2B5E;--vg-navy-rgb:13,43,94;--vg-az2:#3B5B8C;--vg-az2-rgb:59,91,140;--vg-az3:#7C93B8;--vg-az4:#B9C6DA;--vg-mapa-a:#F7F9FC;--vg-mapa-b:#EEF2F8}
+.dark{--vg-navy:#A9C3F2;--vg-navy-bg:#2F5296;--vg-navy-rgb:122,160,232;--vg-az2:#86A5DC;--vg-az2-rgb:134,165,220;--vg-az3:#6384BD;--vg-az4:#46649A;--vg-mapa-a:#162033;--vg-mapa-b:#101827}
+.vg-tab h3{color:var(--vg-navy)}
+`;
+
+/** Moldura de seção da Visão geral: título navy, subtítulo discreto, sem fundo colorido. */
+export function BlocoVG({ titulo, sub, children, acao, dica, className }: { titulo: string; sub?: string; children: ReactNode; acao?: ReactNode; dica?: string; className?: string }) {
+  return (
+    <Card className={cn("border-border/60 shadow-none", className)}>
+      <CardContent className="p-4">
+        <div className="flex items-start gap-2 mb-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold" style={{ color: VG_NAVY }} title={dica}>{titulo}</p>
+            {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+          </div>
+          {acao && <div className="ml-auto shrink-0">{acao}</div>}
+        </div>
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Card de número da Visão geral: rótulo em caixa alta, valor navy. Vermelho/verde só pra alerta. */
+export function KpiVG({ label, valor, sub, cor, dica, onClick, big }: { label: string; valor: string | number; sub?: string; cor?: string; dica?: string; onClick?: () => void; big?: boolean }) {
+  const Tag: any = onClick ? "button" : "div";
+  return (
+    <Tag type={onClick ? "button" : undefined} onClick={onClick} title={dica || sub}
+      className={cn("text-left rounded-lg border border-border/60 bg-card p-3 transition-colors min-w-0", onClick ? "hover:border-[#0D2B5E]/40 cursor-pointer" : "")}>
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground truncate">{label}{onClick ? " ›" : ""}</p>
+      <p className={cn("font-semibold tabular-nums mt-1", big ? "text-2xl" : "text-lg")} style={{ color: cor || VG_NAVY }}>{valor}</p>
+      {sub && <p className="text-[11px] mt-0.5 text-muted-foreground truncate">{sub}</p>}
+    </Tag>
+  );
+}
 
 export const C = { azul: "#2a78d6", verde: "#1baf7a", violeta: "#4a3aa7", amarelo: "#eda100", vermelho: "#d4321c", laranja: "#eb6834", cinza: "#6b7280" };
 export const SERIES = [C.azul, C.verde, C.violeta, C.amarelo, C.laranja, "#e87ba4", "#008300", "#666"];
