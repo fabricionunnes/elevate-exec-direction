@@ -36,6 +36,17 @@ interface ExtraGoalInfo {
   rewardAmount: number; // R$ que a premiação adiciona (0 se não bateu)
 }
 
+// Metas vinculadas à comissão (Fabrício, 03/11/2026): a faixa só libera quando TODAS as metas
+// marcadas atingem o % da faixa. Cada item mostra onde o closer está em cada uma.
+interface RequisitoInfo {
+  label: string;
+  achieved: number;
+  meta: number;
+  percent: number;
+  unit: string; // currency | percentage | number
+  isPrimary: boolean;
+}
+
 interface CommissionData {
   staffId: string;
   staffName: string;
@@ -46,6 +57,9 @@ interface CommissionData {
   achieved: number;
   metaValue: number;
   achievedPercent: number;
+  // % usado nas faixas: o MENOR atingimento entre a meta principal e as vinculadas
+  commissionPercent: number;
+  requisitos: RequisitoInfo[];
   tierLabel: string;
   tiers: TierInfo[];
   bonuses: BonusInfo[];
@@ -107,7 +121,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
         // mas com FALLBACK pra tipo sem has_ote (senão o card vinha vazio = "não abre nada")
         const { data: allGoalTypes } = await supabase
           .from("crm_goal_types")
-          .select("id, name, category, has_ote")
+          .select("id, name, category, has_ote, unit_type")
           .eq("is_active", true);
 
         if (!allGoalTypes?.length) { setLoading(false); return; }
@@ -122,11 +136,13 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
         const goalTypes = [closerOte, sdrOte].filter(Boolean) as { id: string; name: string; category: string | null }[];
         if (!goalTypes.length) { setLoading(false); return; }
 
-        const goalTypeIds = goalTypes.map(g => g.id);
+        // Além da principal, carrega as metas complementares do closer (quantidade, conversão,
+        // ticket médio, reuniões): são elas que podem estar vinculadas à faixa.
+        const goalTypeIds = Array.from(new Set([...goalTypes.map(g => g.id), ...allGoalTypes.filter(t => t.category === "closer").map(t => t.id)]));
 
         const { data: goalValues } = await supabase
           .from("crm_goal_values")
-          .select("id, staff_id, goal_type_id, meta_value, ote_base, super_meta_value, hiper_meta_value, super_meta_bonus_text, super_meta_bonus_value, super_meta_bonus_image_url, hiper_meta_bonus_text, hiper_meta_bonus_value, hiper_meta_bonus_image_url")
+          .select("id, staff_id, goal_type_id, meta_value, ote_base, super_meta_value, hiper_meta_value, super_meta_bonus_text, super_meta_bonus_value, super_meta_bonus_image_url, hiper_meta_bonus_text, hiper_meta_bonus_value, hiper_meta_bonus_image_url, commission_goal_type_ids")
           .in("goal_type_id", goalTypeIds)
           .eq("month", currentMonth)
           .eq("year", currentYear)
@@ -173,10 +189,28 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
         // concluídas) contava 3 quando as reais eram 28 — comissão zerava errado.
         const { data: meetingEventsData } = await supabase
           .from("crm_meeting_events")
-          .select("lead_id, event_date, credited_staff_id, lead:crm_leads!crm_meeting_events_lead_id_fkey(sdr_staff_id, scheduled_by_staff_id)")
+          .select("lead_id, event_date, credited_staff_id, lead:crm_leads!crm_meeting_events_lead_id_fkey(sdr_staff_id, scheduled_by_staff_id, owner_staff_id)")
           .eq("event_type", "realized")
           .gte("event_date", monthStart.toISOString())
           .lte("event_date", monthEnd.toISOString());
+        // Reuniões realizadas POR CLOSER: mesma régua do dashboard Comercial (SalesIndicatorsTab):
+        // closer creditado na baixa; se nenhum não-SDR foi creditado, o dono do lead. Dedup lead+minuto.
+        const realizedByCloser = new Map<string, number>();
+        {
+          const { data: rolesRows } = await supabase.from("onboarding_staff").select("id, role");
+          const roleOf = new Map((rolesRows || []).map((r: any) => [r.id, r.role]));
+          const preSales = new Set(["sdr", "social_setter", "bdr"]);
+          const grupos = new Map<string, string | null>();
+          (meetingEventsData || []).forEach((ev: any) => {
+            const k = `${ev.lead_id}|${String(ev.event_date).slice(0, 16)}`;
+            const cred = ev.credited_staff_id as string | null;
+            const credCloser = cred && !preSales.has(roleOf.get(cred) || "") ? cred : null;
+            const atual = grupos.get(k);
+            if (!grupos.has(k)) grupos.set(k, credCloser || ev.lead?.owner_staff_id || null);
+            else if (!atual && credCloser) grupos.set(k, credCloser);
+          });
+          grupos.forEach((owner) => { if (owner) realizedByCloser.set(owner, (realizedByCloser.get(owner) || 0) + 1); });
+        }
         const realizedBySdr = new Map<string, number>();
         {
           const seen = new Set<string>();
@@ -241,12 +275,45 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
 
           const achievedPercent = metaValue > 0 ? (achieved / metaValue) * 100 : 0;
 
+          // Metas vinculadas à comissão (closer): quantidade de vendas, conversão, ticket médio,
+          // reuniões. A faixa usa o MENOR atingimento entre a principal e as vinculadas.
+          const requisitos: RequisitoInfo[] = [];
+          let commissionPercent = achievedPercent;
+          if (staff.role === "closer" || (!isHead && staff.role !== "sdr")) {
+            const minhasVendas = (salesData || []).filter((s: any) => s.closer_staff_id === staff.id);
+            const fat = minhasVendas.reduce((sum: number, s: any) => sum + (Number(s.billing_value) || 0), 0);
+            const qtd = minhasVendas.length;
+            const reun = realizedByCloser.get(staff.id) || 0;
+            const medidaDe = (nome: string): number | null => {
+              const n = nome.toLowerCase();
+              if (n.includes("quantidade")) return qtd;
+              if (n.includes("ticket")) return qtd > 0 ? fat / qtd : 0;
+              if (n.includes("convers")) return reun > 0 ? (qtd / reun) * 100 : 0;
+              if (n.includes("reuni")) return reun;
+              if (n === "vendas") return fat;
+              return null;
+            };
+            requisitos.push({ label: goalType.name, achieved, meta: metaValue, percent: achievedPercent, unit: (goalType as any).unit_type || "currency", isPrimary: true });
+            const reqIds: string[] = Array.isArray((goalValue as any).commission_goal_type_ids) ? (goalValue as any).commission_goal_type_ids : [];
+            for (const tid of reqIds) {
+              const t = allGoalTypes.find(x => x.id === tid);
+              const gv = goalValues.find(g => g.staff_id === staff.id && g.goal_type_id === tid);
+              const meta = Number(gv?.meta_value) || 0;
+              if (!t || meta <= 0) continue;
+              const m = medidaDe(t.name);
+              if (m === null) continue;
+              const pct = (m / meta) * 100;
+              requisitos.push({ label: t.name, achieved: m, meta, percent: pct, unit: (t as any).unit_type || "number", isPrimary: false });
+              commissionPercent = Math.min(commissionPercent, pct);
+            }
+          }
+
           const staffTiers = (tiers || []).filter(t => t.goal_value_id === goalValue.id);
           let commission = 0;
           let tierLabel = "Sem comissão";
 
           for (const tier of staffTiers) {
-            if (achievedPercent >= tier.min_percent && achievedPercent <= tier.max_percent) {
+            if (commissionPercent >= tier.min_percent && commissionPercent <= tier.max_percent) {
               commission = tier.commission_value;
               tierLabel = `${tier.min_percent}%–${tier.max_percent}%`;
               break;
@@ -255,7 +322,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
 
           if (staffTiers.length > 0 && commission === 0) {
             const lastTier = staffTiers[staffTiers.length - 1];
-            if (achievedPercent > lastTier.max_percent) {
+            if (commissionPercent > lastTier.max_percent) {
               commission = lastTier.commission_value;
               tierLabel = `Acima de ${lastTier.min_percent}%`;
             }
@@ -274,8 +341,8 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
             const tierMinValue = minParaFaixa(tier.min_percent);
             const missingValue = Math.max(0, tierMinValue - achieved);
             const dailyNeeded = remainingDays > 0 ? missingValue / remainingDays : missingValue;
-            const isCurrentTier = achievedPercent >= tier.min_percent && achievedPercent <= tier.max_percent;
-            const isAchieved = achievedPercent >= tier.min_percent;
+            const isCurrentTier = commissionPercent >= tier.min_percent && commissionPercent <= tier.max_percent;
+            const isAchieved = commissionPercent >= tier.min_percent;
 
             return {
               minPercent: tier.min_percent,
@@ -388,6 +455,8 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
             achieved,
             metaValue,
             achievedPercent: Math.round(achievedPercent),
+            commissionPercent: Math.round(commissionPercent),
+            requisitos,
             tierLabel,
             tiers: tierInfos,
             bonuses,
@@ -633,6 +702,35 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
         </Badge>
         <span className="text-[10px] text-muted-foreground">({data.tierLabel})</span>
       </div>
+
+      {/* Metas vinculadas à comissão: a faixa só libera quando todas batem o % */}
+      {data.requisitos.length > 1 && (
+        <div className="mt-2 rounded-lg border border-border/50 bg-muted/30 p-2.5">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] font-semibold text-foreground">Metas vinculadas à comissão</span>
+            <span className="text-[10px] text-muted-foreground">faixa pelo menor: <span className="font-semibold text-foreground">{data.commissionPercent}%</span></span>
+          </div>
+          <div className="space-y-1">
+            {data.requisitos.map((r) => {
+              const fmt = (v: number) => r.unit === "currency" ? formatCurrency(v) : r.unit === "percentage" ? `${v.toFixed(1)}%` : Math.round(v).toLocaleString("pt-BR");
+              const segura = Math.round(r.percent) === data.commissionPercent && data.commissionPercent < 100;
+              return (
+                <div key={r.label} className="flex items-center justify-between text-[11px]">
+                  <span className={segura ? "text-orange-700 dark:text-orange-400 font-medium" : "text-muted-foreground"}>
+                    {r.label}{r.isPrimary ? "" : ""}{segura ? " (segurando a faixa)" : ""}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-muted-foreground">{fmt(r.achieved)} / {fmt(r.meta)}</span>
+                    <Badge variant="secondary" className={`text-[10px] font-bold ${r.percent >= 100 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : r.percent >= 70 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"}`}>
+                      {Math.round(r.percent)}%
+                    </Badge>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Earnings Summary */}
       {(() => {
