@@ -32,18 +32,18 @@ type SendLoggedWhatsAppTextArgs = {
   staffId?: string;
 };
 
-export async function sendLoggedWhatsAppText({
+
+/**
+ * Acha (ou cria) o contato e a conversa do número nessa instância, sem mandar mensagem.
+ * 03/11/2026, Fabrício: o botão de mensagem do lead abre direto a conversa no Atendimento;
+ * quando o lead ainda não tem conversa na instância escolhida, ela nasce aqui.
+ */
+export async function ensureWhatsAppConversation({
   instanceId,
   phoneRaw,
-  message,
   leadId,
   leadName,
-  staffId,
-}: SendLoggedWhatsAppTextArgs): Promise<{ conversationId: string; messageId: string }>
-{
-  const msg = (message || "").trim();
-  if (!msg) throw new Error("Mensagem vazia");
-
+}: { instanceId: string; phoneRaw: string; leadId?: string; leadName?: string }): Promise<{ conversationId: string; contactId: string; formatted: string }> {
   const { formatted, suffix8, suffix9 } = normalizeBrPhoneDigits(phoneRaw);
   if (!formatted) throw new Error("Telefone inválido");
 
@@ -68,7 +68,10 @@ export async function sendLoggedWhatsAppText({
     const cDigits = (c.phone || "").replace(/\D/g, "");
     if (cDigits.length > 15 || cDigits.length < 8) return false;
     if ((c.phone || "").includes("@") || (c.phone || "").includes("-")) return false;
-    return cDigits.slice(-8) === suffix8 || cDigits.slice(-9) === suffix9;
+    // mesmo DDD + mesmos 8 últimos dígitos (03/11/2026: só o final casava 51 99733333 com 62 99733333)
+    const chave = (d: string) => { let x = d; if (x.length >= 12 && x.startsWith("55")) x = x.slice(2); if (x.length >= 11 && x.startsWith("0")) x = x.slice(1); return x.length >= 10 ? x.slice(0, 2) + x.slice(-8) : null; };
+    const kc = chave(cDigits), kf = chave(formatted);
+    return !!kc && !!kf && kc === kf;
   });
 
   let contactId: string;
@@ -147,6 +150,26 @@ export async function sendLoggedWhatsAppText({
       .update({ lead_id: leadId })
       .eq("id", conversationId);
   }
+
+  return { conversationId: conversationId as string, contactId, formatted };
+}
+
+export async function sendLoggedWhatsAppText({
+  instanceId,
+  phoneRaw,
+  message,
+  leadId,
+  leadName,
+  staffId,
+}: SendLoggedWhatsAppTextArgs): Promise<{ conversationId: string; messageId: string }>
+{
+  const msg = (message || "").trim();
+  if (!msg) throw new Error("Mensagem vazia");
+
+  const { formatted } = normalizeBrPhoneDigits(phoneRaw);
+  if (!formatted) throw new Error("Telefone inválido");
+
+  const { conversationId } = await ensureWhatsAppConversation({ instanceId, phoneRaw, leadId, leadName });
 
   // 3) Insert outbound message (pending)
   const { data: newMsg, error: insertMsgErr } = await supabase
