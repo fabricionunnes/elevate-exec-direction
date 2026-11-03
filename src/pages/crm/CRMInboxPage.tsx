@@ -1360,7 +1360,8 @@ export const CRMInboxPage = () => {
                   setSelectedConversation(conv);
                   // Mark as read immediately on click (e tira da fila "Esperando resposta")
                   if (conv.unread_count > 0) {
-                    markAsRead(conv.id);
+                    if (conv.channel === "instagram") markIgAsRead(conv.id);
+                    else markAsRead(conv.id);
                   }
                 }}
                 className={cn(
@@ -1713,7 +1714,7 @@ export const CRMInboxPage = () => {
                           <div className="hidden text-sm text-muted-foreground italic">
                             📷 Imagem não disponível
                           </div>
-                          {message.content && message.content !== "[Imagem]" && (
+                          {message.content && !/^\[[^\]]{1,20}\]$/.test(message.content) && (
                             <p className="text-sm whitespace-pre-wrap"><TextoWhatsApp texto={message.content} /></p>
                           )}
                           {/* Receipt analysis button for inbound images when company has open invoices */}
@@ -1724,6 +1725,24 @@ export const CRMInboxPage = () => {
                               companyName={identifiedCompany.name}
                             />
                           )}
+                        </div>
+                      ) : message.media_url && /instagram\.com\/(reel|reels|p)\//i.test(message.media_url) ? (
+                        /* Reel ou post do Instagram compartilhado na DM (03/11/2026): a Meta manda só o link da
+                           publicação, não o arquivo. Mostra o player oficial do Instagram e o link. */
+                        <div className="space-y-1">
+                          <iframe
+                            src={`${message.media_url.replace(/\/?(\?.*)?$/, "")}/embed/`}
+                            title="Publicação do Instagram"
+                            className="w-[320px] max-w-full h-[470px] rounded-md border-0 bg-white"
+                            loading="lazy"
+                            allow="encrypted-media"
+                          />
+                          {message.transcription && (
+                            <p className="text-xs text-muted-foreground whitespace-pre-wrap">{message.transcription}</p>
+                          )}
+                          <a href={message.media_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
+                            Abrir no Instagram
+                          </a>
                         </div>
                       ) : message.type === "video" && message.media_url ? (
                         <div className="space-y-2">
@@ -1740,7 +1759,7 @@ export const CRMInboxPage = () => {
                           <div className="hidden text-sm text-muted-foreground italic">
                             🎥 Vídeo não disponível
                           </div>
-                          {message.content && message.content !== "[Vídeo]" && (
+                          {message.content && !/^\[[^\]]{1,20}\]$/.test(message.content) && (
                             <p className="text-sm whitespace-pre-wrap"><TextoWhatsApp texto={message.content} /></p>
                           )}
                         </div>
