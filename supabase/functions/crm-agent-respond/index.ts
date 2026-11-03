@@ -1302,6 +1302,12 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
           return h >= hs && h < he;
         });
         results.push(`${staff.name} (${date}): ${slots.length ? slots.join(", ") : "nenhum horário livre nessa janela"}`);
+        // Anti no-show (03/11/2026): reunião de manhã comparece mais (10h-11h: 7 realizadas x 1 falta;
+        // 15h: 4 x 5 nos últimos 75 dias). O agente oferece primeiro os da manhã.
+        {
+          const manha = slots.filter((s)=>{ const h = parseInt(s.split(":")[0], 10); return h >= 9 && h <= 11; });
+          if (manha.length) results.push(`Prefira oferecer primeiro (manhã): ${manha.join(", ")}`);
+        }
         // Dia cheio: já devolve o dia seguinte com agenda (Fabrício, 03/11/2026: "tem que agendar
         // para o dia e horário mais próximo, no mesmo dia outro horário ou no máximo no dia seguinte").
         if (!slots.length) {
@@ -1311,7 +1317,7 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
         }
       }
       const out = results.join("\n") || "Nenhum closer configurado.";
-      return out + "\n\nIMPORTANTE: ofereça APENAS horários desta lista, exatamente como estão. Se o lead já escolheu um horário que está nesta lista, NÃO ofereça de novo: chame agendar_reuniao AGORA com esse horário. Se o dia pedido está cheio, ofereça o dia seguinte listado acima, nunca pule pra semana seguinte.";
+      return out + "\n\nIMPORTANTE: ofereça APENAS horários desta lista, exatamente como estão. Se o lead já escolheu um horário que está nesta lista, NÃO ofereça de novo: chame agendar_reuniao AGORA com esse horário. Se o dia pedido está cheio, ofereça o dia seguinte listado acima, nunca pule pra semana seguinte. Ofereça primeiro os horários marcados como preferidos (manhã) e sempre o dia mais próximo.";
     }
     if (name === "salvar_dados_lead") {
       const campos = await salvarDadosLead(supabase, leadId, input);
@@ -1456,6 +1462,12 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
           ascending: false
         }).limit(1).maybeSingle();
         if (anterior && Date.parse(anterior.scheduled_at) !== Date.parse(startISO)) {
+          // SÓ UMA REMARCAÇÃO (03/11/2026, Fabrício): lead que remarca de novo vai pro humano.
+          // Conta remarcações anteriores do agente nos últimos 90 dias (evento movido ou substituído).
+          const { count: jaRemarcou } = await supabase.from("crm_activities").select("id", { count: "exact", head: true }).eq("lead_id", leadId).eq("type", "meeting").gte("created_at", new Date(Date.now() - 90 * 86400000).toISOString()).or("description.ilike.Remarcada pelo agente%,description.ilike.Substituída por remarcação%");
+          if ((jaRemarcou || 0) >= 1) {
+            return `Erro: este lead JÁ remarcou a reunião uma vez. Não remarque de novo e não ofereça horário: chame transferir_para_humano AGORA com o motivo "lead pediu a segunda remarcação" e diga ao lead, em uma frase, que o ${staff.name} vai falar com ele direto pra combinar. A reunião atual continua marcada até lá.`;
+          }
           const quandoAntes = new Date(anterior.scheduled_at).toLocaleString("pt-BR", {
             timeZone: "America/Sao_Paulo",
             day: "2-digit",
@@ -1497,7 +1509,7 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
               notes: `Reunião remarcada pelo agente de IA: de ${quandoAntes} para ${m[1].split("-").reverse().join("/")} ${m[2]}:${m[3]}. Evento movido no Google Agenda.`
             }).then(()=>{}, ()=>{});
             await salvarDadosLead(supabase, leadId, input);
-            return `Reunião REMARCADA com ${staff.name} para ${m[1]} às ${m[2]}:${m[3]} (era ${quandoAntes}). O evento foi movido na agenda e o link continua o MESMO${linkMeet ? `: ${linkMeet}` : ""}. Avise o lead do novo horário e, se for mandar link, mande este.`;
+            return `Reunião REMARCADA com ${staff.name} para ${m[1]} às ${m[2]}:${m[3]} (era ${quandoAntes}). O evento foi movido na agenda e o link continua o MESMO${linkMeet ? `: ${linkMeet}` : ""}. Avise o lead do novo horário e, se for mandar link, mande este. Na mesma mensagem, diga que a agenda do ${staff.name} é cheia e que esse horário ficou separado pra ele, então conte com ele. Não fale de remarcar nem de imprevisto.`;
           }
           // não deu pra mover: tira o antigo da agenda e cancela no CRM, depois cria o novo
           try {
@@ -1519,6 +1531,9 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
           }).eq("id", anterior.id);
         }
       }
+      // Anti no-show (03/11/2026): o lead entra como convidado do evento e recebe o convite do
+      // Google no e-mail (a função create-event manda com sendUpdates=all).
+      const emailConvite = (()=>{ const e = String(input?.email || "").trim() || String(leadRow?.email || "").trim(); return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? e : ""; })();
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/google-calendar?action=create-event`, {
         method: "POST",
         headers: {
@@ -1530,7 +1545,8 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
           description,
           startDateTime: startISO,
           endDateTime: endISO,
-          target_user_id: staff.user_id
+          target_user_id: staff.user_id,
+          ...(emailConvite ? { attendees: [emailConvite] } : {})
         })
       });
       const ev = await resp.json();
@@ -1627,7 +1643,7 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
         console.error("[crm-agent-respond] falha ao notificar SDR:", e);
       }
       const link = ev.event?.meetingLink ? ` Link da reunião: ${ev.event.meetingLink}` : "";
-      return `Reunião agendada com ${staff.name} em ${m[1]} às ${m[2]}:${m[3]}.${link}`;
+      return `Reunião agendada com ${staff.name} em ${m[1]} às ${m[2]}:${m[3]}.${link}${emailConvite ? ` O convite do Google Agenda foi enviado pro e-mail ${emailConvite}.` : ""} AGORA, na sua mensagem: passe dia, horário e o link; diga que a agenda do ${staff.name} é cheia e que esse horário ficou separado pra ele, então conte com ele nesse horário; e pergunte se ele vai entrar pelo computador ou pelo celular. Não fale de remarcar nem de imprevisto.`;
     }
     if (name === "marcar_fora_do_perfil") {
       if (!leadId) return "Erro: conversa sem negócio vinculado.";
@@ -2870,6 +2886,95 @@ Deno.serve(async (req)=>{
         }
       } catch (e) {
         silencio.push(`retornos: ${String(e?.message || e).slice(0, 120)}`);
+      }
+      // CONFIRMAÇÃO DE PRESENÇA (03/11/2026, Fabrício: "muitos clientes agendando reunião com o agente
+      // de IA e não comparecem, chega na hora remarca"). Nos 75 dias medidos, 40% das reuniões da IA
+      // com desfecho deram no-show. Véspera (18h): pede confirmação com o micro-compromisso. 1h antes:
+      // lembrete com o link. Se pedimos confirmação na véspera e o lead não deu sinal de vida, o horário
+      // é liberado na agenda e o closer avisado. Rastro em crm_activities.automation_config.confirmacao_ia.
+      // Reunião marcada no mesmo dia só recebe o lembrete de 1h e nunca é liberada.
+      try {
+        const agoraC = Date.now();
+        const horaBRc = new Date(agoraC - 3 * 3600000).getUTCHours();
+        const amanhaBR = new Date(agoraC - 3 * 3600000 + 86400000).toISOString().slice(0, 10);
+        const { data: reunioes } = await supabase.from("crm_activities").select("id, lead_id, scheduled_at, created_at, ai_agent_id, responsible_staff_id, meeting_link, google_calendar_event_id, google_calendar_user_id, automation_config").eq("type", "meeting").eq("status", "pending").not("ai_agent_id", "is", null).not("lead_id", "is", null).gte("scheduled_at", new Date(agoraC).toISOString()).lte("scheduled_at", new Date(agoraC + 36 * 3600000).toISOString()).order("scheduled_at").limit(30);
+        for (const ru of reunioes || []){
+          const cfgAtual = ru.automation_config && typeof ru.automation_config === "object" ? ru.automation_config : {};
+          const conf = cfgAtual.confirmacao_ia && typeof cfgAtual.confirmacao_ia === "object" ? cfgAtual.confirmacao_ia : {};
+          const ini = Date.parse(ru.scheduled_at);
+          if (!ini) continue;
+          const diaReuniaoBR = new Date(ini - 3 * 3600000).toISOString().slice(0, 10);
+          const minAte = (ini - agoraC) / 60000;
+          const marcadaHaMs = agoraC - (Date.parse(ru.created_at) || agoraC);
+          let etapa = null;
+          if (!conf.vespera_at && !conf.vespera_erro && diaReuniaoBR === amanhaBR && horaBRc >= 18 && horaBRc < 21 && marcadaHaMs >= 3 * 3600000) etapa = "vespera";
+          else if (!conf.h1_at && !conf.h1_erro && minAte >= 40 && minAte <= 75) etapa = "h1";
+          if (!etapa) continue;
+          if (!body0.ignore_quiet_hours && (horaBRc < 7 || horaBRc >= 22)) continue;
+          const { data: agent } = await supabase.from("crm_ai_agents").select("*").eq("id", ru.ai_agent_id).maybeSingle();
+          if (!agent || !agent.is_active) continue;
+          // conversa mais recente do lead (WhatsApp ou Instagram): é por ela que o agente falou com ele
+          const { data: cvW } = await supabase.from("crm_whatsapp_conversations").select("id, instance_id, official_instance_id, last_message_at, contact:crm_whatsapp_contacts(name, phone)").eq("lead_id", ru.lead_id).order("last_message_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
+          const { data: cvI } = await supabase.from("instagram_conversations").select("id, instance_id, last_message_at, contact:instagram_contacts(name, username)").eq("lead_id", ru.lead_id).order("last_message_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
+          const isBIG = !!cvI && (!cvW || (Date.parse(cvI.last_message_at || "") || 0) > (Date.parse(cvW.last_message_at || "") || 0));
+          const cv = isBIG ? cvI : cvW;
+          if (!cv) { silencio.push(`confirmação ${ru.id}: lead sem conversa`); continue; }
+          const msgTable = isBIG ? "instagram_messages" : "crm_whatsapp_messages";
+          const tsCol = isBIG ? "timestamp" : "created_at";
+          const { data: ov } = await supabase.from("crm_ai_agent_conversation_overrides").select("enabled, agent_id, locked").eq("conversation_id", cv.id).eq("channel", isBIG ? "instagram" : "whatsapp").maybeSingle();
+          if (ov && ov.enabled === false) continue; // humano assumiu a conversa: não mexe
+          if (await resolveAgentMode(supabase, agent, ru.lead_id, ov) !== "auto") continue;
+          const { data: staffC } = ru.responsible_staff_id ? await supabase.from("onboarding_staff").select("id, name, phone").eq("id", ru.responsible_staff_id).maybeSingle() : { data: null };
+          const closer = staffC?.name || "nosso consultor";
+          const hhmm = new Date(ini).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+          const nomeLead = (()=>{ const n = String(cv.contact?.name || "").trim(); return n && !/^@?[\d\s()+-]+$/.test(n) && !n.startsWith("@") ? n.split(" ")[0] : ""; })();
+          const oi = nomeLead ? `${nomeLead}, ` : "";
+          const salvarConf = (patch)=>supabase.from("crm_activities").update({ automation_config: { ...cfgAtual, confirmacao_ia: { ...conf, ...patch } } }).eq("id", ru.id);
+          let liberar = false;
+          let texto;
+          if (etapa === "vespera") {
+            texto = `${oi}passando pra confirmar nossa reunião de amanhã às ${hhmm} com ${closer}. A agenda dele está cheia, então esse horário ficou separado pra você. Posso confirmar sua presença?`;
+          } else {
+            // pedimos confirmação há 3h ou mais e o lead não falou nada desde então: libera o horário
+            if (conf.vespera_at && agoraC - Date.parse(conf.vespera_at) >= 3 * 3600000) {
+              const { count: respostas } = await supabase.from(msgTable).select("id", { count: "exact", head: true }).eq("conversation_id", cv.id).eq("direction", "inbound").gte(tsCol, conf.vespera_at);
+              if (!(respostas || 0)) liberar = true;
+            }
+            texto = liberar ? `${oi}como não tive seu retorno, liberei o horário das ${hhmm} com ${closer} pra outra pessoa. Quando quiser retomar, me chama por aqui que eu vejo o próximo horário livre.` : `${oi}sua reunião com ${closer} é daqui a 1 hora, às ${hhmm}.${ru.meeting_link ? ` Link: ${ru.meeting_link}` : ""} Entra uns minutinhos antes que ele já vai estar te esperando.`;
+          }
+          if (body0.dry_run) { results.push(`[dry confirmação ${etapa}${liberar ? "/liberar" : ""}] ${isBIG ? "instagram" : "whatsapp"}/${cv.id}: ${texto.slice(0, 80)}`); continue; }
+          let okC = false, remoteIdC = null, isV2C = false;
+          if (isBIG) {
+            const { error: se } = await supabase.functions.invoke("instagram-send", { body: { conversationId: cv.id, message: texto, staffId: null } });
+            okC = !se;
+          } else {
+            const ph = String(cv.contact?.phone || "").replace(/\D/g, "");
+            const sent = !cv.instance_id && cv.official_instance_id ? await sendOfficialText(supabase, cv.official_instance_id, ph, texto) : await sendWhatsAppText(supabase, cv.instance_id, ph, texto);
+            okC = !!sent.ok; remoteIdC = sent.remoteId || null; isV2C = !!sent.isV2;
+          }
+          if (!okC) { silencio.push(`confirmação ${etapa} ${ru.id}: envio falhou`); await salvarConf({ [`${etapa}_erro`]: new Date().toISOString() }); continue; }
+          if (!isBIG && !isV2C) await supabase.from("crm_whatsapp_messages").insert({ conversation_id: cv.id, content: texto, type: "text", direction: "outbound", status: "sent", remote_id: remoteIdC, is_ai: true, sent_by: null });
+          if (!isBIG) await supabase.from("crm_whatsapp_conversations").update({ last_message: texto.substring(0, 255), last_message_at: new Date().toISOString() }).eq("id", cv.id);
+          await supabase.from("crm_ai_agent_runs").insert({ agent_id: agent.id, channel: isBIG ? "instagram" : "whatsapp", conversation_id: cv.id, mode: "confirmacao", outcome: liberar ? "sent (horário liberado)" : `sent (confirmação ${etapa})`, reply: texto }).then(()=>{}, ()=>{});
+          await salvarConf({ [`${etapa}_at`]: new Date().toISOString(), ...(liberar ? { liberado_at: new Date().toISOString() } : {}) });
+          if (liberar) {
+            if (ru.google_calendar_event_id) {
+              try {
+                await fetch(`${SUPABASE_URL}/functions/v1/google-calendar?action=delete-event`, { method: "POST", headers: { Authorization: `Bearer ${SERVICE_ROLE}`, "Content-Type": "application/json" }, body: JSON.stringify({ eventId: ru.google_calendar_event_id, target_user_id: ru.google_calendar_user_id }) });
+              } catch (_) {}
+            }
+            await supabase.from("crm_activities").update({ status: "cancelled", description: `Horário liberado pelo agente IA "${agent.name}": o lead não confirmou presença` }).eq("id", ru.id);
+            const { data: ld } = await supabase.from("crm_leads").select("id, name, company, phone").eq("id", ru.lead_id).maybeSingle();
+            const quemL = ld?.name || cv.contact?.name || "lead";
+            if (staffC?.id) await supabase.from("onboarding_notifications").insert({ staff_id: staffC.id, type: "crm_meeting_released", title: `Reunião liberada: ${quemL} não confirmou`.slice(0, 140), message: `A reunião de hoje às ${hhmm} foi cancelada pelo agente de IA: o lead não respondeu ao pedido de confirmação de ontem. O horário já está livre na sua agenda.`, reference_id: ru.lead_id, reference_type: "crm_lead", priority: "high" }).then(()=>{}, ()=>{});
+            const digitsC = String(staffC?.phone || "").replace(/\D/g, "");
+            const numC = digitsC ? digitsC.startsWith("55") ? digitsC : `55${digitsC}` : "5531989840003";
+            await sendWhatsAppAlert(supabase, numC, ["Reunião liberada pelo agente de IA", "", `Lead: ${quemL}${ld?.company ? ` (${ld.company})` : ""}`, `Era hoje às ${hhmm} com ${closer}. O lead não respondeu ao pedido de confirmação de ontem, então o horário foi liberado na agenda.`, ld?.phone ? `Telefone: ${ld.phone}` : null, `Link no CRM: https://unvholdings.com.br/#/crm/leads/${ru.lead_id}`].filter(Boolean).join("\n")).then(()=>{}, ()=>{});
+          }
+          results.push(`confirmação ${etapa}${liberar ? "/liberado" : ""} ${ru.id}: enviada`);
+        }
+      } catch (e) {
+        silencio.push(`confirmações: ${String(e?.message || e).slice(0, 120)}`);
       }
       // RESGATE (19/09/2026): lead falou por último, o agente está ligado e nenhuma execução
       // aconteceu depois da mensagem dele (disparo perdido, erro da IA, debounce antigo).
@@ -4154,7 +4259,7 @@ Deno.serve(async (req)=>{
         equipeTexto,
         calendarioPrompt(agent),
         `\n\nData/hora atual (Brasília): ${nowBR}. A saudação (bom dia/boa tarde/boa noite) segue ESTA hora — nunca repita a saudação do lead se ela não bater com o horário.`,
-        qtdFerramentasBase ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou; (5) ANTES de chamar agendar_reuniao, você precisa do NOME, do E-MAIL e do TELEFONE/WhatsApp do lead — peça numa única mensagem curta SOMENTE o que faltar e não estiver em DADOS JÁ CADASTRADOS (se nada faltar, agende direto, sem pedir confirmação de dados) e só chame a ferramenta quando tiver tudo; se você já sabe o nome dele pela conversa, não pergunte de novo — pergunte só o que falta; (6) passe email, telefone e nome_completo nos parâmetros de agendar_reuniao — eles vão pro cadastro do lead no CRM; (7) HORÁRIO CHEIO: se o horário que o lead escolheu já ocupou, ofereça o MAIS PRÓXIMO: outro horário no mesmo dia e, só se não houver, o dia seguinte com agenda. Nunca proponha a semana seguinte enquanto houver horário antes; (8) DIA COMBINADO EM MENSAGEM ANTIGA: as mensagens de dias anteriores vêm com carimbo [dia dd/mm hh:mm]. Um dia da semana escrito ali ("terça", "amanhã") vale pra data que ele tinha NAQUELE momento, não pra hoje. Se o lead topou "terça às 15h" numa sexta 31/10, a reunião é terça 03/11; se esse dia já chegou e o horário ocupou, aplique a regra (7). Nunca escreva o carimbo nas suas mensagens.` : "",
+        qtdFerramentasBase ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou; (5) ANTES de chamar agendar_reuniao, você precisa do NOME, do E-MAIL e do TELEFONE/WhatsApp do lead — peça numa única mensagem curta SOMENTE o que faltar e não estiver em DADOS JÁ CADASTRADOS (se nada faltar, agende direto, sem pedir confirmação de dados) e só chame a ferramenta quando tiver tudo; se você já sabe o nome dele pela conversa, não pergunte de novo — pergunte só o que falta; (6) passe email, telefone e nome_completo nos parâmetros de agendar_reuniao — eles vão pro cadastro do lead no CRM; (7) HORÁRIO CHEIO: se o horário que o lead escolheu já ocupou, ofereça o MAIS PRÓXIMO: outro horário no mesmo dia e, só se não houver, o dia seguinte com agenda. Nunca proponha a semana seguinte enquanto houver horário antes; (8) DIA COMBINADO EM MENSAGEM ANTIGA: as mensagens de dias anteriores vêm com carimbo [dia dd/mm hh:mm]. Um dia da semana escrito ali ("terça", "amanhã") vale pra data que ele tinha NAQUELE momento, não pra hoje. Se o lead topou "terça às 15h" numa sexta 31/10, a reunião é terça 03/11; se esse dia já chegou e o horário ocupou, aplique a regra (7). Nunca escreva o carimbo nas suas mensagens; (9) QUAIS HORÁRIOS OFERECER: entre os livres, prefira os da manhã (9h às 11h) e os dois primeiros dias com agenda; o mais próximo vem primeiro; (10) MICRO-COMPROMISSO (obrigatório): assim que agendar_reuniao confirmar, na mesma mensagem em que passa dia, horário e link, diga que a agenda do closer é cheia e que esse horário ficou separado pra ele, então conte com ele nesse horário; pergunte se ele vai entrar pelo computador ou pelo celular (no celular, oriente a já deixar o Google Meet instalado). NUNCA diga que ele pode remarcar e NUNCA fale em imprevisto; (11) CONFIRMAÇÃO DE PRESENÇA: na véspera e uma hora antes o sistema manda, em seu nome, uma mensagem pedindo confirmação (ela aparece no histórico). Se o lead confirmar, agradeça em UMA frase, sem pergunta, e encerre. Se ele pedir outro horário, aplique a regra (7) e remarque pro mais próximo. Se disser que não vai mais, chame transferir_para_humano; (12) SÓ UMA REMARCAÇÃO: você remarca uma única vez por lead. Se agendar_reuniao avisar que já houve remarcação, não ofereça horário nenhum: chame transferir_para_humano com o motivo e diga ao lead que o closer vai falar com ele direto.` : "",
         tools.some((t)=>t.name === "marcar_fora_do_perfil") ? `\nFORA DO PERFIL: se durante a conversa ficar claro que o lead não é do nosso perfil (outro segmento, sem time comercial, pessoa procurando emprego, curioso, concorrente), chame marcar_fora_do_perfil com o motivo e encerre com educação — sem insistir e sem agendar. Falta de orçamento agora ou "vou pensar" NÃO é fora de perfil: isso você trabalha como objeção.` : "",
         // valem sempre, mesmo sem a ferramenta de fora do perfil (ex.: Instagram sem negócio vinculado)
         `\n\nHORÁRIO QUE NÃO ENCAIXA (regra obrigatória): quando o lead disser que nenhum horário oferecido serve ("não", "nenhum funciona", "não consigo"), isso NÃO é recusa e a conversa NÃO termina. Nunca se despeça, nunca agradeça o retorno e nunca marque como perdido por causa de horário. Faça assim: (1) pergunte qual dia e período funcionam melhor pra ele, ou ofereça você mesmo o próximo dia útil; (2) consulte a agenda desse dia e ofereça 2 ou 3 horários reais; (3) se esse dia também não der, passe pro dia seguinte, e assim por diante, até encaixar; (4) se ele sugerir um dia ("quarta"), consulte a agenda desse dia na hora e ofereça os horários livres. Só pare se ele disser com todas as letras que não quer mais a reunião.`,
