@@ -592,7 +592,25 @@ export const CRMGoalValuesManager = () => {
         }
       }
 
-      toast.success(`Metas de ${String(prevMonth).padStart(2, "0")}/${prevYear} replicadas. Ajuste o que precisar e salve.`);
+      // 4. Metas extra (quantidade / por produto, com premiação). Fabrício, 03/11/2026:
+      //    "quando eu copiar as metas, já vai copiar com tudo né?" Substitui as do mês atual.
+      const { data: prevExtras } = await supabase
+        .from("crm_secondary_goals")
+        .select("staff_id, kind, product_id, target_qty, reward_kind, reward_value")
+        .eq("month", prevMonth)
+        .eq("year", prevYear);
+      if (prevExtras && prevExtras.length > 0) {
+        const staffIds = Array.from(new Set(prevExtras.map((g: any) => g.staff_id)));
+        await supabase.from("crm_secondary_goals").delete()
+          .eq("month", selectedMonth).eq("year", selectedYear).in("staff_id", staffIds);
+        const { error: exErr } = await supabase.from("crm_secondary_goals").insert(
+          prevExtras.map((g: any) => ({ ...g, month: selectedMonth, year: selectedYear }))
+        );
+        if (exErr) throw exErr;
+        await loadExtraCounts();
+      }
+
+      toast.success(`Metas de ${String(prevMonth).padStart(2, "0")}/${prevYear} replicadas, com faixas, bônus e metas extra. Ajuste o que precisar e salve.`);
       await loadGoalValues();
     } catch (error: any) {
       console.error("Error replicating goals:", error);
