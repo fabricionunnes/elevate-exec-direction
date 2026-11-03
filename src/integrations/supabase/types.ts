@@ -15051,6 +15051,7 @@ export type Database = {
       }
       crm_goal_values: {
         Row: {
+          commission_goal_type_ids: string[] | null
           created_at: string
           goal_type_id: string
           hiper_meta_bonus_image_url: string | null
@@ -15072,6 +15073,7 @@ export type Database = {
           year: number
         }
         Insert: {
+          commission_goal_type_ids?: string[] | null
           created_at?: string
           goal_type_id: string
           hiper_meta_bonus_image_url?: string | null
@@ -15093,6 +15095,7 @@ export type Database = {
           year: number
         }
         Update: {
+          commission_goal_type_ids?: string[] | null
           created_at?: string
           goal_type_id?: string
           hiper_meta_bonus_image_url?: string | null
