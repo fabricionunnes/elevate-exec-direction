@@ -107,6 +107,24 @@ export const TaskDetailsDialog = ({
   const [meetingDuration, setMeetingDuration] = useState("60");
   const [showMeetingForm, setShowMeetingForm] = useState(false);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  // Dono do projeto (03/11/2026, Fabrício): consultor do projeto ou, sem ele, o consultor da empresa.
+  // Tarefa sem responsável: o dono pode assumir e alterar tudo; qualquer alteração salva passa a tarefa pra ele.
+  const [donoProjetoId, setDonoProjetoId] = useState<string | null>(null);
+  useEffect(() => {
+    let ativo = true;
+    const pid = projectId || task?.project_id;
+    if (!pid) { setDonoProjetoId(null); return; }
+    (async () => {
+      const { data: proj } = await supabase.from("onboarding_projects").select("consultant_id, onboarding_company_id").eq("id", pid).maybeSingle();
+      let dono = proj?.consultant_id || null;
+      if (!dono && proj?.onboarding_company_id) {
+        const { data: oc } = await supabase.from("onboarding_companies").select("consultant_id").eq("id", proj.onboarding_company_id).maybeSingle();
+        dono = oc?.consultant_id || null;
+      }
+      if (ativo) setDonoProjetoId(dono);
+    })();
+    return () => { ativo = false; };
+  }, [projectId, task?.project_id]);
 
   useEffect(() => {
     if (task) {
@@ -138,17 +156,23 @@ export const TaskDetailsDialog = ({
     task.responsible_staff?.id === currentUserId
   ));
   
-  // Only Admin and CS can edit dates - consultants cannot modify due dates
-  const canEditDates = isAdmin || isCS;
+  const isProjectOwner = !!currentUserId && !!donoProjetoId && donoProjetoId === currentUserId;
+  const semResponsavel = !!task && !task.responsible_staff?.id && !task.assignee_id;
+  // dono do projeto edita por inteiro a tarefa sem responsável (e a que já é dele)
+  const podeAssumir = isProjectOwner && semResponsavel;
+  const donoEdita = isProjectOwner && (semResponsavel || task?.responsible_staff?.id === currentUserId);
+
+  // Only Admin and CS can edit dates - consultants cannot modify due dates (exceto o dono do projeto na tarefa dele)
+  const canEditDates = isAdmin || isCS || donoEdita;
   
   // CS and Consultant can edit assignee
   const canEditAssignee = isAdmin || isStaffRole;
   
   // CS, Consultant, and task assignees can change status and observations
-  const canEditStatusAndObservations = isAdmin || isStaffRole || isTaskAssignee;
+  const canEditStatusAndObservations = isAdmin || isStaffRole || isTaskAssignee || donoEdita;
   
-  // Title: Admin/CS can always edit, Consultant only if they created the task
-  const canEditTitle = isAdmin || isCS || (isConsultant && isTaskCreatedByCurrentUser);
+  // Title: Admin/CS can always edit, Consultant only if they created the task (ou se é o dono do projeto)
+  const canEditTitle = isAdmin || isCS || (isConsultant && isTaskCreatedByCurrentUser) || donoEdita;
   
   // Description: Admin/CS/Consultant can edit
   const canEditDescription = isAdmin || isCS || isConsultant;
@@ -366,7 +390,7 @@ export const TaskDetailsDialog = ({
 
     // Validate: cannot set in_progress or completed without a responsible (assignee)
     const newStatus = editedTask.status;
-    const effectiveAssigneeId = (editedTask.assignee_id ?? task.assignee_id) || null;
+    const effectiveAssigneeId = (editedTask.assignee_id ?? task.assignee_id) || (podeAssumir ? currentUserId : null) || null;
     if ((newStatus === "in_progress" || newStatus === "completed") && !effectiveAssigneeId) {
       toast.error("Atribua um responsável antes de alterar o status da tarefa");
       return;
@@ -484,6 +508,13 @@ export const TaskDetailsDialog = ({
         }
       }
 
+      // Tarefa sem responsável alterada pelo dono do projeto: passa a ser dele (o banco garante o mesmo por gatilho)
+      if (podeAssumir && !updates.responsible_staff_id && !updates.assignee_id) {
+        updates.responsible_staff_id = currentUserId;
+        updates.assignee_id = null;
+        historyPromises.push(logHistory("assign", "responsável", "Nenhum", "Assumida pelo consultor do projeto ao alterar"));
+      }
+
       // Log all history entries
       await Promise.all(historyPromises);
 
@@ -501,6 +532,26 @@ export const TaskDetailsDialog = ({
     } catch (error: any) {
       console.error("Error updating task:", error);
       toast.error("Erro ao atualizar tarefa");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Botão "Assumir tarefa": só o dono do projeto, só em tarefa sem responsável
+  const handleAssumir = async () => {
+    if (!task || !podeAssumir || !currentUserId) return;
+    setLoading(true);
+    try {
+      await logHistory("assign", "responsável", "Nenhum", "Assumida pelo consultor do projeto");
+      const { error } = await supabase.from("onboarding_tasks").update({ responsible_staff_id: currentUserId, assignee_id: null }).eq("id", task.id);
+      if (error) throw error;
+      setHistoryKey(prev => prev + 1);
+      toast.success("Tarefa assumida por você");
+      onTaskUpdated();
+      onClose();
+    } catch (error: any) {
+      console.error("Error assuming task:", error);
+      toast.error("Erro ao assumir a tarefa");
     } finally {
       setLoading(false);
     }
@@ -802,7 +853,15 @@ export const TaskDetailsDialog = ({
               </div>
             )}
 
+            {podeAssumir && (
+              <p className="text-xs text-muted-foreground mt-3">Esta tarefa está sem responsável. Como consultor do projeto, qualquer alteração que você salvar passa a tarefa pra você.</p>
+            )}
             <div className="flex justify-end gap-2 pt-4">
+              {podeAssumir && (
+                <Button variant="secondary" onClick={handleAssumir} disabled={loading} className="mr-auto">
+                  Assumir tarefa
+                </Button>
+              )}
               <Button variant="outline" onClick={onClose}>
                 Cancelar
               </Button>
