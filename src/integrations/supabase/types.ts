@@ -27055,6 +27055,7 @@ export type Database = {
           task_id: string | null
           ticket_id: string | null
           uploaded_by: string | null
+          uploaded_by_staff_id: string | null
         }
         Insert: {
           category?: string | null
@@ -27070,6 +27071,7 @@ export type Database = {
           task_id?: string | null
           ticket_id?: string | null
           uploaded_by?: string | null
+          uploaded_by_staff_id?: string | null
         }
         Update: {
           category?: string | null
@@ -27085,6 +27087,7 @@ export type Database = {
           task_id?: string | null
           ticket_id?: string | null
           uploaded_by?: string | null
+          uploaded_by_staff_id?: string | null
         }
         Relationships: [
           {
@@ -27120,6 +27123,13 @@ export type Database = {
             columns: ["uploaded_by"]
             isOneToOne: false
             referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_documents_uploaded_by_staff_id_fkey"
+            columns: ["uploaded_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
             referencedColumns: ["id"]
           },
         ]

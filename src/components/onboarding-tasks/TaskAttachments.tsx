@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, Upload, FileIcon, Trash2, Download, Paperclip } from "lucide-react";
+import { Loader2, Upload, FileIcon, Trash2, Download, Paperclip, RefreshCw } from "lucide-react";
 import { useVisualizarAnexo, BotaoVisualizar } from "@/components/anexos/VisualizarAnexo";
 
 interface Document {
@@ -13,7 +13,9 @@ interface Document {
   file_type: string | null;
   created_at: string;
   uploaded_by: string | null;
+  uploaded_by_staff_id?: string | null;
   uploader?: { name: string } | null;
+  uploader_staff?: { name: string } | null;
 }
 
 interface TaskAttachmentsProps {
@@ -21,12 +23,25 @@ interface TaskAttachmentsProps {
   companyId: string;
   projectId: string;
   isAdmin: boolean;
+  /** staff logado (onboarding_staff.id): quem subiu o anexo pode excluir e substituir */
+  currentStaffId?: string | null;
 }
 
-export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskAttachmentsProps) => {
+// Nome seguro pro Storage (sem acento, espaço ou caractere especial)
+const sanitizeFileName = (name: string) =>
+  name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]/g, "_");
+
+export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin, currentStaffId }: TaskAttachmentsProps) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [substituindo, setSubstituindo] = useState<string | null>(null);
+  // Fabrício (03/11/2026): "se o consultor incluir um documento em alguma tarefa, ele mesmo tem que
+  // poder excluir o documento e colocar um novo". Admin pode tudo; o staff só no que ele subiu.
+  const podeMexer = (doc: Document) => isAdmin || (!!currentStaffId && doc.uploaded_by_staff_id === currentStaffId);
   // Visualizar sem baixar (mesma janela em todos os anexos do Nexus)
   const visor = useVisualizarAnexo();
   const handleView = (doc: Document) => visor.abrir({ nome: doc.file_name, tipo: doc.file_type, bucket: "onboarding-documents", path: doc.file_path });
@@ -42,7 +57,8 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
         .from("onboarding_documents")
         .select(`
           *,
-          uploader:onboarding_users(name)
+          uploader:onboarding_users(name),
+          uploader_staff:onboarding_staff!onboarding_documents_uploaded_by_staff_id_fkey(name)
         `)
         .eq("task_id", taskId)
         .order("created_at", { ascending: false });
@@ -85,14 +101,14 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
           .eq("project_id", projectId)
           .maybeSingle();
 
-        // Sanitize file name for storage path (remove accents, special chars, spaces)
-        const sanitizeFileName = (name: string) => {
-          return name
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "") // Remove accents
-            .replace(/[^a-zA-Z0-9._-]/g, "_"); // Replace special chars with underscore
-        };
-        
+        // staff que está subindo (consultor/CS/admin): fica no anexo pra ele poder excluir e substituir
+        const { data: staffRow } = await supabase
+          .from("onboarding_staff")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
         const sanitizedName = sanitizeFileName(file.name);
         const filePath = `${companyId}/tasks/${taskId}/${Date.now()}_${sanitizedName}`;
 
@@ -115,6 +131,7 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
             file_size: file.size,
             file_type: file.type,
             uploaded_by: onboardingUser?.id || null,
+            uploaded_by_staff_id: staffRow?.id || currentStaffId || null,
           });
 
         if (docError) throw docError;
@@ -129,6 +146,58 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
       }
       // Clean up
       document.body.removeChild(input);
+    };
+    document.body.appendChild(input);
+    input.click();
+  };
+
+  // Substituir: troca o arquivo do MESMO anexo (novo arquivo no Storage, registro atualizado, antigo apagado)
+  const triggerSubstituir = (doc: Document) => {
+    if (!podeMexer(doc)) {
+      toast.error("Só quem anexou (ou um administrador) pode substituir este anexo");
+      return;
+    }
+    const input = document.createElement("input");
+    input.type = "file";
+    input.style.display = "none";
+    input.onchange = async (e) => {
+      const target = e.target as HTMLInputElement;
+      const file = target.files?.[0];
+      if (!file) { document.body.removeChild(input); return; }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("Arquivo muito grande (máx. 10MB)");
+        document.body.removeChild(input);
+        return;
+      }
+      setSubstituindo(doc.id);
+      try {
+        const novoPath = `${companyId}/tasks/${taskId}/${Date.now()}_${sanitizeFileName(file.name)}`;
+        const { error: upErr } = await supabase.storage.from("onboarding-documents").upload(novoPath, file);
+        if (upErr) throw upErr;
+        const { error: dbErr } = await supabase
+          .from("onboarding_documents")
+          .update({
+            file_name: file.name,
+            file_path: novoPath,
+            file_size: file.size,
+            file_type: file.type,
+            uploaded_by_staff_id: currentStaffId || doc.uploaded_by_staff_id || null,
+          })
+          .eq("id", doc.id);
+        if (dbErr) {
+          await supabase.storage.from("onboarding-documents").remove([novoPath]);
+          throw dbErr;
+        }
+        await supabase.storage.from("onboarding-documents").remove([doc.file_path]);
+        toast.success("Anexo substituído");
+        fetchDocuments();
+      } catch (error: any) {
+        console.error("Error replacing file:", error);
+        toast.error("Erro ao substituir: " + (error.message || "Erro desconhecido"));
+      } finally {
+        setSubstituindo(null);
+        document.body.removeChild(input);
+      }
     };
     document.body.appendChild(input);
     input.click();
@@ -155,10 +224,11 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
   };
 
   const handleDelete = async (doc: Document) => {
-    if (!isAdmin) {
-      toast.error("Apenas administradores podem excluir anexos");
+    if (!podeMexer(doc)) {
+      toast.error("Só quem anexou (ou um administrador) pode excluir este anexo");
       return;
     }
+    if (!confirm(`Excluir o anexo "${doc.file_name}"?`)) return;
 
     try {
       // Delete from storage
@@ -247,7 +317,7 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
                   </button>
                   <p className="text-xs text-muted-foreground">
                     {formatFileSize(doc.file_size)}
-                    {doc.uploader && ` • ${doc.uploader.name}`}
+                    {(doc.uploader_staff?.name || doc.uploader?.name) && ` • ${doc.uploader_staff?.name || doc.uploader?.name}`}
                   </p>
                 </div>
               </div>
@@ -262,15 +332,28 @@ export const TaskAttachments = ({ taskId, companyId, projectId, isAdmin }: TaskA
                 >
                   <Download className="h-4 w-4" />
                 </Button>
-                {isAdmin && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-destructive hover:text-destructive"
-                    onClick={() => handleDelete(doc)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                {podeMexer(doc) && (
+                  <>
+                    <Button
+                      title="Substituir por outro arquivo"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      disabled={substituindo === doc.id}
+                      onClick={() => triggerSubstituir(doc)}
+                    >
+                      {substituindo === doc.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      title="Excluir"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(doc)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
                 )}
               </div>
             </div>

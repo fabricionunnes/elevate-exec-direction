@@ -849,6 +849,7 @@ export const TaskDetailsDialog = ({
                   companyId={companyId}
                   projectId={taskProjectId}
                   isAdmin={isAdmin}
+                  currentStaffId={currentUserId}
                 />
               </div>
             )}
