@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Imersão UNV Vale do Silício 2027 | Imersão executiva por aplicação</title>
+<title>Imersão UNV Vale do Silício 2027 | Embarque com a UNV Holdings</title>
 <meta name="description" content="8 dias no Vale do Silício com um grupo seleto de empresários brasileiros. Stanford, Google, Berkeley, Plug and Play e as empresas que estão redefinindo vendas, gestão e inteligência artificial. 20 a 27 de março de 2027. Vagas por aplicação." />
 <meta name="robots" content="index, follow" />
-<meta name="theme-color" content="#0A0A0A" />
+<meta name="theme-color" content="#0A1F44" />
 <link rel="canonical" href="https://unvholdings.com.br/imersaoeua" />
 <meta property="og:type" content="website" />
 <meta property="og:locale" content="pt_BR" />
@@ -20,315 +20,411 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="preconnect" href="https://images.unsplash.com" />
-<link rel="preload" as="image" href="https://images.unsplash.com/photo-1659941983952-7a35d58d3189?w=1920&q=80&auto=format&fit=crop" fetchpriority="high" />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<link rel="preload" as="image" href="https://images.unsplash.com/photo-1422464804701-7d8356b3a42f?w=1920&q=80&auto=format&fit=crop" fetchpriority="high" />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Overpass+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   :root{
-    --bg:#0A0A0A; --bg1:#111110; --bg2:#161615;
-    --txt:#F5F5F0; --g1:#BDBDB5; --g2:#8A8A84; --g3:#5C5C58;
-    --line:rgba(245,245,240,.09); --line2:rgba(245,245,240,.16);
-    --gold:#C9A96E; --gold-hi:#D8BC86; --gold-soft:rgba(201,169,110,.12);
+    /* Paleta "Old Glory": azul, vermelho e branco, que conversa com o navy e o vermelho da UNV */
+    --navy:#0A1F44; --navy-2:#13295A; --navy-deep:#06142F;
+    --red:#C8102E; --red-hi:#E0263F; --red-deep:#9E0B23;
+    --white:#FAF8F3; --paper:#F1EBDF; --paper-2:#E7DECD;
+    --ink:#0B1730; --ink-2:#3B4660; --ink-3:#6B7389;
+    --on-navy:#F4F1EA; --on-navy-2:#B9C2D6; --on-navy-3:#7E8AA6;
+    --line-d:rgba(244,241,234,.12); --line-l:rgba(11,23,48,.12);
+    --display:"Oswald","Arial Narrow",Impact,sans-serif;
     --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --serif:"Fraunces","Iowan Old Style",Georgia,serif;
+    --mono:"Overpass Mono",ui-monospace,Menlo,Consolas,monospace;
     --ease:cubic-bezier(.16,1,.3,1);
+    --stars:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='56'%3E%3Cpath fill='%23ffffff' fill-opacity='.13' d='M16 6l2.35 7.24h7.6l-6.15 4.47 2.35 7.24L16 20.48l-6.15 4.47 2.35-7.24-6.15-4.47h7.6zM48 34l2.35 7.24h7.6l-6.15 4.47 2.35 7.24L48 48.48l-6.15 4.47 2.35-7.24-6.15-4.47h7.6z'/%3E%3C/svg%3E");
+    --flag-stripes:repeating-linear-gradient(180deg,var(--red) 0 7.692%,#fff 7.692% 15.384%);
   }
   html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
-  body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-weight:400;line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-  body.lock{overflow:hidden}
+  body{background:var(--white);color:var(--ink);font-family:var(--sans);line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased}
   img{display:block;max-width:100%;height:auto}
   a{color:inherit;text-decoration:none}
   button{font-family:inherit}
-  .wrap{max-width:1200px;margin:0 auto;padding:0 clamp(20px,5vw,56px)}
-  .eyebrow{font-size:12px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--g2)}
-  .eyebrow b{color:var(--gold);font-weight:500}
-  h1,h2,h3,h4{font-family:var(--serif);font-weight:300;letter-spacing:-.02em;font-optical-sizing:auto}
-  @media (max-width:640px){h1,h2{font-weight:400;letter-spacing:-.015em}}
-  h2{font-size:clamp(38px,5.2vw,72px);line-height:1.04;margin-top:22px}
-  h2 em,h1 em{font-style:italic;color:var(--gold-hi)}
-  .lead{font-size:clamp(16px,1.4vw,18px);color:var(--g1);line-height:1.75;margin-top:24px;max-width:600px;font-weight:300}
-  .photo-treat{filter:grayscale(.35) brightness(.72) contrast(1.06)}
+  .wrap{max-width:1220px;margin:0 auto;padding:0 clamp(20px,5vw,56px)}
+  .sec{padding:clamp(96px,11vw,156px) 0;position:relative}
+  .navy{background:var(--navy);color:var(--on-navy)}
+  .navy.starry{background:var(--stars),var(--navy);background-size:64px 56px,auto}
+  .paper{background:var(--paper)}
+  .tag{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--red)}
+  .tag::before{content:"★ ★ ★";font-size:11px;letter-spacing:2px}
+  .navy .tag{color:#FF5C6F}
+  h1,h2,h3{font-family:var(--display);font-weight:600;text-transform:uppercase;letter-spacing:.005em;line-height:.98}
+  h2{font-size:clamp(42px,6vw,88px);margin-top:18px}
+  h2 .r,h1 .r{color:var(--red)}
+  .navy h2 .r{color:#FF5C6F}
+  .lead{font-size:clamp(16px,1.45vw,19px);color:var(--ink-2);line-height:1.75;margin-top:22px;max-width:620px}
+  .navy .lead{color:var(--on-navy-2)}
 
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:var(--gold);color:#0A0A0A;border:1px solid var(--gold);border-radius:999px;padding:16px 28px;font-size:14px;font-weight:500;letter-spacing:.01em;cursor:pointer;transition:background .3s var(--ease),border-color .3s,color .3s,transform .2s var(--ease)}
-  .btn:hover{background:var(--gold-hi);border-color:var(--gold-hi)}
-  .btn:active{transform:scale(.98)}
-  .btn:disabled{opacity:.55;cursor:default}
-  .btn svg{width:16px;height:16px;transition:transform .3s var(--ease)}
-  .btn:hover svg{transform:translateX(3px)}
-  .btn-ghost{background:transparent;color:var(--txt);border-color:var(--line2)}
-  .btn-ghost:hover{background:rgba(245,245,240,.06);border-color:rgba(245,245,240,.32)}
-  .btn-sm{padding:10px 20px;font-size:13px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:var(--red);color:#fff;border:2px solid var(--red);border-radius:4px;padding:16px 26px;font-family:var(--display);font-size:16px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:background .25s,border-color .25s,transform .2s var(--ease),box-shadow .25s}
+  .btn:hover{background:var(--red-hi);border-color:var(--red-hi);box-shadow:0 10px 30px rgba(200,16,46,.35)}
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{opacity:.6;cursor:default}
+  .btn svg{width:18px;height:18px}
+  .btn-ghost{background:transparent;border-color:rgba(244,241,234,.5);color:var(--on-navy)}
+  .btn-ghost:hover{background:rgba(244,241,234,.08);border-color:var(--on-navy);box-shadow:none}
+  .btn-navy{background:var(--navy);border-color:var(--navy)}
+  .btn-navy:hover{background:var(--navy-2);border-color:var(--navy-2);box-shadow:0 10px 30px rgba(10,31,68,.3)}
 
-  section{position:relative}
-  #formTop{scroll-margin-top:100px}
-  .sec{padding:clamp(96px,12vw,168px) 0}
-  .hair{border-top:1px solid var(--line)}
-
-  .rv{opacity:0;transform:translateY(24px);transition:opacity 1.1s var(--ease),transform 1.1s var(--ease)}
+  /* faixa de listras */
+  .stripes{height:14px;background:repeating-linear-gradient(90deg,var(--red) 0 40px,var(--white) 40px 80px)}
+  .stripes.thin{height:6px;background:linear-gradient(90deg,var(--navy) 0 33.3%,#fff 33.3% 66.6%,var(--red) 66.6%)}
+  .flagband{display:grid;grid-template-columns:min(38%,440px) 1fr;height:84px;overflow:hidden}
+  .flagband .canton{background:var(--stars),var(--navy);background-size:42px 37px,auto;background-position:6px 4px,0 0}
+  .flagband .bars{background:repeating-linear-gradient(180deg,var(--red) 0 12px,#fff 12px 24px)}
+  .rv{opacity:0;transform:translateY(26px);transition:opacity 1s var(--ease),transform 1s var(--ease)}
   .rv.in{opacity:1;transform:none}
   .rv.d1{transition-delay:.08s}.rv.d2{transition-delay:.16s}.rv.d3{transition-delay:.24s}
 
-  /* ── HEADER ── */
-  .hdr{position:fixed;inset:0 0 auto 0;z-index:60;transition:background .4s var(--ease),border-color .4s;border-bottom:1px solid transparent}
-  .hdr .wrap{height:84px;display:flex;align-items:center;justify-content:space-between}
-  .logo-chip{display:inline-flex;align-items:center;justify-content:center;background:#F5F5F0;border-radius:10px;padding:7px 12px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
-  .logo-chip img{display:block;height:auto}
-  .hdr .logo-chip img{width:72px}
-  .hdr nav{display:flex;align-items:center;gap:30px;font-size:13px;color:var(--g1)}
-  .hdr nav a.lk{transition:color .2s}
-  .hdr nav a.lk:hover{color:var(--txt)}
-  .hdr.solid{background:rgba(10,10,10,.72);border-bottom-color:var(--line);backdrop-filter:saturate(1.4) blur(18px);-webkit-backdrop-filter:saturate(1.4) blur(18px)}
-  .is-safari .hdr.solid{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(10,10,10,.96)}
+  /* ── progresso de voo ── */
+  .flight{position:fixed;left:0;right:0;top:0;height:3px;z-index:80;background:rgba(10,31,68,.15)}
+  .flight i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,var(--navy),var(--red))}
+  .flight svg{position:absolute;top:-8px;width:20px;height:20px;color:var(--red);transform:translateX(-50%) rotate(90deg);left:0;filter:drop-shadow(0 2px 4px rgba(0,0,0,.25))}
+
+  /* ── header ── */
+  .hdr{position:fixed;top:3px;left:0;right:0;z-index:70;transition:background .35s,box-shadow .35s}
+  .hdr .wrap{height:78px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+  .hdr .logo{display:inline-flex;background:var(--white);border-radius:8px;padding:6px 10px;box-shadow:0 6px 20px rgba(0,0,0,.25);transition:box-shadow .3s}
+  .hdr .logo img{width:70px}
+  .hdr nav{display:flex;align-items:center;gap:28px;font-family:var(--display);font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--on-navy)}
+  .hdr nav a.lk{opacity:.85;transition:opacity .2s}
+  .hdr nav a.lk:hover{opacity:1}
+  .hdr .btn{padding:10px 18px;font-size:14px}
+  .hdr.solid{background:var(--white);box-shadow:0 1px 0 var(--line-l),0 10px 30px rgba(10,31,68,.08)}
+  .hdr.solid nav{color:var(--navy)}
+  .hdr.solid .logo{box-shadow:none;padding:4px 0;background:transparent}
 
   /* ── HERO ── */
-  #hero{min-height:100svh;display:flex;align-items:center;overflow:hidden;isolation:isolate}
-  .hero-bg{position:absolute;inset:-8% 0 -8% 0;z-index:-2;will-change:transform}
-  .hero-bg img{width:100%;height:100%;object-fit:cover;object-position:50% 40%}
-  .hero-shade{position:absolute;inset:0;z-index:-1;background:radial-gradient(120% 90% at 50% 40%,rgba(10,10,10,.25) 0%,rgba(10,10,10,.7) 70%),linear-gradient(180deg,rgba(10,10,10,.55) 0%,rgba(10,10,10,.2) 35%,rgba(10,10,10,.6) 75%,var(--bg) 100%)}
-  #hero .wrap{width:100%;padding-top:140px;padding-bottom:110px;text-align:center}
-  h1{font-size:clamp(42px,6.6vw,96px);line-height:1.02;max-width:1050px;margin:28px auto 0}
-  .hero-sub{font-size:clamp(16px,1.5vw,19px);color:var(--g1);font-weight:300;line-height:1.7;max-width:640px;margin:28px auto 0}
-  .hero-cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:40px}
-  .count{display:inline-flex;align-items:center;gap:22px;margin-top:56px;padding:16px 26px;border:1px solid var(--line2);border-radius:999px;background:rgba(10,10,10,.35);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-  .is-safari .count{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(10,10,10,.6)}
-  .count .lbl{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--g2)}
-  .count .u{display:flex;flex-direction:column;align-items:center;min-width:42px}
-  .count .u b{font-family:var(--serif);font-weight:300;font-size:28px;line-height:1;font-variant-numeric:tabular-nums}
-  .count .u span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--g2);margin-top:6px}
-  .count .sep{width:1px;height:28px;background:var(--line2)}
-  .host{display:inline-flex;align-items:center;gap:14px;margin-top:34px;padding:8px 20px 8px 8px;border:1px solid var(--line2);border-radius:999px;background:rgba(10,10,10,.35);text-align:left}
-  .host img{width:46px;height:46px;border-radius:50%;object-fit:cover;object-position:50% 20%}
-  .host span{display:block;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--g2)}
-  .host b{display:block;font-weight:500;font-size:14px;color:var(--txt);margin-top:2px}
-  .host .logo-chip{margin-left:6px;padding:5px 9px;border-radius:999px;box-shadow:none}
-  .host .logo-chip img{width:52px;height:auto;border-radius:0}
-  .hero-loc{position:absolute;left:0;right:0;bottom:34px;text-align:center;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--g2)}
+  #hero{position:relative;min-height:100svh;display:flex;align-items:center;overflow:hidden;isolation:isolate;color:var(--on-navy)}
+  .hero-bg{position:absolute;inset:-6% 0 -6% 0;z-index:-3;will-change:transform}
+  .hero-bg img{width:100%;height:100%;object-fit:cover;object-position:60% 50%}
+  .hero-tint{position:absolute;inset:0;z-index:-2;background:linear-gradient(100deg,rgba(6,20,47,.95) 0%,rgba(10,31,68,.82) 42%,rgba(10,31,68,.45) 75%,rgba(10,31,68,.3) 100%)}
+  .hero-stars{position:absolute;left:0;top:0;width:min(58%,820px);height:62%;z-index:-1;background:var(--stars),linear-gradient(135deg,rgba(10,31,68,.85),rgba(10,31,68,.35));background-size:64px 56px,auto;mask-image:linear-gradient(135deg,#000 35%,transparent 85%);-webkit-mask-image:linear-gradient(135deg,#000 35%,transparent 85%)}
+  .hero-stripes{position:absolute;right:0;top:0;bottom:0;width:52%;z-index:-1;background:var(--flag-stripes);opacity:.3;mask-image:linear-gradient(90deg,transparent 0%,#000 55%);-webkit-mask-image:linear-gradient(90deg,transparent 0%,#000 55%);transform-origin:right;animation:sway 9s ease-in-out infinite alternate}
+  @keyframes sway{from{transform:skewY(-2deg)}to{transform:skewY(1.5deg)}}
+  #hero .wrap{width:100%;padding-top:150px;padding-bottom:110px}
+  .hero-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:clamp(36px,5vw,80px);align-items:center}
+  .hero-grid > *{min-width:0}
+  .hero-kick{display:inline-flex;align-items:center;gap:12px;font-family:var(--mono);font-size:12.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--on-navy-2);padding:8px 14px;border:1px solid var(--line-d);border-radius:999px;background:rgba(6,20,47,.4)}
+  .hero-kick b{color:#FF5C6F;font-weight:600}
+  h1{font-size:clamp(44px,5.6vw,86px);line-height:.94;margin-top:24px}
+  h1 .sm{display:block;font-size:.36em;letter-spacing:.06em;color:var(--on-navy-2);margin-bottom:12px}
+  .hero-sub{font-size:clamp(16px,1.5vw,19px);color:var(--on-navy-2);line-height:1.7;max-width:560px;margin-top:24px}
+  .hero-cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:34px}
+  .host{display:inline-flex;align-items:center;gap:12px;margin-top:30px;font-size:13px;color:var(--on-navy-2)}
+  .host img{width:42px;height:42px;border-radius:50%;object-fit:cover;object-position:50% 20%;border:2px solid var(--white)}
+  .host b{color:var(--on-navy);font-weight:600}
 
-  /* ── NÚMEROS ── */
-  .nums{border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-  .nums .wrap{display:grid;grid-template-columns:repeat(4,1fr)}
-  .nums .n{padding:48px 16px;text-align:center}
-  .nums .n + .n{border-left:1px solid var(--line)}
-  .nums b{display:block;font-family:var(--serif);font-weight:300;font-size:clamp(48px,6vw,80px);line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
-  .nums span{display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--g2);margin-top:14px}
+  /* cartão de embarque */
+  .bp-wrap{perspective:1200px}
+  .bp{position:relative;display:grid;grid-template-columns:1fr 128px;background:var(--white);color:var(--ink);border-radius:16px;box-shadow:0 40px 80px -20px rgba(0,0,0,.6);transform-style:preserve-3d;transition:transform .5s var(--ease);font-family:var(--mono)}
+  .bp-main{padding:22px 24px 22px}
+  .bp-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1px dashed rgba(11,23,48,.25)}
+  .bp-top img{width:58px}
+  .bp-top span{font-size:11px;font-weight:700;letter-spacing:.2em;color:var(--red)}
+  .bp-route{display:flex;align-items:center;justify-content:space-between;margin:18px 0 6px}
+  .bp-route b{font-family:var(--display);font-size:52px;font-weight:600;line-height:1;color:var(--navy)}
+  .bp-route small{display:block;font-size:10.5px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase;margin-top:6px;font-family:var(--mono)}
+  .bp-route svg{width:44px;height:44px;color:var(--red);flex:0 0 auto}
+  .bp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 10px;margin-top:16px;padding-top:14px;border-top:1px dashed rgba(11,23,48,.25)}
+  .bp-grid div span{display:block;font-size:9.5px;letter-spacing:.16em;color:var(--ink-3);text-transform:uppercase}
+  .bp-grid div b{display:block;font-size:14px;font-weight:700;color:var(--ink);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bp-grid .pax{grid-column:1/-1}
+  .bp-grid .pax b{font-size:17px;color:var(--navy)}
+  .bp-stub{position:relative;border-left:2px dashed rgba(11,23,48,.25);padding:22px 14px;display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(180deg,var(--navy) 0 30%,var(--white) 30%);border-radius:0 16px 16px 0}
+  .bp-stub::before,.bp-stub::after{content:"";position:absolute;left:-12px;width:22px;height:22px;border-radius:50%;background:inherit}
+  .bp-stub::before{top:-11px;background:var(--navy-deep)}
+  .bp-stub::after{bottom:-11px;background:var(--navy-deep)}
+  .bp-stub .st{color:var(--white);font-size:10px;letter-spacing:.18em;font-weight:700}
+  .bp-stub .st b{display:block;font-family:var(--display);font-size:26px;letter-spacing:.02em;margin-top:4px}
+  .barcode{height:92px;background:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 4px,var(--ink) 4px 5px,transparent 5px 8px,var(--ink) 8px 11px,transparent 11px 12px);border-radius:2px}
+  .bp-stub .seat{font-size:10px;letter-spacing:.14em;color:var(--ink-3);text-align:center}
+  .bp-stub .seat b{display:block;font-size:13px;color:var(--red)}
+  .bp-cap{margin-top:16px;font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--on-navy-3);text-align:center}
 
-  /* ── PROBLEMA ── */
-  .prob{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(40px,7vw,110px);align-items:center}
-  .prob h2{font-size:clamp(40px,5.6vw,80px)}
-  .prob .closing{font-family:var(--serif);font-style:italic;font-weight:300;font-size:clamp(22px,2.2vw,30px);color:var(--gold-hi);margin-top:36px;line-height:1.3}
-  .prob figure{position:relative;aspect-ratio:4/5;overflow:hidden;border-radius:4px}
-  .prob figure img{width:100%;height:100%;object-fit:cover;transition:transform 1.6s var(--ease)}
-  .prob figure:hover img{transform:scale(1.04)}
-  .prob figcaption{position:absolute;left:20px;bottom:18px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--g1)}
+  /* painel de partidas (split-flap) */
+  .board{margin-top:40px;display:inline-flex;align-items:center;gap:18px;padding:14px 18px;background:#05101F;border-radius:10px;border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 2px 10px rgba(0,0,0,.6)}
+  .board .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:#F5C04A;text-transform:uppercase;line-height:1.4}
+  .board .grp{display:flex;align-items:flex-end;gap:4px}
+  .board .grp small{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--on-navy-3);margin:0 8px 4px 2px;text-transform:uppercase}
+  .flap{position:relative;width:30px;height:42px;background:linear-gradient(180deg,#1B2333 0 50%,#141B28 50%);border-radius:4px;color:#F4F1EA;font-family:var(--mono);font-weight:700;font-size:26px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 0 #000}
+  .flap::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.7)}
+  .flap.flip{animation:flip .45s var(--ease)}
+  @keyframes flip{0%{transform:rotateX(0)}45%{transform:rotateX(-90deg);filter:brightness(.6)}100%{transform:rotateX(0)}}
 
-  /* ── PILARES ── */
-  .sec-head{max-width:760px;margin-bottom:clamp(48px,6vw,80px)}
-  .sec-head.center{text-align:center;margin-left:auto;margin-right:auto}
-  .sec-head.center .lead{margin-left:auto;margin-right:auto}
-  .pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-  .pcard{position:relative;min-height:520px;border-radius:6px;overflow:hidden;isolation:isolate;border:1px solid var(--line);display:flex;flex-direction:column;justify-content:flex-end;padding:34px;transition:border-color .5s var(--ease),transform .6s var(--ease)}
-  .pcard img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;transition:transform 1.4s var(--ease)}
-  .pcard::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(10,10,10,.15) 0%,rgba(10,10,10,.55) 45%,rgba(10,10,10,.95) 100%)}
-  .pcard:hover{border-color:rgba(201,169,110,.45);transform:translateY(-4px)}
-  .pcard:hover img{transform:scale(1.05)}
-  .pcard .k{font-family:var(--serif);font-style:italic;font-size:18px;color:var(--gold)}
-  .pcard h3{font-size:clamp(28px,2.6vw,36px);line-height:1.08;margin-top:14px}
-  .pcard p{font-size:15px;color:var(--g1);font-weight:300;line-height:1.7;margin-top:14px}
+  /* ── marquee ── */
+  .marq{background:var(--navy-deep);color:var(--on-navy);overflow:hidden;border-top:1px solid var(--line-d);border-bottom:1px solid var(--line-d)}
+  .marq .track{display:flex;width:max-content;animation:tick 42s linear infinite}
+  .marq span{font-family:var(--display);font-size:clamp(22px,2.6vw,34px);letter-spacing:.06em;text-transform:uppercase;padding:20px 0;display:flex;align-items:center;white-space:nowrap}
+  .marq span::after{content:"★";color:var(--red);margin:0 clamp(24px,3vw,44px);font-size:.7em}
+  @keyframes tick{to{transform:translateX(-50%)}}
 
-  /* ── ROTEIRO ── */
-  .tl{position:relative;max-width:920px;margin:0 auto}
-  .tl::before{content:"";position:absolute;left:7px;top:10px;bottom:10px;width:1px;background:linear-gradient(180deg,var(--gold),var(--line) 60%)}
-  .day{position:relative;padding-left:48px}
-  .day::before{content:"";position:absolute;left:0;top:34px;width:15px;height:15px;border-radius:50%;background:var(--bg);border:1px solid var(--gold)}
-  .day details{border-bottom:1px solid var(--line)}
-  .day summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:120px 1fr 32px;gap:20px;align-items:baseline;padding:26px 0}
-  .day summary::-webkit-details-marker{display:none}
-  .day .dt{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
-  .day .dt small{display:block;color:var(--g2);margin-top:4px;font-size:11px}
-  .day .tt{font-family:var(--serif);font-weight:300;font-size:clamp(22px,2.4vw,30px);line-height:1.2}
-  .day .pm{align-self:center;width:32px;height:32px;border-radius:50%;border:1px solid var(--line2);position:relative;transition:border-color .3s}
-  .day .pm::before,.day .pm::after{content:"";position:absolute;left:50%;top:50%;width:11px;height:1px;background:var(--txt);transform:translate(-50%,-50%)}
-  .day .pm::after{transform:translate(-50%,-50%) rotate(90deg);transition:transform .4s var(--ease)}
-  .day details[open] .pm{border-color:var(--gold)}
-  .day details[open] .pm::after{transform:translate(-50%,-50%) rotate(0)}
-  .day .body{display:grid;grid-template-columns:120px 1fr;gap:20px;padding-bottom:30px}
-  .day .inner{grid-column:2}
-  .day .loc{font-size:13px;color:var(--g2);letter-spacing:.02em}
-  .day .loc b{color:var(--g1);font-weight:500}
-  .day ul{list-style:none;margin-top:14px;display:grid;gap:8px}
-  .day li{font-size:15px;color:var(--g1);font-weight:300;padding-left:18px;position:relative;line-height:1.6}
-  .day li::before{content:"";position:absolute;left:0;top:.72em;width:8px;height:1px;background:var(--gold)}
-  .day li.opt{color:var(--g2)}
-  .day .key{margin-top:18px;padding:14px 18px;border-left:1px solid var(--gold);background:var(--gold-soft);font-size:14px;color:var(--txt);font-weight:300}
-  .day .key b{font-weight:500;color:var(--gold-hi)}
-  .tl-note{max-width:920px;margin:26px auto 0;padding-left:48px;font-size:13px;color:var(--g3)}
+  /* ── MAPA ── */
+  .map-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:clamp(40px,6vw,96px);align-items:center}
+  .map-box{position:relative;aspect-ratio:6/7;border-radius:18px;overflow:hidden;background:#0C2550;border:1px solid var(--line-d);box-shadow:0 40px 80px -30px rgba(0,0,0,.6)}
+  .map-box svg{width:100%;height:100%;display:block}
+  .map-box .pin text{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.06em;fill:#F4F1EA;text-transform:uppercase}
+  .map-box .route{fill:none;stroke:#FF5C6F;stroke-width:3;stroke-linecap:round;stroke-dasharray:8 9}
+  .map-box .note{position:absolute;left:16px;bottom:12px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--on-navy-3);text-transform:uppercase}
+  .stops{list-style:none;margin-top:30px;display:grid;gap:2px}
+  .stops li{display:grid;grid-template-columns:34px 1fr auto;gap:14px;align-items:center;padding:14px 0;border-top:1px solid var(--line-d)}
+  .stops li:last-child{border-bottom:1px solid var(--line-d)}
+  .stops .n{width:28px;height:28px;border-radius:50%;background:var(--red);color:#fff;font-family:var(--mono);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .stops b{font-family:var(--display);font-weight:500;font-size:20px;letter-spacing:.04em;text-transform:uppercase}
+  .stops span{display:block;font-size:13px;color:var(--on-navy-3)}
+  .stops em{font-style:normal;font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--on-navy-2)}
 
-  /* ── ENTREGÁVEIS ── */
-  .takes{display:grid;grid-template-columns:1fr 1fr;column-gap:clamp(40px,7vw,110px)}
-  .take{display:grid;grid-template-columns:44px 1fr;gap:6px;padding:28px 0;border-top:1px solid var(--line)}
-  .take .i{font-family:var(--serif);font-style:italic;color:var(--gold);font-size:17px;padding-top:4px}
-  .take h4{font-size:24px;line-height:1.2}
-  .take p{font-size:15px;color:var(--g2);font-weight:300;margin-top:8px;line-height:1.65}
+  /* ── manifesto ── */
+  .mani{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(40px,6vw,96px);align-items:center}
+  .mani h2{font-size:clamp(46px,6.6vw,100px)}
+  .mani .closing{font-family:var(--display);font-size:clamp(24px,2.4vw,34px);text-transform:uppercase;letter-spacing:.02em;color:var(--red);margin-top:30px;line-height:1.1}
+  .polaroid{background:#fff;padding:14px 14px 56px;box-shadow:0 30px 60px -20px rgba(11,23,48,.35);transform:rotate(2.5deg);position:relative;transition:transform .6s var(--ease)}
+  .polaroid:hover{transform:rotate(0)}
+  .polaroid img{aspect-ratio:4/5;width:100%;object-fit:cover}
+  .polaroid figcaption{position:absolute;left:0;right:0;bottom:16px;text-align:center;font-family:var(--mono);font-size:13px;letter-spacing:.08em;color:var(--ink-2)}
+  .polaroid::before{content:"";position:absolute;top:-14px;left:50%;width:110px;height:28px;transform:translateX(-50%) rotate(-3deg);background:rgba(200,16,46,.55)}
 
-  /* ── QUEM CONDUZ ── */
-  .lead-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(40px,7vw,110px);align-items:center}
-  .lead-grid figure{position:relative;aspect-ratio:4/5;overflow:hidden;border-radius:4px}
-  .lead-grid figure img{width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.08) brightness(.92)}
-  .sig{font-family:var(--serif);font-style:italic;font-weight:300;font-size:clamp(26px,2.8vw,38px);line-height:1.25;margin-top:34px;padding-top:30px;border-top:1px solid var(--line)}
-  .sig cite{display:block;font-family:var(--sans);font-style:normal;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-top:16px}
-  .co{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:clamp(56px,7vw,96px)}
-  .co .m{display:grid;grid-template-columns:110px 1fr;gap:22px;align-items:start;padding:24px;border:1px solid var(--line);border-radius:6px;transition:border-color .4s}
-  .co .m:hover{border-color:var(--line2)}
-  .co img{width:110px;height:138px;object-fit:cover;border-radius:3px;filter:grayscale(1) contrast(1.05)}
-  .co h4{font-size:24px;line-height:1.1}
-  .co .role{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-top:8px}
-  .co p{font-size:14px;color:var(--g2);font-weight:300;line-height:1.65;margin-top:10px}
+  /* ── números ── */
+  .nums{display:grid;grid-template-columns:repeat(4,1fr);background:var(--stars),var(--red);background-size:64px 56px,auto;color:#fff}
+  .nums .n{padding:44px 16px;text-align:center;border-left:1px solid rgba(255,255,255,.25)}
+  .nums .n:first-child{border-left:none}
+  .nums b{display:block;font-family:var(--display);font-weight:600;font-size:clamp(52px,6vw,84px);line-height:1;font-variant-numeric:tabular-nums}
+  .nums b i{font-style:normal;color:var(--navy)}
+  .nums span{display:block;font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.85);margin-top:12px}
 
-  /* ── INCLUSO ── */
-  .inc{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-left:1px solid var(--line)}
-  .inc .c{padding:34px 28px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);transition:background .4s}
-  .inc .c:hover{background:var(--bg1)}
-  .inc svg{width:28px;height:28px;color:var(--gold);stroke-width:1.1}
-  .inc h4{font-family:var(--sans);font-weight:500;font-size:15px;letter-spacing:0;margin-top:22px}
-  .inc p{font-size:13.5px;color:var(--g2);font-weight:300;margin-top:6px;line-height:1.55}
-  .notinc{display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:28px;font-size:14px;color:var(--g2)}
-  .notinc b{color:var(--g1);font-weight:500;margin-right:4px}
-  .notinc span{display:inline-flex;align-items:center;gap:8px}
-  .notinc span::before{content:"";width:10px;height:1px;background:var(--g3)}
+  /* ── pilares como placas de estrada ── */
+  .routes{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .rcard{background:#fff;border:1px solid var(--line-l);border-radius:14px;padding:34px 30px 32px;transition:transform .5s var(--ease),box-shadow .5s var(--ease);position:relative;overflow:hidden}
+  .rcard:hover{transform:translateY(-6px);box-shadow:0 30px 60px -30px rgba(10,31,68,.45)}
+  .rcard::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:repeating-linear-gradient(90deg,var(--red) 0 22px,var(--white) 22px 44px,var(--navy) 44px 66px)}
+  .shield{width:76px;height:84px}
+  .rcard h3{font-size:30px;margin-top:22px;color:var(--navy);line-height:1.05}
+  .rcard p{font-size:15.5px;color:var(--ink-2);margin-top:14px;line-height:1.7}
 
-  /* ── PARA QUEM ── */
-  .fit{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  .fit .col{padding:clamp(28px,4vw,48px);border:1px solid var(--line);border-radius:6px}
-  .fit .col.yes{border-color:rgba(201,169,110,.35);background:linear-gradient(180deg,rgba(201,169,110,.06),transparent 60%)}
-  .fit h3{font-size:30px}
-  .fit ul{list-style:none;margin-top:26px;display:grid;gap:16px}
-  .fit li{display:grid;grid-template-columns:22px 1fr;gap:12px;font-size:15.5px;font-weight:300;color:var(--g1);line-height:1.6}
-  .fit li svg{width:16px;height:16px;margin-top:4px}
-  .fit .yes li svg{color:var(--gold)}
-  .fit .no li svg{color:var(--g3)}
+  /* ── roteiro ── */
+  .itin{display:grid;gap:18px}
+  .day{display:grid;grid-template-columns:300px 1fr;border-radius:14px;overflow:hidden;background:var(--navy-2);border:1px solid var(--line-d);transition:border-color .4s}
+  .day:hover{border-color:rgba(255,92,111,.45)}
+  .day .ph{position:relative;min-height:220px;overflow:hidden}
+  .day .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.4s var(--ease)}
+  .day:hover .ph img{transform:scale(1.06)}
+  .day .ph .badge{position:absolute;left:14px;top:14px;background:var(--red);color:#fff;font-family:var(--display);font-size:15px;letter-spacing:.1em;padding:6px 12px;border-radius:3px;text-transform:uppercase}
+  .day .ph .date{position:absolute;left:14px;bottom:12px;font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.7)}
+  .day .bd{padding:26px 30px}
+  .day .loc{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:#FF8A98}
+  .day h3{font-size:clamp(24px,2.4vw,32px);margin-top:8px;line-height:1.05}
+  .day ul{list-style:none;margin-top:14px;display:grid;gap:7px}
+  .day li{font-size:15px;color:var(--on-navy-2);padding-left:20px;position:relative}
+  .day li::before{content:"★";position:absolute;left:0;top:0;font-size:10px;color:#FF5C6F;line-height:2.2}
+  .day li.opt{color:var(--on-navy-3)}
+  .day .key{margin-top:16px;font-size:14px;color:var(--on-navy);padding:12px 16px;background:rgba(255,255,255,.05);border-left:3px solid var(--red);border-radius:0 6px 6px 0}
+  .day .key b{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#FF8A98;margin-right:6px}
+  .itin-note{margin-top:22px;font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--on-navy-3)}
 
+  /* ── passaporte ── */
+  .passport{background:var(--paper);background-image:repeating-linear-gradient(0deg,transparent 0 31px,rgba(11,23,48,.05) 31px 32px);border-radius:18px;border:1px solid var(--paper-2);padding:clamp(28px,4vw,56px);position:relative;box-shadow:inset 0 0 80px rgba(160,130,90,.15)}
+  .passport .pp-head{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);padding-bottom:16px;border-bottom:1px solid var(--line-l);margin-bottom:26px}
+  .stamps{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(16px,3vw,34px) clamp(10px,2vw,24px);justify-items:center}
+  .stamp{width:100%;max-width:200px;aspect-ratio:1;opacity:0;transform:scale(1.7) rotate(var(--r,0deg));transition:opacity .25s ease,transform .45s cubic-bezier(.2,1.4,.4,1);cursor:default}
+  .stamp.in{opacity:.9;transform:scale(1) rotate(var(--r,0deg))}
+  .stamp:hover{opacity:1}
+  .stamp svg{width:100%;height:100%;overflow:visible}
+  .stamp text{font-family:var(--mono);font-weight:700;text-transform:uppercase}
+  .stamp .big{font-family:var(--display);font-weight:600}
 
-  /* ── FAQ ── */
-  .faq{max-width:860px;margin:0 auto;border-top:1px solid var(--line)}
-  .faq details{border-bottom:1px solid var(--line)}
-  .faq summary{list-style:none;cursor:pointer;padding:26px 0;display:flex;justify-content:space-between;align-items:center;gap:24px;font-family:var(--serif);font-weight:300;font-size:clamp(20px,2vw,25px)}
-  .faq summary::-webkit-details-marker{display:none}
-  .faq summary i{flex:0 0 auto;width:28px;height:28px;border-radius:50%;border:1px solid var(--line2);position:relative;transition:border-color .3s}
-  .faq summary i::before,.faq summary i::after{content:"";position:absolute;left:50%;top:50%;width:10px;height:1px;background:var(--txt);transform:translate(-50%,-50%)}
-  .faq summary i::after{transform:translate(-50%,-50%) rotate(90deg);transition:transform .4s var(--ease)}
-  .faq details[open] summary i{border-color:var(--gold)}
-  .faq details[open] summary i::after{transform:translate(-50%,-50%) rotate(0)}
-  .faq p{padding:0 48px 26px 0;font-size:15.5px;color:var(--g1);font-weight:300;line-height:1.75}
+  /* ── entregáveis ── */
+  .takes{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .take{display:grid;grid-template-columns:52px 1fr;gap:16px;padding:26px;background:#fff;border:1px solid var(--line-l);border-radius:12px;transition:border-color .3s}
+  .take:hover{border-color:rgba(200,16,46,.4)}
+  .take .i{width:52px;height:52px;border-radius:50%;background:var(--navy);color:#fff;font-family:var(--display);font-size:20px;display:flex;align-items:center;justify-content:center}
+  .take h4{font-family:var(--display);font-weight:500;font-size:22px;text-transform:uppercase;letter-spacing:.03em;color:var(--navy);line-height:1.1}
+  .take p{font-size:15px;color:var(--ink-2);margin-top:8px;line-height:1.65}
 
-  /* ── FINAL ── */
-  #final{min-height:100svh;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;isolation:isolate}
-  #final .bgimg{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover}
-  #final .shade{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,var(--bg) 0%,rgba(10,10,10,.45) 30%,rgba(10,10,10,.55) 70%,var(--bg) 100%)}
-  #final h2{font-size:clamp(46px,7.4vw,112px);line-height:1.02;margin-top:0}
-  #final .btn{margin-top:46px;padding:18px 34px;font-size:15px}
+  /* ── tripulação ── */
+  .crew-main{display:grid;grid-template-columns:1fr 1fr;gap:clamp(40px,6vw,96px);align-items:center}
+  .crew-main figure{position:relative;border-radius:14px;overflow:hidden;aspect-ratio:4/5}
+  .crew-main figure img{width:100%;height:100%;object-fit:cover}
+  .crew-main figure figcaption{position:absolute;left:0;right:0;bottom:0;padding:16px 20px;background:linear-gradient(180deg,transparent,rgba(6,20,47,.9));font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--on-navy-2)}
+  .badge-capt{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;background:var(--red);color:#fff;padding:6px 12px;border-radius:3px;margin-top:20px}
+  .sig{font-family:var(--display);font-size:clamp(26px,2.8vw,40px);text-transform:uppercase;line-height:1.1;margin-top:30px;padding-top:26px;border-top:1px solid var(--line-d)}
+  .sig cite{display:block;font-family:var(--mono);font-style:normal;font-size:12px;letter-spacing:.16em;color:#FF8A98;margin-top:12px}
+  .crew{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:clamp(48px,6vw,80px)}
+  .mate{display:grid;grid-template-columns:120px 1fr;gap:22px;padding:22px;background:var(--navy-2);border:1px solid var(--line-d);border-radius:14px}
+  .mate img{width:120px;height:150px;object-fit:cover;border-radius:8px}
+  .mate h4{font-family:var(--display);font-weight:500;font-size:26px;text-transform:uppercase;letter-spacing:.03em;line-height:1}
+  .mate .role{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#FF8A98;margin-top:8px}
+  .mate p{font-size:14.5px;color:var(--on-navy-2);margin-top:10px;line-height:1.65}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .chips i{font-style:normal;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line-d);padding:5px 9px;border-radius:3px;color:var(--on-navy-2)}
 
-  footer{border-top:1px solid var(--line);padding:56px 0 48px;font-size:13px;color:var(--g2)}
-  footer .wrap{display:grid;grid-template-columns:1fr auto;gap:28px;align-items:end}
-  footer .logo-chip{margin-bottom:20px}
-  footer .logo-chip img{width:80px}
-  footer .links{display:flex;flex-wrap:wrap;gap:12px 26px}
-  footer .links a:hover{color:var(--txt)}
-  footer .legal{grid-column:1/-1;padding-top:26px;border-top:1px solid var(--line);font-size:12px;color:var(--g3);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  /* ── incluso ── */
+  .inc{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .inc .c{background:#fff;border:1px solid var(--line-l);border-radius:12px;padding:26px 22px;transition:transform .4s var(--ease)}
+  .inc .c:hover{transform:translateY(-4px)}
+  .inc svg{width:30px;height:30px;color:var(--red)}
+  .inc h4{font-family:var(--display);font-weight:500;font-size:19px;text-transform:uppercase;letter-spacing:.04em;color:var(--navy);margin-top:16px}
+  .inc p{font-size:14px;color:var(--ink-3);margin-top:4px;line-height:1.5}
+  .notinc{margin-top:22px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:14px;color:var(--ink-2)}
+  .notinc b{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--red);margin-right:6px}
+  .notinc span{border:1px dashed rgba(11,23,48,.3);border-radius:999px;padding:6px 12px;font-size:13px}
 
-  /* ── WHATSAPP ── */
-  .wa{position:fixed;right:20px;bottom:20px;z-index:55;width:52px;height:52px;border-radius:50%;background:rgba(22,22,21,.9);border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;color:var(--txt);transition:border-color .3s,transform .3s var(--ease);box-shadow:0 10px 30px rgba(0,0,0,.4)}
-  .wa:hover{border-color:var(--gold);transform:translateY(-2px)}
-  .wa svg{width:22px;height:22px}
+  /* ── para quem ── */
+  .fit{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .fit .col{border-radius:14px;padding:clamp(28px,4vw,46px)}
+  .fit .yes{background:var(--navy);color:var(--on-navy)}
+  .fit .no{background:#fff;border:1px solid var(--line-l)}
+  .fit h3{font-size:32px}
+  .fit .no h3{color:var(--navy)}
+  .fit ul{list-style:none;margin-top:22px;display:grid;gap:14px}
+  .fit li{display:grid;grid-template-columns:24px 1fr;gap:12px;font-size:15.5px;line-height:1.6}
+  .fit .yes li{color:var(--on-navy-2)}
+  .fit .no li{color:var(--ink-2)}
+  .fit .yes li::before{content:"★";color:#FF5C6F}
+  .fit .no li::before{content:"✕";color:var(--ink-3)}
 
-  /* ── APLICAÇÃO (card no estilo UNV Social / UNV Finance) ── */
-  .apply-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:clamp(40px,6vw,96px);align-items:start}
-  .apply-info{position:sticky;top:120px}
-  .apply-list{list-style:none;display:grid;gap:12px;margin-top:30px}
-  .apply-list li{display:flex;gap:12px;font-size:15px;color:var(--g1);font-weight:300}
-  .apply-list svg{width:16px;height:16px;color:var(--gold);flex:0 0 auto;margin-top:4px}
-  .apply-host{display:flex;align-items:center;gap:14px;margin-top:36px;padding-top:28px;border-top:1px solid var(--line)}
-  .apply-host img{width:56px;height:56px;border-radius:50%;object-fit:cover;object-position:50% 20%;filter:grayscale(1)}
-  .apply-host b{display:block;font-weight:500;font-size:15px}
-  .apply-host span{display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--g2);margin-top:3px}
-  .formcard{position:relative;overflow:hidden;border-radius:20px;padding:clamp(24px,3.4vw,44px);background:linear-gradient(165deg,rgba(245,245,240,.065),rgba(245,245,240,.015));border:1px solid var(--line);box-shadow:0 40px 90px -40px rgba(0,0,0,.95)}
-  .formcard::before{content:"";position:absolute;inset:0;border-radius:20px;padding:1px;background:linear-gradient(140deg,rgba(201,169,110,.7),transparent 40%,transparent 64%,rgba(245,245,240,.18));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
-  .formcard::after{content:"";position:absolute;right:-120px;top:-120px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(201,169,110,.16),transparent 70%);pointer-events:none}
-  .formcard > *{position:relative;z-index:1}
-  .prog{display:flex;align-items:center;gap:14px;margin-bottom:30px}
-  .prog .bar{flex:1;height:2px;background:var(--line2);border-radius:2px;overflow:hidden}
-  .prog .bar i{display:block;height:100%;width:33.33%;background:var(--gold);transition:width .6s var(--ease)}
-  .prog span{font-size:12px;color:var(--g2);font-variant-numeric:tabular-nums;letter-spacing:.08em}
+  /* ── CHECK-IN (aplicação) ── */
+  .ci-grid{display:grid;grid-template-columns:.85fr 1.15fr;gap:clamp(36px,5vw,80px);align-items:start}
+  .ci-info{position:sticky;top:120px}
+  .ci-list{list-style:none;margin-top:26px;display:grid;gap:10px}
+  .ci-list li{display:flex;gap:10px;font-size:15px;color:var(--on-navy-2)}
+  .ci-list li::before{content:"★";color:#FF5C6F;font-size:12px;line-height:2}
+  .ticket{display:grid;grid-template-columns:1fr 170px;background:var(--white);color:var(--ink);border-radius:18px;box-shadow:0 50px 100px -40px rgba(0,0,0,.8);overflow:hidden;scroll-margin-top:100px}
+  .t-main{padding:clamp(22px,3.2vw,40px)}
+  .t-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-bottom:16px;border-bottom:1px dashed rgba(11,23,48,.25);margin-bottom:22px}
+  .t-head img{width:62px}
+  .t-head span{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.2em;color:var(--red);text-transform:uppercase}
+  .steps-bar{display:flex;gap:8px;margin-bottom:24px}
+  .steps-bar div{flex:1;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);padding-top:10px;border-top:3px solid var(--paper-2);transition:color .3s,border-color .3s}
+  .steps-bar div.on{color:var(--navy);border-color:var(--red)}
+  .steps-bar div.done{color:var(--ink-2);border-color:var(--navy)}
   .step{display:none}
   .step.on{display:block;animation:stepIn .5s var(--ease)}
-  @keyframes stepIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
-  .step h3{font-size:32px;line-height:1.1}
-  .step .sub{font-size:14.5px;color:var(--g2);font-weight:300;margin:10px 0 26px}
-  .row2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
-  .f{margin-bottom:18px}
-  .f > label,.f > .q{display:block;font-size:12.5px;color:var(--g1);margin-bottom:8px;font-weight:500}
-  .f input[type=text],.f input[type=email],.f input[type=tel],.f select{width:100%;background:rgba(245,245,240,.045);border:1px solid var(--line2);border-radius:11px;color:var(--txt);font-size:16px;font-family:var(--sans);padding:13px 14px;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;appearance:none}
-  .f select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%23C9A96E' stroke-width='1.5'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:38px}
-  .f select option{background:#111110}
-  .f input:focus,.f select:focus{border-color:rgba(201,169,110,.75);background:rgba(201,169,110,.06);box-shadow:0 0 0 3px rgba(201,169,110,.14)}
-  .f input::placeholder{color:var(--g3)}
-  .chips{display:flex;flex-wrap:wrap;gap:8px}
-  .chip{position:relative}
-  .chip input{position:absolute;opacity:0;pointer-events:none}
-  .chip span{display:inline-block;padding:10px 15px;border:1px solid var(--line2);border-radius:999px;font-size:13.5px;color:var(--g1);cursor:pointer;transition:border-color .2s,background .2s,color .2s;user-select:none}
-  .chip span:hover{border-color:var(--g2)}
-  .chip input:checked + span{border-color:var(--gold);background:var(--gold-soft);color:var(--txt)}
-  .chip input:focus-visible + span{box-shadow:0 0 0 3px rgba(201,169,110,.25)}
+  @keyframes stepIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+  .step h3{font-size:32px;color:var(--navy)}
+  .step .sub{font-size:14.5px;color:var(--ink-3);margin:8px 0 22px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+  .f{margin-bottom:16px}
+  .f > label,.f > .q{display:block;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);margin-bottom:7px}
+  .f input[type=text],.f input[type=email],.f input[type=tel],.f select{width:100%;background:#fff;border:1.5px solid rgba(11,23,48,.16);border-radius:10px;color:var(--ink);font-size:16px;font-family:var(--sans);padding:12px 14px;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;appearance:none}
+  .f select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%23C8102E' stroke-width='1.8'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+  .f input:focus,.f select:focus{border-color:var(--navy);box-shadow:0 0 0 4px rgba(10,31,68,.1)}
+  .f input::placeholder{color:#A3A9B8}
+  .opts{display:flex;flex-wrap:wrap;gap:8px}
+  .opt{position:relative}
+  .opt input{position:absolute;opacity:0;pointer-events:none}
+  .opt span{display:inline-block;padding:9px 14px;border:1.5px solid rgba(11,23,48,.16);border-radius:999px;font-size:13.5px;color:var(--ink-2);cursor:pointer;transition:all .2s;user-select:none}
+  .opt span:hover{border-color:var(--navy)}
+  .opt input:checked + span{background:var(--navy);border-color:var(--navy);color:#fff}
+  .opt input:focus-visible + span{box-shadow:0 0 0 4px rgba(10,31,68,.15)}
   .f[hidden]{display:none}
-  .agree{display:flex;gap:12px;align-items:flex-start;font-size:13.5px;color:var(--g1);font-weight:300;cursor:pointer;line-height:1.55}
-  .agree input{flex:0 0 auto;width:18px;height:18px;margin-top:2px;accent-color:var(--gold)}
-  .err{font-size:13px;color:#e88a7d;margin:4px 0 14px}
-  .nav-steps{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px}
-  .back{background:none;border:none;color:var(--g2);font-size:14px;cursor:pointer;padding:10px 0}
-  .back:hover{color:var(--txt)}
-  .done{text-align:center;padding:24px 0 8px}
-  .done .btn{margin-top:24px}
-  .done .ic{width:64px;height:64px;border-radius:50%;border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;margin:0 auto 26px;color:var(--gold)}
-  .done h3{font-size:34px}
-  .done p{font-size:15.5px;color:var(--g1);font-weight:300;line-height:1.7;margin-top:14px}
+  .agree{display:flex;gap:12px;align-items:flex-start;font-size:13.5px;color:var(--ink-2);cursor:pointer;line-height:1.55}
+  .agree input{flex:0 0 auto;width:18px;height:18px;margin-top:2px;accent-color:var(--red)}
+  .err{font-size:13.5px;color:var(--red);margin:4px 0 12px;font-weight:500}
+  .nav-steps{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:8px}
+  .back{background:none;border:none;color:var(--ink-3);font-size:14px;cursor:pointer;padding:10px 0;font-family:var(--mono);letter-spacing:.06em}
+  .back:hover{color:var(--navy)}
+  .t-stub{position:relative;background:var(--navy);color:var(--on-navy);padding:26px 18px;display:flex;flex-direction:column;gap:16px;font-family:var(--mono);border-left:2px dashed rgba(244,241,234,.35)}
+  .t-stub::before,.t-stub::after{content:"";position:absolute;left:-13px;width:24px;height:24px;border-radius:50%;background:var(--navy-deep)}
+  .t-stub::before{top:-12px}.t-stub::after{bottom:-12px}
+  .t-stub span{display:block;font-size:9.5px;letter-spacing:.16em;color:var(--on-navy-3);text-transform:uppercase}
+  .t-stub b{display:block;font-size:14px;margin-top:3px;word-break:break-word}
+  .t-stub .pax b{font-family:var(--display);font-size:22px;font-weight:500;letter-spacing:.02em;line-height:1.05;text-transform:uppercase}
+  .t-stub .status b{color:#F5C04A}
+  .t-stub .barcode{background:repeating-linear-gradient(0deg,var(--on-navy) 0 2px,transparent 2px 4px,var(--on-navy) 4px 5px,transparent 5px 8px);height:auto;flex:1;min-height:70px;opacity:.85}
+  .done{text-align:center;padding:24px 0 10px}
+  .done .ic{width:66px;height:66px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 22px}
+  .done h3{font-size:36px;color:var(--navy)}
+  .done p{font-size:15.5px;color:var(--ink-2);line-height:1.7;margin-top:12px}
+  .done .btn{margin-top:22px}
 
-  @media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}.step.on{animation:none}}
+  /* ── FAQ ── */
+  .faq{max-width:900px;margin:0 auto}
+  .faq details{border-bottom:1px solid var(--line-l)}
+  .faq details:first-child{border-top:1px solid var(--line-l)}
+  .faq summary{list-style:none;cursor:pointer;padding:24px 0;display:flex;justify-content:space-between;align-items:center;gap:20px;font-family:var(--display);font-weight:500;font-size:clamp(20px,2vw,25px);text-transform:uppercase;letter-spacing:.02em;color:var(--navy)}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::after{content:"+";flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:var(--red);color:#fff;font-family:var(--sans);font-size:20px;display:flex;align-items:center;justify-content:center;transition:transform .35s var(--ease)}
+  .faq details[open] summary::after{transform:rotate(45deg)}
+  .faq p{padding:0 50px 24px 0;font-size:15.5px;color:var(--ink-2);line-height:1.75}
+
+  /* ── final ── */
+  #final{position:relative;min-height:92svh;display:flex;align-items:center;text-align:center;overflow:hidden;isolation:isolate;color:var(--on-navy)}
+  #final .flagwave{position:absolute;inset:-4%;z-index:-2;width:108%;height:108%}
+  #final .tint{position:absolute;inset:0;z-index:-1;background:radial-gradient(60% 55% at 50% 50%,rgba(6,20,47,.62),rgba(6,20,47,.25))}
+  #final h2{text-shadow:0 4px 30px rgba(6,20,47,.7)}
+  #final h2 .r{color:#fff!important;text-decoration:underline;text-decoration-color:var(--red);text-decoration-thickness:6px;text-underline-offset:10px}
+  #final h2{font-size:clamp(50px,8vw,124px)}
+  #final .btn{margin-top:40px;padding:19px 34px;font-size:18px}
+  #final .wrap{width:100%}
+
+  footer{background:var(--navy-deep);color:var(--on-navy-2);padding:56px 0 44px;font-size:13.5px}
+  footer .wrap{display:grid;grid-template-columns:1fr auto;gap:26px;align-items:center}
+  footer .logo{display:inline-flex;background:var(--white);border-radius:8px;padding:6px 10px;margin-bottom:16px}
+  footer .logo img{width:76px}
+  footer .links{display:flex;flex-wrap:wrap;gap:10px 24px}
+  footer .links a:hover{color:#fff}
+  footer .legal{grid-column:1/-1;padding-top:24px;border-top:1px solid var(--line-d);font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--on-navy-3);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+
+  .wa{position:fixed;right:20px;bottom:20px;z-index:60;width:54px;height:54px;border-radius:50%;background:#1F8F4E;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:transform .3s var(--ease)}
+  .wa:hover{transform:translateY(-3px)}
+  .wa svg{width:24px;height:24px}
+
+  @media (prefers-reduced-motion:reduce){.rv,.stamp{opacity:1!important;transform:none!important;transition:none}.marq .track{animation:none}.flap.flip{animation:none}html{scroll-behavior:auto}}
 
   @media (max-width:1024px){
     .hdr nav a.lk{display:none}
-    .prob,.lead-grid{grid-template-columns:1fr}
-    .prob figure{aspect-ratio:16/11}
-    .lead-grid figure{max-width:520px}
-    .pillars{grid-template-columns:1fr}
-    .pcard{min-height:380px}
+    .hero-grid,.map-grid,.mani,.crew-main,.ci-grid{grid-template-columns:1fr}
+    .bp-wrap{max-width:520px}
+    .routes{grid-template-columns:1fr}
+    .stamps{grid-template-columns:repeat(4,1fr)}
     .inc{grid-template-columns:repeat(2,1fr)}
-    .co{grid-template-columns:1fr}
-    .apply-grid{grid-template-columns:1fr}
-    .apply-info{position:static}
+    .crew{grid-template-columns:1fr}
+    .ci-info{position:static}
+    .polaroid{max-width:460px;margin:0 auto}
+    .crew-main figure{max-width:520px}
   }
   @media (max-width:640px){
-    .hdr .wrap{height:68px}
-    .hdr .logo-chip{padding:5px 9px}
-    .hdr .logo-chip img{width:58px}
-    #hero .wrap{padding-top:112px;padding-bottom:96px}
-    .count{gap:12px;padding:12px 18px}
-    .count .lbl{display:none}
-    .count .u{min-width:34px}
-    .count .u b{font-size:22px}
-    .nums .wrap{grid-template-columns:1fr 1fr}
-    .nums .n{padding:34px 10px}
+    .hdr .wrap{height:66px}
+    .hdr .logo img{width:56px}
+    .hdr .btn{padding:9px 14px;font-size:13px}
+    #hero .wrap{padding-top:112px;padding-bottom:80px}
+    .hero-stripes{display:none}
+    .hero-stars{width:100%;height:55%}
+    .hero-kick{font-size:10.5px;letter-spacing:.1em}
+    .board{display:flex;flex-wrap:wrap;gap:6px 4px;padding:12px;width:100%}
+    .board .lbl{width:100%;margin-bottom:4px}
+    .board .lbl br{display:none}
+    .board .grp small,.board small.u{margin:0 6px 4px 2px}
+    .flap{width:22px;height:32px;font-size:19px}
+    .bp{grid-template-columns:1fr 84px}
+    .bp-main{padding:16px}
+    .bp-route b{font-size:34px}
+    .bp-route svg{width:32px;height:32px}
+    .bp-grid{gap:10px 8px}
+    .bp-grid div b{font-size:12.5px}
+    .bp-stub{padding:16px 10px}
+    .bp-stub .st b{font-size:18px}
+    .bp-stub .seat b{font-size:11px}
+    .barcode{height:70px}
+    .nums{grid-template-columns:1fr 1fr}
     .nums .n:nth-child(3){border-left:none}
-    .nums .n:nth-child(-n+2){border-bottom:1px solid var(--line)}
+    .nums .n:nth-child(-n+2){border-bottom:1px solid rgba(255,255,255,.25)}
+    .day{grid-template-columns:1fr}
+    .day .ph{min-height:190px}
+    .day .bd{padding:22px}
+    .stamps{grid-template-columns:repeat(2,1fr)}
     .takes,.fit{grid-template-columns:1fr}
-    .day{padding-left:34px}
-    .day summary{grid-template-columns:1fr 32px;gap:6px 14px}
-    .day .dt,.day .tt{grid-column:1}
-    .day .pm{grid-column:2;grid-row:1 / span 2}
-    .day .body{grid-template-columns:1fr}
-    .day .inner{grid-column:1}
-    .tl-note{padding-left:34px}
-    .inc .c{padding:26px 18px}
-    .co .m{grid-template-columns:84px 1fr;gap:16px;padding:18px}
-    .co img{width:84px;height:105px}
+    .inc{grid-template-columns:1fr 1fr}
+    .inc .c{padding:20px 16px}
+    .mate{grid-template-columns:90px 1fr;gap:16px;padding:18px}
+    .mate img{width:90px;height:112px}
+    .ticket{grid-template-columns:1fr}
+    .t-stub{border-left:none;border-top:2px dashed rgba(244,241,234,.35);flex-direction:row;flex-wrap:wrap;gap:12px 20px}
+    .t-stub::before,.t-stub::after{display:none}
+    .t-stub .barcode{display:none}
     .row2{grid-template-columns:1fr}
     footer .wrap{grid-template-columns:1fr}
     .faq p{padding-right:0}
@@ -337,95 +433,153 @@
 </head>
 <body>
 
+<div class="flight" aria-hidden="true"><i id="flightBar"></i><svg id="flightPlane" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg></div>
+
 <!-- ══ HEADER ══ -->
 <header class="hdr" id="hdr">
   <div class="wrap">
-    <a href="#hero" aria-label="Início" class="logo-chip"><img src="./logo-unv-holdings.webp" width="578" height="440" alt="UNV Holdings" /></a>
+    <a href="#hero" class="logo" aria-label="UNV Holdings"><img src="./logo-unv-holdings.webp" width="578" height="440" alt="UNV Holdings" /></a>
     <nav>
-      <a class="lk" href="#imersao">A imersão</a>
+      <a class="lk" href="#rota">A rota</a>
       <a class="lk" href="#roteiro">Roteiro</a>
-      <a class="lk" href="#conduz">Quem conduz</a>
-      <a class="lk" href="#faq">Dúvidas</a>
-      <button class="btn btn-sm" data-apply>Aplicar</button>
+      <a class="lk" href="#passaporte">Passaporte</a>
+      <a class="lk" href="#tripulacao">Mentores</a>
+      <a class="btn" href="#checkin" data-apply>Fazer check-in</a>
     </nav>
   </div>
 </header>
 
 <!-- ══ HERO ══ -->
 <section id="hero">
-  <div class="hero-bg" id="heroBg"><img class="photo-treat" src="https://images.unsplash.com/photo-1659941983952-7a35d58d3189?w=1920&q=80&auto=format&fit=crop" srcset="https://images.unsplash.com/photo-1659941983952-7a35d58d3189?w=900&q=75&auto=format&fit=crop 900w, https://images.unsplash.com/photo-1659941983952-7a35d58d3189?w=1920&q=80&auto=format&fit=crop 1920w, https://images.unsplash.com/photo-1659941983952-7a35d58d3189?w=2600&q=80&auto=format&fit=crop 2600w" sizes="100vw" alt="São Francisco acima da neblina ao amanhecer" fetchpriority="high" /></div>
-  <div class="hero-shade"></div>
+  <div class="hero-bg" id="heroBg"><img src="https://images.unsplash.com/photo-1422464804701-7d8356b3a42f?w=1920&q=80&auto=format&fit=crop" srcset="https://images.unsplash.com/photo-1422464804701-7d8356b3a42f?w=900&q=75&auto=format&fit=crop 900w, https://images.unsplash.com/photo-1422464804701-7d8356b3a42f?w=1920&q=80&auto=format&fit=crop 1920w, https://images.unsplash.com/photo-1422464804701-7d8356b3a42f?w=2600&q=80&auto=format&fit=crop 2600w" sizes="100vw" alt="Golden Gate Bridge ao pôr do sol" fetchpriority="high" /></div>
+  <div class="hero-tint"></div><div class="hero-stripes"></div><div class="hero-stars"></div>
   <div class="wrap">
-    <p class="eyebrow rv">Imersão executiva <b>·</b> 20 a 27 de março de 2027 <b>·</b> Vagas limitadas</p>
-    <h1 class="rv d1">O futuro dos negócios está sendo construído no Vale do Silício. <em>Você vai ver de dentro.</em></h1>
-    <p class="hero-sub rv d2">8 dias com um grupo seleto de empresários brasileiros, visitando as empresas e as pessoas que estão redefinindo vendas, gestão e inteligência artificial.</p>
-    <div class="host rv d2"><img src="./fabricio.webp" width="46" height="46" alt="Fabrício Nunes" /><div><span>Conduzida por</span><b>Fabrício Nunes</b></div><span class="logo-chip"><img src="./logo-unv-holdings.webp" width="578" height="440" alt="UNV Holdings" /></span></div>
-    <div class="hero-cta rv d3">
-      <button class="btn" data-apply>Quero aplicar <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-      <a class="btn btn-ghost" href="#roteiro">Ver o roteiro</a>
-    </div>
-    <div class="count rv d3" id="count" aria-label="Contagem regressiva até o embarque">
-      <span class="lbl">Embarque em</span>
-      <div class="u"><b data-k="d">--</b><span>dias</span></div><div class="sep"></div>
-      <div class="u"><b data-k="h">--</b><span>horas</span></div><div class="sep"></div>
-      <div class="u"><b data-k="m">--</b><span>min</span></div><div class="sep"></div>
-      <div class="u"><b data-k="s">--</b><span>seg</span></div>
+    <div class="hero-grid">
+      <div>
+        <span class="hero-kick rv"><b>★</b> Imersão executiva · <span data-cfg="datas"></span></span>
+        <h1 class="rv d1"><span class="sm">Imersão UNV Vale do Silício</span>O futuro dos negócios está sendo construído aqui. <span class="r">Você vai ver de dentro.</span></h1>
+        <p class="hero-sub rv d2"><span data-cfg="dias"></span> dias com um grupo seleto de empresários brasileiros, visitando as empresas e as pessoas que estão redefinindo vendas, gestão e inteligência artificial.</p>
+        <div class="hero-cta rv d3">
+          <a class="btn" href="#checkin" data-apply>Fazer meu check-in <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <a class="btn btn-ghost" href="#roteiro">Ver o roteiro</a>
+        </div>
+        <div class="board rv d3" id="board" aria-label="Contagem regressiva para o embarque">
+          <div class="lbl">Partida <br>em</div>
+          <div class="grp" data-g="d"></div><small class="u">dias</small>
+          <div class="grp" data-g="h"></div><small class="u">h</small>
+          <div class="grp" data-g="m"></div><small class="u">min</small>
+          <div class="grp" data-g="s"></div><small class="u">seg</small>
+        </div>
+        <div class="host rv d3"><img src="./fabricio.webp" width="42" height="42" alt="Fabrício Nunes" /><span>Conduzida por <b>Fabrício Nunes</b> · UNV Holdings</span></div>
+      </div>
+      <div class="bp-wrap rv d2">
+        <div class="bp" id="bp">
+          <div class="bp-main">
+            <div class="bp-top"><img src="./logo-unv-holdings.webp" width="578" height="440" alt="UNV Holdings" /><span>Boarding pass</span></div>
+            <div class="bp-route">
+              <div><b data-cfg="origem.codigo"></b><small data-cfg="origem.cidade"></small></div>
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" transform="rotate(90 12 12)"/></svg>
+              <div style="text-align:right"><b data-cfg="destino.codigo"></b><small data-cfg="destino.cidade"></small></div>
+            </div>
+            <div class="bp-grid">
+              <div class="pax"><span>Passageiro</span><b class="paxName">Você</b></div>
+              <div><span>Voo</span><b data-cfg="voo"></b></div>
+              <div><span>Data</span><b data-cfg="dataCurta"></b></div>
+              <div><span>Classe</span><b>Executiva</b></div>
+            </div>
+          </div>
+          <div class="bp-stub">
+            <div class="st">Portão<b>VALE</b></div>
+            <div class="barcode" aria-hidden="true"></div>
+            <div class="seat">Assento<b>Por aplicação</b></div>
+          </div>
+        </div>
+        <p class="bp-cap">Seu cartão de embarque está quase pronto</p>
+      </div>
     </div>
   </div>
-  <p class="hero-loc">São Francisco · Palo Alto · Mountain View · Califórnia</p>
 </section>
 
-<!-- ══ NÚMEROS ══ -->
-<div class="nums">
-  <div class="wrap">
-    <div class="n rv"><b data-count="8">0</b><span>dias de imersão</span></div>
-    <div class="n rv d1"><b data-count="7">0</b><span>visitas técnicas</span></div>
-    <div class="n rv d2"><b data-count="3">0</b><span>mentores</span></div>
-    <div class="n rv d3"><b data-count="60" data-prefix="+">0</b><span>imersões lideradas</span></div>
-  </div>
-</div>
+<div class="stripes thin"></div>
+<div class="marq" aria-hidden="true"><div class="track" id="marq"></div></div>
 
-<!-- ══ O PROBLEMA ══ -->
-<section class="sec" id="imersao">
+<!-- ══ NÚMEROS ══ -->
+<div class="nums" id="nums"></div>
+
+<!-- ══ MANIFESTO ══ -->
+<section class="sec">
   <div class="wrap">
-    <div class="prob">
+    <div class="mani">
       <div>
-        <p class="eyebrow rv">O ponto de partida</p>
-        <h2 class="rv d1">A maioria das empresas brasileiras está <em>5 anos atrás.</em></h2>
+        <span class="tag rv">O ponto de partida</span>
+        <h2 class="rv d1">A maioria das empresas brasileiras está <span class="r">5 anos atrás.</span></h2>
         <p class="lead rv d2">De um lado, empresas que já operam com inteligência artificial, dados e processo: vendem com previsibilidade, decidem com número e escalam sem depender do dono. Do outro, a maioria, que ainda cresce no improviso. A distância entre os dois lados aumenta todo ano.</p>
         <p class="closing rv d3">Essa imersão existe para encurtar essa distância.</p>
       </div>
-      <figure class="rv d2">
-        <img class="photo-treat" src="https://images.unsplash.com/photo-1719290227108-ea72b5728ec7?w=1100&q=78&auto=format&fit=crop" alt="Vista aérea de um campus de tecnologia circular no Vale do Silício" loading="lazy" />
-        <figcaption>Vale do Silício, Califórnia</figcaption>
-      </figure>
+      <figure class="polaroid rv d2"><img src="https://images.unsplash.com/photo-1719290227108-ea72b5728ec7?w=1000&q=78&auto=format&fit=crop" alt="Vista aérea de um campus de tecnologia no Vale do Silício" loading="lazy" /><figcaption>Cupertino, CA · Vale do Silício</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- ══ A ROTA (mapa) ══ -->
+<section class="sec navy starry" id="rota">
+  <div class="wrap">
+    <div class="map-grid">
+      <div class="map-box rv">
+        <svg viewBox="0 0 600 700" role="img" aria-label="Mapa ilustrativo da Baía de São Francisco com a rota da imersão">
+          <defs>
+            <linearGradient id="land" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1B3A72"/><stop offset="1" stop-color="#15305F"/></linearGradient>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="rgba(255,255,255,.05)"/></pattern>
+          </defs>
+          <rect width="600" height="700" fill="#0B2149"/>
+          <rect width="600" height="700" fill="url(#grid)"/>
+          <!-- Marin -->
+          <path d="M110 0H240L246 52L232 104L214 140L186 128L158 92L128 54Z" fill="url(#land)"/>
+          <!-- Península (SF até San Jose) -->
+          <path d="M198 152L212 150L232 160L240 200L250 250L268 312L292 370L322 420L362 470L408 520L440 570L452 640L460 700H300L268 600L236 500L208 400L192 300L186 220Z" fill="url(#land)"/>
+          <!-- East Bay -->
+          <path d="M262 0H600V700H486L478 610L458 548L420 500L384 456L362 400L352 330L346 260L332 196L300 150L276 104L262 50Z" fill="url(#land)"/>
+          <text x="80" y="420" fill="rgba(255,255,255,.18)" font-family="Overpass Mono, monospace" font-size="13" letter-spacing="4" transform="rotate(-90 80 420)">OCEANO PACÍFICO</text>
+          <text x="262" y="300" fill="rgba(255,255,255,.22)" font-family="Overpass Mono, monospace" font-size="11" letter-spacing="3" transform="rotate(64 262 300)">BAÍA DE SF</text>
+          <path class="route" id="route" d="M206 178 C230 240 250 330 300 430 C320 470 350 480 372 486 C395 492 404 498 400 505 C420 420 380 260 352 172 C320 150 280 150 246 150"/>
+          <g class="pin"><circle cx="206" cy="178" r="7" fill="#C8102E" stroke="#fff" stroke-width="2"/><text x="120" y="196">São Francisco</text></g>
+          <g class="pin"><circle cx="203" cy="146" r="5" fill="#fff"/><text x="92" y="140">Golden Gate</text></g>
+          <g class="pin"><circle cx="246" cy="150" r="5" fill="#fff"/><text x="256" y="138">Alcatraz</text></g>
+          <g class="pin"><circle cx="352" cy="172" r="7" fill="#C8102E" stroke="#fff" stroke-width="2"/><text x="366" y="176">Berkeley</text></g>
+          <g class="pin"><circle cx="300" cy="430" r="7" fill="#C8102E" stroke="#fff" stroke-width="2"/><text x="154" y="434">Stanford</text></g>
+          <g class="pin"><circle cx="372" cy="486" r="7" fill="#C8102E" stroke="#fff" stroke-width="2"/><text x="386" y="482">Mountain View</text></g>
+          <g class="pin"><circle cx="400" cy="505" r="5" fill="#fff"/><text x="412" y="522">Sunnyvale</text></g>
+        </svg>
+        <span class="note">Mapa ilustrativo · fora de escala</span>
+      </div>
+      <div>
+        <span class="tag rv">A rota</span>
+        <h2 class="rv d1">Bem-vindo à <span class="r">Califórnia.</span></h2>
+        <p class="lead rv d2">Da Golden Gate a Mountain View, a imersão percorre o eixo onde nasceram as empresas mais valiosas do planeta.</p>
+        <ul class="stops rv d3" id="stops"></ul>
+      </div>
     </div>
   </div>
 </section>
 
 <!-- ══ PILARES ══ -->
-<section class="sec hair">
+<section class="sec">
   <div class="wrap">
-    <div class="sec-head">
-      <p class="eyebrow rv">O que é a imersão</p>
-      <h2 class="rv d1">Três pilares. <em>Uma semana.</em></h2>
-    </div>
-    <div class="pillars">
-      <article class="pcard rv">
-        <img class="photo-treat" src="https://images.unsplash.com/photo-1766371900950-929959f2bb67?w=900&q=78&auto=format&fit=crop" alt="Sede do Google em Mountain View" loading="lazy" />
-        <span class="k">i.</span>
+    <span class="tag rv">O que é a imersão</span>
+    <h2 class="rv d1" style="max-width:900px">Três rotas. <span class="r">Uma semana.</span></h2>
+    <div class="routes" style="margin-top:clamp(40px,5vw,64px)">
+      <article class="rcard rv">
+        <svg class="shield" viewBox="0 0 76 84" aria-hidden="true"><path d="M8 4h60l4 10c0 30-8 50-34 66C12 64 4 44 4 14z" fill="#0A1F44"/><path d="M4 14h68" stroke="#C8102E" stroke-width="10"/><text x="38" y="58" text-anchor="middle" fill="#fff" font-family="Oswald" font-size="28" font-weight="600">I</text></svg>
         <h3>Tecnologia e IA aplicada a vendas e operação</h3>
         <p>Como as empresas mais valiosas do mundo usam inteligência artificial e dados no dia a dia, e o que disso cabe numa PME brasileira.</p>
       </article>
-      <article class="pcard rv d1">
-        <img class="photo-treat" src="https://images.unsplash.com/photo-1687904908300-820df75676a3?w=900&q=78&auto=format&fit=crop" alt="Torre Hoover no campus de Stanford" loading="lazy" />
-        <span class="k">ii.</span>
+      <article class="rcard rv d1">
+        <svg class="shield" viewBox="0 0 76 84" aria-hidden="true"><path d="M8 4h60l4 10c0 30-8 50-34 66C12 64 4 44 4 14z" fill="#0A1F44"/><path d="M4 14h68" stroke="#C8102E" stroke-width="10"/><text x="38" y="58" text-anchor="middle" fill="#fff" font-family="Oswald" font-size="28" font-weight="600">II</text></svg>
         <h3>Mentalidade de escala e cultura de alta performance</h3>
         <p>Como as Big Techs constroem times de alta performance, processos que escalam e uma cultura de crescimento constante.</p>
       </article>
-      <article class="pcard rv d2">
-        <img class="photo-treat" src="https://images.unsplash.com/photo-1769740333462-9a63bfa914bc?w=900&q=78&auto=format&fit=crop" alt="Empresários reunidos em uma mesa de reunião" loading="lazy" />
-        <span class="k">iii.</span>
+      <article class="rcard rv d2">
+        <svg class="shield" viewBox="0 0 76 84" aria-hidden="true"><path d="M8 4h60l4 10c0 30-8 50-34 66C12 64 4 44 4 14z" fill="#0A1F44"/><path d="M4 14h68" stroke="#C8102E" stroke-width="10"/><text x="38" y="58" text-anchor="middle" fill="#fff" font-family="Oswald" font-size="28" font-weight="600">III</text></svg>
         <h3>Networking com empresários, founders e investidores</h3>
         <p>Um grupo fechado, aceleradoras, o Consulado do Brasil e o mapeamento de oportunidades e parcerias na Califórnia.</p>
       </article>
@@ -433,88 +587,37 @@
   </div>
 </section>
 
+<div class="flagband" aria-hidden="true"><div class="canton"></div><div class="bars"></div></div>
+
 <!-- ══ ROTEIRO ══ -->
-<section class="sec hair" id="roteiro">
+<section class="sec navy starry" id="roteiro">
   <div class="wrap">
-    <div class="sec-head center">
-      <p class="eyebrow rv">Roteiro · 20 a 27 de março de 2027</p>
-      <h2 class="rv d1">Dia a <em>dia.</em></h2>
-    </div>
-    <div class="tl">
-      <div class="day rv"><details>
-        <summary><span class="dt">Dia 1<small>Sáb · 20/03</small></span><span class="tt">Embarque rumo a São Francisco</span><span class="pm"></span></summary>
-        <div class="body"><div class="inner">
-          <p class="loc"><b>Local:</b> Brasil → São Francisco</p>
-          <ul><li>Saída do Brasil com conexão nos EUA</li><li>Chegada em São Francisco à noite</li></ul>
-        </div></div>
-      </details></div>
-      <div class="day rv"><details>
-        <summary><span class="dt">Dia 2<small>Dom · 21/03</small></span><span class="tt">São Francisco e Golden Gate</span><span class="pm"></span></summary>
-        <div class="body"><div class="inner">
-          <p class="loc"><b>Locais:</b> São Francisco · Golden Gate · Pier 39</p>
-          <ul><li>Manhã livre pra descanso</li><li>City tour de bike pelos principais pontos da cidade, terminando na Golden Gate</li><li class="opt">Noite opcional: jantar no Bubba Gump, no Pier 39</li></ul>
-          <p class="key"><b>Aprendizado-chave:</b> entrar no ritmo do grupo e conhecer a cidade que concentra o capital de risco do mundo.</p>
-        </div></div>
-      </details></div>
-      <div class="day rv"><details>
-        <summary><span class="dt">Dia 3<small>Seg · 22/03</small></span><span class="tt">Abertura e Universidade de Stanford</span><span class="pm"></span></summary>
-        <div class="body"><div class="inner">
-          <p class="loc"><b>Local:</b> Palo Alto · Stanford</p>
-          <ul><li>Abertura com os mentores e pitch de negócios do grupo</li><li>Estudo de caso: o ecossistema de inovação do Vale do Silício</li><li>Tour pelo campus de Stanford, berço de empresas como Google, Nike e Tesla</li><li>Estudo de caso: Inteligência Artificial para negócios</li><li class="opt">Noite opcional: Benihana</li></ul>
-          <p class="key"><b>Aprendizado-chave:</b> como o Vale transforma pesquisa em empresa, e onde a IA já gera resultado nos negócios.</p>
-        </div></div>
-      </details></div>
-      <div class="day rv"><details>
-        <summary><span class="dt">Dia 4<small>Ter · 23/03</small></span><span class="tt">Verizon e Consulado do Brasil</span><span class="pm"></span></summary>
-        <div class="body"><div class="inner">
-          <p class="loc"><b>Locais:</b> Centro de inovação da Verizon · Consulado do Brasil</p>
-          <ul><li>Centro de inovação de uma das maiores empresas de telecom do mundo</li><li>Estudo de caso: desenvolvimento de produtos e Internet das Coisas</li><li>Consulado do Brasil: subsídios e incentivos fiscais pra empresas brasileiras na Califórnia</li><li>Estudo de caso: parcerias com empresas americanas</li><li class="opt">Noite opcional: Cheesecake Factory, na Union Square</li></ul>
-          <p class="key"><b>Aprendizado-chave:</b> como grandes empresas inovam em produto, e os caminhos reais pra fazer negócio nos EUA.</p>
-        </div></div>
-      </details></div>
-      <div class="day rv"><details>
-        <summary><span class="dt">Dia 5<small>Qua · 24/03</small></span><span class="tt">Plug and Play e Google</span><span class="pm"></span></summary>
-        <div class="body"><div class="inner">
-          <p class="loc"><b>Locais:</b> Plug and Play · Google, Mountain View</p>
-          <ul><li>Plug and Play, uma das maiores aceleradoras de negócios do mundo, com casos como PayPal e Rappi</li><li>Estudo de caso: desenvolvimento de pessoas</li><li>Google, o ícone do Vale do Silício</li><li>Estudo de caso: cultura organizacional</li><li class="opt">Noite opcional: The Jazz Room</li></ul>
-          <p class="key"><b>Aprendizado-chave:</b> como startups viram gigantes, e a cultura que sustenta isso.</p>
-        </div></div>
-      </details></div>
-      <div class="day rv"><details>
-        <summary><span class="dt">Dia 6<small>Qui · 25/03</small></span><span class="tt">Circuit Launch e Berkeley</span><span class="pm"></span></summary>
-        <div class="body"><div class="inner">
-          <p class="loc"><b>Locais:</b> Circuit Launch · Universidade de Berkeley</p>
-          <ul><li>Circuit Launch, o maior hub de robótica e impressão 3D do Vale</li><li>Estudo de caso: robótica</li><li>Universidade de Berkeley, com mais de 110 prêmios Nobel na história</li><li>Estudo de caso: parcerias estratégicas</li><li class="opt">Noite opcional: happy hour no The View, com vista para São Francisco</li></ul>
-          <p class="key"><b>Aprendizado-chave:</b> automação na prática e como parcerias certas aceleram o crescimento.</p>
-        </div></div>
-      </details></div>
-      <div class="day rv"><details>
-        <summary><span class="dt">Dia 7<small>Sex · 26/03</small></span><span class="tt">Plano de ação, Waymo e Alcatraz</span><span class="pm"></span></summary>
-        <div class="body"><div class="inner">
-          <p class="loc"><b>Locais:</b> São Francisco · Waymo · Alcatraz</p>
-          <ul><li>HotSeat: mentoria coletiva pra montar o plano de ação da sua empresa</li><li>Estudo de caso: planejamento estratégico</li><li>Passeio nos carros autônomos da Waymo, sem motorista</li><li>Ferry até Alcatraz</li><li>Voo de retorno à noite</li></ul>
-          <p class="key"><b>Aprendizado-chave:</b> transformar tudo o que você viu em decisões concretas pro seu negócio.</p>
-        </div></div>
-      </details></div>
-      <div class="day rv"><details>
-        <summary><span class="dt">Dia 8<small>Sáb · 27/03</small></span><span class="tt">Retorno ao Brasil</span><span class="pm"></span></summary>
-        <div class="body"><div class="inner">
-          <ul><li>Chegada ao Brasil com o plano de ação na mão</li></ul>
-        </div></div>
-      </details></div>
-    </div>
-    <p class="tl-note">Roteiro sujeito a ajustes conforme agenda das empresas visitadas.</p>
+    <span class="tag rv">Roteiro · <span data-cfg="datas"></span></span>
+    <h2 class="rv d1">Dia a dia, <span class="r">de costa a costa.</span></h2>
+    <div class="itin" id="itin" style="margin-top:clamp(40px,5vw,64px)"></div>
+    <p class="itin-note">Roteiro sujeito a ajustes conforme agenda das empresas visitadas.</p>
   </div>
 </section>
 
-<!-- ══ O QUE VOCÊ LEVA ══ -->
-<section class="sec hair">
+<!-- ══ PASSAPORTE ══ -->
+<section class="sec paper" id="passaporte">
   <div class="wrap">
-    <div class="sec-head">
-      <p class="eyebrow rv">O que você leva de volta</p>
-      <h2 class="rv d1">Não é sobre o que você vê. É sobre o que você <em>aplica.</em></h2>
+    <span class="tag rv">Seu passaporte</span>
+    <h2 class="rv d1">Os carimbos que você <span class="r">vai colecionar.</span></h2>
+    <p class="lead rv d2">Cada visita técnica vira um carimbo no seu passaporte e um estudo de caso aplicado ao seu negócio.</p>
+    <div class="passport rv d2" style="margin-top:clamp(36px,5vw,56px)">
+      <div class="pp-head"><span>United States of America</span><span>Visitas · <span data-cfg="ano"></span></span></div>
+      <div class="stamps" id="stamps"></div>
     </div>
-    <div class="takes">
+  </div>
+</section>
+
+<!-- ══ ENTREGÁVEIS ══ -->
+<section class="sec">
+  <div class="wrap">
+    <span class="tag rv">Na bagagem de volta</span>
+    <h2 class="rv d1" style="max-width:980px">Não é sobre o que você vê. <span class="r">É sobre o que você aplica.</span></h2>
+    <div class="takes" style="margin-top:clamp(40px,5vw,64px)">
       <div class="take rv"><span class="i">01</span><div><h4>Plano de ação para a sua empresa</h4><p>Construído no HotSeat de encerramento, com os mentores e o grupo, a partir das boas práticas da imersão.</p></div></div>
       <div class="take rv d1"><span class="i">02</span><div><h4>Plano de implementação de IA</h4><p>Onde a inteligência artificial entra em vendas e operação no seu negócio, por onde começar e o que priorizar.</p></div></div>
       <div class="take rv"><span class="i">03</span><div><h4>Mapa de crescimento</h4><p>Oportunidades e parcerias mapeadas durante as visitas, incluindo os caminhos pra fazer negócio nos EUA.</p></div></div>
@@ -525,215 +628,232 @@
   </div>
 </section>
 
-<!-- ══ QUEM CONDUZ ══ -->
-<section class="sec hair" id="conduz">
+<!-- ══ TRIPULAÇÃO ══ -->
+<section class="sec navy starry" id="tripulacao">
   <div class="wrap">
-    <div class="lead-grid">
-      <figure class="rv"><img src="./fabricio.webp" width="720" height="900" alt="Fabrício Nunes, CEO da UNV Holdings" loading="lazy" /></figure>
+    <div class="crew-main">
+      <figure class="rv"><img src="./fabricio.webp" width="720" height="900" alt="Fabrício Nunes, CEO da UNV Holdings" loading="lazy" /><figcaption>Comandante da jornada</figcaption></figure>
       <div>
-        <p class="eyebrow rv">Quem conduz</p>
+        <span class="tag rv">Quem conduz</span>
         <h2 class="rv d1">Fabrício Nunes</h2>
-        <p class="lead rv d2">CEO da UNV Holdings, especialista em estruturação comercial para pequenas e médias empresas e criador do Método CRESCER. Mais de 20 anos em vendas e mais de R$ 1 bilhão em vendas geradas ao longo da carreira. No Vale, traduz o que as empresas mais valiosas do mundo fazem em decisões que cabem na realidade de uma PME brasileira.</p>
+        <span class="badge-capt rv d1">★ CEO · UNV Holdings</span>
+        <p class="lead rv d2">Especialista em estruturação comercial para pequenas e médias empresas e criador do Método CRESCER. Mais de 20 anos em vendas e mais de R$ 1 bilhão em vendas geradas ao longo da carreira. No Vale, traduz o que as empresas mais valiosas do mundo fazem em decisões que cabem na realidade de uma PME brasileira.</p>
         <blockquote class="sig rv d3">“Sistema bem estruturado escala. Improviso não escala.”<cite>Fabrício Nunes</cite></blockquote>
       </div>
     </div>
-    <div class="co">
-      <div class="m rv">
-        <img src="./michel.webp" width="480" height="600" alt="Michel Ávila" loading="lazy" />
-        <div><h4>Michel Ávila</h4><p class="role">Mentor · CEO e fundador da APEX</p><p>26 anos de carreira e mais de 60 imersões empresariais lideradas. Especialista em vendas, gestão de pessoas, marca própria e importações da China.</p></div>
-      </div>
-      <div class="m rv d1">
-        <img src="./anderson.webp" width="480" height="600" alt="Anderson Nogueira" loading="lazy" />
-        <div><h4>Anderson Nogueira</h4><p class="role">Mentor · COO da APEX</p><p>20 anos de carreira e mais de 60 imersões lideradas. Especialista em inovação, gestão de processos, projetos de IA e investimentos estrangeiros.</p></div>
-      </div>
-    </div>
+    <div class="crew" id="crew"></div>
   </div>
 </section>
 
 <!-- ══ INCLUSO ══ -->
-<section class="sec hair">
+<section class="sec paper">
   <div class="wrap">
-    <div class="sec-head">
-      <p class="eyebrow rv">O que está incluso</p>
-      <h2 class="rv d1">Você cuida da passagem. <em>O resto é com a gente.</em></h2>
+    <span class="tag rv">O que está incluso</span>
+    <h2 class="rv d1">Você cuida da passagem. <span class="r">O resto é com a gente.</span></h2>
+    <div class="inc" style="margin-top:clamp(40px,5vw,64px)">
+      <div class="c rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V8l9-5 9 5v13"/><path d="M7 21v-6h10v6M3 21h18"/></svg><h4>Hospedagem</h4><p>Quarto duplo durante toda a imersão</p></div>
+      <div class="c rv d1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="11" rx="2"/><circle cx="7" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/><path d="M2 11h20"/></svg><h4>Transporte interno</h4><p>Terrestre em toda a programação</p></div>
+      <div class="c rv d2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z"/></svg><h4>Visitas técnicas</h4><p>Stanford, Google, Berkeley, Plug and Play e mais</p></div>
+      <div class="c rv d3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20V3H6.5A2.5 2.5 0 004 5.5v14z"/><path d="M8 7h8M8 11h6"/></svg><h4>Estudos de caso</h4><p>Um estudo de caso em cada visita</p></div>
+      <div class="c rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg><h4>Mentorias</h4><p>Com os três mentores, incluindo o HotSeat</p></div>
+      <div class="c rv d1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg><h4>Tradução simultânea</h4><p>Nas visitas técnicas</p></div>
+      <div class="c rv d2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M8.2 13.2L7 22l5-3 5 3-1.2-8.8"/></svg><h4>Certificação</h4><p>Em Inovação e Cultura Empresarial</p></div>
+      <div class="c rv d3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg><h4>Hub global</h4><p>Mapeamento de oportunidades e parcerias</p></div>
     </div>
-    <div class="inc rv">
-      <div class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V8l9-5 9 5v13"/><path d="M7 21v-6h10v6M3 21h18"/></svg><h4>Hospedagem</h4><p>Quarto duplo durante toda a imersão</p></div>
-      <div class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="11" rx="2"/><circle cx="7" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/><path d="M2 11h20"/></svg><h4>Transporte interno</h4><p>Terrestre em toda a programação</p></div>
-      <div class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z"/></svg><h4>Visitas técnicas</h4><p>Stanford, Google, Berkeley, Plug and Play e mais</p></div>
-      <div class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20V3H6.5A2.5 2.5 0 004 5.5v14z"/><path d="M8 7h8M8 11h6"/></svg><h4>Workshops e estudos de caso</h4><p>Um estudo de caso em cada visita</p></div>
-      <div class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg><h4>Mentorias</h4><p>Com os três mentores, incluindo o HotSeat</p></div>
-      <div class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg><h4>Tradução simultânea</h4><p>Nas visitas técnicas</p></div>
-      <div class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M8.2 13.2L7 22l5-3 5 3-1.2-8.8"/></svg><h4>Certificação</h4><p>Em Inovação e Cultura Empresarial</p></div>
-      <div class="c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg><h4>Hub global</h4><p>Mapeamento de oportunidades e parcerias</p></div>
-    </div>
-    <div class="notinc rv"><b>Não incluso:</b><span>Passagem aérea</span><span>Visto americano</span><span>Programas noturnos opcionais</span><span>Quarto single, com valor adicional</span></div>
+    <div class="notinc rv"><b>Não incluso</b><span>Passagem aérea</span><span>Visto americano</span><span>Programas noturnos opcionais</span><span>Quarto single (valor adicional)</span></div>
   </div>
 </section>
 
-<!-- ══ PARA QUEM É ══ -->
-<section class="sec hair">
+<!-- ══ PARA QUEM ══ -->
+<section class="sec">
   <div class="wrap">
-    <div class="sec-head center">
-      <p class="eyebrow rv">Seleção</p>
-      <h2 class="rv d1">Para quem é. <em>E para quem não é.</em></h2>
-    </div>
-    <div class="fit">
+    <span class="tag rv">Seleção</span>
+    <h2 class="rv d1">Para quem é. <span class="r">E para quem não é.</span></h2>
+    <div class="fit" style="margin-top:clamp(40px,5vw,64px)">
       <div class="col yes rv">
         <h3>É para você se</h3>
         <ul>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>É dono ou sócio de uma empresa que fatura acima de R$ 100 mil por mês</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Quer escalar com processo, tecnologia e inteligência artificial</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Valoriza networking de alto nível e experiências exclusivas</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Vai voltar disposto a implementar, não só a se inspirar</li>
+          <li>É dono ou sócio de uma empresa que fatura acima de R$ 100 mil por mês</li>
+          <li>Quer escalar com processo, tecnologia e inteligência artificial</li>
+          <li>Valoriza networking de alto nível e experiências exclusivas</li>
+          <li>Vai voltar disposto a implementar, não só a se inspirar</li>
         </ul>
       </div>
       <div class="col no rv d1">
         <h3>Não é para você se</h3>
         <ul>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 6L6 18M6 6l12 12"/></svg>Procura uma viagem de turismo com algumas visitas no meio</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 6L6 18M6 6l12 12"/></svg>Ainda está validando o próprio negócio</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 6L6 18M6 6l12 12"/></svg>Espera receita pronta sem mexer em processo e gestão</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 6L6 18M6 6l12 12"/></svg>Não tem disponibilidade pra viajar de 20 a 27 de março</li>
+          <li>Procura uma viagem de turismo com algumas visitas no meio</li>
+          <li>Ainda está validando o próprio negócio</li>
+          <li>Espera receita pronta sem mexer em processo e gestão</li>
+          <li>Não tem disponibilidade pra viajar nas datas da imersão</li>
         </ul>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ══ APLICAÇÃO ══ -->
-<section class="sec hair" id="aplicar">
+<div class="flagband" aria-hidden="true"><div class="canton"></div><div class="bars"></div></div>
+
+<!-- ══ CHECK-IN (aplicação) ══ -->
+<section class="sec navy starry" id="checkin">
   <div class="wrap">
-    <div class="apply-grid">
-      <div class="apply-info">
-        <div class="rv"><span class="logo-chip"><img src="./logo-unv-holdings.webp" width="578" height="440" alt="UNV Holdings" style="width:92px" loading="lazy" /></span></div>
-        <p class="eyebrow rv d1" style="margin-top:34px">Investimento · <b>vagas limitadas</b></p>
-        <h2 class="rv d1">Aplique para <em>uma vaga.</em></h2>
-        <p class="lead rv d2">Investimento sob aplicação. A seleção é feita por entrevista para garantir a qualidade do grupo. Depois da aplicação, nosso time te chama no WhatsApp em até 24h.</p>
-        <ul class="apply-list rv d2">
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>8 dias de programação completa</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Hospedagem em quarto duplo</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Visitas técnicas e estudos de caso</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Transporte interno e tradução</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Mentorias e HotSeat</li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg>Parcelamento no cartão ou boleto</li>
+    <div class="ci-grid">
+      <div class="ci-info">
+        <span class="tag rv">Check-in · vagas limitadas</span>
+        <h2 class="rv d1">Garanta seu <span class="r">assento.</span></h2>
+        <p class="lead rv d2">Investimento sob aplicação. A seleção é feita por entrevista para garantir a qualidade do grupo. Depois do check-in, nosso time te chama no WhatsApp em até 24h.</p>
+        <ul class="ci-list rv d2">
+          <li><span data-cfg="dias"></span>&nbsp;dias de programação completa</li>
+          <li>Hospedagem em quarto duplo</li>
+          <li>Visitas técnicas e estudos de caso</li>
+          <li>Transporte interno e tradução</li>
+          <li>Mentorias e HotSeat</li>
+          <li>Parcelamento no cartão ou boleto</li>
         </ul>
-        <div class="apply-host rv d3"><img src="./fabricio.webp" width="56" height="56" alt="Fabrício Nunes" loading="lazy" /><div><b>Fabrício Nunes</b><span>CEO · UNV Holdings</span></div></div>
       </div>
-      <div class="formcard rv d1" id="formTop">
-    <div id="formArea">
-      <div class="prog"><div class="bar"><i id="progBar"></i></div><span id="progTxt">1 de 3</span></div>
-      <form id="appForm" novalidate>
-        <div class="step on" data-step="1">
-          <h3>Aplicação</h3>
-          <p class="sub">Leva 2 minutos. Nosso time analisa e retorna em até 24h.</p>
-          <div class="f"><label for="a-nome">Nome completo</label><input id="a-nome" name="nome" type="text" autocomplete="name" placeholder="Como podemos te chamar?" maxlength="120" /></div>
-          <div class="f"><label for="a-email">E-mail</label><input id="a-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="seu@email.com" maxlength="150" /></div>
-          <div class="row2">
-            <div class="f"><label for="a-tel">WhatsApp</label><input id="a-tel" name="telefone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="(31) 99999-9999" maxlength="24" /></div>
-            <div class="f"><label for="a-cidade">Cidade</label><input id="a-cidade" name="cidade" type="text" autocomplete="address-level2" placeholder="Sua cidade" maxlength="80" /></div>
+      <div class="ticket rv d1" id="formTop">
+        <div class="t-main">
+          <div class="t-head"><img src="./logo-unv-holdings.webp" width="578" height="440" alt="UNV Holdings" /><span>Cartão de embarque · <span data-cfg="voo"></span></span></div>
+          <div id="formArea">
+            <div class="steps-bar" id="stepsBar"><div class="on">1 · Passageiro</div><div>2 · Empresa</div><div>3 · Viagem</div></div>
+            <form id="appForm" novalidate>
+              <div class="step on" data-step="1">
+                <h3>Passageiro</h3>
+                <p class="sub">Leva 2 minutos. Nosso time analisa e retorna em até 24h.</p>
+                <div class="f"><label for="a-nome">Nome completo</label><input id="a-nome" name="nome" type="text" autocomplete="name" placeholder="Como está no passaporte" maxlength="120" /></div>
+                <div class="f"><label for="a-email">E-mail</label><input id="a-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="seu@email.com" maxlength="150" /></div>
+                <div class="row2">
+                  <div class="f"><label for="a-tel">WhatsApp</label><input id="a-tel" name="telefone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="(31) 99999-9999" maxlength="24" /></div>
+                  <div class="f"><label for="a-cidade">Cidade</label><input id="a-cidade" name="cidade" type="text" autocomplete="address-level2" placeholder="Sua cidade" maxlength="80" /></div>
+                </div>
+              </div>
+              <div class="step" data-step="2">
+                <h3>Sua empresa</h3>
+                <p class="sub">Pra montarmos um grupo equilibrado.</p>
+                <div class="f"><label for="a-empresa">Empresa</label><input id="a-empresa" name="empresa" type="text" autocomplete="organization" placeholder="Nome da empresa" maxlength="120" /></div>
+                <div class="row2">
+                  <div class="f"><label for="a-seg">Segmento</label><select id="a-seg" name="segmento"><option value="">Selecione</option><option>Serviços</option><option>Varejo</option><option>Indústria</option><option>Saúde</option><option>Educação</option><option>Tecnologia</option><option>Imobiliário</option><option>Alimentação</option><option>Agronegócio</option><option>Outro</option></select></div>
+                  <div class="f"><label for="a-cargo">Cargo</label><select id="a-cargo" name="cargo"><option value="">Selecione</option><option>Dono ou sócio</option><option>CEO ou diretor</option><option>Gestor</option><option>Outro</option></select></div>
+                </div>
+                <div class="row2">
+                  <div class="f"><label for="a-fat">Faturamento mensal</label><select id="a-fat" name="faturamento"><option value="">Selecione</option><option value="ate50">Até R$ 50 mil</option><option value="50a100">R$ 50 a 100 mil</option><option value="100a300">R$ 100 a 300 mil</option><option value="300a1m">R$ 300 mil a 1 milhão</option><option value="1m">Acima de R$ 1 milhão</option></select></div>
+                  <div class="f"><label for="a-time">Tamanho do time</label><select id="a-time" name="time"><option value="">Selecione</option><option>1 a 5</option><option>6 a 15</option><option>16 a 50</option><option>51 a 200</option><option>Mais de 200</option></select></div>
+                </div>
+              </div>
+              <div class="step" data-step="3">
+                <h3>Sua viagem</h3>
+                <p class="sub">Última etapa do check-in.</p>
+                <div class="f"><span class="q">Principal objetivo com a imersão</span><div class="opts">
+                  <label class="opt"><input type="checkbox" name="objetivo" value="IA em vendas e operação" /><span>IA em vendas e operação</span></label>
+                  <label class="opt"><input type="checkbox" name="objetivo" value="Escalar com processo e gestão" /><span>Escalar com processo e gestão</span></label>
+                  <label class="opt"><input type="checkbox" name="objetivo" value="Networking com empresários e investidores" /><span>Networking com empresários e investidores</span></label>
+                  <label class="opt"><input type="checkbox" name="objetivo" value="Visão e cultura das Big Techs" /><span>Visão e cultura das Big Techs</span></label>
+                  <label class="opt"><input type="checkbox" name="objetivo" value="Negócios nos EUA" /><span>Negócios nos EUA</span></label>
+                </div></div>
+                <div class="row2">
+                  <div class="f"><span class="q">Já viajou aos EUA?</span><div class="opts">
+                    <label class="opt"><input type="radio" name="viajou" value="sim" /><span>Sim</span></label>
+                    <label class="opt"><input type="radio" name="viajou" value="nao" /><span>Não</span></label>
+                  </div></div>
+                  <div class="f"><span class="q">Possui visto americano?</span><div class="opts">
+                    <label class="opt"><input type="radio" name="visto" value="sim" /><span>Sim</span></label>
+                    <label class="opt"><input type="radio" name="visto" value="nao" /><span>Não</span></label>
+                  </div></div>
+                </div>
+                <div class="f" id="w-visto30" hidden><span class="q">Consegue tirar o visto nos próximos 30 dias?</span><div class="opts">
+                  <label class="opt"><input type="radio" name="visto30" value="sim" /><span>Sim</span></label>
+                  <label class="opt"><input type="radio" name="visto30" value="nao" /><span>Não</span></label>
+                </div></div>
+                <div class="row2">
+                  <div class="f"><label for="a-quando">Quando pode investir?</label><select id="a-quando" name="quando"><option value="">Selecione</option><option value="agora">Agora</option><option value="30d">Nos próximos 30 dias</option><option value="avaliando">Estou avaliando</option></select></div>
+                  <div class="f"><label for="a-pgto">Forma de pagamento</label><select id="a-pgto" name="pagamento"><option value="">Selecione</option><option value="vista">À vista</option><option value="cartao">Cartão de crédito</option><option value="boleto">Parcelado no boleto</option><option value="sem">Hoje não tenho o valor</option></select></div>
+                </div>
+                <div class="f"><label class="agree"><input type="checkbox" name="ciente" />Estou ciente de que a passagem aérea é de minha responsabilidade.</label></div>
+              </div>
+              <p class="err" id="formErr" hidden></p>
+              <div class="nav-steps">
+                <button type="button" class="back" id="btnBack" hidden>← Voltar</button>
+                <span></span>
+                <button type="submit" class="btn" id="btnNext">Continuar <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+              </div>
+            </form>
           </div>
         </div>
-        <div class="step" data-step="2">
-          <h3>Sua empresa</h3>
-          <p class="sub">Pra montarmos um grupo equilibrado.</p>
-          <div class="f"><label for="a-empresa">Empresa</label><input id="a-empresa" name="empresa" type="text" autocomplete="organization" placeholder="Nome da empresa" maxlength="120" /></div>
-          <div class="row2">
-            <div class="f"><label for="a-seg">Segmento</label><select id="a-seg" name="segmento"><option value="">Selecione</option><option>Serviços</option><option>Varejo</option><option>Indústria</option><option>Saúde</option><option>Educação</option><option>Tecnologia</option><option>Imobiliário</option><option>Alimentação</option><option>Agronegócio</option><option>Outro</option></select></div>
-            <div class="f"><label for="a-cargo">Cargo</label><select id="a-cargo" name="cargo"><option value="">Selecione</option><option>Dono ou sócio</option><option>CEO ou diretor</option><option>Gestor</option><option>Outro</option></select></div>
-          </div>
-          <div class="row2">
-            <div class="f"><label for="a-fat">Faturamento mensal</label><select id="a-fat" name="faturamento"><option value="">Selecione</option><option value="ate50">Até R$ 50 mil</option><option value="50a100">R$ 50 a 100 mil</option><option value="100a300">R$ 100 a 300 mil</option><option value="300a1m">R$ 300 mil a 1 milhão</option><option value="1m">Acima de R$ 1 milhão</option></select></div>
-            <div class="f"><label for="a-time">Tamanho do time</label><select id="a-time" name="time"><option value="">Selecione</option><option>1 a 5</option><option>6 a 15</option><option>16 a 50</option><option>51 a 200</option><option>Mais de 200</option></select></div>
-          </div>
-        </div>
-        <div class="step" data-step="3">
-          <h3>Sua imersão</h3>
-          <p class="sub">Última etapa.</p>
-          <div class="f"><span class="q">Principal objetivo com a imersão</span><div class="chips">
-            <label class="chip"><input type="checkbox" name="objetivo" value="IA em vendas e operação" /><span>IA em vendas e operação</span></label>
-            <label class="chip"><input type="checkbox" name="objetivo" value="Escalar com processo e gestão" /><span>Escalar com processo e gestão</span></label>
-            <label class="chip"><input type="checkbox" name="objetivo" value="Networking com empresários e investidores" /><span>Networking com empresários e investidores</span></label>
-            <label class="chip"><input type="checkbox" name="objetivo" value="Visão e cultura das Big Techs" /><span>Visão e cultura das Big Techs</span></label>
-            <label class="chip"><input type="checkbox" name="objetivo" value="Negócios nos EUA" /><span>Negócios nos EUA</span></label>
-          </div></div>
-          <div class="row2">
-            <div class="f"><span class="q">Já viajou aos EUA?</span><div class="chips">
-              <label class="chip"><input type="radio" name="viajou" value="sim" /><span>Sim</span></label>
-              <label class="chip"><input type="radio" name="viajou" value="nao" /><span>Não</span></label>
-            </div></div>
-            <div class="f"><span class="q">Possui visto americano?</span><div class="chips">
-              <label class="chip"><input type="radio" name="visto" value="sim" /><span>Sim</span></label>
-              <label class="chip"><input type="radio" name="visto" value="nao" /><span>Não</span></label>
-            </div></div>
-          </div>
-          <div class="f" id="w-visto30" hidden><span class="q">Consegue tirar o visto nos próximos 30 dias?</span><div class="chips">
-            <label class="chip"><input type="radio" name="visto30" value="sim" /><span>Sim</span></label>
-            <label class="chip"><input type="radio" name="visto30" value="nao" /><span>Não</span></label>
-          </div></div>
-          <div class="row2">
-            <div class="f"><label for="a-quando">Quando pode investir?</label><select id="a-quando" name="quando"><option value="">Selecione</option><option value="agora">Agora</option><option value="30d">Nos próximos 30 dias</option><option value="avaliando">Estou avaliando</option></select></div>
-            <div class="f"><label for="a-pgto">Forma de pagamento</label><select id="a-pgto" name="pagamento"><option value="">Selecione</option><option value="vista">À vista</option><option value="cartao">Cartão de crédito</option><option value="boleto">Parcelado no boleto</option><option value="sem">Hoje não tenho o valor</option></select></div>
-          </div>
-          <div class="f"><label class="agree"><input type="checkbox" name="ciente" />Estou ciente de que a passagem aérea é de minha responsabilidade.</label></div>
-        </div>
-        <p class="err" id="formErr" hidden></p>
-        <div class="nav-steps">
-          <button type="button" class="back" id="btnBack" hidden>← Voltar</button>
-          <span></span>
-          <button type="submit" class="btn" id="btnNext">Continuar <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-        </div>
-      </form>
-    </div>
+        <aside class="t-stub" aria-live="polite">
+          <div class="pax"><span>Passageiro</span><b class="paxName">Seu nome</b></div>
+          <div><span>Empresa</span><b id="stubEmp">—</b></div>
+          <div><span>Destino</span><b><span data-cfg="destino.codigo"></span> · Vale do Silício</b></div>
+          <div><span>Data</span><b data-cfg="dataCurta"></b></div>
+          <div class="status"><span>Status</span><b id="stubStatus">Check-in aberto</b></div>
+          <div class="barcode" aria-hidden="true"></div>
+        </aside>
       </div>
     </div>
   </div>
 </section>
 
 <!-- ══ FAQ ══ -->
-<section class="sec hair" id="faq">
+<section class="sec" id="faq">
   <div class="wrap">
-    <div class="sec-head center">
-      <p class="eyebrow rv">Dúvidas frequentes</p>
-      <h2 class="rv d1">Antes de <em>aplicar.</em></h2>
+    <div style="text-align:center;margin-bottom:clamp(40px,5vw,64px)">
+      <span class="tag rv">Dúvidas frequentes</span>
+      <h2 class="rv d1">Antes do <span class="r">embarque.</span></h2>
     </div>
     <div class="faq">
-      <details class="rv"><summary>Preciso de visto?<i></i></summary><p>Sim. Pra entrar nos Estados Unidos você precisa de passaporte válido e visto americano. Se ainda não tem, é importante ter disponibilidade pra tirar o visto nos próximos 30 dias. O visto não está incluso no investimento.</p></details>
-      <details class="rv"><summary>Qual o idioma? Preciso falar inglês?<i></i></summary><p>A imersão é conduzida em português. Nas visitas técnicas há tradução simultânea, então não é preciso falar inglês.</p></details>
-      <details class="rv"><summary>Como funcionam pagamento e parcelamento?<i></i></summary><p>O investimento pode ser parcelado no cartão de crédito ou no boleto. Os valores e as condições são apresentados pelo nosso time na entrevista, depois da aplicação.</p></details>
-      <details class="rv"><summary>A passagem aérea está inclusa?<i></i></summary><p>Não. A passagem aérea é de responsabilidade de cada participante. Os voos são alinhados com o grupo depois da confirmação da vaga.</p></details>
-      <details class="rv"><summary>Como funciona a hospedagem?<i></i></summary><p>O investimento inclui quarto duplo. Mulheres dividem o quarto com outra participante ou ficam em quarto single, que tem um valor adicional.</p></details>
-      <details class="rv"><summary>Posso levar acompanhante?<i></i></summary><p>Fale sobre isso com o nosso time na entrevista. Cada caso é avaliado conforme a composição do grupo.</p></details>
-      <details class="rv"><summary>E se eu precisar cancelar?<i></i></summary><p>A política de cancelamento é apresentada antes da reserva e consta no contrato. Tire todas as dúvidas na entrevista com o nosso time.</p></details>
-      <details class="rv"><summary>O que acontece depois que eu aplicar?<i></i></summary><p>Nosso time analisa sua aplicação e entra em contato em até 24h pelo WhatsApp pra uma entrevista. Se houver encaixe, você recebe as condições e reserva sua vaga.</p></details>
+      <details class="rv"><summary>Preciso de visto?</summary><p>Sim. Pra entrar nos Estados Unidos você precisa de passaporte válido e visto americano. Se ainda não tem, é importante ter disponibilidade pra tirar o visto nos próximos 30 dias. O visto não está incluso no investimento.</p></details>
+      <details class="rv"><summary>Preciso falar inglês?</summary><p>Não. A imersão é conduzida em português e as visitas técnicas têm tradução simultânea.</p></details>
+      <details class="rv"><summary>Como funcionam pagamento e parcelamento?</summary><p>O investimento pode ser parcelado no cartão de crédito ou no boleto. Os valores e as condições são apresentados pelo nosso time na entrevista, depois da aplicação.</p></details>
+      <details class="rv"><summary>A passagem aérea está inclusa?</summary><p>Não. A passagem aérea é de responsabilidade de cada participante. Os voos são alinhados com o grupo depois da confirmação da vaga.</p></details>
+      <details class="rv"><summary>Como funciona a hospedagem?</summary><p>O investimento inclui quarto duplo. Mulheres dividem o quarto com outra participante ou ficam em quarto single, que tem um valor adicional.</p></details>
+      <details class="rv"><summary>Posso levar acompanhante?</summary><p>Fale sobre isso com o nosso time na entrevista. Cada caso é avaliado conforme a composição do grupo.</p></details>
+      <details class="rv"><summary>E se eu precisar cancelar?</summary><p>A política de cancelamento é apresentada antes da reserva e consta no contrato. Tire todas as dúvidas na entrevista com o nosso time.</p></details>
+      <details class="rv"><summary>O que acontece depois do check-in?</summary><p>Nosso time analisa sua aplicação e entra em contato em até 24h pelo WhatsApp pra uma entrevista. Se houver encaixe, você recebe as condições e reserva sua vaga.</p></details>
     </div>
   </div>
 </section>
 
-<!-- ══ CTA FINAL ══ -->
+<!-- ══ FINAL ══ -->
 <section id="final">
-  <img class="bgimg photo-treat" src="https://images.unsplash.com/photo-1422464804701-7d8356b3a42f?w=1920&q=78&auto=format&fit=crop" alt="Golden Gate ao entardecer" loading="lazy" />
-  <div class="shade"></div>
+  <svg class="flagwave" viewBox="0 0 1235 650" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <filter id="wave" x="-5%" y="-5%" width="110%" height="110%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.0035 0.009" numOctaves="2" seed="7" result="n"><animate id="waveAnim" attributeName="baseFrequency" dur="14s" values="0.0035 0.009;0.005 0.012;0.0035 0.009" repeatCount="indefinite"/></feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="46" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+      <linearGradient id="folds" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#000" stop-opacity=".28"/><stop offset=".18" stop-color="#fff" stop-opacity=".08"/><stop offset=".34" stop-color="#000" stop-opacity=".22"/>
+        <stop offset=".52" stop-color="#fff" stop-opacity=".1"/><stop offset=".7" stop-color="#000" stop-opacity=".24"/><stop offset=".86" stop-color="#fff" stop-opacity=".08"/><stop offset="1" stop-color="#000" stop-opacity=".3"/>
+        <animateTransform attributeName="gradientTransform" type="translate" values="-0.08 0;0.08 0;-0.08 0" dur="9s" repeatCount="indefinite"/>
+      </linearGradient>
+    </defs>
+    <g filter="url(#wave)">
+      <g id="flagStripes"></g>
+      <rect width="494" height="350" fill="#0A1F44"/>
+      <g id="flagStars" fill="#fff"></g>
+      <rect width="1235" height="650" fill="url(#folds)"/>
+    </g>
+  </svg>
+  <div class="tint"></div>
   <div class="wrap">
-    <div class="rv" style="margin:0 auto 40px"><span class="logo-chip" style="padding:10px 16px"><img src="./logo-unv-holdings.webp" width="578" height="440" alt="UNV Holdings" style="width:112px" loading="lazy" /></span></div>
-    <h2 class="rv">Poucos vão.<br><em>Os que vão voltam diferentes.</em></h2>
-    <button class="btn rv d1" data-apply>Quero aplicar <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    <span class="tag rv" style="color:#FF8A98">Última chamada</span>
+    <h2 class="rv d1">Poucos vão.<br><span class="r" style="color:#FF5C6F">Os que vão voltam diferentes.</span></h2>
+    <a class="btn rv d2" href="#checkin" data-apply>Fazer meu check-in <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
   </div>
 </section>
 
-<!-- ══ FOOTER ══ -->
+<div class="stripes thin"></div>
 <footer>
   <div class="wrap">
     <div>
-      <span class="logo-chip"><img src="./logo-unv-holdings.webp" width="578" height="440" alt="UNV Holdings" loading="lazy" /></span><br>
+      <span class="logo"><img src="./logo-unv-holdings.webp" width="578" height="440" alt="UNV Holdings" loading="lazy" /></span>
       <div class="links">
         <a id="ftWa" href="#" target="_blank" rel="noopener">WhatsApp</a>
-        <a href="https://instagram.com/unvholdings" target="_blank" rel="noopener">Instagram</a>
+        <a id="ftIg" href="#" target="_blank" rel="noopener">Instagram</a>
         <a href="https://unvholdings.com.br/#/privacidade">Política de privacidade</a>
       </div>
     </div>
-    <button class="btn btn-ghost btn-sm" data-apply>Aplicar</button>
-    <div class="legal"><span>© 2026 Universidade Nacional de Vendas Ltda · CNPJ 51.356.237/0001-40</span><span>Nova Lima, MG</span></div>
+    <a class="btn" href="#checkin" data-apply>Fazer check-in</a>
+    <div class="legal"><span>© 2026 Universidade Nacional de Vendas Ltda · CNPJ 51.356.237/0001-40</span><span>Nova Lima, MG · Brasil → Califórnia, EUA</span></div>
   </div>
 </footer>
 
@@ -742,111 +862,279 @@
 </a>
 
 <script>
+/* ═════════════════════════════════════════════════════════════════════
+   CONFIGURAÇÃO DA PÁGINA — edite aqui datas, roteiro, mentores, carimbos,
+   números e contatos. O resto da página se monta a partir deste bloco.
+   ═════════════════════════════════════════════════════════════════════ */
+var CONFIG = {
+  evento: {
+    ano: 2027,
+    embarque: "2027-03-20T00:00:00-03:00",   // contagem regressiva do painel
+    datas: "20 a 27 de março de 2027",
+    dataCurta: "20 MAR 27",
+    dias: 8,
+    voo: "UNV 2027",
+    origem: { codigo: "BRA", cidade: "Brasil" },
+    destino: { codigo: "SFO", cidade: "São Francisco" }
+  },
+  contato: { whatsapp: "5511927008490", instagram: "unvholdings",
+             mensagemWhatsApp: "Olá, vim pela página da Imersão no Vale do Silício e quero saber mais." },
+  crm: {
+    formToken: "",   // formulário do funil "Imersão EUA" (CRM > Configurações > Formulários). Vazio = check-in segue pelo WhatsApp
+    supabase: "https://xrncvhzxjmddqluxoosu.supabase.co",
+    anon: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk",
+    faturamentoMinimo: ["100a300", "300a1m", "1m"]   // abaixo disso o lead entra como desqualificado
+  },
+  tracking: { pixel: "247392077001023", gaId: "", webhook: "" },
+  cidades: ["São Francisco", "Palo Alto", "Mountain View", "Berkeley", "Stanford", "Sunnyvale", "Golden Gate", "Alcatraz"],
+  numeros: [
+    { valor: 8, label: "dias de imersão" },
+    { valor: 7, label: "visitas técnicas" },
+    { valor: 3, label: "mentores" },
+    { valor: 60, prefixo: "+", label: "imersões lideradas" }
+  ],
+  paradas: [
+    { nome: "São Francisco", sub: "City tour, Golden Gate e Alcatraz", quando: "21 e 26 MAR" },
+    { nome: "Stanford · Palo Alto", sub: "Abertura e estudo de caso de IA", quando: "22 MAR" },
+    { nome: "Mountain View", sub: "Google, o ícone do Vale", quando: "24 MAR" },
+    { nome: "Sunnyvale", sub: "Plug and Play", quando: "24 MAR" },
+    { nome: "Berkeley", sub: "Universidade e parcerias estratégicas", quando: "25 MAR" }
+  ],
+  carimbos: [
+    { nome: "Stanford", local: "Palo Alto, CA", data: "22 MAR", cor: "#C8102E", r: -8 },
+    { nome: "Verizon", local: "Innovation Center", data: "23 MAR", cor: "#0A1F44", r: 6 },
+    { nome: "Consulado", local: "do Brasil · SF", data: "23 MAR", cor: "#1F6B4A", r: -4 },
+    { nome: "Plug and Play", local: "Sunnyvale, CA", data: "24 MAR", cor: "#C8102E", r: 9 },
+    { nome: "Google", local: "Mountain View, CA", data: "24 MAR", cor: "#0A1F44", r: -10 },
+    { nome: "Circuit Launch", local: "Robotics Hub", data: "25 MAR", cor: "#8A5A12", r: 5 },
+    { nome: "Berkeley", local: "Berkeley, CA", data: "25 MAR", cor: "#C8102E", r: -6 },
+    { nome: "Alcatraz", local: "San Francisco Bay", data: "26 MAR", cor: "#0A1F44", r: 8 }
+  ],
+  roteiro: [
+    { dia: 1, data: "Sáb · 20/03", titulo: "Embarque rumo a São Francisco", local: "Brasil → SFO",
+      foto: "1539612793508-4539a972242b",
+      itens: ["Saída do Brasil com conexão nos EUA", "Chegada em São Francisco à noite"] },
+    { dia: 2, data: "Dom · 21/03", titulo: "São Francisco e Golden Gate", local: "São Francisco",
+      foto: "1534050359320-02900022671e",
+      itens: ["Manhã livre pra descanso", "City tour de bike pelos principais pontos da cidade, terminando na Golden Gate"],
+      opcional: "Jantar no Bubba Gump, no Pier 39",
+      aprendizado: "entrar no ritmo do grupo e conhecer a cidade que concentra o capital de risco do mundo." },
+    { dia: 3, data: "Seg · 22/03", titulo: "Abertura e Universidade de Stanford", local: "Palo Alto",
+      foto: "1687904908300-820df75676a3",
+      itens: ["Abertura com os mentores e pitch de negócios do grupo", "Estudo de caso: o ecossistema de inovação do Vale do Silício", "Tour pelo campus de Stanford, berço de empresas como Google, Nike e Tesla", "Estudo de caso: Inteligência Artificial para negócios"],
+      opcional: "Jantar no Benihana",
+      aprendizado: "como o Vale transforma pesquisa em empresa, e onde a IA já gera resultado nos negócios." },
+    { dia: 4, data: "Ter · 23/03", titulo: "Verizon e Consulado do Brasil", local: "São Francisco",
+      foto: "1659941983952-7a35d58d3189",
+      itens: ["Centro de inovação de uma das maiores empresas de telecom do mundo", "Estudo de caso: desenvolvimento de produtos e Internet das Coisas", "Consulado do Brasil: subsídios e incentivos fiscais pra empresas brasileiras na Califórnia", "Estudo de caso: parcerias com empresas americanas"],
+      opcional: "Cheesecake Factory, na Union Square",
+      aprendizado: "como grandes empresas inovam em produto, e os caminhos reais pra fazer negócio nos EUA." },
+    { dia: 5, data: "Qua · 24/03", titulo: "Plug and Play e Google", local: "Sunnyvale · Mountain View",
+      foto: "1766371900950-929959f2bb67",
+      itens: ["Plug and Play, uma das maiores aceleradoras de negócios do mundo, com casos como PayPal e Rappi", "Estudo de caso: desenvolvimento de pessoas", "Google, o ícone do Vale do Silício", "Estudo de caso: cultura organizacional"],
+      opcional: "The Jazz Room",
+      aprendizado: "como startups viram gigantes, e a cultura que sustenta isso." },
+    { dia: 6, data: "Qui · 25/03", titulo: "Circuit Launch e Berkeley", local: "Berkeley",
+      foto: "1778268406028-84bbdaf02e65",
+      itens: ["Circuit Launch, o maior hub de robótica e impressão 3D do Vale", "Estudo de caso: robótica", "Universidade de Berkeley, com mais de 110 prêmios Nobel na história", "Estudo de caso: parcerias estratégicas"],
+      opcional: "Happy hour no The View, com vista para São Francisco",
+      aprendizado: "automação na prática e como parcerias certas aceleram o crescimento." },
+    { dia: 7, data: "Sex · 26/03", titulo: "Plano de ação, Waymo e Alcatraz", local: "São Francisco",
+      foto: "1669206296821-bf08bd666a9e",
+      itens: ["HotSeat: mentoria coletiva pra montar o plano de ação da sua empresa", "Estudo de caso: planejamento estratégico", "Passeio nos carros autônomos da Waymo, sem motorista", "Ferry até Alcatraz", "Voo de retorno à noite"],
+      aprendizado: "transformar tudo o que você viu em decisões concretas pro seu negócio." },
+    { dia: 8, data: "Sáb · 27/03", titulo: "Retorno ao Brasil", local: "SFO → Brasil",
+      foto: "1729350038150-495c628bd695",
+      itens: ["Chegada ao Brasil com o plano de ação na mão"] }
+  ],
+  mentores: [
+    { nome: "Michel Ávila", cargo: "Mentor · CEO e fundador da APEX", foto: "./michel.webp",
+      bio: "Empreendedor, escritor e especialista em vendas e gestão de pessoas. Expert em marca própria, mix de produtos e importações da China.",
+      chips: ["26 anos de carreira", "+60 imersões lideradas"] },
+    { nome: "Anderson Nogueira", cargo: "Mentor · COO da APEX", foto: "./anderson.webp",
+      bio: "Especialista em inovação, gestão de processos, projetos de inteligência artificial e prospecção de investimentos estrangeiros.",
+      chips: ["20 anos de carreira", "+60 imersões lideradas"] }
+  ]
+};
+
 (function(){
   "use strict";
-  // ── Configuração ──
-  // Formulário do funil "Imersão EUA" no CRM do Nexus (Configurações do CRM > Formulários).
-  var FORM_TOKEN = "";
-  var SUPA = "https://xrncvhzxjmddqluxoosu.supabase.co";
-  var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
-  var PIXEL = "247392077001023";
-  var GA_ID = "";        // ex.: "G-XXXXXXX"; vazio = GA desligado
-  var WEBHOOK_URL = "";  // webhook do n8n; vazio = não dispara
-  var WA_NUMBER = "5511927008490";
-  var WA_URL = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent("Olá, vim pela página da Imersão no Vale do Silício e quero saber mais.");
-  var EMBARQUE = new Date("2027-03-20T00:00:00-03:00");
-
-  function qp(n){ try { return new URLSearchParams(location.search).get(n) || undefined; } catch(e){ return undefined; } }
+  var C = CONFIG, reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function $(s, r){ return (r || document).querySelector(s); }
+  function $$(s, r){ return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
-  var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function qp(n){ try { return new URLSearchParams(location.search).get(n) || undefined; } catch(e){ return undefined; } }
+  function img(id, w){ return "https://images.unsplash.com/photo-" + id + "?w=" + (w || 900) + "&q=75&auto=format&fit=crop"; }
+  var WA_URL = "https://wa.me/" + C.contato.whatsapp + "?text=" + encodeURIComponent(C.contato.mensagemWhatsApp);
 
-  try {
-    var ua = navigator.userAgent;
-    if (/^((?!chrome|android|crios|fxios|edgios|edg\/).)*safari/i.test(ua) || /iPad|iPhone|iPod/.test(ua)) document.documentElement.classList.add("is-safari");
-  } catch(e){}
+  try { var ua = navigator.userAgent; if (/^((?!chrome|android|crios|fxios|edgios|edg\/).)*safari/i.test(ua) || /iPad|iPhone|iPod/.test(ua)) document.documentElement.classList.add("is-safari"); } catch(e){}
+
+  // ── Preenche os textos marcados com data-cfg ──
+  var flat = { datas: C.evento.datas, dataCurta: C.evento.dataCurta, dias: C.evento.dias, voo: C.evento.voo, ano: C.evento.ano,
+               "origem.codigo": C.evento.origem.codigo, "origem.cidade": C.evento.origem.cidade,
+               "destino.codigo": C.evento.destino.codigo, "destino.cidade": C.evento.destino.cidade };
+  $$("[data-cfg]").forEach(function(el){ var k = el.getAttribute("data-cfg"); if (k in flat) el.textContent = flat[k]; });
+
+  // ── Seções montadas a partir do CONFIG ──
+  $("#marq").innerHTML = C.cidades.concat(C.cidades).map(function(c){ return "<span>" + esc(c) + "</span>"; }).join("");
+  $("#nums").innerHTML = C.numeros.map(function(n, i){
+    return '<div class="n rv' + (i ? " d" + Math.min(i, 3) : "") + '"><b data-count="' + n.valor + '" data-prefix="' + esc(n.prefixo || "") + '">0</b><span>' + esc(n.label) + "</span></div>";
+  }).join("");
+  $("#stops").innerHTML = C.paradas.map(function(p, i){
+    return '<li><span class="n">' + (i + 1) + "</span><div><b>" + esc(p.nome) + "</b><span>" + esc(p.sub) + "</span></div><em>" + esc(p.quando) + "</em></li>";
+  }).join("");
+  $("#itin").innerHTML = C.roteiro.map(function(d){
+    var items = d.itens.map(function(t){ return "<li>" + esc(t) + "</li>"; }).join("") + (d.opcional ? '<li class="opt">Noite opcional: ' + esc(d.opcional) + "</li>" : "");
+    return '<article class="day rv"><div class="ph"><img src="' + img(d.foto, 700) + '" alt="' + esc(d.titulo) + '" loading="lazy" /><span class="badge">Dia ' + d.dia + '</span><span class="date">' + esc(d.data) + '</span></div>' +
+      '<div class="bd"><span class="loc">' + esc(d.local) + "</span><h3>" + esc(d.titulo) + "</h3><ul>" + items + "</ul>" +
+      (d.aprendizado ? '<p class="key"><b>Aprendizado-chave</b>' + esc(d.aprendizado) + "</p>" : "") + "</div></article>";
+  }).join("");
+  $("#stamps").innerHTML = C.carimbos.map(function(s, i){
+    var id = "sc" + i, col = s.cor, words = s.nome.toUpperCase().split(" "), lines = [s.nome.toUpperCase()];
+    if (s.nome.length > 9 && words.length > 1) {   // quebra em 2 linhas no espaço mais perto do meio
+      var best = 1, diff = 99;
+      for (var k = 1; k < words.length; k++) { var d = Math.abs(words.slice(0, k).join(" ").length - words.slice(k).join(" ").length); if (d < diff) { diff = d; best = k; } }
+      lines = [words.slice(0, best).join(" "), words.slice(best).join(" ")];
+    }
+    var maxLen = Math.max.apply(null, lines.map(function(l){ return l.length; }));
+    var fs = Math.min(28, Math.floor(98 / (maxLen * 0.5))), y0 = lines.length > 1 ? 96 - fs * .45 : 100 + fs * .32;
+    var nameSvg = lines.map(function(l, j){ return '<text class="big" x="100" y="' + (y0 + j * fs * 1.02).toFixed(1) + '" text-anchor="middle" font-size="' + fs + '" fill="' + col + '">' + esc(l) + "</text>"; }).join("");
+    return '<div class="stamp" style="--r:' + (s.r || 0) + 'deg" title="' + esc(s.nome + " · " + s.local) + '"><svg viewBox="0 0 200 200" role="img" aria-label="Carimbo ' + esc(s.nome) + '">' +
+      '<defs><path id="' + id + 't" d="M30,100 A70,70 0 0,1 170,100"/><path id="' + id + 'b" d="M28,100 A72,72 0 0,0 172,100"/></defs>' +
+      '<circle cx="100" cy="100" r="93" fill="none" stroke="' + col + '" stroke-width="4"/>' +
+      '<circle cx="100" cy="100" r="85" fill="none" stroke="' + col + '" stroke-width="1.5" stroke-dasharray="3 4"/>' +
+      '<circle cx="100" cy="100" r="57" fill="none" stroke="' + col + '" stroke-width="2"/>' +
+      '<text font-size="12" letter-spacing="2.5" fill="' + col + '"><textPath href="#' + id + 't" startOffset="50%" text-anchor="middle">' + esc(s.local) + '</textPath></text>' +
+      '<text font-size="12" letter-spacing="4" fill="' + col + '"><textPath href="#' + id + 'b" startOffset="50%" text-anchor="middle">★ USA ★</textPath></text>' +
+      '<text x="100" y="' + (lines.length > 1 ? 66 : 70) + '" text-anchor="middle" font-size="12" letter-spacing="3" fill="' + col + '">★ ★ ★</text>' + nameSvg +
+      '<text x="100" y="' + (lines.length > 1 ? 140 : 130) + '" text-anchor="middle" font-size="11.5" letter-spacing="2" fill="' + col + '">' + esc(s.data) + " " + C.evento.ano + "</text></svg></div>";
+  }).join("");
+  $("#crew").innerHTML = C.mentores.map(function(m, i){
+    return '<div class="mate rv' + (i ? " d1" : "") + '"><img src="' + esc(m.foto) + '" width="480" height="600" alt="' + esc(m.nome) + '" loading="lazy" /><div><h4>' + esc(m.nome) + '</h4><p class="role">' + esc(m.cargo) + "</p><p>" + esc(m.bio) + '</p><div class="chips">' +
+      m.chips.map(function(c){ return "<i>" + esc(c) + "</i>"; }).join("") + "</div></div></div>";
+  }).join("");
+
+  // ── Bandeira do fechamento: 13 listras e 50 estrelas ──
+  (function(){
+    var st = $("#flagStripes"), sr = $("#flagStars"); if (!st) return;
+    var h = 650 / 13, out = "";
+    for (var i = 0; i < 13; i++) out += '<rect y="' + (i * h) + '" width="1235" height="' + (h + .5) + '" fill="' + (i % 2 ? "#ffffff" : "#C8102E") + '"/>';
+    st.innerHTML = out;
+    var star = "M0,-11L2.6,-3.6L10.5,-3.4L4.2,1.4L6.5,9L0,4.5L-6.5,9L-4.2,1.4L-10.5,-3.4L-2.6,-3.6Z", ss = "";
+    for (var r = 0; r < 9; r++) { var n = r % 2 ? 5 : 6;
+      for (var c = 0; c < n; c++) ss += '<path transform="translate(' + (41.2 + (r % 2 ? 41.2 : 0) + c * 82.4).toFixed(1) + "," + (35 + r * 35) + ')" d="' + star + '"/>'; }
+    sr.innerHTML = ss;
+    if (reduce) { var a = $("#waveAnim"); if (a) a.parentNode.removeChild(a); }
+  })();
+
+  // ── Contatos ──
+  $("#waFloat").href = WA_URL; $("#ftWa").href = WA_URL;
+  $("#ftIg").href = "https://instagram.com/" + C.contato.instagram;
 
   // ── Pixels ──
   !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");
-  try { fbq("init", PIXEL); fbq("track", "PageView"); } catch(e){}
+  try { fbq("init", C.tracking.pixel); fbq("track", "PageView"); } catch(e){}
   try {
     !function(w,d,s,u){if(w.oaiq)return;var q=function(){q.q.push(arguments)};q.q=[];w.oaiq=q;var js=d.createElement(s);js.async=!0;js.src=u;var f=d.getElementsByTagName(s)[0];f.parentNode.insertBefore(js,f)}(window,document,"script","https://bzrcdn.openai.com/sdk/oaiq.min.js");
     oaiq("init", { pixelId: "JSZXQhoDRV4Kjm8oms5nxV" });
   } catch(e){}
-  if (GA_ID) {
-    var g = document.createElement("script"); g.async = true; g.src = "https://www.googletagmanager.com/gtag/js?id=" + GA_ID; document.head.appendChild(g);
+  if (C.tracking.gaId) {
+    var g = document.createElement("script"); g.async = true; g.src = "https://www.googletagmanager.com/gtag/js?id=" + C.tracking.gaId; document.head.appendChild(g);
     window.dataLayer = window.dataLayer || []; window.gtag = function(){ dataLayer.push(arguments); };
-    gtag("js", new Date()); gtag("config", GA_ID);
+    gtag("js", new Date()); gtag("config", C.tracking.gaId);
   }
 
-  // ── WhatsApp ──
-  document.getElementById("waFloat").href = WA_URL;
-  document.getElementById("ftWa").href = WA_URL;
-
-  // ── Header com blur + parallax do hero ──
-  var hdr = document.getElementById("hdr"), heroBg = document.getElementById("heroBg"), ticking = false;
+  // ── Rolagem: header, avião de progresso, parallax, rota do mapa ──
+  var hdr = $("#hdr"), heroBg = $("#heroBg"), bar = $("#flightBar"), plane = $("#flightPlane"), route = $("#route"), ticking = false, routeLen = 0;
+  if (route && route.getTotalLength) { routeLen = route.getTotalLength(); route.style.strokeDasharray = routeLen; route.style.strokeDashoffset = routeLen; }
   function onScroll(){
     if (ticking) return; ticking = true;
     requestAnimationFrame(function(){
-      var y = window.scrollY;
-      hdr.classList.toggle("solid", y > 30);
-      if (!reduce && y < window.innerHeight * 1.2) heroBg.style.transform = "translate3d(0," + (y * 0.22) + "px,0)";
+      var y = window.scrollY, h = document.documentElement.scrollHeight - innerHeight, p = h > 0 ? Math.min(1, y / h) : 0;
+      hdr.classList.toggle("solid", y > 40);
+      bar.style.width = (p * 100) + "%"; plane.style.left = (p * 100) + "%";
+      if (!reduce && y < innerHeight * 1.2) heroBg.style.transform = "translate3d(0," + (y * 0.25) + "px,0)";
+      if (route && routeLen) {
+        var r = route.ownerSVGElement.getBoundingClientRect(), t = (innerHeight - r.top) / (innerHeight + r.height * .4);
+        t = Math.max(0, Math.min(1, t)); route.style.strokeDashoffset = reduce ? 0 : routeLen * (1 - t);
+        route.style.strokeDasharray = t >= 1 ? "8 9" : routeLen;
+      }
       ticking = false;
     });
   }
   window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
 
-  // ── Contagem regressiva até o embarque ──
-  var cEls = {}; Array.prototype.forEach.call(document.querySelectorAll("#count [data-k]"), function(b){ cEls[b.getAttribute("data-k")] = b; });
-  function pad(n){ return n < 10 ? "0" + n : "" + n; }
-  function tick(){
-    var s = Math.floor(Math.max(0, EMBARQUE - new Date()) / 1000);
-    cEls.d.textContent = Math.floor(s / 86400); cEls.h.textContent = pad(Math.floor(s % 86400 / 3600));
-    cEls.m.textContent = pad(Math.floor(s % 3600 / 60)); cEls.s.textContent = pad(s % 60);
+  // ── Cartão de embarque com inclinação 3D ──
+  var bp = $("#bp");
+  if (bp && !reduce && matchMedia("(hover:hover)").matches) {
+    var wrap = bp.parentNode;
+    wrap.addEventListener("mousemove", function(e){ var r = wrap.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+      bp.style.transform = "rotateY(" + (x * 14) + "deg) rotateX(" + (-y * 12) + "deg)"; });
+    wrap.addEventListener("mouseleave", function(){ bp.style.transform = "rotateY(-8deg) rotateX(4deg)"; });
+    bp.style.transform = "rotateY(-8deg) rotateX(4deg)";
   }
-  tick(); setInterval(tick, 1000);
 
-  // ── Entrada no scroll + contadores ──
+  // ── Painel de partidas (split-flap) ──
+  var embarque = new Date(C.evento.embarque), groups = {};
+  $$("#board .grp").forEach(function(g){ groups[g.getAttribute("data-g")] = g; });
+  function setGroup(g, str){
+    while (g.children.length < str.length) { var f = document.createElement("span"); f.className = "flap"; f.textContent = " "; g.insertBefore(f, g.firstChild); }
+    while (g.children.length > str.length) g.removeChild(g.firstChild);
+    for (var i = 0; i < str.length; i++) { var c = g.children[i]; if (c.textContent !== str[i]) { c.textContent = str[i]; if (!reduce) { c.classList.remove("flip"); void c.offsetWidth; c.classList.add("flip"); } } }
+  }
+  function pad(n){ return n < 10 ? "0" + n : "" + n; }
+  function tickBoard(){
+    var s = Math.floor(Math.max(0, embarque - new Date()) / 1000);
+    setGroup(groups.d, String(Math.floor(s / 86400))); setGroup(groups.h, pad(Math.floor(s % 86400 / 3600)));
+    setGroup(groups.m, pad(Math.floor(s % 3600 / 60))); setGroup(groups.s, pad(s % 60));
+  }
+  tickBoard(); setInterval(tickBoard, 1000);
+
+  // ── Entradas no scroll, contadores e carimbos ──
   function countUp(el){
     var to = +el.getAttribute("data-count"), pre = el.getAttribute("data-prefix") || "";
-    if (reduce) { el.textContent = pre + to; return; }
-    var t0 = null, dur = 1600;
-    function step(t){ if (!t0) t0 = t; var p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
-      el.textContent = pre + Math.round(to * e); if (p < 1) requestAnimationFrame(step); }
-    requestAnimationFrame(step);
+    if (reduce) { el.innerHTML = (pre ? "<i>" + pre + "</i>" : "") + to; return; }
+    var t0 = null;
+    (function step(t){ if (!t0) t0 = t; var p = Math.min(1, (t - t0) / 1600), e = 1 - Math.pow(1 - p, 3);
+      el.innerHTML = (pre ? "<i>" + pre + "</i>" : "") + Math.round(to * e); if (p < 1) requestAnimationFrame(step); })(performance.now());
   }
   if ("IntersectionObserver" in window) {
-    var io = new IntersectionObserver(function(entries){
-      entries.forEach(function(e){
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){
         if (!e.isIntersecting) return;
         e.target.classList.add("in");
         var c = e.target.querySelector("[data-count]"); if (c) countUp(c);
         io.unobserve(e.target);
       });
     }, { rootMargin: "0px 0px -8% 0px" });
-    Array.prototype.forEach.call(document.querySelectorAll(".rv"), function(el){ io.observe(el); });
+    $$(".rv").forEach(function(el){ io.observe(el); });
+    var io2 = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if (!e.isIntersecting) return;
+        $$(".stamp", e.target).forEach(function(s, i){ setTimeout(function(){ s.classList.add("in"); }, reduce ? 0 : 160 * i); });
+        io2.unobserve(e.target); });
+    }, { threshold: .25 });
+    io2.observe($("#stamps"));
   } else {
-    Array.prototype.forEach.call(document.querySelectorAll(".rv"), function(el){ el.classList.add("in"); });
-    Array.prototype.forEach.call(document.querySelectorAll("[data-count]"), countUp);
+    $$(".rv,.stamp").forEach(function(el){ el.classList.add("in"); });
+    $$("[data-count]").forEach(countUp);
   }
-  var days = document.querySelectorAll(".tl details"); if (days[2]) days[2].open = true;
 
-  // ── Botões "Aplicar": rolam até o card do formulário ──
+  // ── Botões de check-in: rolam até o cartão ──
   function goToForm(ev){
     if (ev) ev.preventDefault();
-    var card = document.getElementById("formTop");
+    var card = $("#formTop");
     card.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
     setTimeout(function(){ var f = card.querySelector(".step.on input, .step.on select"); if (f) try { f.focus({ preventScroll: true }); } catch(e){} }, 700);
   }
-  Array.prototype.forEach.call(document.querySelectorAll("[data-apply]"), function(b){ b.addEventListener("click", goToForm); });
-  if (location.hash === "#aplicar") setTimeout(goToForm, 300);
+  $$("[data-apply]").forEach(function(b){ b.addEventListener("click", goToForm); });
+  if (location.hash === "#checkin" || location.hash === "#aplicar") setTimeout(goToForm, 300);
 
-  // ── Formulário em etapas ──
-  var form = document.getElementById("appForm"), step = 1, TOTAL = 3;
-  var errEl = document.getElementById("formErr"), btnNext = document.getElementById("btnNext"), btnBack = document.getElementById("btnBack");
-  var NEXT_HTML = btnNext.innerHTML;
+  // ── Formulário (check-in em 3 etapas) ──
+  var form = $("#appForm"), step = 1, TOTAL = 3;
+  var errEl = $("#formErr"), btnNext = $("#btnNext"), btnBack = $("#btnBack"), NEXT_HTML = btnNext.innerHTML;
   function val(n){ var el = form.querySelector('[name="'+n+'"]'); return el ? el.value.trim() : ""; }
   function radio(n){ var el = form.querySelector('[name="'+n+'"]:checked'); return el ? el.value : ""; }
-  function checks(n){ return Array.prototype.map.call(form.querySelectorAll('[name="'+n+'"]:checked'), function(i){ return i.value; }); }
+  function checks(n){ return $$('[name="'+n+'"]:checked', form).map(function(i){ return i.value; }); }
   function label(n){ var el = form.querySelector('[name="'+n+'"]'); return el && el.selectedIndex > 0 ? el.options[el.selectedIndex].text : ""; }
   function showErr(m){ errEl.textContent = m; errEl.hidden = false; }
   function maskPhone(v){
@@ -860,16 +1148,19 @@
   }
   var tel = form.querySelector('[name="telefone"]');
   tel.addEventListener("input", function(){ tel.value = maskPhone(tel.value); });
-  form.addEventListener("change", function(e){
-    if (e.target.name === "visto") document.getElementById("w-visto30").hidden = radio("visto") !== "nao";
+  // cartão de embarque personalizado em tempo real
+  form.querySelector('[name="nome"]').addEventListener("input", function(){
+    var n = this.value.trim().toUpperCase();
+    $$(".paxName").forEach(function(el, i){ el.textContent = n || (i === 0 ? "Você" : "Seu nome"); });
   });
+  form.querySelector('[name="empresa"]').addEventListener("input", function(){ $("#stubEmp").textContent = this.value.trim() || "—"; });
+  form.addEventListener("change", function(e){ if (e.target.name === "visto") $("#w-visto30").hidden = radio("visto") !== "nao"; });
 
   function render(){
-    Array.prototype.forEach.call(form.querySelectorAll(".step"), function(s){ s.classList.toggle("on", +s.getAttribute("data-step") === step); });
-    document.getElementById("progBar").style.width = (step / TOTAL * 100) + "%";
-    document.getElementById("progTxt").textContent = step + " de " + TOTAL;
+    $$(".step", form).forEach(function(s){ s.classList.toggle("on", +s.getAttribute("data-step") === step); });
+    $$("#stepsBar div").forEach(function(d, i){ d.classList.toggle("on", i + 1 === step); d.classList.toggle("done", i + 1 < step); });
     btnBack.hidden = step === 1;
-    btnNext.innerHTML = step === TOTAL ? "Enviar aplicação" : NEXT_HTML;
+    btnNext.innerHTML = step === TOTAL ? "Concluir check-in" : NEXT_HTML;
     errEl.hidden = true;
   }
   btnBack.addEventListener("click", function(){ if (step > 1) { step--; render(); } });
@@ -899,7 +1190,6 @@
     }
     return "";
   }
-
   // lead_score (0 a 100): faturamento até 50, visto até 25, prazo de investimento até 25
   function score(){
     var f = { ate50: 0, "50a100": 10, "100a300": 30, "300a1m": 40, "1m": 50 }[val("faturamento")] || 0;
@@ -907,94 +1197,71 @@
     var q = { agora: 25, "30d": 15, avaliando: 5 }[val("quando")] || 0;
     return f + v + q;
   }
+  function finish(html, status){ $("#formArea").innerHTML = html; $("#stubStatus").textContent = status; }
 
   form.addEventListener("submit", function(ev){
     ev.preventDefault();
     var m = validate(step); if (m) return showErr(m);
     if (step < TOTAL) { step++; render(); var f = form.querySelector(".step.on input, .step.on select"); if (f) try { f.focus({ preventScroll: true }); } catch(e){} return; }
+
     var sc = score(), fat = val("faturamento");
-    var desq = (fat === "ate50" || fat === "50a100") ? "Faturamento abaixo de R$ 100 mil/mês (" + label("faturamento") + ")" : undefined;
+    var desq = C.crm.faturamentoMinimo.indexOf(fat) === -1 ? "Faturamento abaixo de R$ 100 mil/mês (" + label("faturamento") + ")" : undefined;
     var vistoTxt = radio("visto") === "sim" ? "sim" : ("não" + (radio("visto30") === "sim" ? ", tira em 30d" : ", não tira em 30d"));
-    // a função guarda 300 caracteres da observação: formato compacto
-    var obs = [
-      "Score " + sc + "/100",
-      "Fat: " + label("faturamento"),
-      "Time: " + label("time"),
-      "Cargo: " + label("cargo"),
-      "Seg: " + label("segmento"),
-      "Cidade: " + val("cidade").slice(0, 30),
-      "Visto: " + vistoTxt,
-      "Já foi aos EUA: " + (radio("viajou") === "sim" ? "sim" : "não"),
-      "Investe: " + label("quando"),
-      "Pgto: " + label("pagamento"),
-      "Ciente passagem"
-    ].join(" | ").slice(0, 300);
+    var viajouTxt = radio("viajou") === "sim" ? "sim" : "não";
+    var first = esc(val("nome").split(" ")[0]);
+    var okIcon = '<div class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg></div>';
 
-    var utm = {
-      utm_source: qp("utm_source") || "imersaoeua", utm_medium: qp("utm_medium"),
-      utm_campaign: qp("utm_campaign"), utm_content: qp("utm_content"), utm_term: qp("utm_term"),
-      fbclid: qp("fbclid"), ad_name: qp("ad_name"), adset_name: qp("adset_name"), campaign_name: qp("campaign_name"),
-      meta_campaign_id: qp("meta_campaign_id") || qp("campaign_id"),
-      meta_adset_id: qp("meta_adset_id") || qp("adset_id"),
-      meta_ad_id: qp("meta_ad_id") || qp("ad_id")
-    };
-    var payload = Object.assign({
-      form_token: FORM_TOKEN,
-      nome: val("nome"), telefone: val("telefone").replace(/\D/g,""), email: val("email"),
-      empresa: val("empresa"),
-      desafio: "Objetivos na imersão: " + checks("objetivo").join(", "),
-      observacao: obs,
-      desqualificado: desq
-    }, utm);
-
-    // Sem formulário do CRM configurado: a aplicação segue pelo WhatsApp do time, com as respostas preenchidas
-    if (!FORM_TOKEN) {
-      var txt = "Olá! Quero aplicar para a Imersão no Vale do Silício.\n\n" +
+    // Sem formulário do CRM configurado: o check-in segue pelo WhatsApp do time, com as respostas preenchidas
+    if (!C.crm.formToken) {
+      var txt = "Olá! Quero fazer meu check-in na Imersão no Vale do Silício.\n\n" +
         "Nome: " + val("nome") + "\nE-mail: " + val("email") + "\nWhatsApp: " + val("telefone") + "\nCidade: " + val("cidade") +
         "\nEmpresa: " + val("empresa") + " (" + label("segmento") + ")\nCargo: " + label("cargo") +
         "\nFaturamento: " + label("faturamento") + "\nTime: " + label("time") +
-        "\nObjetivos: " + checks("objetivo").join(", ") + "\nJá foi aos EUA: " + (radio("viajou") === "sim" ? "sim" : "não") + "\nVisto: " + vistoTxt +
+        "\nObjetivos: " + checks("objetivo").join(", ") + "\nJá foi aos EUA: " + viajouTxt + "\nVisto: " + vistoTxt +
         "\nQuando investe: " + label("quando") + "\nPagamento: " + label("pagamento") + "\nCiente de que a passagem é por minha conta.";
+      var link = "https://wa.me/" + C.contato.whatsapp + "?text=" + encodeURIComponent(txt);
       try { if (!desq) fbq("track", "Lead", { value: sc, content_name: "Imersão Vale do Silício" }); } catch(e){}
-      window.open("https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(txt), "_blank");
-      document.getElementById("formArea").innerHTML = '<div class="done"><div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg></div><h3>Quase lá.</h3><p>Abrimos o WhatsApp do nosso time com a sua aplicação preenchida. É só enviar a mensagem. <a href="https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(txt) + '" target="_blank" rel="noopener" style="color:var(--gold-hi);text-decoration:underline">Abrir de novo</a></p></div>';
+      window.open(link, "_blank");
+      finish('<div class="done">' + okIcon + '<h3>Quase lá, ' + first + '.</h3><p>Abrimos o WhatsApp do nosso time com o seu check-in preenchido. É só enviar a mensagem.</p><a class="btn" target="_blank" rel="noopener" href="' + link + '">Abrir o WhatsApp de novo</a></div>', "Aguardando envio");
       return;
     }
 
-    btnNext.disabled = true; btnNext.textContent = "Enviando...";
+    var obs = ["Score " + sc + "/100", "Fat: " + label("faturamento"), "Time: " + label("time"), "Cargo: " + label("cargo"),
+      "Seg: " + label("segmento"), "Cidade: " + val("cidade").slice(0, 30), "Visto: " + vistoTxt, "Já foi aos EUA: " + viajouTxt,
+      "Investe: " + label("quando"), "Pgto: " + label("pagamento"), "Ciente passagem"].join(" | ").slice(0, 300); // a função guarda 300 caracteres
+    var utm = {
+      utm_source: qp("utm_source") || "imersaoeua", utm_medium: qp("utm_medium"), utm_campaign: qp("utm_campaign"),
+      utm_content: qp("utm_content"), utm_term: qp("utm_term"), fbclid: qp("fbclid"), ad_name: qp("ad_name"),
+      adset_name: qp("adset_name"), campaign_name: qp("campaign_name"),
+      meta_campaign_id: qp("meta_campaign_id") || qp("campaign_id"), meta_adset_id: qp("meta_adset_id") || qp("adset_id"), meta_ad_id: qp("meta_ad_id") || qp("ad_id")
+    };
+    var payload = Object.assign({ form_token: C.crm.formToken, nome: val("nome"), telefone: val("telefone").replace(/\D/g,""), email: val("email"),
+      empresa: val("empresa"), desafio: "Objetivos na imersão: " + checks("objetivo").join(", "), observacao: obs, desqualificado: desq }, utm);
 
-    fetch(SUPA + "/functions/v1/submit-pipeline-form", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + ANON, "apikey": ANON },
-      body: JSON.stringify(payload)
+    btnNext.disabled = true; btnNext.textContent = "Enviando...";
+    fetch(C.crm.supabase + "/functions/v1/submit-pipeline-form", {
+      method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + C.crm.anon, "apikey": C.crm.anon }, body: JSON.stringify(payload)
     }).then(function(r){ return r.json().then(function(d){ return { ok: r.ok, data: d }; }); })
     .then(function(res){
       if (!res.ok) throw new Error((res.data && res.data.error) || "Erro ao enviar");
-      if (WEBHOOK_URL) {
-        try {
-          fetch(WEBHOOK_URL, { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({
-            origem: "imersaoeua", data: new Date().toISOString(), lead_id: res.data && res.data.lead_id,
-            nome: val("nome"), email: val("email"), whatsapp: val("telefone"), cidade: val("cidade"),
-            empresa: val("empresa"), segmento: label("segmento"), cargo: label("cargo"),
-            faturamento: label("faturamento"), tamanho_time: label("time"),
-            objetivos: checks("objetivo"), ja_viajou_eua: radio("viajou"), possui_visto: radio("visto"),
-            tira_visto_30_dias: radio("visto30") || null, quando_investe: label("quando"), forma_pagamento: label("pagamento"),
-            ciente_passagem: true, lead_score: sc, desqualificado: !!desq
-          }, utm)) }).catch(function(){});
-        } catch(e){}
+      if (C.tracking.webhook) {
+        try { fetch(C.tracking.webhook, { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({
+          origem: "imersaoeua", data: new Date().toISOString(), lead_id: res.data && res.data.lead_id, nome: val("nome"), email: val("email"),
+          whatsapp: val("telefone"), cidade: val("cidade"), empresa: val("empresa"), segmento: label("segmento"), cargo: label("cargo"),
+          faturamento: label("faturamento"), tamanho_time: label("time"), objetivos: checks("objetivo"), ja_viajou_eua: radio("viajou"),
+          possui_visto: radio("visto"), tira_visto_30_dias: radio("visto30") || null, quando_investe: label("quando"),
+          forma_pagamento: label("pagamento"), ciente_passagem: true, lead_score: sc, desqualificado: !!desq }, utm)) }).catch(function(){}); } catch(e){}
       }
-      var first = esc(val("nome").split(" ")[0]);
-      var area = document.getElementById("formArea");
       if (desq) {
-        area.innerHTML = '<div class="done"><h3>Obrigado, ' + first + '.</h3><p>Esta imersão foi desenhada para empresas com faturamento médio acima de R$ 100 mil por mês. Seus dados ficam com a gente e, quando abrirmos uma experiência para o momento da sua empresa, você vai ser um dos primeiros a saber.</p></div>';
+        finish('<div class="done"><h3>Obrigado, ' + first + '.</h3><p>Esta imersão foi desenhada para empresas com faturamento médio acima de R$ 100 mil por mês. Seus dados ficam com a gente e, quando abrirmos uma experiência para o momento da sua empresa, você vai ser um dos primeiros a saber.</p></div>', "Lista de espera");
         return;
       }
       try { fbq("track", "Lead", { value: sc, content_name: "Imersão Vale do Silício" }); } catch(e){}
       try { oaiq("measure", "lead_created", { type: "customer_action" }); } catch(e){}
       try { if (window.gtag) gtag("event", "generate_lead", { event_category: "imersaoeua", value: sc }); } catch(e){}
-      area.innerHTML = '<div class="done"><div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 6L9 17l-5-5"/></svg></div><h3>Aplicação recebida.</h3><p>Nosso time vai entrar em contato em até 24h pelo WhatsApp.</p><a class="btn" target="_blank" rel="noopener" href="' + WA_URL + '">Falar no WhatsApp agora</a></div>';
+      finish('<div class="done">' + okIcon + '<h3>Check-in recebido.</h3><p>Nosso time vai entrar em contato em até 24h pelo WhatsApp.</p><a class="btn" target="_blank" rel="noopener" href="' + WA_URL + '">Falar no WhatsApp agora</a></div>', "Em análise");
     }).catch(function(err){
-      btnNext.disabled = false; btnNext.textContent = "Enviar aplicação";
+      btnNext.disabled = false; btnNext.textContent = "Concluir check-in";
       showErr((err && err.message) || "Algo deu errado. Tente de novo ou fale com a gente pelo WhatsApp.");
     });
   });
