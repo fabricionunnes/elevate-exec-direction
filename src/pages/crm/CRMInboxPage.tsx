@@ -1493,13 +1493,22 @@ export const CRMInboxPage = () => {
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <p className="font-medium text-sm truncate">
-                  {(() => {
-                    const rawName = (selectedConversation.contact?.name || "").trim();
-                    const isGenericName = !nomeValido(rawName) || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
-                    return isGenericName ? selectedConversation.lead?.name || selectedConversation.contact?.phone : rawName;
-                  })()}
-                </p>
+                {/* Mesma regra da lista (03/11/2026, Fabrício: "do lado esquerdo Guaciara, do lado direito Sérgio"):
+                    destaque = nome do LEAD vinculado; sem lead, nome do WhatsApp. Se o nome do WhatsApp for
+                    outro, aparece embaixo, pra um vínculo errado ficar visível. */}
+                {(() => {
+                  const rawName = (selectedConversation.contact?.name || "").trim();
+                  const isGenericName = !nomeValido(rawName) || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
+                  const leadName = (selectedConversation.lead?.name || "").trim();
+                  const titulo = leadName || (isGenericName ? selectedConversation.contact?.phone : rawName);
+                  const whatsappDiferente = leadName && !isGenericName && rawName.toLowerCase() !== leadName.toLowerCase() ? rawName : "";
+                  return (
+                    <p className="font-medium text-sm truncate" title={whatsappDiferente ? `No WhatsApp: ${whatsappDiferente}` : undefined}>
+                      {titulo}
+                      {whatsappDiferente && <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">no WhatsApp: {whatsappDiferente}</span>}
+                    </p>
+                  );
+                })()}
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span className="truncate">{selectedConversation.contact?.phone}</span>
                   {selectedConversation.instance && (
