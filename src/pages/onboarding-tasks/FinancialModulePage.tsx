@@ -62,6 +62,7 @@ const TAB_PERMISSION_MAP: Record<string, string | null> = {
   cfo: "fin_cfo_executive",
   integrations: null, // always visible
   "billing-rules": "fin_billing_rules",
+  "agente-cobranca": "fin_billing_rules",
   suppliers: null, // always visible
   inbox: "fin_inbox",
   "whatsapp-instance": "fin_whatsapp_instance",
@@ -84,6 +85,7 @@ const ALL_TABS = [
   { id: "cfo", label: "IA CFO", icon: Bot },
   { id: "integrations", label: "Integrações", icon: Link2 },
   { id: "billing-rules", label: "Régua de Cobranças", icon: Bell },
+  { id: "agente-cobranca", label: "Agente de Cobrança", icon: Bot },
   { id: "suppliers", label: "Fornecedores", icon: Truck },
   { id: "inbox", label: "Atendimentos", icon: Headphones },
   { id: "whatsapp-instance", label: "Instância", icon: MessageSquare },
@@ -252,10 +254,10 @@ export default function FinancialModulePage() {
             <IntegrationsPanel />
           </TabsContent>
           <TabsContent value="billing-rules" className="mt-0">
-            <div className="space-y-6">
-              <BillingAgentPanel />
-              <BillingRulesPanel />
-            </div>
+            <BillingRulesPanel />
+          </TabsContent>
+          <TabsContent value="agente-cobranca" className="mt-0">
+            <BillingAgentPanel />
           </TabsContent>
           <TabsContent value="suppliers" className="mt-0">
             <SuppliersPanel />

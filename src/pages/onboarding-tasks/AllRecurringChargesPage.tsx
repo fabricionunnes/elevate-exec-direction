@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Star, ChevronUp, ChevronDown } from "lucide-react";
+import { Star, ChevronUp, ChevronDown, Bot } from "lucide-react";
 
 function getLocalDateString(date = new Date()): string {
   const y = date.getFullYear();
@@ -183,6 +183,8 @@ const NAV_ITEMS = [
   { key: "cfo-ai", label: "CFO IA", icon: Brain, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_ai },
   { key: "separator-billing-rules", label: "── OPERACIONAL ──", icon: Bell, permKey: FINANCIAL_PERMISSION_KEYS.fin_billing_rules, isSeparator: true },
   { key: "billing-rules", label: "Régua de Cobranças", icon: Bell, permKey: FINANCIAL_PERMISSION_KEYS.fin_billing_rules },
+  // 03/11/2026, Fabrício: "queria que tivesse um menu só pra ele, tipo financeiro > agente de cobrança, pra não ficar misturado"
+  { key: "agente-cobranca", label: "Agente de Cobrança", icon: Bot, permKey: FINANCIAL_PERMISSION_KEYS.fin_billing_rules },
   { key: "suppliers", label: "Fornecedores", icon: Truck, permKey: FINANCIAL_PERMISSION_KEYS.fin_payables_view },
   { key: "inbox", label: "Atendimentos", icon: Headphones, permKey: FINANCIAL_PERMISSION_KEYS.fin_inbox },
   { key: "whatsapp-instance", label: "Instância", icon: MessageSquare, permKey: FINANCIAL_PERMISSION_KEYS.fin_whatsapp_instance },
@@ -2663,10 +2665,10 @@ export default function AllRecurringChargesPage() {
             <CFOAIPanel />
           )}
           {activeTab === "billing-rules" && (
-            <div className="space-y-6">
-              <BillingAgentPanel />
-              <BillingRulesPanel />
-            </div>
+            <BillingRulesPanel />
+          )}
+          {activeTab === "agente-cobranca" && (
+            <BillingAgentPanel />
           )}
           {activeTab === "suppliers" && (
             <SuppliersPanel />

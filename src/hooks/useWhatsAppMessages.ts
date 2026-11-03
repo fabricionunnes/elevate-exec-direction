@@ -18,6 +18,8 @@ export interface WhatsAppMessage {
   sender_name: string | null;
   sender_phone: string | null;
   created_at: string;
+  /** descrição da mídia gerada pelo sistema (legenda do reel compartilhado, transcrição do áudio) */
+  transcription?: string | null;
   sender?: {
     id: string;
     name: string;
