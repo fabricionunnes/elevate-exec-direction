@@ -43,6 +43,13 @@ async function resolveAgentMode(supabase, agent, leadId, override) {
 // Casa por: mesmo final de telefone, OU 1 dígito diferente + mesmo primeiro nome, em lead
 // criado nas últimas 6h. Só vincula se houver UM candidato.
 const semAcento = (s)=>s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+/** DDD + 8 últimos dígitos (mesma regra da br_phone_key do banco); null se não dá pra saber o DDD. */
+const chaveTelBR = (digits)=>{
+  let d = String(digits || "").replace(/\D/g, "");
+  if (d.length >= 12 && d.startsWith("55")) d = d.slice(2);
+  if (d.length >= 11 && d.startsWith("0")) d = d.slice(1);
+  return d.length >= 10 ? d.slice(0, 2) + d.slice(-8) : null;
+};
 async function vincularLeadRecente(supabase, conv) {
   const tel = String(conv.contact?.phone || "").replace(/\D/g, "");
   if (tel.length < 10) return null;
@@ -55,7 +62,8 @@ async function vincularLeadRecente(supabase, conv) {
   for (const l of recentes || []){
     const d = String(l.phone || "").replace(/\D/g, "");
     if (d.length < 8) continue;
-    if (d.slice(-9) === alvo9 || d.slice(-8) === tel.slice(-8)) {
+    // exato = mesmo DDD e mesmos 8 últimos dígitos (03/11/2026: só os 8 últimos casava 51 99733333 com 62 99733333)
+    if (chaveTelBR(d) && chaveTelBR(d) === chaveTelBR(tel)) {
       candidatos.push({
         lead: l,
         exato: true
