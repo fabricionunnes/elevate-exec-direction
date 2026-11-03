@@ -84,6 +84,18 @@ function Bloco({ titulo, sub, children, acao, dica }: { titulo: string; sub?: st
   );
 }
 
+/** Card fixo (sem comparação com o período anterior): meta, % atingido, projeção. */
+function KpiMeta({ label, valor, sub, cor, dica, onClick }: { label: string; valor: string; sub?: string; cor?: string; dica?: string; onClick?: () => void }) {
+  return (
+    <button type="button" onClick={onClick} title={dica}
+      className={`text-left rounded-lg border border-border/60 bg-card p-3 transition-colors min-w-0 ${onClick ? "hover:border-[#0D2B5E]/40 cursor-pointer" : "cursor-default"}`}>
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground truncate">{label}</p>
+      <p className="text-lg font-semibold tabular-nums mt-1" style={{ color: cor || NAVY }}>{valor}</p>
+      {sub && <p className="text-[11px] mt-0.5 text-muted-foreground truncate" title={sub}>{sub}</p>}
+    </button>
+  );
+}
+
 function SemDados({ motivo }: { motivo: string }) {
   return <p className="text-sm text-muted-foreground py-6 text-center" title={motivo}>sem dados <Info className="inline h-3 w-3 ml-0.5 opacity-60" /></p>;
 }
@@ -375,6 +387,18 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
 
   // receita acumulada x meta pró-rata
   const metaProrata = n(dados?.meta?.prorata);
+  // Projeção (03/11/2026, Fabrício: "métricas como meta, percentual atingido, projeção"):
+  // ritmo médio por dia decorrido do período, esticado até o fim dele. Período já encerrado = receita.
+  const projecao = useMemo(() => {
+    const { from, to } = intervalo(periodo);
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const dias = Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000));
+    const decorridos = Math.min(dias, Math.max(0, Math.round((Math.min(hoje.getTime() + 86400000, to.getTime()) - from.getTime()) / 86400000)));
+    const receita = n(A.receita);
+    const fechado = decorridos >= dias;
+    const valor = decorridos <= 0 ? 0 : fechado ? receita : (receita / decorridos) * dias;
+    return { valor, dias, decorridos, fechado, porDia: decorridos > 0 ? receita / decorridos : 0 };
+  }, [periodo, A.receita]);
   const receitaSerie = useMemo(() => {
     if (!dados) return [] as any[];
     const { from, to } = intervalo(periodo);
@@ -515,6 +539,30 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
         <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Nenhum lead, venda ou receita no período com esses filtros.</CardContent></Card>
       ) : (
         <>
+          {/* 0. Meta do período: meta, % atingido, projeção (03/11/2026) */}
+          {(() => {
+            const receita = n(A.receita);
+            const esperadoAteHoje = metaProrata > 0 ? (metaProrata * projecao.decorridos) / projecao.dias : 0;
+            const corAtingido = metaProrata <= 0 ? CINZA : receita >= metaProrata ? VERDE : esperadoAteHoje > 0 && receita < esperadoAteHoje * 0.7 ? VERMELHO : NAVY;
+            const corProj = metaProrata <= 0 ? CINZA : projecao.valor >= metaProrata ? VERDE : projecao.valor < metaProrata * 0.7 ? VERMELHO : NAVY;
+            return (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                <KpiMeta label="Meta do período" valor={metaProrata > 0 ? moeda(metaProrata) : "sem meta"}
+                  sub={metaProrata > 0 ? `meta do mês ${moeda(dados?.meta?.mes_total)}, proporcional a ${projecao.dias} dia${projecao.dias === 1 ? "" : "s"}` : "nenhuma meta de Vendas cadastrada pros meses do período"}
+                  dica="Soma das metas de Vendas do time nos meses do período, proporcional aos dias" onClick={() => onNavigate?.("sales")} />
+                <KpiMeta label="% da meta atingido" valor={metaProrata > 0 ? pct(receita, metaProrata) : "-"} cor={corAtingido}
+                  sub={metaProrata > 0 ? `${moeda(receita)} de ${moeda(metaProrata)}${esperadoAteHoje > 0 && !projecao.fechado ? ` · esperado até hoje ${moeda(esperadoAteHoje)}` : ""}` : ""}
+                  dica="Receita do período sobre a meta. Verde = meta batida; vermelho = abaixo de 70% do esperado até hoje" onClick={() => onNavigate?.("sales")} />
+                <KpiMeta label="Projeção do período" valor={projecao.decorridos > 0 ? moeda(projecao.valor) : "-"} cor={corProj}
+                  sub={projecao.fechado ? "período encerrado: igual à receita" : projecao.decorridos > 0 ? `${moeda(projecao.porDia)} por dia · ${projecao.decorridos} de ${projecao.dias} dias` : "o período ainda não começou"}
+                  dica="Ritmo médio por dia decorrido, esticado até o fim do período" onClick={() => onNavigate?.("sales")} />
+                <KpiMeta label="% projetado da meta" valor={metaProrata > 0 && projecao.decorridos > 0 ? pct(projecao.valor, metaProrata) : "-"} cor={corProj}
+                  sub={metaProrata > 0 && projecao.decorridos > 0 ? (projecao.valor >= metaProrata ? `bate a meta com folga de ${moeda(projecao.valor - metaProrata)}` : `faltariam ${moeda(metaProrata - projecao.valor)} nesse ritmo`) : ""}
+                  dica="Projeção do período sobre a meta" onClick={() => onNavigate?.("sales")} />
+              </div>
+            );
+          })()}
+
           {/* 1. KPIs */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
             <KpiVar label="Receita total" valor={kpis.receita[0]} anterior={kpis.receita[1]} formato={moeda} dica="Vendas ganhas no período (crm_sales, fora de funis de evento), igual à aba Vendas" onClick={() => onNavigate?.("sales")} />
