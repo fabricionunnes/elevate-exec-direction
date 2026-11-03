@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Save, Calendar, TrendingUp, Target, Users, Plus, Trash2, Settings2, Gift, Trophy, Star, Copy } from "lucide-react";
+import { Loader2, Save, Calendar, TrendingUp, Target, Users, Plus, Trash2, Settings2, Gift, Trophy, Star, Copy, Link2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 interface GoalType {
@@ -63,6 +64,9 @@ interface GoalValue {
   hiper_meta_bonus_text: string | null;
   hiper_meta_bonus_value: number | null;
   hiper_meta_bonus_image_url: string | null;
+  // Fabrício (03/11/2026): tipos de meta complementares que precisam ser batidos JUNTO com a
+  // principal pra liberar a faixa de comissão (a faixa usa o menor atingimento entre eles).
+  commission_goal_type_ids?: string[] | null;
 }
 
 interface CommissionTier {
@@ -145,6 +149,11 @@ export const CRMGoalValuesManager = () => {
   const [tiersLoading, setTiersLoading] = useState(false);
   const [tiersSaving, setTiersSaving] = useState(false);
   const [tiersCountMap, setTiersCountMap] = useState<Map<string, number>>(new Map());
+  // Metas complementares do closer (quantidade de vendas, conversão, ticket médio, reuniões):
+  // uma linha por tipo em crm_goal_values, chave "staffId|goalTypeId". Só o closer tem.
+  const [extraValues, setExtraValues] = useState<Map<string, GoalValue>>(new Map());
+  // Metas marcadas no diálogo de faixas como obrigatórias pra comissão
+  const [reqGoalTypeIds, setReqGoalTypeIds] = useState<string[]>([]);
 
   // Bonus dialog
   const [bonusDialogOpen, setBonusDialogOpen] = useState(false);
@@ -347,6 +356,27 @@ export const CRMGoalValuesManager = () => {
 
       setGoalValues(valuesMap);
 
+      // metas complementares dos closers
+      const extraTypeIds = goalTypes.filter(t => t.category === "closer" && t.id !== closerOteGoalType?.id).map(t => t.id);
+      const extraMap = new Map<string, GoalValue>();
+      if (extraTypeIds.length > 0) {
+        const { data: extraData } = await supabase
+          .from("crm_goal_values")
+          .select("*")
+          .in("goal_type_id", extraTypeIds)
+          .eq("month", selectedMonth)
+          .eq("year", selectedYear);
+        (extraData || []).forEach((v: any) => extraMap.set(`${v.staff_id}|${v.goal_type_id}`, v));
+        staffMembers.forEach((staff) => {
+          if (!(staff.is_crm_closer || CLOSER_ROLES.includes(staff.role)) || staff.role === "head_comercial") return;
+          extraTypeIds.forEach((tid) => {
+            const k = `${staff.id}|${tid}`;
+            if (!extraMap.has(k)) extraMap.set(k, { staff_id: staff.id, goal_type_id: tid, meta_value: 0, super_meta_value: null, hiper_meta_value: null, ote_base: 0, ote_variable: 0, ote_accelerator: null, super_meta_bonus_text: null, super_meta_bonus_value: null, super_meta_bonus_image_url: null, hiper_meta_bonus_text: null, hiper_meta_bonus_value: null, hiper_meta_bonus_image_url: null });
+          });
+        });
+      }
+      setExtraValues(extraMap);
+
       if (goalValueIds.length > 0) {
         const { data: tiersData } = await supabase
           .from("crm_goal_commission_tiers")
@@ -373,6 +403,15 @@ export const CRMGoalValuesManager = () => {
       if (current) {
         newMap.set(staffId, { ...current, [field]: value });
       }
+      return newMap;
+    });
+  };
+
+  const updateExtra = (key: string, field: keyof GoalValue, value: any) => {
+    setExtraValues((prev) => {
+      const newMap = new Map(prev);
+      const current = newMap.get(key);
+      if (current) newMap.set(key, { ...current, [field]: value });
       return newMap;
     });
   };
@@ -426,6 +465,25 @@ export const CRMGoalValuesManager = () => {
         if (error) throw error;
       }
 
+      // metas complementares (mesma regra: linha existente sempre salva, nova só se preenchida)
+      const extrasToUpsert = Array.from(extraValues.values())
+        .filter(v => !!v.id || (v.meta_value || 0) > 0 || (v.super_meta_value || 0) > 0 || (v.hiper_meta_value || 0) > 0)
+        .map((v) => ({
+          staff_id: v.staff_id,
+          goal_type_id: v.goal_type_id,
+          month: selectedMonth,
+          year: selectedYear,
+          meta_value: v.meta_value || 0,
+          super_meta_value: v.super_meta_value,
+          hiper_meta_value: v.hiper_meta_value,
+        }));
+      if (extrasToUpsert.length > 0) {
+        const { error: exErr } = await supabase
+          .from("crm_goal_values")
+          .upsert(extrasToUpsert, { onConflict: "staff_id,goal_type_id,month,year" });
+        if (exErr) throw exErr;
+      }
+
       toast.success("Metas salvas com sucesso!");
       loadGoalValues();
     } catch (error: any) {
@@ -440,6 +498,7 @@ export const CRMGoalValuesManager = () => {
     const goalTypeIds: string[] = [];
     if (closerOteGoalType) goalTypeIds.push(closerOteGoalType.id);
     if (sdrOteGoalType) goalTypeIds.push(sdrOteGoalType.id);
+    goalTypes.filter(t => t.category === "closer" && t.id !== closerOteGoalType?.id).forEach(t => goalTypeIds.push(t.id));
     if (goalTypeIds.length === 0) return;
 
     const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
@@ -483,6 +542,7 @@ export const CRMGoalValuesManager = () => {
         hiper_meta_bonus_text: v.hiper_meta_bonus_text,
         hiper_meta_bonus_value: v.hiper_meta_bonus_value,
         hiper_meta_bonus_image_url: v.hiper_meta_bonus_image_url,
+        commission_goal_type_ids: v.commission_goal_type_ids ?? null,
       }));
       const { data: newValues, error: upErr } = await supabase
         .from("crm_goal_values")
@@ -550,6 +610,7 @@ export const CRMGoalValuesManager = () => {
     setTiersLoading(true);
 
     const goalValue = goalValues.get(staff.id);
+    setReqGoalTypeIds(Array.isArray(goalValue?.commission_goal_type_ids) ? goalValue!.commission_goal_type_ids! : []);
 
     if (!goalValue?.id) {
       setEditingTiers(DEFAULT_TIERS.map(t => ({ ...t })));
@@ -635,6 +696,16 @@ export const CRMGoalValuesManager = () => {
 
       const goalValueId = goalValue!.id!;
 
+      // metas complementares exigidas junto com a principal pra liberar a faixa
+      const ehCloser = tiersStaff.is_crm_closer || CLOSER_ROLES.includes(tiersStaff.role);
+      if (ehCloser) {
+        const { error: reqErr } = await supabase
+          .from("crm_goal_values")
+          .update({ commission_goal_type_ids: reqGoalTypeIds.length ? reqGoalTypeIds : null } as any)
+          .eq("id", goalValueId);
+        if (reqErr) throw reqErr;
+      }
+
       await supabase
         .from("crm_goal_commission_tiers")
         .delete()
@@ -686,6 +757,8 @@ export const CRMGoalValuesManager = () => {
     return null;
   };
 
+  const closerExtraTypes = goalTypes.filter(t => t.category === "closer" && t.id !== closerOteGoalType?.id);
+  const prefixOf = (t: GoalType) => (t.unit_type === "currency" ? "R$" : t.unit_type === "percentage" ? "%" : null);
   const closers = staffMembers.filter(s => s.is_crm_closer || CLOSER_ROLES.includes(s.role));
   const sdrs = staffMembers.filter(s => SDR_ROLES.includes(s.role));
   // Meta da Head Comercial = soma das metas dos closers (exclui ela mesma). Read-only.
@@ -728,8 +801,12 @@ export const CRMGoalValuesManager = () => {
 
     if (!goalType) return null;
 
+    const ehCloserComum = (staff.is_crm_closer || CLOSER_ROLES.includes(staff.role)) && staff.role !== "head_comercial";
+    const vinculadas = new Set(Array.isArray(value?.commission_goal_type_ids) ? value!.commission_goal_type_ids! : []);
+
     return (
-      <TableRow key={staff.id}>
+      <Fragment key={staff.id}>
+      <TableRow>
         <TableCell className="font-medium">{staff.name}</TableCell>
         <TableCell>{getRoleBadge(staff.role)}</TableCell>
         <TableCell>
@@ -867,6 +944,46 @@ export const CRMGoalValuesManager = () => {
           </div>
         </TableCell>
       </TableRow>
+      {/* Metas complementares do closer (Fabrício, 03/11/2026): quantidade de vendas, conversão,
+          ticket médio e reuniões, cada uma com meta/super/hiper; vinculadas à comissão pelo diálogo Faixas. */}
+      {ehCloserComum && closerExtraTypes.map((t) => {
+        const k = `${staff.id}|${t.id}`;
+        const ev = extraValues.get(k);
+        const pfx = prefixOf(t);
+        const campo = (field: "meta_value" | "super_meta_value" | "hiper_meta_value") => (
+          <div className="flex items-center justify-end gap-1">
+            {pfx && <span className="text-muted-foreground text-sm">{pfx}</span>}
+            <Input
+              type="number"
+              value={field === "meta_value" ? (ev?.meta_value || 0) : (ev?.[field] ?? "")}
+              placeholder={field === "meta_value" ? undefined : "—"}
+              onChange={(e) => updateExtra(k, field, field === "meta_value" ? (parseFloat(e.target.value) || 0) : (e.target.value ? parseFloat(e.target.value) : null))}
+              className="w-24 text-right h-8 text-sm"
+            />
+          </div>
+        );
+        return (
+          <TableRow key={k} className="bg-muted/30">
+            <TableCell className="pl-8 text-xs text-muted-foreground">meta complementar</TableCell>
+            <TableCell />
+            <TableCell>
+              <Badge variant="outline" className="text-xs font-normal">{t.name}</Badge>
+            </TableCell>
+            <TableCell>{campo("meta_value")}</TableCell>
+            <TableCell>{campo("super_meta_value")}</TableCell>
+            <TableCell>{campo("hiper_meta_value")}</TableCell>
+            <TableCell className="text-right">
+              {vinculadas.has(t.id) && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-primary" title="Precisa ser batida junto com a meta principal pra liberar a faixa de comissão">
+                  <Link2 className="h-3 w-3" /> comissão
+                </span>
+              )}
+            </TableCell>
+            <TableCell />
+          </TableRow>
+        );
+      })}
+      </Fragment>
     );
   };
 
@@ -1233,6 +1350,36 @@ export const CRMGoalValuesManager = () => {
               <p className="text-sm text-muted-foreground">
                 Configure as faixas de atingimento e o valor de comissão para cada faixa.
               </p>
+
+              {tiersStaff && (tiersStaff.is_crm_closer || CLOSER_ROLES.includes(tiersStaff.role)) && closerExtraTypes.length > 0 && (
+                <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-medium">
+                    <Link2 className="h-3.5 w-3.5 text-primary" />
+                    Metas que precisam ser batidas pra liberar a faixa
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    A faixa usa o MENOR atingimento entre as metas marcadas. Pra entrar na faixa de 70%, todas precisam estar em 70% ou mais.
+                  </p>
+                  <label className="flex items-center gap-2 text-sm opacity-70">
+                    <Checkbox checked disabled />
+                    {closerOteGoalType?.name || "Meta principal"} <span className="text-[11px] text-muted-foreground">(sempre)</span>
+                  </label>
+                  {closerExtraTypes.map((t) => {
+                    const ev = extraValues.get(`${tiersStaff.id}|${t.id}`);
+                    const semMeta = !(ev?.meta_value && ev.meta_value > 0);
+                    return (
+                      <label key={t.id} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={reqGoalTypeIds.includes(t.id)}
+                          onCheckedChange={(c) => setReqGoalTypeIds((prev) => c ? [...new Set([...prev, t.id])] : prev.filter((x) => x !== t.id))}
+                        />
+                        {t.name}
+                        {semMeta && <span className="text-[11px] text-amber-600">(sem meta definida neste mês)</span>}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
 
               <div className="space-y-3">
                 {editingTiers.map((tier, index) => (
