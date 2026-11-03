@@ -117,8 +117,13 @@ nav .btn{width:auto;padding:11px 22px;font-size:11.5px}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .field{margin-bottom:12px}
 .field label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.02em}
-.field input{width:100%;background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:11px;color:#fff;font-size:16px;font-family:var(--sans);padding:13px 14px;outline:none;transition:border-color .16s,background .16s,box-shadow .16s}
-.field input:focus{border-color:rgba(224,30,44,.65);background:rgba(224,30,44,.06);box-shadow:0 0 0 3px rgba(224,30,44,.13)}
+.field input,.field select{width:100%;background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:11px;color:#fff;font-size:16px;font-family:var(--sans);padding:13px 14px;outline:none;transition:border-color .16s,background .16s,box-shadow .16s}
+.field select{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:40px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-opacity='.55' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;background-size:16px}
+.field select:invalid{color:rgba(255,255,255,.26)}
+.field select option{background:#14141a;color:#fff}
+.field input:focus,.field select:focus{border-color:rgba(224,30,44,.65);background-color:rgba(224,30,44,.06);box-shadow:0 0 0 3px rgba(224,30,44,.13)}
+.desq h3{font-size:17.5px;margin-bottom:8px;letter-spacing:-.02em}
+.desq p{font-size:14px;color:var(--muted);line-height:1.55;margin-bottom:10px}
 .field input::placeholder{color:rgba(255,255,255,.26)}
 .form-err{font-size:13px;color:#f87171;margin:0 0 11px}
 .form-foot{display:flex;justify-content:center;gap:18px;margin-top:13px;font-size:11px;color:var(--muted2);flex-wrap:wrap}
@@ -316,6 +321,17 @@ footer img{width:124px;height:auto;display:block;margin:0 auto 14px;opacity:.9}
                 <label for="f-ig">Instagram da empresa</label>
                 <input id="f-ig" name="instagram" type="text" placeholder="@suaempresa" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="120" />
               </div>
+            </div>
+            <div class="field">
+              <label for="f-fat">Faturamento mensal da empresa</label>
+              <select id="f-fat" name="faturamento" required>
+                <option value="" disabled selected>Selecione a faixa</option>
+                <option value="ate30k">Até R$ 30 mil por mês</option>
+                <option value="30a50k">R$ 30 mil a R$ 50 mil</option>
+                <option value="50a100k">R$ 50 mil a R$ 100 mil</option>
+                <option value="100a300k">R$ 100 mil a R$ 300 mil</option>
+                <option value="300k+">Acima de R$ 300 mil por mês</option>
+              </select>
             </div>
             <div class="field">
               <label for="f-mail">Seu e-mail <span style="color:var(--muted2);font-weight:400">(opcional)</span></label>
@@ -590,12 +606,20 @@ footer img{width:124px;height:auto;display:block;margin:0 auto 14px;opacity:.9}
     var tel = phone.value.replace(/\D/g,"");
     var email = form.querySelector('input[name="email"]').value.trim();
     var instagram = form.querySelector('input[name="instagram"]').value.trim().replace(/^@+/, "");
+    var fatSel = form.querySelector('select[name="faturamento"]');
+    var fat = fatSel.value;
+    var fatLabel = fat ? fatSel.options[fatSel.selectedIndex].text : "";
 
     function showErr(m){ errEl.textContent = m; errEl.hidden = false; }
     errEl.hidden = true;
 
     if(nome.length < 2) return showErr("Me diz seu nome.");
     if(tel.length < 10) return showErr("Coloca seu WhatsApp com DDD.");
+    if(!fat) return showErr("Escolhe a faixa de faturamento da empresa.");
+
+    // Faturamento até R$ 30 mil: lead desqualificado. Entra no CRM como Perdido
+    // (Fora do ICP), não vai pro obrigado e o Meta NÃO recebe Lead nem Cadastrou LP.
+    var desqualificado = fat === "ate30k" ? "Faturamento até R$ 30 mil por mês" : null;
     if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showErr("Esse e-mail parece invalido. Confere ou deixa em branco.");
 
     btn.disabled = true;
@@ -604,10 +628,12 @@ footer img{width:124px;height:auto;display:block;margin:0 auto 14px;opacity:.9}
 
     var payload = {
       form_token: FORM_TOKEN,
+      desqualificado: desqualificado || undefined,
       nome: nome,
       telefone: tel,
       email: email || undefined,
       instagram: instagram || undefined,
+      observacao: "Faturamento: " + fatLabel,
       utm_source: qp("utm_source"), utm_medium: qp("utm_medium"),
       utm_campaign: qp("utm_campaign"), utm_content: qp("utm_content"), utm_term: qp("utm_term"),
       fbclid: qp("fbclid"), ad_name: qp("ad_name"), adset_name: qp("adset_name"), campaign_name: qp("campaign_name"),
@@ -624,6 +650,17 @@ footer img{width:124px;height:auto;display:block;margin:0 auto 14px;opacity:.9}
       return r.json().then(function(d){ return {ok:r.ok, data:d}; });
     }).then(function(res){
       if(!res.ok) throw new Error((res.data && res.data.error) || "Erro ao enviar");
+      if(desqualificado){
+        // Não é conversão: só um evento custom pra análise, nunca o "Lead".
+        try { fbq("trackCustom", "LeadDesqualificado", { motivo:"faturamento_ate_30k", form:"unvsocial-lp" }); } catch(e){}
+        var card = document.getElementById("formTop");
+        card.classList.add("desq");
+        card.innerHTML =
+          '<h3>Hoje a conta ainda não fecha pra você.</h3>' +
+          '<p>No seu momento, o que a UNV Social cobra por mês pesaria demais no seu caixa, e eu não vou te vender uma coisa dessas. Antes de terceirizar a gestão do perfil, o que muda seu jogo é vender mais com o que você já tem na mão.</p>' +
+          '<p>Quando sua operação passar de R$ 30 mil por mês, volta aqui. A gente te atende na hora.</p>';
+        return;
+      }
       // O evento Lead dispara na pagina de obrigado (mesmo pixel). Preserva a query pra manter atribuicao.
       window.location.href = "/unvsocial/obrigado/" + (location.search || "");
     }).catch(function(err){
