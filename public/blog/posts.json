@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-11-03T10:01:21",
+ "gerado_em": "2026-11-03T15:01:42",
  "posts": [
+  {
+   "slug": "indicacao-vale-desconto-nao-tem-custo-aquisicao",
+   "url": "/blog/indicacao-vale-desconto-nao-tem-custo-aquisicao/",
+   "titulo": "Indicação vale desconto porque não tem custo de aquisição",
+   "resumo": "Empresa que não estrutura indicação paga duas vezes pelo mesmo cliente. Desconto planejado traz mais gente gastando menos que anúncio.",
+   "tags": [
+    "indicação",
+    "conversão",
+    "estrutura comercial",
+    "processo comercial",
+    "custo de aquisição"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-03",
+   "ts": 2235
+  },
   {
    "slug": "aprovar-tudo-antes-postar-trava-meta",
    "url": "/blog/aprovar-tudo-antes-postar-trava-meta/",
