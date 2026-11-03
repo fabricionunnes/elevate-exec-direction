@@ -79,7 +79,9 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
     supabase.functions.invoke("tmb-create-payment", { body: { action: "produtos" } })
       .then(({ data, error }) => {
         if (error || !data?.ok) { setTmbErro(data?.error || error?.message || "Não consegui listar os produtos da TMB"); return; }
-        const lista: TmbProduto[] = (data.produtos || []).filter((p: TmbProduto) => p.ativo);
+        // A API da TMB devolve todos os produtos da conta como "ativo: false" (03/11/2026), então
+        // não dá pra filtrar por esse campo: mostra todos e só marca o status.
+        const lista: TmbProduto[] = data.produtos || [];
         setTmbProdutos(lista);
         setTmbProduto((cur) => cur || (lista.length === 1 ? String(lista[0].produto_id) : ""));
       })
@@ -247,7 +249,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
                     <SelectTrigger><SelectValue placeholder={tmbCarregando ? "Carregando produtos..." : "Escolha o produto"} /></SelectTrigger>
                     <SelectContent>
                       {tmbProdutos.map((p) => (
-                        <SelectItem key={p.produto_id} value={String(p.produto_id)}>{p.nome}{p.valor ? ` · ${p.valor}` : ""}{String(p.produto_id) === tmbPadrao ? " (padrão)" : ""}</SelectItem>
+                        <SelectItem key={p.produto_id} value={String(p.produto_id)}>{p.nome}{p.valor ? ` · ${p.valor}` : ""}{String(p.produto_id) === tmbPadrao ? " (padrão)" : ""}{p.ativo ? "" : " · inativo na TMB"}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
