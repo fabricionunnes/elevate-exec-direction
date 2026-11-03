@@ -31,7 +31,12 @@ export function useInstagramMessages(conversationId: string | null) {
         conversation_id: m.conversation_id,
         remote_id: m.message_id || null,
         content: m.is_reaction && m.reaction_emoji ? m.reaction_emoji : m.content,
-        type: m.message_type === "photo" ? "image" : m.message_type || "text",
+        // Post compartilhado, resposta a story e menção em story chegam como imagem no CDN da Meta:
+        // renderiza como imagem. Reel vem como "video" com o link da publicação (o Atendimento mostra o embed).
+        type: m.message_type === "photo" ? "image"
+          : ["share", "story_reply", "story_mention", "ig_post"].includes(m.message_type) && m.media_url && !/instagram\.com\//i.test(m.media_url) ? "image"
+          : m.message_type || "text",
+        transcription: m.transcription ?? null,
         direction: (m.direction === "incoming" ? "inbound" : m.direction === "outgoing" ? "outbound" : m.direction) as "inbound" | "outbound",
         status: m.status || "sent",
         media_url: m.media_url,
