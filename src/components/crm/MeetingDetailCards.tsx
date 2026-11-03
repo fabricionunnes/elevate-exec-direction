@@ -39,15 +39,14 @@ const CardSection = ({
 }) => {
   return (
     <div className={cn(
-      "relative overflow-hidden rounded-2xl bg-card border shadow-lg hover:shadow-xl transition-all",
-      borderColor
+      // 03/11/2026: visual da Visão geral (moldura neutra, faixa navy no topo, sem brilho)
+      "relative overflow-hidden rounded-lg bg-card border border-border/60"
     )}>
       <div className={cn("h-1.5 w-full", gradient)} />
-      <div className={cn("absolute -bottom-12 -right-12 h-32 w-32 rounded-full blur-3xl", glow)} />
       
       <div className="p-4 pb-2 relative z-10">
-        <h3 className="text-sm font-bold flex items-center gap-2">
-          <div className={cn("p-1.5 rounded-lg text-white shadow-lg", gradient)}>
+        <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: "var(--vg-navy)" }}>
+          <div className={cn("p-1.5 rounded-md text-white", gradient)}>
             <Icon className="h-3.5 w-3.5" />
           </div>
           {title}
@@ -105,7 +104,7 @@ export function MeetingDetailCards({ events, className }: MeetingDetailCardsProp
       <CardSection
         title="Agendadas"
         icon={Calendar}
-        gradient="bg-gradient-to-r from-sky-500 to-blue-500"
+        gradient="bg-[#0D2B5E]"
         glow="bg-sky-500/10"
         borderColor="border-sky-500/20"
         events={scheduled}
@@ -113,7 +112,7 @@ export function MeetingDetailCards({ events, className }: MeetingDetailCardsProp
       <CardSection
         title="Realizadas"
         icon={CheckCircle}
-        gradient="bg-gradient-to-r from-emerald-500 to-teal-500"
+        gradient="bg-[#3B5B8C]"
         glow="bg-emerald-500/10"
         borderColor="border-emerald-500/20"
         events={realized}
@@ -121,7 +120,7 @@ export function MeetingDetailCards({ events, className }: MeetingDetailCardsProp
       <CardSection
         title="No Show"
         icon={XCircle}
-        gradient="bg-gradient-to-r from-rose-500 to-pink-500"
+        gradient="bg-[#CC1B1B]"
         glow="bg-rose-500/10"
         borderColor="border-rose-500/20"
         events={noShow}
@@ -129,7 +128,7 @@ export function MeetingDetailCards({ events, className }: MeetingDetailCardsProp
       <CardSection
         title="Fora do ICP"
         icon={AlertTriangle}
-        gradient="bg-gradient-to-r from-amber-500 to-orange-500"
+        gradient="bg-[#7C93B8]"
         glow="bg-amber-500/10"
         borderColor="border-amber-500/20"
         events={outOfIcp}
