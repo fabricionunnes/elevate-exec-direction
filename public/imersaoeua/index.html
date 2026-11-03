@@ -103,8 +103,7 @@
   .hero-bg img{width:100%;height:100%;object-fit:cover;object-position:60% 50%}
   .hero-tint{position:absolute;inset:0;z-index:-2;background:linear-gradient(100deg,rgba(6,20,47,.95) 0%,rgba(10,31,68,.82) 42%,rgba(10,31,68,.45) 75%,rgba(10,31,68,.3) 100%)}
   .hero-stars{position:absolute;left:0;top:0;width:min(58%,820px);height:62%;z-index:-1;background:var(--stars),linear-gradient(135deg,rgba(10,31,68,.85),rgba(10,31,68,.35));background-size:64px 56px,auto;mask-image:linear-gradient(135deg,#000 35%,transparent 85%);-webkit-mask-image:linear-gradient(135deg,#000 35%,transparent 85%)}
-  .hero-stripes{position:absolute;right:0;top:0;bottom:0;width:52%;z-index:-1;background:var(--flag-stripes);opacity:.3;mask-image:linear-gradient(90deg,transparent 0%,#000 55%);-webkit-mask-image:linear-gradient(90deg,transparent 0%,#000 55%);transform-origin:right;animation:sway 9s ease-in-out infinite alternate}
-  @keyframes sway{from{transform:skewY(-2deg)}to{transform:skewY(1.5deg)}}
+  .hero-stripes{position:absolute;right:0;top:0;bottom:0;width:52%;z-index:-1;background:var(--flag-stripes);opacity:.3;mask-image:linear-gradient(90deg,transparent 0%,#000 55%);-webkit-mask-image:linear-gradient(90deg,transparent 0%,#000 55%)}
   #hero .wrap{width:100%;padding-top:150px;padding-bottom:110px}
   .hero-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:clamp(36px,5vw,80px);align-items:center}
   .hero-grid > *{min-width:0}
@@ -119,8 +118,7 @@
   .host b{color:var(--on-navy);font-weight:600}
 
   /* cartão de embarque */
-  .bp-wrap{perspective:1200px}
-  .bp{position:relative;display:grid;grid-template-columns:1fr 128px;background:var(--white);color:var(--ink);border-radius:16px;box-shadow:0 40px 80px -20px rgba(0,0,0,.6);transform-style:preserve-3d;transition:transform .5s var(--ease);font-family:var(--mono)}
+  .bp{position:relative;display:grid;grid-template-columns:1fr 128px;background:var(--white);color:var(--ink);border-radius:16px;box-shadow:0 40px 80px -20px rgba(0,0,0,.6);font-family:var(--mono)}
   .bp-main{padding:22px 24px 22px}
   .bp-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1px dashed rgba(11,23,48,.25)}
   .bp-top img{width:58px}
@@ -816,17 +814,12 @@
 <section id="final">
   <svg class="flagwave" viewBox="0 0 1235 650" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
     <defs>
-      <filter id="wave" x="-5%" y="-5%" width="110%" height="110%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.0035 0.009" numOctaves="2" seed="7" result="n"><animate id="waveAnim" attributeName="baseFrequency" dur="14s" values="0.0035 0.009;0.005 0.012;0.0035 0.009" repeatCount="indefinite"/></feTurbulence>
-        <feDisplacementMap in="SourceGraphic" in2="n" scale="46" xChannelSelector="R" yChannelSelector="G"/>
-      </filter>
       <linearGradient id="folds" x1="0" y1="0" x2="1" y2="0">
         <stop offset="0" stop-color="#000" stop-opacity=".28"/><stop offset=".18" stop-color="#fff" stop-opacity=".08"/><stop offset=".34" stop-color="#000" stop-opacity=".22"/>
         <stop offset=".52" stop-color="#fff" stop-opacity=".1"/><stop offset=".7" stop-color="#000" stop-opacity=".24"/><stop offset=".86" stop-color="#fff" stop-opacity=".08"/><stop offset="1" stop-color="#000" stop-opacity=".3"/>
-        <animateTransform attributeName="gradientTransform" type="translate" values="-0.08 0;0.08 0;-0.08 0" dur="9s" repeatCount="indefinite"/>
       </linearGradient>
     </defs>
-    <g filter="url(#wave)">
+    <g>
       <g id="flagStripes"></g>
       <rect width="494" height="350" fill="#0A1F44"/>
       <g id="flagStars" fill="#fff"></g>
@@ -1024,7 +1017,6 @@ var CONFIG = {
     for (var r = 0; r < 9; r++) { var n = r % 2 ? 5 : 6;
       for (var c = 0; c < n; c++) ss += '<path transform="translate(' + (41.2 + (r % 2 ? 41.2 : 0) + c * 82.4).toFixed(1) + "," + (35 + r * 35) + ')" d="' + star + '"/>'; }
     sr.innerHTML = ss;
-    if (reduce) { var a = $("#waveAnim"); if (a) a.parentNode.removeChild(a); }
   })();
 
   // ── Contatos ──
@@ -1063,16 +1055,6 @@ var CONFIG = {
     });
   }
   window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
-
-  // ── Cartão de embarque com inclinação 3D ──
-  var bp = $("#bp");
-  if (bp && !reduce && matchMedia("(hover:hover)").matches) {
-    var wrap = bp.parentNode;
-    wrap.addEventListener("mousemove", function(e){ var r = wrap.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
-      bp.style.transform = "rotateY(" + (x * 14) + "deg) rotateX(" + (-y * 12) + "deg)"; });
-    wrap.addEventListener("mouseleave", function(){ bp.style.transform = "rotateY(-8deg) rotateX(4deg)"; });
-    bp.style.transform = "rotateY(-8deg) rotateX(4deg)";
-  }
 
   // ── Painel de partidas (split-flap) ──
   var embarque = new Date(C.evento.embarque), groups = {};
