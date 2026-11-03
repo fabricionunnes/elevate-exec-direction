@@ -89,10 +89,14 @@ export function useInstagramConversations() {
   }, []);
 
   const markAsRead = async (id: string) => {
-    await supabase
+    // 03/11/2026, Fabrício: "as mensagens do instagram não estão marcando como lidas". O contador
+    // só sumia quando o realtime devolvia a conversa; agora zera na hora, na tela e no banco.
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, unread_count: 0 } : c)));
+    const { error } = await supabase
       .from("instagram_conversations")
       .update({ unread_count: 0, unread_manual: false })
       .eq("id", id);
+    if (error) console.error("Error marking Instagram conversation as read:", error);
   };
 
   const markAsUnread = async (id: string) => {
