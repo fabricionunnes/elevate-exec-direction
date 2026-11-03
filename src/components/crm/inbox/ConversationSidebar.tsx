@@ -43,7 +43,7 @@ import { WhatsAppConversation } from "@/hooks/useWhatsAppConversations";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useCRMContext } from "@/pages/crm/CRMLayout";
-import { useLinkedLeads } from "@/hooks/useLinkedLeads";
+import { useLinkedLeads, brPhoneKey, samePhone } from "@/hooks/useLinkedLeads";
 import { LinkedLeadsSection } from "@/components/crm/LinkedLeadsSection";
 import { useCompanyIdentification } from "@/hooks/useCompanyIdentification";
 import { CompanyFinancialSidePanel } from "./CompanyFinancialSidePanel";
@@ -337,13 +337,10 @@ export function ConversationSidebar({
         // jogava todo lead do Instagram no mesmo negócio). Instagram usa @username no
         // lugar de telefone, então nunca casa por identidade: só herda de outra conversa
         // do MESMO contato já vinculada.
-        const onlyDigits = (v?: string | null) => (v || "").replace(/\D/g, "");
-        const convDigits = onlyDigits(conversation.contact?.phone);
-        const identityMatchedLead = (!isInstagram && convDigits.length >= 8)
-          ? linkedLeads.find((lead) => {
-              const leadDigits = onlyDigits(lead.phone);
-              return leadDigits.length >= 8 && leadDigits.slice(-8) === convDigits.slice(-8);
-            })
+        // Casa por DDD + 8 dígitos (03/11/2026: só os 8 últimos colou a conversa do Sergio,
+        // DDD 51, no lead Guaciara, DDD 62).
+        const identityMatchedLead = (!isInstagram && brPhoneKey(conversation.contact?.phone))
+          ? linkedLeads.find((lead) => samePhone(lead.phone, conversation.contact?.phone))
           : undefined;
 
         if (!inheritedLeadId) {

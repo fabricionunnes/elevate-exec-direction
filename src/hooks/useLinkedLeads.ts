@@ -27,6 +27,22 @@ const cleanPhone = (phone: string | null | undefined): string | null => {
   return phone.replace(/\D/g, "");
 };
 
+/**
+ * Chave de telefone brasileiro: DDD + 8 últimos dígitos (mesma regra da função br_phone_key
+ * do banco). 03/11/2026, Fabrício: a conversa do Sergio (51 99733333) foi colada no lead
+ * Guaciara (62 99733333) porque a tela comparava só os 8 últimos dígitos. Sem DDD não casa.
+ */
+export const brPhoneKey = (phone: string | null | undefined): string | null => {
+  let d = cleanPhone(phone) || "";
+  if (d.length >= 12 && d.startsWith("55")) d = d.slice(2);
+  if (d.length >= 11 && d.startsWith("0")) d = d.slice(1);
+  return d.length >= 10 ? d.slice(0, 2) + d.slice(-8) : null;
+};
+export const samePhone = (a: string | null | undefined, b: string | null | undefined): boolean => {
+  const ka = brPhoneKey(a), kb = brPhoneKey(b);
+  return !!ka && !!kb && ka === kb;
+};
+
 // Clean document for comparison (remove all non-digits)
 const cleanDocument = (doc: string | null | undefined): string | null => {
   if (!doc) return null;
@@ -79,8 +95,7 @@ export function useLinkedLeads({ phone, email, document, leadId }: UseLinkedLead
       // Extra last-8-digit safety filter on the client
       const filteredLeads = mapped.filter((lead) => {
         if (leadId && lead.id === leadId) return true;
-        const leadPhone = cleanPhone(lead.phone);
-        if (cleanedPhone && leadPhone && leadPhone.slice(-8) === cleanedPhone.slice(-8)) return true;
+        if (cleanedPhone && samePhone(lead.phone, cleanedPhone)) return true;
         if (cleanedEmail && lead.email?.toLowerCase().trim() === cleanedEmail) return true;
         if (cleanedDocument && cleanDocument(lead.document) === cleanedDocument) return true;
         return false;
