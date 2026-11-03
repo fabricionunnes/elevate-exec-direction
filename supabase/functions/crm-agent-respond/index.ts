@@ -1221,6 +1221,29 @@ function calendarioPrompt(agent) {
   ];
   return linhas.filter(Boolean).join(" ");
 }
+/** Próximo dia com agenda DEPOIS de ymd (sem feriado, dentro dos dias de reunião do agente). */
+function proximoDiaComAgenda(agent, ymd) {
+  for (let i = 1; i <= 21; i++) {
+    const d = somaDias(ymd, i);
+    if (diaPermitido(agent, d)) return d;
+  }
+  return null;
+}
+/** Horários livres do closer num dia, já filtrados à janela do agente. null = agenda indisponível. */
+async function horariosLivresDoDia(agent, staffUserId, ymd) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/google-calendar?action=freebusy`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${SERVICE_ROLE}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ target_user_id: staffUserId, date: ymd, duration_minutes: agent.meeting_duration_minutes || 60 })
+    });
+    const fb = await r.json();
+    if (!r.ok || fb.error || !Array.isArray(fb.availableSlots)) return null;
+    const hs = agent.schedule_hour_start ?? 8, he = agent.schedule_hour_end ?? 19;
+    return fb.availableSlots.filter((sl) => { const h = parseInt(sl.split(":")[0], 10); return h >= hs && h < he; });
+  } catch { return null; }
+}
+const rotuloDia = (ymd) => `${DIAS_PT[dowDeYmd(ymd)]} ${ddmm(ymd)}`;
 /** null = dia permitido; senão devolve a mensagem de recusa com o próximo dia que atende */ function recusaDia(agent, ymd) {
   const hoje = hojeYmdBR();
   if (ymd < hoje) return `Erro: ${ymd} já passou (hoje é ${DIAS_PT[dowDeYmd(hoje)]} ${ddmm(hoje)}). Use uma data a partir de hoje.`;
@@ -1279,9 +1302,16 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
           return h >= hs && h < he;
         });
         results.push(`${staff.name} (${date}): ${slots.length ? slots.join(", ") : "nenhum horário livre nessa janela"}`);
+        // Dia cheio: já devolve o dia seguinte com agenda (Fabrício, 03/11/2026: "tem que agendar
+        // para o dia e horário mais próximo, no mesmo dia outro horário ou no máximo no dia seguinte").
+        if (!slots.length) {
+          const prox = proximoDiaComAgenda(agent, date);
+          const sl2 = prox ? await horariosLivresDoDia(agent, staff.user_id, prox) : null;
+          if (prox && sl2) results.push(`${staff.name} (${prox}, ${rotuloDia(prox)}, o dia seguinte com agenda): ${sl2.length ? sl2.join(", ") : "nenhum horário livre"}`);
+        }
       }
       const out = results.join("\n") || "Nenhum closer configurado.";
-      return out + "\n\nIMPORTANTE: ofereça APENAS horários desta lista, exatamente como estão. Se o lead já escolheu um horário que está nesta lista, NÃO ofereça de novo: chame agendar_reuniao AGORA com esse horário.";
+      return out + "\n\nIMPORTANTE: ofereça APENAS horários desta lista, exatamente como estão. Se o lead já escolheu um horário que está nesta lista, NÃO ofereça de novo: chame agendar_reuniao AGORA com esse horário. Se o dia pedido está cheio, ofereça o dia seguinte listado acima, nunca pule pra semana seguinte.";
     }
     if (name === "salvar_dados_lead") {
       const campos = await salvarDadosLead(supabase, leadId, input);
@@ -1391,7 +1421,11 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
             return hh >= hs && hh < he;
           });
           if (!okSlots.includes(want)) {
-            return `Erro: o horário ${want} não está mais disponível em ${m[1]}. Horários livres: ${okSlots.join(", ") || "nenhum"}. Ofereça esses ao lead.`;
+            // Fabrício (03/11/2026, caso Rodrigo: 15h de hoje cheia e o agente marcou pra terça seguinte):
+            // o encaixe é SEMPRE o mais próximo: outro horário no mesmo dia; senão, o dia seguinte com agenda.
+            const prox = proximoDiaComAgenda(agent, m[1]);
+            const sl2 = prox ? await horariosLivresDoDia(agent, staff.user_id, prox) : null;
+            return `Erro: o horário ${want} não está mais disponível em ${m[1]} (${rotuloDia(m[1])}). Horários livres NO MESMO DIA: ${okSlots.join(", ") || "nenhum"}.${prox ? ` No dia seguinte com agenda, ${rotuloDia(prox)} (${prox}): ${sl2 ? (sl2.length ? sl2.join(", ") : "nenhum") : "agenda indisponível"}.` : ""} REGRA: ofereça ao lead o mais próximo possível, primeiro os do mesmo dia e, se nenhum servir, os do dia seguinte. Nunca proponha a semana seguinte enquanto houver horário antes.`;
           }
         }
       } catch  {}
@@ -4120,7 +4154,7 @@ Deno.serve(async (req)=>{
         equipeTexto,
         calendarioPrompt(agent),
         `\n\nData/hora atual (Brasília): ${nowBR}. A saudação (bom dia/boa tarde/boa noite) segue ESTA hora — nunca repita a saudação do lead se ela não bater com o horário.`,
-        qtdFerramentasBase ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou; (5) ANTES de chamar agendar_reuniao, você precisa do NOME, do E-MAIL e do TELEFONE/WhatsApp do lead — peça numa única mensagem curta SOMENTE o que faltar e não estiver em DADOS JÁ CADASTRADOS (se nada faltar, agende direto, sem pedir confirmação de dados) e só chame a ferramenta quando tiver tudo; se você já sabe o nome dele pela conversa, não pergunte de novo — pergunte só o que falta; (6) passe email, telefone e nome_completo nos parâmetros de agendar_reuniao — eles vão pro cadastro do lead no CRM.` : "",
+        qtdFerramentasBase ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou; (5) ANTES de chamar agendar_reuniao, você precisa do NOME, do E-MAIL e do TELEFONE/WhatsApp do lead — peça numa única mensagem curta SOMENTE o que faltar e não estiver em DADOS JÁ CADASTRADOS (se nada faltar, agende direto, sem pedir confirmação de dados) e só chame a ferramenta quando tiver tudo; se você já sabe o nome dele pela conversa, não pergunte de novo — pergunte só o que falta; (6) passe email, telefone e nome_completo nos parâmetros de agendar_reuniao — eles vão pro cadastro do lead no CRM; (7) HORÁRIO CHEIO: se o horário que o lead escolheu já ocupou, ofereça o MAIS PRÓXIMO: outro horário no mesmo dia e, só se não houver, o dia seguinte com agenda. Nunca proponha a semana seguinte enquanto houver horário antes; (8) DIA COMBINADO EM MENSAGEM ANTIGA: as mensagens de dias anteriores vêm com carimbo [dia dd/mm hh:mm]. Um dia da semana escrito ali ("terça", "amanhã") vale pra data que ele tinha NAQUELE momento, não pra hoje. Se o lead topou "terça às 15h" numa sexta 31/10, a reunião é terça 03/11; se esse dia já chegou e o horário ocupou, aplique a regra (7). Nunca escreva o carimbo nas suas mensagens.` : "",
         tools.some((t)=>t.name === "marcar_fora_do_perfil") ? `\nFORA DO PERFIL: se durante a conversa ficar claro que o lead não é do nosso perfil (outro segmento, sem time comercial, pessoa procurando emprego, curioso, concorrente), chame marcar_fora_do_perfil com o motivo e encerre com educação — sem insistir e sem agendar. Falta de orçamento agora ou "vou pensar" NÃO é fora de perfil: isso você trabalha como objeção.` : "",
         // valem sempre, mesmo sem a ferramenta de fora do perfil (ex.: Instagram sem negócio vinculado)
         `\n\nHORÁRIO QUE NÃO ENCAIXA (regra obrigatória): quando o lead disser que nenhum horário oferecido serve ("não", "nenhum funciona", "não consigo"), isso NÃO é recusa e a conversa NÃO termina. Nunca se despeça, nunca agradeça o retorno e nunca marque como perdido por causa de horário. Faça assim: (1) pergunte qual dia e período funcionam melhor pra ele, ou ofereça você mesmo o próximo dia útil; (2) consulte a agenda desse dia e ofereça 2 ou 3 horários reais; (3) se esse dia também não der, passe pro dia seguinte, e assim por diante, até encaixar; (4) se ele sugerir um dia ("quarta"), consulte a agenda desse dia na hora e ofereça os horários livres. Só pare se ele disser com todas as letras que não quer mais a reunião.`,
@@ -4170,14 +4204,25 @@ Deno.serve(async (req)=>{
       } catch (_) {}
       // Alternância user/assistant exigida pela API (mescla consecutivas, começa em user)
       const apiMessages = [];
+      // Mensagens de dias anteriores levam carimbo [dia dd/mm hh:mm]: sem isso a IA lia "terça"
+      // combinada na sexta como a terça seguinte (caso Rodrigo, 03/11/2026).
+      const hojeBR = hojeYmdBR();
+      const carimboMsg = (m) => {
+        const t = m.ts ? new Date(m.ts) : null;
+        if (!t || isNaN(t.getTime())) return "";
+        const ymd = new Date(t.getTime() - 3 * 3600000).toISOString().slice(0, 10);
+        if (ymd === hojeBR) return "";
+        return `[${DIAS_PT[dowDeYmd(ymd)].slice(0, 3)} ${ddmm(ymd)} ${t.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })}] `;
+      };
       for (const m of msgs){
         const role = m.direction === "inbound" ? "user" : "assistant";
         if (apiMessages.length === 0 && role === "assistant") continue;
+        const texto = `${carimboMsg(m)}${m.content}`;
         const last = apiMessages[apiMessages.length - 1];
-        if (last && last.role === role && typeof last.content === "string") last.content += `\n${m.content}`;
+        if (last && last.role === role && typeof last.content === "string") last.content += `\n${texto}`;
         else apiMessages.push({
           role,
-          content: m.content
+          content: texto
         });
       }
       if (apiMessages.length === 0 || apiMessages[apiMessages.length - 1].role !== "user") {
