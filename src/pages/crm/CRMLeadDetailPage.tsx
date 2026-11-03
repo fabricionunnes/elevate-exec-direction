@@ -4,7 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { syncLeadToClint } from "@/hooks/useClintSync";
 import { useCallDock } from "@/components/crm/call/CallDockProvider";
 import { WhatsAppMessageDialog } from "@/components/onboarding-tasks/WhatsAppMessageDialog";
-import { sendLoggedWhatsAppText } from "@/lib/whatsapp/sendLoggedWhatsAppText";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { samePhone } from "@/hooks/useLinkedLeads";
+import { sendLoggedWhatsAppText, ensureWhatsAppConversation } from "@/lib/whatsapp/sendLoggedWhatsAppText";
 import { getDefaultWhatsAppInstance } from "@/utils/whatsapp-defaults";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -242,6 +244,64 @@ export const CRMLeadDetailPage = () => {
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
   const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
+  // Botão de mensagem do cabeçalho (03/11/2026, Fabrício): leva direto pra conversa do lead no
+  // Atendimento, na instância que já conversa com ele. Zero ou mais de uma conversa: escolhe.
+  type ConversaDoLead = { id: string; instancia: string; canal: string; ultima: string | null };
+  const [escolhaAtendimento, setEscolhaAtendimento] = useState<null | { conversas: ConversaDoLead[] }>(null);
+  const [abrindoAtendimento, setAbrindoAtendimento] = useState(false);
+  const rotuloInst = (i: any) => (i?.display_name || i?.instance_name || i?.phone_number || "instância");
+  const irParaConversa = (conversationId: string) => {
+    setEscolhaAtendimento(null);
+    navigate(`/crm/inbox?conversation=${conversationId}`);
+  };
+  const abrirNoAtendimento = async () => {
+    if (!lead?.phone || abrindoAtendimento) return;
+    setAbrindoAtendimento(true);
+    try {
+      const sel = "id, lead_id, instance_id, official_instance_id, last_message_at, merged_into, contact:crm_whatsapp_contacts(phone), instance:whatsapp_instances(id, instance_name, display_name, is_personal, show_in_inbox), official_instance:whatsapp_official_instances(id, display_name, phone_number, show_in_inbox)";
+      // conversas vinculadas ao lead + conversas do mesmo telefone (DDD + 8 dígitos) ainda sem vínculo
+      const digits = String(lead.phone).replace(/\D/g, "");
+      const porLead = await (supabase as any).from("crm_whatsapp_conversations").select(sel).eq("lead_id", lead.id).is("merged_into", null);
+      let porTel: { data: any[] } = { data: [] };
+      if (digits.length >= 8) {
+        const { data: cts } = await (supabase as any).from("crm_whatsapp_contacts").select("id, phone").ilike("phone", `%${digits.slice(-8)}`).limit(50);
+        const ids = (cts || []).filter((c: any) => samePhone(c.phone, lead.phone)).map((c: any) => c.id);
+        if (ids.length) porTel = await (supabase as any).from("crm_whatsapp_conversations").select(sel).is("merged_into", null).is("lead_id", null).in("contact_id", ids);
+      }
+      const vistos = new Set<string>();
+      const conversas: ConversaDoLead[] = [];
+      for (const c of [...(porLead.data || []), ...(porTel.data || [])]) {
+        if (!c?.id || vistos.has(c.id)) continue;
+        if (!c.lead_id && !samePhone(c.contact?.phone, lead.phone)) continue;
+        const inst = c.instance, off = c.official_instance;
+        if (inst?.is_personal) continue;
+        if (inst && inst.show_in_inbox === false) continue;
+        if (off && off.show_in_inbox === false) continue;
+        if (!inst && !off) continue;
+        vistos.add(c.id);
+        conversas.push({ id: c.id, instancia: rotuloInst(inst || off), canal: inst ? "WhatsApp" : "API oficial", ultima: c.last_message_at });
+      }
+      conversas.sort((a, b) => (b.ultima || "").localeCompare(a.ultima || ""));
+      if (conversas.length === 1) { irParaConversa(conversas[0].id); return; }
+      setEscolhaAtendimento({ conversas });
+    } catch (e: any) {
+      toast.error(e?.message || "Não consegui abrir a conversa no Atendimento");
+    } finally {
+      setAbrindoAtendimento(false);
+    }
+  };
+  const abrirNovaConversa = async (instanceId: string) => {
+    if (!lead?.phone || abrindoAtendimento) return;
+    setAbrindoAtendimento(true);
+    try {
+      const { conversationId } = await ensureWhatsAppConversation({ instanceId, phoneRaw: lead.phone, leadId: lead.id, leadName: lead.name });
+      irParaConversa(conversationId);
+    } catch (e: any) {
+      toast.error(e?.message || "Não consegui criar a conversa nessa instância");
+    } finally {
+      setAbrindoAtendimento(false);
+    }
+  };
   const [officialTemplateOpen, setOfficialTemplateOpen] = useState(false);
   const [leadCalendarOpen, setLeadCalendarOpen] = useState(false);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
@@ -1083,8 +1143,9 @@ export const CRMLeadDetailPage = () => {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
-                title="WhatsApp"
-                onClick={() => setWhatsappDialogOpen(true)}
+                title="Abrir a conversa no Atendimento"
+                disabled={abrindoAtendimento}
+                onClick={abrirNoAtendimento}
               >
                 <MessageSquare className="h-4 w-4" />
               </Button>
@@ -1797,6 +1858,37 @@ export const CRMLeadDetailPage = () => {
         onOpenChange={setOfficialTemplateOpen}
         leads={[{ id: lead.id, name: lead.name, phone: lead.phone }]}
       />
+
+      {/* Escolha da conversa/instância pra abrir no Atendimento (03/11/2026) */}
+      <Dialog open={!!escolhaAtendimento} onOpenChange={(v) => { if (!v) setEscolhaAtendimento(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{escolhaAtendimento?.conversas.length ? "Qual conversa abrir?" : "Em qual número conversar?"}</DialogTitle>
+            <DialogDescription>
+              {escolhaAtendimento?.conversas.length
+                ? "Este lead conversa em mais de um número. Escolha qual abrir no Atendimento."
+                : "Este lead ainda não tem conversa no WhatsApp. Escolha o número pra abrir a conversa no Atendimento."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
+            {escolhaAtendimento?.conversas.length ? escolhaAtendimento.conversas.map((c) => (
+              <button key={c.id} type="button" onClick={() => irParaConversa(c.id)}
+                className="w-full text-left rounded-lg border border-border/60 bg-card p-3 hover:border-[#0D2B5E]/40 transition-colors">
+                <p className="text-sm font-medium">{c.instancia} <span className="text-xs font-normal text-muted-foreground">· {c.canal}</span></p>
+                <p className="text-[11px] text-muted-foreground">{c.ultima ? `última mensagem ${new Date(c.ultima).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : "sem mensagens ainda"}</p>
+              </button>
+            )) : authorizedInstances.length ? authorizedInstances.map((i) => (
+              <button key={i.id} type="button" disabled={abrindoAtendimento} onClick={() => abrirNovaConversa(i.id)}
+                className="w-full text-left rounded-lg border border-border/60 bg-card p-3 hover:border-[#0D2B5E]/40 transition-colors disabled:opacity-60">
+                <p className="text-sm font-medium">{rotuloInst(i)}</p>
+                <p className="text-[11px] text-muted-foreground">WhatsApp conectado</p>
+              </button>
+            )) : (
+              <p className="text-sm text-muted-foreground py-4 text-center">Nenhum número de WhatsApp conectado liberado pra você.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* WhatsApp Dialog */}
       {whatsappDialogOpen && lead.phone && (
