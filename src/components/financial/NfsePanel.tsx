@@ -15,6 +15,7 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useVisualizarAnexo } from "@/components/anexos/VisualizarAnexo";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { FiscalCertificateCard } from "./FiscalCertificateCard";
 import { NfseGovDialog } from "./NfseGovDialog";
@@ -84,6 +85,8 @@ const INVOICE_STATUS_MAP: Record<string, { label: string; color: string }> = {
 };
 
 export function NfsePanel() {
+  // Visualizar a nota antes de baixar (Fabrício, 04/11/2026): mesma janela dos anexos do Nexus
+  const visor = useVisualizarAnexo();
   const [records, setRecords] = useState<NfseRecord[]>([]);
   const [companies, setCompanies] = useState<NfeioCompany[]>([]);
   const [onboardingCompanies, setOnboardingCompanies] = useState<any[]>([]);
@@ -416,36 +419,54 @@ export function NfsePanel() {
     }
   };
 
-  // fonte (04/11/2026): "gov" = PDF oficial do nfse.gov.br; "espelho" = espelho do Nexus; vazio = oficial com reserva
+  // PDF de uma nota do Emissor Nacional. fonte (04/11/2026): "gov" = PDF oficial do nfse.gov.br;
+  // "espelho" = espelho do Nexus; vazio = oficial com reserva no espelho.
+  const obterPdfGov = async (record: NfseRecord, fonte?: "gov" | "espelho"): Promise<{ blob: Blob; nome: string; fonte: string } | null> => {
+    if (!record.chave_acesso) { toast.error("Nota sem chave de acesso guardada."); return null; }
+    try {
+      toast.info(fonte === "espelho" ? "Gerando o espelho..." : "Buscando o PDF oficial no nfse.gov.br...");
+      const { data, error } = await supabase.functions.invoke("nfse-emitir", {
+        body: { action: "danfse", chave_acesso: record.chave_acesso, ambiente: record.environment, fonte: fonte || undefined },
+      });
+      if (error) {
+        const det = await (error as any).context?.json?.().catch(() => null);
+        throw new Error(det?.error || error.message);
+      }
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const d = data as any;
+      const bytes = Uint8Array.from(atob(d.pdf_base64), (c) => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      if (d.fonte === "espelho" && fonte !== "espelho") {
+        // mostra POR QUE o gov não devolveu: antes só dizia "instável" e
+        // ninguém conseguia distinguir fora do ar de falta de permissão
+        const motivo = Array.isArray(d.motivo_gov) && d.motivo_gov.length ? ` (${d.motivo_gov.join(" · ")})` : "";
+        toast.info(`O PDF oficial do gov não veio${motivo}. Usei o espelho gerado do XML, que é o documento legal.`, { duration: 12000 });
+      }
+      return { blob, fonte: d.fonte, nome: `NFSe-${record.number || record.chave_acesso.slice(-8)}${d.fonte === "espelho" ? "-espelho" : ""}.pdf` };
+    } catch (e: any) {
+      toast.error(e?.message || "Não consegui obter o PDF");
+      return null;
+    }
+  };
+
+  const handleVerPdf = async (record: NfseRecord, fonte?: "gov" | "espelho") => {
+    if (record.origem === "gov") {
+      const r = await obterPdfGov(record, fonte);
+      if (r) visor.abrir({ nome: r.nome, tipo: "application/pdf", url: URL.createObjectURL(r.blob) });
+      return;
+    }
+    if (record.pdf_url) { visor.abrir({ nome: `NFSe-${record.number || ""}.pdf`, tipo: "application/pdf", url: record.pdf_url }); return; }
+    toast.error("Esta nota não tem PDF guardado pra visualizar. Use o download.");
+  };
+
   const handleDownloadPdf = async (record: NfseRecord, fonte?: "gov" | "espelho") => {
     if (record.origem === "gov") {
-      if (!record.chave_acesso) { toast.error("Nota sem chave de acesso guardada."); return; }
-      try {
-        toast.info(fonte === "espelho" ? "Gerando o espelho..." : "Buscando o PDF oficial no nfse.gov.br...");
-        const { data, error } = await supabase.functions.invoke("nfse-emitir", {
-          body: { action: "danfse", chave_acesso: record.chave_acesso, ambiente: record.environment, fonte: fonte || undefined },
-        });
-        if (error) {
-          const det = await (error as any).context?.json?.().catch(() => null);
-          throw new Error(det?.error || error.message);
-        }
-        if ((data as any)?.error) throw new Error((data as any).error);
-        const d = data as any;
-        const bytes = Uint8Array.from(atob(d.pdf_base64), (c) => c.charCodeAt(0));
-        const blob = new Blob([bytes], { type: "application/pdf" });
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `NFSe-${record.number || record.chave_acesso.slice(-8)}${d.fonte === "espelho" ? "-espelho" : ""}.pdf`;
-        a.click();
-        if (d.fonte === "espelho" && fonte !== "espelho") {
-          // mostra POR QUE o gov não devolveu: antes só dizia "instável" e
-          // ninguém conseguia distinguir fora do ar de falta de permissão
-          const motivo = Array.isArray(d.motivo_gov) && d.motivo_gov.length ? ` (${d.motivo_gov.join(" · ")})` : "";
-          toast.info(`O PDF oficial do gov não veio${motivo}. Baixei o espelho gerado do XML, que é o documento legal.`, { duration: 12000 });
-        }
-      } catch (e: any) {
-        toast.error(e?.message || "Não consegui baixar o PDF");
-      }
+      const r = await obterPdfGov(record, fonte);
+      if (!r) return;
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(r.blob);
+      a.download = r.nome;
+      a.click();
       return;
     }
     const nfeioId = sanitizeStringValue(record.nfeio_id);
@@ -603,6 +624,7 @@ export function NfsePanel() {
 
   return (
     <div className="space-y-6">
+      {visor.janela}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Notas Fiscais de Serviço (NFS-e)</h2>
@@ -1001,8 +1023,21 @@ export function NfsePanel() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-72">
-                            <DropdownMenuLabel className="text-xs text-muted-foreground">Baixar NFS-e {record.number ? `nº ${record.number}` : ""}</DropdownMenuLabel>
+                            <DropdownMenuLabel className="text-xs text-muted-foreground">Visualizar NFS-e {record.number ? `nº ${record.number}` : ""}</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleVerPdf(record, "gov")}>
+                              <div>
+                                <p className="text-sm font-medium">Ver PDF oficial (nfse.gov.br)</p>
+                                <p className="text-[11px] text-muted-foreground">Abre na tela, sem baixar.</p>
+                              </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleVerPdf(record, "espelho")}>
+                              <div>
+                                <p className="text-sm font-medium">Ver espelho do Nexus</p>
+                                <p className="text-[11px] text-muted-foreground">Abre na tela, sem baixar.</p>
+                              </div>
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-xs text-muted-foreground">Baixar</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => handleDownloadPdf(record, "gov")}>
                               <div>
                                 <p className="text-sm font-medium">PDF oficial (nfse.gov.br)</p>
