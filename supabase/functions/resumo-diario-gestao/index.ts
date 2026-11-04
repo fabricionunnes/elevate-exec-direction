@@ -370,7 +370,13 @@ async function processCompany(
   if (dry) return { processed: true, has_data: !!metrics?.hasToday, morning, today, preview: text };
   const target = live ? group.jid : ALERT_PHONE;
   const payload = live ? text : `*[PREVIEW · ${c.name} · grupo: ${group.name}]*\n\n${text}`;
-  const ok = await sendWhatsApp(supabase, target, payload, live ? instance : null);
+  // Central de Avisos (03/11/2026): a prévia pro Fabrício entra no resumo; o envio ao grupo do cliente segue direto
+  let ok: boolean;
+  if (live) ok = await sendWhatsApp(supabase, target, payload, instance);
+  else {
+    const { error: avErr } = await supabase.rpc("aviso_enviar", { p_tipo: "resumo_gestao_preview", p_texto: payload, p_titulo: "Resumo diário de gestão (prévia das empresas)", p_origem: "nexus", p_nivel_padrao: "resumo" });
+    ok = avErr ? await sendWhatsApp(supabase, target, payload, null) : true;
+  }
   return { processed: true, has_data: !!metrics?.hasToday, sent_to: live ? "grupo_gestao" : "fabricio_preview", ok };
 }
 
