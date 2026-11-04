@@ -321,20 +321,56 @@ export default function AllRecurringChargesPage() {
 
   // Bulk selection - Invoices
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
-  // Detalhe do recebimento (Fabrício, 04/11/2026: "clicar na conta paga e visualizar em qual banco
-  // foi pago, taxa, observações, etc"). Abre ao clicar na linha paga/parcial ou no olho das ações.
-  const [detalhe, setDetalhe] = useState<Invoice | null>(null);
+  // Detalhe do recebimento / pagamento (Fabrício, 04/11/2026: "clicar na conta paga e visualizar em
+  // qual banco foi pago, taxa, observações, etc" e "quero fazer isso no contas a pagar também").
+  // Abre ao clicar na linha paga/parcial ou no olho das ações; os dois lados viram o mesmo formato.
+  type Detalhe = {
+    tipo: "receber" | "pagar"; id: string; titulo: string; descricao: string; parcela: string | null;
+    valorCents: number; vencimento: string | null; pagoEm: string | null; pagoCents: number; taxaCents: number;
+    descontoCents: number; jurosCents: number; bankId: string | null; forma: string | null; status: string;
+    categoria: string | null; centroCusto: string | null; notes: string | null; link: string | null;
+    refType: "invoice" | "receivable" | "payable"; estornar?: () => void;
+  };
+  const [detalhe, setDetalhe] = useState<Detalhe | null>(null);
   const [detalheExtrato, setDetalheExtrato] = useState<any[]>([]);
   const [detalheCarregando, setDetalheCarregando] = useState(false);
-  const abrirDetalhe = async (inv: Invoice) => {
-    setDetalhe(inv); setDetalheExtrato([]); setDetalheCarregando(true);
+  const carregarExtrato = async (d: Detalhe) => {
+    setDetalhe(d); setDetalheExtrato([]); setDetalheCarregando(true);
     try {
-      const refType = inv.source_table === "financial_receivables" ? "receivable" : "invoice";
       const { data } = await supabase.from("financial_bank_transactions")
         .select("id, type, amount_cents, fee_cents, discount_cents, interest_cents, description, created_at, bank:financial_banks(name)")
-        .eq("reference_type", refType).eq("reference_id", inv.id).order("created_at", { ascending: true });
+        .eq("reference_type", d.refType).eq("reference_id", d.id).order("created_at", { ascending: true });
       setDetalheExtrato((data as any[]) || []);
     } finally { setDetalheCarregando(false); }
+  };
+  const formaLegivel = (v?: string | null) => v === "pix" ? "PIX" : v === "credit_card" ? "Cartão de crédito" : v === "boleto" ? "Boleto" : v || null;
+  const abrirDetalhe = (inv: Invoice) => carregarExtrato({
+    tipo: "receber", id: inv.id, titulo: inv.company_name || "Empresa desconhecida", descricao: inv.description,
+    parcela: `${inv.installment_number}/${inv.total_installments}`, valorCents: inv.amount_cents, vencimento: inv.due_date, pagoEm: inv.paid_at,
+    pagoCents: inv.paid_amount_cents || (inv.status === "paid" ? inv.amount_cents : 0), taxaCents: inv.payment_fee_cents || 0,
+    descontoCents: inv.discount_cents || 0, jurosCents: (inv.interest_cents || 0) + (inv.late_fee_cents || 0), bankId: inv.bank_id || null,
+    forma: formaLegivel((inv as any).payment_method), status: inv.status,
+    categoria: staffCategories.find((c: any) => c.id === inv.category_id)?.name || null,
+    centroCusto: staffCostCenters.find((c: any) => c.id === inv.cost_center_id)?.name || null,
+    notes: inv.notes || null, link: inv.payment_link_url || null,
+    refType: inv.source_table === "financial_receivables" ? "receivable" : "invoice",
+    estornar: inv.source_table === "company_invoices" && inv.status === "paid" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_revert)
+      ? () => setConfirmDialog({ open: true, invoiceId: inv.id, action: "revert", description: `${inv.company_name} - ${inv.description} (${inv.installment_number}/${inv.total_installments})` })
+      : undefined,
+  });
+  const abrirDetalhePagavel = (p: FinancialEntry) => {
+    const pa = p as any;
+    carregarExtrato({
+      tipo: "pagar", id: p.id, titulo: p.supplier_name || "Sem fornecedor", descricao: p.description,
+      parcela: p.installment_number && p.total_installments ? `${p.installment_number}/${p.total_installments}` : null,
+      valorCents: Math.round(Number(p.amount || 0) * 100), vencimento: p.due_date, pagoEm: p.paid_at || p.paid_date || null,
+      pagoCents: Math.round(Number(p.paid_amount ?? (p.status === "paid" ? p.amount : 0)) * 100), taxaCents: 0, descontoCents: 0, jurosCents: 0,
+      bankId: p.bank_id || pa.bank_account_id || null, forma: formaLegivel(pa.payment_method), status: p.status,
+      categoria: staffCategories.find((c: any) => c.id === p.category_id)?.name || p.category || null,
+      centroCusto: staffCostCenters.find((c: any) => c.id === p.cost_center_id)?.name || pa.cost_center || null,
+      notes: p.notes || null, link: null, refType: "payable",
+      estornar: () => setConfirmDialog({ open: true, invoiceId: p.id, action: "revert_payable", description: `${p.supplier_name || "Sem fornecedor"} - ${p.description} - ${formatCurrency(p.amount)}` }),
+    });
   };
   const [isBulkSending, setIsBulkSending] = useState(false);
 
@@ -2427,7 +2463,14 @@ export default function AllRecurringChargesPage() {
                         {sortedPayables.length === 0 ? (
                           <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhum registro encontrado</TableCell></TableRow>
                         ) : sortedPayables.map(p => (
-                          <TableRow key={p.id} className={cn(selectedPayableIds.has(p.id) && "bg-primary/5")}>
+                          <TableRow key={p.id}
+                            className={cn(selectedPayableIds.has(p.id) && "bg-primary/5", (p.status === "paid" || p.status === "partial") && "cursor-pointer")}
+                            title={(p.status === "paid" || p.status === "partial") ? "Ver detalhes do pagamento" : undefined}
+                            onClick={(e) => {
+                              if (p.status !== "paid" && p.status !== "partial") return;
+                              if ((e.target as HTMLElement).closest("button, a, input, [role=checkbox], [role=menuitem]")) return;
+                              abrirDetalhePagavel(p);
+                            }}>
                             <TableCell>
                               <Checkbox
                                 checked={selectedPayableIds.has(p.id)}
@@ -2452,6 +2495,11 @@ export default function AllRecurringChargesPage() {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1">
+                                {(p.status === "paid" || p.status === "partial") && (
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Detalhes do pagamento" onClick={() => abrirDetalhePagavel(p)}>
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                )}
                                 {(p.status !== "paid" || (p.status === "paid" && p.paid_amount && p.paid_amount < p.amount)) && (
                                   <Button variant="ghost" size="icon" className="h-8 w-8" title="Pagar"
                                     onClick={() => setPayablePaymentDialog({ open: true, payable: p })}>
@@ -3217,24 +3265,18 @@ export default function AllRecurringChargesPage() {
           </div>
         </DialogContent>
       </Dialog>
-      {/* Detalhe do recebimento */}
+      {/* Detalhe do recebimento / pagamento */}
       <Dialog open={!!detalhe} onOpenChange={(o) => { if (!o) setDetalhe(null); }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl overflow-hidden">
           {detalhe && (() => {
-            const inv = detalhe;
-            const pago = inv.paid_amount_cents || (inv.status === "paid" ? inv.amount_cents : 0);
-            const taxa = inv.payment_fee_cents || 0;
-            const desconto = inv.discount_cents || 0;
-            const juros = (inv.interest_cents || 0) + (inv.late_fee_cents || 0);
-            const liquido = pago - taxa;
-            const creditos = detalheExtrato.filter((t) => t.type === "credit");
-            const bancoDaFatura = inv.bank_id ? banks.find((b: any) => b.id === inv.bank_id)?.name : null;
-            const bancoDoExtrato = creditos.length ? (creditos[creditos.length - 1] as any).bank?.name : null;
-            const banco = bancoDaFatura || bancoDoExtrato || null;
-            const forma = inv.payment_method === "pix" ? "PIX" : inv.payment_method === "credit_card" ? "Cartão de crédito" : inv.payment_method === "boleto" ? "Boleto" : inv.payment_method || null;
-            const categoria = staffCategories.find((c: any) => c.id === inv.category_id)?.name || null;
-            const centro = staffCostCenters.find((c: any) => c.id === inv.cost_center_id)?.name || null;
+            const d = detalhe;
+            const liquido = d.pagoCents - d.taxaCents;
+            const movimentos = detalheExtrato.filter((t) => (d.tipo === "receber" ? t.type === "credit" : t.type === "debit"));
+            const bancoGravado = d.bankId ? banks.find((b: any) => b.id === d.bankId)?.name : null;
+            const bancoDoExtrato = movimentos.length ? (movimentos[movimentos.length - 1] as any).bank?.name : null;
+            const banco = bancoGravado || bancoDoExtrato || null;
             const dataFmt = (v?: string | null) => (v ? format(new Date(v.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : "-");
+            const statusTexto = d.status === "paid" ? "Pago" : d.status === "partial" ? "Pago parcialmente" : d.status;
             const Item = ({ rotulo, valor, destaque }: { rotulo: string; valor: ReactNode; destaque?: string }) => (
               <div className="rounded-md border border-border/60 p-2.5 min-w-0">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{rotulo}</p>
@@ -3246,50 +3288,50 @@ export default function AllRecurringChargesPage() {
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
                     <Landmark className="h-5 w-5" />
-                    Detalhes do recebimento
+                    {d.tipo === "receber" ? "Detalhes do recebimento" : "Detalhes do pagamento"}
                   </DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <p className="font-semibold">{inv.company_name}</p>
-                    <p className="text-sm text-muted-foreground">{inv.description} · parcela {inv.installment_number}/{inv.total_installments}</p>
+                <div className="space-y-4 min-w-0">
+                  <div className="min-w-0">
+                    <p className="font-semibold truncate">{d.titulo}</p>
+                    <p className="text-sm text-muted-foreground break-words">{d.descricao}{d.parcela ? ` · parcela ${d.parcela}` : ""}</p>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    <Item rotulo="Valor da fatura" valor={formatCurrencyCents(inv.amount_cents)} />
-                    <Item rotulo="Vencimento" valor={dataFmt(inv.due_date)} />
-                    <Item rotulo="Pago em" valor={dataFmt(inv.paid_at)} />
-                    <Item rotulo="Valor pago" valor={formatCurrencyCents(pago)} />
-                    <Item rotulo="Taxa" valor={taxa > 0 ? formatCurrencyCents(taxa) : "sem taxa"} destaque={taxa > 0 ? "text-destructive" : undefined} />
-                    <Item rotulo="Líquido recebido" valor={formatCurrencyCents(liquido)} destaque="text-emerald-600" />
-                    {desconto > 0 && <Item rotulo="Desconto" valor={formatCurrencyCents(desconto)} />}
-                    {juros > 0 && <Item rotulo="Juros e multa" valor={formatCurrencyCents(juros)} />}
+                    <Item rotulo={d.tipo === "receber" ? "Valor da fatura" : "Valor do lançamento"} valor={formatCurrencyCents(d.valorCents)} />
+                    <Item rotulo="Vencimento" valor={dataFmt(d.vencimento)} />
+                    <Item rotulo="Pago em" valor={dataFmt(d.pagoEm)} />
+                    <Item rotulo="Valor pago" valor={formatCurrencyCents(d.pagoCents)} destaque={d.tipo === "pagar" ? "text-destructive" : undefined} />
+                    {d.tipo === "receber" && <Item rotulo="Taxa" valor={d.taxaCents > 0 ? formatCurrencyCents(d.taxaCents) : "sem taxa"} destaque={d.taxaCents > 0 ? "text-destructive" : undefined} />}
+                    {d.tipo === "receber" && <Item rotulo="Líquido recebido" valor={formatCurrencyCents(liquido)} destaque="text-emerald-600" />}
+                    {d.descontoCents > 0 && <Item rotulo="Desconto" valor={formatCurrencyCents(d.descontoCents)} />}
+                    {d.jurosCents > 0 && <Item rotulo="Juros e multa" valor={formatCurrencyCents(d.jurosCents)} />}
                     <Item rotulo="Banco" valor={banco || "não informado"} destaque={banco ? undefined : "text-muted-foreground"} />
-                    <Item rotulo="Forma de pagamento" valor={forma || "não informada"} destaque={forma ? undefined : "text-muted-foreground"} />
-                    <Item rotulo="Status" valor={inv.status === "paid" ? "Pago" : inv.status === "partial" ? "Pago parcialmente" : inv.status} />
-                    {categoria && <Item rotulo="Categoria" valor={categoria} />}
-                    {centro && <Item rotulo="Centro de custo" valor={centro} />}
+                    <Item rotulo="Forma de pagamento" valor={d.forma || "não informada"} destaque={d.forma ? undefined : "text-muted-foreground"} />
+                    <Item rotulo="Status" valor={statusTexto} />
+                    {d.categoria && <Item rotulo="Categoria" valor={d.categoria} />}
+                    {d.centroCusto && <Item rotulo="Centro de custo" valor={d.centroCusto} />}
                   </div>
-                  <div className="rounded-md border border-border/60 p-2.5">
+                  <div className="rounded-md border border-border/60 p-2.5 min-w-0">
                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Observações</p>
-                    <p className={cn("text-sm mt-0.5 whitespace-pre-wrap", !inv.notes && "text-muted-foreground")}>{inv.notes || "sem observações"}</p>
+                    <p className={cn("text-sm mt-0.5 whitespace-pre-wrap break-words", !d.notes && "text-muted-foreground")}>{d.notes || "sem observações"}</p>
                   </div>
-                  {inv.payment_link_url && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Link2 className="h-4 w-4 text-muted-foreground" />
-                      <a href={inv.payment_link_url} target="_blank" rel="noreferrer" className="truncate text-primary hover:underline">{inv.payment_link_url}</a>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Copiar link" onClick={() => { navigator.clipboard.writeText(inv.payment_link_url!); toast.success("Link copiado!"); }}><Copy className="h-3.5 w-3.5" /></Button>
+                  {d.link && (
+                    <div className="flex items-center gap-2 text-sm min-w-0">
+                      <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <a href={d.link} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-primary hover:underline" title={d.link}>{d.link}</a>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" title="Copiar link" onClick={() => { navigator.clipboard.writeText(d.link!); toast.success("Link copiado!"); }}><Copy className="h-3.5 w-3.5" /></Button>
                     </div>
                   )}
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Lançamentos no extrato</p>
                     {detalheCarregando ? (
                       <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> carregando...</p>
                     ) : detalheExtrato.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Nenhum lançamento no extrato ligado a esta fatura.</p>
+                      <p className="text-sm text-muted-foreground">Nenhum lançamento no extrato ligado a este {d.tipo === "receber" ? "recebimento" : "pagamento"}{d.tipo === "pagar" ? " (baixa sem banco informado)" : ""}.</p>
                     ) : (
                       <div className="rounded-md border border-border/60 divide-y divide-border/60">
                         {detalheExtrato.map((t: any) => (
-                          <div key={t.id} className="flex items-center justify-between gap-3 px-2.5 py-2 text-sm">
+                          <div key={t.id} className="flex items-center justify-between gap-3 px-2.5 py-2 text-sm min-w-0">
                             <div className="min-w-0">
                               <p className="truncate">{t.description}</p>
                               <p className="text-[11px] text-muted-foreground">{format(new Date(t.created_at), "dd/MM/yyyy HH:mm")} · {t.bank?.name || "banco não informado"}{t.fee_cents ? ` · taxa ${formatCurrencyCents(t.fee_cents)}` : ""}{t.discount_cents ? ` · desconto ${formatCurrencyCents(t.discount_cents)}` : ""}</p>
@@ -3302,8 +3344,8 @@ export default function AllRecurringChargesPage() {
                   </div>
                 </div>
                 <DialogFooter className="gap-2">
-                  {inv.source_table === "company_invoices" && inv.status === "paid" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_revert) && (
-                    <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => { setDetalhe(null); setConfirmDialog({ open: true, invoiceId: inv.id, action: "revert", description: `${inv.company_name} - ${inv.description} (${inv.installment_number}/${inv.total_installments})` }); }}>
+                  {d.estornar && (
+                    <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => { const fn = d.estornar!; setDetalhe(null); fn(); }}>
                       <Undo2 className="h-4 w-4 mr-1" /> Estornar
                     </Button>
                   )}
