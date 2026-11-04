@@ -691,8 +691,15 @@ async function fetchGestaoGroups(): Promise<Map<string, { jid: string; name: str
   return out;
 }
 
+// Fabrício, 04/11/2026: "a pesquisa NPS e CSAT quero que seja sempre enviada pela instância do Marcelo
+// e não a minha". Sem instância configurada, a reserva passa a ser a do Marcelo (antes era a instância
+// padrão do sistema, que é a do Fabrício). Se a do Marcelo estiver desconectada, cai pra padrão.
+const INSTANCIA_PESQUISAS = "marceloalmeida";
 async function getInstanceName(supabase: any, configInstance: string | null): Promise<string | null> {
   if (configInstance) return configInstance;
+  const { data: marcelo } = await supabase
+    .from("whatsapp_instances").select("instance_name").eq("instance_name", INSTANCIA_PESQUISAS).eq("status", "connected").maybeSingle();
+  if (marcelo?.instance_name) return marcelo.instance_name;
   const { data } = await supabase
     .from("whatsapp_default_config")
     .select("setting_value")
