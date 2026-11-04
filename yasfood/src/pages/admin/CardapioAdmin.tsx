@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Pencil, ImagePlus, Trash2, Film, Star } from "lucide-react";
+import { Plus, Pencil, ImagePlus, Trash2, Film, Star, Tags, ArrowUp, ArrowDown } from "lucide-react";
 import { uploadMedia, captureVideoPoster, uploadBlob } from "@/lib/media";
 import { supabase, friendlyError } from "@/lib/supabase";
 import { brl } from "@/lib/format";
-import type { Ingredient, Product, ProductCost, ProductIngredient, ProductMedia } from "@/lib/types";
+import type { Category, Ingredient, Product, ProductCost, ProductIngredient, ProductMedia } from "@/lib/types";
 import { Button, Card, Input, Textarea, Select, Modal, Spinner, Empty, Badge, useToast } from "@/components/ui";
 import { AdicionaisAdmin } from "@/components/AdicionaisAdmin";
 
@@ -13,6 +13,8 @@ export default function CardapioAdmin() {
   const toast = useToast();
   const [products, setProducts] = useState<Product[] | null>(null);
   const [costs, setCosts] = useState<Record<string, ProductCost>>({});
+  const [cats, setCats] = useState<Category[]>([]);
+  const [catsOpen, setCatsOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Product> | null>(null);
   const [recipeFor, setRecipeFor] = useState<Product | null>(null);
   const [busy, setBusy] = useState(false);
@@ -20,11 +22,13 @@ export default function CardapioAdmin() {
   const IDEAL = { w: 1200, h: 900 };
 
   const load = useCallback(async () => {
-    const [p, c] = await Promise.all([
+    const [p, c, k] = await Promise.all([
       supabase.from("products").select("*").order("sort_order").order("name"),
       supabase.from("product_costs").select("*"),
+      supabase.from("categories").select("*").order("sort_order").order("name"),
     ]);
     setProducts((p.data as Product[]) ?? []);
+    setCats((k.data as Category[]) ?? []);
     setCosts(Object.fromEntries(((c.data as ProductCost[]) ?? []).map((x) => [x.product_id, x])));
   }, []);
   useEffect(() => { void load(); }, [load]);
@@ -63,13 +67,23 @@ export default function CardapioAdmin() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-black text-choco-900">Cardápio</h1>
-        <Button onClick={() => setEditing({ ...empty })}><Plus size={16} /> Novo produto</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setCatsOpen(true)} aria-label="Categorias"><Tags size={16} /> <span className="hidden sm:inline">Categorias</span></Button>
+          <Button onClick={() => setEditing({ ...empty, category: cats[0]?.name ?? empty.category })}><Plus size={16} /> Novo produto</Button>
+        </div>
       </div>
       {products === null ? <Spinner /> : products.length === 0 ? <Empty>Nenhum produto. Cadastre o primeiro bolo.</Empty> : (
-        <div className="grid gap-3 md:grid-cols-2">
-          {products.map((p) => {
+        <div className="space-y-5">
+          {groupByCategory(products, cats).map((g) => (
+          <section key={g.name}>
+            <h2 className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-choco-600">
+              {g.name} <span className="font-semibold normal-case text-choco-400">{g.items.length}</span>
+              {g.hidden && <Badge className="bg-neutral-100 text-neutral-600 ring-neutral-300">escondida no site</Badge>}
+            </h2>
+            <div className="grid gap-3 md:grid-cols-2">
+          {g.items.map((p) => {
             const c = costs[p.id];
             return (
               <Card key={p.id} className={!p.active ? "opacity-60" : ""}>
@@ -91,6 +105,9 @@ export default function CardapioAdmin() {
               </Card>
             );
           })}
+            </div>
+          </section>
+          ))}
         </div>
       )}
 
@@ -116,7 +133,13 @@ export default function CardapioAdmin() {
               <Input label="Peso (g)" type="number" value={editing.weight_g ?? ""} onChange={(e) => setEditing({ ...editing, weight_g: e.target.value ? Number(e.target.value) : null })} />
               <Input label="Ordem" type="number" value={editing.sort_order ?? 0} onChange={(e) => setEditing({ ...editing, sort_order: Number(e.target.value) })} />
             </div>
-            <Input label="Categoria" value={editing.category ?? "Bolos"} onChange={(e) => setEditing({ ...editing, category: e.target.value })} />
+            <div>
+              <Select label="Categoria" value={editing.category ?? ""} onChange={(e) => setEditing({ ...editing, category: e.target.value })}>
+                {editing.category && !cats.some((c) => c.name === editing.category) && <option value={editing.category}>{editing.category}</option>}
+                {cats.map((c) => <option key={c.id} value={c.name}>{c.name}{c.active ? "" : " (escondida no site)"}</option>)}
+              </Select>
+              <button type="button" className="mt-1 text-xs font-semibold text-vinho-700 underline" onClick={() => setCatsOpen(true)}>Criar ou editar categorias</button>
+            </div>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={editing.active ?? true} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> ativo no cardápio</label>
             <Button className="w-full" loading={busy} onClick={save}>Salvar</Button>
             {editing.id ? (
@@ -129,6 +152,8 @@ export default function CardapioAdmin() {
       )}
 
       {products && <AdicionaisAdmin products={products} />}
+
+      {catsOpen && <CategoriasModal cats={cats} products={products ?? []} onChanged={load} onClose={() => setCatsOpen(false)} />}
 
       {recipeFor && <RecipeModal product={recipeFor} onClose={() => { setRecipeFor(null); void load(); }} />}
     </div>
@@ -316,5 +341,105 @@ function MediaManager({ productId, cover, onCover }: { productId: string; cover:
         </div>
       )}
     </div>
+  );
+}
+
+function groupByCategory(products: Product[], cats: Category[]) {
+  const known = new Set(cats.map((c) => c.name));
+  const groups = cats.map((c) => ({ name: c.name, hidden: !c.active, items: products.filter((p) => p.category === c.name) })).filter((g) => g.items.length > 0);
+  const others = products.filter((p) => !known.has(p.category));
+  if (others.length) groups.push({ name: "Sem categoria", hidden: false, items: others });
+  return groups;
+}
+
+/** Categorias do cardápio: criar, renomear, ordenar, esconder do site e apagar (só vazia). */
+function CategoriasModal({ cats, products, onChanged, onClose }: { cats: Category[]; products: Product[]; onChanged: () => Promise<void> | void; onClose: () => void }) {
+  const toast = useToast();
+  const [names, setNames] = useState<Record<string, string>>(() => Object.fromEntries(cats.map((c) => [c.id, c.name])));
+  const [nova, setNova] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setNames(Object.fromEntries(cats.map((c) => [c.id, c.name]))); }, [cats]);
+  const count = (name: string) => products.filter((p) => p.category === name).length;
+
+  const run = async (fn: () => PromiseLike<{ error: unknown }>, ok?: string) => {
+    setBusy(true);
+    const { error } = await fn();
+    setBusy(false);
+    if (error) { toast(friendlyError(error), "err"); return false; }
+    if (ok) toast(ok);
+    await onChanged();
+    return true;
+  };
+
+  const rename = async (c: Category) => {
+    const name = (names[c.id] ?? "").trim();
+    if (!name || name === c.name) { setNames({ ...names, [c.id]: c.name }); return; }
+    if (cats.some((x) => x.id !== c.id && x.name.toLowerCase() === name.toLowerCase())) { toast("Já existe uma categoria com esse nome.", "err"); setNames({ ...names, [c.id]: c.name }); return; }
+    await run(() => supabase.from("categories").update({ name }).eq("id", c.id), "Categoria renomeada. Os produtos foram junto.");
+  };
+
+  const move = async (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= cats.length) return;
+    const order = [...cats]; [order[i], order[j]] = [order[j], order[i]];
+    setBusy(true);
+    const res = await Promise.all(order.map((c, k) => supabase.from("categories").update({ sort_order: k + 1 }).eq("id", c.id)));
+    setBusy(false);
+    const err = res.find((r) => r.error)?.error;
+    if (err) toast(friendlyError(err), "err");
+    await onChanged();
+  };
+
+  const remove = async (c: Category) => {
+    const n = count(c.name);
+    if (n > 0) return toast(`"${c.name}" tem ${n} produto(s). Mude eles de categoria antes de apagar.`, "err");
+    if (!confirm(`Apagar a categoria "${c.name}"?`)) return;
+    await run(() => supabase.from("categories").delete().eq("id", c.id), "Categoria apagada.");
+  };
+
+  const add = async () => {
+    const name = nova.trim();
+    if (!name) return;
+    if (cats.some((x) => x.name.toLowerCase() === name.toLowerCase())) return toast("Essa categoria já existe.", "err");
+    const next = Math.max(0, ...cats.map((c) => c.sort_order)) + 1;
+    if (await run(() => supabase.from("categories").insert({ name, sort_order: next }), "Categoria criada.")) setNova("");
+  };
+
+  return (
+    <Modal open onClose={onClose} title="Categorias do cardápio">
+      <p className="mb-3 text-sm text-choco-600">A ordem aqui é a ordem no site. Categoria escondida some do site junto com os produtos dela.</p>
+      <div className="space-y-2">
+        {cats.map((c, i) => (
+          <div key={c.id} className="flex items-center gap-2 rounded-xl border border-choco-100 bg-white p-2">
+            <div className="flex flex-col">
+              <button className="rounded p-0.5 text-choco-500 disabled:opacity-30" disabled={busy || i === 0} onClick={() => move(i, -1)} aria-label="Subir"><ArrowUp size={14} /></button>
+              <button className="rounded p-0.5 text-choco-500 disabled:opacity-30" disabled={busy || i === cats.length - 1} onClick={() => move(i, 1)} aria-label="Descer"><ArrowDown size={14} /></button>
+            </div>
+            <input
+              className="h-9 min-w-0 flex-1 rounded-lg border border-choco-200 px-2 text-sm font-semibold text-choco-900 outline-none ring-vinho-300 focus:ring-2"
+              value={names[c.id] ?? c.name}
+              onChange={(e) => setNames({ ...names, [c.id]: e.target.value })}
+              onBlur={() => rename(c)}
+              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+            />
+            <span className="shrink-0 text-xs text-choco-500">{count(c.name)} prod.</span>
+            <label className="flex shrink-0 items-center gap-1 text-xs text-choco-700" title="Aparece no site">
+              <input type="checkbox" checked={c.active} disabled={busy} onChange={(e) => run(() => supabase.from("categories").update({ active: e.target.checked }).eq("id", c.id))} /> site
+            </label>
+            <button className="shrink-0 rounded p-1 text-choco-500 hover:text-vinho-700" disabled={busy} onClick={() => remove(c)} aria-label="Apagar"><Trash2 size={15} /></button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex gap-2">
+        <input
+          className="h-11 min-w-0 flex-1 rounded-xl border border-choco-200 px-3 text-choco-900 outline-none ring-vinho-300 focus:ring-2"
+          placeholder="Nova categoria (ex.: Kits de festa)"
+          value={nova}
+          onChange={(e) => setNova(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") void add(); }}
+        />
+        <Button onClick={add} loading={busy}><Plus size={16} /> Criar</Button>
+      </div>
+    </Modal>
   );
 }

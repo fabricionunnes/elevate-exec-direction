@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Minus, Plus, ShoppingBag, CalendarDays, Star } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useCart } from "@/lib/cart";
 import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, todayISO, addDaysISO, dateTimeBR } from "@/lib/format";
-import type { Availability, Banner, Product, ProductMedia, PublicReview } from "@/lib/types";
+import type { Availability, Banner, Category, Product, ProductMedia, PublicReview } from "@/lib/types";
 import { Gallery } from "@/components/Gallery";
 import { PollCard } from "@/components/PollCard";
 import { BannerCarousel } from "@/components/BannerCarousel";
@@ -20,21 +20,26 @@ export default function Cardapio() {
   const [reviews, setReviews] = useState<PublicReview[]>([]);
   const [media, setMedia] = useState<Record<string, ProductMedia[]>>({});
   const [banners, setBanners] = useState<Banner[]>([]);
+  const [cats, setCats] = useState<Category[]>([]);
+  const [cat, setCat] = useState<string | null>(null);
+  const menuRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     void (async () => {
-      const [p, a, r, m, b] = await Promise.all([
+      const [p, a, r, m, b, c] = await Promise.all([
         supabase.from("products").select("*").eq("active", true).order("sort_order").order("name"),
         supabase.rpc("availability", { p_from: todayISO(), p_to: addDaysISO(14) }),
         supabase.from("public_reviews").select("*").order("created_at", { ascending: false }).limit(12),
         supabase.from("product_media").select("*").order("sort_order"),
         supabase.from("banners").select("*").eq("active", true).order("sort_order"),
+        supabase.from("categories").select("*").eq("active", true).order("sort_order").order("name"),
       ]);
       setProducts((p.data as Product[]) ?? []);
       const grouped: Record<string, ProductMedia[]> = {};
       for (const row of ((m.data as ProductMedia[]) ?? [])) (grouped[row.product_id] ??= []).push(row);
       setMedia(grouped);
       setBanners((b.data as Banner[]) ?? []);
+      setCats((c.data as Category[]) ?? []);
       setAvail(((a.data as Availability[]) ?? []).filter((d) => d.bookable).slice(0, 7));
       setReviews((r.data as PublicReview[]) ?? []);
     })();
@@ -42,11 +47,20 @@ export default function Cardapio() {
 
   const avg = reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
 
+  // seções na ordem das categorias; categoria escondida no painel some do site com os produtos dela
+  const groups = cats
+    .map((c) => ({ name: c.name, items: (products ?? []).filter((p) => p.category === c.name) }))
+    .filter((g) => g.items.length > 0);
+  const shown = cat ? groups.filter((g) => g.name === cat) : groups;
+
   const goToProduct = (id: string) => {
-    const el = document.getElementById(`produto-${id}`);
-    el?.scrollIntoView({ behavior: "smooth", block: "center" });
-    el?.classList.add("ring-4", "ring-vinho-300");
-    setTimeout(() => el?.classList.remove("ring-4", "ring-vinho-300"), 1600);
+    setCat(null);
+    setTimeout(() => {
+      const el = document.getElementById(`produto-${id}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      el?.classList.add("ring-4", "ring-vinho-300");
+      setTimeout(() => el?.classList.remove("ring-4", "ring-vinho-300"), 1600);
+    }, 50);
   };
 
   return (
@@ -83,38 +97,65 @@ export default function Cardapio() {
         </section>
       )}
 
-      <section>
+      <section ref={menuRef} className="scroll-mt-[61px]">
         <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-choco-600">Cardápio</h2>
-        {products === null ? <Spinner /> : products.length === 0 ? <Empty>Cardápio em atualização. Volte já já!</Empty> : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {products.map((p) => {
-              const line = cart.lines.find((l) => l.product.id === p.id);
-              return (
-                <article key={p.id} id={`produto-${p.id}`} className="overflow-hidden rounded-3xl border border-choco-100 bg-white shadow-card transition">
-                  <Gallery media={media[p.id] ?? []} cover={p.image_url} alt={p.name} />
-                  <div className="p-4">
-                    <h3 className="text-lg font-bold leading-tight text-choco-900">{p.name}</h3>
-                    {p.description && <p className="mt-1 text-sm text-choco-600">{p.description}</p>}
-                    <div className="mt-3 flex items-center justify-between">
-                      <div>
-                        <div className="text-xl font-black text-vinho-700">{brl(p.price)}</div>
-                        {p.weight_g && <div className="text-xs text-choco-500">{p.weight_g}g</div>}
-                      </div>
-                      {line ? (
-                        <div className="flex items-center gap-2 rounded-full bg-choco-100 p-1">
-                          <button className="rounded-full bg-white p-1.5 text-choco-800 shadow-sm" onClick={() => cart.setQty(p.id, line.qty - 1)} aria-label="Menos"><Minus size={16} /></button>
-                          <span className="w-6 text-center font-bold">{line.qty}</span>
-                          <button className="rounded-full bg-vinho-600 p-1.5 text-white shadow-sm" onClick={() => cart.setQty(p.id, line.qty + 1)} aria-label="Mais"><Plus size={16} /></button>
-                        </div>
-                      ) : (
-                        <Button onClick={() => cart.add(p)} disabled={settings ? !settings.is_open : false}><Plus size={16} /> Adicionar</Button>
-                      )}
-                    </div>
+        {products === null ? <Spinner /> : groups.length === 0 ? <Empty>Cardápio em atualização. Volte já já!</Empty> : (
+          <>
+            {groups.length > 1 && (
+              <div className="sticky top-[61px] z-20 -mx-4 mb-3 flex gap-2 overflow-x-auto bg-creme/95 px-4 py-2 backdrop-blur">
+                {[{ name: null as string | null, label: "Todos", n: groups.reduce((a, g) => a + g.items.length, 0) }, ...groups.map((g) => ({ name: g.name as string | null, label: g.name, n: g.items.length }))].map((c) => (
+                  <button
+                    key={c.label}
+                    onClick={() => {
+                      setCat(c.name);
+                      // se rolou pra baixo do topo do cardápio, volta pro começo da lista escolhida
+                      const top = menuRef.current?.getBoundingClientRect().top ?? 0;
+                      if (top < 0) menuRef.current?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                    className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${cat === c.name ? "bg-vinho-600 text-white shadow-soft" : "border border-choco-100 bg-white text-choco-700"}`}
+                  >
+                    {c.label} <span className={cat === c.name ? "text-rosa-100" : "text-choco-400"}>{c.n}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="space-y-6">
+              {shown.map((g) => (
+                <div key={g.name}>
+                  {groups.length > 1 && <h3 className="mb-2 text-lg font-black text-vinho-700">{g.name}</h3>}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {g.items.map((p) => {
+                      const line = cart.lines.find((l) => l.product.id === p.id);
+                      return (
+                        <article key={p.id} id={`produto-${p.id}`} className="overflow-hidden rounded-3xl border border-choco-100 bg-white shadow-card transition">
+                          <Gallery media={media[p.id] ?? []} cover={p.image_url} alt={p.name} />
+                          <div className="p-4">
+                            <h3 className="text-lg font-bold leading-tight text-choco-900">{p.name}</h3>
+                            {p.description && <p className="mt-1 text-sm text-choco-600">{p.description}</p>}
+                            <div className="mt-3 flex items-center justify-between">
+                              <div>
+                                <div className="text-xl font-black text-vinho-700">{brl(p.price)}</div>
+                                {p.weight_g && <div className="text-xs text-choco-500">{p.weight_g}g</div>}
+                              </div>
+                              {line ? (
+                                <div className="flex items-center gap-2 rounded-full bg-choco-100 p-1">
+                                  <button className="rounded-full bg-white p-1.5 text-choco-800 shadow-sm" onClick={() => cart.setQty(p.id, line.qty - 1)} aria-label="Menos"><Minus size={16} /></button>
+                                  <span className="w-6 text-center font-bold">{line.qty}</span>
+                                  <button className="rounded-full bg-vinho-600 p-1.5 text-white shadow-sm" onClick={() => cart.setQty(p.id, line.qty + 1)} aria-label="Mais"><Plus size={16} /></button>
+                                </div>
+                              ) : (
+                                <Button onClick={() => cart.add(p)} disabled={settings ? !settings.is_open : false}><Plus size={16} /> Adicionar</Button>
+                              )}
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
                   </div>
-                </article>
-              );
-            })}
-          </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </section>
 

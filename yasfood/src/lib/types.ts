@@ -48,6 +48,13 @@ export interface Product {
   sort_order: number;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  sort_order: number;
+  active: boolean;
+}
+
 export interface DeliveryZone {
   id: string;
   name: string;
