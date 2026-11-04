@@ -49,6 +49,8 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
   const [tmbErro, setTmbErro] = useState<string>("");
   const [tmbEntrada, setTmbEntrada] = useState("");
   const [tmbEntradaVenc, setTmbEntradaVenc] = useState("");
+  // Simulação: quanto a TMB financia pro cliente pagar o valor do CRM e quanto sobra pra UNV
+  const [tmbSim, setTmbSim] = useState<{ modo: string; fator: number; origem: string; principal_cents: number; repasse_estimado_cents: number; taxa_admin: number; taxa_operacao_cents: number } | null>(null);
   const [installments, setInstallments] = useState("12");
   const [dueDay, setDueDay] = useState("5");
   const [description, setDescription] = useState("");
@@ -87,6 +89,14 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
       })
       .finally(() => setTmbCarregando(false));
   }, [provider]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (provider !== "tmb" || !opportunityValue || opportunityValue < 1) { setTmbSim(null); return; }
+    let vivo = true;
+    supabase.functions.invoke("tmb-create-payment", { body: { action: "simular", installments: Number(installments), amount_cents: Math.round(Number(opportunityValue) * 100) } })
+      .then(({ data }) => { if (vivo && data?.ok) setTmbSim(data); });
+    return () => { vivo = false; };
+  }, [provider, installments, opportunityValue]);
 
   const salvarTmbPadrao = async () => {
     if (!tmbProduto) return;
@@ -238,7 +248,14 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
         </div>
         {provider === "tmb" && (
           <div className="space-y-3 rounded-md border border-dashed p-3">
-            <p className="text-[11px] text-muted-foreground">A TMB cobra exatamente o valor do negócio cadastrado no CRM. Pra mudar o valor, altere o Valor do negócio na ficha do lead.</p>
+            <p className="text-[11px] text-muted-foreground">O cliente paga exatamente o valor do negócio cadastrado no CRM. Pra mudar o valor, altere o Valor do negócio na ficha do lead.</p>
+            {tmbSim && tmbSim.modo === "unv" && (
+              <div className="rounded-md bg-muted/40 p-2 text-[11px] space-y-0.5">
+                <p>Cliente paga <span className="font-semibold text-foreground">{fmt(Math.round(Number(opportunityValue) * 100))}</span> em até {installments}x no boleto.</p>
+                <p>A TMB financia <span className="font-semibold text-foreground">{fmt(tmbSim.principal_cents)}</span> (fator {tmbSim.fator.toLocaleString("pt-BR", { maximumFractionDigits: 4 })}{tmbSim.origem === "estimado" ? ", estimado" : ""}). Os juros do parcelamento ficam por conta da UNV.</p>
+                <p>Repasse estimado pra UNV: <span className="font-semibold text-emerald-600">{fmt(tmbSim.repasse_estimado_cents)}</span> ({Math.round(tmbSim.taxa_admin * 100)}% de comissão TMB + {fmt(tmbSim.taxa_operacao_cents)} por operação).</p>
+              </div>
+            )}
             <div>
               <Label className="text-xs">Produto da TMB (onde a oferta é criada)</Label>
               {tmbErro ? (
