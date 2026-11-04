@@ -1,5 +1,5 @@
--- Pão de Batata recheado com presunto e mussarela: entra uma vez só, fora do ar (sem preço ainda).
--- A Yasmim define o preço e liga no Cardápio. Se ela mexer ou apagar depois, o deploy não recria.
+-- Pão de Batata recheado com presunto e mussarela, kit com 4: entra uma vez só.
+-- Se a Yasmim mexer ou apagar depois, o deploy não recria.
 with marca as (
   insert into yasfood.seeds_aplicadas (key)
   select 'produto_pao_batata'
@@ -9,9 +9,9 @@ with marca as (
 ),
 prod as (
   insert into yasfood.products (name, description, price, weight_g, image_url, category, active, sort_order)
-  select 'Pão de Batata recheado com presunto e mussarela',
-         'Massa fofinha de batata, recheio de presunto e muita mussarela derretendo.',
-         0, null, 'https://yasfood.unvholdings.workers.dev/produtos/pao-batata.jpg', 'Salgados', false, 50
+  select 'Pão de Batata recheado (4 unidades)',
+         'Kit com 4 pães de batata fofinhos, recheados com presunto e muita mussarela derretendo.',
+         20, null, 'https://yasfood.unvholdings.workers.dev/produtos/pao-batata.jpg', 'Salgados', true, 50
   from marca
   returning id, image_url
 )
