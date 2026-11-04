@@ -165,6 +165,15 @@ function corDoFunil(nome?: string | null): { bg: string; texto: string; rotulo: 
   if (/finance/.test(n)) return { bg: "#fde047", texto: "#422006", rotulo: "UNV Finance" };
   return { bg: "#86efac", texto: "#14532d", rotulo: "Comercial" };
 }
+// Tom bem claro da cor do funil pro fundo da caixa do lead e da conversa (Fabrício, 04/11/2026:
+// "um tom bem claro, que dá pra perceber, mas não atrapalhe o tema principal do CRM").
+const fundoDoFunil = (nome?: string | null, alfa = 0.09): string | undefined => {
+  const c = corDoFunil(nome);
+  if (!c) return undefined;
+  const h = c.bg.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alfa})`;
+};
 const corTextoFunil = (nome?: string | null) => {
   const c = corDoFunil(nome);
   if (!c) return undefined;
@@ -1387,6 +1396,7 @@ export const CRMInboxPage = () => {
                   selectedConversation?.id === conv.id && "bg-muted shadow-[inset_3px_0_0_hsl(var(--primary))]",
                   selectMode && selectedIds.has(conv.id) && "bg-primary/10"
                 )}
+                style={{ backgroundColor: fundoDoFunil(etapa?.pipeline, selectedConversation?.id === conv.id ? 0.2 : conv.unread_count > 0 ? 0.14 : 0.09) }}
               >
                 {conv.unread_count > 0 && <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
                 {selectMode && conv.channel !== "instagram" && (
@@ -1652,7 +1662,7 @@ export const CRMInboxPage = () => {
           </div>
 
           {/* Messages */}
-          <ScrollArea ref={messagesScrollAreaRef} className="flex-1 min-h-0 px-3 sm:px-6 py-4 bg-muted/40 [&>[data-radix-scroll-area-viewport]>div]:!block">
+          <ScrollArea ref={messagesScrollAreaRef} className="flex-1 min-h-0 px-3 sm:px-6 py-4 bg-muted/40 [&>[data-radix-scroll-area-viewport]>div]:!block" style={{ backgroundColor: fundoDoFunil(stageMap[String((selectedConversation.lead as any)?.stage_id || "")]?.pipeline, 0.07) }}>
             <div className="space-y-1.5 max-w-4xl mx-auto">
               {!loadingMessages && !isInstagramConversation && temMaisAntigas && (
                 <div className="flex justify-center pb-2">
