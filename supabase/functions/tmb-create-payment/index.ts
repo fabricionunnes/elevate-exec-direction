@@ -109,10 +109,12 @@ Deno.serve(async (req) => {
   // 03/11/2026: o plural devolve 404. Mantém o plural só como reserva.
   let r = await tmb("/api/oferta", "POST", payload);
   if (r.status === 404) r = await tmb("/api/ofertas", "POST", payload);
-  if (!r.ok || !r.data?.url) {
+  // A TMB pode responder 200 com url "Não criado" (aconteceu com o produto inativo, 03/11/2026)
+  const urlOk = typeof r.data?.url === "string" && /^https?:\/\//i.test(r.data.url);
+  if (!r.ok || !urlOk) {
     await supabase.from("crm_lead_payments").update({ status: "error" }).eq("id", row.id);
     const corpo = r.data && Object.keys(r.data).length ? JSON.stringify(r.data).slice(0, 240) : "";
-    const msg = r.data?.message || r.data?.error || r.data?.title || (r.data?.errors ? JSON.stringify(r.data.errors).slice(0, 200) : "") || `TMB recusou (HTTP ${r.status})${corpo ? `: ${corpo}` : ""}`;
+    const msg = r.data?.message || r.data?.error || r.data?.title || (r.data?.errors ? JSON.stringify(r.data.errors).slice(0, 200) : "") || (r.ok && r.data?.url ? `TMB não criou a oferta: ${r.data.status || r.data.url}. Confira se o produto está ativo na TMB.` : "") || `TMB recusou (HTTP ${r.status})${corpo ? `: ${corpo}` : ""}`;
     return j({ ok: false, error: msg, detail: r.data });
   }
 
