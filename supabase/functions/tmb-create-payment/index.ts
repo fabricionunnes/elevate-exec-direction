@@ -34,23 +34,24 @@ async function tmb(path: string, method: string, body?: unknown) {
 // ── Juros da TMB por conta da UNV (Fabrício, 04/11/2026: "calcular com base nas taxas da TMB, pra já
 // calcular comigo pagando os juros e não o cliente"). O cliente paga EXATAMENTE o valor do CRM; o
 // "valor principal" enviado à TMB é o valor do CRM dividido pelo fator de juros do parcelamento.
-// Fatores medidos no checkout da TMB em 04/11/2026 (oferta de R$ 24.000): total pago / principal.
-// Para outras quantidades de parcelas, estimativa pela tabela Price com entrada (1ª parcela à vista),
-// taxa mensal ~2,85% (12x) a ~3,0% (10x). Pode ser sobrescrito em crm_payment_provider_settings.config:
-//   { "tmb_juros": "unv" | "cliente", "tmb_fatores": { "12": 1.16207, ... } }
-const FATORES_TMB: Record<string, number> = { "10": 1.13610, "11": 1.14904, "12": 1.16207 };
-function fatorTMB(n: number, cfg: any): { fator: number; origem: "tabela" | "estimado" } {
-  const tab = { ...FATORES_TMB, ...((cfg?.tmb_fatores && typeof cfg.tmb_fatores === "object") ? cfg.tmb_fatores : {}) };
+// Taxas oficiais do produto na TMB (Produtos > Ver Taxas, 04/11/2026): juros do financiamento
+// 2,39% a.m. de 1 a 12 parcelas e 2,86% a.m. de 13 a 36; tabela Price com as n parcelas pós-pagas.
+// Conferido no checkout da oferta de R$ 24.000: 12x = R$ 2.326 pela fórmula x R$ 2.324 na tela.
+// Pode ser sobrescrito em crm_payment_provider_settings.config:
+//   { "tmb_juros": "unv" | "cliente", "tmb_taxa_mensal_ate12": 0.0239, "tmb_taxa_mensal_13_36": 0.0286,
+//     "tmb_fatores": { "12": 1.163 } (fator fixo por nº de parcelas, se um dia a fórmula desviar) }
+function fatorTMB(n: number, cfg: any): { fator: number; origem: "tabela" | "formula"; taxa: number } {
+  const tab = cfg?.tmb_fatores && typeof cfg.tmb_fatores === "object" ? cfg.tmb_fatores : {};
   const t = Number(tab[String(n)]);
-  if (t > 1) return { fator: t, origem: "tabela" };
-  if (n <= 1) return { fator: 1, origem: "estimado" };
-  const i = n >= 12 ? 0.0285 : n >= 11 ? 0.0293 : 0.03;
-  const A = 1 + (1 - Math.pow(1 + i, -(n - 1))) / i; // valor presente de n parcelas com a 1ª à vista
-  return { fator: n / A, origem: "estimado" };
+  const i = n <= 12 ? (Number(cfg?.tmb_taxa_mensal_ate12) > 0 ? Number(cfg.tmb_taxa_mensal_ate12) : 0.0239) : (Number(cfg?.tmb_taxa_mensal_13_36) > 0 ? Number(cfg.tmb_taxa_mensal_13_36) : 0.0286);
+  if (t > 1) return { fator: t, origem: "tabela", taxa: i };
+  if (n <= 1) return { fator: 1 + i, origem: "formula", taxa: i };
+  const A = (1 - Math.pow(1 + i, -n)) / i; // valor presente de n parcelas iguais (Price)
+  return { fator: n / A, origem: "formula", taxa: i };
 }
 function simularTMB(amountCents: number, n: number, cfg: any) {
   const modo: "unv" | "cliente" = cfg?.tmb_juros === "cliente" ? "cliente" : "unv";
-  const { fator, origem } = fatorTMB(n, cfg);
+  const { fator, origem, taxa } = fatorTMB(n, cfg);
   // arredonda pra baixo: o cliente nunca paga mais que o valor do CRM
   const principalCents = modo === "unv" ? Math.floor(amountCents / fator) : amountCents;
   // Repasse estimado pra UNV: o que a TMB desconta do produtor (tela Finanças e contratos > Taxas,
@@ -58,7 +59,8 @@ function simularTMB(amountCents: number, n: number, cfg: any) {
   const taxaAdmin = Number(cfg?.tmb_taxa_admin) > 0 ? Number(cfg.tmb_taxa_admin) : 0.05;
   const taxaOperacaoCents = Number(cfg?.tmb_taxa_operacao_cents) >= 0 && cfg?.tmb_taxa_operacao_cents !== undefined ? Number(cfg.tmb_taxa_operacao_cents) : 100;
   const repasseCents = Math.max(0, Math.round(principalCents * (1 - taxaAdmin)) - taxaOperacaoCents);
-  return { modo, fator: Math.round(fator * 100000) / 100000, origem, valor_cliente_cents: amountCents, principal_cents: principalCents, parcelas: n, taxa_admin: taxaAdmin, taxa_operacao_cents: taxaOperacaoCents, repasse_estimado_cents: repasseCents };
+  const parcelaCents = Math.round(amountCents / n);
+  return { modo, fator: Math.round(fator * 100000) / 100000, origem, taxa_mensal: taxa, valor_cliente_cents: amountCents, parcela_cents: parcelaCents, principal_cents: principalCents, parcelas: n, taxa_admin: taxaAdmin, taxa_operacao_cents: taxaOperacaoCents, repasse_estimado_cents: repasseCents };
 }
 
 Deno.serve(async (req) => {
@@ -81,6 +83,19 @@ Deno.serve(async (req) => {
     return j({ ok: true, produtos: lista });
   }
 
+  // Oferta de TESTE direto na TMB (sem registro no CRM), pra investigar parâmetros do checkout
+  if (body.action === "oferta_teste") {
+    const payload: Record<string, unknown> = { titulo: String(body.titulo || "Teste Nexus"), produto_id: Number(body.produto_id) || 0, valor_principal: Number(body.valor_principal) || 0, qtd_parcelas: String(body.qtd_parcelas || "12") };
+    if (body.valor_boleto_entrada) payload.valor_boleto_entrada = Number(body.valor_boleto_entrada);
+    if (body.vencimento_boleto_entrada) payload.vencimento_boleto_entrada = String(body.vencimento_boleto_entrada);
+    const r = await tmb("/api/oferta", "POST", payload);
+    return j({ ok: r.ok, status: r.status, enviado: payload, resposta: r.data });
+  }
+  // Lista completa das ofertas de um produto (pra comparar as do portal com as da API)
+  if (body.action === "ofertas") {
+    const r = await tmb(`/api/oferta?produto_id=${Number(body.produto_id) || 0}`, "GET");
+    return j({ ok: r.ok, status: r.status, ofertas: r.data });
+  }
   // Diagnóstico: quais rotas da TMB respondem (sem criar nada)
   if (body.action === "diagnostico") {
     const pid = Number(body.produto_id) || 0;
