@@ -383,6 +383,9 @@ Deno.serve(async (req: Request) => {
     // DANFSe: o PDF oficial da nota, direto do gov
     if (body.action === "danfse") {
       if (!body.chave_acesso) return json({ error: "informe chave_acesso" }, 400);
+      // fonte (04/11/2026, Fabrício: "dar a opção de baixar o espelho ou a NF verdadeira direto da receita"):
+      //   "gov" = só o PDF oficial (erro se o gov não responder); "espelho" = só o espelho do Nexus; vazio = oficial com reserva no espelho
+      const fonte = body.fonte === "gov" || body.fonte === "espelho" ? body.fonte : "auto";
       const { data: cfgD } = await supabase.from("nfse_emitter_config").select("*").limit(1).maybeSingle();
       const { data: certD } = await supabase.from("fiscal_certificates")
         .select("file_path, senha_cifrada").eq("ativo", true).maybeSingle();
@@ -394,7 +397,8 @@ Deno.serve(async (req: Request) => {
       const hostAdn = amb === "2" ? "adn.producaorestrita.nfse.gov.br" : "adn.nfse.gov.br";
       const url = Deno.env.get("NFSE_BRIDGE_URL"), token = Deno.env.get("NFSE_BRIDGE_TOKEN");
       let pdfB64: string | null = null;
-      for (let tent = 0; tent < 2 && !pdfB64; tent++) {
+      const motivoGov: string[] = [];
+      for (let tent = 0; tent < 2 && !pdfB64 && fonte !== "espelho"; tent++) {
         try {
           const r = await fetch(`${url}/gov`, {
             method: "POST",
@@ -404,9 +408,11 @@ Deno.serve(async (req: Request) => {
           });
           const d = await r.json();
           if (d?.status < 300 && d?.corpo_base64) pdfB64 = d.corpo_base64;
-        } catch { /* tenta de novo */ }
+          else motivoGov.push(`HTTP ${d?.status ?? r.status}`);
+        } catch (e) { motivoGov.push(String((e as Error)?.message || e).slice(0, 80)); }
       }
       if (pdfB64) return json({ ok: true, pdf_base64: pdfB64, fonte: "gov" });
+      if (fonte === "gov") return json({ error: `O portal nfse.gov.br não devolveu o PDF oficial agora (${motivoGov.join(" · ") || "sem resposta"}). O serviço deles oscila bastante: tente de novo em alguns minutos ou baixe o espelho.`, motivo_gov: motivoGov }, 503);
 
       // gov fora do ar: espelho a partir do XML guardado (o XML é o documento legal)
       const { data: reg } = await supabase.from("nfse_records")
@@ -416,7 +422,7 @@ Deno.serve(async (req: Request) => {
       const pdf = await gerarEspelho(xml, body.chave_acesso);
       let b64 = "";
       for (let i = 0; i < pdf.length; i += 8192) b64 += String.fromCharCode(...pdf.subarray(i, i + 8192));
-      return json({ ok: true, pdf_base64: btoa(b64), fonte: "espelho" });
+      return json({ ok: true, pdf_base64: btoa(b64), fonte: "espelho", motivo_gov: motivoGov });
     }
 
     // envia a nota por WhatsApp pro cliente (PDF oficial; espelho se o gov cair)
