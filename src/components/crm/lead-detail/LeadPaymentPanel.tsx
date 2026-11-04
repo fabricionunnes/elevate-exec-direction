@@ -251,8 +251,8 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
             <p className="text-[11px] text-muted-foreground">O cliente paga exatamente o valor do negócio cadastrado no CRM. Pra mudar o valor, altere o Valor do negócio na ficha do lead.</p>
             {tmbSim && tmbSim.modo === "unv" && (
               <div className="rounded-md bg-muted/40 p-2 text-[11px] space-y-0.5">
-                <p>Cliente paga <span className="font-semibold text-foreground">{fmt(Math.round(Number(opportunityValue) * 100))}</span> em até {installments}x no boleto.</p>
-                <p>A TMB financia <span className="font-semibold text-foreground">{fmt(tmbSim.principal_cents)}</span> (fator {tmbSim.fator.toLocaleString("pt-BR", { maximumFractionDigits: 4 })}{tmbSim.origem === "estimado" ? ", estimado" : ""}). Os juros do parcelamento ficam por conta da UNV.</p>
+                <p>Cliente paga <span className="font-semibold text-foreground">{fmt(Math.round(Number(opportunityValue) * 100))}</span> em até {installments}x no boleto (≈ {fmt(Math.round(Number(opportunityValue) * 100 / Number(installments)))} por parcela).</p>
+                <p>A TMB financia <span className="font-semibold text-foreground">{fmt(tmbSim.principal_cents)}</span> (juros de {((tmbSim as any).taxa_mensal * 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}% a.m., fator {tmbSim.fator.toLocaleString("pt-BR", { maximumFractionDigits: 4 })}). Os juros ficam por conta da UNV.</p>
                 <p>Repasse estimado pra UNV: <span className="font-semibold text-emerald-600">{fmt(tmbSim.repasse_estimado_cents)}</span> ({Math.round(tmbSim.taxa_admin * 100)}% de comissão TMB + {fmt(tmbSim.taxa_operacao_cents)} por operação).</p>
               </div>
             )}
