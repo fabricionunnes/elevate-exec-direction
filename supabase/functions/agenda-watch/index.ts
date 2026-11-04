@@ -26,7 +26,15 @@ function json(obj: unknown, status = 200) {
   });
 }
 
-/** WhatsApp pela instância oficial "fabricionunnes" */
+/** Central de Avisos (03/11/2026): o aviso entra na fila e o nível (na hora / resumo / desligado)
+ *  decide quando o Fabrício recebe. Configura em Configurações do CRM > Notificações. */
+async function aviso(supabase: any, tipo: string, titulo: string, text: string): Promise<boolean> {
+  const { error } = await supabase.rpc("aviso_enviar", { p_tipo: tipo, p_texto: text, p_titulo: titulo, p_origem: "nexus", p_nivel_padrao: "resumo" });
+  if (error) { console.error("[agenda-watch] aviso_enviar:", error.message); return sendWhatsApp(supabase, text); }
+  return true;
+}
+
+/** WhatsApp pela instância oficial "fabricionunnes" (reserva, se a central falhar) */
 async function sendWhatsApp(supabase: any, text: string): Promise<boolean> {
   try {
     let { data: inst } = await supabase
@@ -172,7 +180,7 @@ Deno.serve(async (req: Request) => {
         .sort((a: any, b: any) => String(a.start).localeCompare(String(b.start)));
 
       if (doDia.length === 0) {
-        await sendWhatsApp(supabase, `*Agenda de hoje* — ${fmtWeekday(new Date().toISOString())}\n\nNenhuma reunião marcada.`);
+        await aviso(supabase, "agenda_dia", "Agenda do dia", `*Agenda de hoje* — ${fmtWeekday(new Date().toISOString())}\n\nNenhuma reunião marcada.`);
         return json({ ok: true, mode, count: 0 });
       }
 
@@ -195,7 +203,7 @@ Deno.serve(async (req: Request) => {
         linhas.join("\n\n"),
       ].join("\n");
 
-      await sendWhatsApp(supabase, texto);
+      await aviso(supabase, "agenda_dia", "Agenda do dia", texto);
       return json({ ok: true, mode, count: doDia.length });
     }
 
@@ -339,7 +347,7 @@ Deno.serve(async (req: Request) => {
     }
 
     for (const msg of notifications) {
-      await sendWhatsApp(supabase, msg);
+      await aviso(supabase, "agenda_mudancas", "Mudanças na agenda (novo, alterado, cancelado)", msg);
     }
 
     return json({ ok: true, mode, created, updated, cancelled, reminders, total_events: events.length });
