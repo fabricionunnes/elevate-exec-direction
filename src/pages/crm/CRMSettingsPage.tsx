@@ -79,6 +79,7 @@ import { CRMAutomationsTab } from "@/components/crm/settings/CRMAutomationsTab";
 import { IgTriggersManager } from "@/components/crm/agents/IgTriggersManager";
 import { CRMMessageRulesTab } from "@/components/crm/settings/CRMMessageRulesTab";
 import { CRMPaymentMethodsTab } from "@/components/crm/settings/CRMPaymentMethodsTab";
+import { CRMAvisosTab } from "@/components/crm/settings/CRMAvisosTab";
 import { CRMActivityTypesTab } from "@/components/crm/settings/CRMActivityTypesTab";
 import { CRMBusinessHoursTab } from "@/components/crm/settings/CRMBusinessHoursTab";
 import { CRMProductsTab } from "@/components/crm/settings/CRMProductsTab";
@@ -2427,6 +2428,7 @@ export const CRMSettingsPage = () => {
             {/* Notifications Tab */}
             <TabsContent value="notifications" className="mt-6">
               <div className="space-y-8">
+                <CRMAvisosTab />
                 <LeadNotificationSettings />
                 <WonNotificationSettings />
                 <MeetingNotificationSettings />
