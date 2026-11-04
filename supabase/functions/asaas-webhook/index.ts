@@ -154,9 +154,12 @@ Deno.serve(async (req) => {
     // === Pagamento gerado no CRM (lead) — marca pago + credita banco Asaas (já com taxa) ===
     try {
       const ASAAS_BANK = "6e9a3135-5826-4633-adf1-a63ef5b70e96"; // financial_banks: Asaas ATIVO (o 9f9de213… era um "Asaas" antigo e inativo — o dinheiro sumia do saldo, corrigido em 21/09/2026)
+      const ASAAS_BANK_SOCIAL = "b5050c0f-b990-4d32-b0d1-4ac5f878ea11"; // financial_banks: Asaas UNV Social (links gerados com provider "asaas_social", 04/11/2026)
       const { data: lp } = await supabase.from("crm_lead_payments")
-        .select("id, receivable_id, status, description, url, recurring, lead:crm_leads(name)").eq("provider", "asaas").eq("provider_ref", String(paymentId)).limit(1).maybeSingle();
+        .select("id, receivable_id, status, description, url, recurring, provider, lead:crm_leads(name)").in("provider", ["asaas", "asaas_social"]).eq("provider_ref", String(paymentId)).limit(1).maybeSingle();
       if (lp && newStatus === "paid" && lp.status !== "paid") {
+        const social = (lp as any).provider === "asaas_social";
+        const bancoDoLink = social ? ASAAS_BANK_SOCIAL : ASAAS_BANK;
         const today = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
         const netCents = Math.round((paymentNetValue || paymentValue || 0) * 100);
         const feeCents = Math.max(0, Math.round((paymentValue || 0) * 100) - netCents);
@@ -179,8 +182,8 @@ Deno.serve(async (req) => {
           if (rec?.id) await supabase.from("crm_lead_payments").update({ receivable_id: rec.id }).eq("id", lp.id);
         }
         await supabase.from("financial_bank_transactions").insert({
-          bank_id: ASAAS_BANK, type: "credit", amount_cents: netCents, fee_cents: feeCents,
-          description: `Pagamento PIX (Asaas) — pagamento ${lp.id}`, reference_type: "crm_lead_payment", reference_id: lp.id,
+          bank_id: bancoDoLink, type: "credit", amount_cents: netCents, fee_cents: feeCents,
+          description: `Pagamento PIX (${social ? "Asaas UNV Social" : "Asaas"}) — pagamento ${lp.id}`, reference_type: "crm_lead_payment", reference_id: lp.id,
         });
       }
     } catch (e) { console.error("[Asaas Webhook] lead payment handling error", e); }
