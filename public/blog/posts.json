@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-11-04T21:01:00",
+ "gerado_em": "2026-11-04T22:31:08",
  "posts": [
+  {
+   "slug": "cliente-nao-volta-sozinho-precisa-sistema-recompra",
+   "url": "/blog/cliente-nao-volta-sozinho-precisa-sistema-recompra/",
+   "titulo": "Cliente que não volta sozinho precisa de sistema de recompra",
+   "resumo": "A maioria dos clientes esquece de voltar. Sistema automático de recompra garante que o dinheiro não fique na rua.",
+   "tags": [
+    "recompra",
+    "conversão",
+    "estrutura comercial",
+    "processo comercial",
+    "follow-up"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-04",
+   "ts": 2238
+  },
   {
    "slug": "ferramenta-gratuita-limita-escala-comercial",
    "url": "/blog/ferramenta-gratuita-limita-escala-comercial/",
