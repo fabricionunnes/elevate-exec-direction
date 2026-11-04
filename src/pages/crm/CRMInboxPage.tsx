@@ -167,17 +167,25 @@ function corDoFunil(nome?: string | null): { bg: string; texto: string; rotulo: 
 }
 // Tom bem claro da cor do funil pro fundo da caixa do lead e da conversa (Fabrício, 04/11/2026:
 // "um tom bem claro, que dá pra perceber, mas não atrapalhe o tema principal do CRM").
-const fundoDoFunil = (nome?: string | null, alfa = 0.09): string | undefined => {
-  const c = corDoFunil(nome);
-  if (!c) return undefined;
-  const h = c.bg.replace("#", "");
-  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alfa})`;
-};
 const corTextoFunil = (nome?: string | null) => {
   const c = corDoFunil(nome);
   if (!c) return undefined;
   return c.rotulo === "UNV Finance" ? "#a16207" : c.rotulo === "Comercial" ? "#15803d" : c.bg;
+};
+// Instagram tem cor por conta (Fabrício, 04/11/2026): a dele num vermelho puxado pro azul
+// (carmim) e a da Carol num vermelho puxado pro roxo. Vale por cima da cor do funil.
+type Tema = { bg: string; texto: string; rotulo: string };
+function corDoInstagram(username?: string | null): Tema | null {
+  const u = (username || "").toLowerCase();
+  if (u === "ofabricionunnes") return { bg: "#dc143c", texto: "#ffffff", rotulo: "Instagram @ofabricionunnes" };
+  if (u === "socialcomcarol") return { bg: "#c71585", texto: "#ffffff", rotulo: "Instagram @socialcomcarol" };
+  return null;
+}
+const fundoDoTema = (tema: Tema | null | undefined, alfa = 0.09): string | undefined => {
+  if (!tema) return undefined;
+  const h = tema.bg.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alfa})`;
 };
 
 export const CRMInboxPage = () => {
@@ -322,8 +330,18 @@ export const CRMInboxPage = () => {
         ...((off.data || []) as any[]).map((i) => ({ value: `off:${i.id}`, label: `${i.display_name || i.phone_number} (API oficial)` })),
         ...((ig.data || []) as any[]).map((i) => ({ value: `ig:${i.id}`, label: i.instagram_username ? `@${i.instagram_username} (Instagram)` : i.instance_name })),
       ]);
+      setIgContas(Object.fromEntries(((ig.data || []) as any[]).map((i) => [String(i.id), String(i.instagram_username || "")])));
     })();
   }, []);
+  const [igContas, setIgContas] = useState<Record<string, string>>({});
+  // Tema da conversa: conta do Instagram (se tiver cor) ou funil do negócio
+  const temaDaConversa = (conv: any, pipeline?: string | null): Tema | null => {
+    if (conv?.channel === "instagram") {
+      const t = corDoInstagram(igContas[String(conv.instagram_instance_id || "")]);
+      if (t) return t;
+    }
+    return corDoFunil(pipeline);
+  };
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [connectedInstances, setConnectedInstances] = useState<string[]>([]);
   const [allowedInstanceIds, setAllowedInstanceIds] = useState<string[]>([]);
@@ -1396,7 +1414,7 @@ export const CRMInboxPage = () => {
                   selectedConversation?.id === conv.id && "bg-muted shadow-[inset_3px_0_0_hsl(var(--primary))]",
                   selectMode && selectedIds.has(conv.id) && "bg-primary/10"
                 )}
-                style={{ backgroundColor: fundoDoFunil(etapa?.pipeline, selectedConversation?.id === conv.id ? 0.2 : conv.unread_count > 0 ? 0.14 : 0.09) }}
+                style={{ backgroundColor: fundoDoTema(temaDaConversa(conv, etapa?.pipeline), selectedConversation?.id === conv.id ? 0.2 : conv.unread_count > 0 ? 0.14 : 0.09) }}
               >
                 {conv.unread_count > 0 && <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
                 {selectMode && conv.channel !== "instagram" && (
@@ -1405,9 +1423,9 @@ export const CRMInboxPage = () => {
                     {selectedIds.has(conv.id) && <CheckCheck className="h-3 w-3" />}
                   </span>
                 )}
-                <Avatar className="h-10 w-10 shrink-0" title={corDoFunil(etapa?.pipeline)?.rotulo}>
+                <Avatar className="h-10 w-10 shrink-0" title={temaDaConversa(conv, etapa?.pipeline)?.rotulo}>
                   <AvatarImage src={conv.contact?.profile_picture_url || undefined} referrerPolicy="no-referrer" />
-                  <AvatarFallback className="text-xs font-semibold" style={{ backgroundColor: corDoFunil(etapa?.pipeline)?.bg || senderColor(titleName || "?"), color: corDoFunil(etapa?.pipeline)?.texto || "#ffffff" }}>
+                  <AvatarFallback className="text-xs font-semibold" style={{ backgroundColor: temaDaConversa(conv, etapa?.pipeline)?.bg || senderColor(titleName || "?"), color: temaDaConversa(conv, etapa?.pipeline)?.texto || "#ffffff" }}>
                     {iniciais(titleName || "?")}
                   </AvatarFallback>
                 </Avatar>
@@ -1518,7 +1536,7 @@ export const CRMInboxPage = () => {
               )}
               <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
                 <AvatarImage src={selectedConversation.contact?.profile_picture_url || undefined} referrerPolicy="no-referrer" />
-                <AvatarFallback className="text-xs font-semibold" style={{ backgroundColor: corDoFunil(stageMap[String((selectedConversation.lead as any)?.stage_id || "")]?.pipeline)?.bg || senderColor(selectedConversation.lead?.name || selectedConversation.contact?.name || selectedConversation.contact?.phone || "?"), color: corDoFunil(stageMap[String((selectedConversation.lead as any)?.stage_id || "")]?.pipeline)?.texto || "#ffffff" }}>
+                <AvatarFallback className="text-xs font-semibold" style={{ backgroundColor: temaDaConversa(selectedConversation, stageMap[String((selectedConversation.lead as any)?.stage_id || "")]?.pipeline)?.bg || senderColor(selectedConversation.lead?.name || selectedConversation.contact?.name || selectedConversation.contact?.phone || "?"), color: temaDaConversa(selectedConversation, stageMap[String((selectedConversation.lead as any)?.stage_id || "")]?.pipeline)?.texto || "#ffffff" }}>
                   {(((() => {
                     const rawName = (selectedConversation.contact?.name || "").trim();
                     const isGenericName = !nomeValido(rawName) || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
@@ -1662,7 +1680,7 @@ export const CRMInboxPage = () => {
           </div>
 
           {/* Messages */}
-          <ScrollArea ref={messagesScrollAreaRef} className="flex-1 min-h-0 px-3 sm:px-6 py-4 bg-muted/40 [&>[data-radix-scroll-area-viewport]>div]:!block" style={{ backgroundColor: fundoDoFunil(stageMap[String((selectedConversation.lead as any)?.stage_id || "")]?.pipeline, 0.07) }}>
+          <ScrollArea ref={messagesScrollAreaRef} className="flex-1 min-h-0 px-3 sm:px-6 py-4 bg-muted/40 [&>[data-radix-scroll-area-viewport]>div]:!block" style={{ backgroundColor: fundoDoTema(temaDaConversa(selectedConversation, stageMap[String((selectedConversation.lead as any)?.stage_id || "")]?.pipeline), 0.07) }}>
             <div className="space-y-1.5 max-w-4xl mx-auto">
               {!loadingMessages && !isInstagramConversation && temMaisAntigas && (
                 <div className="flex justify-center pb-2">
