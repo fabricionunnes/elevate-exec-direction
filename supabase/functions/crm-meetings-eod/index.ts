@@ -781,8 +781,10 @@ Deno.serve(async (req) => {
         lines.push("");
         lines.push(`Projetos: ${projTotal} reunião(ões) hoje, ${projFinalized} finalizada(s), ${projWithTranscript} com transcrição.`);
 
-        const sent = await sendWhatsApp(supabase, FABRICIO_PHONE, lines.join("\n"));
-        summaryStatus = sent.ok ? "enviado" : sent.error || "falhou";
+        // Central de Avisos (03/11/2026): entra no resumo da noite em vez de ir direto pro WhatsApp
+        const { error: avErr } = await supabase.rpc("aviso_enviar", { p_tipo: "reunioes_fechamento", p_texto: lines.join("\n"), p_titulo: "Fechamento das reuniões do dia", p_origem: "nexus", p_nivel_padrao: "resumo" });
+        const sent = avErr ? await sendWhatsApp(supabase, FABRICIO_PHONE, lines.join("\n")) : { ok: true };
+        summaryStatus = sent.ok ? (avErr ? "enviado direto" : "na central de avisos") : sent.error || "falhou";
         console.log(`[crm-meetings-eod] resumo WhatsApp ${summaryStatus}`);
       } else {
         summaryStatus = "sem reuniões no dia";
