@@ -11,16 +11,20 @@ import { CreditCard, Copy, Loader2, ExternalLink, RefreshCw, Trash2 } from "luci
 import { toast } from "sonner";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 
-type ProviderKey = "mercadopago" | "dompagamentos" | "asaas" | "tmb";
+type ProviderKey = "mercadopago" | "dompagamentos" | "asaas" | "asaas_social" | "tmb";
+// Asaas tem duas contas: a principal e a UNV Social (Fabrício, 04/11/2026). As duas geram
+// assinatura mensal via PIX; o que muda é a conta que recebe (e o banco creditado no Financeiro).
+const isAsaas = (p: string) => p === "asaas" || p === "asaas_social";
 const PROVIDERS: { key: ProviderKey; name: string; sub: string }[] = [
   { key: "mercadopago", name: "Mercado Pago", sub: "Cartão parcelado" },
   { key: "dompagamentos", name: "Dom Pagamentos", sub: "Cartão parcelado" },
   { key: "asaas", name: "Asaas", sub: "PIX · mensal" },
+  { key: "asaas_social", name: "Asaas UNV Social", sub: "PIX · mensal" },
   // TMB (Tem Mais no Boleto): boleto parcelado. Fabrício, 03/11/2026: cobra EXATAMENTE o valor
   // do negócio do CRM (o valor não é editável nessa forma).
   { key: "tmb", name: "TMB", sub: "Boleto parcelado" },
 ];
-const GRID_COLS: Record<number, string> = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-2" };
+const GRID_COLS: Record<number, string> = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-2", 5: "grid-cols-3", 6: "grid-cols-3" };
 type TmbProduto = { produto_id: number; nome: string; descricao: string | null; valor: string | null; ativo: boolean };
 
 interface Payment {
@@ -57,7 +61,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
   const [generating, setGenerating] = useState(false);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [enabled, setEnabled] = useState<Record<string, boolean>>({ mercadopago: true, dompagamentos: true, asaas: true, tmb: true });
+  const [enabled, setEnabled] = useState<Record<string, boolean>>({ mercadopago: true, dompagamentos: true, asaas: true, asaas_social: true, tmb: true });
   const { isMaster, currentStaff } = useStaffPermissions();
   const canDelete = isMaster || currentStaff?.role === "admin";
 
@@ -65,7 +69,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
     (supabase as any).from("crm_payment_provider_settings").select("provider, is_enabled, config")
       .then(({ data }: any) => {
         if (!data?.length) return;
-        const map: Record<string, boolean> = { mercadopago: true, dompagamentos: true, asaas: true, tmb: true };
+        const map: Record<string, boolean> = { mercadopago: true, dompagamentos: true, asaas: true, asaas_social: true, tmb: true };
         data.forEach((r: any) => {
           map[r.provider] = r.is_enabled;
           if (r.provider === "tmb" && r.config?.produto_id) { setTmbPadrao(String(r.config.produto_id)); setTmbProduto((cur) => cur || String(r.config.produto_id)); }
@@ -148,12 +152,12 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
     if (provider === "tmb" && entradaCents && entradaCents >= cents) { toast.error("A entrada precisa ser menor que o valor do negócio"); return; }
     setGenerating(true);
     try {
-      const fn = provider === "asaas" ? "asaas-lead-subscription"
+      const fn = isAsaas(provider) ? "asaas-lead-subscription"
         : provider === "dompagamentos" ? "dompagamentos-create-payment"
         : provider === "tmb" ? "tmb-create-payment"
         : "mercadopago-create-payment";
-      const payload = provider === "asaas"
-        ? { lead_id: leadId, amount_cents: cents, due_day: Number(dueDay), description: description || `Assinatura mensal — ${leadName}` }
+      const payload = isAsaas(provider)
+        ? { lead_id: leadId, account: provider === "asaas_social" ? "social" : "principal", amount_cents: cents, due_day: Number(dueDay), description: description || `Assinatura mensal — ${leadName}` }
         : provider === "dompagamentos"
         ? { lead_id: leadId, amount_cents: cents, installments: Number(installments), interest_free_installments: Number(installments), description: description || `Pagamento — ${leadName}` }
         : provider === "tmb"
@@ -212,7 +216,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label className="text-xs">Valor{provider === "asaas" ? " (por mês)" : provider === "tmb" ? " (do negócio no CRM)" : ""}</Label>
+            <Label className="text-xs">Valor{isAsaas(provider) ? " (por mês)" : provider === "tmb" ? " (do negócio no CRM)" : ""}</Label>
             <div className="relative">
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
               {provider === "tmb" ? (
@@ -222,7 +226,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
               )}
             </div>
           </div>
-          {provider === "asaas" ? (
+          {isAsaas(provider) ? (
             <div>
               <Label className="text-xs">Vencimento (todo dia)</Label>
               <Select value={dueDay} onValueChange={setDueDay}>
@@ -292,8 +296,8 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
             </div>
           </div>
         )}
-        {provider === "asaas" && (
-          <p className="text-[11px] text-muted-foreground">Cria uma assinatura mensal via PIX no Asaas. Exige o CPF/CNPJ preenchido no lead.</p>
+        {isAsaas(provider) && (
+          <p className="text-[11px] text-muted-foreground">Cria uma assinatura mensal via PIX na conta {provider === "asaas_social" ? "Asaas UNV Social" : "Asaas principal"}. Exige o CPF/CNPJ preenchido no lead.</p>
         )}
         <div>
           <Label className="text-xs">Descrição (opcional)</Label>
@@ -325,7 +329,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
                       <span className="font-semibold text-sm">{fmt(p.amount_cents)}</span>
                       <Badge variant={st.variant} className="text-[10px]">{st.label}</Badge>
                       {p.installments && p.installments > 1 && <span className="text-[11px] text-muted-foreground">{p.installments}x</span>}
-                      <span className="text-[10px] text-muted-foreground">{p.provider === "asaas" ? `PIX · mensal (dia ${p.due_day})` : p.provider === "tmb" ? "Boleto parcelado (TMB)" : "Cartão"}</span>
+                      <span className="text-[10px] text-muted-foreground">{p.provider === "asaas" ? `PIX · mensal (dia ${p.due_day})` : p.provider === "asaas_social" ? `PIX · mensal · UNV Social (dia ${p.due_day})` : p.provider === "tmb" ? "Boleto parcelado (TMB)" : "Cartão"}</span>
                     </div>
                     <p className="text-[11px] text-muted-foreground truncate">{p.description}</p>
                     <p className="text-[10px] text-muted-foreground">{new Date(p.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}{p.paid_at ? ` · pago em ${new Date(p.paid_at).toLocaleDateString("pt-BR")}` : ""}</p>
