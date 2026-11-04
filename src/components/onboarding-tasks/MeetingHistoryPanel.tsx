@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -131,6 +131,9 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
   const [isConsultant, setIsConsultant] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [projectConsultantUserId, setProjectConsultantUserId] = useState<string | null>(null);
+  // consultor do projeto (dono da agenda): fica como responsável das reuniões importadas do Google
+  // ref, e não state: a importação roda logo depois de carregar o consultor, antes do React re-renderizar
+  const projectConsultantRef = useRef<{ staffId: string; userId: string; name: string } | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
   
   // Finalize meeting dialog
@@ -317,12 +320,13 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
 
       const { data: consultant } = await supabase
         .from("onboarding_staff")
-        .select("user_id")
+        .select("user_id, name")
         .eq("id", consultantStaffId)
         .single();
 
       if (consultant?.user_id) {
         setProjectConsultantUserId(consultant.user_id);
+        projectConsultantRef.current = { staffId: consultantStaffId, userId: consultant.user_id, name: consultant.name || "" };
         return { consultantUserId: consultant.user_id, companyName: fetchedCompanyName };
       }
 
@@ -573,18 +577,20 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
 
     const existingEventIds = new Set((existingMeetings || []).map(m => m.google_event_id));
 
-    // Filter past events that don't exist yet
-    const pastEvents = events.filter(event => {
-      const eventDate = parseISO(event.start);
-      return isPast(eventDate) && !existingEventIds.has(event.id);
-    });
+    // Fabrício (04/11/2026): "as que eu agendo [pelo Nexus] ficam com Preparar, Finalizar e Anotações;
+    // queria que todas ficassem assim". Antes só os eventos PASSADOS viravam reunião no sistema; os
+    // futuros agendados direto no Google (caso do Taynon) ficavam só como "Agendada", sem finalizar.
+    // Agora todo evento da agenda do consultor ligado a este cliente vira reunião, passada ou futura.
+    const novos = events.filter(event => event.id && event.start && !existingEventIds.has(event.id));
 
-    if (pastEvents.length === 0) return;
+    if (novos.length === 0) return;
 
-    // Create meeting entries for new past events
-    const newMeetings = pastEvents.map(event => ({
+    // Responsável e dono da agenda = consultor do projeto (é a agenda dele que foi lida),
+    // não quem está olhando a tela.
+    const projectConsultant = projectConsultantRef.current;
+    const newMeetings = novos.map(event => ({
       project_id: projectId,
-      staff_id: currentStaffId,
+      staff_id: projectConsultant?.staffId || currentStaffId,
       google_event_id: event.id,
       meeting_title: event.title,
       meeting_date: event.start,
@@ -592,6 +598,8 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
       notes: null,
       meeting_link: event.meetingLink || null,
       is_finalized: false,
+      calendar_owner_id: projectConsultant?.userId || projectConsultantUserId || null,
+      calendar_owner_name: projectConsultant?.name || null,
     }));
 
     const { error } = await supabase
