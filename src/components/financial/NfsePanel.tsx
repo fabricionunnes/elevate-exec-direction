@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { FiscalCertificateCard } from "./FiscalCertificateCard";
 import { NfseGovDialog } from "./NfseGovDialog";
@@ -415,13 +416,14 @@ export function NfsePanel() {
     }
   };
 
-  const handleDownloadPdf = async (record: NfseRecord) => {
+  // fonte (04/11/2026): "gov" = PDF oficial do nfse.gov.br; "espelho" = espelho do Nexus; vazio = oficial com reserva
+  const handleDownloadPdf = async (record: NfseRecord, fonte?: "gov" | "espelho") => {
     if (record.origem === "gov") {
       if (!record.chave_acesso) { toast.error("Nota sem chave de acesso guardada."); return; }
       try {
-        toast.info("Buscando o PDF...");
+        toast.info(fonte === "espelho" ? "Gerando o espelho..." : "Buscando o PDF oficial no nfse.gov.br...");
         const { data, error } = await supabase.functions.invoke("nfse-emitir", {
-          body: { action: "danfse", chave_acesso: record.chave_acesso, ambiente: record.environment },
+          body: { action: "danfse", chave_acesso: record.chave_acesso, ambiente: record.environment, fonte: fonte || undefined },
         });
         if (error) {
           const det = await (error as any).context?.json?.().catch(() => null);
@@ -433,9 +435,9 @@ export function NfsePanel() {
         const blob = new Blob([bytes], { type: "application/pdf" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `NFSe-${record.number || record.chave_acesso.slice(-8)}.pdf`;
+        a.download = `NFSe-${record.number || record.chave_acesso.slice(-8)}${d.fonte === "espelho" ? "-espelho" : ""}.pdf`;
         a.click();
-        if (d.fonte === "espelho") {
+        if (d.fonte === "espelho" && fonte !== "espelho") {
           // mostra POR QUE o gov não devolveu: antes só dizia "instável" e
           // ninguém conseguia distinguir fora do ar de falta de permissão
           const motivo = Array.isArray(d.motivo_gov) && d.motivo_gov.length ? ` (${d.motivo_gov.join(" · ")})` : "";
@@ -991,11 +993,35 @@ export function NfsePanel() {
                           <RefreshCw className="h-4 w-4" />
                         </Button>
                       )}
-                      {((record.status === "authorized" && record.nfeio_id) || (record.origem === "gov" && record.chave_acesso && record.status !== "cancelled")) && (
+                      {record.origem === "gov" && record.chave_acesso && record.status !== "cancelled" ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button type="button" variant="ghost" size="icon" title="Baixar PDF">
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-72">
+                            <DropdownMenuLabel className="text-xs text-muted-foreground">Baixar NFS-e {record.number ? `nº ${record.number}` : ""}</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleDownloadPdf(record, "gov")}>
+                              <div>
+                                <p className="text-sm font-medium">PDF oficial (nfse.gov.br)</p>
+                                <p className="text-[11px] text-muted-foreground">A DANFSe emitida pelo governo. O serviço deles oscila; se falhar, tente de novo.</p>
+                              </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadPdf(record, "espelho")}>
+                              <div>
+                                <p className="text-sm font-medium">Espelho do Nexus</p>
+                                <p className="text-[11px] text-muted-foreground">Gerado na hora a partir do XML autorizado, no padrão visual da UNV.</p>
+                              </div>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (record.status === "authorized" && record.nfeio_id) ? (
                         <Button type="button" variant="ghost" size="icon" onClick={() => handleDownloadPdf(record)} title="Baixar PDF">
                           <Download className="h-4 w-4" />
                         </Button>
-                      )}
+                      ) : null}
                        {((record.status === "authorized" && record.nfeio_id) || (record.origem === "gov" && record.chave_acesso && record.status !== "cancelled")) && (
                          <Button
                            type="button"
