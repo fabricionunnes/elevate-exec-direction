@@ -13,7 +13,8 @@ const cors = {
 };
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const TMB_TOKEN = Deno.env.get("TMB_API_TOKEN") || "";
+// trim: o segredo é colado num campo de várias linhas no painel do Supabase e pode vir com quebra no fim
+const TMB_TOKEN = (Deno.env.get("TMB_API_TOKEN") || "").trim().replace(/^Bearer\s+/i, "");
 const TMB_API = "https://api.tmbeducacao.com.br";
 const j = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
@@ -43,11 +44,20 @@ Deno.serve(async (req) => {
   // Lista de produtos da TMB (pra escolher em qual produto a oferta é criada)
   if (body.action === "produtos") {
     const r = await tmb("/api/produtos", "GET");
-    if (!r.ok) return j({ ok: false, error: r.data?.message || r.data?.error || `TMB respondeu HTTP ${r.status}` });
+    if (!r.ok) return j({ ok: false, error: r.data?.message || r.data?.error || `TMB respondeu HTTP ${r.status}`, detail: r.data, token_len: TMB_TOKEN.length });
     const lista = (Array.isArray(r.data) ? r.data : []).map((p: any) => ({
       produto_id: p.produto_id, nome: p.produto_nome, descricao: p.descricao || null, valor: p.valor_total || null, ativo: p.ativo !== false,
     }));
     return j({ ok: true, produtos: lista });
+  }
+
+  // Diagnóstico: quais rotas da TMB respondem (sem criar nada)
+  if (body.action === "diagnostico") {
+    const pid = Number(body.produto_id) || 0;
+    const rotas = [`/api/oferta?produto_id=${pid}`, `/api/ofertas?produto_id=${pid}`, `/api/produtos`, `/api/pedidos?produto_id=${pid}&pageSize=1`];
+    const out: Record<string, unknown> = {};
+    for (const rt of rotas) { const r = await tmb(rt, "GET"); out[rt] = { status: r.status, corpo: JSON.stringify(r.data).slice(0, 300) }; }
+    return j({ ok: true, out });
   }
 
   const { lead_id } = body;
@@ -95,10 +105,14 @@ Deno.serve(async (req) => {
   if (entryCents > 0) payload.valor_boleto_entrada = entryCents / 100;
   if (entryDue) payload.vencimento_boleto_entrada = entryDue;
 
-  const r = await tmb("/api/ofertas", "POST", payload);
+  // A doc escreve "api/ofertas", mas a rota que existe é "api/oferta" (singular), conferido em
+  // 03/11/2026: o plural devolve 404. Mantém o plural só como reserva.
+  let r = await tmb("/api/oferta", "POST", payload);
+  if (r.status === 404) r = await tmb("/api/ofertas", "POST", payload);
   if (!r.ok || !r.data?.url) {
     await supabase.from("crm_lead_payments").update({ status: "error" }).eq("id", row.id);
-    const msg = r.data?.message || r.data?.error || r.data?.status || (r.data?.errors ? JSON.stringify(r.data.errors).slice(0, 200) : "") || `TMB recusou (HTTP ${r.status})`;
+    const corpo = r.data && Object.keys(r.data).length ? JSON.stringify(r.data).slice(0, 240) : "";
+    const msg = r.data?.message || r.data?.error || r.data?.title || (r.data?.errors ? JSON.stringify(r.data.errors).slice(0, 200) : "") || `TMB recusou (HTTP ${r.status})${corpo ? `: ${corpo}` : ""}`;
     return j({ ok: false, error: msg, detail: r.data });
   }
 
