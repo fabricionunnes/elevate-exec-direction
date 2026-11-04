@@ -154,6 +154,23 @@ function senderColor(name: string): string {
   return `hsl(${h}, 62%, 45%)`;
 }
 
+// Cor do lead por funil (Fabrício, 04/11/2026): comercial verde claro, UNV Social roxo,
+// Tráfego Pago azul e UNV Finance amarelo. Vale pro avatar e pro nome do funil na lista.
+// Conversa sem negócio continua com a cor por nome.
+function corDoFunil(nome?: string | null): { bg: string; texto: string; rotulo: string } | null {
+  if (!nome) return null;
+  const n = nome.toLowerCase();
+  if (/social/.test(n)) return { bg: "#7c3aed", texto: "#ffffff", rotulo: "UNV Social" };
+  if (/tr[aá]fego/.test(n)) return { bg: "#2563eb", texto: "#ffffff", rotulo: "Tráfego Pago" };
+  if (/finance/.test(n)) return { bg: "#fde047", texto: "#422006", rotulo: "UNV Finance" };
+  return { bg: "#86efac", texto: "#14532d", rotulo: "Comercial" };
+}
+const corTextoFunil = (nome?: string | null) => {
+  const c = corDoFunil(nome);
+  if (!c) return undefined;
+  return c.rotulo === "UNV Finance" ? "#a16207" : c.rotulo === "Comercial" ? "#15803d" : c.bg;
+};
+
 export const CRMInboxPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const conversationIdFromUrl = searchParams.get("conversation");
@@ -1378,9 +1395,9 @@ export const CRMInboxPage = () => {
                     {selectedIds.has(conv.id) && <CheckCheck className="h-3 w-3" />}
                   </span>
                 )}
-                <Avatar className="h-10 w-10 shrink-0">
+                <Avatar className="h-10 w-10 shrink-0" title={corDoFunil(etapa?.pipeline)?.rotulo}>
                   <AvatarImage src={conv.contact?.profile_picture_url || undefined} />
-                  <AvatarFallback className="text-xs font-semibold text-white" style={{ backgroundColor: senderColor(titleName || "?") }}>
+                  <AvatarFallback className="text-xs font-semibold" style={{ backgroundColor: corDoFunil(etapa?.pipeline)?.bg || senderColor(titleName || "?"), color: corDoFunil(etapa?.pipeline)?.texto || "#ffffff" }}>
                     {iniciais(titleName || "?")}
                   </AvatarFallback>
                 </Avatar>
@@ -1408,7 +1425,14 @@ export const CRMInboxPage = () => {
                   </div>
                   {(companyName || etapa) && (
                     <div className="text-[11px] text-muted-foreground truncate">
-                      {[companyName, etapa ? `${etapa.pipeline} · ${etapa.stage}` : ""].filter(Boolean).join(" — ")}
+                      {companyName}
+                      {companyName && etapa ? " — " : ""}
+                      {etapa && (
+                        <>
+                          <span className="font-medium" style={{ color: corTextoFunil(etapa.pipeline) }}>{etapa.pipeline}</span>
+                          {` · ${etapa.stage}`}
+                        </>
+                      )}
                     </div>
                   )}
                   {aguarda && (conv as any).last_inbound_at && (
@@ -1484,7 +1508,7 @@ export const CRMInboxPage = () => {
               )}
               <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
                 <AvatarImage src={selectedConversation.contact?.profile_picture_url || undefined} />
-                <AvatarFallback className="text-xs font-semibold text-white" style={{ backgroundColor: senderColor(selectedConversation.lead?.name || selectedConversation.contact?.name || selectedConversation.contact?.phone || "?") }}>
+                <AvatarFallback className="text-xs font-semibold" style={{ backgroundColor: corDoFunil(stageMap[String((selectedConversation.lead as any)?.stage_id || "")]?.pipeline)?.bg || senderColor(selectedConversation.lead?.name || selectedConversation.contact?.name || selectedConversation.contact?.phone || "?"), color: corDoFunil(stageMap[String((selectedConversation.lead as any)?.stage_id || "")]?.pipeline)?.texto || "#ffffff" }}>
                   {(((() => {
                     const rawName = (selectedConversation.contact?.name || "").trim();
                     const isGenericName = !nomeValido(rawName) || ["sou eu", "eu", "me"].includes(rawName.toLowerCase());
