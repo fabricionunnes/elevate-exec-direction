@@ -31,6 +31,36 @@ async function tmb(path: string, method: string, body?: unknown) {
   return { ok: res.ok, status: res.status, data };
 }
 
+// ── Juros da TMB por conta da UNV (Fabrício, 04/11/2026: "calcular com base nas taxas da TMB, pra já
+// calcular comigo pagando os juros e não o cliente"). O cliente paga EXATAMENTE o valor do CRM; o
+// "valor principal" enviado à TMB é o valor do CRM dividido pelo fator de juros do parcelamento.
+// Fatores medidos no checkout da TMB em 04/11/2026 (oferta de R$ 24.000): total pago / principal.
+// Para outras quantidades de parcelas, estimativa pela tabela Price com entrada (1ª parcela à vista),
+// taxa mensal ~2,85% (12x) a ~3,0% (10x). Pode ser sobrescrito em crm_payment_provider_settings.config:
+//   { "tmb_juros": "unv" | "cliente", "tmb_fatores": { "12": 1.16207, ... } }
+const FATORES_TMB: Record<string, number> = { "10": 1.13610, "11": 1.14904, "12": 1.16207 };
+function fatorTMB(n: number, cfg: any): { fator: number; origem: "tabela" | "estimado" } {
+  const tab = { ...FATORES_TMB, ...((cfg?.tmb_fatores && typeof cfg.tmb_fatores === "object") ? cfg.tmb_fatores : {}) };
+  const t = Number(tab[String(n)]);
+  if (t > 1) return { fator: t, origem: "tabela" };
+  if (n <= 1) return { fator: 1, origem: "estimado" };
+  const i = n >= 12 ? 0.0285 : n >= 11 ? 0.0293 : 0.03;
+  const A = 1 + (1 - Math.pow(1 + i, -(n - 1))) / i; // valor presente de n parcelas com a 1ª à vista
+  return { fator: n / A, origem: "estimado" };
+}
+function simularTMB(amountCents: number, n: number, cfg: any) {
+  const modo: "unv" | "cliente" = cfg?.tmb_juros === "cliente" ? "cliente" : "unv";
+  const { fator, origem } = fatorTMB(n, cfg);
+  // arredonda pra baixo: o cliente nunca paga mais que o valor do CRM
+  const principalCents = modo === "unv" ? Math.floor(amountCents / fator) : amountCents;
+  // Repasse estimado pra UNV: o que a TMB desconta do produtor (tela Finanças e contratos > Taxas,
+  // 04/11/2026): comissão 5% (1 a 24 parcelas) + R$ 1,00 por operação de crédito. Saque R$ 1,99 fica fora.
+  const taxaAdmin = Number(cfg?.tmb_taxa_admin) > 0 ? Number(cfg.tmb_taxa_admin) : 0.05;
+  const taxaOperacaoCents = Number(cfg?.tmb_taxa_operacao_cents) >= 0 && cfg?.tmb_taxa_operacao_cents !== undefined ? Number(cfg.tmb_taxa_operacao_cents) : 100;
+  const repasseCents = Math.max(0, Math.round(principalCents * (1 - taxaAdmin)) - taxaOperacaoCents);
+  return { modo, fator: Math.round(fator * 100000) / 100000, origem, valor_cliente_cents: amountCents, principal_cents: principalCents, parcelas: n, taxa_admin: taxaAdmin, taxa_operacao_cents: taxaOperacaoCents, repasse_estimado_cents: repasseCents };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return j({ ok: false, error: "use POST" }, 405);
@@ -60,6 +90,14 @@ Deno.serve(async (req) => {
     return j({ ok: true, out });
   }
 
+  // Simulação pro painel: quanto a TMB vai financiar pro cliente pagar o valor do CRM
+  if (body.action === "simular") {
+    const { data: st } = await supabase.from("crm_payment_provider_settings").select("config").eq("provider", "tmb").maybeSingle();
+    const n = Math.max(1, Math.min(36, Math.round(Number(body.installments) || 12)));
+    const cents = Math.max(0, Math.round(Number(body.amount_cents) || 0));
+    return j({ ok: true, ...simularTMB(cents, n, (st as any)?.config) });
+  }
+
   const { lead_id } = body;
   if (!lead_id) return j({ ok: false, error: "lead_id obrigatório" });
 
@@ -72,11 +110,10 @@ Deno.serve(async (req) => {
   if (!amountCents || amountCents < 100) return j({ ok: false, error: "preencha o Valor do negócio na ficha do lead: a TMB cobra exatamente esse valor" });
 
   // Produto da TMB: o escolhido na tela ou o padrão salvo nas configurações do provedor
+  const { data: stTmb } = await supabase.from("crm_payment_provider_settings").select("config").eq("provider", "tmb").maybeSingle();
+  const cfgTmb = (stTmb as any)?.config || {};
   let produtoId = Number(body.produto_id) || 0;
-  if (!produtoId) {
-    const { data: st } = await supabase.from("crm_payment_provider_settings").select("config").eq("provider", "tmb").maybeSingle();
-    produtoId = Number((st as any)?.config?.produto_id) || 0;
-  }
+  if (!produtoId) produtoId = Number(cfgTmb.produto_id) || 0;
   if (!produtoId) return j({ ok: false, error: "escolha o produto da TMB em que a oferta será criada" });
 
   const installments = Math.max(1, Math.min(36, Math.round(Number(body.installments) || 12)));
@@ -85,7 +122,11 @@ Deno.serve(async (req) => {
   if (entryDue && !/^\d{4}-\d{2}-\d{2}$/.test(entryDue)) return j({ ok: false, error: "vencimento da entrada inválido (use AAAA-MM-DD)" });
   if (entryCents && entryCents >= amountCents) return j({ ok: false, error: "a entrada precisa ser menor que o valor do negócio" });
 
-  const description = String(body.description || `Boleto parcelado TMB — ${lead.name || "Cliente"}`).slice(0, 240);
+  const sim = simularTMB(amountCents, installments, cfgTmb);
+  const principalCents = sim.principal_cents;
+  if (principalCents < 100) return j({ ok: false, error: "valor principal ficou abaixo de R$ 1,00 depois dos juros" });
+  const notaJuros = sim.modo === "unv" ? ` · TMB financia R$ ${(principalCents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (fator ${sim.fator.toLocaleString("pt-BR", { maximumFractionDigits: 4 })}, juros por conta da UNV)` : "";
+  const description = (String(body.description || `Boleto parcelado TMB — ${lead.name || "Cliente"}`) + notaJuros).slice(0, 240);
 
   // 1) Registra o pagamento do lead (o id curto vai no título da oferta pra casar o webhook)
   const { data: row, error: insErr } = await supabase.from("crm_lead_payments").insert({
@@ -99,7 +140,7 @@ Deno.serve(async (req) => {
   const payload: Record<string, unknown> = {
     titulo,
     produto_id: produtoId,
-    valor_principal: amountCents / 100,
+    valor_principal: principalCents / 100,
     qtd_parcelas: String(installments),
   };
   if (entryCents > 0) payload.valor_boleto_entrada = entryCents / 100;
@@ -127,5 +168,5 @@ Deno.serve(async (req) => {
     provider_ref: code || null, url, updated_at: new Date().toISOString(),
   }).eq("id", row.id);
 
-  return j({ ok: true, id: row.id, url, amount_cents: amountCents, installments, titulo });
+  return j({ ok: true, id: row.id, url, amount_cents: amountCents, principal_cents: principalCents, fator: sim.fator, modo_juros: sim.modo, installments, titulo });
 });
