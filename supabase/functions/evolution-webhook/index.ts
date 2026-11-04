@@ -494,6 +494,12 @@ async function handleIncomingMessage(
   const pushName = fromMe ? undefined : (data.pushName || message.pushName);
   let contact = await getOrCreateContact(supabase, phone, pushName);
 
+  // Foto de perfil do WhatsApp (Fabrício, 04/11/2026): busca na Evolution quando o contato
+  // ainda não tem foto ou a última checagem passou de 7 dias (o link do WhatsApp expira em ~10).
+  if (!isGroup) {
+    await atualizarFotoDoContato(supabase, instanceApiUrl, instanceApiKey, instanceName, contact, phone);
+  }
+
   // Get or create conversation
   let conversation = await getOrCreateConversation(supabase, instanceId, contact.id);
   
@@ -971,6 +977,49 @@ async function fetchGroupSubject(
     }
   }
   return null;
+}
+
+const FOTO_REVALIDA_MS = 7 * 24 * 3600 * 1000;
+
+async function atualizarFotoDoContato(
+  supabase: any,
+  apiUrl: string | null,
+  apiKey: string | null,
+  instanceName: string,
+  contact: any,
+  phone: string,
+) {
+  try {
+    if (!apiUrl || !apiKey || !contact?.id) return;
+    const checada = contact.profile_picture_checked_at ? new Date(contact.profile_picture_checked_at).getTime() : 0;
+    if (contact.profile_picture_url && checada && Date.now() - checada < FOTO_REVALIDA_MS) return;
+    if (!contact.profile_picture_url && checada && Date.now() - checada < FOTO_REVALIDA_MS) return;
+    const base = String(apiUrl).replace(/\/+$/, '');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    let url: string | null = null;
+    try {
+      const r = await fetch(`${base}/chat/fetchProfilePictureUrl/${encodeURIComponent(instanceName)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: apiKey },
+        body: JSON.stringify({ number: phone }),
+        signal: controller.signal,
+      });
+      const txt = await r.text();
+      if (r.ok) {
+        try { url = JSON.parse(txt)?.profilePictureUrl || null; } catch { url = null; }
+      } else {
+        console.log(`[foto] ${phone}: HTTP ${r.status} ${txt.slice(0, 120)}`);
+      }
+    } finally { clearTimeout(timer); }
+    await supabase.from('crm_whatsapp_contacts')
+      .update({ profile_picture_url: url, profile_picture_checked_at: new Date().toISOString() })
+      .eq('id', contact.id);
+    contact.profile_picture_url = url;
+    console.log(`[foto] ${phone}: ${url ? 'foto atualizada' : 'sem foto'}`);
+  } catch (e) {
+    console.log('[foto] falhou:', (e as Error)?.message || e);
+  }
 }
 
 async function getOrCreateContact(supabase: any, phone: string, name?: string) {

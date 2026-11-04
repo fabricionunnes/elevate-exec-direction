@@ -1406,7 +1406,7 @@ export const CRMInboxPage = () => {
                   </span>
                 )}
                 <Avatar className="h-10 w-10 shrink-0" title={corDoFunil(etapa?.pipeline)?.rotulo}>
-                  <AvatarImage src={conv.contact?.profile_picture_url || undefined} />
+                  <AvatarImage src={conv.contact?.profile_picture_url || undefined} referrerPolicy="no-referrer" />
                   <AvatarFallback className="text-xs font-semibold" style={{ backgroundColor: corDoFunil(etapa?.pipeline)?.bg || senderColor(titleName || "?"), color: corDoFunil(etapa?.pipeline)?.texto || "#ffffff" }}>
                     {iniciais(titleName || "?")}
                   </AvatarFallback>
@@ -1517,7 +1517,7 @@ export const CRMInboxPage = () => {
                 </Button>
               )}
               <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
-                <AvatarImage src={selectedConversation.contact?.profile_picture_url || undefined} />
+                <AvatarImage src={selectedConversation.contact?.profile_picture_url || undefined} referrerPolicy="no-referrer" />
                 <AvatarFallback className="text-xs font-semibold" style={{ backgroundColor: corDoFunil(stageMap[String((selectedConversation.lead as any)?.stage_id || "")]?.pipeline)?.bg || senderColor(selectedConversation.lead?.name || selectedConversation.contact?.name || selectedConversation.contact?.phone || "?"), color: corDoFunil(stageMap[String((selectedConversation.lead as any)?.stage_id || "")]?.pipeline)?.texto || "#ffffff" }}>
                   {(((() => {
                     const rawName = (selectedConversation.contact?.name || "").trim();
