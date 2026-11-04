@@ -563,6 +563,38 @@ export function VisaoGeralTab({ staffId, lockedStaffId, onNavigate }: Props) {
             );
           })()}
 
+          {/* 0b. Metas compostas: quantidade de vendas, ticket médio e conversão (Fabrício, 04/11/2026:
+              "quero as metas de ticket, de conversão e de quantidade de vendas também, e o percentual
+              atingido de cada um"). Mesmas metas do CRM Comercial que valem pra comissão. */}
+          {(() => {
+            const M = dados?.meta || {};
+            const vendas = n(A.vendas), realizados = n(A.realizados), receita = n(A.receita);
+            const qtdProrata = n(M.qtd_prorata), metaTicket = n(M.ticket), metaConv = n(M.conversao) / 100;
+            const ticket = vendas > 0 ? receita / vendas : 0;
+            const conv = realizados > 0 ? vendas / realizados : 0;
+            const umDec = (v: number) => v.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+            const pctDec = (v: number) => `${(v * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
+            const dec = projecao.dias > 0 ? projecao.decorridos / projecao.dias : 1;
+            // cor: verde = meta batida; vermelho = abaixo de 70% do esperado até hoje (quantidade) ou da meta (taxas)
+            const corQtd = qtdProrata <= 0 ? CINZA : vendas >= qtdProrata ? VERDE : dec > 0 && vendas < qtdProrata * dec * 0.7 ? VERMELHO : NAVY;
+            const corTicket = metaTicket <= 0 || vendas === 0 ? CINZA : ticket >= metaTicket ? VERDE : ticket < metaTicket * 0.7 ? VERMELHO : NAVY;
+            const corConv = metaConv <= 0 || realizados === 0 ? CINZA : conv >= metaConv ? VERDE : conv < metaConv * 0.7 ? VERMELHO : NAVY;
+            if (qtdProrata <= 0 && metaTicket <= 0 && metaConv <= 0) return null;
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <KpiMeta label="Quantidade de vendas × meta" valor={qtdProrata > 0 ? pct(vendas, qtdProrata) : "sem meta"} cor={corQtd}
+                  sub={qtdProrata > 0 ? `${inteiro(vendas)} de ${umDec(qtdProrata)} vendas · meta do mês ${inteiro(M.qtd_mes_total)}, proporcional a ${projecao.dias} dia${projecao.dias === 1 ? "" : "s"}` : "nenhuma meta de Quantidade de Vendas cadastrada"}
+                  dica="Vendas do período sobre a soma das metas de Quantidade de Vendas do time, proporcional aos dias. Verde = meta batida; vermelho = abaixo de 70% do esperado até hoje" onClick={() => onNavigate?.("sales")} />
+                <KpiMeta label="Ticket médio × meta" valor={metaTicket > 0 ? (vendas > 0 ? pct(ticket, metaTicket) : "-") : "sem meta"} cor={corTicket}
+                  sub={metaTicket > 0 ? (vendas > 0 ? `${moeda(ticket)} de ${moeda(metaTicket)}` : `sem vendas no período · meta ${moeda(metaTicket)}`) : "nenhuma meta de Ticket Médio cadastrada"}
+                  dica="Receita dividida pelas vendas do período, sobre a meta de Ticket Médio (média entre os closers com meta). Verde = meta batida; vermelho = abaixo de 70%" onClick={() => onNavigate?.("sales")} />
+                <KpiMeta label="Conversão × meta" valor={metaConv > 0 ? (realizados > 0 ? pct(conv, metaConv) : "-") : "sem meta"} cor={corConv}
+                  sub={metaConv > 0 ? (realizados > 0 ? `${pctDec(conv)} de ${pctDec(metaConv)} · ${inteiro(vendas)} venda${vendas === 1 ? "" : "s"} em ${inteiro(realizados)} reuni${realizados === 1 ? "ão" : "ões"} realizada${realizados === 1 ? "" : "s"}` : `sem reuniões realizadas · meta ${pctDec(metaConv)}`) : "nenhuma meta de Conversão cadastrada"}
+                  dica="Vendas sobre reuniões realizadas (a mesma conta da comissão), contra a meta de Conversão (média entre os closers com meta). Verde = meta batida; vermelho = abaixo de 70%" onClick={() => onNavigate?.("sales")} />
+              </div>
+            );
+          })()}
+
           {/* 1. KPIs */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
             <KpiVar label="Receita total" valor={kpis.receita[0]} anterior={kpis.receita[1]} formato={moeda} dica="Vendas ganhas no período (crm_sales, fora de funis de evento), igual à aba Vendas" onClick={() => onNavigate?.("sales")} />
