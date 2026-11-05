@@ -9,9 +9,9 @@ DTSTAMP:20261105T160000Z
 DTSTART:20261110T230000Z
 DTEND:20261111T000000Z
 SUMMARY:Live Black UNV
-DESCRIPTION:Live da Black UNV com o Fabrício Nunnes: o projeto comercial completo da UNV num pacote só (diretor comercial\, treinamento\, processos e tráfego pago). O valor é revelado ao vivo.\n\nLink da live: https://meet.google.com/myn-tbqg-maf
-LOCATION:https://meet.google.com/myn-tbqg-maf
-URL:https://meet.google.com/myn-tbqg-maf
+DESCRIPTION:Live da Black UNV com o Fabrício Nunnes: o projeto comercial completo da UNV num pacote só (diretor comercial\, treinamento\, processos e tráfego pago). O valor é revelado ao vivo.\n\nLink da live: https://unvholdings.com.br/black/entrar
+LOCATION:https://unvholdings.com.br/black/entrar
+URL:https://unvholdings.com.br/black/entrar
 BEGIN:VALARM
 TRIGGER:-PT30M
 ACTION:DISPLAY

@@ -295,6 +295,42 @@ async function agendar(sb: SB, body: Record<string, unknown>) {
   return json({ ok: true, scheduled_at: ini.toISOString(), meeting_link: link, closer: closer.name });
 }
 
+// ── entrada na live ─────────────────────────────────────────────────────────
+// A live é 10/11/2026 às 20h (Brasília). Conta quem passa por /black/entrar entre 19h e 23h59.
+const LIVE_INI = Date.parse("2026-11-10T19:00:00-03:00");
+const LIVE_FIM = Date.parse("2026-11-10T23:59:59-03:00");
+const MEET_LIVE = "https://meet.google.com/myn-tbqg-maf";
+
+async function entrouLive(sb: SB, body: Record<string, unknown>) {
+  const k = chaveTel(body.telefone);
+  if (!k) return json({ error: "telefone_invalido" }, 400);
+  const agora = Date.now();
+  if (agora < LIVE_INI) return json({ ok: true, status: "antes", inicio: new Date(LIVE_INI).toISOString() });
+  if (agora > LIVE_FIM) return json({ ok: true, status: "depois" });
+
+  const tel = String(body.telefone).replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+  const nome = String(body.nome || "").trim().slice(0, 80);
+  const { data: cands } = await sb.from("crm_leads").select("id, phone, stage_id").eq("pipeline_id", PIPELINE)
+    .ilike("phone", `%${k.slice(-8)}`).order("created_at", { ascending: true }).limit(10);
+  let lead = (cands || []).find((l: any) => chaveTel(l.phone) === k);
+  if (!lead) {
+    const { data: novo } = await sb.from("crm_leads").insert({
+      name: nome || `Live Black ${tel}`, phone: tel, pipeline_id: PIPELINE, stage_id: ETAPA.entrouLive,
+      entered_pipeline_at: new Date().toISOString(), urgency: "medium",
+      notes: "Entrou na live da Black UNV (10/11) sem estar na base",
+    }).select("id, phone, stage_id").single();
+    lead = novo;
+  } else if ([ETAPA.base, ETAPA.disparo, ETAPA.entrouGrupo, ETAPA.saiuGrupo].includes(lead.stage_id)) {
+    // Só avança: quem já aplicou ou agendou não volta pra "Entrou na live"
+    await sb.from("crm_leads").update({ stage_id: ETAPA.entrouLive }).eq("id", lead.id);
+  }
+  await sb.from("black_live_presenca").upsert(
+    { chave: k, telefone: tel, nome: nome || null, lead_id: lead?.id || null, entrou_em: new Date().toISOString() },
+    { onConflict: "chave", ignoreDuplicates: true },
+  );
+  return json({ ok: true, status: "aberta", meet: MEET_LIVE });
+}
+
 // ── grupo ───────────────────────────────────────────────────────────────────
 async function grupoSync(sb: SB) {
   const { data: inst } = await sb.from("whatsapp_instances").select("api_url, api_key").eq("instance_name", INSTANCIA).maybeSingle();
@@ -407,6 +443,7 @@ Deno.serve(async (req) => {
       case "horarios": return await horarios(sb, body);
       case "agendar": return await agendar(sb, body);
       case "grupo-sync": return await grupoSync(sb);
+      case "entrou-live": return await entrouLive(sb, body);
       default: return json({ error: "acao_invalida" }, 400);
     }
   } catch (e) {
