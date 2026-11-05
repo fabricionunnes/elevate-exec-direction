@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Aplicação Black UNV | UNV Holdings</title>
+<meta name="description" content="Aplique pra uma das vagas da Black UNV: diretor comercial, treinamento, processos e tráfego pago num projeto só." />
+<meta name="robots" content="noindex,nofollow" />
+<meta name="theme-color" content="#08090D" />
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#08090D; --panel:rgba(255,255,255,.06); --line:rgba(255,255,255,.15);
+  --red:#E11D2A; --red-deep:#B5121D; --blue:#2F6BFF;
+  --muted:#A3ACBD; --soft:#6E7891; --ok:#18B26B;
+  --pad:20px;
+}
+html,body{margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg);color:#fff;min-height:100svh;display:flex;flex-direction:column;overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(800px 460px at 0% -10%, rgba(47,107,255,.28), transparent 60%),
+    radial-gradient(760px 460px at 100% 0%, rgba(225,29,42,.24), transparent 58%);
+}
+
+header{position:relative;z-index:2;padding:18px var(--pad) 0;display:flex;align-items:center;gap:12px}
+.mini{font-weight:900;font-style:italic;letter-spacing:-.02em;font-size:22px}
+.mini .u{color:var(--red)}
+.badge{margin-left:auto;font-size:11px;font-weight:800;letter-spacing:.12em;color:#FFB3B8;border:1px solid rgba(225,29,42,.45);border-radius:999px;padding:6px 11px;white-space:nowrap}
+
+.pwrap{position:relative;z-index:2;padding:16px var(--pad) 0;max-width:560px;width:100%;margin:0 auto}
+.pbar{height:7px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
+.pfill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,var(--blue),var(--red));transition:width .45s cubic-bezier(.22,1,.36,1)}
+.pmeta{display:flex;justify-content:space-between;margin-top:9px;font-size:12px;color:var(--muted);font-weight:600}
+.pmeta b{color:#fff}
+
+main{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;justify-content:center;padding:18px var(--pad) 26px;max-width:560px;width:100%;margin:0 auto}
+.step{display:none;animation:in .42s cubic-bezier(.22,1,.36,1) both}
+.step.on{display:block}
+@keyframes in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.step{animation:none}.pfill{transition:none}}
+
+.logo{font-weight:900;font-style:italic;letter-spacing:-.03em;line-height:.92;font-size:clamp(46px,14vw,70px);margin:0 0 16px}
+.logo .b{background:linear-gradient(180deg,#fff,#AEB6C6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.logo .u{color:var(--red);text-shadow:0 0 28px rgba(225,29,42,.45)}
+.kicker{font-size:12px;font-weight:800;letter-spacing:.14em;color:#FF6B74;text-transform:uppercase;margin:0 0 10px}
+h1,h2{font-weight:800;letter-spacing:-.02em;margin:0 0 8px;line-height:1.18}
+h1{font-size:clamp(25px,6.6vw,33px)}
+h2{font-size:clamp(21px,5.6vw,27px)}
+.sub{color:var(--muted);font-size:15px;line-height:1.55;margin:0 0 22px}
+.sub strong{color:#fff}
+.list{list-style:none;margin:0 0 22px;padding:0;display:grid;gap:8px}
+.list li{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--red);border-radius:12px;padding:12px 14px;font-size:14.5px;line-height:1.45;color:#DCE2EC}
+.list li b{color:#fff}
+
+label.f{display:block;margin-bottom:14px}
+input{
+  width:100%;font-size:16px;font-family:inherit;color:#fff;background:rgba(255,255,255,.06);
+  border:1.5px solid var(--line);border-radius:14px;padding:17px 16px;outline:none;transition:border-color .18s,background .18s;
+}
+input::placeholder{color:#677187}
+input:focus{border-color:var(--blue);background:rgba(255,255,255,.09)}
+input.bad{border-color:var(--red)}
+
+.opts{display:grid;gap:10px;margin-bottom:6px}
+.opt{
+  display:flex;align-items:center;gap:13px;width:100%;text-align:left;cursor:pointer;
+  background:var(--panel);border:1.5px solid var(--line);border-radius:14px;padding:16px;min-height:60px;
+  color:#fff;font-size:15.5px;font-weight:600;font-family:inherit;line-height:1.35;transition:transform .14s,border-color .18s,background .18s;
+}
+.opt:active{transform:scale(.982)}
+.opt .dot{flex:0 0 22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,.4);display:grid;place-items:center;transition:border-color .18s,background .18s}
+.opt .dot svg{width:12px;height:12px;opacity:0;transform:scale(.5);transition:opacity .18s,transform .18s}
+.opt.sel{border-color:var(--red);background:rgba(225,29,42,.16)}
+.opt.sel .dot{background:var(--red);border-color:var(--red)}
+.opt.sel .dot svg{opacity:1;transform:none}
+@media (hover:hover){.opt:hover{border-color:rgba(255,255,255,.4)}}
+
+.btn{
+  display:block;width:100%;border:0;border-radius:14px;cursor:pointer;font-family:inherit;text-align:center;text-decoration:none;line-height:1.3;
+  font-size:17px;font-weight:800;padding:18px;min-height:58px;color:#fff;
+  background:linear-gradient(180deg,var(--red),var(--red-deep));box-shadow:0 10px 26px rgba(225,29,42,.32);
+  transition:transform .14s,opacity .18s;margin-top:6px;
+}
+.btn:active{transform:translateY(1px) scale(.995)}
+.btn.wa{background:linear-gradient(180deg,#2ACB5C,#18A94A);box-shadow:0 10px 24px rgba(24,169,74,.30)}
+.back{background:none;border:0;color:#8A94AA;font-family:inherit;font-size:14px;font-weight:600;padding:14px 4px;cursor:pointer}
+.err{color:#FF9BA1;font-size:13.5px;font-weight:600;margin:10px 0 0;min-height:18px}
+.hint{color:var(--soft);font-size:12.5px;margin:12px 0 0;text-align:center;line-height:1.5}
+
+.card{background:#fff;color:#0E1726;border-radius:18px;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+.card h3{margin:0 0 6px;font-size:19px;color:#0D2B5E;font-weight:800}
+.card p{margin:0;color:#41506B;font-size:14.5px;line-height:1.58}
+.next{margin:16px 0 0;padding:15px;border-radius:13px;background:#F3F6FC;border-left:4px solid var(--red);font-size:14.5px;line-height:1.55;color:#41506B}
+.next b{color:#0D2B5E}
+.rows{list-style:none;margin:16px 0 0;padding:0;border-top:1px solid #E3E8F0}
+.rows li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid #E3E8F0;font-size:14px}
+.rows span{color:#63728C;flex:0 0 108px;font-weight:600}
+.rows b{color:#0E1726;font-weight:700;word-break:break-word}
+.chk{width:56px;height:56px;border-radius:50%;background:rgba(24,178,107,.16);display:grid;place-items:center;margin:0 auto 16px}
+.chk svg{width:28px;height:28px}
+
+.ftr{position:relative;z-index:2;text-align:center;padding:0 0 18px}
+.ftr small{color:var(--soft);font-size:11.5px}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="mini">BLACK <span class="u">UNV</span></span>
+  <span class="badge">APLICAÇÃO · 1 MIN</span>
+</header>
+
+<div class="pwrap" id="pwrap" hidden>
+  <div class="pbar"><div class="pfill" id="pfill"></div></div>
+  <div class="pmeta"><span id="pstep">Pergunta 1 de 8</span><span><b id="ppct">0%</b> concluído</span></div>
+</div>
+
+<main>
+<form id="lf" autocomplete="on" novalidate style="display:contents">
+
+  <!-- 0: abertura -->
+  <section class="step on" id="s0">
+    <div class="logo"><span class="b">BLACK</span> <span class="u">UNV</span></div>
+    <h1>Aplique pra uma das vagas da Black UNV.</h1>
+    <p class="sub">O projeto comercial completo da UNV num pacote só. As vagas são limitadas porque a gente acompanha cada cliente de perto, então <strong>cada aplicação é analisada</strong> antes de confirmar.</p>
+    <ul class="list">
+      <li><b>Diretor comercial</b> acompanhando a rotina do seu time</li>
+      <li><b>Treinamento comercial</b> dos seus vendedores</li>
+      <li><b>Processos comerciais</b> criados e implementados</li>
+      <li><b>Tráfego pago</b> pra gerar demanda qualificada</li>
+    </ul>
+    <button type="button" class="btn" id="go">Fazer minha aplicação</button>
+    <p class="hint">São 8 perguntas rápidas. Leva menos de 1 minuto.</p>
+  </section>
+
+  <!-- 1: empresário (triagem) -->
+  <section class="step" id="s1">
+    <p class="kicker">Pergunta 1 de 8</p>
+    <h2>Você é dono ou sócio da empresa?</h2>
+    <p class="sub">A Black UNV mexe em meta, time e investimento. Só faz sentido pra quem decide isso.</p>
+    <div class="opts" id="optEmp"></div>
+    <button type="button" class="back" data-back="0">← Voltar</button>
+  </section>
+
+  <!-- 2: nome -->
+  <section class="step" id="s2">
+    <p class="kicker">Pergunta 2 de 8</p>
+    <h2>Como você se chama?</h2>
+    <p class="sub">Pra eu te chamar pelo nome quando for confirmar sua vaga.</p>
+    <label class="f"><input id="nome" type="text" name="name" autocomplete="name" autocapitalize="words" placeholder="Seu nome completo" maxlength="80" enterkeyhint="next" /></label>
+    <button type="button" class="btn" data-next="2">Continuar</button>
+    <p class="err" id="e2"></p>
+    <button type="button" class="back" data-back="1">← Voltar</button>
+  </section>
+
+  <!-- 3: whatsapp -->
+  <section class="step" id="s3">
+    <p class="kicker">Pergunta 3 de 8</p>
+    <h2>Qual seu WhatsApp?</h2>
+    <p class="sub">É por ali que a gente fala com você sobre a vaga.</p>
+    <label class="f"><input id="tel" type="tel" name="tel" inputmode="numeric" autocomplete="tel" placeholder="(31) 99999-9999" maxlength="24" enterkeyhint="next" /></label>
+    <button type="button" class="btn" data-next="3">Continuar</button>
+    <p class="err" id="e3"></p>
+    <button type="button" class="back" data-back="2">← Voltar</button>
+  </section>
+
+  <!-- 4: email -->
+  <section class="step" id="s4">
+    <p class="kicker">Pergunta 4 de 8</p>
+    <h2>E seu melhor e-mail?</h2>
+    <p class="sub">Só pra registrar no sistema. Nada de spam.</p>
+    <label class="f"><input id="email" type="email" name="email" inputmode="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="voce@suaempresa.com.br" maxlength="120" enterkeyhint="next" /></label>
+    <button type="button" class="btn" data-next="4">Continuar</button>
+    <p class="err" id="e4"></p>
+    <button type="button" class="back" data-back="3">← Voltar</button>
+  </section>
+
+  <!-- 5: empresa -->
+  <section class="step" id="s5">
+    <p class="kicker">Pergunta 5 de 8</p>
+    <h2>Qual o nome da sua empresa?</h2>
+    <p class="sub">Se tiver Instagram, pode colocar o @ no lugar. A gente dá uma olhada antes de falar com você.</p>
+    <label class="f"><input id="empresa" type="text" name="organization" autocomplete="organization" placeholder="Nome ou @ da empresa" maxlength="80" enterkeyhint="next" /></label>
+    <button type="button" class="btn" data-next="5">Continuar</button>
+    <p class="err" id="e5"></p>
+    <button type="button" class="back" data-back="4">← Voltar</button>
+  </section>
+
+  <!-- 6: vendedores -->
+  <section class="step" id="s6">
+    <p class="kicker">Pergunta 6 de 8</p>
+    <h2>Quantas pessoas vendem na sua empresa hoje?</h2>
+    <p class="sub">Contando vendedores, SDRs e closers. Se é só você, marca a primeira.</p>
+    <div class="opts" id="optVend"></div>
+    <button type="button" class="back" data-back="5">← Voltar</button>
+  </section>
+
+  <!-- 7: faturamento -->
+  <section class="step" id="s7">
+    <p class="kicker">Pergunta 7 de 8</p>
+    <h2>Quanto sua empresa fatura por mês?</h2>
+    <p class="sub">É o que diz se o projeto faz sentido pro seu momento.</p>
+    <div class="opts" id="optFat"></div>
+    <button type="button" class="back" data-back="6">← Voltar</button>
+  </section>
+
+  <!-- 8: dor -->
+  <section class="step" id="s8">
+    <p class="kicker">Última pergunta</p>
+    <h2>O que mais trava suas vendas hoje?</h2>
+    <p class="sub">Escolhe a que mais te incomoda.</p>
+    <div class="opts" id="optDor"></div>
+    <button type="button" class="back" data-back="7">← Voltar</button>
+  </section>
+
+  <!-- 9: enviando -->
+  <section class="step" id="s9">
+    <h2>Enviando sua aplicação…</h2>
+    <p class="sub">Um segundo.</p>
+  </section>
+
+  <!-- 10: aplicação recebida -->
+  <section class="step" id="s10">
+    <div class="card">
+      <div class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="#18B26B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+      <h3 id="rTitle">Aplicação recebida</h3>
+      <p>Sua aplicação pra Black UNV já está com o nosso time.</p>
+      <div class="next"><b>Próximo passo:</b> a gente analisa e te chama no WhatsApp pra confirmar a vaga. Se quiser adiantar, manda uma mensagem agora.</div>
+      <a class="btn wa" id="waBtn" href="#" rel="noopener" style="margin-top:16px">Falar com a UNV no WhatsApp</a>
+      <ul class="rows" id="rRows"></ul>
+    </div>
+  </section>
+
+  <!-- 11: não é dono. Nada vai pro CRM. -->
+  <section class="step" id="s11">
+    <div class="card">
+      <h3>A Black UNV é pra dono de empresa.</h3>
+      <p>O projeto mexe em meta, time comercial e investimento, decisões que só quem toca o negócio consegue tomar.</p>
+      <p style="margin-top:10px">Se você acha que isso serve pra empresa onde trabalha, manda esse link pro dono.</p>
+      <a class="btn" href="https://instagram.com/unvholdings" target="_blank" rel="noopener" style="margin-top:18px">Acompanhar a UNV no Instagram</a>
+    </div>
+  </section>
+
+  <!-- 12: fora do perfil (já foi pro CRM como Perdido) -->
+  <section class="step" id="s12">
+    <div class="card">
+      <h3 id="fTitle">Obrigado pela aplicação.</h3>
+      <p>Pelo que você respondeu, a Black UNV ainda não é o melhor passo pro seu momento. Ela foi desenhada pra empresas com time comercial e faturamento acima de R$ 50 mil por mês, e eu não vou te vender algo que não vai dar o retorno que você espera.</p>
+      <p style="margin-top:10px">Continua acompanhando o conteúdo da UNV. Quando a empresa chegar lá, a gente conversa.</p>
+      <a class="btn" href="https://instagram.com/unvholdings" target="_blank" rel="noopener" style="margin-top:18px">Acompanhar a UNV no Instagram</a>
+    </div>
+  </section>
+
+</form>
+</main>
+
+<div class="ftr"><small>UNV Holdings · Universidade Nacional de Vendas</small></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ── config ── */
+var FORM_TOKEN = "9e34ab77662a4b1b1905dc428c5961bb";              // funil Black UNV
+var SUPA = "https://xrncvhzxjmddqluxoosu.supabase.co";
+var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+var PIXEL = "247392077001023";
+var WA_NUMBER = "553194622556";                                    // instância Fabrício Nunnes
+
+var EMP = [
+  {v:"Sim, a empresa é minha", s:"dono"},
+  {v:"Sou sócio da empresa",   s:"socio"},
+  {v:"Não",                    s:"nao"}
+];
+var VEND = [
+  {v:"Só eu vendo",           s:"0"},        // fora do perfil
+  {v:"1 a 2 pessoas",         s:"1a2"},
+  {v:"3 a 5 pessoas",         s:"3a5"},
+  {v:"6 a 10 pessoas",        s:"6a10"},
+  {v:"Mais de 10 pessoas",    s:"10+"}
+];
+var FAT = [
+  {v:"Até R$ 50 mil por mês",          s:"ate50k"},   // fora do perfil
+  {v:"Entre R$ 50 mil e R$ 100 mil",   s:"50a100k"},
+  {v:"Entre R$ 100 mil e R$ 300 mil",  s:"100a300k"},
+  {v:"Entre R$ 300 mil e R$ 1 milhão", s:"300ka1m"},
+  {v:"Acima de R$ 1 milhão por mês",   s:"1m+"}
+];
+var DOR = [
+  "O time não bate meta sem eu entrar no meio",
+  "Falta lead chegando pro time trabalhar",
+  "O lead chega, mas o time não converte",
+  "Não tenho processo comercial definido",
+  "Não sei medir o que acontece no comercial",
+  "Contrato vendedor e ele não performa"
+];
+
+/* ── util ── */
+function $(id){ return document.getElementById(id); }
+function qp(n){ try { return new URLSearchParams(location.search).get(n) || undefined; } catch(e){ return undefined; } }
+function buzz(ms){ try { if(navigator.vibrate) navigator.vibrate(ms||12); } catch(e){} }
+function fb(){ try { fbq.apply(null, arguments); } catch(e){} }
+var MINUS = ["de","da","do","das","dos","e"];
+function capitalize(s){
+  return s.toLowerCase().split(" ").map(function(w,i){
+    if(i > 0 && MINUS.indexOf(w) !== -1) return w;
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }).join(" ");
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+
+/* ── Meta Pixel ── */
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");
+fb("set", "autoConfig", false, PIXEL);
+fb("init", PIXEL);
+fb("track","PageView");
+
+/* ── estado ── */
+var A = { nome:"", tel:"", email:"", empresa:"", emp:null, vend:null, fat:null, dor:"" };
+var cur = 0, maxSeen = 0;
+var TOTAL = 8;
+var NOMES = { 0:"abertura", 1:"empresario", 2:"nome", 3:"whatsapp", 4:"email", 5:"empresa",
+              6:"vendedores", 7:"faturamento", 8:"dor", 9:"enviando", 10:"concluido",
+              11:"saida_perfil", 12:"saida_icp" };
+function numPergunta(i){ return (i >= 1 && i <= 8) ? i : 0; }
+
+function paint(){
+  var q = numPergunta(cur);
+  var pct = Math.round(Math.max(0, q - 1) / TOTAL * 100);
+  $("pfill").style.width = pct + "%";
+  $("ppct").textContent = pct + "%";
+  $("pstep").textContent = q ? ("Pergunta " + q + " de " + TOTAL) : "";
+  $("pwrap").hidden = !q;
+}
+
+/* ── rastreio de onde a pessoa para (CRM > Dashboard > Formulários). Falha calada. ── */
+var TRK_FORM = "black";
+var TRK_SID = (function(){
+  var k = "frm_sid_" + TRK_FORM, v = null;
+  try { v = sessionStorage.getItem(k); } catch(e){}
+  if(!v){
+    v = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+      : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c){ var r = Math.random()*16|0; return (c === "x" ? r : (r&3|8)).toString(16); });
+    try { sessionStorage.setItem(k, v); } catch(e){}
+  }
+  return v;
+})();
+function trk(o){
+  try {
+    var r = {};
+    ["emp","vend","fat"].forEach(function(k){ if(A[k]) r[k] = A[k].s; });
+    var body = {
+      p_session: TRK_SID, p_form: TRK_FORM,
+      p_step: (o.step === undefined ? null : o.step), p_step_name: o.name || null,
+      p_question: (o.q === undefined ? null : o.q), p_total: TOTAL,
+      p_status: o.status || null, p_lead: o.lead || null,
+      p_meta: { respostas: r }
+    };
+    // nome e WhatsApp só depois que a pessoa confirmou o WhatsApp (recuperação de abandono)
+    if(String(A.tel).length >= 10) body.p_meta.contato = { nome: A.nome || "", whatsapp: A.tel };
+    if(o.inicio){
+      body.p_meta.utm_source = qp("utm_source"); body.p_meta.utm_medium = qp("utm_medium");
+      body.p_meta.utm_campaign = qp("utm_campaign"); body.p_meta.utm_content = qp("utm_content");
+      body.p_meta.referrer = (document.referrer || "").slice(0, 300);
+      body.p_meta.device = window.matchMedia("(max-width:767px)").matches ? "celular" : "computador";
+    }
+    fetch(SUPA + "/rest/v1/rpc/form_track", {
+      method: "POST", keepalive: true,
+      headers: { "Content-Type":"application/json", "Authorization":"Bearer " + ANON, "apikey": ANON },
+      body: JSON.stringify(body)
+    }).catch(function(){});
+  } catch(e){}
+}
+
+function show(i){
+  var el = document.querySelector(".step.on");
+  if(el) el.classList.remove("on");
+  $("s" + i).classList.add("on");
+  cur = i;
+  paint();
+  var q = numPergunta(i);
+  if(q > maxSeen && q > 1){
+    maxSeen = q;
+    fb("trackCustom","FormStep",{ step:q, step_name:NOMES[i], form:"black-unv" });
+  }
+  var inp = $("s" + i).querySelector("input");
+  if(inp && window.matchMedia("(min-width:768px)").matches) setTimeout(function(){ inp.focus(); }, 260);
+  trk({ step:i, name:NOMES[i], q:q, status: i === 11 ? "cortado_perfil" : null });
+  try { window.scrollTo(0,0); } catch(e){}
+}
+
+function err(i, msg){
+  var e = $("e" + i); if(e) e.textContent = msg || "";
+  var inp = $("s" + i).querySelector("input");
+  if(inp){ inp.classList.toggle("bad", !!msg); if(msg) inp.focus(); }
+  if(msg) buzz(40);
+}
+
+/* ── telefone (tolera DDI colado pelo autofill) ── */
+function maskPhone(v){
+  var raw = String(v || "").replace(/\D/g,"");
+  var d = raw.replace(/^0+/,"");
+  if(d.length > 11 && d.slice(0,2) === "55") d = d.slice(2);
+  else if(/^0/.test(raw) && d.length > 11) d = d.slice(-11);
+  d = d.slice(0,11);
+  if(d.length <= 2) return d.length ? "(" + d : d;
+  if(d.length <= 6) return "(" + d.slice(0,2) + ") " + d.slice(2);
+  if(d.length <= 10) return "(" + d.slice(0,2) + ") " + d.slice(2,6) + "-" + d.slice(6);
+  return "(" + d.slice(0,2) + ") " + d.slice(2,7) + "-" + d.slice(7);
+}
+["input","change","blur"].forEach(function(ev){
+  $("tel").addEventListener(ev, function(){ var m = maskPhone(this.value); if(m !== this.value) this.value = m; });
+});
+$("lf").addEventListener("submit", function(ev){ ev.preventDefault(); });
+
+/* ── pré-preenchimento: link (?nome= ?tel= ?email=) ou o que a pessoa já digitou aqui ou na confirmação da live ── */
+var LS = "black_lead";
+function lsGet(){ try { return JSON.parse(localStorage.getItem(LS) || "{}"); } catch(e){ return {}; } }
+function lsSet(k, v){ try { var o = lsGet(); o[k] = v; localStorage.setItem(LS, JSON.stringify(o)); } catch(e){} }
+(function(){
+  var s = lsGet();
+  var nome = qp("nome") || s.nome, tel = qp("tel") || qp("whatsapp") || s.tel, mail = qp("email") || s.email;
+  if(nome) $("nome").value = capitalize(String(nome).trim().replace(/\s+/g," "));
+  if(tel && String(tel).replace(/\D/g,"").length >= 10) $("tel").value = maskPhone(tel);
+  if(mail && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(mail).trim())) $("email").value = String(mail).trim();
+  if(s.empresa) $("empresa").value = s.empresa;
+  try {
+    var u = new URL(location.href), mexeu = false;
+    ["nome","tel","whatsapp","email"].forEach(function(k){ if(u.searchParams.has(k)){ u.searchParams.delete(k); mexeu = true; } });
+    if(mexeu){ var q = u.searchParams.toString(); history.replaceState(null, "", u.pathname + (q ? "?" + q : "")); }
+  } catch(e){}
+})();
+
+/* ── cards de opção ── */
+function buildOpts(box, items, onPick){
+  items.forEach(function(it){
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "opt";
+    b.innerHTML = '<span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><span>' + (typeof it === "string" ? it : it.v) + '</span>';
+    b.addEventListener("click", function(){
+      Array.prototype.forEach.call(box.children, function(c){ c.classList.remove("sel"); });
+      b.classList.add("sel"); buzz(14);
+      setTimeout(function(){ onPick(it); }, 190);
+    });
+    box.appendChild(b);
+  });
+}
+
+buildOpts($("optEmp"), EMP, function(it){
+  A.emp = it;
+  if(it.s === "nao"){ show(11); return; }     // fim de linha: nada vai pro CRM nem pro pixel
+  fb("trackCustom","FormStart",{ form:"black-unv" });
+  show(2);
+});
+buildOpts($("optVend"), VEND, function(it){ A.vend = it; show(7); });
+buildOpts($("optFat"),  FAT,  function(it){ A.fat = it; show(8); });
+buildOpts($("optDor"),  DOR,  function(it){ A.dor = it; finish(); });
+
+/* ── navegação ── */
+$("go").addEventListener("click", function(){ show(1); });
+
+function validate(i){
+  if(i === 2){
+    var v = $("nome").value.trim().replace(/\s+/g," ");
+    if(v.length < 2){ err(2,"Escreve seu nome pra eu te chamar direito."); return false; }
+    A.nome = capitalize(v); lsSet("nome", A.nome); err(2,""); return true;
+  }
+  if(i === 3){
+    var d = $("tel").value.replace(/\D/g,"");
+    if(d.length < 10){ err(3,"Coloca seu WhatsApp com DDD."); return false; }
+    A.tel = d; lsSet("tel", d); err(3,""); return true;
+  }
+  if(i === 4){
+    var e = $("email").value.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)){ err(4,"Confere o e-mail, parece que faltou algo."); return false; }
+    A.email = e; lsSet("email", e); err(4,""); return true;
+  }
+  if(i === 5){
+    var c = $("empresa").value.trim();
+    if(c.length < 2){ err(5,"Coloca o nome ou o @ da empresa."); return false; }
+    A.empresa = c; lsSet("empresa", c); err(5,""); return true;
+  }
+  return true;
+}
+
+Array.prototype.forEach.call(document.querySelectorAll("[data-next]"), function(b){
+  b.addEventListener("click", function(){
+    var i = +b.getAttribute("data-next");
+    if(validate(i)) show(i + 1);
+  });
+});
+Array.prototype.forEach.call(document.querySelectorAll("[data-back]"), function(b){
+  b.addEventListener("click", function(){ show(+b.getAttribute("data-back")); });
+});
+Array.prototype.forEach.call(document.querySelectorAll("input"), function(inp){
+  inp.addEventListener("keydown", function(ev){
+    if(ev.key === "Enter"){ ev.preventDefault(); var b = $("s" + cur).querySelector("[data-next]"); if(b) b.click(); }
+  });
+});
+
+/* ── envio ── */
+function motivoDesq(){
+  var m = [];
+  if(A.fat && A.fat.s === "ate50k") m.push("Faturamento até R$ 50 mil por mês");
+  if(A.vend && A.vend.s === "0") m.push("Sem vendedor (só o dono vende)");
+  return m.length ? m.join(" e ") : null;
+}
+
+function waText(){
+  var t = "Oi, Fabrício! Acabei de fazer minha aplicação pra Black UNV.\n\n";
+  t += "Nome: " + A.nome + "\n";
+  t += "Empresa: " + A.empresa + "\n";
+  t += "Pessoas vendendo: " + A.vend.v + "\n";
+  t += "Faturamento: " + A.fat.v + "\n";
+  t += "O que mais trava: " + A.dor + "\n";
+  t += "\nQuero garantir minha vaga.";
+  return t;
+}
+
+function render(){
+  $("rTitle").textContent = A.nome.split(" ")[0] + ", sua aplicação foi recebida.";
+  var rows = [["Nome", A.nome], ["WhatsApp", $("tel").value], ["Empresa", A.empresa],
+              ["Time", A.vend.v], ["Faturamento", A.fat.v], ["Maior trava", A.dor]];
+  $("rRows").innerHTML = rows.map(function(r){ return "<li><span>" + r[0] + "</span><b>" + esc(r[1]) + "</b></li>"; }).join("");
+  var wa = $("waBtn");
+  wa.href = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(waText());
+  wa.addEventListener("click", function(){ fb("trackCustom","WhatsAppClick",{ form:"black-unv" }); });
+  show(10);
+}
+
+var sending = false;
+function finish(){
+  if(sending) return;
+  sending = true;
+  show(9);
+  var desq = motivoDesq();
+  var payload = {
+    form_token: FORM_TOKEN,
+    desqualificado: desq || undefined,
+    nome: A.nome,
+    telefone: A.tel,
+    email: A.email,
+    empresa: A.empresa,
+    instagram: /^@/.test(A.empresa) ? A.empresa.replace(/^@+/,"") : undefined,
+    desafio: "Pessoas vendendo: " + A.vend.v + " | Faturamento: " + A.fat.v + " | Maior trava: " + A.dor,
+    utm_source: qp("utm_source"), utm_medium: qp("utm_medium"),
+    utm_campaign: qp("utm_campaign"), utm_content: qp("utm_content"), utm_term: qp("utm_term"),
+    fbclid: qp("fbclid")
+  };
+
+  fetch(SUPA + "/functions/v1/submit-pipeline-form", {
+    method: "POST",
+    headers: { "Content-Type":"application/json", "Authorization":"Bearer " + ANON, "apikey": ANON },
+    body: JSON.stringify(payload)
+  }).then(function(r){
+    return r.json().then(function(d){ return { ok:r.ok, data:d }; });
+  }).then(function(res){
+    if(!res.ok) throw new Error((res.data && res.data.error) || "Erro ao enviar");
+    var leadId = res.data && res.data.lead_id;
+    trk({ step: desq ? 12 : 10, name: desq ? "saida_icp" : "concluido", q:0, status: desq ? "desqualificado" : "enviou", lead: leadId });
+    if(desq){
+      fb("trackCustom","LeadDesqualificado",{ motivo: desq, form:"black-unv" });
+      $("fTitle").textContent = A.nome.split(" ")[0] + ", obrigado pela aplicação.";
+      show(12);
+    } else {
+      // event_id casa com o que a trigger do banco manda pela CAPI: o Meta conta um Lead só
+      fb("track","Lead", { content_name:"Aplicação Black UNV", content_category: A.fat.s, value:1, currency:"BRL" },
+         leadId ? { eventID: leadId + ":Lead" } : undefined);
+      render();
+    }
+  }).catch(function(e){
+    sending = false;
+    // Não perde o lead: segue pro WhatsApp do mesmo jeito.
+    fb("trackCustom","FormError",{ msg: String(e && e.message || e).slice(0,100) });
+    trk({ status:"erro_envio" });
+    if(desq) show(12); else render();
+  });
+}
+
+paint();
+trk({ step:0, name:"abertura", q:0, inicio:true });
+})();
+</script>
+</body>
+</html>
