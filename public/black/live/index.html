@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Live Black UNV | Terça, 10/11, 20h</title>
+<meta name="description" content="Confirme sua presença na live da Black UNV e salve na sua agenda. Terça, 10 de novembro, às 20h." />
+<meta name="robots" content="noindex,nofollow" />
+<meta name="theme-color" content="#08090D" />
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#08090D; --panel:rgba(255,255,255,.05); --line:rgba(255,255,255,.14);
+  --red:#E11D2A; --red-deep:#B5121D; --blue:#2F6BFF;
+  --ink:#fff; --muted:#A3ACBD; --soft:#6E7891; --ok:#18B26B;
+  --pad:20px;
+}
+html,body{margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg);color:var(--ink);min-height:100svh;overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(800px 460px at 0% -10%, rgba(47,107,255,.30), transparent 60%),
+    radial-gradient(760px 460px at 100% 0%, rgba(225,29,42,.26), transparent 58%);
+}
+.wrap{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:22px var(--pad) 30px}
+
+.brand{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:26px}
+.word{font-weight:900;font-size:13px;letter-spacing:.32em;color:#C9D1E0}
+.pill{font-size:11px;font-weight:800;letter-spacing:.12em;color:#FFB3B8;border:1px solid rgba(225,29,42,.45);border-radius:999px;padding:6px 11px;white-space:nowrap}
+
+.logo{font-weight:900;font-style:italic;letter-spacing:-.03em;line-height:.92;font-size:clamp(46px,14vw,72px);margin:0 0 14px}
+.logo .b{background:linear-gradient(180deg,#fff,#AEB6C6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.logo .u{color:var(--red);text-shadow:0 0 28px rgba(225,29,42,.45)}
+
+h1{font-size:clamp(22px,6vw,28px);font-weight:800;letter-spacing:-.02em;line-height:1.2;margin:0 0 10px}
+.sub{color:var(--muted);font-size:15.5px;line-height:1.55;margin:0 0 20px}
+.sub strong{color:#fff}
+
+.when{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0 0 22px}
+.when div{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 10px;text-align:center}
+.when small{display:block;color:var(--soft);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+.when b{font-size:16px}
+
+.list{list-style:none;margin:0 0 24px;padding:0;display:grid;gap:8px}
+.list li{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--red);border-radius:12px;padding:13px 14px;font-size:14.5px;line-height:1.45;color:#DCE2EC}
+.list li b{color:#fff}
+
+.card{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:18px;padding:20px}
+.card h2{font-size:19px;margin:0 0 4px;font-weight:800}
+.card p.k{color:var(--muted);font-size:14px;margin:0 0 16px;line-height:1.5}
+label{display:block;margin-bottom:12px}
+label span{display:block;font-size:12.5px;font-weight:700;color:#C9D1E0;margin:0 0 6px}
+input{
+  width:100%;font-size:16px;font-family:inherit;color:#fff;background:rgba(0,0,0,.28);
+  border:1.5px solid var(--line);border-radius:12px;padding:15px 14px;outline:none;transition:border-color .18s;
+}
+input::placeholder{color:#677187}
+input:focus{border-color:var(--blue)}
+input.bad{border-color:var(--red)}
+.err{color:#FF9BA1;font-size:13.5px;font-weight:600;margin:4px 0 0;min-height:18px}
+
+.btn{
+  display:block;width:100%;border:0;border-radius:14px;cursor:pointer;font-family:inherit;text-align:center;text-decoration:none;
+  font-size:16.5px;font-weight:800;padding:17px;min-height:56px;line-height:1.3;color:#fff;
+  background:linear-gradient(180deg,var(--red),var(--red-deep));box-shadow:0 10px 26px rgba(225,29,42,.32);
+  transition:transform .14s,opacity .18s;margin-top:8px;
+}
+.btn:active{transform:translateY(1px) scale(.995)}
+.btn:disabled{opacity:.6;cursor:default}
+.btn.ghost{background:rgba(255,255,255,.08);box-shadow:none;border:1.5px solid var(--line)}
+.btn.blue{background:linear-gradient(180deg,#3B78FF,#1F54D6);box-shadow:0 10px 26px rgba(47,107,255,.30)}
+.hint{color:var(--soft);font-size:12.5px;text-align:center;margin:12px 0 0;line-height:1.5}
+
+#done{display:none}
+.ok{width:54px;height:54px;border-radius:50%;background:rgba(24,178,107,.16);display:grid;place-items:center;margin:0 0 14px}
+.ok svg{width:26px;height:26px}
+.meet{margin:14px 0 4px;padding:13px 14px;border-radius:12px;background:rgba(0,0,0,.3);border:1px dashed var(--line);font-size:14px;color:#DCE2EC;word-break:break-all}
+.meet b{color:#fff}
+
+.ftr{text-align:center;color:var(--soft);font-size:11.5px;margin-top:26px}
+@media (prefers-reduced-motion:no-preference){.card,#done{animation:in .4s cubic-bezier(.22,1,.36,1) both}}
+@keyframes in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand"><span class="word">UNV HOLDINGS</span><span class="pill">LIVE · GOOGLE MEET</span></div>
+
+  <div class="logo"><span class="b">BLACK</span> <span class="u">UNV</span></div>
+
+  <section id="ask">
+    <h1>Confirme sua presença na live e salve na sua agenda.</h1>
+    <p class="sub">Na live eu abro a condição da Black UNV: o projeto comercial completo da UNV num pacote só. <strong>O valor só é revelado ao vivo.</strong></p>
+
+    <div class="when">
+      <div><small>Dia</small><b>Ter, 10/11</b></div>
+      <div><small>Horário</small><b>20h</b></div>
+      <div><small>Duração</small><b>1 hora</b></div>
+    </div>
+
+    <form class="card" id="cf" autocomplete="on" novalidate>
+      <h2>Confirmar presença</h2>
+      <p class="k">Depois de confirmar, é um toque pra salvar a live no Google Agenda ou no calendário do iPhone, já com o link dentro.</p>
+      <label><span>Seu nome</span><input id="nome" type="text" name="name" autocomplete="name" autocapitalize="words" placeholder="Seu nome completo" maxlength="80" /></label>
+      <label><span>Seu WhatsApp</span><input id="tel" type="tel" name="tel" inputmode="numeric" autocomplete="tel" placeholder="(31) 99999-9999" maxlength="24" /></label>
+      <p class="err" id="err"></p>
+      <button type="submit" class="btn" id="go">Confirmar minha presença</button>
+      <p class="hint">Seus dados ficam só com a UNV. Nada de lista de spam.</p>
+    </form>
+
+    <ul class="list" style="margin-top:22px">
+      <li><span><b>Diretor comercial</b> acompanhando a rotina do seu time</span></li>
+      <li><span><b>Treinamento comercial</b> dos seus vendedores</span></li>
+      <li><span><b>Processos comerciais</b> criados e implementados</span></li>
+      <li><span><b>Tráfego pago</b> pra gerar demanda qualificada</span></li>
+    </ul>
+
+  </section>
+
+  <section id="done" class="card">
+    <div class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="#18B26B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+    <h2 id="dTitle">Presença confirmada.</h2>
+    <p class="k">Agora salva na sua agenda pra não esquecer. O link da live já vai dentro do evento.</p>
+    <a class="btn blue" id="gcal" href="#" target="_blank" rel="noopener">Salvar no Google Agenda</a>
+    <a class="btn ghost" id="ics" href="/black/live/live-black-unv.ics">Salvar no iPhone ou Outlook</a>
+    <div class="meet">Link da live: <b>meet.google.com/myn-tbqg-maf</b><br>Terça, 10/11, às 20h (horário de Brasília)</div>
+    <p class="hint">No dia eu também mando o link no grupo da Black UNV.</p>
+  </section>
+
+  <p class="ftr">UNV Holdings · Universidade Nacional de Vendas</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ── config ── */
+var SUPA = "https://xrncvhzxjmddqluxoosu.supabase.co";
+var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+var PIXEL = "247392077001023";
+var MEET = "https://meet.google.com/myn-tbqg-maf";
+// 10/11/2026 20h em Brasília (UTC-3, sem horário de verão) = 23h UTC
+var INICIO = "20261110T230000Z", FIM = "20261111T000000Z";
+var TITULO = "Live Black UNV";
+var DESCR = "Live da Black UNV com o Fabrício Nunnes: o projeto comercial completo da UNV num pacote só (diretor comercial, treinamento, processos e tráfego pago). O valor é revelado ao vivo.\n\nLink da live: " + MEET;
+
+function $(id){ return document.getElementById(id); }
+function qp(n){ try { return new URLSearchParams(location.search).get(n) || undefined; } catch(e){ return undefined; } }
+function fb(){ try { fbq.apply(null, arguments); } catch(e){} }
+var MINUS = ["de","da","do","das","dos","e"];
+function capitalize(s){
+  return s.toLowerCase().split(" ").map(function(w,i){
+    if(i > 0 && MINUS.indexOf(w) !== -1) return w;
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }).join(" ");
+}
+
+/* ── Meta Pixel ── */
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");
+fb("set", "autoConfig", false, PIXEL);
+fb("init", PIXEL);
+fb("track","PageView");
+
+/* ── links de agenda ── */
+function gcalUrl(){
+  return "https://calendar.google.com/calendar/render?action=TEMPLATE"
+    + "&text=" + encodeURIComponent(TITULO)
+    + "&dates=" + INICIO + "/" + FIM
+    + "&details=" + encodeURIComponent(DESCR)
+    + "&location=" + encodeURIComponent(MEET)
+    + "&ctz=America/Sao_Paulo";
+}
+/* ── rastreio (CRM > Dashboard > Formulários). Falha calada. ── */
+var TRK_FORM = "black-live";
+var TRK_SID = (function(){
+  var k = "frm_sid_" + TRK_FORM, v = null;
+  try { v = sessionStorage.getItem(k); } catch(e){}
+  if(!v){
+    v = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+      : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c){ var r = Math.random()*16|0; return (c === "x" ? r : (r&3|8)).toString(16); });
+    try { sessionStorage.setItem(k, v); } catch(e){}
+  }
+  return v;
+})();
+function trk(o){
+  var meta = o.meta || {};
+  if(o.inicio){
+    meta.utm_source = qp("utm_source"); meta.utm_medium = qp("utm_medium"); meta.utm_campaign = qp("utm_campaign");
+    meta.referrer = (document.referrer || "").slice(0, 300);
+    meta.device = window.matchMedia("(max-width:767px)").matches ? "celular" : "computador";
+  }
+  return fetch(SUPA + "/rest/v1/rpc/form_track", {
+    method: "POST", keepalive: true,
+    headers: { "Content-Type":"application/json", "Authorization":"Bearer " + ANON, "apikey": ANON },
+    body: JSON.stringify({ p_session: TRK_SID, p_form: TRK_FORM, p_step: o.step, p_step_name: o.name,
+      p_question: o.q, p_total: 1, p_status: o.status || null, p_lead: null, p_meta: meta })
+  }).catch(function(){});
+}
+
+/* ── telefone ── */
+function maskPhone(v){
+  var raw = String(v || "").replace(/\D/g,"");
+  var d = raw.replace(/^0+/,"");
+  if(d.length > 11 && d.slice(0,2) === "55") d = d.slice(2);
+  else if(/^0/.test(raw) && d.length > 11) d = d.slice(-11);
+  d = d.slice(0,11);
+  if(d.length <= 2) return d.length ? "(" + d : d;
+  if(d.length <= 6) return "(" + d.slice(0,2) + ") " + d.slice(2);
+  if(d.length <= 10) return "(" + d.slice(0,2) + ") " + d.slice(2,6) + "-" + d.slice(6);
+  return "(" + d.slice(0,2) + ") " + d.slice(2,7) + "-" + d.slice(7);
+}
+["input","change","blur"].forEach(function(ev){
+  $("tel").addEventListener(ev, function(){ var m = maskPhone(this.value); if(m !== this.value) this.value = m; });
+});
+
+/* ── pré-preenchimento: link (?nome= ?tel=) ou o que a pessoa já digitou na aplicação ── */
+(function(){
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem("black_lead") || "{}"); } catch(e){}
+  var nome = qp("nome") || saved.nome, tel = qp("tel") || qp("whatsapp") || saved.tel;
+  if(nome) $("nome").value = capitalize(String(nome).trim());
+  if(tel && String(tel).replace(/\D/g,"").length >= 10) $("tel").value = maskPhone(tel);
+  try {
+    var u = new URL(location.href), mexeu = false;
+    ["nome","tel","whatsapp"].forEach(function(k){ if(u.searchParams.has(k)){ u.searchParams.delete(k); mexeu = true; } });
+    if(mexeu){ var q = u.searchParams.toString(); history.replaceState(null, "", u.pathname + (q ? "?" + q : "")); }
+  } catch(e){}
+})();
+
+function err(msg, el){
+  $("err").textContent = msg || "";
+  ["nome","tel"].forEach(function(id){ $(id).classList.remove("bad"); });
+  if(el){ el.classList.add("bad"); el.focus(); }
+}
+
+function done(nome){
+  $("ask").style.display = "none";
+  $("dTitle").textContent = nome.split(" ")[0] + ", presença confirmada.";
+  $("gcal").href = gcalUrl();
+  $("done").style.display = "block";
+  try { window.scrollTo(0,0); } catch(e){}
+}
+$("gcal").addEventListener("click", function(){ fb("trackCustom","LiveAgenda",{ tipo:"google" }); trk({ step:2, name:"agenda_google", q:0, status:"agenda_google" }); });
+$("ics").addEventListener("click", function(){ fb("trackCustom","LiveAgenda",{ tipo:"ics" }); trk({ step:2, name:"agenda_ics", q:0, status:"agenda_ics" }); });
+
+var sending = false;
+$("cf").addEventListener("submit", function(ev){
+  ev.preventDefault();
+  if(sending) return;
+  var nome = $("nome").value.trim().replace(/\s+/g," ");
+  if(nome.length < 2) return err("Escreve seu nome pra eu te chamar direito.", $("nome"));
+  var tel = $("tel").value.replace(/\D/g,"");
+  if(tel.length < 10) return err("Coloca seu WhatsApp com DDD.", $("tel"));
+  err("");
+  nome = capitalize(nome);
+  try { var o = JSON.parse(localStorage.getItem("black_lead") || "{}"); o.nome = nome; o.tel = tel; localStorage.setItem("black_lead", JSON.stringify(o)); } catch(e){}
+  sending = true; $("go").disabled = true; $("go").textContent = "Confirmando…";
+  fb("trackCustom","ConfirmouLive",{ evento:"black-unv-2026-11-10" });
+  // A confirmação nunca trava: se o registro falhar, a pessoa segue pra agenda do mesmo jeito.
+  var t = trk({ step:1, name:"confirmou", q:1, status:"confirmou", meta:{ contato:{ nome:nome, whatsapp:tel } } });
+  var fim = function(){ done(nome); };
+  Promise.race([t, new Promise(function(r){ setTimeout(r, 2500); })]).then(fim, fim);
+});
+
+trk({ step:0, name:"abertura", q:0, inicio:true });
+})();
+</script>
+</body>
+</html>
