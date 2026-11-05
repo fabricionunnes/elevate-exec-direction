@@ -28,6 +28,12 @@ const FULL_TRANSCRIPT_RE = /(transcri|transcript)/i;
 // Doc "Anotações feitas pelo Gemini" (resumo pronto): vai pra onboarding_meeting_notes.gemini_notes e
 // vira o resumo da reunião (report_summary) e o resumo que o Marcelo manda no grupo, sem gastar Claude
 const NOTES_RE = /(gemini|anota|notes)/i;
+// O Doc do Gemini começa com data, título, convidados e anexos; o conteúdo útil começa em "Resumo"
+function limparDocGemini(x0: string): string {
+  const x = x0.replace(/\r/g, "");
+  const i = x.search(/\n(Resumo|Summary|Detalhes|Details)\s*\n/);
+  return (i > 0 ? x.slice(i + 1) : x).replace(/\n{3,}/g, "\n\n").trim();
+}
 const MAX_ASSEMBLYAI_PER_RUN = 3;
 // AssemblyAI aceita até 2,2 GB no upload; gravação de 1h do Meet passa de 600 MB
 const MAX_RECORDING_BYTES = 2 * 1024 * 1024 * 1024;
@@ -494,14 +500,14 @@ Deno.serve(async (req) => {
       if (!meeting.gemini_notes && notesFile && workingToken) {
         const notesText = await downloadTranscriptText(notesFile, workingToken);
         if (notesText) {
-          await supabase.from("onboarding_meeting_notes").update({ gemini_notes: notesText }).eq("id", meeting.id);
-          meeting.gemini_notes = notesText;
+          await supabase.from("onboarding_meeting_notes").update({ gemini_notes: limparDocGemini(notesText) }).eq("id", meeting.id);
+          meeting.gemini_notes = limparDocGemini(notesText);
           const { data: brief } = await supabase.from("onboarding_meeting_briefings").select("briefing_content").eq("meeting_id", meeting.id).maybeSingle();
           let payload: Record<string, unknown> = {};
           try { payload = brief?.briefing_content ? JSON.parse(brief.briefing_content) : {}; } catch { payload = {}; }
           await supabase.from("onboarding_meeting_briefings").upsert({
             meeting_id: meeting.id, project_id: meeting.project_id,
-            briefing_content: JSON.stringify({ ...payload, report_summary: notesText, report_source: "gemini", report_generated_at: new Date().toISOString() }),
+            briefing_content: JSON.stringify({ ...payload, report_summary: limparDocGemini(notesText), report_source: "gemini", report_generated_at: new Date().toISOString() }),
           }, { onConflict: "meeting_id" });
           console.log(`✓ Anotações do Gemini importadas: ${meeting.meeting_title || meeting.subject}`);
         }
@@ -529,8 +535,8 @@ Deno.serve(async (req) => {
             usedFileIds.add(transcriptFile.id);
             // só o Doc de anotações do Gemini: vale como transcrição e como resumo (gemini_notes)
             if (!meeting.gemini_notes && !FULL_TRANSCRIPT_RE.test(transcriptFile.name) && NOTES_RE.test(transcriptFile.name)) {
-              await supabase.from("onboarding_meeting_notes").update({ gemini_notes: transcriptText }).eq("id", meeting.id);
-              meeting.gemini_notes = transcriptText;
+              await supabase.from("onboarding_meeting_notes").update({ gemini_notes: limparDocGemini(transcriptText) }).eq("id", meeting.id);
+              meeting.gemini_notes = limparDocGemini(transcriptText);
             }
           }
         }
