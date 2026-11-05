@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-11-04T22:31:08",
+ "gerado_em": "2026-11-05T10:01:14",
  "posts": [
+  {
+   "slug": "agente-atendimento-whatsapp-mostra-falta-processo",
+   "url": "/blog/agente-atendimento-whatsapp-mostra-falta-processo/",
+   "titulo": "Agente de atendimento no WhatsApp mostra falta de processo",
+   "resumo": "Quando alguém conversa com o cliente como se você estivesse lá, mas não tem método nem roteiro, o atendimento vira improviso. E improviso não escala.",
+   "tags": [
+    "atendimento",
+    "estrutura comercial",
+    "processo comercial",
+    "conversão",
+    "treino"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-05",
+   "ts": 2239
+  },
   {
    "slug": "cliente-nao-volta-sozinho-precisa-sistema-recompra",
    "url": "/blog/cliente-nao-volta-sozinho-precisa-sistema-recompra/",
