@@ -56,6 +56,12 @@ const BRIEFING_FIELD_NAME = "briefing";
 // Gemini chega minutos depois. Lead movido sem Doc fica marcado e o cron de 10 min (fase collect)
 // reprocessa o lead até achar, por até 2 horas.
 const GEMINI_WAIT = "aguardando Docs do Gemini";
+// O Doc do Gemini começa com data, título, convidados e anexos; o conteúdo útil começa em "Resumo"
+function limparDocGemini(t: string): string {
+  const x = t.replace(/\r/g, "");
+  const i = x.search(/\n(Resumo|Summary|Detalhes|Details)\s*\n/);
+  return (i > 0 ? x.slice(i + 1) : x).replace(/\n{3,}/g, "\n\n").trim();
+}
 const GEMINI_MAX_TENTATIVAS = 12;
 
 // Resumo do fechamento vai só pro Fabrício (mesmo número do alerta de inbox mudo)
@@ -444,7 +450,7 @@ Deno.serve(async (req) => {
           lead_id: meeting.lead_id, transcription_id: transcriptionId, product_id: ld?.product_id || null,
           service_name: serviceName || proposal.servico || null,
           title: proposal.titulo || `Proposta — ${lead?.company || lead?.name || "Lead"}`,
-          content: proposal, status: "draft", generated_by: "auto-reuniao-realizada",
+          content: proposal, status: "draft", generated_by: null,
         });
         console.log(`[crm-meetings-eod] proposta rascunho criada pro lead ${meeting.lead_id}`);
         return true;
@@ -504,7 +510,7 @@ Deno.serve(async (req) => {
       // Briefing: anotações do Gemini quando existem (sem gastar Claude); senão a IA do Nexus
       let briefing: string | null = null;
       if (notesText && notesText.length > 80) {
-        briefing = notesText.trim();
+        briefing = limparDocGemini(notesText);
       } else {
         try {
           const briefResp = await fetch(`${supabaseUrl}/functions/v1/generate-crm-briefing`, {
@@ -987,7 +993,7 @@ Deno.serve(async (req) => {
         recordingsLinked,
         whatsappSummary: summaryStatus,
         leadMode: leadId,
-        versao: "91-fila-gemini-aviso",
+        versao: "92-proposta-ok",
         results,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
