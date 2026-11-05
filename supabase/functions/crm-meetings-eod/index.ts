@@ -777,6 +777,9 @@ Deno.serve(async (req) => {
             if (transcriptText) {
               usedFileIds.add(transcriptFile.id);
               transcriptSourceId = transcriptFile.id;
+              // Só veio o Doc de anotações do Gemini (call curta/sozinho não gera o de transcrição):
+              // ele vale como transcrição e também como briefing (já é um resumo pronto)
+              if (!notesText && !FULL_TRANSCRIPT_RE.test(transcriptFile.name) && NOTES_RE.test(transcriptFile.name)) notesText = transcriptText;
             }
           }
 
@@ -984,7 +987,7 @@ Deno.serve(async (req) => {
         recordingsLinked,
         whatsappSummary: summaryStatus,
         leadMode: leadId,
-        versao: "90-fila-gemini-aviso",
+        versao: "91-fila-gemini-aviso",
         results,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
