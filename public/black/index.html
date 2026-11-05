@@ -132,7 +132,7 @@ input.bad{border-color:var(--red)}
 
 <div class="pwrap" id="pwrap" hidden>
   <div class="pbar"><div class="pfill" id="pfill"></div></div>
-  <div class="pmeta"><span id="pstep">Pergunta 1 de 9</span><span><b id="ppct">0%</b> concluído</span></div>
+  <div class="pmeta"><span id="pstep">Pergunta 1 de 10</span><span><b id="ppct">0%</b> concluído</span></div>
 </div>
 
 <main>
@@ -150,12 +150,12 @@ input.bad{border-color:var(--red)}
       <li><b>Tráfego pago</b> pra gerar demanda qualificada</li>
     </ul>
     <button type="button" class="btn" id="go">Fazer minha aplicação</button>
-    <p class="hint">São 9 perguntas rápidas. Leva menos de 1 minuto.</p>
+    <p class="hint">São 10 perguntas rápidas. Leva menos de 1 minuto.</p>
   </section>
 
   <!-- 1: empresário (triagem) -->
   <section class="step" id="s1">
-    <p class="kicker">Pergunta 1 de 9</p>
+    <p class="kicker">Pergunta 1 de 10</p>
     <h2>Você é dono ou sócio da empresa?</h2>
     <p class="sub">A Black UNV mexe em meta, time e investimento. Só faz sentido pra quem decide isso.</p>
     <div class="opts" id="optEmp"></div>
@@ -164,7 +164,7 @@ input.bad{border-color:var(--red)}
 
   <!-- 2: nome -->
   <section class="step" id="s2">
-    <p class="kicker">Pergunta 2 de 9</p>
+    <p class="kicker">Pergunta 2 de 10</p>
     <h2>Como você se chama?</h2>
     <p class="sub">Pra eu te chamar pelo nome quando for confirmar sua vaga.</p>
     <label class="f"><input id="nome" type="text" name="name" autocomplete="name" autocapitalize="words" placeholder="Seu nome completo" maxlength="80" enterkeyhint="next" /></label>
@@ -175,7 +175,7 @@ input.bad{border-color:var(--red)}
 
   <!-- 3: whatsapp -->
   <section class="step" id="s3">
-    <p class="kicker">Pergunta 3 de 9</p>
+    <p class="kicker">Pergunta 3 de 10</p>
     <h2>Qual seu WhatsApp?</h2>
     <p class="sub">É por ali que a gente fala com você sobre a vaga.</p>
     <label class="f"><input id="tel" type="tel" name="tel" inputmode="numeric" autocomplete="tel" placeholder="(31) 99999-9999" maxlength="24" enterkeyhint="next" /></label>
@@ -186,7 +186,7 @@ input.bad{border-color:var(--red)}
 
   <!-- 4: email -->
   <section class="step" id="s4">
-    <p class="kicker">Pergunta 4 de 9</p>
+    <p class="kicker">Pergunta 4 de 10</p>
     <h2>E seu melhor e-mail?</h2>
     <p class="sub">Só pra registrar no sistema. Nada de spam.</p>
     <label class="f"><input id="email" type="email" name="email" inputmode="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="voce@suaempresa.com.br" maxlength="120" enterkeyhint="next" /></label>
@@ -197,7 +197,7 @@ input.bad{border-color:var(--red)}
 
   <!-- 5: empresa -->
   <section class="step" id="s5">
-    <p class="kicker">Pergunta 5 de 9</p>
+    <p class="kicker">Pergunta 5 de 10</p>
     <h2>Qual o nome da sua empresa?</h2>
     <p class="sub">Se tiver Instagram, pode colocar o @ no lugar. A gente dá uma olhada antes de falar com você.</p>
     <label class="f"><input id="empresa" type="text" name="organization" autocomplete="organization" placeholder="Nome ou @ da empresa" maxlength="80" enterkeyhint="next" /></label>
@@ -208,7 +208,7 @@ input.bad{border-color:var(--red)}
 
   <!-- 6: vendedores -->
   <section class="step" id="s6">
-    <p class="kicker">Pergunta 6 de 9</p>
+    <p class="kicker">Pergunta 6 de 10</p>
     <h2>Quantas pessoas vendem na sua empresa hoje?</h2>
     <p class="sub">Contando vendedores, SDRs e closers. Se é só você, marca a primeira.</p>
     <div class="opts" id="optVend"></div>
@@ -217,7 +217,7 @@ input.bad{border-color:var(--red)}
 
   <!-- 7: faturamento -->
   <section class="step" id="s7">
-    <p class="kicker">Pergunta 7 de 9</p>
+    <p class="kicker">Pergunta 7 de 10</p>
     <h2>Quanto sua empresa fatura por mês?</h2>
     <p class="sub">É o que diz se o projeto faz sentido pro seu momento.</p>
     <div class="opts" id="optFat"></div>
@@ -226,11 +226,20 @@ input.bad{border-color:var(--red)}
 
   <!-- 8: tráfego pago -->
   <section class="step" id="s8">
-    <p class="kicker">Pergunta 8 de 9</p>
+    <p class="kicker">Pergunta 8 de 10</p>
     <h2>Você já faz tráfego pago?</h2>
     <p class="sub">Anúncio no Instagram, Facebook, Google ou qualquer outra plataforma.</p>
     <div class="opts" id="optTraf"></div>
     <button type="button" class="back" data-back="7">← Voltar</button>
+  </section>
+
+  <!-- 16: ciente do investimento -->
+  <section class="step" id="s16">
+    <p class="kicker">Pergunta 9 de 10</p>
+    <h2>Você está ciente do investimento?</h2>
+    <p class="sub">O projeto da Black UNV, com <strong>acompanhamento comercial, processos, treinamento e tráfego pago</strong>, tem o investimento de <strong>R$ 2.000 por mês</strong>. Você está disposto a investir esse valor?</p>
+    <div class="opts" id="optInv"></div>
+    <button type="button" class="back" data-back="8">← Voltar</button>
   </section>
 
   <!-- 13: maior dificuldade, por extenso e opcional -->
@@ -241,7 +250,7 @@ input.bad{border-color:var(--red)}
     <label class="f"><textarea id="dificuldade" rows="5" maxlength="1500" placeholder="Ex.: o time até atende os leads, mas não faz follow-up e a meta só bate quando eu entro na venda."></textarea></label>
     <button type="button" class="btn" id="enviar">Enviar minha aplicação</button>
     <button type="button" class="back" id="pular" style="display:block;margin:4px auto 0">Pular e enviar</button>
-    <button type="button" class="back" data-back="8">← Voltar</button>
+    <button type="button" class="back" data-back="16">← Voltar</button>
   </section>
 
   <!-- 9: enviando -->
@@ -300,12 +309,12 @@ input.bad{border-color:var(--red)}
     </div>
   </section>
 
-  <!-- 12: fora do perfil (já foi pro CRM como Perdido) -->
+  <!-- 12: não está disposto a investir (vai pro CRM como Perdido, motivo Preço) -->
   <section class="step" id="s12">
     <div class="card">
       <h3 id="fTitle">Obrigado pela aplicação.</h3>
-      <p>Pelo que você respondeu, a Black UNV ainda não é o melhor passo pro seu momento. Ela foi desenhada pra empresas com time comercial e faturamento acima de R$ 50 mil por mês, e eu não vou te vender algo que não vai dar o retorno que você espera.</p>
-      <p style="margin-top:10px">Continua acompanhando o conteúdo da UNV. Quando a empresa chegar lá, a gente conversa.</p>
+      <p>Entendo que agora não é o momento de investir R$ 2.000 por mês no comercial, e tudo bem. Sua aplicação fica registrada com a gente.</p>
+      <p style="margin-top:10px">Continua acompanhando o conteúdo da UNV. Quando fizer sentido pra sua empresa, é só chamar.</p>
       <a class="btn" href="https://instagram.com/unvholdings" target="_blank" rel="noopener" style="margin-top:18px">Acompanhar a UNV no Instagram</a>
     </div>
   </section>
@@ -332,14 +341,14 @@ var EMP = [
   {v:"Não",                    s:"nao"}
 ];
 var VEND = [
-  {v:"Só eu vendo",           s:"0"},        // fora do perfil
+  {v:"Só eu vendo",           s:"0"},
   {v:"1 a 2 pessoas",         s:"1a2"},
   {v:"3 a 5 pessoas",         s:"3a5"},
   {v:"6 a 10 pessoas",        s:"6a10"},
   {v:"Mais de 10 pessoas",    s:"10+"}
 ];
 var FAT = [
-  {v:"Até R$ 50 mil por mês",          s:"ate50k"},   // fora do perfil
+  {v:"Até R$ 50 mil por mês",          s:"ate50k"},
   {v:"Entre R$ 50 mil e R$ 100 mil",   s:"50a100k"},
   {v:"Entre R$ 100 mil e R$ 300 mil",  s:"100a300k"},
   {v:"Entre R$ 300 mil e R$ 1 milhão", s:"300ka1m"},
@@ -349,6 +358,10 @@ var TRAF = [
   {v:"Sim, invisto todo mês",  s:"sim"},
   {v:"Já fiz, mas parei",      s:"parei"},
   {v:"Nunca fiz",              s:"nunca"}
+];
+var INV = [
+  {v:"Sim, estou disposto a investir", s:"sim"},
+  {v:"Não",                            s:"nao"}
 ];
 var AGENDA = SUPA + "/functions/v1/black-agenda";
 
@@ -373,14 +386,14 @@ fb("init", PIXEL);
 fb("track","PageView");
 
 /* ── estado ── */
-var A = { nome:"", tel:"", email:"", empresa:"", emp:null, vend:null, fat:null, traf:null, dor:"" };
+var A = { nome:"", tel:"", email:"", empresa:"", emp:null, vend:null, fat:null, traf:null, inv:null, dor:"" };
 var LEAD = null;
 var cur = 0, maxSeen = 0;
-var TOTAL = 9;
+var TOTAL = 10;
 var NOMES = { 0:"abertura", 1:"empresario", 2:"nome", 3:"whatsapp", 4:"email", 5:"empresa",
-              6:"vendedores", 7:"faturamento", 8:"trafego", 13:"dificuldade", 9:"enviando",
-              14:"agenda", 15:"agendou", 10:"concluido", 11:"saida_perfil", 12:"saida_icp" };
-function numPergunta(i){ return i === 13 ? 9 : (i >= 1 && i <= 8) ? i : 0; }
+              6:"vendedores", 7:"faturamento", 8:"trafego", 16:"investimento", 13:"dificuldade", 9:"enviando",
+              14:"agenda", 15:"agendou", 10:"concluido", 11:"saida_perfil", 12:"saida_investimento" };
+function numPergunta(i){ return i === 16 ? 9 : i === 13 ? 10 : (i >= 1 && i <= 8) ? i : 0; }
 
 function paint(){
   var q = numPergunta(cur);
@@ -406,7 +419,7 @@ var TRK_SID = (function(){
 function trk(o){
   try {
     var r = {};
-    ["emp","vend","fat","traf"].forEach(function(k){ if(A[k]) r[k] = A[k].s; });
+    ["emp","vend","fat","traf","inv"].forEach(function(k){ if(A[k]) r[k] = A[k].s; });
     var body = {
       p_session: TRK_SID, p_form: TRK_FORM,
       p_step: (o.step === undefined ? null : o.step), p_step_name: o.name || null,
@@ -512,7 +525,8 @@ buildOpts($("optEmp"), EMP, function(it){
 });
 buildOpts($("optVend"), VEND, function(it){ A.vend = it; show(7); });
 buildOpts($("optFat"),  FAT,  function(it){ A.fat = it; show(8); });
-buildOpts($("optTraf"), TRAF, function(it){ A.traf = it; show(13); });
+buildOpts($("optTraf"), TRAF, function(it){ A.traf = it; show(16); });
+buildOpts($("optInv"),  INV,  function(it){ A.inv = it; show(13); });
 $("enviar").addEventListener("click", function(){ A.dor = $("dificuldade").value.trim(); finish(); });
 $("pular").addEventListener("click", function(){ A.dor = ""; finish(); });
 
@@ -559,11 +573,10 @@ Array.prototype.forEach.call(document.querySelectorAll("input"), function(inp){
 });
 
 /* ── envio ── */
+// Só sai do caminho de agendamento quem disse que não investe os R$ 2.000. Faturamento e
+// tamanho do time não cortam mais: a pessoa aplica sabendo o valor (decisão de 05/11/2026).
 function motivoDesq(){
-  var m = [];
-  if(A.fat && A.fat.s === "ate50k") m.push("Faturamento até R$ 50 mil por mês");
-  if(A.vend && A.vend.s === "0") m.push("Sem vendedor (só o dono vende)");
-  return m.length ? m.join(" e ") : null;
+  return (A.inv && A.inv.s === "nao") ? "Não está disposto a investir R$ 2.000 por mês" : null;
 }
 
 function waText(){
@@ -596,7 +609,6 @@ function finish(){
   var desq = motivoDesq();
   var payload = {
     form_token: FORM_TOKEN,
-    desqualificado: desq || undefined,
     nome: A.nome,
     telefone: A.tel,
     email: A.email,
@@ -621,10 +633,10 @@ function finish(){
     return api("aplicou", {
       lead_id: LEAD, desqualificado: desq || undefined,
       empresario: A.emp.v, empresa: A.empresa, vendedores: A.vend.v,
-      faturamento: A.fat.v, trafego: A.traf.v, dificuldade: A.dor
+      faturamento: A.fat.v, trafego: A.traf.v, investimento: A.inv.v, dificuldade: A.dor
     }).then(function(d){ if(d && d.lead_id) LEAD = d.lead_id; }, function(){});
   }).then(function(){
-    trk({ step: desq ? 12 : 14, name: desq ? "saida_icp" : "agenda", q:0, status: desq ? "desqualificado" : "enviou", lead: LEAD });
+    trk({ step: desq ? 12 : 14, name: desq ? "saida_investimento" : "agenda", q:0, status: desq ? "desqualificado" : "enviou", lead: LEAD });
     if(desq){
       fb("trackCustom","LeadDesqualificado",{ motivo: desq, form:"black-unv" });
       $("fTitle").textContent = A.nome.split(" ")[0] + ", obrigado pela aplicação.";
