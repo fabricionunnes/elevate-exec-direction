@@ -404,6 +404,41 @@ Deno.serve(async (req) => {
     let totalMeetingsFinalized = 0;
     let totalTasksCreated = 0;
 
+    // Reunião futura com evento na agenda: confere horário/link/título no Google e atualiza o Nexus.
+    // Caso Santos Imóveis (05/11/2026): evento movido de 16h pra 15h na agenda e o Nexus ficou com 16h,
+    // o Marcelo avisou a hora errada no grupo. Só no modo quente (a cada 15 min), só próximos 14 dias.
+    let agendaAtualizadas = 0;
+    if (horasQuentes > 0) {
+      const limite = Date.now() + 14 * 24 * 3600 * 1000;
+      for (const meeting of meetings) {
+        const quando = new Date(meeting.meeting_date).getTime();
+        if (!meeting.google_event_id || quando < Date.now() - 3600 * 1000 || quando > limite) continue;
+        let tokenAg: string | null = null;
+        for (const userId of candidateUsers(meeting)) { tokenAg = await getAccessToken(userId); if (tokenAg) break; }
+        if (!tokenAg) continue;
+        try {
+          const evResp = await fetch(
+            `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(meeting.google_event_id)}?fields=start,summary,hangoutLink,status`,
+            { headers: { Authorization: `Bearer ${tokenAg}` } },
+          );
+          if (!evResp.ok) continue;
+          const ev = await evResp.json();
+          if (ev.status === "cancelled") continue; // cancelamento fica com o fluxo que já existe
+          const inicio = ev.start?.dateTime ? new Date(ev.start.dateTime).toISOString() : null;
+          const upd: Record<string, unknown> = {};
+          if (inicio && Math.abs(new Date(inicio).getTime() - quando) >= 60_000) upd.meeting_date = inicio;
+          if (ev.hangoutLink && ev.hangoutLink !== meeting.meeting_link) upd.meeting_link = ev.hangoutLink;
+          if (ev.summary && ev.summary !== meeting.meeting_title) upd.meeting_title = ev.summary;
+          if (Object.keys(upd).length) {
+            await supabase.from("onboarding_meeting_notes").update({ ...upd, updated_at: new Date().toISOString() }).eq("id", meeting.id);
+            Object.assign(meeting, upd);
+            agendaAtualizadas++;
+            console.log(`✓ Reunião atualizada pela agenda: ${meeting.meeting_title} → ${JSON.stringify(upd)}`);
+          }
+        } catch (e) { console.error("agenda sync:", e); }
+      }
+    }
+
     for (const meeting of meetings) {
       const meetingDate = new Date(meeting.meeting_date);
       // Reunião já com transcrição e gravação não precisa de busca de arquivos —
@@ -716,7 +751,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`Sync complete: ${totalRecordingsSynced} recordings, ${totalTranscriptsSynced} transcripts, ${totalMeetingsFinalized} meetings finalized, ${totalTasksCreated} tasks updated`);
+    console.log(`Sync complete: ${totalRecordingsSynced} recordings, ${totalTranscriptsSynced} transcripts, ${totalMeetingsFinalized} meetings finalized, ${totalTasksCreated} tasks updated, ${agendaAtualizadas} horários pela agenda`);
 
     return new Response(
       JSON.stringify({
