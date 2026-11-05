@@ -525,7 +525,14 @@ Deno.serve(async (req) => {
         // 2) Arquivo de transcrição do Drive
         if (!transcriptText && transcriptFile && workingToken) {
           transcriptText = await downloadTranscriptText(transcriptFile, workingToken);
-          if (transcriptText) usedFileIds.add(transcriptFile.id);
+          if (transcriptText) {
+            usedFileIds.add(transcriptFile.id);
+            // só o Doc de anotações do Gemini: vale como transcrição e como resumo (gemini_notes)
+            if (!meeting.gemini_notes && !FULL_TRANSCRIPT_RE.test(transcriptFile.name) && NOTES_RE.test(transcriptFile.name)) {
+              await supabase.from("onboarding_meeting_notes").update({ gemini_notes: transcriptText }).eq("id", meeting.id);
+              meeting.gemini_notes = transcriptText;
+            }
+          }
         }
 
         // 3) Submete a gravação pro AssemblyAI (se não há job em aberto)
