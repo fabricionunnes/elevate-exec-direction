@@ -26,13 +26,15 @@ const ETAPA = {
   perdido: "ff1f5675-cd00-493c-9d64-b066a0e87b79",
 };
 const MOTIVO_FORA_ICP = "eb97a200-bd96-4e92-8489-79b417e58198";
+const MOTIVO_PRECO = "e13f527e-11a5-49fb-be64-5679cd397b9d";
 const CLOSER_STAFF = "565dc606-c2f1-45ec-b06f-bccdc1c663e7"; // Ricardo Santos
 const INSTANCIA = "fabricionunnes";
 const GRUPO = "120363427614204052@g.us";
 
 const DURACAO_MIN = 60;
 const HORA_INI = 9, HORA_FIM = 19; // início das reuniões entre 9h e 18h
-const DIAS_AGENDA = 6;              // dias úteis oferecidos
+// Até 3 dias úteis pra marcar; só abre mais dias se esses estiverem quase cheios
+const DIAS_AGENDA = 3, DIAS_AGENDA_MAX = 8, MIN_HORARIOS = 4;
 const ANTECEDENCIA_MIN = 120;       // não oferece horário com menos de 2h
 const JANELA_APLICACAO_MIN = 120;   // a página só mexe em lead que acabou de aplicar
 
@@ -132,6 +134,7 @@ async function aplicou(sb: SB, body: Record<string, unknown>) {
     `Pessoas vendendo: ${String(body.vendedores || "-")}`,
     `Faturamento: ${String(body.faturamento || "-")}`,
     `Tráfego pago: ${String(body.trafego || "-")}`,
+    `Ciente do investimento de R$ 2.000/mês: ${String(body.investimento || "-")}`,
     `Maior dificuldade: ${String(body.dificuldade || "").trim() || "não respondeu"}`,
   ];
   const desq = body.desqualificado ? String(body.desqualificado).slice(0, 120) : null;
@@ -146,7 +149,7 @@ async function aplicou(sb: SB, body: Record<string, unknown>) {
   const upd: Record<string, unknown> = { notes: notas };
   if (desq) {
     if (lead.stage_id !== ETAPA.perdido && atual < (ordem.get(ETAPA.agendou) ?? 7)) {
-      Object.assign(upd, { stage_id: ETAPA.perdido, loss_reason_id: MOTIVO_FORA_ICP, closed_at: new Date().toISOString() });
+      Object.assign(upd, { stage_id: ETAPA.perdido, loss_reason_id: /invest/i.test(desq) ? MOTIVO_PRECO : MOTIVO_FORA_ICP, closed_at: new Date().toISOString() });
     }
   } else if (atual < (ordem.get(ETAPA.aplicou) ?? 6) || lead.stage_id === ETAPA.perdido) {
     Object.assign(upd, { stage_id: ETAPA.aplicou, closed_at: null, loss_reason_id: null });
@@ -163,11 +166,14 @@ async function horarios(sb: SB, body: Record<string, unknown>) {
   const closer = await closerUserId(sb);
   if (!closer?.user_id) return json({ error: "agenda_indisponivel" }, 503);
 
-  const dias: string[] = [];
+  const uteis: string[] = [];
   let d = ymdBR(Date.now());
-  for (let i = 0; i < 20 && dias.length < DIAS_AGENDA; i++, d = somaDias(d, 1)) if (diaUtil(d)) dias.push(d);
+  for (let i = 0; i < 30 && uteis.length < DIAS_AGENDA_MAX; i++, d = somaDias(d, 1)) if (diaUtil(d)) uteis.push(d);
 
-  const res = await Promise.all(dias.map(async (ymd) => ({ data: ymd, rotulo: rotulo(ymd), horarios: await livresDoDia(closer.user_id, ymd) })));
+  const consulta = (ymd: string) => livresDoDia(closer.user_id, ymd).then((h) => ({ data: ymd, rotulo: rotulo(ymd), horarios: h }));
+  const res = await Promise.all(uteis.slice(0, DIAS_AGENDA).map(consulta));
+  const total = () => res.reduce((n, r) => n + (r.horarios?.length || 0), 0);
+  for (let i = DIAS_AGENDA; i < uteis.length && total() < MIN_HORARIOS; i++) res.push(await consulta(uteis[i]));
   if (res.every((r) => r.horarios === null)) return json({ error: "agenda_indisponivel" }, 503);
   return json({ closer: closer.name, duracao: DURACAO_MIN, dias: res.filter((r) => r.horarios && r.horarios.length) });
 }
