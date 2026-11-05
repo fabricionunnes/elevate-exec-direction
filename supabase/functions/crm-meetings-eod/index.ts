@@ -52,13 +52,18 @@ const TRANSCRIPT_NAME_RE = /(transcri|transcript|gemini|anota)/i;
 const FULL_TRANSCRIPT_RE = /(transcri|transcript)/i;
 const NOTES_RE = /(gemini|anota|notes)/i;
 const BRIEFING_FIELD_NAME = "briefing";
+// Fila do Gemini (Fabrício, 04/11/2026: "o closer move o lead assim que termina a reunião"): o Doc do
+// Gemini chega minutos depois. Lead movido sem Doc fica marcado e o cron de 10 min (fase collect)
+// reprocessa o lead até achar, por até 2 horas.
+const GEMINI_WAIT = "aguardando Docs do Gemini";
+const GEMINI_MAX_TENTATIVAS = 12;
 
 // Resumo do fechamento vai só pro Fabrício (mesmo número do alerta de inbox mudo)
 const FABRICIO_PHONE = "5531989840003";
 
 // Envia via function evolution-api (abstrai Stevo/Evolution conforme o provider da instância)
 // deno-lint-ignore no-explicit-any
-async function sendWhatsApp(supabase: any, phone: string, message: string): Promise<{ ok: boolean; error?: string }> {
+async function sendWhatsApp(supabase: any, phone: string, message: string, prefer?: string): Promise<{ ok: boolean; error?: string }> {
   try {
     // Esta mensagem é oficial: SEMPRE sai do número do Fabrício ou do Marcelo,
     // nunca de uma instância de vendedor. Respeita a config só se ela apontar pra
@@ -70,7 +75,7 @@ async function sendWhatsApp(supabase: any, phone: string, message: string): Prom
       .eq("setting_key", "default_instance")
       .maybeSingle();
     const configured = config?.setting_value;
-    const preferred = ALLOWED.includes(configured) ? configured : "fabricionunnes";
+    const preferred = prefer && ALLOWED.includes(prefer) ? prefer : ALLOWED.includes(configured) ? configured : "fabricionunnes";
     const order = [preferred, ...ALLOWED.filter((n) => n !== preferred)];
 
     const { data: allowedInstances } = await supabase
@@ -178,13 +183,13 @@ Deno.serve(async (req) => {
     let meetings: any[] = [];
     if (leadId) {
       const desde = new Date(now.getTime() - 7 * 24 * 3600 * 1000).toISOString();
-      const ate = new Date(now.getTime() + 2 * 3600 * 1000).toISOString();
+      const ate = new Date(now.getTime() + 24 * 3600 * 1000).toISOString();
       const { data: leadMeetings, error: leadErr } = await supabase
         .from("crm_activities")
         .select(`
           id, lead_id, title, scheduled_at, status, notes, meeting_link,
           google_calendar_event_id, google_calendar_user_id, responsible_staff_id, recording_url,
-          transcript_file_id, transcript_job_id,
+          transcript_file_id, transcript_job_id, transcript_attempts, transcript_error,
           lead:lead_id (id, name, company)
         `)
         .eq("type", "meeting").eq("lead_id", leadId)
@@ -442,7 +447,27 @@ Deno.serve(async (req) => {
           content: proposal, status: "draft", generated_by: "auto-reuniao-realizada",
         });
         console.log(`[crm-meetings-eod] proposta rascunho criada pro lead ${meeting.lead_id}`);
-      } catch (e) { console.error("[crm-meetings-eod] proposta falhou:", e); }
+        return true;
+      } catch (e) { console.error("[crm-meetings-eod] proposta falhou:", e); return false; }
+    };
+
+    // Avisa no WhatsApp quem moveu o lead pra "Reunião realizada" (Fabrício, 04/11/2026: "o closer tem
+    // que ser avisado via whatsapp, quem moveu o lead, assim que a proposta estiver pronta"). Quem moveu
+    // vem de crm_lead_history (stage_change); o telefone, de onboarding_staff. Sai pelo Marcelo.
+    const avisarQuemMoveu = async (meeting: any, texto: (nome: string) => string) => {
+      try {
+        const { data: h } = await supabase.from("crm_lead_history").select("staff_id, created_at")
+          .eq("lead_id", meeting.lead_id).eq("action", "stage_change").ilike("new_value", "%realizada%")
+          .order("created_at", { ascending: false }).limit(1).maybeSingle();
+        if (!h?.staff_id) { console.log("[crm-meetings-eod] aviso: não achei quem moveu o lead"); return; }
+        const { data: st } = await supabase.from("onboarding_staff").select("name, phone").eq("id", h.staff_id).maybeSingle();
+        const digits = String(st?.phone || "").replace(/\D/g, "");
+        if (!digits) { console.log(`[crm-meetings-eod] aviso: ${st?.name || h.staff_id} sem telefone`); return; }
+        const phone = digits.startsWith("55") ? digits : `55${digits}`;
+        const primeiro = String(st?.name || "").split(" ")[0] || "";
+        const r = await sendWhatsApp(supabase, phone, texto(primeiro), "marceloalmeida");
+        console.log(`[crm-meetings-eod] aviso pra ${st?.name}: ${r.ok ? "enviado" : r.error}`);
+      } catch (e) { console.error("[crm-meetings-eod] aviso ao closer falhou:", e); }
     };
 
     const saveTranscript = async (meeting: any, text: string, sourceId: string | null, notesText: string | null = null): Promise<"ok" | "ja" | "erro"> => {
@@ -497,13 +522,38 @@ Deno.serve(async (req) => {
         await supabase.from("crm_transcriptions").update({ ai_analysis: briefing, summary: briefing.slice(0, 500) }).eq("id", inserted.id);
         await salvarBriefingNoLead(meeting.lead_id, briefing);
       }
-      await gerarProposta(meeting, text, inserted.id);
+      const propostaOk = await gerarProposta(meeting, text, inserted.id);
+      if (leadId) {
+        const lead2 = meeting.lead as { id: string; name: string | null; company: string | null } | null;
+        const quem = lead2?.company ? `${lead2.name || "lead"} (${lead2.company})` : lead2?.name || "o lead";
+        const link = `https://unvholdings.com.br/crm/leads/${meeting.lead_id}`;
+        await avisarQuemMoveu(meeting, (nome) =>
+          `${nome ? `${nome}, ` : ""}a reunião com ${quem} já está no Nexus: transcrição na aba Transcrição` +
+          `${briefing ? ", briefing preenchido" : ""}${propostaOk ? " e um rascunho de proposta na aba Proposta" : ""}. ` +
+          `Confere antes de mandar pro cliente: ${link}`);
+      }
       return "ok";
     };
 
     // Fase "collect" (cron a cada 10 min): fila de gravações -> AssemblyAI -> lead + briefing
     if (phase === "collect") {
       const inicio = Date.now();
+      // Leads esperando os Docs do Gemini: chama o próprio modo lead de novo (uma vez por lead)
+      try {
+        const { data: geminiFila } = await supabase.from("crm_activities")
+          .select("id, lead_id")
+          .eq("transcript_error", GEMINI_WAIT).is("transcript_file_id", null)
+          .lte("transcript_next_try_at", now.toISOString()).limit(20);
+        const leadsPendentes = [...new Set((geminiFila || []).map((m) => m.lead_id).filter(Boolean))];
+        for (const lid of leadsPendentes) {
+          const r = await fetch(`${supabaseUrl}/functions/v1/crm-meetings-eod`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+            body: JSON.stringify({ phase: "process", lead_id: lid }),
+          });
+          console.log(`[crm-meetings-eod] fila Gemini: lead ${lid} → ${r.status}`);
+        }
+      } catch (e) { console.error("[crm-meetings-eod] fila Gemini falhou:", e); }
       const { data: fila } = await supabase
         .from("crm_activities")
         .select(`id, lead_id, scheduled_at, notes, meeting_link, google_calendar_user_id, responsible_staff_id,
@@ -612,6 +662,9 @@ Deno.serve(async (req) => {
       const lead = meeting.lead as { id: string; name: string | null; company: string | null } | null;
       const leadName = lead?.name || "Lead";
       const scheduledAt = new Date(meeting.scheduled_at);
+      // Modo lead: reunião marcada pra depois mas feita antes da hora (lead movido pra "Reunião
+      // realizada" já) — o arquivo do Meet nasce agora, não no horário marcado
+      const refTime = leadId && scheduledAt.getTime() > now.getTime() ? now : scheduledAt;
       const result: Record<string, unknown> = {
         activity_id: meeting.id,
         lead: leadName,
@@ -672,7 +725,7 @@ Deno.serve(async (req) => {
               const owner = fileOwner(f);
               if (owner && owner !== meeting.id) continue;
               // arquivo do Meet é criado no FIM da gravação — nunca antes da reunião começar
-              const diff = new Date(f.createdTime).getTime() - scheduledAt.getTime();
+              const diff = new Date(f.createdTime).getTime() - refTime.getTime();
               if (diff < -5 * 60 * 1000 || diff > 10 * 3600 * 1000) continue;
               if (Math.abs(diff) < bestDiff) { bestDiff = Math.abs(diff); best = f; }
             }
@@ -681,7 +734,7 @@ Deno.serve(async (req) => {
           // O Meet põe o título do evento no nome do arquivo — quando bate, vale mais que
           // proximidade, mas a janela de horário SEMPRE vale (evento recorrente repete título)
           const inWindow = (f: DriveFile): boolean => {
-            const diff = new Date(f.createdTime).getTime() - scheduledAt.getTime();
+            const diff = new Date(f.createdTime).getTime() - refTime.getTime();
             return diff >= -5 * 60 * 1000 && diff <= 10 * 3600 * 1000;
           };
           const pickFile = (files: DriveFile[], title: string | null): DriveFile | null => {
@@ -692,7 +745,7 @@ Deno.serve(async (req) => {
                 let best: DriveFile | null = null;
                 let bestDiff = Infinity;
                 for (const f of byName) {
-                  const d = Math.abs(new Date(f.createdTime).getTime() - scheduledAt.getTime());
+                  const d = Math.abs(new Date(f.createdTime).getTime() - refTime.getTime());
                   if (d < bestDiff) { bestDiff = d; best = f; }
                 }
                 return best;
@@ -803,6 +856,37 @@ Deno.serve(async (req) => {
       results.push(result);
     }
 
+    if (leadId && !dryRun) {
+      for (const r of results) {
+        const act = meetings.find((m) => m.id === r.activity_id);
+        if (!act) continue;
+        const achou = r.transcript === true || r.transcript === "já importada" || r.transcript === "na fila";
+        if (achou) {
+          if (act.transcript_error === GEMINI_WAIT) {
+            await supabase.from("crm_activities").update({ transcript_error: null, transcript_next_try_at: null }).eq("id", act.id);
+          }
+          continue;
+        }
+        const tentativas = Number(act.transcript_attempts || 0) + 1;
+        if (tentativas >= GEMINI_MAX_TENTATIVAS) {
+          await supabase.from("crm_activities").update({
+            transcript_error: "Gemini: nenhum Doc de transcrição/anotações apareceu em 2 horas", transcript_next_try_at: null, transcript_attempts: tentativas,
+          }).eq("id", act.id);
+          r.fila_gemini = "desistiu";
+          const leadD = act.lead as { name: string | null; company: string | null } | null;
+          await avisarQuemMoveu(act, (nome) =>
+            `${nome ? `${nome}, ` : ""}não achei transcrição nem anotações do Google pra reunião com ${leadD?.name || "o lead"} em 2 horas. ` +
+            `Se a reunião foi no Meet com as anotações do Gemini ligadas, me avisa; senão cola a transcrição na aba Transcrição: https://unvholdings.com.br/crm/leads/${act.lead_id}`);
+        } else {
+          await supabase.from("crm_activities").update({
+            transcript_error: GEMINI_WAIT, transcript_attempts: tentativas,
+            transcript_next_try_at: new Date(Date.now() + 10 * 60_000).toISOString(),
+          }).eq("id", act.id);
+          r.fila_gemini = `tentativa ${tentativas} de ${GEMINI_MAX_TENTATIVAS}, próxima em 10 min`;
+        }
+      }
+    }
+
     console.log(`[crm-meetings-eod] fim: ${finalized} finalizadas, ${transcriptsImported} transcrições, ${recordingsLinked} gravações`);
 
     // Resumo do fechamento no WhatsApp do Fabrício — lê o estado do BANCO (reflete também o que
@@ -899,6 +983,8 @@ Deno.serve(async (req) => {
         transcriptsImported,
         recordingsLinked,
         whatsappSummary: summaryStatus,
+        leadMode: leadId,
+        versao: "90-fila-gemini-aviso",
         results,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
