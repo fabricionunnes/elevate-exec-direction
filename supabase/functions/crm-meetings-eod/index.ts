@@ -46,6 +46,12 @@ const parseSubtitleToText = (content: string): string => {
 };
 
 const TRANSCRIPT_NAME_RE = /(transcri|transcript|gemini|anota)/i;
+// Com as anotações automáticas do Gemini (Business Standard, 04/11/2026) o evento ganha dois Docs:
+// "Transcrição" (fala completa) e "Anotações feitas pelo Gemini" (resumo pronto). A transcrição
+// completa vai pra aba Transcrição; as anotações viram o briefing do lead sem gastar Claude.
+const FULL_TRANSCRIPT_RE = /(transcri|transcript)/i;
+const NOTES_RE = /(gemini|anota|notes)/i;
+const BRIEFING_FIELD_NAME = "briefing";
 
 // Resumo do fechamento vai só pro Fabrício (mesmo número do alerta de inbox mudo)
 const FABRICIO_PHONE = "5531989840003";
@@ -156,6 +162,9 @@ Deno.serve(async (req) => {
     const now = new Date();
     const brtNow = new Date(now.getTime() - 3 * 3600 * 1000);
     const dayOverride = url.searchParams.get("day") || (typeof body.day === "string" ? body.day : null);
+    // Modo lead (gatilho da etapa "Reunião realizada", Fabrício 04/11/2026): processa só as reuniões
+    // recentes desse lead, na hora, sem esperar as 20h. Transcrição + briefing + proposta.
+    const leadId = url.searchParams.get("lead_id") || (typeof body.lead_id === "string" ? body.lead_id : null);
     const dayStr = dayOverride && /^\d{4}-\d{2}-\d{2}$/.test(dayOverride)
       ? dayOverride
       : brtNow.toISOString().split("T")[0];
@@ -167,7 +176,25 @@ Deno.serve(async (req) => {
 
     // deno-lint-ignore no-explicit-any
     let meetings: any[] = [];
-    if (phase !== "report" && phase !== "collect") {
+    if (leadId) {
+      const desde = new Date(now.getTime() - 7 * 24 * 3600 * 1000).toISOString();
+      const ate = new Date(now.getTime() + 2 * 3600 * 1000).toISOString();
+      const { data: leadMeetings, error: leadErr } = await supabase
+        .from("crm_activities")
+        .select(`
+          id, lead_id, title, scheduled_at, status, notes, meeting_link,
+          google_calendar_event_id, google_calendar_user_id, responsible_staff_id, recording_url,
+          transcript_file_id, transcript_job_id,
+          lead:lead_id (id, name, company)
+        `)
+        .eq("type", "meeting").eq("lead_id", leadId)
+        .in("status", ["pending", "completed"])
+        .gte("scheduled_at", desde).lte("scheduled_at", ate)
+        .order("scheduled_at", { ascending: false });
+      if (leadErr) throw leadErr;
+      meetings = leadMeetings || [];
+      console.log(`[crm-meetings-eod] modo lead ${leadId}: ${meetings.length} reunião(ões) dos últimos 7 dias`);
+    } else if (phase !== "report" && phase !== "collect") {
       // Pendentes + finalizadas do dia: quem finaliza a reunião na mão antes das 20h também
       // tem que ganhar a transcrição (antes só as pendentes entravam)
       const { data: meetingsData, error: meetingsError } = await supabase
@@ -368,7 +395,57 @@ Deno.serve(async (req) => {
 
     // Grava na aba Transcrição do lead + briefing IA. Não duplica (mesma origem ou mesmo horário).
     // deno-lint-ignore no-explicit-any
-    const saveTranscript = async (meeting: any, text: string, sourceId: string | null): Promise<"ok" | "ja" | "erro"> => {
+    // Briefing no campo "briefing" do negócio (mesmo lugar do botão "Salvar briefing" da aba Transcrição)
+    const salvarBriefingNoLead = async (leadIdAlvo: string, briefing: string) => {
+      try {
+        const { data: campo } = await supabase.from("crm_custom_fields").select("id")
+          .eq("field_name", BRIEFING_FIELD_NAME).eq("context", "deal").maybeSingle();
+        if (!campo) return;
+        await supabase.from("crm_custom_field_values")
+          .upsert({ lead_id: leadIdAlvo, field_id: campo.id, value: briefing.trim() }, { onConflict: "lead_id,field_id" });
+      } catch (e) { console.error("[crm-meetings-eod] briefing no lead falhou:", e); }
+    };
+
+    // Proposta automática (Fabrício, 04/11/2026: "e também a proposta"): mesma IA da aba Proposta
+    // (generate-proposal), com serviço/valor/forma do Negócio como reserva. Fica como rascunho
+    // (sem PDF); o vendedor gera o PDF ou uma nova versão na aba Proposta.
+    const gerarProposta = async (meeting: any, text: string, transcriptionId: string) => {
+      try {
+        const lead = meeting.lead as { id: string; name: string | null; company: string | null } | null;
+        const { data: ld } = await supabase.from("crm_leads").select("product_id, opportunity_value, payment_method").eq("id", meeting.lead_id).maybeSingle();
+        let serviceName = "";
+        if (ld?.product_id) {
+          const { data: svc } = await supabase.from("onboarding_services").select("name").eq("id", ld.product_id).maybeSingle();
+          serviceName = svc?.name || "";
+        }
+        let paymentName = "";
+        if (ld?.payment_method) {
+          const { data: pm } = await supabase.from("crm_payment_method_options").select("name").eq("id", ld.payment_method).maybeSingle();
+          paymentName = pm?.name || "";
+        }
+        const resp = await fetch(`${supabaseUrl}/functions/v1/generate-proposal`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+          body: JSON.stringify({ transcription: text, serviceName, deliverables: [], leadName: lead?.name || "Lead", companyName: lead?.company || "" }),
+        });
+        if (!resp.ok) { console.error(`[crm-meetings-eod] generate-proposal ${resp.status}: ${(await resp.text()).slice(0, 200)}`); return; }
+        const { proposal } = await resp.json();
+        if (!proposal) return;
+        const vago = (v?: string) => !v || !String(v).trim() || /a\s*combinar/i.test(String(v));
+        const valor = Number(ld?.opportunity_value || 0);
+        if (vago(proposal.investimento) && valor > 0) proposal.investimento = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
+        if (vago(proposal.forma_pagamento) && paymentName) proposal.forma_pagamento = paymentName;
+        await supabase.from("crm_lead_proposals").insert({
+          lead_id: meeting.lead_id, transcription_id: transcriptionId, product_id: ld?.product_id || null,
+          service_name: serviceName || proposal.servico || null,
+          title: proposal.titulo || `Proposta — ${lead?.company || lead?.name || "Lead"}`,
+          content: proposal, status: "draft", generated_by: "auto-reuniao-realizada",
+        });
+        console.log(`[crm-meetings-eod] proposta rascunho criada pro lead ${meeting.lead_id}`);
+      } catch (e) { console.error("[crm-meetings-eod] proposta falhou:", e); }
+    };
+
+    const saveTranscript = async (meeting: any, text: string, sourceId: string | null, notesText: string | null = null): Promise<"ok" | "ja" | "erro"> => {
       const lead = meeting.lead as { name: string | null; company: string | null } | null;
       const leadName = lead?.name || "Lead";
       const { data: porOrigem } = sourceId
@@ -399,22 +476,28 @@ Deno.serve(async (req) => {
         return "erro";
       }
 
-      // Briefing IA (best-effort)
-      try {
-        const briefResp = await fetch(`${supabaseUrl}/functions/v1/generate-crm-briefing`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
-          body: JSON.stringify({ transcription: text, leadName, companyName: lead?.company || "" }),
-        });
-        if (briefResp.ok) {
-          const { briefing } = await briefResp.json();
-          if (briefing) await supabase.from("crm_transcriptions").update({ ai_analysis: briefing }).eq("id", inserted.id);
-        } else {
-          console.error(`[crm-meetings-eod] Briefing ${briefResp.status}: ${(await briefResp.text()).slice(0, 200)}`);
+      // Briefing: anotações do Gemini quando existem (sem gastar Claude); senão a IA do Nexus
+      let briefing: string | null = null;
+      if (notesText && notesText.length > 80) {
+        briefing = notesText.trim();
+      } else {
+        try {
+          const briefResp = await fetch(`${supabaseUrl}/functions/v1/generate-crm-briefing`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+            body: JSON.stringify({ transcription: text, leadName, companyName: lead?.company || "" }),
+          });
+          if (briefResp.ok) briefing = (await briefResp.json()).briefing || null;
+          else console.error(`[crm-meetings-eod] Briefing ${briefResp.status}: ${(await briefResp.text()).slice(0, 200)}`);
+        } catch (e) {
+          console.error("[crm-meetings-eod] Briefing falhou:", e);
         }
-      } catch (e) {
-        console.error("[crm-meetings-eod] Briefing falhou:", e);
       }
+      if (briefing) {
+        await supabase.from("crm_transcriptions").update({ ai_analysis: briefing, summary: briefing.slice(0, 500) }).eq("id", inserted.id);
+        await salvarBriefingNoLead(meeting.lead_id, briefing);
+      }
+      await gerarProposta(meeting, text, inserted.id);
       return "ok";
     };
 
@@ -541,6 +624,7 @@ Deno.serve(async (req) => {
         (meeting.responsible_staff_id ? staffUserMap.get(meeting.responsible_staff_id) : null);
 
       let transcriptText: string | null = null;
+      let notesText: string | null = null;
       let transcriptSourceId: string | null = null;
       let recordingLink: string | null = meeting.recording_url || null;
       let queueFileId: string | null = null;
@@ -568,9 +652,10 @@ Deno.serve(async (req) => {
             } catch { /* segue pro fallback */ }
           }
 
-          const attTranscript = attachmentFiles.find((f) =>
-            (f.mimeType === "application/vnd.google-apps.document" || f.mimeType.startsWith("text/")) &&
-            TRANSCRIPT_NAME_RE.test(f.name) && !usedFileIds.has(f.id));
+          const isDoc = (f: DriveFile) => (f.mimeType === "application/vnd.google-apps.document" || f.mimeType.startsWith("text/")) && !usedFileIds.has(f.id);
+          const attTranscript = attachmentFiles.find((f) => isDoc(f) && FULL_TRANSCRIPT_RE.test(f.name))
+            || attachmentFiles.find((f) => isDoc(f) && TRANSCRIPT_NAME_RE.test(f.name));
+          const attNotes = attachmentFiles.find((f) => isDoc(f) && NOTES_RE.test(f.name) && !FULL_TRANSCRIPT_RE.test(f.name) && f.id !== attTranscript?.id);
           const attRecording = attachmentFiles.find((f) => f.mimeType === "video/mp4" && !usedFileIds.has(f.id));
 
           // 2) Fallback: busca no Drive por proximidade de horário (mesmo dia)
@@ -616,8 +701,16 @@ Deno.serve(async (req) => {
             return pickByProximity(files);
           };
 
+          const driveDocs = driveFiles.filter((f) => f.mimeType !== "video/mp4" && TRANSCRIPT_NAME_RE.test(f.name));
           const transcriptFile = attTranscript ||
-            pickFile(driveFiles.filter((f) => f.mimeType !== "video/mp4" && TRANSCRIPT_NAME_RE.test(f.name)), meeting.title);
+            pickFile(driveDocs.filter((f) => FULL_TRANSCRIPT_RE.test(f.name)), meeting.title) ||
+            pickFile(driveDocs, meeting.title);
+          const notesFile = attNotes ||
+            pickFile(driveDocs.filter((f) => NOTES_RE.test(f.name) && !FULL_TRANSCRIPT_RE.test(f.name) && f.id !== transcriptFile?.id), meeting.title);
+          if (notesFile) {
+            notesText = await downloadTranscriptText(notesFile, accessToken);
+            if (notesText) usedFileIds.add(notesFile.id);
+          }
           const recordingFile = attRecording ||
             pickFile(driveFiles.filter((f) => f.mimeType === "video/mp4"), meeting.title);
 
@@ -648,7 +741,7 @@ Deno.serve(async (req) => {
         if (dryRun) {
           result.transcript = "dry-run";
         } else {
-          const salvo = await saveTranscript(meeting, transcriptText, transcriptSourceId);
+          const salvo = await saveTranscript(meeting, transcriptText, transcriptSourceId, notesText);
           if (salvo === "ok") { transcriptsImported++; result.transcript = true; }
           else if (salvo === "ja") result.transcript = "já importada";
         }
@@ -663,13 +756,14 @@ Deno.serve(async (req) => {
 
       // Finaliza a reunião do dia
       const jaFinalizada = meeting.status === "completed";
+      const quando = leadId ? "ao entrar em Reunião realizada" : "(20h)";
       const autoNote = result.transcript === true || result.transcript === "já importada"
-        ? "Finalizada automaticamente (20h), transcrição importada para a aba Transcrição."
+        ? `Finalizada automaticamente ${quando}, transcrição importada para a aba Transcrição.`
         : result.transcript === "na fila"
-          ? "Finalizada automaticamente (20h), gravação vinculada, transcrição em processamento (chega na aba Transcrição com briefing)."
+          ? `Finalizada automaticamente ${quando}, gravação vinculada, transcrição em processamento (chega na aba Transcrição com briefing).`
           : recordingLink
-            ? "Finalizada automaticamente (20h), gravação vinculada, sem transcrição encontrada."
-            : "Finalizada automaticamente (20h), nenhuma gravação/transcrição encontrada no Google.";
+            ? `Finalizada automaticamente ${quando}, gravação vinculada, sem transcrição encontrada.`
+            : `Finalizada automaticamente ${quando}, nenhuma gravação/transcrição encontrada no Google.`;
       const notaFinalizada = result.transcript === true
         ? "Transcrição importada automaticamente para a aba Transcrição."
         : result.transcript === "na fila"
@@ -714,7 +808,7 @@ Deno.serve(async (req) => {
     // Resumo do fechamento no WhatsApp do Fabrício — lê o estado do BANCO (reflete também o que
     // o sync-all-recordings e o agente do Marcelo fizeram), por isso roda na fase "report" (20h30)
     let summaryStatus: string = "não enviado";
-    if (!dryRun && phase !== "process") {
+    if (!dryRun && phase !== "process" && !leadId) {
       // CRM: todas as reuniões do dia (qualquer status) + transcrições automáticas importadas hoje
       const { data: dayActs } = await supabase
         .from("crm_activities")
@@ -789,6 +883,8 @@ Deno.serve(async (req) => {
       } else {
         summaryStatus = "sem reuniões no dia";
       }
+    } else if (leadId) {
+      summaryStatus = "modo lead (sem resumo)";
     } else if (phase === "process") {
       summaryStatus = "fase process (resumo vai às 20h30)";
     }

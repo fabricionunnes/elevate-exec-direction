@@ -25,6 +25,9 @@ interface DriveFile {
 const TRANSCRIPT_NAME_RE = /(transcri|transcript|gemini|anota|notes)/i;
 // Doc de transcrição completa do Meet/Gemini (preferido sobre o doc de anotações/resumo)
 const FULL_TRANSCRIPT_RE = /(transcri|transcript)/i;
+// Doc "Anotações feitas pelo Gemini" (resumo pronto): vai pra onboarding_meeting_notes.gemini_notes e
+// vira o resumo da reunião (report_summary) e o resumo que o Marcelo manda no grupo, sem gastar Claude
+const NOTES_RE = /(gemini|anota|notes)/i;
 const MAX_ASSEMBLYAI_PER_RUN = 3;
 // AssemblyAI aceita até 2,2 GB no upload; gravação de 1h do Meet passa de 600 MB
 const MAX_RECORDING_BYTES = 2 * 1024 * 1024 * 1024;
@@ -75,7 +78,7 @@ Deno.serve(async (req) => {
       .from("onboarding_meeting_notes")
       .select(`
         id, meeting_title, meeting_date, subject, recording_link, transcript, transcript_job_id, is_finalized,
-        notes, project_id, meeting_link, google_event_id, calendar_owner_id, staff_id, transcript_source_file_id,
+        notes, project_id, meeting_link, google_event_id, calendar_owner_id, staff_id, transcript_source_file_id, gemini_notes,
         project:project_id (id, status, consultant_id)
       `)
       .gte("meeting_date", desde)
@@ -399,12 +402,13 @@ Deno.serve(async (req) => {
       const meetingDate = new Date(meeting.meeting_date);
       // Reunião já com transcrição e gravação não precisa de busca de arquivos —
       // segue direto pros passos de finalização/tarefa (idempotentes)
-      const needsFiles = !meeting.transcript || !meeting.recording_link;
+      const needsFiles = !meeting.transcript || !meeting.recording_link || !meeting.gemini_notes;
       const users = needsFiles ? candidateUsers(meeting) : [];
       if (needsFiles && users.length === 0) continue;
 
       let recordingFile: DriveFile | null = null;
       let transcriptFile: DriveFile | null = null;
+      let notesFile: DriveFile | null = null;
       let workingToken: string | null = null;
 
       for (const userId of users) {
@@ -438,6 +442,10 @@ Deno.serve(async (req) => {
                 transcriptFile = atts.find((f) => docAtt(f) && FULL_TRANSCRIPT_RE.test(f.name))
                   || atts.find(docAtt) || null;
               }
+              if (!notesFile) {
+                notesFile = atts.find((f) => (f.mimeType === "application/vnd.google-apps.document") && NOTES_RE.test(f.name)
+                  && !FULL_TRANSCRIPT_RE.test(f.name) && f.id !== transcriptFile?.id) || null;
+              }
             }
           } catch { /* segue pro Drive */ }
         }
@@ -454,6 +462,10 @@ Deno.serve(async (req) => {
             // primeiro a transcrição completa, depois qualquer doc de anotações
             transcriptFile = pickFile(docs.filter((f) => FULL_TRANSCRIPT_RE.test(f.name)), meetingDate, meetingTitle, meeting.id)
               || pickFile(docs, meetingDate, meetingTitle, meeting.id);
+          }
+          if (!notesFile) {
+            notesFile = pickFile(files.filter((f) => f.mimeType === "application/vnd.google-apps.document" && NOTES_RE.test(f.name)
+              && !FULL_TRANSCRIPT_RE.test(f.name) && f.id !== transcriptFile?.id), meetingDate, meetingTitle, meeting.id);
           }
         }
 
@@ -476,6 +488,23 @@ Deno.serve(async (req) => {
           .eq("id", meeting.id);
         meeting.recording_link = link;
         totalRecordingsSynced++;
+      }
+
+      // Anotações do Gemini: resumo pronto, vira report_summary e o resumo do grupo (sem Claude)
+      if (!meeting.gemini_notes && notesFile && workingToken) {
+        const notesText = await downloadTranscriptText(notesFile, workingToken);
+        if (notesText) {
+          await supabase.from("onboarding_meeting_notes").update({ gemini_notes: notesText }).eq("id", meeting.id);
+          meeting.gemini_notes = notesText;
+          const { data: brief } = await supabase.from("onboarding_meeting_briefings").select("briefing_content").eq("meeting_id", meeting.id).maybeSingle();
+          let payload: Record<string, unknown> = {};
+          try { payload = brief?.briefing_content ? JSON.parse(brief.briefing_content) : {}; } catch { payload = {}; }
+          await supabase.from("onboarding_meeting_briefings").upsert({
+            meeting_id: meeting.id, project_id: meeting.project_id,
+            briefing_content: JSON.stringify({ ...payload, report_summary: notesText, report_source: "gemini", report_generated_at: new Date().toISOString() }),
+          }, { onConflict: "meeting_id" });
+          console.log(`✓ Anotações do Gemini importadas: ${meeting.meeting_title || meeting.subject}`);
+        }
       }
 
       // Transcrição: job pendente do AssemblyAI → arquivo do Drive → nova submissão
@@ -559,9 +588,11 @@ Deno.serve(async (req) => {
       // Resumo e ações da reunião: sempre que a transcrição entrou nesta passada, mesmo que a
       // reunião já estivesse finalizada (o Marcelo finaliza às 20h; a transcrição pode chegar depois)
       if (transcricaoNova && meeting.transcript && meeting.transcript.length > 50) {
-        supabase.functions.invoke("summarize-meeting-transcription", {
-          body: { meetingId: meeting.id },
-        }).catch((e: unknown) => console.error("[sync-all-recordings] summarize error:", e));
+        if (!meeting.gemini_notes) {
+          supabase.functions.invoke("summarize-meeting-transcription", {
+            body: { meetingId: meeting.id },
+          }).catch((e: unknown) => console.error("[sync-all-recordings] summarize error:", e));
+        }
 
         supabase.functions.invoke("generate-meeting-actions", {
           body: { meetingId: meeting.id, projectId: meeting.project_id },
