@@ -28,7 +28,11 @@ const ETAPA = {
 const MOTIVO_FORA_ICP = "eb97a200-bd96-4e92-8489-79b417e58198";
 const MOTIVO_PRECO = "e13f527e-11a5-49fb-be64-5679cd397b9d";
 const CLOSER_STAFF = "565dc606-c2f1-45ec-b06f-bccdc1c663e7"; // Ricardo Santos
-const INSTANCIA = "fabricionunnes";
+const INSTANCIA = "fabricionunnes";            // dona do grupo
+const AGENTE = "4d7f2d92-01e3-4416-8ae7-b3bad7d48ec3"; // agente "Black Friday - Ricardo Santos"
+const INSTANCIA_CLOSER = "8e3ae8a2-ce4f-4101-879f-4902be129dd3"; // número do Ricardo
+const CONTATO_APOS_MIN = 15;        // aplicou e não agendou: Ricardo chama depois disso
+const CONTATO_HORA_INI = 8, CONTATO_HORA_FIM = 21;
 const GRUPO = "120363427614204052@g.us";
 
 const DURACAO_MIN = 60;
@@ -98,6 +102,62 @@ async function livresDoDia(userId: string, ymd: string): Promise<string[] | null
     return h >= HORA_INI && h < HORA_FIM && Date.parse(`${ymd}T${s}:00-03:00`) >= limite;
   });
 }
+
+/**
+ * Puxa a conversa pelo número do Ricardo e deixa o agente da Black com ela: registra contato,
+ * conversa e mensagem (o Evolution não ecoa o que sai pela API) e liga o agente na conversa.
+ * Assim a confirmação de véspera/1h do motor e as respostas do lead caem no mesmo histórico.
+ */
+async function abrirConversa(sb: SB, lead: { id: string; phone: string }, texto: string) {
+  const { data: inst } = await sb.from("whatsapp_instances").select("instance_name, api_url, api_key").eq("id", INSTANCIA_CLOSER).maybeSingle();
+  if (!inst?.api_url) return { ok: false, erro: "instancia" };
+  const base = String(inst.api_url).replace(/\/+$/, "");
+  let d = String(lead.phone || "").replace(/\D/g, "");
+  if (d.length <= 11) d = "55" + d;
+  // número canônico do WhatsApp (com ou sem o 9), igual ao que o webhook grava
+  try {
+    const r = await fetch(`${base}/chat/whatsappNumbers/${inst.instance_name}`, {
+      method: "POST", headers: { apikey: inst.api_key, "Content-Type": "application/json" }, body: JSON.stringify({ numbers: [d] }),
+    });
+    const w = await r.json();
+    const hit = Array.isArray(w) ? w[0] : null;
+    if (hit && hit.exists === false) return { ok: false, erro: "sem_whatsapp" };
+    const jid = String(hit?.jid || "").split("@")[0];
+    if (/^\d{12,13}$/.test(jid)) d = jid;
+  } catch { /* segue com o número digitado */ }
+
+  const s = await fetch(`${base}/message/sendText/${inst.instance_name}`, {
+    method: "POST", headers: { apikey: inst.api_key, "Content-Type": "application/json" }, body: JSON.stringify({ number: d, text: texto }),
+  });
+  const env = await s.json().catch(() => ({}));
+  if (!s.ok) return { ok: false, erro: `envio ${s.status}` };
+
+  let { data: ct } = await sb.from("crm_whatsapp_contacts").select("id").eq("phone", d).maybeSingle();
+  if (!ct) ({ data: ct } = await sb.from("crm_whatsapp_contacts").insert({ phone: d, lead_id: lead.id }).select("id").single());
+  if (!ct) return { ok: true, erro: "contato" };
+  const agora = new Date().toISOString();
+  let { data: cv } = await sb.from("crm_whatsapp_conversations").select("id").eq("instance_id", INSTANCIA_CLOSER).eq("contact_id", ct.id).maybeSingle();
+  if (!cv) {
+    ({ data: cv } = await sb.from("crm_whatsapp_conversations").insert({
+      instance_id: INSTANCIA_CLOSER, contact_id: ct.id, lead_id: lead.id, status: "open",
+      last_message: texto.slice(0, 255), last_message_at: agora, last_message_direction: "outbound",
+    }).select("id").single());
+  } else {
+    await sb.from("crm_whatsapp_conversations").update({ lead_id: lead.id, status: "open", last_message: texto.slice(0, 255), last_message_at: agora, last_message_direction: "outbound" }).eq("id", cv.id);
+  }
+  if (!cv) return { ok: true, erro: "conversa" };
+  await sb.from("crm_whatsapp_messages").insert({
+    conversation_id: cv.id, content: texto, type: "text", direction: "outbound", status: "sent",
+    remote_id: env?.key?.id || null, is_ai: true, sent_by: null,
+  });
+  await sb.from("crm_ai_agent_conversation_overrides").upsert(
+    { agent_id: AGENTE, conversation_id: cv.id, channel: "whatsapp", enabled: true, reply_mode: "auto" },
+    { onConflict: "conversation_id,channel" },
+  );
+  return { ok: true, conversa: cv.id };
+}
+
+const primeiroNome = (n: unknown) => String(n || "").trim().split(/\s+/)[0] || "";
 
 // ── aplicou ─────────────────────────────────────────────────────────────────
 async function aplicou(sb: SB, body: Record<string, unknown>) {
@@ -217,6 +277,7 @@ async function agendar(sb: SB, body: Record<string, unknown>) {
   await sb.from("crm_activities").insert({
     lead_id: lead.id, type: "meeting", title: titulo, scheduled_at: ini.toISOString(), status: "pending",
     responsible_staff_id: closer.id, description: "Agendada pelo lead na aplicação da Black UNV",
+    ai_agent_id: AGENTE, // a confirmação de véspera e de 1h do motor sai por este agente
     meeting_link: link, google_calendar_event_id: ev.event?.id || null, google_calendar_user_id: closer.user_id,
   });
   // Closer que recebe a reunião vira o responsável pelo lead (regra de 08/09/2026)
@@ -224,6 +285,12 @@ async function agendar(sb: SB, body: Record<string, unknown>) {
     owner_staff_id: closer.id, closer_staff_id: closer.id, scheduled_at: ini.toISOString(),
     stage_id: ETAPA.agendou,
   }).eq("id", lead.id);
+
+  const quando = `${rotulo(ymd)}, às ${hora}`; // "quarta, 11/11, às 14:00"
+  const nome = primeiroNome(lead.name);
+  const texto = `Oi${nome ? `, ${nome}` : ""}! Aqui é o Ricardo, da UNV.\n\nVi sua aplicação pra Black UNV e nossa conversa ficou marcada pra ${quando}. Minha agenda está bem cheia nessa semana da Black, então esse horário ficou separado pra você. Conto com você.${link ? `\n\nLink da reunião: ${link}` : ""}\n\nVocê vai entrar pelo computador ou pelo celular?`;
+  const conv = await abrirConversa(sb, lead, texto);
+  await sb.from("black_contatos").upsert({ lead_id: lead.id, tipo: "agendou", enviado_em: new Date().toISOString(), erro: conv.ok ? (conv.erro || null) : conv.erro });
 
   return json({ ok: true, scheduled_at: ini.toISOString(), meeting_link: link, closer: closer.name });
 }
@@ -297,8 +364,37 @@ async function grupoSync(sb: SB) {
     }
   }
 
+  const chamados = await chamarQuemNaoAgendou(sb);
   await sb.from("black_grupo_sync").upsert({ id: 1, rodou_em: agora, erro: null, participantes: presentes.size, entraram, sairam, criados });
-  return json({ ok: true, participantes: presentes.size, entraram, sairam, criados });
+  return json({ ok: true, participantes: presentes.size, entraram, sairam, criados, chamados });
+}
+
+/** Aplicou e não marcou na página: depois de 15 min o Ricardo chama no WhatsApp e o agente segue. */
+async function chamarQuemNaoAgendou(sb: SB) {
+  const horaBR = new Date(Date.now() - 3 * 3600000).getUTCHours();
+  if (horaBR < CONTATO_HORA_INI || horaBR >= CONTATO_HORA_FIM) return 0;
+  const limite = new Date(Date.now() - CONTATO_APOS_MIN * 60000).toISOString();
+  const { data: leads } = await sb.from("crm_leads").select("id, name, phone, company, stage_entered_at")
+    .eq("pipeline_id", PIPELINE).eq("stage_id", ETAPA.aplicou).lte("stage_entered_at", limite).limit(20);
+  if (!leads?.length) return 0;
+  const { data: ja } = await sb.from("black_contatos").select("lead_id").in("lead_id", leads.map((l: any) => l.id));
+  const feitos = new Set((ja || []).map((x: any) => x.lead_id));
+  let n = 0;
+  for (const lead of leads) {
+    if (feitos.has(lead.id) || !lead.phone) continue;
+    const { data: reuniao } = await sb.from("crm_activities").select("id").eq("lead_id", lead.id).eq("type", "meeting")
+      .not("status", "in", "(cancelled,canceled,no_show)").gte("scheduled_at", new Date().toISOString()).limit(1).maybeSingle();
+    if (reuniao) continue;
+    // marca antes de enviar: se o envio travar no meio, não manda duas vezes
+    await sb.from("black_contatos").upsert({ lead_id: lead.id, tipo: "aplicou", enviado_em: new Date().toISOString() });
+    const nome = primeiroNome(lead.name);
+    const empresa = lead.company && !/^@/.test(lead.company) ? ` da ${lead.company}` : "";
+    const texto = `Oi${nome ? `, ${nome}` : ""}! Aqui é o Ricardo, da UNV.\n\nRecebi sua aplicação pra Black UNV. O próximo passo pra garantir sua vaga é a nossa conversa de 1 hora, onde eu olho o cenário${empresa} e te mostro como o projeto funcionaria aí.\n\nTenho horário nos próximos dias. Pra você fica melhor de manhã ou à tarde?`;
+    const r = await abrirConversa(sb, lead, texto);
+    if (!r.ok || r.erro) await sb.from("black_contatos").update({ erro: r.erro || "falha" }).eq("lead_id", lead.id);
+    if (r.ok) n++;
+  }
+  return n;
 }
 
 Deno.serve(async (req) => {
