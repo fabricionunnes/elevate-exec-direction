@@ -23,6 +23,8 @@ interface DriveFile {
 }
 
 const TRANSCRIPT_NAME_RE = /(transcri|transcript|gemini|anota|notes)/i;
+// Doc de transcrição completa do Meet/Gemini (preferido sobre o doc de anotações/resumo)
+const FULL_TRANSCRIPT_RE = /(transcri|transcript)/i;
 const MAX_ASSEMBLYAI_PER_RUN = 3;
 // AssemblyAI aceita até 2,2 GB no upload; gravação de 1h do Meet passa de 600 MB
 const MAX_RECORDING_BYTES = 2 * 1024 * 1024 * 1024;
@@ -61,8 +63,14 @@ Deno.serve(async (req) => {
 
     console.log("Starting recordings/transcripts sync (meeting-centric)...");
 
-    // Reuniões dos últimos 60 dias de projetos ativos que ainda precisam de algo
+    // Reuniões dos últimos 60 dias de projetos ativos que ainda precisam de algo.
+    // Modo "quente" (?horas=N, cron a cada 15 min): só reuniões que começaram nas últimas N horas,
+    // pra transcrição do Gemini entrar no projeto logo que a call acaba (Fabrício, 04/11/2026:
+    // "tem como já sair na hora que acaba a call?"). A passada das 20h continua cobrindo 60 dias.
+    const horasQuentes = Number(new URL(req.url).searchParams.get("horas") || 0);
     const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString();
+    const desde = horasQuentes > 0 ? new Date(Date.now() - horasQuentes * 3600 * 1000).toISOString() : sixtyDaysAgo;
+    if (horasQuentes > 0) console.log(`Modo quente: reuniões das últimas ${horasQuentes}h`);
     const { data: meetingsData, error: meetingsError } = await supabase
       .from("onboarding_meeting_notes")
       .select(`
@@ -70,7 +78,7 @@ Deno.serve(async (req) => {
         notes, project_id, meeting_link, google_event_id, calendar_owner_id, staff_id, transcript_source_file_id,
         project:project_id (id, status, consultant_id)
       `)
-      .gte("meeting_date", sixtyDaysAgo)
+      .gte("meeting_date", desde)
       .order("meeting_date", { ascending: false });
 
     if (meetingsError) throw meetingsError;
@@ -201,7 +209,7 @@ Deno.serve(async (req) => {
     // (webContentLink não funciona pra arquivo privado).
     let assemblyAiUsed = 0;
     const submitToAssemblyAI = async (fileId: string, accessToken: string): Promise<string | null> => {
-      if (!assemblyAiKey || assemblyAiUsed >= MAX_ASSEMBLYAI_PER_RUN) return null;
+      if (!assemblyAiKey || assemblyAiUsed >= MAX_ASSEMBLYAI_PER_RUN || horasQuentes > 0) return null;
       try {
         const metaResp = await fetch(
           `https://www.googleapis.com/drive/v3/files/${fileId}?fields=size`,
@@ -421,9 +429,14 @@ Deno.serve(async (req) => {
               }));
               if (!recordingFile) recordingFile = atts.find((f) => f.mimeType === "video/mp4" && !usedFileIds.has(f.id)) || null;
               if (!transcriptFile) {
-                transcriptFile = atts.find((f) =>
+                // Com as anotações automáticas do Gemini (Business Standard, 04/11/2026) o evento ganha
+                // DOIS docs: "Transcrição" (fala completa) e "Anotações feitas pelo Gemini" (resumo).
+                // A transcrição completa vale mais; o resumo só entra se não houver transcrição.
+                const docAtt = (f: DriveFile) =>
                   (f.mimeType === "application/vnd.google-apps.document" || f.mimeType.startsWith("text/")) &&
-                  TRANSCRIPT_NAME_RE.test(f.name) && !usedFileIds.has(f.id)) || null;
+                  TRANSCRIPT_NAME_RE.test(f.name) && !usedFileIds.has(f.id);
+                transcriptFile = atts.find((f) => docAtt(f) && FULL_TRANSCRIPT_RE.test(f.name))
+                  || atts.find(docAtt) || null;
               }
             }
           } catch { /* segue pro Drive */ }
@@ -437,12 +450,10 @@ Deno.serve(async (req) => {
             recordingFile = pickFile(files.filter((f) => f.mimeType === "video/mp4"), meetingDate, meetingTitle, meeting.id);
           }
           if (!transcriptFile) {
-            transcriptFile = pickFile(
-              files.filter((f) => f.mimeType !== "video/mp4" && TRANSCRIPT_NAME_RE.test(f.name)),
-              meetingDate,
-              meetingTitle,
-              meeting.id,
-            );
+            const docs = files.filter((f) => f.mimeType !== "video/mp4" && TRANSCRIPT_NAME_RE.test(f.name));
+            // primeiro a transcrição completa, depois qualquer doc de anotações
+            transcriptFile = pickFile(docs.filter((f) => FULL_TRANSCRIPT_RE.test(f.name)), meetingDate, meetingTitle, meeting.id)
+              || pickFile(docs, meetingDate, meetingTitle, meeting.id);
           }
         }
 
@@ -468,6 +479,7 @@ Deno.serve(async (req) => {
       }
 
       // Transcrição: job pendente do AssemblyAI → arquivo do Drive → nova submissão
+      let transcricaoNova = false;
       if (!meeting.transcript) {
         let transcriptText: string | null = null;
         let clearJobId = false;
@@ -520,6 +532,7 @@ Deno.serve(async (req) => {
             .eq("id", meeting.id);
           if (transcriptText) {
             meeting.transcript = transcriptText;
+            transcricaoNova = true;
             totalTranscriptsSynced++;
             console.log(`✓ Transcript synced for meeting: ${meeting.meeting_title || meeting.subject}`);
           }
@@ -527,8 +540,10 @@ Deno.serve(async (req) => {
       }
 
       // Finaliza reunião com gravação
-      if (meeting.recording_link && !meeting.is_finalized) {
-        const autoNotes = meeting.notes || `Reunião finalizada automaticamente pelo sistema.\n\nGravação disponível: ${meeting.recording_link}`;
+      if ((meeting.recording_link || (meeting.transcript && meeting.transcript.length > 50)) && !meeting.is_finalized) {
+        const autoNotes = meeting.notes || (meeting.recording_link
+          ? `Reunião finalizada automaticamente pelo sistema.\n\nGravação disponível: ${meeting.recording_link}`
+          : "Reunião finalizada automaticamente pelo sistema (transcrição importada).");
         const { error: finalizeError } = await supabase
           .from("onboarding_meeting_notes")
           .update({ is_finalized: true, notes: autoNotes })
@@ -538,17 +553,19 @@ Deno.serve(async (req) => {
           meeting.is_finalized = true;
           totalMeetingsFinalized++;
           console.log(`✓ Meeting auto-finalized: ${meeting.meeting_title || meeting.subject}`);
-
-          if (meeting.transcript && meeting.transcript.length > 50) {
-            supabase.functions.invoke("summarize-meeting-transcription", {
-              body: { meetingId: meeting.id },
-            }).catch((e: unknown) => console.error("[sync-all-recordings] summarize error:", e));
-
-            supabase.functions.invoke("generate-meeting-actions", {
-              body: { meetingId: meeting.id, projectId: meeting.project_id },
-            }).catch((e: unknown) => console.error("[sync-all-recordings] generate-actions error:", e));
-          }
         }
+      }
+
+      // Resumo e ações da reunião: sempre que a transcrição entrou nesta passada, mesmo que a
+      // reunião já estivesse finalizada (o Marcelo finaliza às 20h; a transcrição pode chegar depois)
+      if (transcricaoNova && meeting.transcript && meeting.transcript.length > 50) {
+        supabase.functions.invoke("summarize-meeting-transcription", {
+          body: { meetingId: meeting.id },
+        }).catch((e: unknown) => console.error("[sync-all-recordings] summarize error:", e));
+
+        supabase.functions.invoke("generate-meeting-actions", {
+          body: { meetingId: meeting.id, projectId: meeting.project_id },
+        }).catch((e: unknown) => console.error("[sync-all-recordings] generate-actions error:", e));
       }
 
       // Com transcrição: finaliza a tarefa de reunião ORIGINAL com a transcrição dentro
