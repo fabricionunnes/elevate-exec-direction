@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-11-05T10:01:14",
+ "gerado_em": "2026-11-05T15:02:27",
  "posts": [
+  {
+   "slug": "fazer-sozinho-custa-mais-demora-mais",
+   "url": "/blog/fazer-sozinho-custa-mais-demora-mais/",
+   "titulo": "Fazer sozinho custa mais e demora mais que contratar quem já fez",
+   "resumo": "Você vai errar no caminho e pagar por cada erro. Quem já fez erra menos e entrega resultado mais rápido.",
+   "tags": [
+    "estrutura comercial",
+    "decisão",
+    "investimento",
+    "tempo do dono",
+    "implementação"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-05",
+   "ts": 2240
+  },
   {
    "slug": "agente-atendimento-whatsapp-mostra-falta-processo",
    "url": "/blog/agente-atendimento-whatsapp-mostra-falta-processo/",
