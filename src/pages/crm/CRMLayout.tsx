@@ -89,7 +89,6 @@ const baseNavTabs = [
   { title: "Atividades", href: "/crm/activities", icon: ListTodo },
   { title: "Discador", href: "/crm/dialer", icon: Phone },
   { title: "Atendimento", href: "/crm/inbox", icon: MessageSquare, badge: true },
-  { title: "E-mail", href: "/crm/email", icon: MailIcon },
   { title: "Transcrições", href: "/crm/transcriptions", icon: FileText },
   { title: "Contratos", href: "/contratos", icon: ClipboardList },
   { title: "Reuniões", href: "/crm/meetings", icon: CalendarDays },
@@ -134,7 +133,6 @@ const MAIN_TAB_HREFS = [
   "/crm/activities",
   "/crm/dialer",
   "/crm/inbox",
-  "/crm/email",
 ];
 
 export const CRMLayout = () => {
@@ -503,7 +501,7 @@ export const CRMLayout = () => {
             <div className="flex items-center gap-1.5 ml-auto">
               <ThemeToggle />
               {/* E-mail de cada usuário dentro do Nexus (06/11/2026) */}
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/crm/email")} title="Meus e-mails">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/email")} title="Meus e-mails">
                 <MailIcon className="h-4 w-4" />
               </Button>
               <CRMNotificationsBell staffId={staffId} />
