@@ -502,6 +502,10 @@ export const CRMLayout = () => {
             {/* Right Actions */}
             <div className="flex items-center gap-1.5 ml-auto">
               <ThemeToggle />
+              {/* E-mail de cada usuário dentro do Nexus (06/11/2026) */}
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/crm/email")} title="Meus e-mails">
+                <MailIcon className="h-4 w-4" />
+              </Button>
               <CRMNotificationsBell staffId={staffId} />
               {!dialerOnly && <CRMInboundMessageNotifier staffId={staffId} isAdmin={isAdmin} isMaster={isMaster} />}
 
