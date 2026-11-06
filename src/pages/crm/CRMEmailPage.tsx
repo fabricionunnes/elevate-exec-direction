@@ -105,6 +105,10 @@ export default function CRMEmailPage() {
   const [leadDoRemetente, setLeadDoRemetente] = useState<{ id: string; name: string; company: string | null; stage: string | null } | null>(null);
   const [mobileLendo, setMobileLendo] = useState(false);
   const buscaRef = useRef<HTMLInputElement>(null);
+  // pasta/busca atuais num ref: o realtime e cargas antigas nunca sobrescrevem a lista da pasta nova
+  const estadoLista = useRef({ pasta, buscaIds });
+  estadoLista.current = { pasta, buscaIds };
+  const seqLista = useRef(0);
 
   const chamar = useCallback(async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("gmail-sync", { body });
@@ -145,6 +149,8 @@ export default function CRMEmailPage() {
   }, []);
 
   const carregarLista = useCallback(async (acc: Account) => {
+    const { pasta, buscaIds } = estadoLista.current;
+    const seq = ++seqLista.current;
     setCarregando(true);
     let q = db.from("mail_messages")
       .select("id, account_id, gmail_id, thread_id, label_ids, from_name, from_email, to_list, subject, snippet, internal_date, is_unread, is_starred, is_sent, has_attachments")
@@ -154,9 +160,12 @@ export default function CRMEmailPage() {
     else if (pasta === "ALL") q = q.not("label_ids", "cs", "{TRASH}").not("label_ids", "cs", "{SPAM}");
     else q = q.contains("label_ids", [pasta]).not("label_ids", "cs", "{TRASH}").not("label_ids", "cs", "{SPAM}");
     const { data } = await q;
+    if (seq !== seqLista.current) return; // chegou uma carga mais nova (outra pasta) no meio
     setMensagens((data as Msg[]) || []);
     setCarregando(false);
-  }, [pasta, buscaIds]);
+  }, []);
+  // troca de pasta/busca recarrega
+  useEffect(() => { if (account) carregarLista(account); }, [pasta, buscaIds, account, carregarLista]);
 
   useEffect(() => { if (account) { carregarLabels(account); carregarLista(account); } }, [account, carregarLabels, carregarLista]);
   useEffect(() => { setSelecionadas(new Set()); setCursor(-1); setPagina(1); }, [pasta, buscaIds, filtro]);
@@ -243,6 +252,16 @@ export default function CRMEmailPage() {
   const lixeira = useCallback((threads: string[]) => { modificar(idsDe(threads), ["TRASH"], ["INBOX", "SPAM"]); tirarDaLista(threads); toast.success(plural(threads.length, "Movida pra lixeira", "{n} conversas movidas pra lixeira")); }, [modificar, idsDe, tirarDaLista]);
   const spam = useCallback((threads: string[]) => { modificar(idsDe(threads), ["SPAM"], ["INBOX"]); tirarDaLista(threads); toast.success(plural(threads.length, "Marcada como spam", "{n} conversas marcadas como spam")); }, [modificar, idsDe, tirarDaLista]);
   const restaurar = useCallback((threads: string[]) => { modificar(idsDe(threads), ["INBOX"], ["TRASH", "SPAM"]); tirarDaLista(threads); toast.success(plural(threads.length, "Conversa movida pra Entrada", "{n} conversas movidas pra Entrada")); }, [modificar, idsDe, tirarDaLista]);
+  const excluirDeVez = useCallback(async (threads: string[]) => {
+    const ids = idsDe(threads);
+    if (!ids.length) return;
+    if (!window.confirm(threads.length === 1 ? "Excluir esta conversa definitivamente? Não dá pra desfazer." : `Excluir ${threads.length} conversas definitivamente? Não dá pra desfazer.`)) return;
+    try {
+      await chamar({ action: "delete", gmail_ids: ids });
+      tirarDaLista(threads);
+      toast.success(plural(threads.length, "Conversa excluída definitivamente", "{n} conversas excluídas definitivamente"));
+    } catch (e) { toast.error((e as Error).message); }
+  }, [chamar, idsDe, tirarDaLista]);
   const marcarLidas = useCallback((threads: string[], lida: boolean) => {
     const ids = idsDe(threads);
     modificar(ids, lida ? [] : ["UNREAD"], lida ? ["UNREAD"] : [], (x) => ({ ...x, is_unread: !lida }));
@@ -322,7 +341,7 @@ export default function CRMEmailPage() {
         case "Enter": case "o": { if (cursor >= 0 && conversas[cursor]) abrirThread(conversas[cursor].ultima.thread_id); break; }
         case "x": { if (atual >= 0 && conversas[atual]) alternarSelecao(conversas[atual].ultima.thread_id); break; }
         case "e": { if (alvoThreads.length && !naLixeiraOuSpam) arquivar(alvoThreads); break; }
-        case "#": case "Delete": case "Backspace": { if (alvoThreads.length) { e.preventDefault(); lixeira(alvoThreads); } break; }
+        case "#": case "Delete": case "Backspace": { if (alvoThreads.length) { e.preventDefault(); if (naLixeiraOuSpam) excluirDeVez(alvoThreads); else lixeira(alvoThreads); } break; }
         case "s": { if (alvoThreads.length) { const c = conversas.find((k) => k.ultima.thread_id === alvoThreads[0]); marcarEstrela(alvoThreads, !(c?.estrela)); } break; }
         case "i": { if (alvoThreads.length) { const c = conversas.find((k) => k.ultima.thread_id === alvoThreads[0]); marcarImportante(alvoThreads, !(c?.importante)); } break; }
         case "u": { if (alvoThreads.length) marcarLidas(alvoThreads, false); break; }
@@ -339,7 +358,7 @@ export default function CRMEmailPage() {
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compor, mostrarAtalhos, threadSel, cursor, conversas, selecionadas, naLixeiraOuSpam, abrirThread, arquivar, lixeira, marcarEstrela, marcarImportante, marcarLidas, spam, fecharThread, thread, pagina, totalPaginas]);
+  }, [compor, mostrarAtalhos, threadSel, cursor, conversas, selecionadas, naLixeiraOuSpam, abrirThread, arquivar, lixeira, excluirDeVez, marcarEstrela, marcarImportante, marcarLidas, spam, fecharThread, thread, pagina, totalPaginas]);
 
   // ── Estados vazios ──
   if (account === undefined) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -440,12 +459,13 @@ export default function CRMEmailPage() {
                   </>
                 )}
                 {pasta !== "TRASH" && <Acao icone={Trash2} rotulo="Excluir (lixeira)" perigo onClick={() => lixeira(sel)} />}
+                {naLixeiraOuSpam && <Acao icone={Trash2} rotulo="Excluir definitivamente" perigo onClick={() => excluirDeVez(sel)} />}
                 <button onClick={() => setSelecionadas(new Set())} className="ml-auto text-[11px] text-muted-foreground hover:text-foreground px-1.5">Limpar</button>
               </div>
             ) : (
               <div className="flex items-center gap-1">
                 <Checkbox checked={todasSelecionadas} onCheckedChange={selecionarTodas} className="ml-2 mr-1" aria-label="Selecionar todas" disabled={conversas.length === 0} />
-                <div className="flex items-center gap-1 overflow-x-auto flex-1">
+                <div className="flex items-center gap-1 flex-wrap flex-1 min-w-0">
                   {FILTROS.map((f) => (
                     <button key={f.key} onClick={() => setFiltro(f.key)} className={cn("rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-colors border", filtro === f.key ? "text-white border-transparent" : "text-muted-foreground border-border/70 hover:bg-muted/60")} style={filtro === f.key ? { background: NAVY } : undefined}>{f.nome}</button>
                   ))}
@@ -513,6 +533,7 @@ export default function CRMEmailPage() {
                         <Acao icone={Star} rotulo={c.estrela ? "Tirar estrela" : "Estrela"} pequeno ativo={c.estrela} onClick={() => marcarEstrela([m.thread_id], !c.estrela)} />
                         {naLixeiraOuSpam ? <Acao icone={Undo2} rotulo="Restaurar" pequeno onClick={() => restaurar([m.thread_id])} /> : <Acao icone={Archive} rotulo="Arquivar" pequeno onClick={() => arquivar([m.thread_id])} />}
                         {pasta !== "TRASH" && <Acao icone={Trash2} rotulo="Excluir" pequeno perigo onClick={() => lixeira([m.thread_id])} />}
+                        {naLixeiraOuSpam && <Acao icone={Trash2} rotulo="Excluir definitivamente" pequeno perigo onClick={() => excluirDeVez([m.thread_id])} />}
                       </div>
                     </li>
                   );
@@ -565,6 +586,7 @@ export default function CRMEmailPage() {
                       </>
                     )}
                     {pasta !== "TRASH" && <Acao icone={Trash2} rotulo="Excluir (lixeira)" perigo onClick={() => lixeira([ultimaThread.thread_id])} />}
+                    {naLixeiraOuSpam && <Acao icone={Trash2} rotulo="Excluir definitivamente" perigo onClick={() => excluirDeVez([ultimaThread.thread_id])} />}
                   </>
                 )}
               </div>
