@@ -22,7 +22,8 @@ import {
   MessageSquare,
   Headphones,
   FileCheck,
-  Code2
+  Code2,
+  Mail
 } from "lucide-react";
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 
@@ -194,6 +195,11 @@ export default function FinancialModulePage() {
               Módulo Financeiro
             </h1>
           </div>
+          {/* E-mail de cada usuário dentro do Nexus (06/11/2026) */}
+          <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={() => navigate("/crm/email")} title="Meus e-mails">
+            <Mail className="h-4 w-4" />
+            <span className="hidden sm:inline">E-mail</span>
+          </Button>
         </div>
       </header>
 
