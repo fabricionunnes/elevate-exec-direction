@@ -64,8 +64,8 @@ export default function Dashboard() {
   const load = useCallback(async () => {
     const today = todayISO();
     const from6 = format(subMonths(new Date(), 5), "yyyy-MM-01");
-    const [o, c, t, av, ing, comp, rev, queue, win, zon, fb] = await Promise.all([
-      supabase.from("orders").select("*, order_items(product_name, qty, line_total)").gte("scheduled_date", from6).order("scheduled_date").order("created_at"),
+    const [o, c, t, av, ing, comp, rev, queue, win, zon, fb, prods] = await Promise.all([
+      supabase.from("orders").select("*, order_items(product_id, product_name, qty, line_total)").gte("scheduled_date", from6).order("scheduled_date").order("created_at"),
       supabase.from("customers").select("*"),
       supabase.from("transactions").select("*").gte("occurred_on", from6),
       supabase.rpc("availability", { p_from: today, p_to: addDaysISO(7) }),
@@ -76,10 +76,17 @@ export default function Dashboard() {
       supabase.from("delivery_windows").select("id, start_time"),
       supabase.from("delivery_zones").select("id, lat, lng, sort_order"),
       supabase.from("feedback").select("kind, status").neq("status", "resolvido"),
+      supabase.from("products").select("id, name"),
     ]);
     const fbRows = (fb.data as { kind: string; status: string }[]) ?? [];
+    // pedido guarda o nome do produto da época; agrupa pelo produto com o nome de hoje
+    const nomeAtual = new Map(((prods.data as { id: string; name: string }[]) ?? []).map((p) => [p.id, p.name.trim()]));
+    const orders = ((o.data as DashOrder[]) ?? []).map((x) => ({
+      ...x,
+      order_items: x.order_items?.map((i) => ({ ...i, product_name: (i.product_id && nomeAtual.get(i.product_id)) || i.product_name.trim() })) ?? null,
+    }));
     setD({
-      orders: (o.data as DashOrder[]) ?? [],
+      orders,
       customers: (c.data as Customer[]) ?? [],
       tx: (t.data as Transaction[]) ?? [],
       availability: (av.data as Availability[]) ?? [],
@@ -216,7 +223,7 @@ export default function Dashboard() {
       <div className="grid gap-3 lg:grid-cols-3">
         <Card className="min-h-[300px]">
           <H sub="bolos vendidos">Mix de produtos · mês</H>
-          <div className="h-[260px]"><Donut3D fatias={mixFatias} vazio="Sem vendas no mês ainda." formato={(f) => `${f.valor} un`} /></div>
+          <div className="sm:h-[260px]"><Donut3D fatias={mixFatias} vazio="Sem vendas no mês ainda." formato={(f) => `${f.valor} un`} max={7} /></div>
         </Card>
 
         <Card>
