@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>Live Black UNV | Terça, 10/11, 20h</title>
-<meta name="description" content="Confirme sua presença na live da Black UNV e salve na sua agenda. Terça, 10 de novembro, às 20h." />
+<title>Live Black UNV | Quarta, 25/11, 20h</title>
+<meta name="description" content="Confirme sua presença na live da Black UNV e salve na sua agenda. Quarta, 25 de novembro, às 20h." />
 <meta name="robots" content="noindex,nofollow" />
 <meta name="theme-color" content="#08090D" />
 <style>
@@ -98,7 +98,7 @@ input.bad{border-color:var(--red)}
     <p class="sub">Na live eu abro a condição da Black UNV: o projeto comercial completo da UNV num pacote só. <strong>O valor só é revelado ao vivo.</strong></p>
 
     <div class="when">
-      <div><small>Dia</small><b>Ter, 10/11</b></div>
+      <div><small>Dia</small><b>Qua, 25/11</b></div>
       <div><small>Horário</small><b>20h</b></div>
       <div><small>Duração</small><b>1 hora</b></div>
     </div>
@@ -128,7 +128,7 @@ input.bad{border-color:var(--red)}
     <p class="k">Agora salva na sua agenda pra não esquecer. O link da live já vai dentro do evento.</p>
     <a class="btn blue" id="gcal" href="#" target="_blank" rel="noopener">Salvar no Google Agenda</a>
     <a class="btn ghost" id="ics" href="/black/live/live-black-unv.ics">Salvar no iPhone ou Outlook</a>
-    <div class="meet">Link pra entrar na live: <b>unvholdings.com.br/black/entrar</b><br>Terça, 10/11, às 20h (horário de Brasília)</div>
+    <div class="meet">Link pra entrar na live: <b>unvholdings.com.br/black/entrar</b><br>Quarta, 25/11, às 20h (horário de Brasília)</div>
     <p class="hint">No dia eu também mando o link no grupo da Black UNV.</p>
   </section>
 
@@ -144,8 +144,8 @@ var SUPA = "https://xrncvhzxjmddqluxoosu.supabase.co";
 var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
 var PIXEL = "247392077001023";
 var MEET = "https://unvholdings.com.br/black/entrar"; // passa por /black/entrar pra contar quem entrou na live
-// 10/11/2026 20h em Brasília (UTC-3, sem horário de verão) = 23h UTC
-var INICIO = "20261110T230000Z", FIM = "20261111T000000Z";
+// 25/11/2026 20h em Brasília (UTC-3, sem horário de verão) = 23h UTC
+var INICIO = "20261125T230000Z", FIM = "20261126T000000Z";
 var TITULO = "Live Black UNV";
 var DESCR = "Live da Black UNV com o Fabrício Nunnes: o projeto comercial completo da UNV num pacote só (diretor comercial, treinamento, processos e tráfego pago). O valor é revelado ao vivo.\n\nLink da live: " + MEET;
 
@@ -260,7 +260,7 @@ $("cf").addEventListener("submit", function(ev){
   nome = capitalize(nome);
   try { var o = JSON.parse(localStorage.getItem("black_lead") || "{}"); o.nome = nome; o.tel = tel; localStorage.setItem("black_lead", JSON.stringify(o)); } catch(e){}
   sending = true; $("go").disabled = true; $("go").textContent = "Confirmando…";
-  fb("trackCustom","ConfirmouLive",{ evento:"black-unv-2026-11-10" });
+  fb("trackCustom","ConfirmouLive",{ evento:"black-unv-2026-11-25" });
   // A confirmação nunca trava: se o registro falhar, a pessoa segue pra agenda do mesmo jeito.
   var t = trk({ step:1, name:"confirmou", q:1, status:"confirmou", meta:{ contato:{ nome:nome, whatsapp:tel } } });
   var fim = function(){ done(nome); };
