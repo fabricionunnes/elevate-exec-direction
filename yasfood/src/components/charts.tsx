@@ -142,8 +142,17 @@ function DonutSvg({ fatias, ativa, onAtiva }: { fatias: Fatia[]; ativa: number |
   );
 }
 
-export function Donut3D({ fatias, vazio, formato, legendaEmbaixo }: { fatias: Fatia[]; vazio: string; formato?: (f: Fatia) => string; legendaEmbaixo?: boolean }) {
+/** Mantém as maiores fatias e junta o resto em "Outros", pra legenda caber no card. */
+function agrupaResto(fatias: Fatia[], max: number): Fatia[] {
+  if (fatias.length <= max) return fatias;
+  const top = [...fatias].sort((a, b) => b.valor - a.valor);
+  const resto = top.slice(max - 1);
+  return [...top.slice(0, max - 1), { nome: `Outros (${resto.length})`, valor: resto.reduce((a, f) => a + f.valor, 0), cor: "#cdb9a8", sub: resto.map((f) => `${f.nome}: ${f.valor}`).join(" · ") }];
+}
+
+export function Donut3D({ fatias: todas, vazio, formato, legendaEmbaixo, max = 6 }: { fatias: Fatia[]; vazio: string; formato?: (f: Fatia) => string; legendaEmbaixo?: boolean; max?: number }) {
   const [ativa, setAtiva] = useState<number | null>(null);
+  const fatias = agrupaResto(todas, max);
   const [webgl] = useState(temWebGL);
   const [parado] = useState(semMovimento);
   const total = fatias.reduce((a, f) => a + f.valor, 0);
@@ -154,12 +163,12 @@ export function Donut3D({ fatias, vazio, formato, legendaEmbaixo }: { fatias: Fa
       <div className={clsx("relative min-h-0 min-w-0 flex-1", legendaEmbaixo ? "" : "h-52 sm:h-full")}>
         {webgl ? <Guarda reserva={svg}><Suspense fallback={svg}><Donut3DScene fatias={fatias} ativa={ativa} parado={parado} onAtiva={setAtiva} /></Suspense></Guarda> : svg}
       </div>
-      <ul className={clsx("w-full shrink-0 space-y-1", legendaEmbaixo ? "" : "sm:w-52")}>
+      <ul className={clsx("w-full shrink-0 space-y-1 overflow-y-auto", legendaEmbaixo ? "" : "sm:max-h-full sm:w-52")}>
         {fatias.map((f, i) => (
           <li key={f.nome} onMouseEnter={() => setAtiva(i)} onMouseLeave={() => setAtiva(null)} onClick={() => setAtiva(ativa === i ? null : i)}
             className={clsx("flex cursor-default items-center gap-2 rounded-lg px-2 py-1 text-xs transition", ativa === i ? "bg-choco-50 ring-1 ring-choco-200" : "")}>
             <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: f.cor }} />
-            <span className="line-clamp-2 min-w-0 flex-1 leading-tight text-choco-800" title={f.nome}>{f.nome}</span>
+            <span className="line-clamp-2 min-w-0 flex-1 leading-tight text-choco-800" title={f.sub ?? f.nome}>{f.nome}</span>
             <b className="whitespace-nowrap text-choco-900">{formato ? formato(f) : f.valor}</b>
             <span className="w-9 text-right text-choco-500">{Math.round((f.valor / total) * 100)}%</span>
           </li>

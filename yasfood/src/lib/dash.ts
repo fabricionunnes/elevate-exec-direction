@@ -5,7 +5,7 @@ import { ptBR } from "date-fns/locale";
 import type { Customer, Order, Transaction } from "./types";
 import { todayISO } from "./format";
 
-export interface DashOrder extends Order { order_items: { product_name: string; qty: number; line_total: number }[] | null }
+export interface DashOrder extends Order { order_items: { product_id?: string | null; product_name: string; qty: number; line_total: number }[] | null }
 
 export interface Periodo { pedidos: number; bolos: number; receita: number; recebido: number; ticket: number; clientesNovos: number }
 export interface Fatia { nome: string; qtd: number; receita: number; cor: string }
