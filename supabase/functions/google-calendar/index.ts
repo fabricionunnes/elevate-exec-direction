@@ -35,6 +35,8 @@ const GOOGLE_CALENDAR_SCOPES = [
   "https://www.googleapis.com/auth/calendar",
   "https://www.googleapis.com/auth/drive",
   "https://www.googleapis.com/auth/youtube",
+  // E-mail dentro do Nexus (05/11/2026): ler, marcar e enviar pelo Gmail do próprio usuário (gmail-sync)
+  "https://www.googleapis.com/auth/gmail.modify",
 ].join(" ");
 
 // Helper function to transcribe recording using AssemblyAI
