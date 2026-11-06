@@ -51,3 +51,27 @@
 }
 @media (max-width: 560px) { .pc .al-tri, .pc .al-crono { grid-template-columns: 1fr; } }
 .pc.alpha .bc i { max-height: calc(100% - 48px); }
+/* página do encontro do mês */
+.pc .al-enc-top { display: grid; grid-template-columns: auto 1fr 220px; gap: 18px; align-items: start; background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--gold); border-radius: 8px; padding: 16px 18px; }
+.pc .al-enc-tit h2 { font-size: 22px; font-weight: 800; margin: 4px 0 6px; }
+.pc .al-enc-tit p { color: var(--ink2); font-size: 13px; max-width: 760px; line-height: 1.5; }
+.pc .al-enc-tit .tag, .pc .al-crono .tag { display: inline-block; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; border: 1px solid var(--line); border-radius: 4px; padding: 3px 6px; margin: 8px 4px 0 0; color: var(--ink2); }
+.pc .al-enc-prog strong { display: block; font-size: 26px; font-weight: 800; margin: 4px 0 8px; }
+.pc .al-tarefa { display: grid; grid-template-columns: 24px 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.pc .al-tarefa:last-child { border-bottom: 0; }
+.pc .al-tarefa b { font-size: 13px; display: block; }
+.pc .al-tarefa small { color: var(--mute); font-size: 11px; }
+.pc .al-tarefa.ok b { color: var(--ink2); }
+.pc .al-check { width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid var(--line); background: var(--panel2); color: #0E0E0E; font-weight: 900; font-size: 13px; display: flex; align-items: center; justify-content: center; padding: 0; }
+button.al-check { cursor: pointer; }
+.pc .al-check.on { background: var(--good); border-color: var(--good); }
+.pc .al-aula { display: grid; gap: 10px; }
+.pc .al-bloco { display: grid; grid-template-columns: 58px 1fr; gap: 12px; }
+.pc .al-bloco .h { color: var(--gold); font-weight: 800; font-size: 13px; }
+.pc .al-bloco b { font-size: 13px; }
+.pc .al-bloco p { color: var(--ink2); font-size: 12px; line-height: 1.5; margin-top: 2px; }
+.pc .al-conceito { font-size: 12.5px; padding: 6px 0 6px 10px; border-left: 2px solid var(--gold); margin-bottom: 6px; color: var(--ink); }
+.pc .al-chk { display: flex !important; align-items: center; gap: 8px; text-transform: none !important; letter-spacing: 0 !important; font-size: 12px !important; color: var(--ink2) !important; }
+@media (max-width: 900px) { .pc .al-enc-top { grid-template-columns: 1fr; } .pc .al-tarefa { grid-template-columns: 24px 1fr; } .pc .al-tarefa .al-btn { grid-column: 2; justify-self: start; } }
+.pc .al-enc-card { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 8px; padding: 12px 16px; }
+.pc .al-enc-card b { font-size: 14px; }

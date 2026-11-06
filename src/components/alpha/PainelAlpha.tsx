@@ -3,13 +3,17 @@ import { useState } from "react";
 import { Tile, Panel, BarrasItens, BarH, Tabela } from "@/components/painel-controle/ui";
 import { brl, fp, kfmt } from "@/components/painel-controle/fmt";
 import type { DadosAlpha, Resumo } from "./tipos";
+import { ENCONTROS, progressoMes } from "./encontros";
 import {
   MESES_CURTO, MESES_NOME, SEMAFORO_TXT, lucroReal, lucroPlano, despesaFixa, despesaTotalReal, planoDoMes, trimestres, saldosMensais,
 } from "./tipos";
 
 const cor = (v: number | null) => (v == null ? "" : v >= 0 ? "pos" : "neg");
 
-export function PainelAlpha({ d, anterior, r, irPara }: { d: DadosAlpha; anterior: DadosAlpha | null; r: Resumo; irPara: (aba: string) => void }) {
+export function PainelAlpha({ d, anterior, r, irPara, tarefasEncontro, onAbrirEncontro }: {
+  d: DadosAlpha; anterior: DadosAlpha | null; r: Resumo; irPara: (aba: string) => void;
+  tarefasEncontro?: (mes: number) => Record<string, boolean>; onAbrirEncontro?: (mes: number) => void;
+}) {
   const [mes, setMes] = useState(Math.max(r.fechado, 1));
   const sem = SEMAFORO_TXT[r.status];
   const tris = trimestres(d);
@@ -28,6 +32,24 @@ export function PainelAlpha({ d, anterior, r, irPara }: { d: DadosAlpha; anterio
         <div><b>{sem.titulo}</b><p>{sem.acao}</p></div>
         <div className="num">Lucro acumulado contra o plano<strong>{r.lucroPlanoAcum ? fp(r.lucroAcum / r.lucroPlanoAcum) : "-"}</strong></div>
       </div>
+
+      {(() => {
+        const hoje = new Date();
+        const mesEnc = hoje.getFullYear() === d.ano ? hoje.getMonth() + 1 : hoje.getFullYear() > d.ano ? 12 : 1;
+        const e = ENCONTROS[mesEnc - 1];
+        const p = progressoMes(d, mesEnc, tarefasEncontro?.(mesEnc) ?? {});
+        const cls = p.feitas === p.total ? "g" : p.feitas ? "a" : "r";
+        return (
+          <div className="al-enc-card">
+            <div><div className="lbl">Encontro de {MESES_NOME[mesEnc - 1].toLowerCase()}</div><b>{e.tema}</b><span className="sub"> · {e.objetivo}</span></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div className="al-prog" style={{ width: 140 }}><i className={cls} style={{ width: `${(p.feitas / p.total) * 100}%` }} /></div>
+              <span className={`st ${cls === "g" ? "g" : cls === "a" ? "a" : "r"}`}>{p.feitas}/{p.total} tarefas no sistema</span>
+              {onAbrirEncontro && <button type="button" className="al-btn pri" onClick={() => onAbrirEncontro(mesEnc)}>Abrir encontro</button>}
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="grid k6">
         <Tile main label={`Lucro líquido ${r.fechado ? `jan a ${MESES_CURTO[r.fechado - 1].toLowerCase()}` : "do ano"}`} valor={r.temDados ? brl(r.lucroAcum) : "-"} cls={cor(r.lucroAcum)}
