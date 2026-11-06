@@ -260,7 +260,9 @@ async function sincronizarCaixa(acc: any, inicio: number): Promise<Record<string
 // Detector local resolve quem já está em português sem IA; o resto vai pro Claude Haiku (o mais barato),
 // lista em lote de até 20 numa chamada e o corpo só quando a mensagem é aberta. Tudo fica em cache no banco.
 const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY") || Deno.env.get("CLAUDE_API_KEY") || "";
+const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY") || "";
 const MODELO_TRADUCAO = "claude-haiku-5-5";
+const MODELO_OPENAI = "gpt-4o-mini"; // principal: mais barato; Claude Haiku fica de reserva
 const PT = /\b(de|que|não|nao|para|com|uma|você|voce|seu|sua|está|esta|são|sao|mais|pelo|pela|nós|obrigad[oa]|olá|ola|prezad[oa]|então|também|agora|sobre|isso|aqui)\b|ção|ções|ão\b/gi;
 const OUTRO = /\b(the|and|you|your|to|of|is|are|for|with|this|that|have|will|from|our|please|thanks|hello|el|los|las|usted|gracias|hola|und|der|die|das|nicht|vous|nous|avec|pour|est)\b/gi;
 function idiomaLocal(texto: string): "pt" | null {
@@ -271,8 +273,25 @@ function idiomaLocal(texto: string): "pt" | null {
 }
 const semHtml = (h: string) => h.replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<br\s*\/?>(?!\n)/gi, "\n").replace(/<\/(p|div|tr|li|h\d)>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/[ \t]+/g, " ").replace(/\n\s*\n\s*\n+/g, "\n\n").trim();
 
+async function openai(prompt: string, maxTokens: number, meta: Record<string, unknown>): Promise<string> {
+  const r = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${OPENAI_KEY}`, "content-type": "application/json" },
+    body: JSON.stringify({ model: MODELO_OPENAI, max_tokens: maxTokens, temperature: 0.2, messages: [{ role: "user", content: prompt }] }),
+  });
+  if (!r.ok) throw new Error(`Tradução falhou (OpenAI ${r.status}): ${(await r.text()).slice(0, 200)}`);
+  const d = await r.json();
+  supabase.from("ai_usage_log").insert({ fn: "gmail-sync", model: MODELO_OPENAI, input_tokens: d.usage?.prompt_tokens || 0, output_tokens: d.usage?.completion_tokens || 0, cache_read_tokens: d.usage?.prompt_tokens_details?.cached_tokens || 0, cache_write_tokens: 0, meta }).then(() => {}, () => {});
+  return String(d.choices?.[0]?.message?.content || "").trim();
+}
+
 async function claude(prompt: string, maxTokens: number, meta: Record<string, unknown>): Promise<string> {
-  if (!ANTHROPIC_KEY) throw new Error("Sem chave da Anthropic pra traduzir");
+  // tradução: OpenAI primeiro; Anthropic só se não houver chave da OpenAI ou ela falhar
+  if (OPENAI_KEY) {
+    try { return await openai(prompt, maxTokens, meta); }
+    catch (e) { if (!ANTHROPIC_KEY) throw e; console.error("openai", e); }
+  }
+  if (!ANTHROPIC_KEY) throw new Error("Sem chave de IA pra traduzir");
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
