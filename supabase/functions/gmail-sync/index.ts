@@ -1,0 +1,414 @@
+// gmail-sync: e-mail dentro do Nexus (05/11/2026). Sincroniza a caixa do Gmail de cada usuário pro banco
+// (mail_accounts / mail_labels / mail_messages) e executa as ações da tela (ler corpo, anexo, marcar,
+// arquivar, lixeira, enviar, buscar). Usa o mesmo OAuth do Google que o time já conecta pro Calendar
+// (user_google_tokens), com o escopo gmail.modify pedido no google-calendar?action=auth-url.
+//
+// Chamadas:
+//   cron (service role)  {mode:"sync"}            → todas as caixas: incremental (historyId) + carga inicial em lotes
+//   usuário (JWT)        {action:"connect"}        → cria/ativa a própria caixa (precisa do escopo do Gmail)
+//                        {action:"status"}
+//                        {action:"sync-me"}
+//                        {action:"message", gmail_id}
+//                        {action:"attachment", gmail_id, attachment_id}
+//                        {action:"modify", gmail_ids:[], add:[], remove:[]}   (UNREAD, STARRED, INBOX, TRASH...)
+//                        {action:"send", to, cc, bcc, subject, html, text, thread_id?, in_reply_to?, references?, attachments?}
+//                        {action:"search", q}
+import { createClient } from "@supabase/supabase-js";
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
+const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID") || "";
+const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET") || "";
+const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
+const DIAS_CARGA_INICIAL = 90;
+const PAGINAS_POR_PASSADA = 2; // carga inicial: 2 páginas de 50 por caixa a cada minuto
+const ORCAMENTO_MS = 50_000;
+
+const j = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
+const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+class NeedsAuth extends Error {}
+
+// ── Token Google (renova e persiste, igual ao sync-all-recordings) ─────────────────────────────
+async function tokenDoUsuario(userId: string): Promise<string> {
+  const { data: t } = await supabase.from("user_google_tokens").select("*").eq("user_id", userId).maybeSingle();
+  if (!t) throw new NeedsAuth("Google não conectado");
+  if (t.token_expires_at && new Date(t.token_expires_at).getTime() > Date.now() + 60_000) return t.access_token;
+  if (!t.refresh_token || !GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) throw new NeedsAuth("Token expirado, reconecte o Google");
+  const r = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ client_id: GOOGLE_CLIENT_ID, client_secret: GOOGLE_CLIENT_SECRET, refresh_token: t.refresh_token, grant_type: "refresh_token" }),
+  });
+  if (!r.ok) throw new NeedsAuth("Não consegui renovar o token do Google, reconecte");
+  const d = await r.json();
+  await supabase.from("user_google_tokens").update({ access_token: d.access_token, token_expires_at: new Date(Date.now() + (d.expires_in || 3600) * 1000).toISOString() }).eq("user_id", userId);
+  return d.access_token;
+}
+
+// deno-lint-ignore no-explicit-any
+async function gmail(token: string, path: string, init: RequestInit = {}): Promise<any> {
+  const r = await fetch(`${GMAIL}${path}`, { ...init, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(init.headers || {}) } });
+  if (r.status === 401) throw new NeedsAuth("Google recusou o token");
+  if (r.status === 403) {
+    const t = await r.text();
+    if (/insufficient|scope/i.test(t)) throw new NeedsAuth("Sem permissão do Gmail: reconecte o Google no Nexus");
+    throw new Error(`Gmail 403: ${t.slice(0, 200)}`);
+  }
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`Gmail ${r.status}: ${(await r.text()).slice(0, 300)}`);
+  if (r.status === 204) return {};
+  return await r.json();
+}
+
+// ── Parse da mensagem ──────────────────────────────────────────────────────────────────────────
+const b64url = (s: string) => {
+  const norm = s.replace(/-/g, "+").replace(/_/g, "/");
+  const bin = atob(norm + "===".slice((norm.length + 3) % 4));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder("utf-8").decode(bytes);
+};
+const toB64url = (s: string) => {
+  const bytes = new TextEncoder().encode(s);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+};
+type Addr = { name: string; email: string };
+function parseAddrs(h: string | undefined): Addr[] {
+  if (!h) return [];
+  const out: Addr[] = [];
+  const parts: string[] = []; let cur = "", q = false, ang = 0;
+  for (const ch of h) {
+    if (ch === '"') q = !q;
+    if (ch === "<") ang++; if (ch === ">") ang = Math.max(0, ang - 1);
+    if (ch === "," && !q && ang === 0) { parts.push(cur); cur = ""; } else cur += ch;
+  }
+  parts.push(cur);
+  for (const p of parts) {
+    const s = p.trim(); if (!s) continue;
+    const m = s.match(/^(.*?)<([^>]+)>\s*$/);
+    if (m) out.push({ name: m[1].trim().replace(/^"|"$/g, ""), email: m[2].trim().toLowerCase() });
+    else out.push({ name: "", email: s.replace(/^"|"$/g, "").toLowerCase() });
+  }
+  return out;
+}
+// deno-lint-ignore no-explicit-any
+function headersMap(payload: any): Record<string, string> {
+  const m: Record<string, string> = {};
+  for (const h of payload?.headers || []) m[String(h.name).toLowerCase()] = h.value;
+  return m;
+}
+// deno-lint-ignore no-explicit-any
+type Parsed = { html: string | null; text: string | null; attachments: any[] };
+// deno-lint-ignore no-explicit-any
+function walk(part: any, acc: Parsed) {
+  if (!part) return;
+  const mime = String(part.mimeType || "");
+  const filename = part.filename || "";
+  const body = part.body || {};
+  const hdr = headersMap(part);
+  const cid = (hdr["content-id"] || "").replace(/^<|>$/g, "");
+  if (filename || (body.attachmentId && !/^text\//.test(mime))) {
+    acc.attachments.push({ attachmentId: body.attachmentId || null, filename: filename || `anexo.${mime.split("/")[1] || "bin"}`, mimeType: mime, size: body.size || 0, contentId: cid || null, inline: !!cid && /inline/i.test(hdr["content-disposition"] || "") });
+  } else if (mime === "text/html" && body.data) {
+    acc.html = (acc.html || "") + b64url(body.data);
+  } else if (mime === "text/plain" && body.data) {
+    acc.text = (acc.text || "") + b64url(body.data);
+  }
+  for (const p of part.parts || []) walk(p, acc);
+}
+// deno-lint-ignore no-explicit-any
+function linhaDaMensagem(accountId: string, m: any, full: boolean) {
+  const h = headersMap(m.payload);
+  const from = parseAddrs(h["from"])[0] || { name: "", email: "" };
+  const labels: string[] = m.labelIds || [];
+  const row: Record<string, unknown> = {
+    account_id: accountId, gmail_id: m.id, thread_id: m.threadId, label_ids: labels,
+    from_name: from.name || null, from_email: from.email || null,
+    to_list: parseAddrs(h["to"]), cc_list: parseAddrs(h["cc"]), bcc_list: parseAddrs(h["bcc"]),
+    reply_to: h["reply-to"] || null, subject: h["subject"] || "(sem assunto)", snippet: m.snippet || "",
+    internal_date: new Date(Number(m.internalDate || Date.now())).toISOString(),
+    is_unread: labels.includes("UNREAD"), is_starred: labels.includes("STARRED"), is_sent: labels.includes("SENT"),
+    message_id_header: h["message-id"] || null, references_header: h["references"] || null,
+    size_estimate: m.sizeEstimate || null, updated_at: new Date().toISOString(),
+  };
+  if (full) {
+    const acc: Parsed = { html: null, text: null, attachments: [] };
+    walk(m.payload, acc);
+    row.body_html = acc.html; row.body_text = acc.text; row.attachments = acc.attachments;
+    row.has_attachments = acc.attachments.some((a) => !a.inline);
+    row.body_loaded = true;
+  }
+  return row;
+}
+const META = "format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Cc&metadataHeaders=Bcc&metadataHeaders=Subject&metadataHeaders=Date&metadataHeaders=Message-ID&metadataHeaders=References&metadataHeaders=Reply-To";
+
+async function buscarEGravar(token: string, accountId: string, ids: string[], full = false) {
+  let n = 0;
+  for (const id of ids) {
+    const m = await gmail(token, `/messages/${id}?${full ? "format=full" : META}`);
+    if (!m) continue;
+    const row = linhaDaMensagem(accountId, m, full);
+    const { error } = await supabase.from("mail_messages").upsert(row, { onConflict: "account_id,gmail_id", ignoreDuplicates: false });
+    if (error) console.error("upsert msg", id, error.message); else n++;
+  }
+  return n;
+}
+
+// ── Sincronização de uma caixa ────────────────────────────────────────────────────────────────
+// deno-lint-ignore no-explicit-any
+async function sincronizarCaixa(acc: any, inicio: number): Promise<Record<string, unknown>> {
+  const out: Record<string, unknown> = { email: acc.email };
+  const token = await tokenDoUsuario(acc.user_id);
+
+  // 1) marco inicial: guarda o historyId ANTES da carga inicial pra não perder nada no meio
+  if (!acc.history_id) {
+    const prof = await gmail(token, "/profile");
+    await supabase.from("mail_accounts").update({ history_id: String(prof.historyId), email: prof.emailAddress }).eq("id", acc.id);
+    acc.history_id = String(prof.historyId);
+  }
+
+  // 2) incremental pelo histórico
+  let hist = await gmail(token, `/history?startHistoryId=${acc.history_id}&historyTypes=messageAdded&historyTypes=messageDeleted&historyTypes=labelAdded&historyTypes=labelRemoved&maxResults=500`);
+  if (hist === null) {
+    // historyId velho demais: reancora e recupera os últimos 3 dias pela lista
+    const prof = await gmail(token, "/profile");
+    const lista = await gmail(token, `/messages?q=newer_than:3d&maxResults=100`);
+    // deno-lint-ignore no-explicit-any
+    await buscarEGravar(token, acc.id, (lista?.messages || []).map((m: any) => m.id));
+    await supabase.from("mail_accounts").update({ history_id: String(prof.historyId) }).eq("id", acc.id);
+    out.reancorado = true;
+  } else {
+    const novos = new Set<string>(); const apagados = new Set<string>(); const relabel = new Map<string, Set<string>>();
+    let ultimo = acc.history_id;
+    while (hist) {
+      for (const h of hist.history || []) {
+        for (const a of h.messagesAdded || []) novos.add(a.message.id);
+        for (const d of h.messagesDeleted || []) { apagados.add(d.message.id); novos.delete(d.message.id); }
+        for (const l of [...(h.labelsAdded || []), ...(h.labelsRemoved || [])]) relabel.set(l.message.id, new Set(l.message.labelIds || []));
+      }
+      if (hist.historyId) ultimo = String(hist.historyId);
+      if (!hist.nextPageToken) break;
+      hist = await gmail(token, `/history?startHistoryId=${acc.history_id}&pageToken=${hist.nextPageToken}&maxResults=500`);
+    }
+    for (const id of apagados) await supabase.from("mail_messages").delete().eq("account_id", acc.id).eq("gmail_id", id);
+    out.novas = await buscarEGravar(token, acc.id, [...novos].filter((id) => !apagados.has(id)));
+    let rel = 0;
+    for (const [id, labels] of relabel) {
+      if (novos.has(id) || apagados.has(id)) continue;
+      const arr = [...labels];
+      const { data } = await supabase.from("mail_messages").update({ label_ids: arr, is_unread: arr.includes("UNREAD"), is_starred: arr.includes("STARRED"), updated_at: new Date().toISOString() })
+        .eq("account_id", acc.id).eq("gmail_id", id).select("id");
+      if (data?.length) rel++;
+      else if (!arr.includes("TRASH") && !arr.includes("SPAM")) await buscarEGravar(token, acc.id, [id]);
+    }
+    out.rotulos = rel;
+    if (ultimo !== acc.history_id) await supabase.from("mail_accounts").update({ history_id: ultimo }).eq("id", acc.id);
+  }
+
+  // 3) carga inicial em lotes (mais recentes primeiro, 90 dias)
+  if (!acc.backfill_done && Date.now() - inicio < ORCAMENTO_MS) {
+    const depois = acc.backfill_after || new Date(Date.now() - DIAS_CARGA_INICIAL * 86400_000).toISOString().slice(0, 10);
+    let pageToken = acc.backfill_page_token || "";
+    let carregadas = 0;
+    for (let p = 0; p < PAGINAS_POR_PASSADA && Date.now() - inicio < ORCAMENTO_MS; p++) {
+      const q = encodeURIComponent(`after:${depois.replace(/-/g, "/")} -in:chats`);
+      const lista = await gmail(token, `/messages?q=${q}&maxResults=50&includeSpamTrash=false${pageToken ? `&pageToken=${pageToken}` : ""}`);
+      // deno-lint-ignore no-explicit-any
+      const ids: string[] = (lista?.messages || []).map((m: any) => m.id);
+      const { data: jaTem } = ids.length ? await supabase.from("mail_messages").select("gmail_id").eq("account_id", acc.id).in("gmail_id", ids) : { data: [] };
+      // deno-lint-ignore no-explicit-any
+      const faltam = ids.filter((id) => !(jaTem || []).some((r: any) => r.gmail_id === id));
+      carregadas += await buscarEGravar(token, acc.id, faltam);
+      pageToken = lista?.nextPageToken || "";
+      if (!pageToken) {
+        await supabase.from("mail_accounts").update({ backfill_done: true, backfill_page_token: null, backfill_after: depois }).eq("id", acc.id);
+        out.carga_inicial = "concluída";
+        break;
+      }
+      await supabase.from("mail_accounts").update({ backfill_page_token: pageToken, backfill_after: depois }).eq("id", acc.id);
+    }
+    out.carregadas = carregadas;
+  }
+
+  // 4) rótulos (nomes)
+  try {
+    const lbl = await gmail(token, "/labels");
+    // deno-lint-ignore no-explicit-any
+    const rows = (lbl?.labels || []).map((l: any) => ({ account_id: acc.id, gmail_label_id: l.id, name: l.name, type: l.type, color: l.color?.backgroundColor || null }));
+    if (rows.length) await supabase.from("mail_labels").upsert(rows, { onConflict: "account_id,gmail_label_id" });
+  } catch (e) { console.error("labels", acc.email, e); }
+
+  await supabase.from("mail_accounts").update({ last_sync_at: new Date().toISOString(), last_error: null }).eq("id", acc.id);
+  return out;
+}
+
+// ── MIME pra envio ─────────────────────────────────────────────────────────────────────────────
+function montarMime(p: { from: string; to: string[]; cc?: string[]; bcc?: string[]; subject: string; html?: string; text?: string; inReplyTo?: string; references?: string; attachments?: { filename: string; mimeType: string; data: string }[] }) {
+  const b = () => "----=_Nexus_" + crypto.randomUUID().replace(/-/g, "");
+  const encHeader = (s: string) => /[^\x20-\x7e]/.test(s) ? `=?UTF-8?B?${btoa(unescape(encodeURIComponent(s)))}?=` : s;
+  const linhas: string[] = [
+    `From: ${p.from}`, `To: ${p.to.join(", ")}`,
+    ...(p.cc?.length ? [`Cc: ${p.cc.join(", ")}`] : []), ...(p.bcc?.length ? [`Bcc: ${p.bcc.join(", ")}`] : []),
+    `Subject: ${encHeader(p.subject || "")}`, "MIME-Version: 1.0",
+    ...(p.inReplyTo ? [`In-Reply-To: ${p.inReplyTo}`] : []), ...(p.references ? [`References: ${p.references}`] : []),
+  ];
+  const texto = p.text || (p.html || "").replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>/gi, "\n\n").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim();
+  const alt = b();
+  const corpoAlt = [
+    `--${alt}`, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "", btoa(unescape(encodeURIComponent(texto))).replace(/(.{76})/g, "$1\r\n"),
+    `--${alt}`, "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", btoa(unescape(encodeURIComponent(p.html || `<pre>${texto}</pre>`))).replace(/(.{76})/g, "$1\r\n"),
+    `--${alt}--`,
+  ];
+  if (!p.attachments?.length) {
+    return [...linhas, `Content-Type: multipart/alternative; boundary="${alt}"`, "", ...corpoAlt].join("\r\n");
+  }
+  const mix = b();
+  const partes = [
+    ...linhas, `Content-Type: multipart/mixed; boundary="${mix}"`, "",
+    `--${mix}`, `Content-Type: multipart/alternative; boundary="${alt}"`, "", ...corpoAlt,
+  ];
+  for (const a of p.attachments) {
+    partes.push(`--${mix}`, `Content-Type: ${a.mimeType || "application/octet-stream"}; name="${a.filename}"`, "Content-Transfer-Encoding: base64", `Content-Disposition: attachment; filename="${a.filename}"`, "", String(a.data).replace(/(.{76})/g, "$1\r\n"));
+  }
+  partes.push(`--${mix}--`);
+  return partes.join("\r\n");
+}
+
+// ── Identificação de quem chama ───────────────────────────────────────────────────────────────
+async function quemChama(req: Request): Promise<{ service: boolean; userId: string | null }> {
+  const auth = req.headers.get("authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "");
+  if (!token) return { service: false, userId: null };
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    if (payload.role === "service_role") return { service: true, userId: null };
+  } catch { /* segue */ }
+  const sb = createClient(SUPABASE_URL, ANON_KEY || SERVICE_ROLE);
+  const { data, error } = await sb.auth.getUser(token);
+  if (error || !data?.user) return { service: false, userId: null };
+  return { service: false, userId: data.user.id };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  const inicio = Date.now();
+  // deno-lint-ignore no-explicit-any
+  let body: any = {};
+  try { body = await req.json(); } catch { /* sem corpo */ }
+  const quem = await quemChama(req);
+
+  try {
+    if (body.mode === "sync") {
+      if (!quem.service) return j({ error: "só o cron" }, 401);
+      const { data: contas } = await supabase.from("mail_accounts").select("*").order("last_sync_at", { ascending: true, nullsFirst: true });
+      const resultados: Record<string, unknown>[] = [];
+      for (const acc of contas || []) {
+        if (Date.now() - inicio > ORCAMENTO_MS) { resultados.push({ email: acc.email, pulado: "sem tempo" }); continue; }
+        try { resultados.push(await sincronizarCaixa(acc, inicio)); }
+        catch (e) {
+          const msg = (e as Error).message || String(e);
+          await supabase.from("mail_accounts").update({ last_error: msg, last_sync_at: new Date().toISOString() }).eq("id", acc.id);
+          resultados.push({ email: acc.email, erro: msg });
+        }
+      }
+      return j({ ok: true, contas: resultados });
+    }
+
+    if (!quem.userId) return j({ error: "não autenticado" }, 401);
+    const userId = quem.userId;
+    const action = String(body.action || "status");
+
+    if (action === "connect") {
+      const token = await tokenDoUsuario(userId);
+      const prof = await gmail(token, "/profile"); // falha com NeedsAuth se não tiver o escopo do Gmail
+      const { data: acc } = await supabase.from("mail_accounts").upsert({ user_id: userId, email: prof.emailAddress, updated_at: new Date().toISOString() }, { onConflict: "user_id" }).select("*").single();
+      try { await sincronizarCaixa(acc, inicio); } catch (e) { console.error("primeira sync", e); }
+      return j({ ok: true, account: acc });
+    }
+
+    const { data: acc } = await supabase.from("mail_accounts").select("*").eq("user_id", userId).maybeSingle();
+    if (action === "status") return j({ ok: true, account: acc || null });
+    if (!acc) return j({ error: "caixa não conectada", needsConnect: true }, 400);
+    const token = await tokenDoUsuario(userId);
+
+    if (action === "sync-me") {
+      const r = await sincronizarCaixa(acc, inicio);
+      return j({ ok: true, ...r });
+    }
+
+    if (action === "message") {
+      const id = String(body.gmail_id || "");
+      const m = await gmail(token, `/messages/${id}?format=full`);
+      if (!m) return j({ error: "mensagem não existe mais no Gmail" }, 404);
+      const row = linhaDaMensagem(acc.id, m, true);
+      const { data } = await supabase.from("mail_messages").upsert(row, { onConflict: "account_id,gmail_id" }).select("*").single();
+      return j({ ok: true, message: data });
+    }
+
+    if (action === "attachment") {
+      const att = await gmail(token, `/messages/${body.gmail_id}/attachments/${body.attachment_id}`);
+      if (!att) return j({ error: "anexo não encontrado" }, 404);
+      return j({ ok: true, data: att.data, size: att.size });
+    }
+
+    if (action === "modify") {
+      const ids: string[] = body.gmail_ids || [];
+      const add: string[] = body.add || []; const remove: string[] = body.remove || [];
+      if (!ids.length) return j({ error: "gmail_ids vazio" }, 400);
+      await gmail(token, `/messages/batchModify`, { method: "POST", body: JSON.stringify({ ids, addLabelIds: add, removeLabelIds: remove }) });
+      const { data: rows } = await supabase.from("mail_messages").select("id, gmail_id, label_ids").eq("account_id", acc.id).in("gmail_id", ids);
+      for (const r of rows || []) {
+        const labels = new Set<string>(r.label_ids || []);
+        for (const a of add) labels.add(a); for (const x of remove) labels.delete(x);
+        const arr = [...labels];
+        await supabase.from("mail_messages").update({ label_ids: arr, is_unread: arr.includes("UNREAD"), is_starred: arr.includes("STARRED"), updated_at: new Date().toISOString() }).eq("id", r.id);
+      }
+      return j({ ok: true });
+    }
+
+    if (action === "send") {
+      const to: string[] = body.to || []; if (!to.length) return j({ error: "destinatário obrigatório" }, 400);
+      const from = acc.email;
+      let inReplyTo = body.in_reply_to || undefined, references = body.references || undefined;
+      if (body.thread_id && !inReplyTo) {
+        const { data: ult } = await supabase.from("mail_messages").select("message_id_header, references_header").eq("account_id", acc.id).eq("thread_id", body.thread_id).order("internal_date", { ascending: false }).limit(1).maybeSingle();
+        if (ult?.message_id_header) { inReplyTo = ult.message_id_header; references = [ult.references_header, ult.message_id_header].filter(Boolean).join(" "); }
+      }
+      const raw = montarMime({ from, to, cc: body.cc || [], bcc: body.bcc || [], subject: body.subject || "", html: body.html, text: body.text, inReplyTo, references, attachments: body.attachments || [] });
+      const sent = await gmail(token, `/messages/send`, { method: "POST", body: JSON.stringify({ raw: toB64url(raw), ...(body.thread_id ? { threadId: body.thread_id } : {}) }) });
+      if (sent?.id) await buscarEGravar(token, acc.id, [sent.id], true);
+      return j({ ok: true, gmail_id: sent?.id, thread_id: sent?.threadId });
+    }
+
+    if (action === "search") {
+      const q = String(body.q || "").trim(); if (!q) return j({ ok: true, gmail_ids: [] });
+      const lista = await gmail(token, `/messages?q=${encodeURIComponent(q)}&maxResults=50`);
+      // deno-lint-ignore no-explicit-any
+      const ids: string[] = (lista?.messages || []).map((m: any) => m.id);
+      const { data: jaTem } = ids.length ? await supabase.from("mail_messages").select("gmail_id").eq("account_id", acc.id).in("gmail_id", ids) : { data: [] };
+      // deno-lint-ignore no-explicit-any
+      const faltam = ids.filter((id) => !(jaTem || []).some((r: any) => r.gmail_id === id));
+      if (faltam.length) await buscarEGravar(token, acc.id, faltam);
+      return j({ ok: true, gmail_ids: ids });
+    }
+
+    if (action === "disconnect") {
+      await supabase.from("mail_accounts").delete().eq("id", acc.id);
+      return j({ ok: true });
+    }
+
+    return j({ error: `ação desconhecida: ${action}` }, 400);
+  } catch (e) {
+    if (e instanceof NeedsAuth) return j({ error: e.message, needsAuth: true }, 401);
+    console.error("[gmail-sync]", e);
+    return j({ error: (e as Error).message || String(e) }, 500);
+  }
+});
