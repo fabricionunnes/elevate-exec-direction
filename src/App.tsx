@@ -360,6 +360,7 @@ const CRMTrafficApiPage = lazy(() => import("./pages/crm/CRMTrafficApiPage"));
 const CRMForecastPage = lazy(() => import("./pages/crm/CRMForecastPage"));
 const CRMCadencesPage = lazy(() => import("./pages/crm/CRMCadencesPage"));
 const CRMEmailBlastPage = lazy(() => import("./pages/crm/CRMEmailBlastPage"));
+const CRMEmailPage = lazy(() => import("./pages/crm/CRMEmailPage"));
 const CRMApplicationsPage = lazy(() => import("./pages/crm/CRMApplicationsPage"));
 const CRMAutomationsPage = lazy(() => import("./pages/crm/CRMAutomationsPage"));
 const CRMDisparosPage = lazy(() => import("./pages/crm/CRMDisparosPage"));
@@ -716,6 +717,7 @@ const AppShell = () => {
               <Route path="forecast" element={<CRMForecastPage />} />
               <Route path="cadences" element={<CRMCadencesPage />} />
               <Route path="email-blast" element={<CRMEmailBlastPage />} />
+              <Route path="email" element={<CRMEmailPage />} />
               <Route path="applications" element={<CRMApplicationsPage />} />
               <Route path="conexao-whatsapp" element={<CRMWhatsAppConnectionPage />} />
               <Route path="agents" element={<CRMAgentsPage />} />
