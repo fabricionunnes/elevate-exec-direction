@@ -148,10 +148,10 @@ export default function CRMEmailPage() {
     setNaoLidas(contagem);
   }, []);
 
-  const carregarLista = useCallback(async (acc: Account) => {
+  const carregarLista = useCallback(async (acc: Account, silencioso = false) => {
     const { pasta, buscaIds } = estadoLista.current;
     const seq = ++seqLista.current;
-    setCarregando(true);
+    if (!silencioso) setCarregando(true); // atualização de fundo (realtime) não pisca a lista
     let q = db.from("mail_messages")
       .select("id, account_id, gmail_id, thread_id, label_ids, from_name, from_email, to_list, subject, snippet, internal_date, is_unread, is_starred, is_sent, has_attachments")
       .eq("account_id", acc.id).order("internal_date", { ascending: false }).limit(1000);
@@ -170,14 +170,17 @@ export default function CRMEmailPage() {
   useEffect(() => { if (account) { carregarLabels(account); carregarLista(account); } }, [account, carregarLabels, carregarLista]);
   useEffect(() => { setSelecionadas(new Set()); setCursor(-1); setPagina(1); }, [pasta, buscaIds, filtro]);
 
-  // Realtime: qualquer mudança na própria caixa recarrega a lista e os contadores
+  // Realtime: mudanças na própria caixa recarregam a lista e os contadores, amortecidas (a sincronização
+  // e a importação inserem em rajada; sem isso a tela piscava a cada mensagem)
   useEffect(() => {
     if (!account) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const agendar = () => { if (timer) clearTimeout(timer); timer = setTimeout(() => { timer = null; carregarLista(account, true); carregarLabels(account); }, 1500); };
     const ch = supabase.channel(`mail-${account.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "mail_messages", filter: `account_id=eq.${account.id}` }, () => { carregarLista(account); carregarLabels(account); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "mail_messages", filter: `account_id=eq.${account.id}` }, agendar)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "mail_accounts", filter: `id=eq.${account.id}` }, (p) => setAccount(p.new as Account))
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { if (timer) clearTimeout(timer); supabase.removeChannel(ch); };
   }, [account, carregarLista, carregarLabels]);
 
   // Conversas: a mensagem mais recente de cada thread + quantidade
