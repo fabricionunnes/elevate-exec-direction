@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain, Network, AudioLines, Radar, Gauge, ClipboardCheck, Bot, Wallet } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain, Network, AudioLines, Radar, Gauge, ClipboardCheck, Bot, Wallet, Mail } from "lucide-react";
 import { GlobalAccessControlPanel } from "@/components/onboarding-tasks/GlobalAccessControlPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -2068,6 +2068,9 @@ const OnboardingTasksPage = () => {
               <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate("/onboarding-tasks/task-manager")} title="Gerenciador">
                 <LayoutGrid className="h-4 w-4" />
               </Button>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate("/crm/email")} title="Meus e-mails">
+                <Mail className="h-4 w-4" />
+              </Button>
               {(currentUserEmail === "fabricio@universidadevendas.com.br" || isMaster) && (
                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate("/onboarding-tasks/mrr")} title="MRR">
                   <DollarSign className="h-4 w-4" />
@@ -2450,6 +2453,11 @@ const OnboardingTasksPage = () => {
                 </Command>
               </PopoverContent>
             </Popover>
+            {/* E-mail de cada usuário dentro do Nexus (06/11/2026) */}
+            <Button variant="ghost" size="sm" className="gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60" onClick={() => navigate("/crm/email")}>
+              <Mail className="h-4 w-4" />
+              E-mail
+            </Button>
             
             {canCreateCompany && (
               <Button size="sm" className="gap-1.5 ml-1" onClick={() => setShowCreateDialog(true)}>
