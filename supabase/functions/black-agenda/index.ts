@@ -296,9 +296,9 @@ async function agendar(sb: SB, body: Record<string, unknown>) {
 }
 
 // ── entrada na live ─────────────────────────────────────────────────────────
-// A live é 10/11/2026 às 20h (Brasília). Conta quem passa por /black/entrar entre 19h e 23h59.
-const LIVE_INI = Date.parse("2026-11-10T19:00:00-03:00");
-const LIVE_FIM = Date.parse("2026-11-10T23:59:59-03:00");
+// A live é quarta, 25/11/2026, às 20h (Brasília). Conta quem passa por /black/entrar entre 19h e 23h59.
+const LIVE_INI = Date.parse("2026-11-25T19:00:00-03:00");
+const LIVE_FIM = Date.parse("2026-11-25T23:59:59-03:00");
 const MEET_LIVE = "https://meet.google.com/myn-tbqg-maf";
 
 async function entrouLive(sb: SB, body: Record<string, unknown>) {
@@ -317,7 +317,7 @@ async function entrouLive(sb: SB, body: Record<string, unknown>) {
     const { data: novo } = await sb.from("crm_leads").insert({
       name: nome || `Live Black ${tel}`, phone: tel, pipeline_id: PIPELINE, stage_id: ETAPA.entrouLive,
       entered_pipeline_at: new Date().toISOString(), urgency: "medium",
-      notes: "Entrou na live da Black UNV (10/11) sem estar na base",
+      notes: "Entrou na live da Black UNV (25/11) sem estar na base",
     }).select("id, phone, stage_id").single();
     lead = novo;
   } else if ([ETAPA.base, ETAPA.disparo, ETAPA.entrouGrupo, ETAPA.saiuGrupo].includes(lead.stage_id)) {
