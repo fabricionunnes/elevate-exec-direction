@@ -229,7 +229,7 @@ export default function CRMEmailPage() {
   };
 
   const conectar = async () => {
-    try { await startGoogleCalendarConnection("/crm/email"); } catch (e) { toast.error((e as Error).message); }
+    try { await startGoogleCalendarConnection("/email"); } catch (e) { toast.error((e as Error).message); }
   };
 
   // ── Estados vazios ──
