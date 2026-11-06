@@ -335,20 +335,22 @@ async function traduzirLista(accountId: string, ids: string[]): Promise<any[]> {
 
 // deno-lint-ignore no-explicit-any
 async function traduzirCorpo(accountId: string, gmailId: string): Promise<any> {
-  const { data: m } = await supabase.from("mail_messages").select("gmail_id, subject, snippet, body_html, body_text, lang, subject_pt, body_pt").eq("account_id", accountId).eq("gmail_id", gmailId).maybeSingle();
+  const { data: m } = await supabase.from("mail_messages").select("gmail_id, subject, snippet, body_html, body_text, lang, subject_pt, body_pt, translated_at").eq("account_id", accountId).eq("gmail_id", gmailId).maybeSingle();
   if (!m) return null;
-  if (m.lang === "pt" || m.body_pt) return m;
+  // translated_at marca que o CORPO já foi avaliado (com body_pt = traduzido; sem = corpo em português).
+  // O lang que veio da lista olha assunto+trecho e pode errar (assunto em português, corpo em inglês).
+  if (m.body_pt || m.translated_at) return m;
   const texto = (m.body_text && m.body_text.trim().length > 40 ? m.body_text : semHtml(m.body_html || "")) || m.snippet || "";
-  if (!m.lang && idiomaLocal(`${m.subject || ""}\n${texto}`) === "pt") {
-    await supabase.from("mail_messages").update({ lang: "pt" }).eq("account_id", accountId).eq("gmail_id", gmailId);
-    return { ...m, lang: "pt" };
+  if (idiomaLocal(texto) === "pt") {
+    await supabase.from("mail_messages").update({ translated_at: new Date().toISOString() }).eq("account_id", accountId).eq("gmail_id", gmailId);
+    return { ...m, translated_at: new Date().toISOString() };
   }
   const corte = texto.slice(0, 12000);
   const prompt = `Você recebe um e-mail. Primeira linha da resposta: só o código ISO de 2 letras do idioma original. Se for português, pare aí. Se não for, na segunda linha escreva "ASSUNTO: " e o assunto traduzido; depois uma linha em branco e o corpo traduzido para português do Brasil, natural e fiel, mantendo parágrafos, listas, valores, datas, nomes e links (URLs como estão). Não comente nada.\n\nASSUNTO ORIGINAL: ${m.subject || ""}\n\nCORPO:\n${corte}`;
   const resp = await claude(prompt, 4000, { acao: "translate", gmail_id: gmailId, chars: corte.length });
   const linhas = resp.split("\n");
   const lang = (linhas[0] || "").trim().toLowerCase().slice(0, 2) || "xx";
-  if (lang === "pt") { await supabase.from("mail_messages").update({ lang }).eq("account_id", accountId).eq("gmail_id", gmailId); return { ...m, lang }; }
+  if (lang === "pt") { await supabase.from("mail_messages").update({ translated_at: new Date().toISOString() }).eq("account_id", accountId).eq("gmail_id", gmailId); return { ...m, translated_at: new Date().toISOString() }; }
   let resto = linhas.slice(1).join("\n").trim();
   let assunto = m.subject_pt;
   const ma = resto.match(/^ASSUNTO:\s*(.*)$/m);
@@ -540,7 +542,7 @@ Deno.serve(async (req) => {
     if (action === "translate") {
       const m = await traduzirCorpo(acc.id, String(body.gmail_id || ""));
       if (!m) return j({ error: "mensagem não encontrada" }, 404);
-      return j({ ok: true, lang: m.lang, subject_pt: m.subject_pt || null, body_pt: m.body_pt || null });
+      return j({ ok: true, lang: m.lang, subject_pt: m.subject_pt || null, body_pt: m.body_pt || null, translated_at: m.translated_at || null });
     }
 
     if (action === "delete") {

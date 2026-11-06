@@ -39,7 +39,7 @@ type Msg = {
   is_sent: boolean; has_attachments: boolean; attachments: { attachmentId: string | null; filename: string; mimeType: string; size: number; contentId: string | null; inline?: boolean }[];
   body_html: string | null; body_text: string | null; body_loaded: boolean; message_id_header: string | null; references_header: string | null;
   reply_to?: string | null;
-  lang?: string | null; subject_pt?: string | null; snippet_pt?: string | null; body_pt?: string | null;
+  lang?: string | null; subject_pt?: string | null; snippet_pt?: string | null; body_pt?: string | null; translated_at?: string | null;
 };
 type Label = { gmail_label_id: string; name: string; type: string | null; color: string | null };
 type Account = { id: string; email: string; backfill_done: boolean; last_sync_at: string | null; last_error: string | null };
@@ -688,16 +688,16 @@ function Mensagem({ m, abertoInicial, chamar, onTraduzida, onBaixar, onEstrela, 
   const [verOriginal, setVerOriginal] = useState(false);
   const [traduzindo, setTraduzindo] = useState(false);
   useEffect(() => {
-    if (!aberto || !m.body_loaded || m.lang === "pt" || m.body_pt || traduzindo) return;
+    if (!aberto || !m.body_loaded || m.body_pt || m.translated_at || traduzindo) return;
     let vivo = true;
     setTraduzindo(true);
     chamar({ action: "translate", gmail_id: m.gmail_id })
-      .then((r) => { if (vivo && r) onTraduzida({ lang: r.lang, subject_pt: r.subject_pt, body_pt: r.body_pt }); })
+      .then((r) => { if (vivo && r) onTraduzida({ lang: r.lang, subject_pt: r.subject_pt, body_pt: r.body_pt, translated_at: r.translated_at || new Date().toISOString() }); })
       .catch(() => {}).finally(() => { if (vivo) setTraduzindo(false); });
     return () => { vivo = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aberto, m.body_loaded, m.lang, m.body_pt, m.gmail_id]);
-  const mostrarTraducao = traduzido(m) && !!m.body_pt && !verOriginal;
+  }, [aberto, m.body_loaded, m.body_pt, m.translated_at, m.gmail_id]);
+  const mostrarTraducao = !!m.body_pt && !verOriginal;
   return (
     <div className={cn("rounded-xl border bg-card overflow-hidden transition-shadow", aberto ? "shadow-sm" : "hover:shadow-sm")}>
       <button className="w-full text-left px-4 py-3 flex items-start gap-3" onClick={() => setAberto((v) => !v)}>
@@ -719,7 +719,7 @@ function Mensagem({ m, abertoInicial, chamar, onTraduzida, onBaixar, onEstrela, 
       </button>
       {aberto && (
         <>
-          {(traduzido(m) || traduzindo) && (
+          {(!!m.body_pt || traduzindo) && (
             <div className="mx-4 mb-1 flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs" style={{ background: "#0D2B5E0d", color: NAVY }}>
               <Languages className="h-3.5 w-3.5 shrink-0" />
               {traduzindo && !m.body_pt ? (
