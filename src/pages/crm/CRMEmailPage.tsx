@@ -5,7 +5,7 @@
 // 06/11: redesenho premium. Seleção com ações em massa (lida, não lida, importante, estrela,
 // arquivar, spam, lixeira, restaurar), marcador de importante, pastas Importantes e Todos,
 // filtros rápidos, ações ao passar o mouse e atalhos de teclado (j/k, e, #, s, i, u, x, c, /).
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 // tabelas mail_* ainda não estão nos tipos gerados do Supabase
@@ -49,6 +49,9 @@ type Filtro = "todas" | "nao-lidas" | "importantes" | "estrela" | "anexo";
 const NAVY = "#0D2B5E";
 // Fabrício (06/11): padrão de 20 por página, podendo escolher 50 ou 100 (fica lembrado no navegador)
 const TAMANHOS_PAGINA = [20, 50, 100] as const;
+// colunas redimensionáveis (Fabrício 06/11): largura salva no navegador; dois cliques na divisória volta ao padrão
+const LARGURA = { pastas: { padrao: 240, min: 180, max: 380 }, lista: { padrao: 440, min: 320, max: 820 } } as const;
+const larguraSalva = (k: keyof typeof LARGURA) => { try { const n = Number(localStorage.getItem(`nexus-email-largura-${k}`)); return n >= LARGURA[k].min && n <= LARGURA[k].max ? n : LARGURA[k].padrao; } catch { return LARGURA[k].padrao; } };
 const tamanhoSalvo = () => { try { const n = Number(localStorage.getItem("nexus-email-por-pagina")); return (TAMANHOS_PAGINA as readonly number[]).includes(n) ? n : 20; } catch { return 20; } };
 const PASTAS: { key: string; nome: string; icon: typeof Inbox }[] = [
   { key: "INBOX", nome: "Entrada", icon: Inbox },
@@ -111,6 +114,21 @@ export default function CRMEmailPage() {
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [cursor, setCursor] = useState<number>(-1);
   const [mostrarAtalhos, setMostrarAtalhos] = useState(false);
+  const [larguraPastas, setLarguraPastas] = useState<number>(() => larguraSalva("pastas"));
+  const [larguraLista, setLarguraLista] = useState<number>(() => larguraSalva("lista"));
+  const arrastar = (k: keyof typeof LARGURA, inicial: number, set: (n: number) => void) => (e: RPointerEvent) => {
+    e.preventDefault();
+    const x0 = e.clientX; let atual = inicial;
+    const mover = (ev: PointerEvent) => { atual = Math.min(LARGURA[k].max, Math.max(LARGURA[k].min, inicial + ev.clientX - x0)); set(atual); };
+    const soltar = () => {
+      window.removeEventListener("pointermove", mover); window.removeEventListener("pointerup", soltar);
+      document.body.style.cursor = ""; document.body.style.userSelect = "";
+      try { localStorage.setItem(`nexus-email-largura-${k}`, String(Math.round(atual))); } catch { /* sem armazenamento */ }
+    };
+    document.body.style.cursor = "col-resize"; document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", mover); window.addEventListener("pointerup", soltar);
+  };
+  const padraoLargura = (k: keyof typeof LARGURA, set: (n: number) => void) => () => { set(LARGURA[k].padrao); try { localStorage.removeItem(`nexus-email-largura-${k}`); } catch { /* nada */ } };
   const [compor, setCompor] = useState<null | { modo: "novo" | "responder" | "todos" | "encaminhar"; base?: Msg }>(null);
   const [leadDoRemetente, setLeadDoRemetente] = useState<{ id: string; name: string; company: string | null; stage: string | null } | null>(null);
   const [mobileLendo, setMobileLendo] = useState(false);
@@ -415,7 +433,8 @@ export default function CRMEmailPage() {
     <TooltipProvider delayDuration={300}>
       <div className="flex h-[calc(100vh-7.5rem)] min-h-[520px] rounded-2xl border bg-card overflow-hidden shadow-sm">
         {/* Pastas */}
-        <aside className={cn("w-60 shrink-0 border-r flex flex-col bg-muted/20", mobileLendo ? "hidden lg:flex" : "hidden md:flex")}>
+        <aside className={cn("relative w-[var(--larg-pastas)] shrink-0 border-r flex-col bg-muted/20", mobileLendo ? "hidden lg:flex" : "hidden md:flex")} style={{ ["--larg-pastas" as string]: `${larguraPastas}px` }}>
+          <Divisoria onPointerDown={arrastar("pastas", larguraPastas, setLarguraPastas)} onDoubleClick={padraoLargura("pastas", setLarguraPastas)} />
           <div className="p-3 pb-2">
             <Button className="w-full gap-2 h-10 rounded-xl shadow-sm font-medium" style={{ background: NAVY }} onClick={() => setCompor({ modo: "novo" })}><PenSquare className="h-4 w-4" /> Escrever</Button>
           </div>
@@ -455,7 +474,8 @@ export default function CRMEmailPage() {
         </aside>
 
         {/* Lista */}
-        <section className={cn("w-full md:w-[400px] lg:w-[440px] shrink-0 border-r flex flex-col min-w-0", mobileLendo && "hidden lg:flex")}>
+        <section className={cn("relative w-full md:w-[var(--larg-lista)] shrink-0 border-r flex flex-col min-w-0", mobileLendo && "hidden lg:flex")} style={{ ["--larg-lista" as string]: `${larguraLista}px` }}>
+          <Divisoria onPointerDown={arrastar("lista", larguraLista, setLarguraLista)} onDoubleClick={padraoLargura("lista", setLarguraLista)} />
           <div className="p-2.5 border-b space-y-2">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
@@ -657,6 +677,17 @@ export default function CRMEmailPage() {
         </DialogContent>
       </Dialog>
     </TooltipProvider>
+  );
+}
+
+// ── Divisória arrastável entre colunas ─────────────────────────────────────────────────────────
+function Divisoria({ onPointerDown, onDoubleClick }: { onPointerDown: (e: RPointerEvent) => void; onDoubleClick: () => void }) {
+  return (
+    <div role="separator" aria-orientation="vertical" title="Arraste pra ajustar a largura · dois cliques volta ao padrão"
+      onPointerDown={onPointerDown} onDoubleClick={onDoubleClick}
+      className="group/div absolute -right-[5px] top-0 bottom-0 z-20 w-[10px] cursor-col-resize hidden md:flex justify-center">
+      <span className="h-full w-[2px] rounded-full bg-transparent transition-colors group-hover/div:bg-[#0D2B5E]/40 group-active/div:bg-[#0D2B5E]" />
+    </div>
   );
 }
 
