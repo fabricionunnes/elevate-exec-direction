@@ -332,6 +332,48 @@ async function entrouLive(sb: SB, body: Record<string, unknown>) {
 }
 
 // ── grupo ───────────────────────────────────────────────────────────────────
+// ── mensagens agendadas do grupo ────────────────────────────────────────────
+// A sequência aprovada pelo Fabrício (06/11) fica em black_grupo_agenda. O cron de 2 min manda o que
+// venceu. Texto com [CAMPO] em aberto nunca sai; mensagem que perdeu a hora por mais de 60 min também
+// não (não faz sentido "faltam 15 minutos" depois da live).
+const ATRASO_MAX_MIN = 60;
+
+async function enviarAgendadas(sb: SB) {
+  const agora = Date.now();
+  const { data: fila } = await sb.from("black_grupo_agenda").select("id, codigo, texto, envio_em")
+    .eq("status", "agendada").lte("envio_em", new Date(agora).toISOString()).order("envio_em").limit(3);
+  if (!fila?.length) return 0;
+  const { data: inst } = await sb.from("whatsapp_instances").select("instance_name, api_url, api_key").eq("instance_name", INSTANCIA).maybeSingle();
+  let n = 0;
+  for (const m of fila) {
+    if (agora - Date.parse(m.envio_em) > ATRASO_MAX_MIN * 60000) {
+      await sb.from("black_grupo_agenda").update({ status: "atrasada", erro: "passou mais de 60 min da hora" }).eq("id", m.id);
+      continue;
+    }
+    if (/\[[A-ZÀ-Ú ]{3,}\]/.test(m.texto)) {
+      await sb.from("black_grupo_agenda").update({ status: "falta_preencher", erro: "texto com campo em aberto" }).eq("id", m.id);
+      continue;
+    }
+    // trava antes de enviar: se o envio demorar, o próximo cron não manda de novo
+    const { data: trava } = await sb.from("black_grupo_agenda").update({ status: "enviando" }).eq("id", m.id).eq("status", "agendada").select("id");
+    if (!trava?.length || !inst?.api_url) continue;
+    try {
+      const r = await fetch(`${String(inst.api_url).replace(/\/+$/, "")}/message/sendText/${inst.instance_name}`, {
+        method: "POST", headers: { apikey: inst.api_key, "Content-Type": "application/json" },
+        body: JSON.stringify({ number: GRUPO, text: m.texto }),
+      });
+      const d = await r.json().catch(() => ({}));
+      await sb.from("black_grupo_agenda").update(r.ok
+        ? { status: "enviada", enviado_em: new Date().toISOString(), remote_id: d?.key?.id || null, erro: null }
+        : { status: "erro", erro: `HTTP ${r.status}` }).eq("id", m.id);
+      if (r.ok) n++;
+    } catch (e) {
+      await sb.from("black_grupo_agenda").update({ status: "erro", erro: String(e).slice(0, 200) }).eq("id", m.id);
+    }
+  }
+  return n;
+}
+
 async function grupoSync(sb: SB) {
   const { data: inst } = await sb.from("whatsapp_instances").select("api_url, api_key").eq("instance_name", INSTANCIA).maybeSingle();
   if (!inst?.api_url) return json({ error: "instancia" }, 500);
@@ -442,7 +484,11 @@ Deno.serve(async (req) => {
       case "aplicou": return await aplicou(sb, body);
       case "horarios": return await horarios(sb, body);
       case "agendar": return await agendar(sb, body);
-      case "grupo-sync": return await grupoSync(sb);
+      case "grupo-sync": {
+        // a agenda do grupo não pode depender da leitura de participantes dar certo
+        try { await enviarAgendadas(sb); } catch (e) { console.error("[black-agenda] agenda", e); }
+        return await grupoSync(sb);
+      }
       case "entrou-live": return await entrouLive(sb, body);
       default: return json({ error: "acao_invalida" }, 400);
     }
