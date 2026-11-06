@@ -29,6 +29,12 @@ const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
 const DIAS_CARGA_INICIAL = 90;
 const PAGINAS_POR_PASSADA = 2; // carga inicial: 2 páginas de 50 por caixa a cada minuto
 const ORCAMENTO_MS = 50_000;
+// Push do Gmail (06/11/2026, Fabrício: "queria que os emails chegassem na hora"): o Google publica num
+// tópico Pub/Sub a cada mudança na caixa e o Pub/Sub chama esta function (?push=<GMAIL_PUSH_TOKEN>).
+// O watch vale 7 dias; o modo "watch" (cron diário) renova.
+const GMAIL_PUSH_TOPIC = Deno.env.get("GMAIL_PUSH_TOPIC") || "projects/composite-fire-496222-s4/topics/gmail-push";
+const GMAIL_PUSH_TOKEN = Deno.env.get("GMAIL_PUSH_TOKEN") || ""; // opcional: se definido, exige ?push=<token>
+const GMAIL_PUSH_SUBSCRIPTION = Deno.env.get("GMAIL_PUSH_SUBSCRIPTION") || "projects/composite-fire-496222-s4/subscriptions/gmail-push-nexus";
 
 const j = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
@@ -250,6 +256,16 @@ async function sincronizarCaixa(acc: any, inicio: number): Promise<Record<string
   return out;
 }
 
+// ── Watch (push) ───────────────────────────────────────────────────────────────────────────────
+// deno-lint-ignore no-explicit-any
+async function ligarWatch(acc: any): Promise<Record<string, unknown>> {
+  const token = await tokenDoUsuario(acc.user_id);
+  const r = await gmail(token, "/watch", { method: "POST", body: JSON.stringify({ topicName: GMAIL_PUSH_TOPIC }) });
+  const expira = r?.expiration ? new Date(Number(r.expiration)).toISOString() : null;
+  await supabase.from("mail_accounts").update({ watch_expiration: expira, last_error: null }).eq("id", acc.id);
+  return { email: acc.email, watch_ate: expira };
+}
+
 // ── MIME pra envio ─────────────────────────────────────────────────────────────────────────────
 function montarMime(p: { from: string; to: string[]; cc?: string[]; bcc?: string[]; subject: string; html?: string; text?: string; inReplyTo?: string; references?: string; attachments?: { filename: string; mimeType: string; data: string }[] }) {
   const b = () => "----=_Nexus_" + crypto.randomUUID().replace(/-/g, "");
@@ -289,7 +305,8 @@ async function quemChama(req: Request): Promise<{ service: boolean; userId: stri
   if (!token) return { service: false, userId: null };
   try {
     const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    if (payload.role === "service_role") return { service: true, userId: null };
+    // o cron (job 319) chama com a chave anon do projeto, igual aos outros crons; a chave service_role também vale
+    if (payload.role === "service_role" || (payload.role === "anon" && payload.iss === "supabase")) return { service: true, userId: null };
   } catch { /* segue */ }
   const sb = createClient(SUPABASE_URL, ANON_KEY || SERVICE_ROLE);
   const { data, error } = await sb.auth.getUser(token);
@@ -306,13 +323,50 @@ Deno.serve(async (req) => {
   const quem = await quemChama(req);
 
   try {
+    // Pub/Sub push: {message:{data:base64({"emailAddress","historyId"})}, subscription}
+    const pushToken = new URL(req.url).searchParams.get("push");
+    if (pushToken !== null && body?.message?.data) {
+      // sem segredo configurado, aceita só a assinatura conhecida; o pior caso é uma sincronização extra
+      if (GMAIL_PUSH_TOKEN ? pushToken !== GMAIL_PUSH_TOKEN : String(body.subscription || "") !== GMAIL_PUSH_SUBSCRIPTION) return j({ error: "push inválido" }, 401);
+      let email = "";
+      try { email = String(JSON.parse(b64url(String(body.message.data))).emailAddress || "").toLowerCase(); } catch { /* ignora */ }
+      if (!email) return j({ ok: true, ignorado: "sem e-mail" });
+      const { data: acc } = await supabase.from("mail_accounts").select("*").ilike("email", email).maybeSingle();
+      if (!acc) return j({ ok: true, ignorado: "caixa não conectada" });
+      try { const r = await sincronizarCaixa(acc, inicio); return j({ ok: true, push: true, ...r }); }
+      catch (e) {
+        const msg = (e as Error).message || String(e);
+        await supabase.from("mail_accounts").update({ last_error: msg }).eq("id", acc.id);
+        // 200 mesmo com erro: senão o Pub/Sub fica reenviando a mesma notificação
+        return j({ ok: false, push: true, erro: msg });
+      }
+    }
+
+    if (body.mode === "watch") {
+      if (!quem.service) return j({ error: "só o cron" }, 401);
+      const { data: contas } = await supabase.from("mail_accounts").select("*");
+      const resultados: Record<string, unknown>[] = [];
+      for (const acc of contas || []) {
+        try { resultados.push(await ligarWatch(acc)); }
+        catch (e) { const msg = (e as Error).message || String(e); await supabase.from("mail_accounts").update({ last_error: msg }).eq("id", acc.id); resultados.push({ email: acc.email, erro: msg }); }
+      }
+      return j({ ok: true, contas: resultados });
+    }
+
     if (body.mode === "sync") {
       if (!quem.service) return j({ error: "só o cron" }, 401);
       const { data: contas } = await supabase.from("mail_accounts").select("*").order("last_sync_at", { ascending: true, nullsFirst: true });
       const resultados: Record<string, unknown>[] = [];
       for (const acc of contas || []) {
         if (Date.now() - inicio > ORCAMENTO_MS) { resultados.push({ email: acc.email, pulado: "sem tempo" }); continue; }
-        try { resultados.push(await sincronizarCaixa(acc, inicio)); }
+        try {
+          const r = await sincronizarCaixa(acc, inicio);
+          // watch do push: liga/renova quando faltar menos de 1 dia (o Gmail expira em 7)
+          if (!acc.watch_expiration || new Date(acc.watch_expiration).getTime() < Date.now() + 86400_000) {
+            try { Object.assign(r, await ligarWatch(acc)); } catch (e) { r.watch_erro = (e as Error).message || String(e); }
+          }
+          resultados.push(r);
+        }
         catch (e) {
           const msg = (e as Error).message || String(e);
           await supabase.from("mail_accounts").update({ last_error: msg, last_sync_at: new Date().toISOString() }).eq("id", acc.id);
@@ -331,6 +385,7 @@ Deno.serve(async (req) => {
       const prof = await gmail(token, "/profile"); // falha com NeedsAuth se não tiver o escopo do Gmail
       const { data: acc } = await supabase.from("mail_accounts").upsert({ user_id: userId, email: prof.emailAddress, updated_at: new Date().toISOString() }, { onConflict: "user_id" }).select("*").single();
       try { await sincronizarCaixa(acc, inicio); } catch (e) { console.error("primeira sync", e); }
+      try { await ligarWatch(acc); } catch (e) { console.error("watch", e); }
       return j({ ok: true, account: acc });
     }
 
@@ -372,6 +427,15 @@ Deno.serve(async (req) => {
         await supabase.from("mail_messages").update({ label_ids: arr, is_unread: arr.includes("UNREAD"), is_starred: arr.includes("STARRED"), updated_at: new Date().toISOString() }).eq("id", r.id);
       }
       return j({ ok: true });
+    }
+
+    if (action === "delete") {
+      // apaga de vez (só faz sentido na Lixeira/Spam); exige o escopo https://mail.google.com/
+      const ids: string[] = body.gmail_ids || [];
+      if (!ids.length) return j({ error: "gmail_ids vazio" }, 400);
+      await gmail(token, `/messages/batchDelete`, { method: "POST", body: JSON.stringify({ ids }) });
+      await supabase.from("mail_messages").delete().eq("account_id", acc.id).in("gmail_id", ids);
+      return j({ ok: true, apagadas: ids.length });
     }
 
     if (action === "send") {
