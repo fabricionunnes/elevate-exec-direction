@@ -425,10 +425,10 @@ export default function CRMEmailPage() {
                 const Icon = p.icon; const ativo = pasta === p.key && !buscaIds; const n = naoLidas[p.key] || 0;
                 return (
                   <button key={p.key} onClick={() => irParaPasta(p.key)}
-                    className={cn("w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors", ativo ? "font-semibold shadow-sm bg-card" : "hover:bg-muted/70 text-foreground/75")}
-                    style={ativo ? { color: NAVY } : undefined}>
-                    <Icon className={cn("h-4 w-4 shrink-0", p.key === "IMPORTANT" && "text-amber-500", p.key === "STARRED" && "text-amber-500")} /><span className="flex-1 text-left truncate">{p.nome}</span>
-                    {n > 0 && <span className="text-[11px] font-semibold tabular-nums rounded-full px-1.5 py-0.5 text-white min-w-[20px] text-center" style={{ background: NAVY }}>{n}</span>}
+                    className={cn("w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors", ativo ? "font-semibold text-white shadow-md" : "hover:bg-muted/70 text-foreground/75")}
+                    style={ativo ? { background: NAVY } : undefined} aria-current={ativo ? "page" : undefined}>
+                    <Icon className={cn("h-4 w-4 shrink-0", !ativo && (p.key === "IMPORTANT" || p.key === "STARRED") && "text-amber-500", ativo && (p.key === "IMPORTANT" || p.key === "STARRED") && "text-amber-300")} /><span className="flex-1 text-left truncate">{p.nome}</span>
+                    {n > 0 && <span className={cn("text-[11px] font-semibold tabular-nums rounded-full px-1.5 py-0.5 min-w-[20px] text-center", ativo ? "bg-white" : "text-white")} style={ativo ? { color: NAVY } : { background: NAVY }}>{n}</span>}
                   </button>
                 );
               })}
@@ -437,10 +437,10 @@ export default function CRMEmailPage() {
                 const ativo = pasta === l.gmail_label_id && !buscaIds; const n = naoLidas[l.gmail_label_id] || 0;
                 return (
                   <button key={l.gmail_label_id} onClick={() => irParaPasta(l.gmail_label_id)}
-                    className={cn("w-full flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors", ativo ? "font-semibold shadow-sm bg-card" : "hover:bg-muted/70 text-foreground/75")}
-                    style={ativo ? { color: NAVY } : undefined}>
-                    <Tag className="h-3.5 w-3.5 shrink-0" style={{ color: l.color || undefined }} /><span className="flex-1 text-left truncate">{l.name}</span>
-                    {n > 0 && <span className="text-[11px] tabular-nums text-muted-foreground">{n}</span>}
+                    className={cn("w-full flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors", ativo ? "font-semibold text-white shadow-md" : "hover:bg-muted/70 text-foreground/75")}
+                    style={ativo ? { background: NAVY } : undefined} aria-current={ativo ? "page" : undefined}>
+                    <Tag className="h-3.5 w-3.5 shrink-0" style={{ color: ativo ? "#fff" : l.color || undefined }} /><span className="flex-1 text-left truncate">{l.name}</span>
+                    {n > 0 && <span className={cn("text-[11px] tabular-nums", ativo ? "text-white/80" : "text-muted-foreground")}>{n}</span>}
                   </button>
                 );
               })}
@@ -526,8 +526,8 @@ export default function CRMEmailPage() {
                   const quem = m.is_sent ? `Para: ${(m.to_list || []).map((a) => a.name || a.email).join(", ") || "?"}` : nomeDe(m);
                   const nomeAvatar = m.is_sent ? (m.to_list?.[0]?.name || m.to_list?.[0]?.email || "?") : quem;
                   return (
-                    <li key={m.thread_id} className={cn("relative group border-b border-border/50", aberta ? "bg-muted/70" : marcada ? "bg-[#0D2B5E]/[0.06]" : c.naoLida ? "bg-card" : "bg-muted/[0.15]", foco && "ring-1 ring-inset ring-[#0D2B5E]/40")}>
-                      {(aberta || c.naoLida) && <span className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: aberta ? NAVY : "#0D2B5E66" }} />}
+                    <li key={m.thread_id} className={cn("relative group border-b border-border/50 transition-colors", aberta ? "bg-[#0D2B5E]/[0.09] shadow-[inset_0_0_0_1px_rgba(13,43,94,0.18)]" : marcada ? "bg-[#0D2B5E]/[0.06]" : c.naoLida ? "bg-card hover:bg-muted/40" : "bg-muted/[0.15] hover:bg-muted/40", foco && "ring-1 ring-inset ring-[#0D2B5E]/40")} aria-selected={aberta}>
+                      {(aberta || c.naoLida) && <span className={cn("absolute left-0 top-0 bottom-0", aberta ? "w-1" : "w-[3px]")} style={{ background: aberta ? NAVY : "#0D2B5E55" }} />}
                       <div className="flex gap-2.5 px-3 py-2.5">
                         <div className="relative h-9 w-9 shrink-0 mt-0.5">
                           <Avatar className={cn("h-9 w-9 transition-opacity", (marcada || selecionadas.size > 0) ? "opacity-0" : "group-hover:opacity-0")}><AvatarFallback className="text-xs font-semibold text-white" style={{ background: corDe(m.from_email || quem) }}>{iniciais(nomeAvatar)}</AvatarFallback></Avatar>
@@ -537,11 +537,11 @@ export default function CRMEmailPage() {
                         </div>
                         <button onClick={(e) => { if (selecionadas.size > 0 && !e.metaKey) { alternarSelecao(m.thread_id); return; } setCursor(i); abrirThread(m.thread_id); }} className="flex-1 min-w-0 text-left">
                           <div className="flex items-center gap-2">
-                            <span className={cn("truncate text-[13px] flex-1", c.naoLida ? "font-semibold text-foreground" : "font-medium text-foreground/75")}>{quem}</span>
+                            <span className={cn("truncate text-[13px] flex-1", c.naoLida || aberta ? "font-semibold text-foreground" : "font-medium text-foreground/75")}>{quem}</span>
                             {c.qtd > 1 && <span className="text-[10px] text-muted-foreground tabular-nums rounded bg-muted px-1">{c.qtd}</span>}
                             <span className={cn("text-[11px] tabular-nums shrink-0 group-hover:hidden", c.naoLida ? "font-semibold" : "text-muted-foreground")} style={c.naoLida ? { color: NAVY } : undefined}>{quando(m.internal_date)}</span>
                           </div>
-                          <p className={cn("truncate text-[13px] flex items-center gap-1.5", c.naoLida ? "font-medium text-foreground" : "text-foreground/80")}>
+                          <p className={cn("truncate text-[13px] flex items-center gap-1.5", aberta ? "font-semibold" : c.naoLida ? "font-medium text-foreground" : "text-foreground/80")} style={aberta ? { color: NAVY } : undefined}>
                             {c.importante && <Bookmark className="h-3 w-3 shrink-0 fill-current text-amber-500" />}
                             <span className="truncate">{assuntoPt(m) || "(sem assunto)"}</span>
                           </p>
