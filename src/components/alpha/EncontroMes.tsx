@@ -93,7 +93,7 @@ export function EncontroMes({ d, mes, projectId, registro, onVoltar, irPara, onS
                 <b>{t.texto}</b>
                 <small>{automatico ? (feito ? "Conferido pelo sistema" : "O sistema confere sozinho quando estiver feito") : (feito ? "Marcado como feito" : "Marque quando concluir")}</small>
               </div>
-              <button type="button" className="al-btn" onClick={() => irPara(t.aba)}>Abrir {NOME_ABA[t.aba]}</button>
+              <button type="button" className="al-btn" onClick={() => (t.aba === "compromissos" ? document.getElementById("al-comps")?.scrollIntoView({ behavior: "smooth" }) : irPara(t.aba))}>{t.aba === "compromissos" ? "Ir para os compromissos" : `Abrir ${NOME_ABA[t.aba]}`}</button>
             </div>
           ))}
         </Panel>
@@ -139,7 +139,7 @@ export function EncontroMes({ d, mes, projectId, registro, onVoltar, irPara, onS
       </div>
 
       <div className="grid r2">
-        <Panel titulo={`Compromissos de ${MESES_NOME[mes - 1].toLowerCase()}`} sub="três por encontro, cobrados no encontro online">
+        <Panel titulo={<span id="al-comps">Compromissos de {MESES_NOME[mes - 1].toLowerCase()}</span>} sub="três por encontro, cobrados no encontro online">
           {comps.length === 0 && <div className="empty">Nenhum compromisso registrado.</div>}
           {comps.map((c) => (
             <div key={c.id} className="al-comp">
