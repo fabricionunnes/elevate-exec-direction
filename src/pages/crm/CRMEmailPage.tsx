@@ -27,7 +27,7 @@ import { format, isToday, isThisYear } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Inbox, Star, Send, Trash2, AlertOctagon, Archive, Mail, MailOpen, Reply, ReplyAll, Forward, Paperclip,
-  Search, RefreshCw, Loader2, PenSquare, X, ChevronLeft, Tag, Download, UserRound, ExternalLink, Plug,
+  Search, RefreshCw, Loader2, PenSquare, X, ChevronLeft, ChevronRight, Tag, Download, UserRound, ExternalLink, Plug,
   Bookmark, Layers, Undo2, CheckCheck, Keyboard, FileText, Image as ImageIcon, FileSpreadsheet, FileArchive,
 } from "lucide-react";
 
@@ -46,6 +46,7 @@ type Conversa = { ultima: Msg; qtd: number; naoLida: boolean; estrela: boolean; 
 type Filtro = "todas" | "nao-lidas" | "importantes" | "estrela" | "anexo";
 
 const NAVY = "#0D2B5E";
+const POR_PAGINA = 20; // Fabrício (06/11): "no máximo 20 emails em cada página"
 const PASTAS: { key: string; nome: string; icon: typeof Inbox }[] = [
   { key: "INBOX", nome: "Entrada", icon: Inbox },
   { key: "IMPORTANT", nome: "Importantes", icon: Bookmark },
@@ -87,6 +88,7 @@ export default function CRMEmailPage() {
   const [labels, setLabels] = useState<Label[]>([]);
   const [pasta, setPasta] = useState<string>(params.get("pasta") || "INBOX");
   const [filtro, setFiltro] = useState<Filtro>("todas");
+  const [pagina, setPagina] = useState(1);
   const [busca, setBusca] = useState("");
   const [buscaIds, setBuscaIds] = useState<string[] | null>(null);
   const [mensagens, setMensagens] = useState<Msg[]>([]);
@@ -146,7 +148,7 @@ export default function CRMEmailPage() {
     setCarregando(true);
     let q = db.from("mail_messages")
       .select("id, account_id, gmail_id, thread_id, label_ids, from_name, from_email, to_list, subject, snippet, internal_date, is_unread, is_starred, is_sent, has_attachments")
-      .eq("account_id", acc.id).order("internal_date", { ascending: false }).limit(400);
+      .eq("account_id", acc.id).order("internal_date", { ascending: false }).limit(1000);
     if (buscaIds) q = buscaIds.length ? q.in("gmail_id", buscaIds) : q.in("gmail_id", ["-"]);
     else if (pasta === "TRASH" || pasta === "SPAM") q = q.contains("label_ids", [pasta]);
     else if (pasta === "ALL") q = q.not("label_ids", "cs", "{TRASH}").not("label_ids", "cs", "{SPAM}");
@@ -157,7 +159,7 @@ export default function CRMEmailPage() {
   }, [pasta, buscaIds]);
 
   useEffect(() => { if (account) { carregarLabels(account); carregarLista(account); } }, [account, carregarLabels, carregarLista]);
-  useEffect(() => { setSelecionadas(new Set()); setCursor(-1); }, [pasta, buscaIds, filtro]);
+  useEffect(() => { setSelecionadas(new Set()); setCursor(-1); setPagina(1); }, [pasta, buscaIds, filtro]);
 
   // Realtime: qualquer mudança na própria caixa recarrega a lista e os contadores
   useEffect(() => {
@@ -170,7 +172,7 @@ export default function CRMEmailPage() {
   }, [account, carregarLista, carregarLabels]);
 
   // Conversas: a mensagem mais recente de cada thread + quantidade
-  const conversas = useMemo<Conversa[]>(() => {
+  const todasConversas = useMemo<Conversa[]>(() => {
     const porThread = new Map<string, Conversa>();
     for (const m of mensagens) {
       const t = porThread.get(m.thread_id);
@@ -184,6 +186,11 @@ export default function CRMEmailPage() {
     if (filtro === "anexo") return lista.filter((c) => c.anexo);
     return lista;
   }, [mensagens, filtro]);
+  const totalPaginas = Math.max(1, Math.ceil(todasConversas.length / POR_PAGINA));
+  useEffect(() => { if (pagina > totalPaginas) setPagina(totalPaginas); }, [pagina, totalPaginas]);
+  // só a página atual (20 por página)
+  const conversas = useMemo(() => todasConversas.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA), [todasConversas, pagina]);
+  const mudarPagina = (p: number) => { setPagina(Math.min(totalPaginas, Math.max(1, p))); setSelecionadas(new Set()); setCursor(-1); };
 
   // Abrir conversa: carrega as mensagens da thread, corpo sob demanda, marca lida
   const abrirThread = useCallback(async (threadId: string) => {
@@ -324,12 +331,15 @@ export default function CRMEmailPage() {
         case "c": { e.preventDefault(); setCompor({ modo: "novo" }); break; }
         case "/": { e.preventDefault(); buscaRef.current?.focus(); break; }
         case "?": { setMostrarAtalhos(true); break; }
+        case "]": { mudarPagina(pagina + 1); break; }
+        case "[": { mudarPagina(pagina - 1); break; }
         case "Escape": { if (selecionadas.size) setSelecionadas(new Set()); else if (threadSel) fecharThread(); break; }
       }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [compor, mostrarAtalhos, threadSel, cursor, conversas, selecionadas, naLixeiraOuSpam, abrirThread, arquivar, lixeira, marcarEstrela, marcarImportante, marcarLidas, spam, fecharThread, thread]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compor, mostrarAtalhos, threadSel, cursor, conversas, selecionadas, naLixeiraOuSpam, abrirThread, arquivar, lixeira, marcarEstrela, marcarImportante, marcarLidas, spam, fecharThread, thread, pagina, totalPaginas]);
 
   // ── Estados vazios ──
   if (account === undefined) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -447,7 +457,7 @@ export default function CRMEmailPage() {
           </div>
           <div className="px-3 py-1.5 border-b flex items-center justify-between text-[11px] text-muted-foreground">
             <span className="font-medium">{buscaIds ? "Resultado da busca" : tituloPasta}</span>
-            <span className="tabular-nums">{conversas.length} {conversas.length === 1 ? "conversa" : "conversas"}</span>
+            <span className="tabular-nums">{todasConversas.length === 0 ? "0 conversas" : `${(pagina - 1) * POR_PAGINA + 1}–${Math.min(pagina * POR_PAGINA, todasConversas.length)} de ${todasConversas.length}`}</span>
           </div>
           <ScrollArea className="flex-1">
             {carregando && conversas.length === 0 ? (
@@ -507,6 +517,13 @@ export default function CRMEmailPage() {
               </ul>
             )}
           </ScrollArea>
+          {totalPaginas > 1 && (
+            <div className="border-t px-2 py-1.5 flex items-center justify-between text-[11px] text-muted-foreground bg-muted/20">
+              <Button variant="ghost" size="sm" className="h-7 px-2 gap-1" disabled={pagina <= 1} onClick={() => mudarPagina(pagina - 1)}><ChevronLeft className="h-3.5 w-3.5" /> Anterior</Button>
+              <span className="tabular-nums">Página {pagina} de {totalPaginas}</span>
+              <Button variant="ghost" size="sm" className="h-7 px-2 gap-1" disabled={pagina >= totalPaginas} onClick={() => mudarPagina(pagina + 1)}>Próxima <ChevronRight className="h-3.5 w-3.5" /></Button>
+            </div>
+          )}
         </section>
 
         {/* Leitura */}
@@ -576,7 +593,7 @@ export default function CRMEmailPage() {
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle className="flex items-center gap-2" style={{ color: NAVY }}><Keyboard className="h-4 w-4" /> Atalhos de teclado</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
-            {[["j / k", "Próxima / anterior"], ["Enter", "Abrir conversa"], ["x", "Selecionar"], ["e", "Arquivar"], ["#", "Excluir (lixeira)"], ["s", "Estrela"], ["i", "Importante"], ["u", "Marcar não lida"], ["!", "Spam"], ["r", "Responder"], ["c", "Escrever"], ["/", "Buscar"], ["Esc", "Limpar / fechar"], ["?", "Esta ajuda"]].map(([k, v]) => (
+            {[["j / k", "Próxima / anterior"], ["Enter", "Abrir conversa"], ["x", "Selecionar"], ["e", "Arquivar"], ["#", "Excluir (lixeira)"], ["s", "Estrela"], ["i", "Importante"], ["u", "Marcar não lida"], ["!", "Spam"], ["r", "Responder"], ["c", "Escrever"], ["/", "Buscar"], ["[ / ]", "Página anterior / próxima"], ["Esc", "Limpar / fechar"], ["?", "Esta ajuda"]].map(([k, v]) => (
               <div key={k} className="flex items-center justify-between gap-2 py-0.5"><span className="text-muted-foreground">{v}</span><kbd className="rounded border bg-muted px-1.5 py-0.5 text-[11px] font-mono">{k}</kbd></div>
             ))}
           </div>
