@@ -256,6 +256,89 @@ async function sincronizarCaixa(acc: any, inicio: number): Promise<Record<string
   return out;
 }
 
+// ── Tradução pra português (06/11/2026, Fabrício: "todos os e-mails em outro idioma apareçam em português") ──
+// Detector local resolve quem já está em português sem IA; o resto vai pro Claude Haiku (o mais barato),
+// lista em lote de até 20 numa chamada e o corpo só quando a mensagem é aberta. Tudo fica em cache no banco.
+const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY") || Deno.env.get("CLAUDE_API_KEY") || "";
+const MODELO_TRADUCAO = "claude-haiku-5-5";
+const PT = /\b(de|que|não|nao|para|com|uma|você|voce|seu|sua|está|esta|são|sao|mais|pelo|pela|nós|obrigad[oa]|olá|ola|prezad[oa]|então|também|agora|sobre|isso|aqui)\b|ção|ções|ão\b/gi;
+const OUTRO = /\b(the|and|you|your|to|of|is|are|for|with|this|that|have|will|from|our|please|thanks|hello|el|los|las|usted|gracias|hola|und|der|die|das|nicht|vous|nous|avec|pour|est)\b/gi;
+function idiomaLocal(texto: string): "pt" | null {
+  const t = (texto || "").slice(0, 1500);
+  const pt = (t.match(PT) || []).length, outro = (t.match(OUTRO) || []).length;
+  if (pt >= 3 && pt >= outro * 1.5) return "pt";
+  return null;
+}
+const semHtml = (h: string) => h.replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<br\s*\/?>(?!\n)/gi, "\n").replace(/<\/(p|div|tr|li|h\d)>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/[ \t]+/g, " ").replace(/\n\s*\n\s*\n+/g, "\n\n").trim();
+
+async function claude(prompt: string, maxTokens: number, meta: Record<string, unknown>): Promise<string> {
+  if (!ANTHROPIC_KEY) throw new Error("Sem chave da Anthropic pra traduzir");
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({ model: MODELO_TRADUCAO, max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
+  });
+  if (!r.ok) throw new Error(`Tradução falhou (${r.status}): ${(await r.text()).slice(0, 200)}`);
+  const d = await r.json();
+  // medidor de custo de IA do Nexus
+  supabase.from("ai_usage_log").insert({ fn: "gmail-sync", model: MODELO_TRADUCAO, input_tokens: d.usage?.input_tokens || 0, output_tokens: d.usage?.output_tokens || 0, cache_read_tokens: d.usage?.cache_read_input_tokens || 0, cache_write_tokens: d.usage?.cache_creation_input_tokens || 0, meta }).then(() => {}, () => {});
+  // deno-lint-ignore no-explicit-any
+  return (d.content || []).map((c: any) => c.text || "").join("").trim();
+}
+const jsonDe = (t: string) => { const m = t.match(/[\[{][\s\S]*[\]}]/); return m ? JSON.parse(m[0]) : null; };
+
+// deno-lint-ignore no-explicit-any
+async function traduzirLista(accountId: string, ids: string[]): Promise<any[]> {
+  const { data: rows } = await supabase.from("mail_messages").select("gmail_id, subject, snippet, lang").eq("account_id", accountId).in("gmail_id", ids.slice(0, 20));
+  // deno-lint-ignore no-explicit-any
+  const pendentes = (rows || []).filter((r: any) => !r.lang);
+  // deno-lint-ignore no-explicit-any
+  const paraIa: any[] = [];
+  for (const r of pendentes) {
+    if (idiomaLocal(`${r.subject || ""} ${r.snippet || ""}`) === "pt") await supabase.from("mail_messages").update({ lang: "pt" }).eq("account_id", accountId).eq("gmail_id", r.gmail_id);
+    else paraIa.push(r);
+  }
+  if (paraIa.length) {
+    const entrada = paraIa.map((r, i) => ({ i, assunto: r.subject || "", trecho: (r.snippet || "").slice(0, 300) }));
+    const prompt = `Para cada item, identifique o idioma (código ISO de 2 letras) e, se NÃO for português, traduza assunto e trecho para português do Brasil, natural e fiel. Se já for português, devolva os textos como estão. Responda só com JSON: [{"i":0,"lang":"en","assunto":"...","trecho":"..."}].\n\n${JSON.stringify(entrada)}`;
+    try {
+      const resp = jsonDe(await claude(prompt, 2000, { acao: "translate-list", qtd: paraIa.length })) || [];
+      for (const o of resp) {
+        const r = paraIa[o.i]; if (!r) continue;
+        const lang = String(o.lang || "").toLowerCase().slice(0, 2) || "xx";
+        await supabase.from("mail_messages").update(lang === "pt" ? { lang } : { lang, subject_pt: o.assunto || null, snippet_pt: o.trecho || null }).eq("account_id", accountId).eq("gmail_id", r.gmail_id);
+      }
+    } catch (e) { console.error("translate-list", e); }
+  }
+  const { data: fim } = await supabase.from("mail_messages").select("gmail_id, lang, subject_pt, snippet_pt").eq("account_id", accountId).in("gmail_id", ids.slice(0, 20));
+  return fim || [];
+}
+
+// deno-lint-ignore no-explicit-any
+async function traduzirCorpo(accountId: string, gmailId: string): Promise<any> {
+  const { data: m } = await supabase.from("mail_messages").select("gmail_id, subject, snippet, body_html, body_text, lang, subject_pt, body_pt").eq("account_id", accountId).eq("gmail_id", gmailId).maybeSingle();
+  if (!m) return null;
+  if (m.lang === "pt" || m.body_pt) return m;
+  const texto = (m.body_text && m.body_text.trim().length > 40 ? m.body_text : semHtml(m.body_html || "")) || m.snippet || "";
+  if (!m.lang && idiomaLocal(`${m.subject || ""}\n${texto}`) === "pt") {
+    await supabase.from("mail_messages").update({ lang: "pt" }).eq("account_id", accountId).eq("gmail_id", gmailId);
+    return { ...m, lang: "pt" };
+  }
+  const corte = texto.slice(0, 12000);
+  const prompt = `Você recebe um e-mail. Primeira linha da resposta: só o código ISO de 2 letras do idioma original. Se for português, pare aí. Se não for, na segunda linha escreva "ASSUNTO: " e o assunto traduzido; depois uma linha em branco e o corpo traduzido para português do Brasil, natural e fiel, mantendo parágrafos, listas, valores, datas, nomes e links (URLs como estão). Não comente nada.\n\nASSUNTO ORIGINAL: ${m.subject || ""}\n\nCORPO:\n${corte}`;
+  const resp = await claude(prompt, 4000, { acao: "translate", gmail_id: gmailId, chars: corte.length });
+  const linhas = resp.split("\n");
+  const lang = (linhas[0] || "").trim().toLowerCase().slice(0, 2) || "xx";
+  if (lang === "pt") { await supabase.from("mail_messages").update({ lang }).eq("account_id", accountId).eq("gmail_id", gmailId); return { ...m, lang }; }
+  let resto = linhas.slice(1).join("\n").trim();
+  let assunto = m.subject_pt;
+  const ma = resto.match(/^ASSUNTO:\s*(.*)$/m);
+  if (ma) { assunto = ma[1].trim(); resto = resto.replace(ma[0], "").trim(); }
+  const upd = { lang, subject_pt: assunto, body_pt: resto + (texto.length > corte.length ? "\n\n[...] (trecho final não traduzido: e-mail muito longo)" : ""), translated_at: new Date().toISOString() };
+  await supabase.from("mail_messages").update(upd).eq("account_id", accountId).eq("gmail_id", gmailId);
+  return { ...m, ...upd };
+}
+
 // ── Watch (push) ───────────────────────────────────────────────────────────────────────────────
 // deno-lint-ignore no-explicit-any
 async function ligarWatch(acc: any): Promise<Record<string, unknown>> {
@@ -427,6 +510,18 @@ Deno.serve(async (req) => {
         await supabase.from("mail_messages").update({ label_ids: arr, is_unread: arr.includes("UNREAD"), is_starred: arr.includes("STARRED"), updated_at: new Date().toISOString() }).eq("id", r.id);
       }
       return j({ ok: true });
+    }
+
+    if (action === "translate-list") {
+      const ids: string[] = body.gmail_ids || [];
+      if (!ids.length) return j({ ok: true, items: [] });
+      return j({ ok: true, items: await traduzirLista(acc.id, ids) });
+    }
+
+    if (action === "translate") {
+      const m = await traduzirCorpo(acc.id, String(body.gmail_id || ""));
+      if (!m) return j({ error: "mensagem não encontrada" }, 404);
+      return j({ ok: true, lang: m.lang, subject_pt: m.subject_pt || null, body_pt: m.body_pt || null });
     }
 
     if (action === "delete") {

@@ -28,7 +28,7 @@ import { ptBR } from "date-fns/locale";
 import {
   Inbox, Star, Send, Trash2, AlertOctagon, Archive, Mail, MailOpen, Reply, ReplyAll, Forward, Paperclip,
   Search, RefreshCw, Loader2, PenSquare, X, ChevronLeft, ChevronRight, Tag, Download, UserRound, ExternalLink, Plug,
-  Bookmark, Layers, Undo2, CheckCheck, Keyboard, FileText, Image as ImageIcon, FileSpreadsheet, FileArchive,
+  Bookmark, Layers, Undo2, Languages, CheckCheck, Keyboard, FileText, Image as ImageIcon, FileSpreadsheet, FileArchive,
 } from "lucide-react";
 
 type Addr = { name: string; email: string };
@@ -39,6 +39,7 @@ type Msg = {
   is_sent: boolean; has_attachments: boolean; attachments: { attachmentId: string | null; filename: string; mimeType: string; size: number; contentId: string | null; inline?: boolean }[];
   body_html: string | null; body_text: string | null; body_loaded: boolean; message_id_header: string | null; references_header: string | null;
   reply_to?: string | null;
+  lang?: string | null; subject_pt?: string | null; snippet_pt?: string | null; body_pt?: string | null;
 };
 type Label = { gmail_label_id: string; name: string; type: string | null; color: string | null };
 type Account = { id: string; email: string; backfill_done: boolean; last_sync_at: string | null; last_error: string | null };
@@ -46,7 +47,9 @@ type Conversa = { ultima: Msg; qtd: number; naoLida: boolean; estrela: boolean; 
 type Filtro = "todas" | "nao-lidas" | "importantes" | "estrela" | "anexo";
 
 const NAVY = "#0D2B5E";
-const POR_PAGINA = 20; // Fabrício (06/11): "no máximo 20 emails em cada página"
+// Fabrício (06/11): padrão de 20 por página, podendo escolher 50 ou 100 (fica lembrado no navegador)
+const TAMANHOS_PAGINA = [20, 50, 100] as const;
+const tamanhoSalvo = () => { try { const n = Number(localStorage.getItem("nexus-email-por-pagina")); return (TAMANHOS_PAGINA as readonly number[]).includes(n) ? n : 20; } catch { return 20; } };
 const PASTAS: { key: string; nome: string; icon: typeof Inbox }[] = [
   { key: "INBOX", nome: "Entrada", icon: Inbox },
   { key: "IMPORTANT", nome: "Importantes", icon: Bookmark },
@@ -70,6 +73,11 @@ const nomeDe = (m: Msg) => m.from_name || m.from_email || "?";
 const tamanho = (n: number) => (n > 1024 * 1024 ? `${(n / 1048576).toFixed(1)} MB` : n > 1024 ? `${Math.round(n / 1024)} KB` : `${n} B`);
 const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const temLabel = (m: Msg, l: string) => (m.label_ids || []).includes(l);
+// em português quando o e-mail veio em outro idioma e já tem tradução
+const traduzido = (m: Msg) => !!m.lang && m.lang !== "pt";
+const assuntoPt = (m: Msg) => (traduzido(m) && m.subject_pt) || m.subject;
+const trechoPt = (m: Msg) => (traduzido(m) && m.snippet_pt) || m.snippet;
+const NOME_IDIOMA: Record<string, string> = { en: "inglês", es: "espanhol", fr: "francês", de: "alemão", it: "italiano", nl: "holandês", ja: "japonês", zh: "chinês", ko: "coreano", ru: "russo" };
 const iconeDoAnexo = (mime: string) => (/image\//.test(mime) ? ImageIcon : /spreadsheet|excel|csv/.test(mime) ? FileSpreadsheet : /zip|rar|7z|compressed/.test(mime) ? FileArchive : FileText);
 
 // HTML do e-mail numa sandbox: sem script, links abrem fora, largura contida
@@ -89,6 +97,8 @@ export default function CRMEmailPage() {
   const [pasta, setPasta] = useState<string>(params.get("pasta") || "INBOX");
   const [filtro, setFiltro] = useState<Filtro>("todas");
   const [pagina, setPagina] = useState(1);
+  const [POR_PAGINA, setPorPagina] = useState<number>(tamanhoSalvo);
+  const mudarTamanho = (n: number) => { setPorPagina(n); setPagina(1); setSelecionadas(new Set()); setCursor(-1); try { localStorage.setItem("nexus-email-por-pagina", String(n)); } catch { /* sem armazenamento */ } };
   const [busca, setBusca] = useState("");
   const [buscaIds, setBuscaIds] = useState<string[] | null>(null);
   const [mensagens, setMensagens] = useState<Msg[]>([]);
@@ -153,7 +163,7 @@ export default function CRMEmailPage() {
     const seq = ++seqLista.current;
     if (!silencioso) setCarregando(true); // atualização de fundo (realtime) não pisca a lista
     let q = db.from("mail_messages")
-      .select("id, account_id, gmail_id, thread_id, label_ids, from_name, from_email, to_list, subject, snippet, internal_date, is_unread, is_starred, is_sent, has_attachments")
+      .select("id, account_id, gmail_id, thread_id, label_ids, from_name, from_email, to_list, subject, snippet, internal_date, is_unread, is_starred, is_sent, has_attachments, lang, subject_pt, snippet_pt")
       .eq("account_id", acc.id).order("internal_date", { ascending: false }).limit(1000);
     if (buscaIds) q = buscaIds.length ? q.in("gmail_id", buscaIds) : q.in("gmail_id", ["-"]);
     else if (pasta === "TRASH" || pasta === "SPAM") q = q.contains("label_ids", [pasta]);
@@ -201,7 +211,20 @@ export default function CRMEmailPage() {
   const totalPaginas = Math.max(1, Math.ceil(todasConversas.length / POR_PAGINA));
   useEffect(() => { if (pagina > totalPaginas) setPagina(totalPaginas); }, [pagina, totalPaginas]);
   // só a página atual (20 por página)
-  const conversas = useMemo(() => todasConversas.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA), [todasConversas, pagina]);
+  const conversas = useMemo(() => todasConversas.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA), [todasConversas, pagina, POR_PAGINA]);
+  // traduz assunto/trecho da página visível que ainda não tem idioma detectado (lote de 20, uma chamada)
+  const pedidosTraducao = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const ids = conversas.map((c) => c.ultima).filter((m) => !m.lang && !pedidosTraducao.current.has(m.gmail_id)).map((m) => m.gmail_id);
+    if (!ids.length) return;
+    ids.forEach((id) => pedidosTraducao.current.add(id));
+    for (let i = 0; i < ids.length; i += 20) {
+      chamar({ action: "translate-list", gmail_ids: ids.slice(i, i + 20) }).then((r) => {
+        const porId = new Map<string, Partial<Msg>>((r?.items || []).map((x: Partial<Msg> & { gmail_id: string }) => [x.gmail_id, x]));
+        setMensagens((prev) => prev.map((m) => (porId.has(m.gmail_id) ? { ...m, ...porId.get(m.gmail_id) } : m)));
+      }).catch(() => {});
+    }
+  }, [conversas, chamar]);
   const mudarPagina = (p: number) => { setPagina(Math.min(totalPaginas, Math.max(1, p))); setSelecionadas(new Set()); setCursor(-1); };
 
   // Abrir conversa: carrega as mensagens da thread, corpo sob demanda, marca lida
@@ -378,7 +401,7 @@ export default function CRMEmailPage() {
   }
 
   const ultimaThread = thread[thread.length - 1];
-  const assuntoThread = thread[0]?.subject || conversas.find((c) => c.ultima.thread_id === threadSel)?.ultima.subject || "";
+  const assuntoThread = (thread[0] && assuntoPt(thread[0])) || (() => { const u = conversas.find((c) => c.ultima.thread_id === threadSel)?.ultima; return u ? assuntoPt(u) : ""; })() || "";
   const conversaAberta = conversas.find((c) => c.ultima.thread_id === threadSel);
   const threadImportante = thread.some((m) => temLabel(m, "IMPORTANT")) || !!conversaAberta?.importante;
   const threadEstrela = thread.some((m) => m.is_starred) || !!conversaAberta?.estrela;
@@ -520,10 +543,11 @@ export default function CRMEmailPage() {
                           </div>
                           <p className={cn("truncate text-[13px] flex items-center gap-1.5", c.naoLida ? "font-medium text-foreground" : "text-foreground/80")}>
                             {c.importante && <Bookmark className="h-3 w-3 shrink-0 fill-current text-amber-500" />}
-                            <span className="truncate">{m.subject || "(sem assunto)"}</span>
+                            <span className="truncate">{assuntoPt(m) || "(sem assunto)"}</span>
                           </p>
                           <div className="flex items-center gap-1.5">
-                            <p className="truncate text-xs text-muted-foreground flex-1">{m.snippet}</p>
+                            {traduzido(m) && m.subject_pt && <Languages className="h-3 w-3 shrink-0 text-muted-foreground/70" aria-label="Traduzido" />}
+                            <p className="truncate text-xs text-muted-foreground flex-1">{trechoPt(m)}</p>
                             {c.anexo && <Paperclip className="h-3 w-3 text-muted-foreground shrink-0" />}
                             {c.estrela && <Star className="h-3.5 w-3.5 shrink-0 fill-current text-amber-500" />}
                           </div>
@@ -544,10 +568,15 @@ export default function CRMEmailPage() {
               </ul>
             )}
           </ScrollArea>
-          {totalPaginas > 1 && (
-            <div className="border-t px-2 py-1.5 flex items-center justify-between text-[11px] text-muted-foreground bg-muted/20">
+          {todasConversas.length > 0 && (
+            <div className="border-t px-2 py-1.5 flex items-center gap-2 text-[11px] text-muted-foreground bg-muted/20">
               <Button variant="ghost" size="sm" className="h-7 px-2 gap-1" disabled={pagina <= 1} onClick={() => mudarPagina(pagina - 1)}><ChevronLeft className="h-3.5 w-3.5" /> Anterior</Button>
-              <span className="tabular-nums">Página {pagina} de {totalPaginas}</span>
+              <span className="tabular-nums flex-1 text-center">Página {pagina} de {totalPaginas}</span>
+              <div className="flex items-center rounded-md border bg-card p-0.5" role="group" aria-label="E-mails por página">
+                {TAMANHOS_PAGINA.map((n) => (
+                  <button key={n} onClick={() => mudarTamanho(n)} className={cn("rounded px-1.5 py-0.5 tabular-nums font-medium transition-colors", POR_PAGINA === n ? "text-white" : "hover:bg-muted")} style={POR_PAGINA === n ? { background: NAVY } : undefined} title={`${n} por página`}>{n}</button>
+                ))}
+              </div>
               <Button variant="ghost" size="sm" className="h-7 px-2 gap-1" disabled={pagina >= totalPaginas} onClick={() => mudarPagina(pagina + 1)}>Próxima <ChevronRight className="h-3.5 w-3.5" /></Button>
             </div>
           )}
@@ -597,7 +626,7 @@ export default function CRMEmailPage() {
                 <div className="p-4 space-y-3 max-w-5xl">
                   {thread.map((m, i) => {
                     const aberto = i === thread.length - 1 || thread.length <= 3;
-                    return <Mensagem key={m.id} m={m} abertoInicial={aberto} onBaixar={(a) => baixarAnexo(m, a)} onEstrela={() => estrelaMsg(m)}
+                    return <Mensagem key={m.id} m={m} abertoInicial={aberto} chamar={chamar} onTraduzida={(x) => setThread((p) => p.map((k) => (k.gmail_id === m.gmail_id ? { ...k, ...x } : k)))} onBaixar={(a) => baixarAnexo(m, a)} onEstrela={() => estrelaMsg(m)}
                       onResponder={() => setCompor({ modo: "responder", base: m })} onResponderTodos={() => setCompor({ modo: "todos", base: m })} onEncaminhar={() => setCompor({ modo: "encaminhar", base: m })} />;
                   })}
                   {carregandoThread && <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>}
@@ -643,8 +672,9 @@ function Acao({ icone: Icone, rotulo, onClick, ativo, perigo, pequeno }: { icone
 }
 
 // ── Uma mensagem da conversa ────────────────────────────────────────────────────────────────────
-function Mensagem({ m, abertoInicial, onBaixar, onEstrela, onResponder, onResponderTodos, onEncaminhar }: {
-  m: Msg; abertoInicial: boolean; onBaixar: (a: Msg["attachments"][number]) => void; onEstrela: () => void;
+function Mensagem({ m, abertoInicial, chamar, onTraduzida, onBaixar, onEstrela, onResponder, onResponderTodos, onEncaminhar }: {
+  m: Msg; abertoInicial: boolean; chamar: (b: Record<string, unknown>) => Promise<any>; onTraduzida: (x: Partial<Msg>) => void;
+  onBaixar: (a: Msg["attachments"][number]) => void; onEstrela: () => void;
   onResponder: () => void; onResponderTodos: () => void; onEncaminhar: () => void;
 }) {
   const [aberto, setAberto] = useState(abertoInicial);
@@ -654,6 +684,20 @@ function Mensagem({ m, abertoInicial, onBaixar, onEstrela, onResponder, onRespon
   const ajustar = () => { try { const h = ref.current?.contentWindow?.document?.documentElement?.scrollHeight; if (h) setAltura(Math.min(Math.max(h + 8, 80), 4000)); } catch { /* sandbox */ } };
   const quem = nomeDe(m);
   const anexos = (m.attachments || []).filter((a) => !a.inline);
+  // tradução automática ao abrir (só quando o idioma não é português; fica em cache no banco)
+  const [verOriginal, setVerOriginal] = useState(false);
+  const [traduzindo, setTraduzindo] = useState(false);
+  useEffect(() => {
+    if (!aberto || !m.body_loaded || m.lang === "pt" || m.body_pt || traduzindo) return;
+    let vivo = true;
+    setTraduzindo(true);
+    chamar({ action: "translate", gmail_id: m.gmail_id })
+      .then((r) => { if (vivo && r) onTraduzida({ lang: r.lang, subject_pt: r.subject_pt, body_pt: r.body_pt }); })
+      .catch(() => {}).finally(() => { if (vivo) setTraduzindo(false); });
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aberto, m.body_loaded, m.lang, m.body_pt, m.gmail_id]);
+  const mostrarTraducao = traduzido(m) && !!m.body_pt && !verOriginal;
   return (
     <div className={cn("rounded-xl border bg-card overflow-hidden transition-shadow", aberto ? "shadow-sm" : "hover:shadow-sm")}>
       <button className="w-full text-left px-4 py-3 flex items-start gap-3" onClick={() => setAberto((v) => !v)}>
@@ -669,13 +713,30 @@ function Mensagem({ m, abertoInicial, onBaixar, onEstrela, onResponder, onRespon
           {aberto ? (
             <p className="text-xs text-muted-foreground truncate">para {(m.to_list || []).map((a) => a.name || a.email).join(", ")}{m.cc_list?.length ? ` · cc ${m.cc_list.map((a) => a.name || a.email).join(", ")}` : ""}</p>
           ) : (
-            <p className="text-xs text-muted-foreground truncate">{m.snippet}</p>
+            <p className="text-xs text-muted-foreground truncate">{trechoPt(m)}</p>
           )}
         </div>
       </button>
       {aberto && (
         <>
-          <iframe ref={ref} title={m.subject || "e-mail"} sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin" srcDoc={docDoEmail(m)} onLoad={ajustar} style={{ height: altura }} className="w-full border-0 bg-white" />
+          {(traduzido(m) || traduzindo) && (
+            <div className="mx-4 mb-1 flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs" style={{ background: "#0D2B5E0d", color: NAVY }}>
+              <Languages className="h-3.5 w-3.5 shrink-0" />
+              {traduzindo && !m.body_pt ? (
+                <span className="flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Traduzindo pra português...</span>
+              ) : (
+                <>
+                  <span>{verOriginal ? `Original em ${NOME_IDIOMA[m.lang || ""] || m.lang}` : `Traduzido do ${NOME_IDIOMA[m.lang || ""] || m.lang}`}</span>
+                  <button onClick={() => setVerOriginal((v) => !v)} className="ml-auto font-medium underline-offset-2 hover:underline">{verOriginal ? "Ver tradução" : "Ver original"}</button>
+                </>
+              )}
+            </div>
+          )}
+          {mostrarTraducao ? (
+            <div className="px-6 py-4 text-[14px] leading-relaxed text-foreground/90 whitespace-pre-wrap break-words">{m.body_pt}</div>
+          ) : (
+            <iframe ref={ref} title={m.subject || "e-mail"} sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin" srcDoc={docDoEmail(m)} onLoad={ajustar} style={{ height: altura }} className="w-full border-0 bg-white" />
+          )}
           {anexos.length > 0 && (
             <div className="px-4 pb-3 pt-2 border-t bg-muted/20 flex flex-wrap gap-2">
               {anexos.map((a, i) => { const Ic = iconeDoAnexo(a.mimeType || ""); return (
