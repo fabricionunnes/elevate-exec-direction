@@ -240,7 +240,7 @@ export async function generateProposalPDF({ proposal, leadName, companyName, ser
   fourNavyCards(RITMO);
 
   // ───────────────────────── MÉTODO CRESCER ─────────────────────────
-  startSection("04", "Metodologia", "O Método CRESCER", "As 7 fases que levam a academia do improviso ao sistema. Cada decisão passa por um filtro: o que escala, o que gera previsibilidade, o que aumenta margem e o que reduz a dependência do dono.");
+  startSection("04", "Metodologia", "O Método CRESCER", "As 7 fases que levam o comercial da sua empresa do improviso ao sistema. Cada decisão passa por um filtro: o que escala, o que gera previsibilidade, o que aumenta margem e o que reduz a dependência do dono.");
   CRESCER.forEach((p, i) => numberedRow(i + 1, p[0], p[1], i % 2 === 0 ? NAVY : RED));
   y += 4;
   ensure(26);

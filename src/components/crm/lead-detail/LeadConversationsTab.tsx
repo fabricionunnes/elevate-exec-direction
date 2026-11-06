@@ -23,6 +23,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
 import { MediaUploadButton } from "@/components/crm/inbox/MediaUploadButton";
+import { EnviarPropostaButton } from "@/components/crm/inbox/EnviarPropostaButton";
 import { AudioRecorder } from "@/components/crm/inbox/AudioRecorder";
 
 interface Props {
@@ -590,7 +591,7 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
   // Envio de imagem, vídeo, áudio e documento (pedido do Fabrício, 13/10/2026).
   // Mesmo caminho do Atendimento: sobe o arquivo no bucket whatsapp-media, grava a
   // mensagem como pendente e manda pelo número da conversa. Devolve true se enviou.
-  const sendMedia = async (file: File, type: "image" | "video" | "audio" | "document"): Promise<boolean> => {
+  const sendMedia = async (file: File, type: "image" | "video" | "audio" | "document", caption = ""): Promise<boolean> => {
     if (!activeConv) return false;
     if (activeConv.channel === "instagram") {
       toast.error("Pelo Instagram só dá pra enviar texto por aqui.");
@@ -672,7 +673,7 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
             phone,
             mediaType: type,
             mediaUrl,
-            caption: "",
+            caption,
             fileName: file.name,
           },
         }
@@ -953,6 +954,9 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
                     if (!(await sendMedia(file, "audio"))) throw new Error("audio_nao_enviado");
                   }}
                 />
+              )}
+              {activeConv.channel !== "instagram" && (
+                <EnviarPropostaButton leadId={leadId} disabled={sending} onEnviar={(file, caption) => sendMedia(file, "document", caption)} />
               )}
               <Button onClick={handleSend} disabled={sending || !newMessage.trim()} size="icon" className="shrink-0" title="Enviar mensagem">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

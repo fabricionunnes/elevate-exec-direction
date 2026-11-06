@@ -93,6 +93,7 @@ import { ConversationFilters, ConversationFiltersData, defaultFilters } from "@/
 import { InboxSavedViews } from "@/components/crm/inbox/InboxSavedViews";
 import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
 import { MediaUploadButton } from "@/components/crm/inbox/MediaUploadButton";
+import { EnviarPropostaButton } from "@/components/crm/inbox/EnviarPropostaButton";
 import { OfficialTemplateSendDialog } from "@/components/crm/OfficialTemplateSendDialog";
 import { AudioRecorder } from "@/components/crm/inbox/AudioRecorder";
 import { ReceiptAnalysisButton } from "@/components/crm/inbox/ReceiptAnalysisButton";
@@ -2010,6 +2011,20 @@ export const CRMInboxPage = () => {
                 >
                   <CalendarClock className="h-4 w-4" />
                 </Button>
+              )}
+              {!isInstagramConversation && (
+                <EnviarPropostaButton
+                  leadId={selectedConversation.lead_id}
+                  disabled={sending}
+                  compacto={isMobile}
+                  onEnviar={async (file, caption) => {
+                    if (!selectedConversation?.instance_id) {
+                      toast.error(selectedConversation?.official_instance_id ? "Envio de PDF ainda não suportado na API Oficial" : "Conversa sem dispositivo associado");
+                      return false;
+                    }
+                    await sendMedia(file, "document", selectedConversation.instance_id, selectedConversation.contact?.phone || "", staffId, caption);
+                  }}
+                />
               )}
               <BotaoEnviar draftRef={draftRef} subs={draftSubs} sending={sending} isMobile={isMobile} onClick={handleSendMessage} />
             </div>
