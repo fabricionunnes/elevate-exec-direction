@@ -360,7 +360,10 @@ export default function CRMEmailPage() {
   const conversaAberta = conversas.find((c) => c.ultima.thread_id === threadSel);
   const threadImportante = thread.some((m) => temLabel(m, "IMPORTANT")) || !!conversaAberta?.importante;
   const threadEstrela = thread.some((m) => m.is_starred) || !!conversaAberta?.estrela;
-  const labelsUsuario = labels.filter((l) => l.type === "user" && !SISTEMA.has(l.gmail_label_id));
+  // a migração do cPanel criou marcadores "INBOX.Sent", "INBOX.Trash" etc. (pastas do IMAP): esconde os que
+  // duplicam pastas do Gmail e mostra os demais sem o prefixo
+  const DUPLICADOS = /^INBOX\.(Archive|Drafts|Junk|Sent|spam|Spam|Trash)$/i;
+  const labelsUsuario = labels.filter((l) => l.type === "user" && !SISTEMA.has(l.gmail_label_id) && !DUPLICADOS.test(l.name)).map((l) => ({ ...l, name: l.name.replace(/^INBOX\./i, "") }));
   const tituloPasta = PASTAS.find((p) => p.key === pasta)?.nome || labelsUsuario.find((l) => l.gmail_label_id === pasta)?.name || "E-mails";
 
   return (
