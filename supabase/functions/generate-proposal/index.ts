@@ -8,6 +8,34 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 const MODEL = "claude-sonnet-4-6";
+const MODELO_OPENAI = "gpt-4o";
+
+// 06/11/2026: a conta da Anthropic ficou sem crédito e a proposta parou de sair. Agora tenta a
+// Anthropic e, se falhar (sem crédito, fora do ar, sem chave), gera pelo OpenAI com o mesmo prompt.
+async function chamarIA(prompt: string, maxTokens: number): Promise<string> {
+  const anthropic = Deno.env.get("ANTHROPIC_API_KEY");
+  const openai = Deno.env.get("OPENAI_API_KEY");
+  let erroAnthropic = "";
+  if (anthropic) {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": anthropic, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
+    });
+    if (r.ok) { const d = await r.json(); return (d?.content?.[0]?.text || "").trim(); }
+    erroAnthropic = `Anthropic ${r.status}: ${truncate(await r.text(), 200)}`;
+    console.error("generate-proposal", erroAnthropic);
+  }
+  if (!openai) throw new Error(erroAnthropic || "Nenhuma chave de IA configurada");
+  const r = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${openai}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: MODELO_OPENAI, max_tokens: maxTokens, temperature: 0.4, response_format: { type: "json_object" }, messages: [{ role: "user", content: prompt }] }),
+  });
+  if (!r.ok) throw new Error(`${erroAnthropic ? erroAnthropic + " | " : ""}OpenAI ${r.status}: ${truncate(await r.text(), 200)}`);
+  const d = await r.json();
+  return String(d?.choices?.[0]?.message?.content || "").trim();
+}
 
 function truncate(s: string | null | undefined, n: number): string {
   if (!s) return "";
@@ -29,8 +57,6 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY não configurada");
 
     const body = await req.json().catch(() => ({}));
     const transcription: string = body.transcription || "";
@@ -61,18 +87,7 @@ REGRAS:
 
 Responda APENAS com o JSON COMPLETO da proposta revisada, no MESMO formato/chaves do JSON atual (sem markdown, sem comentários).`;
 
-      const revResp = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ model: MODEL, max_tokens: 3000, messages: [{ role: "user", content: revPrompt }] }),
-      });
-      if (!revResp.ok) throw new Error(`Anthropic ${revResp.status}: ${truncate(await revResp.text(), 300)}`);
-      const revData = await revResp.json();
-      let revRaw = (revData?.content?.[0]?.text || "{}").trim().replace(/^```(json)?/i, "").replace(/```$/i, "").trim();
+      let revRaw = ((await chamarIA(revPrompt, 3000)) || "{}").trim().replace(/^```(json)?/i, "").replace(/```$/i, "").trim();
       let revised: any;
       try { revised = JSON.parse(revRaw); } catch { const m = revRaw.match(/\{[\s\S]*\}/); revised = m ? JSON.parse(m[0]) : null; }
       if (!revised) throw new Error("Não consegui aplicar as mudanças na proposta");
@@ -129,18 +144,7 @@ Responda APENAS com JSON válido (sem markdown, sem comentários):
   "cta": "uma frase de fechamento (ex.: 'Quando quiser bater meta todo mês — é só chamar.')"
 }`;
 
-    const aiResp = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ model: MODEL, max_tokens: 3000, messages: [{ role: "user", content: prompt }] }),
-    });
-    if (!aiResp.ok) throw new Error(`Anthropic ${aiResp.status}: ${truncate(await aiResp.text(), 300)}`);
-    const aiData = await aiResp.json();
-    let raw = (aiData?.content?.[0]?.text || "{}").trim().replace(/^```(json)?/i, "").replace(/```$/i, "").trim();
+    let raw = ((await chamarIA(prompt, 3000)) || "{}").trim().replace(/^```(json)?/i, "").replace(/```$/i, "").trim();
     let proposal: any;
     try { proposal = JSON.parse(raw); } catch { const m = raw.match(/\{[\s\S]*\}/); proposal = m ? JSON.parse(m[0]) : null; }
     if (!proposal) throw new Error("Não consegui montar a proposta a partir da transcrição");
