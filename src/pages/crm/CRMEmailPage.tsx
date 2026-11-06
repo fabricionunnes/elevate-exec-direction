@@ -139,6 +139,7 @@ export default function CRMEmailPage() {
   const estadoLista = useRef({ pasta, buscaIds });
   estadoLista.current = { pasta, buscaIds };
   const seqLista = useRef(0);
+  const ultimaAplicada = useRef(0);
 
   const chamar = useCallback(async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("gmail-sync", { body });
@@ -180,6 +181,10 @@ export default function CRMEmailPage() {
 
   const carregarLista = useCallback(async (acc: Account, silencioso = false) => {
     const { pasta, buscaIds } = estadoLista.current;
+    // a chave é pasta+busca: resposta só é descartada se o usuário trocou de pasta/busca no meio.
+    // (antes era um contador; com a importação inserindo sem parar, cada recarga do realtime
+    // descartava a anterior e a lista nunca terminava de carregar)
+    const chave = JSON.stringify({ pasta, buscaIds });
     const seq = ++seqLista.current;
     if (!silencioso) setCarregando(true); // atualização de fundo (realtime) não pisca a lista
     let q = db.from("mail_messages")
@@ -190,7 +195,9 @@ export default function CRMEmailPage() {
     else if (pasta === "ALL") q = q.not("label_ids", "cs", "{TRASH}").not("label_ids", "cs", "{SPAM}");
     else q = q.contains("label_ids", [pasta]).not("label_ids", "cs", "{TRASH}").not("label_ids", "cs", "{SPAM}");
     const { data } = await q;
-    if (seq !== seqLista.current) return; // chegou uma carga mais nova (outra pasta) no meio
+    if (chave !== JSON.stringify(estadoLista.current)) return; // trocou de pasta/busca no meio
+    if (seq < ultimaAplicada.current) return; // resposta mais velha que a já mostrada
+    ultimaAplicada.current = seq;
     setMensagens((data as Msg[]) || []);
     setCarregando(false);
   }, []);
@@ -205,7 +212,8 @@ export default function CRMEmailPage() {
   useEffect(() => {
     if (!account) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const agendar = () => { if (timer) clearTimeout(timer); timer = setTimeout(() => { timer = null; carregarLista(account, true); carregarLabels(account); }, 1500); };
+    // limita a uma recarga a cada 3 s durante rajadas (importação), sem nunca adiar pra sempre
+    const agendar = () => { if (timer) return; timer = setTimeout(() => { timer = null; carregarLista(account, true); carregarLabels(account); }, 3000); };
     const ch = supabase.channel(`mail-${account.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "mail_messages", filter: `account_id=eq.${account.id}` }, agendar)
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "mail_accounts", filter: `id=eq.${account.id}` }, (p) => setAccount(p.new as Account))
