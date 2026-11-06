@@ -2,6 +2,9 @@
 // Caixa do Gmail do próprio usuário, sincronizada pelo gmail-sync (cron a cada minuto + realtime).
 // Três colunas: pastas, lista por conversa, leitura. Compor, responder, encaminhar, anexos, busca
 // e vínculo com o lead do CRM pelo e-mail do remetente.
+// 06/11: redesenho premium. Seleção com ações em massa (lida, não lida, importante, estrela,
+// arquivar, spam, lixeira, restaurar), marcador de importante, pastas Importantes e Todos,
+// filtros rápidos, ações ao passar o mouse e atalhos de teclado (j/k, e, #, s, i, u, x, c, /).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -24,6 +28,7 @@ import { ptBR } from "date-fns/locale";
 import {
   Inbox, Star, Send, Trash2, AlertOctagon, Archive, Mail, MailOpen, Reply, ReplyAll, Forward, Paperclip,
   Search, RefreshCw, Loader2, PenSquare, X, ChevronLeft, Tag, Download, UserRound, ExternalLink, Plug,
+  Bookmark, Layers, Undo2, CheckCheck, Keyboard, FileText, Image as ImageIcon, FileSpreadsheet, FileArchive,
 } from "lucide-react";
 
 type Addr = { name: string; email: string };
@@ -33,34 +38,44 @@ type Msg = {
   subject: string | null; snippet: string | null; internal_date: string; is_unread: boolean; is_starred: boolean;
   is_sent: boolean; has_attachments: boolean; attachments: { attachmentId: string | null; filename: string; mimeType: string; size: number; contentId: string | null; inline?: boolean }[];
   body_html: string | null; body_text: string | null; body_loaded: boolean; message_id_header: string | null; references_header: string | null;
+  reply_to?: string | null;
 };
 type Label = { gmail_label_id: string; name: string; type: string | null; color: string | null };
 type Account = { id: string; email: string; backfill_done: boolean; last_sync_at: string | null; last_error: string | null };
+type Conversa = { ultima: Msg; qtd: number; naoLida: boolean; estrela: boolean; importante: boolean; anexo: boolean; ids: string[] };
+type Filtro = "todas" | "nao-lidas" | "importantes" | "estrela" | "anexo";
 
 const NAVY = "#0D2B5E";
 const PASTAS: { key: string; nome: string; icon: typeof Inbox }[] = [
   { key: "INBOX", nome: "Entrada", icon: Inbox },
+  { key: "IMPORTANT", nome: "Importantes", icon: Bookmark },
   { key: "STARRED", nome: "Com estrela", icon: Star },
   { key: "SENT", nome: "Enviados", icon: Send },
   { key: "DRAFT", nome: "Rascunhos", icon: PenSquare },
+  { key: "ALL", nome: "Todos os e-mails", icon: Layers },
   { key: "SPAM", nome: "Spam", icon: AlertOctagon },
   { key: "TRASH", nome: "Lixeira", icon: Trash2 },
 ];
 const SISTEMA = new Set(["INBOX", "STARRED", "SENT", "DRAFT", "SPAM", "TRASH", "UNREAD", "IMPORTANT", "CHAT", "CATEGORY_PERSONAL", "CATEGORY_SOCIAL", "CATEGORY_PROMOTIONS", "CATEGORY_UPDATES", "CATEGORY_FORUMS"]);
+const FILTROS: { key: Filtro; nome: string }[] = [
+  { key: "todas", nome: "Todas" }, { key: "nao-lidas", nome: "Não lidas" }, { key: "importantes", nome: "Importantes" }, { key: "estrela", nome: "Com estrela" }, { key: "anexo", nome: "Com anexo" },
+];
 
 const iniciais = (s: string) => (s || "?").replace(/[^\p{L}\s]/gu, " ").trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() || "").join("") || "?";
-const corDe = (s: string) => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return `hsl(${h % 360} 45% 42%)`; };
+const corDe = (s: string) => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return `hsl(${h % 360} 42% 44%)`; };
 const quando = (iso: string) => { const d = new Date(iso); return isToday(d) ? format(d, "HH:mm") : isThisYear(d) ? format(d, "d 'de' MMM", { locale: ptBR }) : format(d, "dd/MM/yy"); };
 const quandoLongo = (iso: string) => format(new Date(iso), "EEEE, d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR });
 const nomeDe = (m: Msg) => m.from_name || m.from_email || "?";
 const tamanho = (n: number) => (n > 1024 * 1024 ? `${(n / 1048576).toFixed(1)} MB` : n > 1024 ? `${Math.round(n / 1024)} KB` : `${n} B`);
 const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const temLabel = (m: Msg, l: string) => (m.label_ids || []).includes(l);
+const iconeDoAnexo = (mime: string) => (/image\//.test(mime) ? ImageIcon : /spreadsheet|excel|csv/.test(mime) ? FileSpreadsheet : /zip|rar|7z|compressed/.test(mime) ? FileArchive : FileText);
 
 // HTML do e-mail numa sandbox: sem script, links abrem fora, largura contida
 function docDoEmail(m: Msg): string {
   const corpo = m.body_html || (m.body_text ? `<pre style="white-space:pre-wrap;font-family:inherit">${escapeHtml(m.body_text)}</pre>` : `<p style="color:#6b7280">${escapeHtml(m.snippet || "")}</p>`);
   return `<!doctype html><html><head><meta charset="utf-8"><base target="_blank">
-<style>body{margin:0;padding:16px 20px;font:14px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f2937;word-break:break-word}img{max-width:100%;height:auto}blockquote{border-left:3px solid #e5e7eb;margin:8px 0;padding-left:12px;color:#6b7280}a{color:#0D2B5E}table{max-width:100%}</style>
+<style>body{margin:0;padding:18px 22px;font:14px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f2937;word-break:break-word}img{max-width:100%;height:auto}blockquote{border-left:3px solid #e5e7eb;margin:8px 0;padding-left:12px;color:#6b7280}a{color:#0D2B5E}table{max-width:100%}</style>
 </head><body>${corpo}</body></html>`;
 }
 
@@ -71,6 +86,7 @@ export default function CRMEmailPage() {
   const [precisaConectar, setPrecisaConectar] = useState(false);
   const [labels, setLabels] = useState<Label[]>([]);
   const [pasta, setPasta] = useState<string>(params.get("pasta") || "INBOX");
+  const [filtro, setFiltro] = useState<Filtro>("todas");
   const [busca, setBusca] = useState("");
   const [buscaIds, setBuscaIds] = useState<string[] | null>(null);
   const [mensagens, setMensagens] = useState<Msg[]>([]);
@@ -80,10 +96,13 @@ export default function CRMEmailPage() {
   const [thread, setThread] = useState<Msg[]>([]);
   const [carregandoThread, setCarregandoThread] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
+  const [cursor, setCursor] = useState<number>(-1);
+  const [mostrarAtalhos, setMostrarAtalhos] = useState(false);
   const [compor, setCompor] = useState<null | { modo: "novo" | "responder" | "todos" | "encaminhar"; base?: Msg }>(null);
   const [leadDoRemetente, setLeadDoRemetente] = useState<{ id: string; name: string; company: string | null; stage: string | null } | null>(null);
   const [mobileLendo, setMobileLendo] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const buscaRef = useRef<HTMLInputElement>(null);
 
   const chamar = useCallback(async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("gmail-sync", { body });
@@ -114,7 +133,7 @@ export default function CRMEmailPage() {
   const carregarLabels = useCallback(async (acc: Account) => {
     const { data } = await db.from("mail_labels").select("gmail_label_id, name, type, color").eq("account_id", acc.id).order("name");
     setLabels((data as Label[]) || []);
-    const chaves = ["INBOX", "SPAM", "DRAFT", ...((data as Label[]) || []).filter((l) => l.type === "user").map((l) => l.gmail_label_id)];
+    const chaves = ["INBOX", "IMPORTANT", "SPAM", "DRAFT", ...((data as Label[]) || []).filter((l) => l.type === "user").map((l) => l.gmail_label_id)];
     const contagem: Record<string, number> = {};
     await Promise.all(chaves.map(async (k) => {
       const { count } = await db.from("mail_messages").select("id", { count: "exact", head: true }).eq("account_id", acc.id).eq("is_unread", true).contains("label_ids", [k]).not("label_ids", "cs", "{TRASH}");
@@ -130,6 +149,7 @@ export default function CRMEmailPage() {
       .eq("account_id", acc.id).order("internal_date", { ascending: false }).limit(400);
     if (buscaIds) q = buscaIds.length ? q.in("gmail_id", buscaIds) : q.in("gmail_id", ["-"]);
     else if (pasta === "TRASH" || pasta === "SPAM") q = q.contains("label_ids", [pasta]);
+    else if (pasta === "ALL") q = q.not("label_ids", "cs", "{TRASH}").not("label_ids", "cs", "{SPAM}");
     else q = q.contains("label_ids", [pasta]).not("label_ids", "cs", "{TRASH}").not("label_ids", "cs", "{SPAM}");
     const { data } = await q;
     setMensagens((data as Msg[]) || []);
@@ -137,6 +157,7 @@ export default function CRMEmailPage() {
   }, [pasta, buscaIds]);
 
   useEffect(() => { if (account) { carregarLabels(account); carregarLista(account); } }, [account, carregarLabels, carregarLista]);
+  useEffect(() => { setSelecionadas(new Set()); setCursor(-1); }, [pasta, buscaIds, filtro]);
 
   // Realtime: qualquer mudança na própria caixa recarrega a lista e os contadores
   useEffect(() => {
@@ -149,15 +170,20 @@ export default function CRMEmailPage() {
   }, [account, carregarLista, carregarLabels]);
 
   // Conversas: a mensagem mais recente de cada thread + quantidade
-  const conversas = useMemo(() => {
-    const porThread = new Map<string, { ultima: Msg; qtd: number; naoLida: boolean; estrela: boolean }>();
+  const conversas = useMemo<Conversa[]>(() => {
+    const porThread = new Map<string, Conversa>();
     for (const m of mensagens) {
       const t = porThread.get(m.thread_id);
-      if (!t) porThread.set(m.thread_id, { ultima: m, qtd: 1, naoLida: m.is_unread, estrela: m.is_starred });
-      else { t.qtd++; t.naoLida = t.naoLida || m.is_unread; t.estrela = t.estrela || m.is_starred; if (m.internal_date > t.ultima.internal_date) t.ultima = m; }
+      if (!t) porThread.set(m.thread_id, { ultima: m, qtd: 1, naoLida: m.is_unread, estrela: m.is_starred, importante: temLabel(m, "IMPORTANT"), anexo: m.has_attachments, ids: [m.gmail_id] });
+      else { t.qtd++; t.naoLida = t.naoLida || m.is_unread; t.estrela = t.estrela || m.is_starred; t.importante = t.importante || temLabel(m, "IMPORTANT"); t.anexo = t.anexo || m.has_attachments; t.ids.push(m.gmail_id); if (m.internal_date > t.ultima.internal_date) t.ultima = m; }
     }
-    return [...porThread.values()].sort((a, b) => b.ultima.internal_date.localeCompare(a.ultima.internal_date));
-  }, [mensagens]);
+    const lista = [...porThread.values()].sort((a, b) => b.ultima.internal_date.localeCompare(a.ultima.internal_date));
+    if (filtro === "nao-lidas") return lista.filter((c) => c.naoLida);
+    if (filtro === "importantes") return lista.filter((c) => c.importante);
+    if (filtro === "estrela") return lista.filter((c) => c.estrela);
+    if (filtro === "anexo") return lista.filter((c) => c.anexo);
+    return lista;
+  }, [mensagens, filtro]);
 
   // Abrir conversa: carrega as mensagens da thread, corpo sob demanda, marca lida
   const abrirThread = useCallback(async (threadId: string) => {
@@ -174,10 +200,10 @@ export default function CRMEmailPage() {
       try { const r = await chamar({ action: "message", gmail_id: m.gmail_id }); if (r?.message) msgs = msgs.map((x) => (x.id === m.id ? (r.message as Msg) : x)); setThread([...msgs]); } catch { /* fica com o resumo */ }
     }
     setCarregandoThread(false);
-    const naoLidas = msgs.filter((m) => m.is_unread).map((m) => m.gmail_id);
-    if (naoLidas.length) {
-      setMensagens((prev) => prev.map((m) => (naoLidas.includes(m.gmail_id) ? { ...m, is_unread: false } : m)));
-      chamar({ action: "modify", gmail_ids: naoLidas, remove: ["UNREAD"] }).catch(() => {});
+    const naoLidasIds = msgs.filter((m) => m.is_unread).map((m) => m.gmail_id);
+    if (naoLidasIds.length) {
+      setMensagens((prev) => prev.map((m) => (naoLidasIds.includes(m.gmail_id) ? { ...m, is_unread: false } : m)));
+      chamar({ action: "modify", gmail_ids: naoLidasIds, remove: ["UNREAD"] }).catch(() => {});
     }
     // lead do CRM pelo remetente da última mensagem recebida
     const ultimaRecebida = [...msgs].reverse().find((m) => !m.is_sent) || msgs[msgs.length - 1];
@@ -190,16 +216,55 @@ export default function CRMEmailPage() {
 
   useEffect(() => { if (account && threadSel && thread.length === 0) abrirThread(threadSel); /* eslint-disable-next-line */ }, [account]);
 
-  const modificar = async (ids: string[], add: string[], remove: string[], otimista?: (m: Msg) => Msg) => {
+  const fecharThread = useCallback(() => { setThreadSel(null); setThread([]); setMobileLendo(false); setLeadDoRemetente(null); setParams((p) => { p.delete("thread"); return p; }, { replace: true }); }, [setParams]);
+
+  // ── Ações (uma conversa ou várias) ──────────────────────────────────────────────────────────
+  const modificar = useCallback(async (ids: string[], add: string[], remove: string[], otimista?: (m: Msg) => Msg) => {
+    if (!ids.length) return;
     if (otimista) { setMensagens((prev) => prev.map((m) => (ids.includes(m.gmail_id) ? otimista(m) : m))); setThread((prev) => prev.map((m) => (ids.includes(m.gmail_id) ? otimista(m) : m))); }
     try { await chamar({ action: "modify", gmail_ids: ids, add, remove }); } catch (e) { toast.error((e as Error).message); }
-  };
-  const idsDaThread = (threadId: string) => mensagens.filter((m) => m.thread_id === threadId).map((m) => m.gmail_id);
-  const arquivar = (threadId: string) => { modificar(idsDaThread(threadId), [], ["INBOX"]); setMensagens((p) => p.filter((m) => m.thread_id !== threadId)); if (threadSel === threadId) fecharThread(); toast.success("Arquivado"); };
-  const lixeira = (threadId: string) => { modificar(idsDaThread(threadId), ["TRASH"], ["INBOX"]); setMensagens((p) => p.filter((m) => m.thread_id !== threadId)); if (threadSel === threadId) fecharThread(); toast.success("Movido pra lixeira"); };
-  const estrela = (m: Msg) => modificar([m.gmail_id], m.is_starred ? [] : ["STARRED"], m.is_starred ? ["STARRED"] : [], (x) => ({ ...x, is_starred: !m.is_starred }));
-  const marcarNaoLida = (threadId: string) => { const ids = idsDaThread(threadId); modificar(ids.slice(-1), ["UNREAD"], [], (x) => ({ ...x, is_unread: true })); fecharThread(); };
-  const fecharThread = () => { setThreadSel(null); setThread([]); setMobileLendo(false); setLeadDoRemetente(null); setParams((p) => { p.delete("thread"); return p; }, { replace: true }); };
+  }, [chamar]);
+  const idsDe = useCallback((threads: string[]) => mensagens.filter((m) => threads.includes(m.thread_id)).map((m) => m.gmail_id), [mensagens]);
+  const tirarDaLista = useCallback((threads: string[]) => {
+    setMensagens((p) => p.filter((m) => !threads.includes(m.thread_id)));
+    setSelecionadas((s) => { const n = new Set(s); threads.forEach((t) => n.delete(t)); return n; });
+    if (threadSel && threads.includes(threadSel)) fecharThread();
+  }, [threadSel, fecharThread]);
+  const plural = (n: number, um: string, varios: string) => (n === 1 ? um : varios.replace("{n}", String(n)));
+
+  const arquivar = useCallback((threads: string[]) => { modificar(idsDe(threads), [], ["INBOX"]); tirarDaLista(threads); toast.success(plural(threads.length, "Conversa arquivada", "{n} conversas arquivadas")); }, [modificar, idsDe, tirarDaLista]);
+  const lixeira = useCallback((threads: string[]) => { modificar(idsDe(threads), ["TRASH"], ["INBOX", "SPAM"]); tirarDaLista(threads); toast.success(plural(threads.length, "Movida pra lixeira", "{n} conversas movidas pra lixeira")); }, [modificar, idsDe, tirarDaLista]);
+  const spam = useCallback((threads: string[]) => { modificar(idsDe(threads), ["SPAM"], ["INBOX"]); tirarDaLista(threads); toast.success(plural(threads.length, "Marcada como spam", "{n} conversas marcadas como spam")); }, [modificar, idsDe, tirarDaLista]);
+  const restaurar = useCallback((threads: string[]) => { modificar(idsDe(threads), ["INBOX"], ["TRASH", "SPAM"]); tirarDaLista(threads); toast.success(plural(threads.length, "Conversa movida pra Entrada", "{n} conversas movidas pra Entrada")); }, [modificar, idsDe, tirarDaLista]);
+  const marcarLidas = useCallback((threads: string[], lida: boolean) => {
+    const ids = idsDe(threads);
+    modificar(ids, lida ? [] : ["UNREAD"], lida ? ["UNREAD"] : [], (x) => ({ ...x, is_unread: !lida }));
+    if (!lida && threadSel && threads.includes(threadSel)) fecharThread();
+    toast.success(lida ? plural(threads.length, "Marcada como lida", "{n} marcadas como lidas") : plural(threads.length, "Marcada como não lida", "{n} marcadas como não lidas"));
+  }, [modificar, idsDe, threadSel, fecharThread]);
+  const marcarImportante = useCallback((threads: string[], importante: boolean) => {
+    const ids = idsDe(threads);
+    modificar(ids, importante ? ["IMPORTANT"] : [], importante ? [] : ["IMPORTANT"], (x) => ({ ...x, label_ids: importante ? [...new Set([...(x.label_ids || []), "IMPORTANT"])] : (x.label_ids || []).filter((l) => l !== "IMPORTANT") }));
+    if (!importante && pasta === "IMPORTANT") tirarDaLista(threads);
+    toast.success(importante ? plural(threads.length, "Marcada como importante", "{n} marcadas como importantes") : plural(threads.length, "Importante removido", "Importante removido de {n} conversas"));
+  }, [modificar, idsDe, pasta, tirarDaLista]);
+  const marcarEstrela = useCallback((threads: string[], com: boolean) => {
+    // estrela só na última mensagem de cada conversa (igual ao Gmail)
+    const ids = conversas.filter((c) => threads.includes(c.ultima.thread_id)).map((c) => c.ultima.gmail_id);
+    modificar(ids, com ? ["STARRED"] : [], com ? [] : ["STARRED"], (x) => ({ ...x, is_starred: com }));
+    if (!com && pasta === "STARRED") tirarDaLista(threads);
+  }, [modificar, conversas, pasta, tirarDaLista]);
+  const estrelaMsg = (m: Msg) => modificar([m.gmail_id], m.is_starred ? [] : ["STARRED"], m.is_starred ? ["STARRED"] : [], (x) => ({ ...x, is_starred: !m.is_starred }));
+
+  const alternarSelecao = (threadId: string) => setSelecionadas((s) => { const n = new Set(s); if (n.has(threadId)) n.delete(threadId); else n.add(threadId); return n; });
+  const todasSelecionadas = conversas.length > 0 && conversas.every((c) => selecionadas.has(c.ultima.thread_id));
+  const selecionarTodas = () => setSelecionadas(todasSelecionadas ? new Set() : new Set(conversas.map((c) => c.ultima.thread_id)));
+  const sel = [...selecionadas];
+  const selConversas = conversas.filter((c) => selecionadas.has(c.ultima.thread_id));
+  const selTodasLidas = selConversas.length > 0 && selConversas.every((c) => !c.naoLida);
+  const selTodasImportantes = selConversas.length > 0 && selConversas.every((c) => c.importante);
+  const selTodasEstrela = selConversas.length > 0 && selConversas.every((c) => c.estrela);
+  const naLixeiraOuSpam = pasta === "TRASH" || pasta === "SPAM";
 
   const sincronizar = async () => {
     setSincronizando(true);
@@ -232,15 +297,49 @@ export default function CRMEmailPage() {
     try { await startGoogleCalendarConnection("/email"); } catch (e) { toast.error((e as Error).message); }
   };
 
+  const irParaPasta = (key: string) => { setBusca(""); setBuscaIds(null); setFiltro("todas"); setPasta(key); setParams((q) => { q.set("pasta", key); return q; }, { replace: true }); fecharThread(); };
+
+  // ── Atalhos de teclado (fora de campos de texto e sem o compositor aberto) ──────────────────
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      const alvo = e.target as HTMLElement | null;
+      const digitando = !!alvo && (["INPUT", "TEXTAREA", "SELECT"].includes(alvo.tagName) || alvo.isContentEditable);
+      if (compor || mostrarAtalhos) { if (e.key === "Escape") setMostrarAtalhos(false); return; }
+      if (digitando) { if (e.key === "Escape") (alvo as HTMLElement).blur(); return; }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const atual = threadSel ? conversas.findIndex((c) => c.ultima.thread_id === threadSel) : cursor;
+      const alvoThreads = selecionadas.size ? [...selecionadas] : threadSel ? [threadSel] : atual >= 0 && conversas[atual] ? [conversas[atual].ultima.thread_id] : [];
+      switch (e.key) {
+        case "j": case "ArrowDown": { e.preventDefault(); const i = Math.min(conversas.length - 1, atual + 1); if (i >= 0) { setCursor(i); if (threadSel) abrirThread(conversas[i].ultima.thread_id); } break; }
+        case "k": case "ArrowUp": { e.preventDefault(); const i = Math.max(0, atual - 1); if (conversas[i]) { setCursor(i); if (threadSel) abrirThread(conversas[i].ultima.thread_id); } break; }
+        case "Enter": case "o": { if (cursor >= 0 && conversas[cursor]) abrirThread(conversas[cursor].ultima.thread_id); break; }
+        case "x": { if (atual >= 0 && conversas[atual]) alternarSelecao(conversas[atual].ultima.thread_id); break; }
+        case "e": { if (alvoThreads.length && !naLixeiraOuSpam) arquivar(alvoThreads); break; }
+        case "#": case "Delete": case "Backspace": { if (alvoThreads.length) { e.preventDefault(); lixeira(alvoThreads); } break; }
+        case "s": { if (alvoThreads.length) { const c = conversas.find((k) => k.ultima.thread_id === alvoThreads[0]); marcarEstrela(alvoThreads, !(c?.estrela)); } break; }
+        case "i": { if (alvoThreads.length) { const c = conversas.find((k) => k.ultima.thread_id === alvoThreads[0]); marcarImportante(alvoThreads, !(c?.importante)); } break; }
+        case "u": { if (alvoThreads.length) marcarLidas(alvoThreads, false); break; }
+        case "!": { if (alvoThreads.length && !naLixeiraOuSpam) spam(alvoThreads); break; }
+        case "r": { if (threadSel && thread.length) { e.preventDefault(); setCompor({ modo: "responder", base: thread[thread.length - 1] }); } break; }
+        case "c": { e.preventDefault(); setCompor({ modo: "novo" }); break; }
+        case "/": { e.preventDefault(); buscaRef.current?.focus(); break; }
+        case "?": { setMostrarAtalhos(true); break; }
+        case "Escape": { if (selecionadas.size) setSelecionadas(new Set()); else if (threadSel) fecharThread(); break; }
+      }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [compor, mostrarAtalhos, threadSel, cursor, conversas, selecionadas, naLixeiraOuSpam, abrirThread, arquivar, lixeira, marcarEstrela, marcarImportante, marcarLidas, spam, fecharThread, thread]);
+
   // ── Estados vazios ──
   if (account === undefined) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (!account || precisaConectar) {
     return (
-      <div className="max-w-lg mx-auto mt-16 rounded-xl border bg-card p-8 text-center space-y-4">
-        <div className="mx-auto h-14 w-14 rounded-full flex items-center justify-center" style={{ background: "#0D2B5E14" }}><Mail className="h-7 w-7" style={{ color: NAVY }} /></div>
-        <h2 className="text-xl font-semibold" style={{ color: NAVY }}>Seu e-mail dentro do Nexus</h2>
-        <p className="text-sm text-muted-foreground">Conecte sua conta Google uma vez. O Nexus passa a mostrar sua caixa de entrada aqui, com atualização automática, e você responde sem sair do sistema.</p>
-        <Button onClick={conectar} className="gap-2"><Plug className="h-4 w-4" /> Conectar meu Gmail</Button>
+      <div className="max-w-lg mx-auto mt-16 rounded-2xl border bg-card p-10 text-center space-y-4 shadow-sm">
+        <div className="mx-auto h-16 w-16 rounded-2xl flex items-center justify-center" style={{ background: "#0D2B5E10" }}><Mail className="h-8 w-8" style={{ color: NAVY }} /></div>
+        <h2 className="text-xl font-semibold tracking-tight" style={{ color: NAVY }}>Seu e-mail dentro do Nexus</h2>
+        <p className="text-sm text-muted-foreground leading-relaxed">Conecte sua conta Google uma vez. O Nexus passa a mostrar sua caixa de entrada aqui, com atualização automática, e você responde sem sair do sistema.</p>
+        <Button onClick={conectar} className="gap-2 h-10 px-5" style={{ background: NAVY }}><Plug className="h-4 w-4" /> Conectar meu Gmail</Button>
         <p className="text-[11px] text-muted-foreground">Se você já tinha o Google conectado pra agenda, vai só confirmar a permissão do Gmail.</p>
       </div>
     );
@@ -248,36 +347,40 @@ export default function CRMEmailPage() {
 
   const ultimaThread = thread[thread.length - 1];
   const assuntoThread = thread[0]?.subject || conversas.find((c) => c.ultima.thread_id === threadSel)?.ultima.subject || "";
+  const conversaAberta = conversas.find((c) => c.ultima.thread_id === threadSel);
+  const threadImportante = thread.some((m) => temLabel(m, "IMPORTANT")) || !!conversaAberta?.importante;
+  const threadEstrela = thread.some((m) => m.is_starred) || !!conversaAberta?.estrela;
   const labelsUsuario = labels.filter((l) => l.type === "user" && !SISTEMA.has(l.gmail_label_id));
+  const tituloPasta = PASTAS.find((p) => p.key === pasta)?.nome || labelsUsuario.find((l) => l.gmail_label_id === pasta)?.name || "E-mails";
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="flex h-[calc(100vh-7.5rem)] min-h-[520px] rounded-xl border bg-card overflow-hidden">
+      <div className="flex h-[calc(100vh-7.5rem)] min-h-[520px] rounded-2xl border bg-card overflow-hidden shadow-sm">
         {/* Pastas */}
-        <aside className={cn("w-56 shrink-0 border-r flex flex-col", mobileLendo ? "hidden lg:flex" : "hidden md:flex")}>
-          <div className="p-3">
-            <Button className="w-full gap-2 shadow-sm" style={{ background: NAVY }} onClick={() => setCompor({ modo: "novo" })}><PenSquare className="h-4 w-4" /> Escrever</Button>
+        <aside className={cn("w-60 shrink-0 border-r flex flex-col bg-muted/20", mobileLendo ? "hidden lg:flex" : "hidden md:flex")}>
+          <div className="p-3 pb-2">
+            <Button className="w-full gap-2 h-10 rounded-xl shadow-sm font-medium" style={{ background: NAVY }} onClick={() => setCompor({ modo: "novo" })}><PenSquare className="h-4 w-4" /> Escrever</Button>
           </div>
           <ScrollArea className="flex-1">
             <nav className="px-2 pb-2 space-y-0.5">
               {PASTAS.map((p) => {
                 const Icon = p.icon; const ativo = pasta === p.key && !buscaIds; const n = naoLidas[p.key] || 0;
                 return (
-                  <button key={p.key} onClick={() => { setBusca(""); setBuscaIds(null); setPasta(p.key); setParams((q) => { q.set("pasta", p.key); return q; }, { replace: true }); fecharThread(); }}
-                    className={cn("w-full flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors", ativo ? "font-semibold" : "hover:bg-muted/60 text-foreground/80")}
-                    style={ativo ? { background: "#0D2B5E12", color: NAVY } : undefined}>
-                    <Icon className="h-4 w-4 shrink-0" /><span className="flex-1 text-left truncate">{p.nome}</span>
-                    {n > 0 && <span className="text-[11px] font-semibold tabular-nums rounded-full px-1.5 py-0.5 text-white" style={{ background: NAVY }}>{n}</span>}
+                  <button key={p.key} onClick={() => irParaPasta(p.key)}
+                    className={cn("w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors", ativo ? "font-semibold shadow-sm bg-card" : "hover:bg-muted/70 text-foreground/75")}
+                    style={ativo ? { color: NAVY } : undefined}>
+                    <Icon className={cn("h-4 w-4 shrink-0", p.key === "IMPORTANT" && "text-amber-500", p.key === "STARRED" && "text-amber-500")} /><span className="flex-1 text-left truncate">{p.nome}</span>
+                    {n > 0 && <span className="text-[11px] font-semibold tabular-nums rounded-full px-1.5 py-0.5 text-white min-w-[20px] text-center" style={{ background: NAVY }}>{n}</span>}
                   </button>
                 );
               })}
-              {labelsUsuario.length > 0 && <p className="px-2.5 pt-3 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Marcadores</p>}
+              {labelsUsuario.length > 0 && <p className="px-2.5 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Marcadores</p>}
               {labelsUsuario.map((l) => {
                 const ativo = pasta === l.gmail_label_id && !buscaIds; const n = naoLidas[l.gmail_label_id] || 0;
                 return (
-                  <button key={l.gmail_label_id} onClick={() => { setBusca(""); setBuscaIds(null); setPasta(l.gmail_label_id); fecharThread(); }}
-                    className={cn("w-full flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors", ativo ? "font-semibold" : "hover:bg-muted/60 text-foreground/80")}
-                    style={ativo ? { background: "#0D2B5E12", color: NAVY } : undefined}>
+                  <button key={l.gmail_label_id} onClick={() => irParaPasta(l.gmail_label_id)}
+                    className={cn("w-full flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors", ativo ? "font-semibold shadow-sm bg-card" : "hover:bg-muted/70 text-foreground/75")}
+                    style={ativo ? { color: NAVY } : undefined}>
                     <Tag className="h-3.5 w-3.5 shrink-0" style={{ color: l.color || undefined }} /><span className="flex-1 text-left truncate">{l.name}</span>
                     {n > 0 && <span className="text-[11px] tabular-nums text-muted-foreground">{n}</span>}
                   </button>
@@ -287,55 +390,117 @@ export default function CRMEmailPage() {
           </ScrollArea>
           <div className="border-t p-3 text-[11px] text-muted-foreground space-y-1">
             <p className="truncate font-medium text-foreground/80">{account.email}</p>
-            <p>{account.backfill_done ? "Caixa sincronizada" : "Carregando histórico (90 dias)..."}</p>
+            <p className="flex items-center gap-1.5"><span className={cn("h-1.5 w-1.5 rounded-full", account.last_error ? "bg-destructive" : "bg-emerald-500")} />{account.backfill_done ? "Caixa sincronizada" : "Carregando histórico (90 dias)..."}</p>
             {account.last_error && <p className="text-destructive truncate" title={account.last_error}>Erro: {account.last_error}</p>}
+            <button onClick={() => setMostrarAtalhos(true)} className="flex items-center gap-1 hover:text-foreground"><Keyboard className="h-3 w-3" /> Atalhos</button>
           </div>
         </aside>
 
         {/* Lista */}
-        <section className={cn("w-full md:w-[380px] lg:w-[420px] shrink-0 border-r flex flex-col min-w-0", mobileLendo && "hidden lg:flex")}>
-          <div className="p-2.5 border-b flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input value={busca} onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") buscar(busca); if (e.key === "Escape") { setBusca(""); setBuscaIds(null); } }}
-                placeholder="Buscar no Gmail (de:, assunto:, has:attachment...)" className="pl-8 h-9" />
-              {buscaIds && <button className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => { setBusca(""); setBuscaIds(null); }}><X className="h-4 w-4" /></button>}
+        <section className={cn("w-full md:w-[400px] lg:w-[440px] shrink-0 border-r flex flex-col min-w-0", mobileLendo && "hidden lg:flex")}>
+          <div className="p-2.5 border-b space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input ref={buscaRef} value={busca} onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") buscar(busca); if (e.key === "Escape") { setBusca(""); setBuscaIds(null); } }}
+                  placeholder="Buscar no Gmail (de:, assunto:, has:attachment...)" className="pl-8 h-9 rounded-lg bg-muted/40 border-transparent focus-visible:bg-background" />
+                {buscaIds && <button className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => { setBusca(""); setBuscaIds(null); }}><X className="h-4 w-4" /></button>}
+              </div>
+              <Tooltip><TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={sincronizar} disabled={sincronizando}><RefreshCw className={cn("h-4 w-4", sincronizando && "animate-spin")} /></Button>
+              </TooltipTrigger><TooltipContent>Sincronizar agora</TooltipContent></Tooltip>
+              <Button size="icon" className="h-9 w-9 md:hidden" style={{ background: NAVY }} onClick={() => setCompor({ modo: "novo" })}><PenSquare className="h-4 w-4" /></Button>
             </div>
-            <Tooltip><TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={sincronizar} disabled={sincronizando}><RefreshCw className={cn("h-4 w-4", sincronizando && "animate-spin")} /></Button>
-            </TooltipTrigger><TooltipContent>Sincronizar agora</TooltipContent></Tooltip>
-            <Button size="icon" className="h-9 w-9 md:hidden" style={{ background: NAVY }} onClick={() => setCompor({ modo: "novo" })}><PenSquare className="h-4 w-4" /></Button>
+            {selecionadas.size > 0 ? (
+              <div className="flex items-center gap-0.5 rounded-lg px-1.5 py-1" style={{ background: "#0D2B5E0f" }}>
+                <Checkbox checked={todasSelecionadas} onCheckedChange={selecionarTodas} className="ml-1 mr-1.5" aria-label="Selecionar todas" />
+                <span className="text-xs font-semibold tabular-nums mr-1" style={{ color: NAVY }}>{selecionadas.size}</span>
+                <Acao icone={selTodasLidas ? Mail : MailOpen} rotulo={selTodasLidas ? "Marcar como não lidas" : "Marcar como lidas"} onClick={() => marcarLidas(sel, !selTodasLidas)} />
+                <Acao icone={Bookmark} rotulo={selTodasImportantes ? "Tirar importante" : "Marcar como importantes"} ativo={selTodasImportantes} onClick={() => marcarImportante(sel, !selTodasImportantes)} />
+                <Acao icone={Star} rotulo={selTodasEstrela ? "Tirar estrela" : "Marcar com estrela"} ativo={selTodasEstrela} onClick={() => marcarEstrela(sel, !selTodasEstrela)} />
+                {naLixeiraOuSpam ? (
+                  <Acao icone={Undo2} rotulo={pasta === "SPAM" ? "Não é spam" : "Restaurar pra Entrada"} onClick={() => restaurar(sel)} />
+                ) : (
+                  <>
+                    <Acao icone={Archive} rotulo="Arquivar" onClick={() => arquivar(sel)} />
+                    <Acao icone={AlertOctagon} rotulo="Marcar como spam" onClick={() => spam(sel)} />
+                  </>
+                )}
+                {pasta !== "TRASH" && <Acao icone={Trash2} rotulo="Excluir (lixeira)" perigo onClick={() => lixeira(sel)} />}
+                <button onClick={() => setSelecionadas(new Set())} className="ml-auto text-[11px] text-muted-foreground hover:text-foreground px-1.5">Limpar</button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                <Checkbox checked={todasSelecionadas} onCheckedChange={selecionarTodas} className="ml-2 mr-1" aria-label="Selecionar todas" disabled={conversas.length === 0} />
+                <div className="flex items-center gap-1 overflow-x-auto flex-1">
+                  {FILTROS.map((f) => (
+                    <button key={f.key} onClick={() => setFiltro(f.key)} className={cn("rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-colors border", filtro === f.key ? "text-white border-transparent" : "text-muted-foreground border-border/70 hover:bg-muted/60")} style={filtro === f.key ? { background: NAVY } : undefined}>{f.nome}</button>
+                  ))}
+                </div>
+                {conversas.some((c) => c.naoLida) && (
+                  <Tooltip><TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => marcarLidas(conversas.filter((c) => c.naoLida).map((c) => c.ultima.thread_id), true)}><CheckCheck className="h-4 w-4" /></Button>
+                  </TooltipTrigger><TooltipContent>Marcar tudo como lido</TooltipContent></Tooltip>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="px-3 py-1.5 border-b flex items-center justify-between text-[11px] text-muted-foreground">
+            <span className="font-medium">{buscaIds ? "Resultado da busca" : tituloPasta}</span>
+            <span className="tabular-nums">{conversas.length} {conversas.length === 1 ? "conversa" : "conversas"}</span>
           </div>
           <ScrollArea className="flex-1">
             {carregando && conversas.length === 0 ? (
               <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
             ) : conversas.length === 0 ? (
-              <div className="py-16 text-center text-sm text-muted-foreground">
-                {buscaIds ? "Nada encontrado." : !account.backfill_done ? "Carregando sua caixa... os e-mails aparecem aqui em instantes." : "Nenhum e-mail aqui."}
+              <div className="py-20 text-center text-sm text-muted-foreground space-y-2">
+                <MailOpen className="h-8 w-8 mx-auto opacity-30" />
+                <p>{buscaIds ? "Nada encontrado." : !account.backfill_done ? "Carregando sua caixa... os e-mails aparecem aqui em instantes." : filtro !== "todas" ? "Nada com esse filtro." : "Nenhum e-mail aqui."}</p>
               </div>
             ) : (
-              <ul className="divide-y divide-border/60">
-                {conversas.map(({ ultima: m, qtd, naoLida, estrela: est }) => {
-                  const sel = threadSel === m.thread_id;
+              <ul>
+                {conversas.map((c, i) => {
+                  const m = c.ultima;
+                  const aberta = threadSel === m.thread_id;
+                  const marcada = selecionadas.has(m.thread_id);
+                  const foco = cursor === i && !threadSel;
                   const quem = m.is_sent ? `Para: ${(m.to_list || []).map((a) => a.name || a.email).join(", ") || "?"}` : nomeDe(m);
+                  const nomeAvatar = m.is_sent ? (m.to_list?.[0]?.name || m.to_list?.[0]?.email || "?") : quem;
                   return (
-                    <li key={m.thread_id}>
-                      <button onClick={() => abrirThread(m.thread_id)} className={cn("w-full text-left px-3 py-2.5 flex gap-3 transition-colors group", sel ? "bg-muted" : "hover:bg-muted/50", naoLida && !sel && "bg-[#0D2B5E]/[0.04]")}>
-                        <Avatar className="h-9 w-9 shrink-0 mt-0.5"><AvatarFallback className="text-xs font-semibold text-white" style={{ background: corDe(m.from_email || quem) }}>{iniciais(m.is_sent ? (m.to_list?.[0]?.name || m.to_list?.[0]?.email || "?") : quem)}</AvatarFallback></Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className={cn("truncate text-sm flex-1", naoLida ? "font-semibold" : "font-medium text-foreground/80")}>{quem}</span>
-                            {qtd > 1 && <span className="text-[10px] text-muted-foreground tabular-nums">{qtd}</span>}
-                            <span className={cn("text-[11px] tabular-nums shrink-0", naoLida ? "font-semibold" : "text-muted-foreground")} style={naoLida ? { color: NAVY } : undefined}>{quando(m.internal_date)}</span>
-                          </div>
-                          <p className={cn("truncate text-[13px]", naoLida ? "font-medium" : "text-foreground/80")}>{m.subject || "(sem assunto)"}</p>
-                          <div className="flex items-center gap-1.5">
-                            <p className="truncate text-xs text-muted-foreground flex-1">{m.snippet}</p>
-                            {m.has_attachments && <Paperclip className="h-3 w-3 text-muted-foreground shrink-0" />}
-                            <button onClick={(e) => { e.stopPropagation(); estrela(m); }} className={cn("shrink-0", est ? "text-amber-500" : "text-muted-foreground/40 opacity-0 group-hover:opacity-100")}><Star className={cn("h-3.5 w-3.5", est && "fill-current")} /></button>
+                    <li key={m.thread_id} className={cn("relative group border-b border-border/50", aberta ? "bg-muted/70" : marcada ? "bg-[#0D2B5E]/[0.06]" : c.naoLida ? "bg-card" : "bg-muted/[0.15]", foco && "ring-1 ring-inset ring-[#0D2B5E]/40")}>
+                      {(aberta || c.naoLida) && <span className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: aberta ? NAVY : "#0D2B5E66" }} />}
+                      <div className="flex gap-2.5 px-3 py-2.5">
+                        <div className="relative h-9 w-9 shrink-0 mt-0.5">
+                          <Avatar className={cn("h-9 w-9 transition-opacity", (marcada || selecionadas.size > 0) ? "opacity-0" : "group-hover:opacity-0")}><AvatarFallback className="text-xs font-semibold text-white" style={{ background: corDe(m.from_email || quem) }}>{iniciais(nomeAvatar)}</AvatarFallback></Avatar>
+                          <div className={cn("absolute inset-0 flex items-center justify-center transition-opacity", (marcada || selecionadas.size > 0) ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
+                            <Checkbox checked={marcada} onCheckedChange={() => alternarSelecao(m.thread_id)} aria-label="Selecionar conversa" className="h-[18px] w-[18px]" />
                           </div>
                         </div>
-                      </button>
+                        <button onClick={(e) => { if (selecionadas.size > 0 && !e.metaKey) { alternarSelecao(m.thread_id); return; } setCursor(i); abrirThread(m.thread_id); }} className="flex-1 min-w-0 text-left">
+                          <div className="flex items-center gap-2">
+                            <span className={cn("truncate text-[13px] flex-1", c.naoLida ? "font-semibold text-foreground" : "font-medium text-foreground/75")}>{quem}</span>
+                            {c.qtd > 1 && <span className="text-[10px] text-muted-foreground tabular-nums rounded bg-muted px-1">{c.qtd}</span>}
+                            <span className={cn("text-[11px] tabular-nums shrink-0 group-hover:hidden", c.naoLida ? "font-semibold" : "text-muted-foreground")} style={c.naoLida ? { color: NAVY } : undefined}>{quando(m.internal_date)}</span>
+                          </div>
+                          <p className={cn("truncate text-[13px] flex items-center gap-1.5", c.naoLida ? "font-medium text-foreground" : "text-foreground/80")}>
+                            {c.importante && <Bookmark className="h-3 w-3 shrink-0 fill-current text-amber-500" />}
+                            <span className="truncate">{m.subject || "(sem assunto)"}</span>
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="truncate text-xs text-muted-foreground flex-1">{m.snippet}</p>
+                            {c.anexo && <Paperclip className="h-3 w-3 text-muted-foreground shrink-0" />}
+                            {c.estrela && <Star className="h-3.5 w-3.5 shrink-0 fill-current text-amber-500" />}
+                          </div>
+                        </button>
+                      </div>
+                      {/* ações ao passar o mouse */}
+                      <div className="absolute right-2 top-2 hidden group-hover:flex items-center gap-0.5 rounded-md border bg-card shadow-sm p-0.5">
+                        <Acao icone={c.naoLida ? MailOpen : Mail} rotulo={c.naoLida ? "Marcar como lida" : "Marcar como não lida"} pequeno onClick={() => marcarLidas([m.thread_id], c.naoLida)} />
+                        <Acao icone={Bookmark} rotulo={c.importante ? "Tirar importante" : "Importante"} pequeno ativo={c.importante} onClick={() => marcarImportante([m.thread_id], !c.importante)} />
+                        <Acao icone={Star} rotulo={c.estrela ? "Tirar estrela" : "Estrela"} pequeno ativo={c.estrela} onClick={() => marcarEstrela([m.thread_id], !c.estrela)} />
+                        {naLixeiraOuSpam ? <Acao icone={Undo2} rotulo="Restaurar" pequeno onClick={() => restaurar([m.thread_id])} /> : <Acao icone={Archive} rotulo="Arquivar" pequeno onClick={() => arquivar([m.thread_id])} />}
+                        {pasta !== "TRASH" && <Acao icone={Trash2} rotulo="Excluir" pequeno perigo onClick={() => lixeira([m.thread_id])} />}
+                      </div>
                     </li>
                   );
                 })}
@@ -347,43 +512,57 @@ export default function CRMEmailPage() {
         {/* Leitura */}
         <section className={cn("flex-1 min-w-0 flex flex-col", !mobileLendo && "hidden lg:flex")}>
           {!threadSel ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-2">
-              <MailOpen className="h-10 w-10 opacity-30" /><p className="text-sm">Escolha uma conversa</p>
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
+              <div className="h-16 w-16 rounded-2xl flex items-center justify-center bg-muted/60"><MailOpen className="h-8 w-8 opacity-40" /></div>
+              <p className="text-sm">Escolha uma conversa</p>
+              <p className="text-[11px]">Dica: <kbd className="rounded border px-1">j</kbd> e <kbd className="rounded border px-1">k</kbd> navegam, <kbd className="rounded border px-1">?</kbd> mostra os atalhos</p>
             </div>
           ) : (
             <>
               <div className="border-b px-4 py-2.5 flex items-center gap-1">
                 <Button variant="ghost" size="icon" className="h-8 w-8 lg:hidden" onClick={fecharThread}><ChevronLeft className="h-4 w-4" /></Button>
-                <h2 className="flex-1 min-w-0 truncate font-semibold" style={{ color: NAVY }}>{assuntoThread || "(sem assunto)"}</h2>
+                <div className="flex-1 min-w-0">
+                  <h2 className="truncate font-semibold tracking-tight text-[15px]" style={{ color: NAVY }}>{assuntoThread || "(sem assunto)"}</h2>
+                  <p className="text-[11px] text-muted-foreground">{thread.length} {thread.length === 1 ? "mensagem" : "mensagens"}{threadImportante ? " · Importante" : ""}</p>
+                </div>
                 {leadDoRemetente && (
                   <button onClick={() => navigate(`/crm/leads/${leadDoRemetente.id}`)} className="hidden sm:flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs hover:bg-muted mr-2" title="Abrir o lead no CRM">
                     <UserRound className="h-3.5 w-3.5" style={{ color: NAVY }} /><span className="font-medium truncate max-w-[180px]">{leadDoRemetente.name}</span>
                     {leadDoRemetente.stage && <Badge variant="secondary" className="text-[10px]">{leadDoRemetente.stage}</Badge>}<ExternalLink className="h-3 w-3 text-muted-foreground" />
                   </button>
                 )}
-                {ultimaThread && !["TRASH"].includes(pasta) && (
+                {ultimaThread && (
                   <>
-                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => arquivar(ultimaThread.thread_id)}><Archive className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Arquivar</TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => marcarNaoLida(ultimaThread.thread_id)}><Mail className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Marcar como não lida</TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => lixeira(ultimaThread.thread_id)}><Trash2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Lixeira</TooltipContent></Tooltip>
+                    <Acao icone={Bookmark} rotulo={threadImportante ? "Tirar importante" : "Marcar como importante"} ativo={threadImportante} onClick={() => marcarImportante([ultimaThread.thread_id], !threadImportante)} />
+                    <Acao icone={Star} rotulo={threadEstrela ? "Tirar estrela" : "Marcar com estrela"} ativo={threadEstrela} onClick={() => marcarEstrela([ultimaThread.thread_id], !threadEstrela)} />
+                    <Acao icone={Mail} rotulo="Marcar como não lida" onClick={() => marcarLidas([ultimaThread.thread_id], false)} />
+                    {naLixeiraOuSpam ? (
+                      <Acao icone={Undo2} rotulo={pasta === "SPAM" ? "Não é spam" : "Restaurar pra Entrada"} onClick={() => restaurar([ultimaThread.thread_id])} />
+                    ) : (
+                      <>
+                        <Acao icone={Archive} rotulo="Arquivar" onClick={() => arquivar([ultimaThread.thread_id])} />
+                        <Acao icone={AlertOctagon} rotulo="Marcar como spam" onClick={() => spam([ultimaThread.thread_id])} />
+                      </>
+                    )}
+                    {pasta !== "TRASH" && <Acao icone={Trash2} rotulo="Excluir (lixeira)" perigo onClick={() => lixeira([ultimaThread.thread_id])} />}
                   </>
                 )}
               </div>
               <ScrollArea className="flex-1 bg-muted/30">
-                <div className="p-3 space-y-3 max-w-5xl">
+                <div className="p-4 space-y-3 max-w-5xl">
                   {thread.map((m, i) => {
                     const aberto = i === thread.length - 1 || thread.length <= 3;
-                    return <Mensagem key={m.id} m={m} abertoInicial={aberto} onBaixar={(a) => baixarAnexo(m, a)} onEstrela={() => estrela(m)}
+                    return <Mensagem key={m.id} m={m} abertoInicial={aberto} onBaixar={(a) => baixarAnexo(m, a)} onEstrela={() => estrelaMsg(m)}
                       onResponder={() => setCompor({ modo: "responder", base: m })} onResponderTodos={() => setCompor({ modo: "todos", base: m })} onEncaminhar={() => setCompor({ modo: "encaminhar", base: m })} />;
                   })}
                   {carregandoThread && <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>}
                 </div>
               </ScrollArea>
               {ultimaThread && (
-                <div className="border-t p-2.5 flex gap-2">
-                  <Button variant="outline" className="gap-2" onClick={() => setCompor({ modo: "responder", base: ultimaThread })}><Reply className="h-4 w-4" /> Responder</Button>
-                  <Button variant="outline" className="gap-2" onClick={() => setCompor({ modo: "todos", base: ultimaThread })}><ReplyAll className="h-4 w-4" /> Responder a todos</Button>
-                  <Button variant="outline" className="gap-2" onClick={() => setCompor({ modo: "encaminhar", base: ultimaThread })}><Forward className="h-4 w-4" /> Encaminhar</Button>
+                <div className="border-t p-2.5 flex gap-2 bg-card">
+                  <Button className="gap-2 rounded-lg" style={{ background: NAVY }} onClick={() => setCompor({ modo: "responder", base: ultimaThread })}><Reply className="h-4 w-4" /> Responder</Button>
+                  <Button variant="outline" className="gap-2 rounded-lg" onClick={() => setCompor({ modo: "todos", base: ultimaThread })}><ReplyAll className="h-4 w-4" /> Responder a todos</Button>
+                  <Button variant="outline" className="gap-2 rounded-lg" onClick={() => setCompor({ modo: "encaminhar", base: ultimaThread })}><Forward className="h-4 w-4" /> Encaminhar</Button>
                 </div>
               )}
             </>
@@ -392,7 +571,29 @@ export default function CRMEmailPage() {
       </div>
 
       {compor && <Compor compor={compor} conta={account} onFechar={() => setCompor(null)} chamar={chamar} onEnviado={() => { setCompor(null); if (account) { carregarLista(account); if (threadSel) abrirThread(threadSel); } }} />}
+
+      <Dialog open={mostrarAtalhos} onOpenChange={setMostrarAtalhos}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="flex items-center gap-2" style={{ color: NAVY }}><Keyboard className="h-4 w-4" /> Atalhos de teclado</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+            {[["j / k", "Próxima / anterior"], ["Enter", "Abrir conversa"], ["x", "Selecionar"], ["e", "Arquivar"], ["#", "Excluir (lixeira)"], ["s", "Estrela"], ["i", "Importante"], ["u", "Marcar não lida"], ["!", "Spam"], ["r", "Responder"], ["c", "Escrever"], ["/", "Buscar"], ["Esc", "Limpar / fechar"], ["?", "Esta ajuda"]].map(([k, v]) => (
+              <div key={k} className="flex items-center justify-between gap-2 py-0.5"><span className="text-muted-foreground">{v}</span><kbd className="rounded border bg-muted px-1.5 py-0.5 text-[11px] font-mono">{k}</kbd></div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
+  );
+}
+
+// ── Botão de ação com dica ──────────────────────────────────────────────────────────────────────
+function Acao({ icone: Icone, rotulo, onClick, ativo, perigo, pequeno }: { icone: typeof Star; rotulo: string; onClick: () => void; ativo?: boolean; perigo?: boolean; pequeno?: boolean }) {
+  return (
+    <Tooltip><TooltipTrigger asChild>
+      <Button variant="ghost" size="icon" className={cn(pequeno ? "h-7 w-7" : "h-8 w-8", perigo && "text-destructive hover:text-destructive", ativo && "text-amber-500 hover:text-amber-600")} onClick={(e) => { e.stopPropagation(); onClick(); }}>
+        <Icone className={cn(pequeno ? "h-3.5 w-3.5" : "h-4 w-4", ativo && "fill-current")} />
+      </Button>
+    </TooltipTrigger><TooltipContent>{rotulo}</TooltipContent></Tooltip>
   );
 }
 
@@ -409,15 +610,16 @@ function Mensagem({ m, abertoInicial, onBaixar, onEstrela, onResponder, onRespon
   const quem = nomeDe(m);
   const anexos = (m.attachments || []).filter((a) => !a.inline);
   return (
-    <div className="rounded-lg border bg-card overflow-hidden">
+    <div className={cn("rounded-xl border bg-card overflow-hidden transition-shadow", aberto ? "shadow-sm" : "hover:shadow-sm")}>
       <button className="w-full text-left px-4 py-3 flex items-start gap-3" onClick={() => setAberto((v) => !v)}>
         <Avatar className="h-9 w-9 shrink-0"><AvatarFallback className="text-xs font-semibold text-white" style={{ background: corDe(m.from_email || quem) }}>{iniciais(quem)}</AvatarFallback></Avatar>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-sm truncate">{m.from_name || m.from_email}</span>
             {m.from_name && <span className="text-xs text-muted-foreground truncate hidden sm:inline">&lt;{m.from_email}&gt;</span>}
-            <span className="ml-auto text-[11px] text-muted-foreground shrink-0" title={quandoLongo(m.internal_date)}>{quando(m.internal_date)}</span>
-            <button onClick={(e) => { e.stopPropagation(); onEstrela(); }} className={cn(m.is_starred ? "text-amber-500" : "text-muted-foreground/50")}><Star className={cn("h-4 w-4", m.is_starred && "fill-current")} /></button>
+            {temLabel(m, "IMPORTANT") && <Bookmark className="h-3 w-3 shrink-0 fill-current text-amber-500" />}
+            <span className="ml-auto text-[11px] text-muted-foreground shrink-0" title={quandoLongo(m.internal_date)}>{aberto ? quandoLongo(m.internal_date) : quando(m.internal_date)}</span>
+            <button onClick={(e) => { e.stopPropagation(); onEstrela(); }} className={cn(m.is_starred ? "text-amber-500" : "text-muted-foreground/40 hover:text-amber-500")}><Star className={cn("h-4 w-4", m.is_starred && "fill-current")} /></button>
           </div>
           {aberto ? (
             <p className="text-xs text-muted-foreground truncate">para {(m.to_list || []).map((a) => a.name || a.email).join(", ")}{m.cc_list?.length ? ` · cc ${m.cc_list.map((a) => a.name || a.email).join(", ")}` : ""}</p>
@@ -430,15 +632,15 @@ function Mensagem({ m, abertoInicial, onBaixar, onEstrela, onResponder, onRespon
         <>
           <iframe ref={ref} title={m.subject || "e-mail"} sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin" srcDoc={docDoEmail(m)} onLoad={ajustar} style={{ height: altura }} className="w-full border-0 bg-white" />
           {anexos.length > 0 && (
-            <div className="px-4 pb-3 flex flex-wrap gap-2">
-              {anexos.map((a, i) => (
-                <button key={i} onClick={() => onBaixar(a)} className="flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs hover:bg-muted">
-                  <Paperclip className="h-3.5 w-3.5 text-muted-foreground" /><span className="max-w-[200px] truncate">{a.filename}</span><span className="text-muted-foreground">{tamanho(a.size || 0)}</span><Download className="h-3.5 w-3.5 text-muted-foreground" />
+            <div className="px-4 pb-3 pt-2 border-t bg-muted/20 flex flex-wrap gap-2">
+              {anexos.map((a, i) => { const Ic = iconeDoAnexo(a.mimeType || ""); return (
+                <button key={i} onClick={() => onBaixar(a)} className="flex items-center gap-2 rounded-lg border bg-card px-2.5 py-1.5 text-xs hover:bg-muted transition-colors">
+                  <Ic className="h-4 w-4" style={{ color: NAVY }} /><span className="max-w-[200px] truncate font-medium">{a.filename}</span><span className="text-muted-foreground">{tamanho(a.size || 0)}</span><Download className="h-3.5 w-3.5 text-muted-foreground" />
                 </button>
-              ))}
+              ); })}
             </div>
           )}
-          <div className="px-4 pb-3 flex gap-1.5">
+          <div className="px-4 py-2 border-t flex gap-1.5">
             <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={onResponder}><Reply className="h-3.5 w-3.5" /> Responder</Button>
             <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={onResponderTodos}><ReplyAll className="h-3.5 w-3.5" /> Todos</Button>
             <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={onEncaminhar}><Forward className="h-3.5 w-3.5" /> Encaminhar</Button>
@@ -491,24 +693,24 @@ function Compor({ compor, conta, onFechar, chamar, onEnviado }: {
   const titulo = compor.modo === "novo" ? "Nova mensagem" : compor.modo === "encaminhar" ? "Encaminhar" : "Responder";
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onFechar(); }}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden">
-        <DialogHeader className="px-4 pt-4 pb-2"><DialogTitle className="text-base" style={{ color: NAVY }}>{titulo}</DialogTitle></DialogHeader>
-        <div className="px-4 space-y-2">
-          <div className="flex items-center gap-2 border-b"><span className="text-xs text-muted-foreground w-10">Para</span><Input value={para} onChange={(e) => setPara(e.target.value)} placeholder="email@exemplo.com, outro@exemplo.com" className="border-0 shadow-none focus-visible:ring-0 px-0" />{!mostrarCc && <button className="text-xs text-muted-foreground" onClick={() => setMostrarCc(true)}>Cc</button>}</div>
-          {mostrarCc && <div className="flex items-center gap-2 border-b"><span className="text-xs text-muted-foreground w-10">Cc</span><Input value={cc} onChange={(e) => setCc(e.target.value)} className="border-0 shadow-none focus-visible:ring-0 px-0" /></div>}
-          <div className="flex items-center gap-2 border-b"><span className="text-xs text-muted-foreground w-10">Assunto</span><Input value={assunto} onChange={(e) => setAssunto(e.target.value)} className="border-0 shadow-none focus-visible:ring-0 px-0" /></div>
-          <Textarea value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Escreva aqui..." className="min-h-[220px] border-0 shadow-none focus-visible:ring-0 px-0 resize-y" autoFocus />
+      <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-2xl">
+        <DialogHeader className="px-5 pt-4 pb-2"><DialogTitle className="text-base tracking-tight" style={{ color: NAVY }}>{titulo}</DialogTitle></DialogHeader>
+        <div className="px-5 space-y-2">
+          <div className="flex items-center gap-2 border-b"><span className="text-xs text-muted-foreground w-12">Para</span><Input value={para} onChange={(e) => setPara(e.target.value)} placeholder="email@exemplo.com, outro@exemplo.com" className="border-0 shadow-none focus-visible:ring-0 px-0" />{!mostrarCc && <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => setMostrarCc(true)}>Cc</button>}</div>
+          {mostrarCc && <div className="flex items-center gap-2 border-b"><span className="text-xs text-muted-foreground w-12">Cc</span><Input value={cc} onChange={(e) => setCc(e.target.value)} className="border-0 shadow-none focus-visible:ring-0 px-0" /></div>}
+          <div className="flex items-center gap-2 border-b"><span className="text-xs text-muted-foreground w-12">Assunto</span><Input value={assunto} onChange={(e) => setAssunto(e.target.value)} className="border-0 shadow-none focus-visible:ring-0 px-0" /></div>
+          <Textarea value={texto} onChange={(e) => setTexto(e.target.value)} onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") enviar(); }} placeholder="Escreva aqui..." className="min-h-[240px] border-0 shadow-none focus-visible:ring-0 px-0 resize-y text-[14px] leading-relaxed" autoFocus />
           {b && compor.modo !== "novo" && <p className="text-[11px] text-muted-foreground">A mensagem original vai citada abaixo do seu texto.</p>}
           {anexos.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {anexos.map((a, i) => <span key={i} className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs"><Paperclip className="h-3 w-3" />{a.filename} <span className="text-muted-foreground">{tamanho(a.size)}</span><button onClick={() => setAnexos((p) => p.filter((_, k) => k !== i))}><X className="h-3 w-3" /></button></span>)}
+              {anexos.map((a, i) => <span key={i} className="flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs"><Paperclip className="h-3 w-3" />{a.filename} <span className="text-muted-foreground">{tamanho(a.size)}</span><button onClick={() => setAnexos((p) => p.filter((_, k) => k !== i))}><X className="h-3 w-3" /></button></span>)}
             </div>
           )}
         </div>
-        <div className="px-4 py-3 border-t flex items-center gap-2">
-          <Button onClick={enviar} disabled={enviando} className="gap-2" style={{ background: NAVY }}>{enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Enviar</Button>
+        <div className="px-5 py-3 border-t flex items-center gap-3 bg-muted/20">
+          <Button onClick={enviar} disabled={enviando} className="gap-2 rounded-lg px-5" style={{ background: NAVY }}>{enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Enviar</Button>
           <label className="cursor-pointer inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><Paperclip className="h-4 w-4" /> Anexar<input type="file" multiple className="hidden" onChange={(e) => { anexar(e.target.files); e.currentTarget.value = ""; }} /></label>
-          <span className="ml-auto text-[11px] text-muted-foreground">de {conta.email}</span>
+          <span className="ml-auto text-[11px] text-muted-foreground">de {conta.email} · <kbd className="rounded border px-1">⌘</kbd>+<kbd className="rounded border px-1">Enter</kbd> envia</span>
         </div>
       </DialogContent>
     </Dialog>
