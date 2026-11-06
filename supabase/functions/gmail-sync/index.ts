@@ -285,24 +285,50 @@ async function openai(prompt: string, maxTokens: number, meta: Record<string, un
   return String(d.choices?.[0]?.message?.content || "").trim();
 }
 
-async function claude(prompt: string, maxTokens: number, meta: Record<string, unknown>): Promise<string> {
-  // tradução: OpenAI primeiro; Anthropic só se não houver chave da OpenAI ou ela falhar
-  if (OPENAI_KEY) {
-    try { return await openai(prompt, maxTokens, meta); }
-    catch (e) { if (!ANTHROPIC_KEY) throw e; console.error("openai", e); }
-  }
-  if (!ANTHROPIC_KEY) throw new Error("Sem chave de IA pra traduzir");
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
+// Gemini (06/11/2026): terceira opção, só entra se existir GEMINI_API_KEY nos segredos
+async function gemini(prompt: string, maxTokens: number, json: boolean): Promise<{ texto: string; inTok: number; outTok: number }> {
+  const chave = Deno.env.get("GEMINI_API_KEY") || "";
+  if (!chave) throw new Error("Sem GEMINI_API_KEY");
+  const modelo = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash";
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
     method: "POST",
-    headers: { "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: MODELO_TRADUCAO, max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
+    headers: { "Content-Type": "application/json", "x-goog-api-key": chave },
+    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: maxTokens, temperature: 0.3, ...(json ? { responseMimeType: "application/json" } : {}) } }),
   });
-  if (!r.ok) throw new Error(`Tradução falhou (${r.status}): ${(await r.text()).slice(0, 200)}`);
+  if (!r.ok) throw new Error(`Gemini ${r.status}: ${(await r.text()).slice(0, 200)}`);
   const d = await r.json();
-  // medidor de custo de IA do Nexus
-  supabase.from("ai_usage_log").insert({ fn: "gmail-sync", model: MODELO_TRADUCAO, input_tokens: d.usage?.input_tokens || 0, output_tokens: d.usage?.output_tokens || 0, cache_read_tokens: d.usage?.cache_read_input_tokens || 0, cache_write_tokens: d.usage?.cache_creation_input_tokens || 0, meta }).then(() => {}, () => {});
   // deno-lint-ignore no-explicit-any
-  return (d.content || []).map((c: any) => c.text || "").join("").trim();
+  const texto = (d?.candidates?.[0]?.content?.parts || []).map((p: any) => p.text || "").join("").trim();
+  return { texto, inTok: d?.usageMetadata?.promptTokenCount || 0, outTok: d?.usageMetadata?.candidatesTokenCount || 0 };
+}
+
+async function claude(prompt: string, maxTokens: number, meta: Record<string, unknown>): Promise<string> {
+  // tradução: OpenAI primeiro (mais barato), depois Anthropic, depois Gemini; cada falha passa pra próxima
+  const erros: string[] = [];
+  if (OPENAI_KEY) {
+    try { return await openai(prompt, maxTokens, meta); } catch (e) { erros.push((e as Error).message); }
+  }
+  if (ANTHROPIC_KEY) {
+    try {
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+        body: JSON.stringify({ model: MODELO_TRADUCAO, max_tokens: maxTokens, messages: [{ role: "user", content: prompt }] }),
+      });
+      if (!r.ok) throw new Error(`Anthropic ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      const d = await r.json();
+      // medidor de custo de IA do Nexus
+      supabase.from("ai_usage_log").insert({ fn: "gmail-sync", model: MODELO_TRADUCAO, input_tokens: d.usage?.input_tokens || 0, output_tokens: d.usage?.output_tokens || 0, cache_read_tokens: d.usage?.cache_read_input_tokens || 0, cache_write_tokens: d.usage?.cache_creation_input_tokens || 0, meta }).then(() => {}, () => {});
+      // deno-lint-ignore no-explicit-any
+      return (d.content || []).map((c: any) => c.text || "").join("").trim();
+    } catch (e) { erros.push((e as Error).message); }
+  }
+  try {
+    const g = await gemini(prompt, maxTokens, false);
+    supabase.from("ai_usage_log").insert({ fn: "gmail-sync", model: Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash", input_tokens: g.inTok, output_tokens: g.outTok, cache_read_tokens: 0, cache_write_tokens: 0, meta }).then(() => {}, () => {});
+    return g.texto;
+  } catch (e) { erros.push((e as Error).message); }
+  throw new Error(`Tradução falhou: ${erros.join(" | ")}`);
 }
 const jsonDe = (t: string) => { const m = t.match(/[\[{][\s\S]*[\]}]/); return m ? JSON.parse(m[0]) : null; };
 

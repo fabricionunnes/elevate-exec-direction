@@ -2012,6 +2012,7 @@ export const CRMInboxPage = () => {
                   <CalendarClock className="h-4 w-4" />
                 </Button>
               )}
+              <BotaoEnviar draftRef={draftRef} subs={draftSubs} sending={sending} isMobile={isMobile} onClick={handleSendMessage} />
               {!isInstagramConversation && (
                 <EnviarPropostaButton
                   leadId={selectedConversation.lead_id}
@@ -2026,7 +2027,6 @@ export const CRMInboxPage = () => {
                   }}
                 />
               )}
-              <BotaoEnviar draftRef={draftRef} subs={draftSubs} sending={sending} isMobile={isMobile} onClick={handleSendMessage} />
             </div>
           </div>
           {!isInstagramConversation && (

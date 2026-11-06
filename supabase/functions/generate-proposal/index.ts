@@ -10,8 +10,25 @@ const corsHeaders = {
 const MODEL = "claude-sonnet-4-6";
 const MODELO_OPENAI = "gpt-4o";
 
+// Gemini (06/11/2026): terceira opção, só entra se existir GEMINI_API_KEY nos segredos
+async function gemini(prompt: string, maxTokens: number, json: boolean): Promise<{ texto: string; inTok: number; outTok: number }> {
+  const chave = Deno.env.get("GEMINI_API_KEY") || "";
+  if (!chave) throw new Error("Sem GEMINI_API_KEY");
+  const modelo = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash";
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": chave },
+    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: maxTokens, temperature: 0.3, ...(json ? { responseMimeType: "application/json" } : {}) } }),
+  });
+  if (!r.ok) throw new Error(`Gemini ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  const d = await r.json();
+  // deno-lint-ignore no-explicit-any
+  const texto = (d?.candidates?.[0]?.content?.parts || []).map((p: any) => p.text || "").join("").trim();
+  return { texto, inTok: d?.usageMetadata?.promptTokenCount || 0, outTok: d?.usageMetadata?.candidatesTokenCount || 0 };
+}
+
 // 06/11/2026: a conta da Anthropic ficou sem crédito e a proposta parou de sair. Agora tenta a
-// Anthropic e, se falhar (sem crédito, fora do ar, sem chave), gera pelo OpenAI com o mesmo prompt.
+// Anthropic e, se falhar (sem crédito, fora do ar, sem chave), gera pelo OpenAI e depois pelo Gemini, com o mesmo prompt.
 async function chamarIA(prompt: string, maxTokens: number): Promise<string> {
   const anthropic = Deno.env.get("ANTHROPIC_API_KEY");
   const openai = Deno.env.get("OPENAI_API_KEY");
@@ -26,15 +43,20 @@ async function chamarIA(prompt: string, maxTokens: number): Promise<string> {
     erroAnthropic = `Anthropic ${r.status}: ${truncate(await r.text(), 200)}`;
     console.error("generate-proposal", erroAnthropic);
   }
-  if (!openai) throw new Error(erroAnthropic || "Nenhuma chave de IA configurada");
-  const r = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${openai}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: MODELO_OPENAI, max_tokens: maxTokens, temperature: 0.4, response_format: { type: "json_object" }, messages: [{ role: "user", content: prompt }] }),
-  });
-  if (!r.ok) throw new Error(`${erroAnthropic ? erroAnthropic + " | " : ""}OpenAI ${r.status}: ${truncate(await r.text(), 200)}`);
-  const d = await r.json();
-  return String(d?.choices?.[0]?.message?.content || "").trim();
+  let erroOpenai = "";
+  if (openai) {
+    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${openai}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: MODELO_OPENAI, max_tokens: maxTokens, temperature: 0.4, response_format: { type: "json_object" }, messages: [{ role: "user", content: prompt }] }),
+    });
+    if (r.ok) { const d = await r.json(); return String(d?.choices?.[0]?.message?.content || "").trim(); }
+    erroOpenai = `OpenAI ${r.status}: ${truncate(await r.text(), 200)}`;
+    console.error("generate-proposal", erroOpenai);
+  }
+  // terceira opção: Gemini
+  try { return (await gemini(prompt, maxTokens, true)).texto; }
+  catch (e) { throw new Error([erroAnthropic, erroOpenai, (e as Error).message].filter(Boolean).join(" | ") || "Nenhuma chave de IA configurada"); }
 }
 
 function truncate(s: string | null | undefined, n: number): string {
