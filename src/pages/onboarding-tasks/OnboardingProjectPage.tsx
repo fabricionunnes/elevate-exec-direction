@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ProjectCustomDashboard } from "@/components/onboarding-tasks/ProjectCustomDashboard";
+import { AlphaProjeto, ehProjetoAlpha } from "@/components/alpha/AlphaProjeto";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -252,6 +253,9 @@ const OnboardingProjectPage = () => {
       .eq("project_id", projectId)
       .then(({ count }) => setTemCfin((count ?? 0) > 0));
   }, [projectId]);
+
+  // Projeto do Mastermind Alpha abre no layout próprio; a equipe pode voltar aos menus padrão
+  const [alphaMenusEquipe, setAlphaMenusEquipe] = useState(false);
 
   // Projetos com painel próprio (project_custom_dashboards) ganham a aba "Painel de controle"
   const [temPainel, setTemPainel] = useState(false);
@@ -1207,6 +1211,18 @@ const OnboardingProjectPage = () => {
           <Button onClick={() => navigate("/onboarding-tasks")}>Voltar</Button>
         </div>
       </div>
+    );
+  }
+
+  if (ehProjetoAlpha(project) && !alphaMenusEquipe) {
+    return (
+      <AlphaProjeto
+        projectId={projectId!}
+        empresa={project.onboarding_company?.name}
+        modo="staff"
+        onVoltar={() => navigate("/onboarding-tasks")}
+        onMenusEquipe={() => setAlphaMenusEquipe(true)}
+      />
     );
   }
 
