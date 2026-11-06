@@ -89,6 +89,7 @@ const baseNavTabs = [
   { title: "Atividades", href: "/crm/activities", icon: ListTodo },
   { title: "Discador", href: "/crm/dialer", icon: Phone },
   { title: "Atendimento", href: "/crm/inbox", icon: MessageSquare, badge: true },
+  { title: "E-mail", href: "/crm/email", icon: MailIcon },
   { title: "Transcrições", href: "/crm/transcriptions", icon: FileText },
   { title: "Contratos", href: "/contratos", icon: ClipboardList },
   { title: "Reuniões", href: "/crm/meetings", icon: CalendarDays },
@@ -133,6 +134,7 @@ const MAIN_TAB_HREFS = [
   "/crm/activities",
   "/crm/dialer",
   "/crm/inbox",
+  "/crm/email",
 ];
 
 export const CRMLayout = () => {
