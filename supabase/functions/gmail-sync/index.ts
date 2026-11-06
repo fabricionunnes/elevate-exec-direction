@@ -340,7 +340,8 @@ async function traduzirCorpo(accountId: string, gmailId: string): Promise<any> {
   // translated_at marca que o CORPO já foi avaliado (com body_pt = traduzido; sem = corpo em português).
   // O lang que veio da lista olha assunto+trecho e pode errar (assunto em português, corpo em inglês).
   if (m.body_pt || m.translated_at) return m;
-  const texto = (m.body_text && m.body_text.trim().length > 40 ? m.body_text : semHtml(m.body_html || "")) || m.snippet || "";
+  // a parte "texto" de alguns e-mails (GitHub, newsletters) também traz HTML: limpa sempre
+  const texto = semHtml((m.body_text && m.body_text.trim().length > 40 ? m.body_text : m.body_html) || "") || m.snippet || "";
   if (idiomaLocal(texto) === "pt") {
     await supabase.from("mail_messages").update({ translated_at: new Date().toISOString() }).eq("account_id", accountId).eq("gmail_id", gmailId);
     return { ...m, translated_at: new Date().toISOString() };
