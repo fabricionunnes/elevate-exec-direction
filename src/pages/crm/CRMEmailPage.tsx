@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -28,7 +29,7 @@ import { ptBR } from "date-fns/locale";
 import {
   Inbox, Star, Send, Trash2, AlertOctagon, Archive, Mail, MailOpen, Reply, ReplyAll, Forward, Paperclip,
   Search, RefreshCw, Loader2, PenSquare, X, ChevronLeft, ChevronRight, Tag, Download, UserRound, ExternalLink, Plug,
-  Bookmark, Layers, Undo2, Languages, CheckCheck, Keyboard, FileText, Image as ImageIcon, FileSpreadsheet, FileArchive,
+  Bookmark, Layers, Undo2, Languages, ListFilter, Check, CheckCheck, Keyboard, FileText, Image as ImageIcon, FileSpreadsheet, FileArchive,
 } from "lucide-react";
 
 type Addr = { name: string; email: string };
@@ -64,8 +65,9 @@ const PASTAS: { key: string; nome: string; icon: typeof Inbox }[] = [
   { key: "TRASH", nome: "Lixeira", icon: Trash2 },
 ];
 const SISTEMA = new Set(["INBOX", "STARRED", "SENT", "DRAFT", "SPAM", "TRASH", "UNREAD", "IMPORTANT", "CHAT", "CATEGORY_PERSONAL", "CATEGORY_SOCIAL", "CATEGORY_PROMOTIONS", "CATEGORY_UPDATES", "CATEGORY_FORUMS"]);
-const FILTROS: { key: Filtro; nome: string }[] = [
-  { key: "todas", nome: "Todas" }, { key: "nao-lidas", nome: "Não lidas" }, { key: "importantes", nome: "Importantes" }, { key: "estrela", nome: "Com estrela" }, { key: "anexo", nome: "Com anexo" },
+const FILTROS: { key: Filtro; nome: string; icon: typeof Inbox }[] = [
+  { key: "todas", nome: "Todas", icon: Layers }, { key: "nao-lidas", nome: "Não lidas", icon: Mail }, { key: "importantes", nome: "Importantes", icon: Bookmark },
+  { key: "estrela", nome: "Com estrela", icon: Star }, { key: "anexo", nome: "Com anexo", icon: Paperclip },
 ];
 
 const iniciais = (s: string) => (s || "?").replace(/[^\p{L}\s]/gu, " ").trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() || "").join("") || "?";
@@ -212,20 +214,18 @@ export default function CRMEmailPage() {
   }, [account, carregarLista, carregarLabels]);
 
   // Conversas: a mensagem mais recente de cada thread + quantidade
-  const todasConversas = useMemo<Conversa[]>(() => {
+  const baseConversas = useMemo<Conversa[]>(() => {
     const porThread = new Map<string, Conversa>();
     for (const m of mensagens) {
       const t = porThread.get(m.thread_id);
       if (!t) porThread.set(m.thread_id, { ultima: m, qtd: 1, naoLida: m.is_unread, estrela: m.is_starred, importante: temLabel(m, "IMPORTANT"), anexo: m.has_attachments, ids: [m.gmail_id] });
       else { t.qtd++; t.naoLida = t.naoLida || m.is_unread; t.estrela = t.estrela || m.is_starred; t.importante = t.importante || temLabel(m, "IMPORTANT"); t.anexo = t.anexo || m.has_attachments; t.ids.push(m.gmail_id); if (m.internal_date > t.ultima.internal_date) t.ultima = m; }
     }
-    const lista = [...porThread.values()].sort((a, b) => b.ultima.internal_date.localeCompare(a.ultima.internal_date));
-    if (filtro === "nao-lidas") return lista.filter((c) => c.naoLida);
-    if (filtro === "importantes") return lista.filter((c) => c.importante);
-    if (filtro === "estrela") return lista.filter((c) => c.estrela);
-    if (filtro === "anexo") return lista.filter((c) => c.anexo);
-    return lista;
-  }, [mensagens, filtro]);
+    return [...porThread.values()].sort((a, b) => b.ultima.internal_date.localeCompare(a.ultima.internal_date));
+  }, [mensagens]);
+  const passa = (c: Conversa, f: Filtro) => f === "nao-lidas" ? c.naoLida : f === "importantes" ? c.importante : f === "estrela" ? c.estrela : f === "anexo" ? c.anexo : true;
+  const todasConversas = useMemo(() => (filtro === "todas" ? baseConversas : baseConversas.filter((c) => passa(c, filtro))), [baseConversas, filtro]);
+  const contagemFiltro = useMemo(() => Object.fromEntries(FILTROS.map((f) => [f.key, f.key === "todas" ? baseConversas.length : baseConversas.filter((c) => passa(c, f.key)).length])) as Record<Filtro, number>, [baseConversas]);
   const totalPaginas = Math.max(1, Math.ceil(todasConversas.length / POR_PAGINA));
   useEffect(() => { if (pagina > totalPaginas) setPagina(totalPaginas); }, [pagina, totalPaginas]);
   // só a página atual (20 por página)
@@ -511,10 +511,33 @@ export default function CRMEmailPage() {
             ) : (
               <div className="flex items-center gap-1">
                 <Checkbox checked={todasSelecionadas} onCheckedChange={selecionarTodas} className="ml-2 mr-1" aria-label="Selecionar todas" disabled={conversas.length === 0} />
-                <div className="flex items-center gap-1 flex-wrap flex-1 min-w-0">
-                  {FILTROS.map((f) => (
-                    <button key={f.key} onClick={() => setFiltro(f.key)} className={cn("rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-colors border", filtro === f.key ? "text-white border-transparent" : "text-muted-foreground border-border/70 hover:bg-muted/60")} style={filtro === f.key ? { background: NAVY } : undefined}>{f.nome}</button>
-                  ))}
+                <div className="flex items-center gap-1 flex-1 min-w-0">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className={cn("inline-flex items-center gap-1.5 rounded-lg border px-2.5 h-7 text-xs font-medium transition-colors min-w-0", filtro !== "todas" ? "text-white border-transparent shadow-sm" : "text-foreground/80 hover:bg-muted/60")} style={filtro !== "todas" ? { background: NAVY } : undefined}>
+                        <ListFilter className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{filtro === "todas" ? "Filtrar" : FILTROS.find((f) => f.key === filtro)?.nome}</span>
+                        {filtro !== "todas" && <span className="tabular-nums rounded bg-white/20 px-1">{contagemFiltro[filtro]}</span>}
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-56">
+                      <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Mostrar</DropdownMenuLabel>
+                      {FILTROS.map((f) => { const Ic = f.icon; const ativo = filtro === f.key; return (
+                        <DropdownMenuItem key={f.key} onSelect={() => setFiltro(f.key)} className={cn("gap-2.5 cursor-pointer", ativo && "font-semibold")} style={ativo ? { color: NAVY } : undefined}>
+                          <Ic className={cn("h-4 w-4", (f.key === "importantes" || f.key === "estrela") && "text-amber-500")} />
+                          <span className="flex-1">{f.nome}</span>
+                          <span className="text-[11px] tabular-nums text-muted-foreground">{contagemFiltro[f.key]}</span>
+                          <Check className={cn("h-3.5 w-3.5", ativo ? "opacity-100" : "opacity-0")} />
+                        </DropdownMenuItem>
+                      ); })}
+                      {filtro !== "todas" && (<><DropdownMenuSeparator /><DropdownMenuItem onSelect={() => setFiltro("todas")} className="gap-2.5 cursor-pointer text-muted-foreground"><X className="h-4 w-4" /> Limpar filtro</DropdownMenuItem></>)}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  {filtro !== "todas" && (
+                    <Tooltip><TooltipTrigger asChild>
+                      <button onClick={() => setFiltro("todas")} className="h-7 w-7 shrink-0 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60" aria-label="Limpar filtro"><X className="h-3.5 w-3.5" /></button>
+                    </TooltipTrigger><TooltipContent>Limpar filtro</TooltipContent></Tooltip>
+                  )}
                 </div>
                 {conversas.some((c) => c.naoLida) && (
                   <Tooltip><TooltipTrigger asChild>
@@ -590,14 +613,18 @@ export default function CRMEmailPage() {
           </ScrollArea>
           {todasConversas.length > 0 && (
             <div className="border-t px-2 py-1.5 flex items-center gap-2 text-[11px] text-muted-foreground bg-muted/20">
-              <Button variant="ghost" size="sm" className="h-7 px-2 gap-1" disabled={pagina <= 1} onClick={() => mudarPagina(pagina - 1)}><ChevronLeft className="h-3.5 w-3.5" /> Anterior</Button>
-              <span className="tabular-nums flex-1 text-center">Página {pagina} de {totalPaginas}</span>
-              <div className="flex items-center rounded-md border bg-card p-0.5" role="group" aria-label="E-mails por página">
+              <Tooltip><TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" disabled={pagina <= 1} onClick={() => mudarPagina(pagina - 1)} aria-label="Página anterior"><ChevronLeft className="h-4 w-4" /></Button>
+              </TooltipTrigger><TooltipContent>Página anterior</TooltipContent></Tooltip>
+              <span className="tabular-nums flex-1 text-center whitespace-nowrap truncate">{pagina} de {totalPaginas}</span>
+              <div className="flex items-center rounded-md border bg-card p-0.5 shrink-0" role="group" aria-label="E-mails por página">
                 {TAMANHOS_PAGINA.map((n) => (
                   <button key={n} onClick={() => mudarTamanho(n)} className={cn("rounded px-1.5 py-0.5 tabular-nums font-medium transition-colors", POR_PAGINA === n ? "text-white" : "hover:bg-muted")} style={POR_PAGINA === n ? { background: NAVY } : undefined} title={`${n} por página`}>{n}</button>
                 ))}
               </div>
-              <Button variant="ghost" size="sm" className="h-7 px-2 gap-1" disabled={pagina >= totalPaginas} onClick={() => mudarPagina(pagina + 1)}>Próxima <ChevronRight className="h-3.5 w-3.5" /></Button>
+              <Tooltip><TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" disabled={pagina >= totalPaginas} onClick={() => mudarPagina(pagina + 1)} aria-label="Próxima página"><ChevronRight className="h-4 w-4" /></Button>
+              </TooltipTrigger><TooltipContent>Próxima página</TooltipContent></Tooltip>
             </div>
           )}
         </section>
