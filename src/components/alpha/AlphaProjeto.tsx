@@ -14,6 +14,7 @@ import { DfcAlpha } from "./DfcAlpha";
 import { ParticipacaoAlpha } from "./ParticipacaoAlpha";
 import { LancamentosAlpha } from "./LancamentosAlpha";
 import { CronogramaAlpha } from "./CronogramaAlpha";
+import { EncontroMes, type RegistroEncontro } from "./EncontroMes";
 
 export const ehProjetoAlpha = (p: { product_id?: string | null; product_name?: string | null } | null | undefined) =>
   !!p && (p.product_id === "mastermind-alpha" || p.product_name === "UNV Mastermind Alpha");
@@ -43,12 +44,18 @@ export function AlphaProjeto({ projectId, empresa, modo, onVoltar, onSair, onMen
   const [anterior, setAnterior] = useState<DadosAlpha | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [encontros, setEncontros] = useState<RegistroEncontro[]>([]);
+  const [mesAberto, setMesAberto] = useState<number | null>(null);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
     setErro(null);
     const rpc = (a: number) => (supabase as any).rpc("alpha_painel", { p_project: projectId, p_ano: a });
-    const [r1, r0] = await Promise.all([rpc(ano), rpc(ano - 1)]);
+    const [r1, r0, enc] = await Promise.all([
+      rpc(ano), rpc(ano - 1),
+      (supabase as any).from("alpha_encontros").select("mes, data_presencial, data_online, presente_presencial, presente_online, tarefas, ata").eq("project_id", projectId).eq("ano", ano),
+    ]);
+    setEncontros(enc.error ? [] : (enc.data as RegistroEncontro[]));
     if (r1.error) {
       setErro(r1.error.message?.includes("sem acesso") ? "Este painel é exclusivo do dono da empresa e do time da UNV." : r1.error.message);
       setDados(null);
@@ -88,7 +95,7 @@ export function AlphaProjeto({ projectId, empresa, modo, onVoltar, onSair, onMen
 
         <nav className="al-tabs">
           {ABAS.map((a) => (
-            <button type="button" key={a.k} className={`al-tab ${aba === a.k ? "on" : ""}`} onClick={() => setAba(a.k)}>{a.nome}</button>
+            <button type="button" key={a.k} className={`al-tab ${aba === a.k ? "on" : ""}`} onClick={() => { setAba(a.k); setMesAberto(null); }}>{a.nome}</button>
           ))}
         </nav>
 
@@ -96,14 +103,19 @@ export function AlphaProjeto({ projectId, empresa, modo, onVoltar, onSair, onMen
         {!erro && !dados && <div className="al-vazio">Carregando o painel...</div>}
         {!erro && dados && resumo && (
           <>
-            {aba === "painel" && <PainelAlpha d={dados} anterior={anterior} r={resumo} irPara={(k) => setAba(k as Aba)} />}
+            {aba === "painel" && <PainelAlpha d={dados} anterior={anterior} r={resumo} irPara={(k) => setAba(k as Aba)}
+              tarefasEncontro={(m) => encontros.find((x) => x.mes === m)?.tarefas ?? {}} onAbrirEncontro={(m) => { setAba("cronograma"); setMesAberto(m); }} />}
             {aba === "planejamento" && <PlanejamentoAlpha d={dados} anterior={anterior} projectId={projectId} onSalvo={carregar} />}
             {aba === "metas" && <MetasAlpha d={dados} projectId={projectId} onSalvo={carregar} />}
             {aba === "dre" && <DreAlpha d={dados} />}
             {aba === "dfc" && <DfcAlpha d={dados} />}
             {aba === "participacao" && <ParticipacaoAlpha d={dados} projectId={projectId} onSalvo={carregar} />}
             {aba === "lancamentos" && <LancamentosAlpha d={dados} projectId={projectId} onSalvo={carregar} />}
-            {aba === "cronograma" && <CronogramaAlpha d={dados} projectId={projectId} onSalvo={carregar} />}
+            {aba === "cronograma" && mesAberto == null && <CronogramaAlpha d={dados} registros={encontros} onAbrir={setMesAberto} />}
+            {aba === "cronograma" && mesAberto != null && (
+              <EncontroMes d={dados} mes={mesAberto} projectId={projectId} registro={encontros.find((r) => r.mes === mesAberto) ?? null}
+                onVoltar={() => setMesAberto(null)} irPara={(k) => { setAba(k as Aba); setMesAberto(null); window.scrollTo(0, 0); }} onSalvo={carregar} />
+            )}
           </>
         )}
       </div>

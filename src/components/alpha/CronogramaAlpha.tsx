@@ -1,62 +1,37 @@
-// Encontros do ano do Alpha: o tema de cada mês, o que precisa estar no sistema e os
-// compromissos assumidos no encontro, cobrados no seguinte.
-import { useState } from "react";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { Panel } from "@/components/painel-controle/ui";
-import type { DadosAlpha, Compromisso } from "./tipos";
-import { CRONOGRAMA, MESES_NOME } from "./tipos";
+// Encontros do ano do Alpha: os 12 meses com o tema e o andamento das tarefas no sistema.
+// Clicar no mês abre a página do encontro (EncontroMes).
+import type { DadosAlpha } from "./tipos";
+import { MESES_NOME } from "./tipos";
+import { ENCONTROS, progressoMes } from "./encontros";
+import type { RegistroEncontro } from "./EncontroMes";
 
-export function CronogramaAlpha({ d, projectId, onSalvo }: { d: DadosAlpha; projectId: string; onSalvo: () => void }) {
-  const db = supabase as any;
+export function CronogramaAlpha({ d, registros, onAbrir }: {
+  d: DadosAlpha; registros: RegistroEncontro[]; onAbrir: (mes: number) => void;
+}) {
   const hoje = new Date();
   const mesAtual = hoje.getFullYear() === d.ano ? hoje.getMonth() + 1 : 0;
-  const [mes, setMes] = useState(mesAtual || 1);
-  const [texto, setTexto] = useState("");
-  const doMes = d.compromissos.filter((c) => Number(c.mes.slice(5, 7)) === mes);
-  const iso = `${d.ano}-${String(mes).padStart(2, "0")}-01`;
-
-  const adicionar = async () => {
-    if (!texto.trim()) return;
-    const { error } = await db.from("alpha_compromissos").insert({ project_id: projectId, mes: iso, texto: texto.trim() });
-    if (error) { toast.error(error.message); return; }
-    setTexto("");
-    onSalvo();
-  };
-  const status = async (c: Compromisso, s: Compromisso["status"]) => {
-    const { error } = await db.from("alpha_compromissos").update({ status: s }).eq("id", c.id);
-    if (error) toast.error(error.message); else onSalvo();
-  };
-
   return (
     <>
+      <div className="al-aviso">Clique no mês para abrir o encontro: a aula, os números que abrem a Mesa, o que fazer no sistema, os compromissos e a ata.</div>
       <div className="al-crono">
-        {CRONOGRAMA.map((c) => (
-          <button type="button" key={c.mes} className={`p go ${c.mes === mesAtual ? "atual" : ""}`} onClick={() => setMes(c.mes)} style={c.mes === mes ? { borderColor: "var(--gold)" } : undefined}>
-            <div className="lbl">{MESES_NOME[c.mes - 1]}{c.mes === mesAtual ? " · agora" : ""}</div>
-            <b style={{ fontSize: 14, margin: "4px 0" }}>{c.tema}</b>
-            <div className="sub">{c.aula}</div>
-            <div className="sub" style={{ marginTop: 6 }}><span style={{ color: "var(--gold)" }}>No sistema: </span>{c.sistema}</div>
-            <div>{c.marcos.map((m) => <span key={m} className="tag">{m}</span>)}</div>
-          </button>
-        ))}
+        {ENCONTROS.map((e) => {
+          const reg = registros.find((r) => r.mes === e.mes);
+          const p = progressoMes(d, e.mes, reg?.tarefas ?? {});
+          const cls = p.feitas === p.total ? "g" : p.feitas ? "a" : "r";
+          return (
+            <button type="button" key={e.mes} className={`p go ${e.mes === mesAtual ? "atual" : ""}`} onClick={() => onAbrir(e.mes)}>
+              <div className="lbl">{MESES_NOME[e.mes - 1]}{e.mes === mesAtual ? " · agora" : ""}</div>
+              <b style={{ fontSize: 14, margin: "4px 0" }}>{e.tema}</b>
+              <div className="sub">{e.objetivo}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+                <div className="al-prog" style={{ flex: 1 }}><i className={cls} style={{ width: `${(p.feitas / p.total) * 100}%` }} /></div>
+                <span className={`st ${cls === "g" ? "g" : cls === "a" ? "a" : "n"}`}>{p.feitas}/{p.total} no sistema</span>
+              </div>
+              <div>{e.marcos.map((m) => <span key={m} className="tag">{m}</span>)}</div>
+            </button>
+          );
+        })}
       </div>
-      <Panel titulo={`Compromissos de ${MESES_NOME[mes - 1].toLowerCase()}`} sub="três por encontro, cobrados no encontro seguinte">
-        {doMes.length === 0 && <div className="empty">Nenhum compromisso registrado.</div>}
-        {doMes.map((c) => (
-          <div key={c.id} className="al-comp">
-            <span>{c.texto}</span>
-            <select className="al-sel" value={c.status} onChange={(e) => status(c, e.target.value as Compromisso["status"])}>
-              <option value="aberto">Aberto</option><option value="cumprido">Cumprido</option><option value="nao_cumprido">Não cumprido</option>
-            </select>
-            <span />
-          </div>
-        ))}
-        <div className="al-form" style={{ marginTop: 12, gridTemplateColumns: "1fr auto" }}>
-          <input className="al-in" value={texto} placeholder="Novo compromisso do mês" onChange={(e) => setTexto(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") adicionar(); }} />
-          <button type="button" className="al-btn pri" onClick={adicionar}>Adicionar</button>
-        </div>
-      </Panel>
     </>
   );
 }
