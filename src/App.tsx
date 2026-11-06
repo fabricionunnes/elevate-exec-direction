@@ -360,7 +360,7 @@ const CRMTrafficApiPage = lazy(() => import("./pages/crm/CRMTrafficApiPage"));
 const CRMForecastPage = lazy(() => import("./pages/crm/CRMForecastPage"));
 const CRMCadencesPage = lazy(() => import("./pages/crm/CRMCadencesPage"));
 const CRMEmailBlastPage = lazy(() => import("./pages/crm/CRMEmailBlastPage"));
-const CRMEmailPage = lazy(() => import("./pages/crm/CRMEmailPage"));
+const EmailPage = lazy(() => import("./pages/EmailPage"));
 const CRMApplicationsPage = lazy(() => import("./pages/crm/CRMApplicationsPage"));
 const CRMAutomationsPage = lazy(() => import("./pages/crm/CRMAutomationsPage"));
 const CRMDisparosPage = lazy(() => import("./pages/crm/CRMDisparosPage"));
@@ -526,6 +526,8 @@ const AppShell = () => {
             {/* Staff pages with global notifications */}
             <Route element={<OnboardingStaffLayout />}>
               <Route path="/onboarding-tasks" element={<OnboardingTasksPage />} />
+              {/* E-mail de cada usuário: fora do CRM, pra todo o time (06/11/2026) */}
+              <Route path="/email" element={<EmailPage />} />
               <Route path="/onboarding-tasks/login" element={<OnboardingLoginPage />} />
               <Route path="/onboarding-tasks/companies" element={<OnboardingCompaniesPage />} />
               <Route path="/onboarding-tasks/unv-start" element={<UNVStartClientsPage />} />
@@ -717,7 +719,6 @@ const AppShell = () => {
               <Route path="forecast" element={<CRMForecastPage />} />
               <Route path="cadences" element={<CRMCadencesPage />} />
               <Route path="email-blast" element={<CRMEmailBlastPage />} />
-              <Route path="email" element={<CRMEmailPage />} />
               <Route path="applications" element={<CRMApplicationsPage />} />
               <Route path="conexao-whatsapp" element={<CRMWhatsAppConnectionPage />} />
               <Route path="agents" element={<CRMAgentsPage />} />
