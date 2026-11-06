@@ -955,12 +955,12 @@ export const LeadConversationsTab = ({ leadId, leadPhone, leadName, leadInstagra
                   }}
                 />
               )}
-              {activeConv.channel !== "instagram" && (
-                <EnviarPropostaButton leadId={leadId} disabled={sending} onEnviar={(file, caption) => sendMedia(file, "document", caption)} />
-              )}
               <Button onClick={handleSend} disabled={sending || !newMessage.trim()} size="icon" className="shrink-0" title="Enviar mensagem">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
+              {activeConv.channel !== "instagram" && (
+                <EnviarPropostaButton leadId={leadId} disabled={sending} onEnviar={(file, caption) => sendMedia(file, "document", caption)} />
+              )}
             </div>
           </>
         )}
