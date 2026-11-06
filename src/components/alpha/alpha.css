@@ -1,0 +1,53 @@
+/* Projeto UNV Mastermind Alpha: usa o tema do Painel de Controle (.pc) com o dourado da marca Alpha. */
+.pc.alpha { --gold: #C7A56A; --acc: #CC1B1B; }
+.pc.alpha .top { border-bottom-color: var(--gold); }
+.pc.alpha .brand .lg { background: linear-gradient(135deg, #0D3B78, #08254D); border: 1px solid var(--gold); color: var(--gold); }
+.pc.alpha .wm small { color: var(--gold); }
+.pc .al-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.pc .al-tab { background: none; border: 1px solid transparent; color: var(--ink2); font: 600 12px var(--f); padding: 7px 12px; border-radius: 6px; cursor: pointer; }
+.pc .al-tab:hover { color: var(--ink); background: var(--panel); }
+.pc .al-tab.on { color: #0E0E0E; background: var(--gold); }
+.pc .al-btn { background: var(--panel2); border: 1px solid var(--line); color: var(--ink); font: 600 12px var(--f); padding: 7px 12px; border-radius: 6px; cursor: pointer; }
+.pc .al-btn:hover { border-color: var(--gold); }
+.pc .al-btn.pri { background: var(--gold); color: #0E0E0E; border-color: var(--gold); }
+.pc .al-btn[disabled] { opacity: .55; cursor: progress; }
+.pc .al-sel, .pc .al-in { background: var(--panel2); border: 1px solid var(--line); color: var(--ink); font: 500 12px var(--f); padding: 6px 8px; border-radius: 6px; }
+.pc .al-in:focus, .pc .al-sel:focus { outline: none; border-color: var(--gold); }
+.pc .al-in.num { text-align: right; width: 100%; min-width: 74px; }
+.pc .al-sem { display: grid; grid-template-columns: 14px 1fr auto; gap: 12px; align-items: center; border-radius: 8px; padding: 12px 16px; border: 1px solid var(--line); background: var(--panel); }
+.pc .al-sem .bola { width: 14px; height: 14px; border-radius: 50%; background: var(--mute); }
+.pc .al-sem.g { border-color: #2f6b4a; } .pc .al-sem.g .bola { background: var(--good); }
+.pc .al-sem.a { border-color: #7a5d22; } .pc .al-sem.a .bola { background: var(--warn); }
+.pc .al-sem.r { border-color: #7a2a2a; background: #1C1214; } .pc .al-sem.r .bola { background: var(--bad); }
+.pc .al-sem b { font-size: 14px; } .pc .al-sem p { color: var(--ink2); font-size: 12px; margin-top: 2px; }
+.pc .al-sem .num { text-align: right; font-size: 11px; color: var(--mute); }
+.pc .al-sem .num strong { display: block; font-size: 20px; color: var(--ink); }
+.pc .al-tri { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.pc .al-tri .p { border-top: 3px solid var(--gold); }
+.pc .al-tri .p.aberto { border-top-color: var(--line); }
+.pc .al-tri .v { font-size: 20px; font-weight: 800; margin: 4px 0; }
+.pc .al-grade td, .pc .al-grade th { padding: 4px 3px; }
+.pc .al-grade td.tl { color: var(--ink2); white-space: nowrap; }
+.pc .al-grade tr.forte td { font-weight: 800; color: var(--ink); border-top: 1px solid #3a3a3a; }
+.pc .al-grade tr.lucro td { color: var(--gold); font-weight: 800; }
+.pc .al-grade td.fut { color: var(--mute); }
+.pc .al-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; }
+.pc .al-form label { display: grid; gap: 4px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--mute); }
+.pc .al-prog { height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; }
+.pc .al-prog i { display: block; height: 100%; background: var(--gold); }
+.pc .al-prog i.r { background: var(--bad); } .pc .al-prog i.a { background: var(--warn); } .pc .al-prog i.g { background: var(--good); }
+.pc .al-meta { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1.2fr auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.pc .al-meta:last-child { border-bottom: 0; }
+.pc .al-crono { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pc .al-crono .p.atual { border-color: var(--gold); }
+.pc .al-crono .tag { display: inline-block; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; border: 1px solid var(--line); border-radius: 4px; padding: 3px 6px; margin: 6px 4px 0 0; color: var(--ink2); }
+.pc .al-comp { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.pc .al-aviso { font-size: 12px; color: var(--ink2); background: var(--panel2); border-left: 3px solid var(--gold); border-radius: 5px; padding: 9px 12px; }
+.pc .al-vazio { text-align: center; padding: 60px 20px; color: var(--ink2); }
+@media (max-width: 900px) {
+  .pc .al-tri, .pc .al-crono { grid-template-columns: 1fr 1fr; }
+  .pc .al-meta { grid-template-columns: 1fr 1fr; }
+  .pc .al-sem { grid-template-columns: 14px 1fr; }
+}
+@media (max-width: 560px) { .pc .al-tri, .pc .al-crono { grid-template-columns: 1fr; } }
+.pc.alpha .bc i { max-height: calc(100% - 48px); }

@@ -93,6 +93,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Brain } from "lucide-react";
 import { CLIENT_MENU_KEYS } from "@/types/onboarding";
+import { AlphaProjeto, ehProjetoAlpha } from "@/components/alpha/AlphaProjeto";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface UserProject {
@@ -654,6 +655,18 @@ const ClientOnboardingPage = () => {
       <BillingBlockedScreen
         companyId={project.onboarding_company_id}
         companyName={company?.name}
+      />
+    );
+  }
+
+  // Projeto do Mastermind Alpha: layout próprio, sem os menus padrão
+  if (ehProjetoAlpha(project)) {
+    return (
+      <AlphaProjeto
+        projectId={projectId!}
+        empresa={company?.name}
+        modo="cliente"
+        onSair={handleLogout}
       />
     );
   }
