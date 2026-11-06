@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>Entrar na live Black UNV</title>
-<meta name="description" content="Live da Black UNV, terça, 10 de novembro, às 20h." />
+<meta name="description" content="Live da Black UNV, quarta, 25 de novembro, às 20h." />
 <meta name="robots" content="noindex,nofollow" />
 <meta name="theme-color" content="#08090D" />
 <style>
@@ -64,7 +64,7 @@ section.on{display:block}
   <!-- antes da live -->
   <section id="vAntes">
     <h1>A live ainda não começou.</h1>
-    <p class="sub">É <strong>terça, 10/11, às 20h</strong> (horário de Brasília). A sala abre às 19h, pelo mesmo link que você usou pra chegar aqui.</p>
+    <p class="sub">É <strong>quarta, 25/11, às 20h</strong> (horário de Brasília). A sala abre às 19h, pelo mesmo link que você usou pra chegar aqui.</p>
     <a class="btn" id="gcal" href="#" target="_blank" rel="noopener">Salvar na minha agenda</a>
     <a class="btn ghost" href="/black/live/">Confirmar minha presença</a>
   </section>
@@ -85,8 +85,8 @@ var SUPA = "https://xrncvhzxjmddqluxoosu.supabase.co";
 var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
 var PIXEL = "247392077001023";
 var MEET = "https://meet.google.com/myn-tbqg-maf";
-// Mesma janela da função black-agenda: 10/11/2026, das 19h às 23h59 (Brasília)
-var INI = Date.parse("2026-11-10T19:00:00-03:00"), FIM = Date.parse("2026-11-10T23:59:59-03:00");
+// Mesma janela da função black-agenda: 25/11/2026, das 19h às 23h59 (Brasília)
+var INI = Date.parse("2026-11-25T19:00:00-03:00"), FIM = Date.parse("2026-11-25T23:59:59-03:00");
 
 function $(id){ return document.getElementById(id); }
 function qp(n){ try { return new URLSearchParams(location.search).get(n) || undefined; } catch(e){ return undefined; } }
@@ -124,7 +124,7 @@ if(tel0.length >= 10) $("tel").value = maskPhone(tel0);
 function entrar(tel, nome){
   view("vEntrando");
   $("manual").href = MEET;
-  fb("trackCustom","EntrouLive",{ evento:"black-unv-2026-11-10" });
+  fb("trackCustom","EntrouLive",{ evento:"black-unv-2026-11-25" });
   var vai = function(){ location.replace(MEET); };
   // O registro nunca segura a pessoa do lado de fora: no máximo 2,5 s e entra
   var reg = fetch(SUPA + "/functions/v1/black-agenda", {
@@ -139,7 +139,7 @@ var agora = Date.now();
 if(agora < INI){
   var f = function(ms){ return new Date(ms).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,""); };
   $("gcal").href = "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent("Live Black UNV")
-    + "&dates=" + f(Date.parse("2026-11-10T20:00:00-03:00")) + "/" + f(Date.parse("2026-11-10T21:00:00-03:00"))
+    + "&dates=" + f(Date.parse("2026-11-25T20:00:00-03:00")) + "/" + f(Date.parse("2026-11-25T21:00:00-03:00"))
     + "&details=" + encodeURIComponent("Live da Black UNV com o Fabrício Nunnes.\n\nPra entrar: https://unvholdings.com.br/black/entrar")
     + "&location=" + encodeURIComponent("https://unvholdings.com.br/black/entrar") + "&ctz=America/Sao_Paulo";
   view("vAntes");
