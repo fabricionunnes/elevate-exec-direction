@@ -2068,7 +2068,7 @@ const OnboardingTasksPage = () => {
               <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate("/onboarding-tasks/task-manager")} title="Gerenciador">
                 <LayoutGrid className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate("/crm/email")} title="Meus e-mails">
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate("/email")} title="Meus e-mails">
                 <Mail className="h-4 w-4" />
               </Button>
               {(currentUserEmail === "fabricio@universidadevendas.com.br" || isMaster) && (
@@ -2454,7 +2454,7 @@ const OnboardingTasksPage = () => {
               </PopoverContent>
             </Popover>
             {/* E-mail de cada usuário dentro do Nexus (06/11/2026) */}
-            <Button variant="ghost" size="sm" className="gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60" onClick={() => navigate("/crm/email")}>
+            <Button variant="ghost" size="sm" className="gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60" onClick={() => navigate("/email")}>
               <Mail className="h-4 w-4" />
               E-mail
             </Button>
