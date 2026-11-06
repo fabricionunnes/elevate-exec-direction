@@ -4,10 +4,10 @@
 import type { DadosAlpha } from "./tipos";
 import { trimestres } from "./tipos";
 
-export type Aba = "painel" | "planejamento" | "metas" | "dre" | "dfc" | "participacao" | "lancamentos";
+export type Aba = "painel" | "planejamento" | "metas" | "dre" | "dfc" | "participacao" | "lancamentos" | "compromissos";
 export const NOME_ABA: Record<Aba, string> = {
   painel: "Painel de controle", planejamento: "Planejamento", metas: "Metas", dre: "DRE", dfc: "Fluxo de caixa",
-  participacao: "Participação de lucro", lancamentos: "Lançamentos",
+  participacao: "Participação de lucro", lancamentos: "Lançamentos", compromissos: "Compromissos",
 };
 
 export type Tarefa = {
@@ -120,7 +120,7 @@ export const ENCONTROS: Encontro[] = [
       { id: "dfc_t1", texto: "Conferir o fluxo de caixa de janeiro a março", aba: "dfc" },
       { id: "part_t1", texto: "Aprovar a participação de lucro do 1º trimestre", aba: "participacao", auto: (d) => tri(d, 1) },
       { id: "retirada_t1", texto: "Lançar a retirada da participação como despesa do grupo Retirada", aba: "lancamentos", auto: (d) => (dreMes(d, 4)?.retirada ?? 0) > 0 },
-      { id: "cortes", texto: "Registrar 3 despesas para cortar nos compromissos do mês", aba: "painel", auto: (d, m) => d.compromissos.filter((c) => Number(c.mes.slice(5, 7)) === m).length >= 3 },
+      { id: "cortes", texto: "Registrar 3 despesas para cortar nos compromissos do mês", aba: "compromissos", auto: (d, m) => d.compromissos.filter((c) => Number(c.mes.slice(5, 7)) === m).length >= 3 },
     ],
   },
   {
@@ -226,7 +226,7 @@ export const ENCONTROS: Encontro[] = [
     tarefas: [
       { id: "cortes_dre", texto: "Conferir no DRE a queda das despesas cortadas", aba: "dre" },
       { id: "part_t3", texto: "Aprovar a participação de lucro do 3º trimestre", aba: "participacao", auto: (d) => tri(d, 3) },
-      { id: "delegar", texto: "Listar 3 tarefas que o dono deixa de fazer", aba: "painel", auto: (d, m) => d.compromissos.filter((c) => Number(c.mes.slice(5, 7)) === m).length >= 3 },
+      { id: "delegar", texto: "Listar 3 tarefas que o dono deixa de fazer nos compromissos do mês", aba: "compromissos", auto: (d, m) => d.compromissos.filter((c) => Number(c.mes.slice(5, 7)) === m).length >= 3 },
     ],
   },
   {
