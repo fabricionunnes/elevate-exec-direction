@@ -187,18 +187,29 @@ export default function CRMEmailPage() {
     const chave = JSON.stringify({ pasta, buscaIds });
     const seq = ++seqLista.current;
     if (!silencioso) setCarregando(true); // atualização de fundo (realtime) não pisca a lista
-    let q = db.from("mail_messages")
-      .select("id, account_id, gmail_id, thread_id, label_ids, from_name, from_email, to_list, subject, snippet, internal_date, is_unread, is_starred, is_sent, has_attachments, lang, subject_pt, snippet_pt")
-      .eq("account_id", acc.id).order("internal_date", { ascending: false }).limit(1000);
-    if (buscaIds) q = buscaIds.length ? q.in("gmail_id", buscaIds) : q.in("gmail_id", ["-"]);
-    else if (pasta === "TRASH" || pasta === "SPAM") q = q.contains("label_ids", [pasta]);
-    else if (pasta === "ALL") q = q.not("label_ids", "cs", "{TRASH}").not("label_ids", "cs", "{SPAM}");
-    else q = q.contains("label_ids", [pasta]).not("label_ids", "cs", "{TRASH}").not("label_ids", "cs", "{SPAM}");
-    const { data } = await q;
+    // o PostgREST devolve no máximo 1000 linhas por chamada: lê em blocos de 1000, até 5000 mensagens
+    const consulta = (de: number) => {
+      let q = db.from("mail_messages")
+        .select("id, account_id, gmail_id, thread_id, label_ids, from_name, from_email, to_list, subject, snippet, internal_date, is_unread, is_starred, is_sent, has_attachments, lang, subject_pt, snippet_pt")
+        .eq("account_id", acc.id).order("internal_date", { ascending: false }).order("gmail_id", { ascending: false }).range(de, de + 999);
+      if (buscaIds) q = buscaIds.length ? q.in("gmail_id", buscaIds) : q.in("gmail_id", ["-"]);
+      else if (pasta === "TRASH" || pasta === "SPAM") q = q.contains("label_ids", [pasta]);
+      else if (pasta === "ALL") q = q.not("label_ids", "cs", "{TRASH}").not("label_ids", "cs", "{SPAM}");
+      else q = q.contains("label_ids", [pasta]).not("label_ids", "cs", "{TRASH}").not("label_ids", "cs", "{SPAM}");
+      return q;
+    };
+    const data: Msg[] = [];
+    for (let de = 0; de < 5000; de += 1000) {
+      const { data: bloco } = await consulta(de);
+      if (chave !== JSON.stringify(estadoLista.current)) return;
+      data.push(...((bloco as Msg[]) || []));
+      if (!bloco || bloco.length < 1000) break;
+    }
     if (chave !== JSON.stringify(estadoLista.current)) return; // trocou de pasta/busca no meio
     if (seq < ultimaAplicada.current) return; // resposta mais velha que a já mostrada
     ultimaAplicada.current = seq;
-    setMensagens((data as Msg[]) || []);
+    // blocos lidos com inserções no meio podem repetir mensagem: deduplica pelo id do Gmail
+    setMensagens([...new Map(data.map((m) => [m.gmail_id, m])).values()]);
     setCarregando(false);
   }, []);
   // troca de pasta/busca recarrega
