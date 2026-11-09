@@ -88,6 +88,7 @@ const AdminSetupPage = lazy(() => import("./pages/AdminSetupPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const PaymentLinkPage = lazy(() => import("./pages/PaymentLinkPage"));
+const PixAutomaticoPage = lazy(() => import("./pages/PixAutomaticoPage"));
 const RecebimentosPage = lazy(() => import("./pages/RecebimentosPage"));
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
 const PublicInvoicePage = lazy(() => import("./pages/PublicInvoicePage"));
@@ -832,6 +833,7 @@ const AppShell = () => {
             
             {/* Payment Links */}
             <Route path="/pagamento" element={<PaymentLinkPage />} />
+            <Route path="/pix-automatico/:id" element={<PixAutomaticoPage />} />
             <Route path="/recebimento" element={<RecebimentosPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/fatura" element={<PublicInvoicePage />} />
