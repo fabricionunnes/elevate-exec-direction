@@ -26,18 +26,12 @@ const productCategories: ProductCategory[] = [
     category: "Trilha Principal",
     items: [
       { name: "UNV IA Academy", href: "/unviaacademy/", staticPage: true, highlight: true },
-      { name: "UNV Core", href: "/core" },
-      { name: "UNV Control", href: "/control" },
       { name: "Sales Acceleration", href: "/sales-acceleration", highlight: true },
     ],
   },
   {
     category: "Operação Comercial",
     items: [
-      { name: "Sales Ops", href: "/sales-ops" },
-      { name: "UNV Sales Force", href: "/sales-force" },
-      { name: "Sales System", href: "/ai-sales-system", highlight: true },
-      { name: "Fractional CRO", href: "/fractional-cro", highlight: true },
       { name: "UNV Ads", href: "/ads" },
       { name: "UNV Social", href: "/social" },
     ],
@@ -49,13 +43,11 @@ const productCategories: ProductCategory[] = [
       { name: "UNV Board", href: "/unv-board", highlight: true },
       { name: "UNV Partners", href: "/partners" },
       { name: "UNV Mastermind", href: "/mastermind", highlight: true },
-      { name: "Execution Partnership", href: "/execution-partnership", highlight: true },
     ],
   },
   {
     category: "Estratégia & Estrutura",
     items: [
-      { name: "UNV Leadership", href: "/leadership" },
       { name: "UNV Finance", href: "/unvfinance/", staticPage: true, highlight: true },
       { name: "UNV People", href: "/people" },
       { name: "UNV Safe", href: "/safe" },
