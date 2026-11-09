@@ -605,9 +605,6 @@ export default function SocialPage() {
               <Link to="/ads">
                 <Button variant="premium-outline">UNV Ads</Button>
               </Link>
-              <Link to="/control">
-                <Button variant="premium-outline">UNV Control</Button>
-              </Link>
             </div>
           </div>
         </div>

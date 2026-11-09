@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const revenueOptions = [{ value: "under-50k", label: "Menos de R$ 50k/mês" }, { value: "50k-150k", label: "R$ 50k–150k/mês" }, { value: "150k-400k", label: "R$ 150k–400k/mês" }, { value: "400k-1m", label: "R$ 400k–1M/mês" }, { value: "over-1m", label: "Acima de R$ 1M/mês" }];
 const teamSizeOptions = [{ value: "1", label: "1 vendedor" }, { value: "2-3", label: "2–3 vendedores" }, { value: "4-5", label: "4–5 vendedores" }, { value: "6-10", label: "6–10 vendedores" }, { value: "over-10", label: "10+ vendedores" }];
-const productOptions = [{ value: "unsure", label: "Não tenho certeza — preciso de orientação" }, { value: "core", label: "UNV Core" }, { value: "control", label: "UNV Control" }, { value: "acceleration", label: "UNV Sales Acceleration" }, { value: "growth-room", label: "UNV Growth Room" }, { value: "partners", label: "UNV Partners" }, { value: "sales-ops", label: "UNV Sales Ops" }];
+const productOptions = [{ value: "unsure", label: "Não tenho certeza — preciso de orientação" }, { value: "acceleration", label: "UNV Sales Acceleration" }, { value: "growth-room", label: "UNV Growth Room" }, { value: "partners", label: "UNV Partners" }];
 
 export default function ApplyPage() {
   const { toast } = useToast();

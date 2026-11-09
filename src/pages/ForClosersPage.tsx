@@ -223,17 +223,12 @@ const timelineOptions = [
 ];
 
 const productIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  "UNV Core": Layers,
-  "UNV Control": RefreshCw,
   "UNV Sales Acceleration": TrendingUp,
-  "UNV Sales Force": Users2,
   "UNV Growth Room": MapPin,
   "UNV Partners": Crown,
-  "UNV Sales Ops": Users2,
   "UNV Ads": Megaphone,
   "UNV Social": Heart,
-  "UNV Mastermind": Star,
-  "UNV Execution Partnership": Handshake
+  "UNV Mastermind": Star
 };
 
 function getRecommendation(data: FormData): Recommendation {
@@ -243,54 +238,67 @@ function getRecommendation(data: FormData): Recommendation {
   const { revenue, teamSize, teamWorkMode, mainPains, hasProcess, leadVolume, leadSource } = data;
   
   // Lógica de recomendação baseada em múltiplos fatores
-  
-  // Sales Force - Apenas para quem tem vendedores em home office
+
+  // Evita produto repetido: se já entrou, só sobe a prioridade quando a nova regra pede "primary"
+  const addProduct = (product: ProductRecommendation) => {
+    const existing = products.find(p => p.id === product.id);
+    if (!existing) {
+      products.push(product);
+      return;
+    }
+    if (product.priority === "primary" && existing.priority !== "primary") {
+      existing.priority = "primary";
+    }
+  };
+
+  // Time em home office com problema de conversão/execução: direção comercial do próprio time
   if (teamWorkMode === "home-office" && teamSize !== "0" && 
       (mainPains.includes("low-conversion") || mainPains.includes("inconsistent-execution") || mainPains.includes("owner-dependent"))) {
-    products.push({
-      id: "sales-force",
-      name: "UNV Sales Force",
-      icon: productIcons["UNV Sales Force"] || TrendingUp,
+    addProduct({
+      id: "sales-acceleration",
+      name: "UNV Sales Acceleration",
+      icon: productIcons["UNV Sales Acceleration"],
       priority: "primary",
       reasons: [
-        "Seu time trabalha em home office",
-        "SDR e Closer terceirizados para converter demanda",
-        "Execução profissional sem gestão de pessoas"
+        "Seu time trabalha em home office e precisa de gestão diária",
+        "Direção comercial que estrutura e cobra o seu próprio time",
+        "Conversão com método, sem depender do dono"
       ],
-      href: "/sales-force"
+      href: "/sales-acceleration"
     });
   }
-  // Core - Para quem está começando ou sem processo
+
+  // Para quem está começando ou sem processo
   if (hasProcess === "none" || hasProcess === "informal" || 
       (mainPains.includes("no-process") && ["under-50k", "50k-100k", "100k-200k"].includes(revenue))) {
-    products.push({
-      id: "core",
-      name: "UNV Core",
-      icon: productIcons["UNV Core"],
+    addProduct({
+      id: "sales-acceleration",
+      name: "UNV Sales Acceleration",
+      icon: productIcons["UNV Sales Acceleration"],
       priority: products.length === 0 ? "primary" : "secondary",
       reasons: [
         "Você precisa estruturar a fundação comercial",
         "Processo definido é pré-requisito para escalar",
-        "Investimento acessível para começar certo"
+        "Direção comercial que monta o processo junto com o seu time"
       ],
-      href: "/core"
+      href: "/sales-acceleration"
     });
   }
   
-  // Control - Para quem tem processo mas falta consistência
+  // Para quem tem processo mas falta consistência
   if ((hasProcess === "documented" || hasProcess === "implemented") && 
       (mainPains.includes("inconsistent-execution") || mainPains.includes("no-direction"))) {
-    products.push({
-      id: "control",
-      name: "UNV Control",
-      icon: productIcons["UNV Control"],
+    addProduct({
+      id: "sales-acceleration",
+      name: "UNV Sales Acceleration",
+      icon: productIcons["UNV Sales Acceleration"],
       priority: products.length === 0 ? "primary" : "secondary",
       reasons: [
         "Você tem estrutura mas falta disciplina de execução",
         "Direção recorrente vai manter o momentum",
-        "Comunidade de empresários acelera aprendizado"
+        "Cobrança de execução consistente"
       ],
-      href: "/control"
+      href: "/sales-acceleration"
     });
   }
   
@@ -299,7 +307,7 @@ function getRecommendation(data: FormData): Recommendation {
       ["2-3", "4-5", "6-10"].includes(teamSize)) {
     const isMainProduct = products.length === 0 || 
       (mainPains.includes("low-conversion") || mainPains.includes("owner-dependent"));
-    products.push({
+    addProduct({
       id: "sales-acceleration",
       name: "UNV Sales Acceleration",
       icon: productIcons["UNV Sales Acceleration"],
@@ -313,20 +321,20 @@ function getRecommendation(data: FormData): Recommendation {
     });
   }
   
-  // Para quem precisa de clareza estratégica - Control em vez de Growth Room (evento)
+  // Para quem precisa de clareza estratégica: direção comercial recorrente
   if ((mainPains.includes("no-direction") || mainPains.includes("owner-dependent")) &&
       ["100k-200k", "200k-400k", "400k-600k", "600k-1m"].includes(revenue) && products.length === 0) {
-    products.push({
-      id: "control",
-      name: "UNV Control",
-      icon: productIcons["UNV Control"],
+    addProduct({
+      id: "sales-acceleration",
+      name: "UNV Sales Acceleration",
+      icon: productIcons["UNV Sales Acceleration"],
       priority: "primary",
       reasons: [
         "Você precisa de direção comercial recorrente",
         "Acompanhamento mensal para manter disciplina",
         "Cobrança de execução consistente"
       ],
-      href: "/control"
+      href: "/sales-acceleration"
     });
   }
   
@@ -347,21 +355,21 @@ function getRecommendation(data: FormData): Recommendation {
     });
   }
   
-  // Sales Ops - Para times maiores que precisam padronizar
+  // Times maiores que precisam padronizar: treinamento e cobrança dentro da direção comercial
   if (["6-10", "11-20", "over-20"].includes(teamSize) && 
       (mainPains.includes("team-scaling") || mainPains.includes("inconsistent-execution") || 
        mainPains.includes("high-turnover") || mainPains.includes("slow-onboarding"))) {
-    products.push({
-      id: "sales-ops",
-      name: "UNV Sales Ops",
-      icon: productIcons["UNV Sales Ops"],
+    addProduct({
+      id: "sales-acceleration",
+      name: "UNV Sales Acceleration",
+      icon: productIcons["UNV Sales Acceleration"],
       priority: products.length === 0 ? "primary" : "secondary",
       reasons: [
         "Seu time precisa de padronização",
-        "Trilhas por cargo vão unificar performance",
+        "Treinamento e cobrança contínuos do time",
         "Reduza dependência do dono/gestor"
       ],
-      href: "/sales-ops"
+      href: "/sales-acceleration"
     });
   }
   
@@ -399,22 +407,6 @@ function getRecommendation(data: FormData): Recommendation {
     });
   }
   
-  // Execution Partnership - Para empresas de alto faturamento que precisam de intervenção rápida
-  if (["600k-1m", "1m-2m", "over-2m"].includes(revenue) && products.length === 0) {
-    products.push({
-      id: "execution-partnership",
-      name: "UNV Execution Partnership",
-      icon: productIcons["UNV Execution Partnership"],
-      priority: "primary",
-      reasons: [
-        "Você precisa de resultados rápidos",
-        "Intervenção intensiva de 3 meses",
-        "Direção comercial com execução direta"
-      ],
-      href: "/execution-partnership"
-    });
-  }
-  
   // Se não tiver nenhum produto, recomendar Sales Acceleration como padrão
   if (products.length === 0) {
     products.push({
@@ -441,35 +433,17 @@ function getRecommendation(data: FormData): Recommendation {
   const primaryProduct = products.find(p => p.priority === "primary") || products[0];
   
   // Trilha baseada no produto primário
-  if (primaryProduct.id === "core") {
-    trail.push(
-      { phase: "Agora", product: "UNV Core", duration: "Único", objective: "Estruturar fundação comercial", href: "/core" },
-      { phase: "Mês 2-3", product: "UNV Control", duration: "Mensal", objective: "Manter consistência", href: "/control" },
-      { phase: "Mês 6+", product: "UNV Sales Acceleration", duration: "12 meses", objective: "Acelerar crescimento", href: "/sales-acceleration" }
-    );
-  } else if (primaryProduct.id === "control") {
-    trail.push(
-      { phase: "Agora", product: "UNV Control", duration: "Mensal", objective: "Disciplina de execução", href: "/control" },
-      { phase: "Mês 3-6", product: "UNV Sales Acceleration", duration: "12 meses", objective: "Acelerar vendas", href: "/sales-acceleration" },
-      { phase: "Quando escalar", product: "UNV Sales Ops", duration: "Por usuário", objective: "Padronizar time", href: "/sales-ops" }
-    );
-  } else if (primaryProduct.id === "sales-acceleration") {
+  if (primaryProduct.id === "sales-acceleration") {
     trail.push(
       { phase: "Agora", product: "UNV Sales Acceleration", duration: "12 meses", objective: "Transformação comercial", href: "/sales-acceleration" },
       { phase: "Em paralelo", product: "UNV Ads", duration: "Mensal", objective: "Gerar demanda", href: "/ads" },
-      { phase: "Quando escalar", product: "UNV Sales Ops", duration: "Por usuário", objective: "Padronizar time", href: "/sales-ops" }
+      { phase: "Quando escalar", product: "UNV People", duration: "Mensal", objective: "Contratar e reter o time", href: "/people" }
     );
   } else if (primaryProduct.id === "partners") {
     trail.push(
       { phase: "Agora", product: "UNV Partners", duration: "12 meses", objective: "Mentoria estratégica", href: "/partners" },
-      { phase: "Em paralelo", product: "UNV Sales Ops", duration: "Por usuário", objective: "Padronizar operação", href: "/sales-ops" },
+      { phase: "Em paralelo", product: "UNV Sales Acceleration", duration: "12 meses", objective: "Direção comercial do time", href: "/sales-acceleration" },
       { phase: "Em paralelo", product: "UNV Ads", duration: "Mensal", objective: "Escalar demanda", href: "/ads" }
-    );
-  } else if (primaryProduct.id === "sales-ops") {
-    trail.push(
-      { phase: "Agora", product: "UNV Sales Ops", duration: "Por usuário", objective: "Padronizar time", href: "/sales-ops" },
-      { phase: "Em paralelo", product: "UNV Sales Acceleration", duration: "12 meses", objective: "Direção comercial", href: "/sales-acceleration" },
-      { phase: "Em paralelo", product: "UNV Ads", duration: "Mensal", objective: "Gerar demanda", href: "/ads" }
     );
   } else if (primaryProduct.id === "ads") {
     trail.push(

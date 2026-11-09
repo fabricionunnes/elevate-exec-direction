@@ -13,7 +13,7 @@ const faqCategories = [
       },
       { 
         question: "Vocês vendem por mim?", 
-        answer: "Depende do produto. A maioria dos produtos UNV fornece direção—definimos o que precisa ser feito, treinamos seu time em como fazer e cobramos pela execução. Porém, o UNV Sales Force é exceção: nele, operamos diretamente como SDR e/ou Closer para sua empresa." 
+        answer: "Não. A UNV fornece direção: definimos o que precisa ser feito, treinamos seu time em como fazer e cobramos pela execução. Quem vende é o seu time, e nós garantimos que ele venda com método, rotina e meta." 
       },
       { 
         question: "Qual a diferença entre UNV e uma consultoria tradicional?", 
@@ -33,16 +33,12 @@ const faqCategories = [
     category: "Trilha Principal",
     faqs: [
       { 
-        question: "Qual a diferença entre Core, Control e Sales Acceleration?", 
-        answer: "UNV Core é o diagnóstico inicial e estruturação básica. UNV Control é a direção comercial recorrente com acompanhamento semanal. Sales Acceleration é o programa completo de 12 meses com rituais, treinamentos e headhunting. É uma progressão natural: Core → Control → Sales Acceleration." 
-      },
-      { 
-        question: "Preciso fazer o Core antes de entrar no Control?", 
-        answer: "O Core é recomendado como ponto de entrada para empresas que ainda não têm estrutura comercial definida. Empresas que já possuem processo comercial estruturado podem entrar diretamente no Control ou Sales Acceleration após diagnóstico." 
+        question: "O que é o UNV Sales Acceleration?", 
+        answer: "É o programa completo de direção comercial de 12 meses, com rituais, treinamentos e headhunting. Estruturamos o processo, treinamos o time e cobramos a execução todos os meses." 
       },
       { 
         question: "Quanto tempo dura cada programa?", 
-        answer: "UNV Core é implementação única. UNV Control é recorrente mensal/anual. Sales Acceleration é programa de 12 meses. Growth Room é imersão de 2 dias. Partners e Sales Ops são anuais." 
+        answer: "Sales Acceleration é programa de 12 meses. Growth Room é imersão de 2 dias. Partners é anual." 
       },
     ]
   },
@@ -71,24 +67,8 @@ const faqCategories = [
     category: "Operação Comercial",
     faqs: [
       { 
-        question: "O que é o UNV Sales Ops?", 
-        answer: "UNV Sales Ops foca em padronização e treinamento do time comercial. Inclui treinamentos quinzenais segmentados por nível (SDR, Closer, Gestor), suporte diário via AI Advisor (agente de IA) e acompanhamento mensal em grupo." 
-      },
-      { 
-        question: "O que é o UNV Sales Force?", 
-        answer: "UNV Sales Force é execução direta: a UNV opera como SDR e/ou Closer para sua empresa. Diferente dos outros produtos que fornecem direção, no Sales Force nós executamos as vendas. Exige critérios de entrada: oferta validada e estrutura mínima." 
-      },
-      { 
-        question: "O que é o UNV Sales System?", 
-        answer: "UNV Sales System é uma infraestrutura de vendas com IA: CRM inteligente + Agentes Autônomos (SDR, Atendimento, Social Setter). Atende B2B e B2C, com prospecção automatizada exclusiva para B2B." 
-      },
-      { 
-        question: "Qual a diferença entre Sales Force e Sales System?", 
-        answer: "Sales Force são pessoas (equipe UNV) executando vendas por você. Sales System é tecnologia (agentes de IA) automatizando partes do processo." 
-      },
-      { 
         question: "Preciso de um CRM para trabalhar com a UNV?", 
-        answer: "Não necessariamente. Embora ter um CRM ajude na visibilidade do pipeline, podemos começar com ferramentas simples. Com o UNV Sales System, você recebe um CRM inteligente incluso. Nos outros produtos, ajudamos a definir que nível de ferramentas faz sentido para seu estágio." 
+        answer: "Não necessariamente. Embora ter um CRM ajude na visibilidade do pipeline, podemos começar com ferramentas simples. Ajudamos a definir que nível de ferramentas faz sentido para o seu estágio." 
       },
     ]
   },
@@ -135,7 +115,7 @@ const faqCategories = [
       },
       { 
         question: "Posso combinar mais de um produto?", 
-        answer: "Sim, e é comum. Muitos clientes combinam Control (direção) + Ads (demanda) + Sales Ops (treinamento). Ou Sales Acceleration + People (contratação). O diagnóstico ajuda a definir a combinação ideal para seu momento." 
+        answer: "Sim, e é comum. Muitos clientes combinam Sales Acceleration (direção) + Ads (demanda) + Social (presença). Ou Sales Acceleration + People (contratação). O diagnóstico ajuda a definir a combinação ideal para seu momento." 
       },
       { 
         question: "Como funciona o processo de entrada?", 

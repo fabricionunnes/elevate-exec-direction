@@ -120,46 +120,6 @@ interface ProductRecommendation {
 }
 
 const products: Record<string, ProductRecommendation> = {
-  core: {
-    id: "core",
-    name: "UNV Core",
-    tagline: "Fundação Comercial Inicial",
-    icon: Layers,
-    color: "bg-blue-500",
-    price: "R$ 1.997",
-    priceType: "único",
-    description: "Produto de entrada para empresas que precisam estruturar sua base comercial do zero.",
-    deliverables: [
-      "Diagnóstico comercial direcional",
-      "Estruturação básica de funil de vendas",
-      "Scripts essenciais de abordagem",
-      "Definição de metas básicas",
-      "UNV AI Advisor nível básico",
-      "Cobrança básica de execução"
-    ],
-    bestFor: "Empresas com faturamento até R$ 150k/mês que estão começando a organizar vendas",
-    whyRecommended: "Você está no momento de estruturar a base. O Core vai te dar a fundação necessária para crescer com método."
-  },
-  control: {
-    id: "control",
-    name: "UNV Control",
-    tagline: "Direção Comercial Recorrente",
-    icon: RefreshCw,
-    color: "bg-emerald-500",
-    price: "R$ 5.997",
-    priceType: "/ano",
-    description: "Acompanhamento mensal recorrente para manter a disciplina comercial ativa.",
-    deliverables: [
-      "Direção estratégica mensal",
-      "Acompanhamento via AI semanal",
-      "Templates e scripts prontos",
-      "Cobrança de execução contínua",
-      "Acesso à comunidade UNV",
-      "UNV AI Advisor nível execução"
-    ],
-    bestFor: "Empresas de R$ 100k a R$ 400k/mês que já vendem mas perdem ritmo sem cobrança externa",
-    whyRecommended: "Você já tem vendas acontecendo, mas precisa de constância. O Control mantém a disciplina mês a mês."
-  },
   "sales-acceleration": {
     id: "sales-acceleration",
     name: "UNV Sales Acceleration",
@@ -206,26 +166,6 @@ const products: Record<string, ProductRecommendation> = {
     bestFor: "Empresários de R$ 300k a R$ 2M/mês buscando parceria estratégica de decisão",
     whyRecommended: "Você já cresceu e precisa de um parceiro de decisão, não apenas orientação. O Partners te dá isso."
   },
-  "sales-ops": {
-    id: "sales-ops",
-    name: "UNV Sales Ops",
-    tagline: "Padronização & Treinamento de Times",
-    icon: Users2,
-    color: "bg-violet-500",
-    price: "R$ 197",
-    priceType: "/usuário/mês",
-    description: "Trilhas por cargo, onboarding e padronização de discurso para times comerciais.",
-    deliverables: [
-      "Trilhas por cargo (SDR, Closer, Gestor)",
-      "Avaliações e scorecards",
-      "Scripts por cargo",
-      "Metas e KPIs por cargo",
-      "Cobrança via trilhas",
-      "UNV AI Advisor por cargo"
-    ],
-    bestFor: "Empresas R$ 200k+/mês com 5+ vendedores que perdem padrão quando alguém sai",
-    whyRecommended: "Você tem time grande e precisa de padrão. O Sales Ops garante que todos sigam o mesmo método."
-  },
   ads: {
     id: "ads",
     name: "UNV Ads",
@@ -267,72 +207,6 @@ const products: Record<string, ProductRecommendation> = {
     ],
     bestFor: "Empresas R$ 80k a R$ 1M+/mês onde a venda depende de confiança e autoridade do dono",
     whyRecommended: "Você precisa de autoridade no mercado. O Social constrói isso através de conteúdo estratégico."
-  },
-  leadership: {
-    id: "leadership",
-    name: "UNV Leadership",
-    tagline: "Formação de Liderança",
-    icon: Brain,
-    color: "bg-cyan-500",
-    price: "R$ 1.500",
-    priceType: "/mês por líder ou R$ 15k/ano",
-    description: "Programa de formação de líderes que sustentam pessoas, performance e crescimento.",
-    deliverables: [
-      "Diagnóstico de liderança",
-      "PDI individual",
-      "Formação em 4 dimensões",
-      "Gestão de pessoas e performance",
-      "Roteiros de feedback",
-      "Rituais de cultura",
-      "Avaliação contínua",
-      "UNV AI Advisor Leadership",
-      "Encontros híbridos"
-    ],
-    bestFor: "Empresas R$ 100k a R$ 2M+/mês com líderes intermediários que não cobram ou desenvolvem",
-    whyRecommended: "Seu gargalo são os líderes. O Leadership forma gestores que sustentam crescimento sem depender de você."
-  },
-  "fractional-cro": {
-    id: "fractional-cro",
-    name: "UNV Fractional CRO",
-    tagline: "Diretor Comercial Terceirizado",
-    icon: Briefcase,
-    color: "bg-indigo-500",
-    price: "R$ 4.000",
-    priceType: "/mês + comissão",
-    description: "Um diretor comercial operando no dia a dia da sua empresa sem você precisar contratar.",
-    deliverables: [
-      "Standup diário com vendedores (15-30min)",
-      "Monitoramento do grupo de WhatsApp",
-      "Reunião semanal com cada vendedor",
-      "Reunião estratégica semanal com dono",
-      "Reunião de fechamento mensal",
-      "Cobrança diária de execução",
-      "Gestão de metas e KPIs",
-      "CRM como bônus"
-    ],
-    bestFor: "Empresas R$ 50k a R$ 500k/mês com 2-8 vendedores que não querem mais gerir vendas no dia a dia",
-    whyRecommended: "Você precisa de direção comercial diária, não só estratégia. O Fractional CRO opera como seu diretor todos os dias."
-  },
-  "ai-sales-system": {
-    id: "ai-sales-system",
-    name: "UNV Sales System",
-    tagline: "Infraestrutura de Vendas com IA",
-    icon: Bot,
-    color: "bg-purple-600",
-    price: "R$ 297 a R$ 4.997",
-    priceType: "/mês + setup",
-    description: "Sistema de vendas automatizado com agentes IA para SDR, atendimento e prospecção.",
-    deliverables: [
-      "CRM inteligente integrado",
-      "Agentes IA autônomos (SDR, atendimento)",
-      "Automação de WhatsApp e Instagram",
-      "Prospecção B2B automatizada",
-      "Qualificação automática de leads",
-      "Atendimento 24/7 sem humanos",
-      "Operação em escala sem aumentar time"
-    ],
-    bestFor: "Empresas que querem escalar atendimento e prospecção sem aumentar time humano",
-    whyRecommended: "Você precisa de mais capacidade operacional sem contratar. O Sales System escala sua operação com inteligência artificial."
   },
   "people": {
     id: "people",
@@ -393,45 +267,6 @@ const products: Record<string, ProductRecommendation> = {
     bestFor: "Empresários que estão crescendo e precisam proteger patrimônio e operação",
     whyRecommended: "Você está exposto sem saber. O UNV Safe protege sua empresa enquanto você cresce."
   },
-  "sales-force": {
-    id: "sales-force",
-    name: "UNV Sales Force",
-    tagline: "Operação de SDR e Fechamento Terceirizada",
-    icon: Zap,
-    color: "bg-orange-600",
-    price: "R$ 6.000",
-    priceType: "/mês + comissão",
-    description: "A UNV opera como seu SDR e/ou Closer, executando vendas diretamente.",
-    deliverables: [
-      "Operação diária de SDR",
-      "Operação de Closer",
-      "Scripts adaptados ao seu negócio",
-      "Métricas e relatórios semanais",
-      "Ajustes mensais de estratégia"
-    ],
-    bestFor: "Empresas R$ 100k a R$ 1M+/mês com leads mas sem time para converter",
-    whyRecommended: "Você tem demanda mas não tem time. O Sales Force executa a conversão por você."
-  },
-  "execution-partnership": {
-    id: "execution-partnership",
-    name: "UNV Execution Partnership",
-    tagline: "Parceria de Execução Intensiva",
-    icon: Handshake,
-    color: "bg-purple-600",
-    price: "R$ 40.000",
-    priceType: "(3 meses)",
-    description: "Imersão de 3 meses com direção comercial intensiva e execução direta.",
-    deliverables: [
-      "Diagnóstico comercial aprofundado",
-      "Direção estratégica semanal",
-      "Implementação direta de processos",
-      "Acompanhamento intensivo do time",
-      "Reestruturação comercial completa",
-      "KPIs e dashboards implementados"
-    ],
-    bestFor: "Empresas R$ 500k+/mês que precisam resolver gargalos comerciais rapidamente",
-    whyRecommended: "Você precisa de resultados rápidos. O Execution Partnership entrega uma intervenção intensiva de 3 meses."
-  }
 };
 
 function getRecommendations(data: FormData): ProductRecommendation[] {
@@ -450,12 +285,12 @@ function getRecommendations(data: FormData): ProductRecommendation[] {
 
   // ===== NOVOS PRODUTOS - Dores específicas =====
   
-  // Sem diretor comercial ou gestor de vendas → Fractional CRO
+  // Sem diretor comercial ou gestor de vendas → Sales Acceleration (direção comercial)
   if (pains.includes("sem-diretor-comercial")) {
     // Verificar faturamento compatível (R$ 50k a R$ 500k) e time (2-8 vendedores)
     if ((revenue === "50k-100k" || revenue === "100k-200k" || revenue === "200k-500k") &&
         (teamSize === "1-3" || teamSize === "4-10")) {
-      addProduct("fractional-cro");
+      addProduct("sales-acceleration");
     }
   }
 
@@ -469,20 +304,20 @@ function getRecommendations(data: FormData): ProductRecommendation[] {
     addProduct("finance");
   }
 
-  // Sobrecarga e solidão → Leadership (substituindo Le Désir que é evento)
+  // Sobrecarga e solidão → Sales Acceleration (direção comercial tira o peso da decisão do dono)
   if (pains.includes("sobrecarga-decisao")) {
-    addProduct("leadership");
+    addProduct("sales-acceleration");
   }
 
-  // Atendimento lento ou time não dá conta → Sales System
+  // Atendimento lento ou time não dá conta → Sales Acceleration (processo e rotina do time)
   if (pains.includes("atendimento-lento")) {
-    addProduct("ai-sales-system");
+    addProduct("sales-acceleration");
   }
 
-  // Baixa conversão com leads existentes → Sales Force
+  // Baixa conversão com leads existentes → Sales Acceleration (gestão e cobrança do time)
   if (pains.includes("conversao-baixa") && 
       (revenue === "100k-200k" || revenue === "200k-500k" || revenue === "500k-1m" || revenue === "acima-1m")) {
-    addProduct("sales-force");
+    addProduct("sales-acceleration");
   }
 
   // ===== PRODUTOS EXISTENTES =====
@@ -497,9 +332,9 @@ function getRecommendations(data: FormData): ProductRecommendation[] {
     addProduct("ads");
   }
 
-  // Leadership - liderança fraca
+  // Liderança fraca → Sales Acceleration (direção comercial que forma e cobra a liderança)
   if (pains.includes("lideranca-fraca")) {
-    addProduct("leadership");
+    addProduct("sales-acceleration");
   }
 
   // Autoridade - falta de autoridade
@@ -510,22 +345,22 @@ function getRecommendations(data: FormData): ProductRecommendation[] {
   // Poucos leads
   if (pains.includes("poucos-leads")) {
     addProduct("ads");
-    // Se tem faturamento bom e precisa de leads, pode usar Sales System para prospecção
+    // Com faturamento bom, a direção comercial garante que o time converta os leads novos
     if (revenue === "100k-200k" || revenue === "200k-500k" || revenue === "500k-1m" || revenue === "acima-1m") {
-      addProduct("ai-sales-system");
+      addProduct("sales-acceleration");
     }
   }
 
   // Empresas grandes com time desalinhado
   if (pains.includes("time-desalinhado") && (teamSize === "11-20" || teamSize === "20+")) {
-    addProduct("sales-ops");
+    addProduct("sales-acceleration");
   }
 
   // Alto faturamento
   if (revenue === "acima-1m" || revenue === "500k-1m") {
-    // Execution Partnership para alto faturamento com urgência
+    // Alto faturamento com urgência → Sales Acceleration
     if (data.urgency === "imediata" || data.urgency === "alta") {
-      addProduct("execution-partnership");
+      addProduct("sales-acceleration");
     }
     if (pains.includes("escala") || teamSize === "20+") {
       addProduct("partners");
@@ -537,52 +372,34 @@ function getRecommendations(data: FormData): ProductRecommendation[] {
 
   // Médio faturamento
   if (revenue === "200k-500k") {
-    if (!data.hasSalesProcess || pains.includes("sem-processo")) {
-      addProduct("control");
-    }
-    if (teamSize === "4-10" || teamSize === "11-20") {
+    if (!data.hasSalesProcess || pains.includes("sem-processo") || pains.includes("inconsistencia") ||
+        pains.includes("sem-diretor-comercial") || teamSize === "4-10" || teamSize === "11-20") {
       addProduct("sales-acceleration");
-    }
-    if (pains.includes("inconsistencia")) {
-      addProduct("control");
-    }
-    // Se não tem diretor comercial e tem time pequeno
-    if (pains.includes("sem-diretor-comercial") || (!data.hasSalesProcess && teamSize === "4-10")) {
-      addProduct("fractional-cro");
     }
   }
 
   // Faturamento intermediário
   if (revenue === "100k-200k") {
-    if (pains.includes("inconsistencia")) {
-      addProduct("control");
-    }
-    if (teamSize !== "sozinho" && teamSize !== "1-3") {
+    if (pains.includes("inconsistencia") || pains.includes("sem-processo") ||
+        (teamSize !== "sozinho" && teamSize !== "1-3")) {
       addProduct("sales-acceleration");
     }
-    if (pains.includes("sem-processo")) {
-      addProduct("core");
-    }
-    // Fractional CRO para quem tem time mas não sabe gerir
+    // Quem tem time pequeno mas não sabe gerir também precisa de direção comercial
     if (teamSize === "1-3" || teamSize === "4-10") {
       if (pains.includes("sem-diretor-comercial") || pains.includes("time-desalinhado")) {
-        addProduct("fractional-cro");
+        addProduct("sales-acceleration");
       }
     }
   }
 
   // Baixo faturamento
   if (revenue === "menos-50k" || revenue === "50k-100k") {
-    addProduct("core");
-    // Se tem dor de atendimento mesmo com baixo faturamento, A.I. pode ajudar
-    if (pains.includes("atendimento-lento")) {
-      addProduct("ai-sales-system");
-    }
+    addProduct("sales-acceleration");
   }
 
-  // Se não tem nenhuma recomendação, adicionar Core como padrão
+  // Se não tem nenhuma recomendação, adicionar Sales Acceleration como padrão
   if (recommendations.length === 0) {
-    addProduct("core");
+    addProduct("sales-acceleration");
   }
 
   return recommendations;
