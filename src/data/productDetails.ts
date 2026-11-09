@@ -46,6 +46,7 @@ export interface ProductDetail {
 }
 
 export const productDetails: Record<string, ProductDetail> = {
+  // Descontinuado: fora do site, mantido só pelo histórico interno (ver discontinuedProductIds).
   core: {
     id: "core",
     name: "UNV Core",
@@ -106,6 +107,7 @@ export const productDetails: Record<string, ProductDetail> = {
       "Quem busca acelerar vendas já consistentes"
     ]
   },
+  // Descontinuado: fora do site, mantido só pelo histórico interno (ver discontinuedProductIds).
   control: {
     id: "control",
     name: "UNV Control",
@@ -230,8 +232,8 @@ export const productDetails: Record<string, ProductDetail> = {
       "Está pronto para investir em processo"
     ],
     notFor: [
-      "Quem não tem time (precisa do Core)",
-      "Quem só quer manter (precisa do Control)",
+      "Quem não tem nenhum vendedor no time",
+      "Quem só quer manter o resultado atual, sem crescer",
       "Quem não tem capacidade de investir R$ 2k/mês"
     ]
   },
@@ -360,6 +362,7 @@ export const productDetails: Record<string, ProductDetail> = {
       "Quem quer solução rápida e barata"
     ]
   },
+  // Descontinuado: fora do site, mantido só pelo histórico interno (ver discontinuedProductIds).
   "sales-ops": {
     id: "sales-ops",
     name: "UNV Sales Ops",
@@ -542,6 +545,7 @@ export const productDetails: Record<string, ProductDetail> = {
       "Quem vende commodity (preço é único diferencial)"
     ]
   },
+  // Descontinuado: fora do site, mantido só pelo histórico interno (ver discontinuedProductIds).
   leadership: {
     id: "leadership",
     name: "UNV Leadership",
@@ -665,6 +669,7 @@ export const productDetails: Record<string, ProductDetail> = {
       "Quem não quer ser confrontado"
     ]
   },
+  // Descontinuado: fora do site, mantido só pelo histórico interno (ver discontinuedProductIds).
   "sales-force": {
     id: "sales-force",
     name: "UNV Sales Force",
@@ -966,6 +971,7 @@ export const productDetails: Record<string, ProductDetail> = {
       "Contencioso pesado (casos tratados à parte)"
     ]
   },
+  // Descontinuado: fora do site, mantido só pelo histórico interno (ver discontinuedProductIds).
   "ai-sales-system": {
     id: "ai-sales-system",
     name: "UNV Sales System",
@@ -1030,6 +1036,7 @@ export const productDetails: Record<string, ProductDetail> = {
       "Quem não tem processo comercial mínimo"
     ]
   },
+  // Descontinuado: fora do site, mantido só pelo histórico interno (ver discontinuedProductIds).
   "fractional-cro": {
     id: "fractional-cro",
     name: "UNV Fractional CRO",
@@ -1098,6 +1105,7 @@ export const productDetails: Record<string, ProductDetail> = {
       "Negócio informal"
     ]
   },
+  // Descontinuado: fora do site, mantido só pelo histórico interno (ver discontinuedProductIds).
   "execution-partnership": {
     id: "execution-partnership",
     name: "UNV Execution Partnership",
@@ -1228,10 +1236,24 @@ export const productDetails: Record<string, ProductDetail> = {
   }
 };
 
+// Produtos descontinuados: não aparecem mais em nenhuma página pública do site.
+// As entradas continuam no objeto acima só porque telas internas (gerador de contrato,
+// proposta do CRM, onboarding) ainda leem o histórico de clientes antigos por esse id.
+export const discontinuedProductIds = [
+  "core",
+  "control",
+  "sales-ops",
+  "sales-force",
+  "ai-sales-system",
+  "fractional-cro",
+  "execution-partnership",
+  "leadership",
+];
+
 export const getProductById = (id: string): ProductDetail | undefined => {
   return productDetails[id];
 };
 
 export const getAllProducts = (): ProductDetail[] => {
-  return Object.values(productDetails);
+  return Object.values(productDetails).filter((p) => !discontinuedProductIds.includes(p.id));
 };
