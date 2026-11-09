@@ -22,8 +22,8 @@ import { Switch } from "@/components/ui/switch";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Loader2, ShieldCheck, Check, Plus, Tag as TagIcon, X, ChevronsUpDown, Clock } from "lucide-react";
 
@@ -118,6 +118,12 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
   const [optOutTargets, setOptOutTargets] = useState<OfficialTemplateLead[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [moveMode, setMoveMode] = useState<string>("next");
+  // Outro funil (Fabrício, 09/11/2026): "assim que fizer o disparo, enviar aquele lead para determinado
+  // funil escolhido por mim". O servidor já move entre funis (move_mode "stage" troca o pipeline_id).
+  const [funis, setFunis] = useState<{ id: string; name: string }[]>([]);
+  const [outroFunilId, setOutroFunilId] = useState<string>("");
+  const [outroEtapaId, setOutroEtapaId] = useState<string>("");
+  const [etapasOutroFunil, setEtapasOutroFunil] = useState<Stage[]>([]);
   const [recentIds, setRecentIds] = useState<Set<string>>(new Set());
   const [skipRecent, setSkipRecent] = useState(true);
   // agente que assume as respostas das conversas deste disparo (fica fixo até desligar no Atendimento)
@@ -207,6 +213,25 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data } = await supabase.from("crm_pipelines").select("id, name").eq("is_active", true).order("sort_order").order("name");
+      setFunis((data || []) as any);
+    })();
+  }, [open]);
+  useEffect(() => {
+    if (!outroFunilId) { setEtapasOutroFunil([]); setOutroEtapaId(""); return; }
+    (async () => {
+      const { data } = await supabase.from("crm_stages")
+        .select("id, name, pipeline_id, sort_order, is_final, final_type")
+        .eq("pipeline_id", outroFunilId).order("sort_order");
+      const abertas = ((data || []) as Stage[]).filter((s) => !s.is_final && !s.final_type);
+      setEtapasOutroFunil(abertas);
+      setOutroEtapaId(abertas[0]?.id || "");
+    })();
+  }, [outroFunilId]);
 
   // limite diário da Meta (contatos únicos com template em 24h) e quanto já foi usado
   useEffect(() => {
@@ -349,6 +374,7 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
   const handleSend = async () => {
     if (sending || !instanceId || !template || !sendable.length) return;
     if (values.some((v) => !v.trim())) { toast.error("Preencha todas as variáveis do template"); return; }
+    if (moveMode === "outro" && !outroEtapaId) { toast.error("Escolha o funil e a etapa pra onde o lead vai depois do envio"); return; }
     setSending(true);
 
     const bodyPreview = render(body, values, { id: null, name: "{primeiro_nome}", phone: null }, staff?.name || "");
@@ -364,7 +390,7 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
       created_by_name: staff?.name || null,
       source: conversationId ? "atendimento" : leads?.length ? "lead" : "negocios",
       move_mode: moveMode === "next" || moveMode === "none" ? moveMode : "stage",
-      move_stage_id: moveMode === "next" || moveMode === "none" ? null : moveMode,
+      move_stage_id: moveMode === "next" || moveMode === "none" ? null : moveMode === "outro" ? outroEtapaId : moveMode,
       tag_name: TAG_NAME,
       agent_id: agentId === "none" ? null : agentId,
       extra_tag_ids: extraTags,
@@ -460,14 +486,11 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
             {instances.length > 1 && (
               <div className="space-y-1">
                 <Label>Número</Label>
-                <Select value={instanceId} onValueChange={setInstanceId}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {instances.map((i) => (
-                      <SelectItem key={i.id} value={i.id}>{i.display_name || "API Oficial"} {i.phone_number ? `· ${i.phone_number}` : ""}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={instanceId}
+                  onValueChange={setInstanceId}
+                  options={instances.map((i) => ({ value: i.id, label: `${i.display_name || "API Oficial"}${i.phone_number ? ` · ${i.phone_number}` : ""}` }))}
+                />
               </div>
             )}
 
@@ -523,16 +546,41 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
             {targets.some((t) => t.id) && (
               <div className="space-y-1">
                 <Label>Depois de enviar, mover o lead para</Label>
-                <Select value={moveMode} onValueChange={setMoveMode}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="next">Próxima etapa{nextExample ? ` (${nextExample})` : ""}</SelectItem>
-                    <SelectItem value="none">Não mover</SelectItem>
-                    {mainStages.filter((s) => !s.is_final && !s.final_type).map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={moveMode}
+                  onValueChange={setMoveMode}
+                  options={[
+                    { value: "next", label: `Próxima etapa${nextExample ? ` (${nextExample})` : ""}` },
+                    { value: "none", label: "Não mover" },
+                    ...mainStages.filter((s) => !s.is_final && !s.final_type).map((s) => ({ value: s.id, label: s.name })),
+                    { value: "outro", label: "Outro funil..." },
+                  ]}
+                />
+                {moveMode === "outro" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    <div className="space-y-1">
+                      <span className="text-[11px] text-muted-foreground">Funil</span>
+                      <SearchableSelect
+                        value={outroFunilId}
+                        onValueChange={setOutroFunilId}
+                        placeholder="Escolha o funil"
+                        emptyMessage="Nenhum funil encontrado."
+                        options={funis.map((f) => ({ value: f.id, label: f.name }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[11px] text-muted-foreground">Etapa</span>
+                      <SearchableSelect
+                        value={outroEtapaId}
+                        onValueChange={setOutroEtapaId}
+                        placeholder={outroFunilId ? "Escolha a etapa" : "Escolha o funil antes"}
+                        emptyMessage="Nenhuma etapa aberta neste funil."
+                        disabled={!outroFunilId}
+                        options={etapasOutroFunil.map((s) => ({ value: s.id, label: s.name }))}
+                      />
+                    </div>
+                  </div>
+                )}
                 <p className="text-[11px] text-muted-foreground">
                   Todo lead enviado recebe a etiqueta "{TAG_NAME}". Se a Meta não entregar, o lead volta pra etapa de antes.
                 </p>
@@ -606,15 +654,11 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
             {agents.length > 0 && (
               <div className="space-y-1">
                 <Label>Agente de IA nas respostas</Label>
-                <Select value={agentId} onValueChange={setAgentId}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Não fixar (segue o agente padrão do número)</SelectItem>
-                    {agents.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={agentId}
+                  onValueChange={setAgentId}
+                  options={[{ value: "none", label: "Não fixar (segue o agente padrão do número)" }, ...agents.map((a) => ({ value: a.id, label: a.name }))]}
+                />
                 <p className="text-[11px] text-muted-foreground">
                   O agente escolhido fica fixo nas conversas deste disparo e só ele responde, até alguém desligar no Atendimento.
                   Se o lead recusar ou pedir pra parar, ele sai sozinho.
