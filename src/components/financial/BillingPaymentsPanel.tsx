@@ -57,6 +57,7 @@ const methodIcons: Record<string, React.ElementType> = {
 const methodLabels: Record<string, string> = {
   credit_card: "Cartão",
   pix: "PIX",
+  pix_automatico: "Pix Automático",
   boleto: "Boleto",
 };
 
