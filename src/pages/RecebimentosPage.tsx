@@ -35,7 +35,7 @@ const methodIcons: Record<string, React.ElementType> = {
   credit_card: CreditCard, pix: QrCode, boleto: Barcode,
 };
 const methodLabels: Record<string, string> = {
-  credit_card: "Cartão", pix: "PIX", boleto: "Boleto",
+  credit_card: "Cartão", pix: "PIX", pix_automatico: "Pix Automático", boleto: "Boleto",
 };
 
 export default function RecebimentosPage() {

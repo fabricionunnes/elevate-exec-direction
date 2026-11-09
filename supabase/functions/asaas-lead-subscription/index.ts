@@ -115,6 +115,54 @@ Deno.serve(async (req) => {
       customerId = created.id;
     }
 
+    // 2a) Pix Automático (09/11/2026): o lead paga a 1ª mensalidade por um QR Code que também autoriza
+    // os débitos mensais seguintes no banco dele. O Asaas cria a assinatura sozinho a partir do mês seguinte.
+    if (body.modo === "pix_automatico") {
+      const primeira = nextDueDate(dueDay);
+      const d = new Date(`${primeira}T12:00:00Z`); d.setUTCMonth(d.getUTCMonth() + 1);
+      const startDate = d.toISOString().slice(0, 10);
+      const fimDoVencimento = new Date(`${primeira}T23:59:00-03:00`).getTime();
+      const expirationSeconds = Math.round(Math.min(30 * 86400, Math.max(2 * 86400, (fimDoVencimento - Date.now()) / 1000)));
+      const valor = amountCents / 100;
+      const { data: row } = await supabase.from("crm_lead_payments").insert({
+        lead_id, amount_cents: amountCents, description, provider,
+        billing_type: "PIX_AUTOMATICO", recurring: true, due_day: dueDay,
+        provider_ref: null, url: "", status: "pending", receivable_id: null,
+      }).select("id").single();
+      const contractId = `ld${String(row?.id || crypto.randomUUID()).replace(/-/g, "")}`.slice(0, 35);
+      let auth: any;
+      try {
+        auth = await asaas(ASAAS_KEY, "/pix/automatic/authorizations", "POST", {
+          customerId, frequency: "MONTHLY", contractId, startDate, value: valor,
+          description: description.slice(0, 35), paymentCreationMode: "SUBSCRIPTION",
+          retryPolicy: "ALLOW_THREE_IN_SEVEN_DAYS",
+          immediateQrCode: { originalValue: valor, expirationSeconds, description: description.slice(0, 35) },
+        });
+      } catch (e) {
+        if (row?.id) await supabase.from("crm_lead_payments").delete().eq("id", row.id);
+        throw e;
+      }
+      const qrPayload = auth?.immediateQrCode?.payload || auth?.payload || null;
+      const qrImage = auth?.immediateQrCode?.encodedImage || auth?.encodedImage || null;
+      const link = `https://unvholdings.com.br/#/pix-automatico/${auth.id}`;
+      await supabase.from("asaas_pix_automatico").upsert({
+        id: auth.id, origem: "lead", lead_id, lead_payment_id: row?.id || null, conta_crm: conta,
+        customer_id: customerId, subscription_id: auth.subscriptionId || null, contract_id: contractId,
+        valor_cents: amountCents, frequencia: "MONTHLY", primeira_cobranca: primeira, start_date: startDate,
+        descricao: description, cliente_nome: lead.name || null, status: auth.status || "CREATED",
+        qr_payload: qrPayload, qr_image: qrImage,
+        qr_expira_em: new Date(Date.now() + expirationSeconds * 1000).toISOString(),
+        ultimo_evento: "criada", atualizado_em: new Date().toISOString(),
+      });
+      // provider_ref = autorização: o webhook casa o 1º pagamento por pixAutomaticAuthorizationId
+      if (row?.id) await supabase.from("crm_lead_payments").update({ provider_ref: auth.id, url: link }).eq("id", row.id);
+      return j({
+        ok: true, id: row?.id, url: link, pix_automatico: true, authorization_id: auth.id, subscription_id: auth.subscriptionId || null,
+        next_due: primeira, start_date: startDate, conta: nomeConta,
+        pix_auto: { id: auth.id, status: auth.status || "CREATED", payload: qrPayload, image: qrImage, link, start_date: startDate, primeira_cobranca: primeira },
+      });
+    }
+
     // 2) Assinatura mensal via PIX, vencimento no dia escolhido
     const sub = await asaas(ASAAS_KEY, "/subscriptions", "POST", {
       customer: customerId, billingType: "PIX", value: amountCents / 100,

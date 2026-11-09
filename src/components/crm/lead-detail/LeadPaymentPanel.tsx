@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { PixAutomaticoQrDialog, BadgePixAutomatico, linkPixAutomatico, type PixAutomaticoInfo } from "@/components/financial/PixAutomaticoQrDialog";
 import { Switch } from "@/components/ui/switch";
-import { CreditCard, Copy, Loader2, ExternalLink, RefreshCw, Trash2 } from "lucide-react";
+import { CreditCard, Copy, Loader2, ExternalLink, RefreshCw, Trash2, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 
@@ -30,7 +31,7 @@ type TmbProduto = { produto_id: number; nome: string; descricao: string | null; 
 interface Payment {
   id: string; amount_cents: number; description: string | null; status: string;
   url: string | null; installments: number | null; created_at: string; paid_at: string | null;
-  provider: string; recurring: boolean; due_day: number | null;
+  provider: string; recurring: boolean; due_day: number | null; billing_type?: string | null; provider_ref?: string | null;
 }
 
 const fmt = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -57,6 +58,10 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
   const [tmbSim, setTmbSim] = useState<{ modo: string; fator: number; origem: string; principal_cents: number; repasse_estimado_cents: number; taxa_admin: number; taxa_operacao_cents: number } | null>(null);
   const [installments, setInstallments] = useState("12");
   const [dueDay, setDueDay] = useState("5");
+  // Asaas: Pix comum (link mensal) ou Pix Automático (cliente autoriza o débito no banco), 09/11/2026
+  const [modoAsaas, setModoAsaas] = useState<"pix" | "pix_automatico">("pix");
+  const [qrAberto, setQrAberto] = useState<PixAutomaticoInfo | null>(null);
+  const [pixAuto, setPixAuto] = useState<Record<string, any>>({});
   const [description, setDescription] = useState("");
   const [generating, setGenerating] = useState(false);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -130,9 +135,17 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
   const load = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase.from("crm_lead_payments")
-      .select("id, amount_cents, description, status, url, installments, created_at, paid_at, provider, recurring, due_day")
+      .select("id, amount_cents, description, status, url, installments, created_at, paid_at, provider, recurring, due_day, billing_type, provider_ref")
       .eq("lead_id", leadId).order("created_at", { ascending: false });
     setPayments((data as Payment[]) || []);
+    const autIds = ((data as any[]) || []).filter((p) => p.billing_type === "PIX_AUTOMATICO" && p.provider_ref).map((p) => p.provider_ref);
+    if (autIds.length) {
+      const { data: pas } = await (supabase as any).from("asaas_pix_automatico")
+        .select("id, status, qr_payload, qr_image, primeira_cobranca, start_date, valor_cents").in("id", autIds);
+      const m: Record<string, any> = {};
+      for (const pa of (pas as any[]) || []) m[pa.id] = pa;
+      setPixAuto(m);
+    } else setPixAuto({});
     setLoading(false);
   }, [leadId]);
   useEffect(() => { load(); }, [load]);
@@ -157,7 +170,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
         : provider === "tmb" ? "tmb-create-payment"
         : "mercadopago-create-payment";
       const payload = isAsaas(provider)
-        ? { lead_id: leadId, account: provider === "asaas_social" ? "social" : "principal", amount_cents: cents, due_day: Number(dueDay), description: description || `Assinatura mensal — ${leadName}` }
+        ? { lead_id: leadId, account: provider === "asaas_social" ? "social" : "principal", amount_cents: cents, due_day: Number(dueDay), description: description || `Assinatura mensal — ${leadName}`, ...(modoAsaas === "pix_automatico" ? { modo: "pix_automatico" } : {}) }
         : provider === "dompagamentos"
         ? { lead_id: leadId, amount_cents: cents, installments: Number(installments), interest_free_installments: Number(installments), description: description || `Pagamento — ${leadName}` }
         : provider === "tmb"
@@ -165,6 +178,12 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
         : { lead_id: leadId, amount_cents: cents, installments: Number(installments), description: description || `Pagamento — ${leadName}` };
       const { data, error } = await supabase.functions.invoke(fn, { body: payload });
       if (error || !data?.ok) { toast.error(data?.error || error?.message || "Falha ao gerar link"); return; }
+      if (data.pix_auto) {
+        toast.success("Pix Automático criado! Mande o QR Code pro cliente autorizar.");
+        setQrAberto(data.pix_auto);
+        load();
+        return;
+      }
       toast.success("Link gerado!");
       if (data.url) { navigator.clipboard.writeText(data.url); toast.success("Link copiado"); }
       load();
@@ -229,24 +248,14 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
           {isAsaas(provider) ? (
             <div>
               <Label className="text-xs">Vencimento (todo dia)</Label>
-              <Select value={dueDay} onValueChange={setDueDay}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[1, 5, 10, 15, 20, 25].map((n) => <SelectItem key={n} value={String(n)}>Dia {n}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SearchableSelect value={dueDay} onValueChange={setDueDay}
+                options={[1, 5, 10, 15, 20, 25].map((n) => ({ value: String(n), label: `Dia ${n}` }))} />
             </div>
           ) : (
             <div>
               <Label className="text-xs">{provider === "tmb" ? "Parcelas no boleto" : "Parcelas sem juros"}</Label>
-              <Select value={installments} onValueChange={setInstallments}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: provider === "tmb" ? 24 : 12 }, (_, i) => i + 1).map((n) => (
-                    <SelectItem key={n} value={String(n)}>{n}x{n === 1 ? " (à vista)" : provider === "tmb" ? " no boleto" : " sem juros"}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect value={installments} onValueChange={setInstallments}
+                options={Array.from({ length: provider === "tmb" ? 24 : 12 }, (_, i) => i + 1).map((n) => ({ value: String(n), label: `${n}x${n === 1 ? " (à vista)" : provider === "tmb" ? " no boleto" : " sem juros"}` }))} />
             </div>
           )}
         </div>
@@ -266,14 +275,9 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
                 <p className="text-xs text-destructive mt-1">{tmbErro}</p>
               ) : (
                 <div className="flex items-center gap-2 mt-1">
-                  <Select value={tmbProduto} onValueChange={setTmbProduto} disabled={tmbCarregando}>
-                    <SelectTrigger><SelectValue placeholder={tmbCarregando ? "Carregando produtos..." : "Escolha o produto"} /></SelectTrigger>
-                    <SelectContent>
-                      {tmbProdutos.map((p) => (
-                        <SelectItem key={p.produto_id} value={String(p.produto_id)}>{p.nome}{p.valor ? ` · ${p.valor}` : ""}{String(p.produto_id) === tmbPadrao ? " (padrão)" : ""}{p.ativo ? "" : " · inativo na TMB"}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect value={tmbProduto} onValueChange={setTmbProduto} disabled={tmbCarregando}
+                    placeholder={tmbCarregando ? "Carregando produtos..." : "Escolha o produto"}
+                    options={tmbProdutos.map((p) => ({ value: String(p.produto_id), label: `${p.nome}${p.valor ? ` · ${p.valor}` : ""}${String(p.produto_id) === tmbPadrao ? " (padrão)" : ""}${p.ativo ? "" : " · inativo na TMB"}` }))} />
                   {isMaster && tmbProduto && tmbProduto !== tmbPadrao && (
                     <Button type="button" variant="outline" size="sm" onClick={salvarTmbPadrao} title="Usar este produto como padrão pra todo o time">Padrão</Button>
                   )}
@@ -297,7 +301,21 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
           </div>
         )}
         {isAsaas(provider) && (
-          <p className="text-[11px] text-muted-foreground">Cria uma assinatura mensal via PIX na conta {provider === "asaas_social" ? "Asaas UNV Social" : "Asaas principal"}. Exige o CPF/CNPJ preenchido no lead.</p>
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              {([["pix", "Pix mensal", "Link de pagamento todo mês"], ["pix_automatico", "Pix Automático", "Cliente autoriza o débito"]] as const).map(([k, nome, sub]) => (
+                <button key={k} type="button" onClick={() => setModoAsaas(k)}
+                  className={`w-full rounded-md border p-2 text-xs text-left ${modoAsaas === k ? "border-primary bg-primary/5 font-medium" : "border-border"}`}>
+                  {nome}<br /><span className="text-[10px] text-muted-foreground">{sub}</span>
+                </button>
+              ))}
+            </div>
+            {modoAsaas === "pix_automatico" ? (
+              <p className="text-[11px] text-muted-foreground">O cliente paga a 1ª mensalidade por um QR Code e, no mesmo passo, autoriza no banco dele o débito automático todo dia {dueDay}, a partir do mês seguinte. Conta {provider === "asaas_social" ? "Asaas UNV Social" : "Asaas principal"}. Exige o CPF/CNPJ preenchido no lead.</p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">Cria uma assinatura mensal via PIX na conta {provider === "asaas_social" ? "Asaas UNV Social" : "Asaas principal"}. Exige o CPF/CNPJ preenchido no lead.</p>
+            )}
+          </div>
         )}
         <div>
           <Label className="text-xs">Descrição (opcional)</Label>
@@ -305,7 +323,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
         </div>
         <Button onClick={generate} disabled={generating || enabledProviders.length === 0 || enabled[provider] === false} className="w-full gap-2">
           {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-          Gerar link de pagamento
+          {isAsaas(provider) && modoAsaas === "pix_automatico" ? "Gerar Pix Automático" : "Gerar link de pagamento"}
         </Button>
       </div>
 
@@ -329,11 +347,20 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
                       <span className="font-semibold text-sm">{fmt(p.amount_cents)}</span>
                       <Badge variant={st.variant} className="text-[10px]">{st.label}</Badge>
                       {p.installments && p.installments > 1 && <span className="text-[11px] text-muted-foreground">{p.installments}x</span>}
-                      <span className="text-[10px] text-muted-foreground">{p.provider === "asaas" ? `PIX · mensal (dia ${p.due_day})` : p.provider === "asaas_social" ? `PIX · mensal · UNV Social (dia ${p.due_day})` : p.provider === "tmb" ? "Boleto parcelado (TMB)" : "Cartão"}</span>
+                      <span className="text-[10px] text-muted-foreground">{p.billing_type === "PIX_AUTOMATICO" ? `Pix Automático${p.provider === "asaas_social" ? " · UNV Social" : ""} (dia ${p.due_day})` : p.provider === "asaas" ? `PIX · mensal (dia ${p.due_day})` : p.provider === "asaas_social" ? `PIX · mensal · UNV Social (dia ${p.due_day})` : p.provider === "tmb" ? "Boleto parcelado (TMB)" : "Cartão"}</span>
                     </div>
+                    {p.billing_type === "PIX_AUTOMATICO" && p.provider_ref && pixAuto[p.provider_ref] && (
+                      <div className="mt-1"><BadgePixAutomatico status={pixAuto[p.provider_ref].status} /></div>
+                    )}
                     <p className="text-[11px] text-muted-foreground truncate">{p.description}</p>
                     <p className="text-[10px] text-muted-foreground">{new Date(p.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}{p.paid_at ? ` · pago em ${new Date(p.paid_at).toLocaleDateString("pt-BR")}` : ""}</p>
                   </div>
+                  {p.billing_type === "PIX_AUTOMATICO" && p.provider_ref && pixAuto[p.provider_ref] && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Ver QR Code"
+                      onClick={() => { const pa = pixAuto[p.provider_ref!]; setQrAberto({ id: pa.id, status: pa.status, payload: pa.qr_payload, image: pa.qr_image, link: linkPixAutomatico(pa.id), primeira_cobranca: pa.primeira_cobranca, start_date: pa.start_date, valor_cents: pa.valor_cents }); }}>
+                      <QrCode className="h-4 w-4" />
+                    </Button>
+                  )}
                   {p.url && (
                     <>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copy(p.url!)}><Copy className="h-4 w-4" /></Button>
@@ -349,6 +376,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
           </div>
         )}
       </div>
+      <PixAutomaticoQrDialog info={qrAberto} onOpenChange={(o) => { if (!o) setQrAberto(null); }} />
     </div>
   );
 }
