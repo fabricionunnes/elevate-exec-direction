@@ -23,6 +23,8 @@ const ETAPA = {
   saiuGrupo: "bd85787b-a72c-4aec-996c-48c81ccc881b",
   aplicou: "ef2c955e-7b99-4454-993d-887d33157dc1",
   agendou: "7cdef1c1-9a3a-40f6-9ce8-482abc4b1d2a",
+  forecast: "85325e26-8eec-403e-bfd2-1b2af60daf4a",
+  ganho: "1eb375ec-b150-4c69-ad17-7272f765913e",
   perdido: "ff1f5675-cd00-493c-9d64-b066a0e87b79",
 };
 const MOTIVO_FORA_ICP = "eb97a200-bd96-4e92-8489-79b417e58198";
@@ -332,6 +334,159 @@ async function entrouLive(sb: SB, body: Record<string, unknown>) {
 }
 
 // ── grupo ───────────────────────────────────────────────────────────────────
+// ── garantir a vaga (Pix do 1º mês) ─────────────────────────────────────────
+// Página /black/garantir. Cobra o 1º mês (R$ 2.000) por Pix no Asaas principal (ASAAS_API_KEY) e
+// registra em crm_lead_payments com provider_ref = id do pagamento: o asaas-webhook já cria o recebível
+// pago e credita o banco quando o Pix cai. Aqui só cuidamos do funil (Forecast → Ganho) e do placar.
+const ASAAS = "https://api.asaas.com/v3";
+const VALOR_BLACK = 2000;
+const AVISO_PLACAR = "5531989840003"; // WhatsApp do Fabrício: cada Pix pago vira aviso pro placar da live
+const DONO_FABRICIO = "b1a918b1-8776-4962-898e-5d97c7cc80c1";
+
+async function asaas(path: string, method = "GET", body?: unknown) {
+  const r = await fetch(`${ASAAS}${path}`, {
+    method, headers: { "Content-Type": "application/json", access_token: Deno.env.get("ASAAS_API_KEY") || "" },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d?.errors?.[0]?.description || `Asaas HTTP ${r.status}`);
+  return d;
+}
+
+const hojeBR = () => ymdBR(Date.now());
+
+async function garantir(sb: SB, body: Record<string, unknown>) {
+  const nome = String(body.nome || "").trim().slice(0, 120);
+  const empresa = String(body.empresa || "").trim().slice(0, 120);
+  const cidade = String(body.cidade || "").trim().slice(0, 80);
+  const email = String(body.email || "").trim().slice(0, 120);
+  const doc = String(body.documento || "").replace(/\D/g, "");
+  const k = chaveTel(body.telefone);
+  if (nome.length < 2 || !empresa || !k) return json({ error: "dados_incompletos" }, 400);
+  if (doc.length !== 11 && doc.length !== 14) return json({ error: "documento_invalido" }, 400);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: "email_invalido" }, 400);
+  const tel = String(body.telefone).replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+
+  // Pix ainda válido do mesmo telefone: devolve o mesmo, não cria cobrança em dobro
+  const { data: aberta } = await sb.from("black_garantias").select("id, lead_id, status, pix_payload, pix_image, asaas_payment_id")
+    .eq("telefone", tel).in("status", ["pendente", "pago"]).gte("criado_em", new Date(Date.now() - 6 * 3600000).toISOString())
+    .order("criado_em", { ascending: false }).limit(1).maybeSingle();
+  if (aberta) return json({ ok: true, id: aberta.id, lead_id: aberta.lead_id, status: aberta.status, pix: { payload: aberta.pix_payload, image: aberta.pix_image } });
+
+  // Lead do funil Black Friday (o mesmo da base, se o telefone bater)
+  const { data: cands } = await sb.from("crm_leads").select("id, phone, stage_id, notes").eq("pipeline_id", PIPELINE)
+    .ilike("phone", `%${k.slice(-8)}`).order("created_at", { ascending: true }).limit(10);
+  let lead: any = (cands || []).find((l: any) => chaveTel(l.phone) === k);
+  if (!lead) {
+    const { data: novo, error } = await sb.from("crm_leads").insert({
+      name: nome, phone: tel, email, company: empresa, city: cidade || null, document: doc,
+      pipeline_id: PIPELINE, stage_id: ETAPA.forecast, owner_staff_id: DONO_FABRICIO, opportunity_value: VALOR_BLACK,
+      entered_pipeline_at: new Date().toISOString(), urgency: "high", notes: "Gerou o Pix da Black UNV pela página /black/garantir",
+    }).select("id, phone, stage_id, notes").single();
+    if (error || !novo) return json({ error: "falha_lead" }, 500);
+    lead = novo;
+  } else {
+    const upd: Record<string, unknown> = { name: nome, email, company: empresa, document: doc, opportunity_value: VALOR_BLACK };
+    if (cidade) upd.city = cidade;
+    const { data: etapas } = await sb.from("crm_stages").select("id, sort_order").eq("pipeline_id", PIPELINE);
+    const ordem = new Map((etapas || []).map((e: any) => [e.id, e.sort_order]));
+    if ((ordem.get(lead.stage_id) ?? 0) < (ordem.get(ETAPA.forecast) ?? 9) || lead.stage_id === ETAPA.perdido) {
+      Object.assign(upd, { stage_id: ETAPA.forecast, closed_at: null, loss_reason_id: null });
+    }
+    await sb.from("crm_leads").update(upd).eq("id", lead.id);
+  }
+
+  try {
+    let customer: string | null = null;
+    const achou = await asaas(`/customers?cpfCnpj=${doc}`);
+    if (achou?.data?.length) customer = achou.data[0].id;
+    if (!customer) customer = (await asaas("/customers", "POST", { name: doc.length === 14 ? empresa : nome, cpfCnpj: doc, email, mobilePhone: tel, company: empresa })).id;
+    const { data: g } = await sb.from("black_garantias").insert({
+      lead_id: lead.id, asaas_customer_id: customer, nome, empresa, cidade, telefone: tel, email, documento: doc, valor_cents: VALOR_BLACK * 100,
+    }).select("id").single();
+    const pag = await asaas("/payments", "POST", {
+      customer, billingType: "PIX", value: VALOR_BLACK, dueDate: hojeBR(),
+      description: `Black UNV: 1º mês do projeto comercial completo (${empresa})`.slice(0, 240),
+      externalReference: `black:${g?.id}`,
+    });
+    const qr = await asaas(`/payments/${pag.id}/pixQrCode`);
+    const { data: lp } = await sb.from("crm_lead_payments").insert({
+      lead_id: lead.id, amount_cents: VALOR_BLACK * 100, description: `Black UNV · 1º mês · ${empresa}`, provider: "asaas",
+      provider_ref: String(pag.id), url: pag.invoiceUrl || "", status: "pending", billing_type: "PIX", recurring: false, payer_email: email,
+    }).select("id").single();
+    await sb.from("black_garantias").update({
+      asaas_payment_id: String(pag.id), lead_payment_id: lp?.id || null, pix_payload: qr?.payload || null,
+      pix_image: qr?.encodedImage || null, pix_expira_em: qr?.expirationDate ? new Date(qr.expirationDate).toISOString() : null,
+    }).eq("id", g?.id);
+    return json({ ok: true, id: g?.id, lead_id: lead.id, status: "pendente", pix: { payload: qr?.payload || null, image: qr?.encodedImage || null }, fatura: pag.invoiceUrl || null });
+  } catch (e) {
+    console.error("[black-agenda] garantir", e);
+    return json({ error: "falha_cobranca", detalhe: String((e as Error).message || e).slice(0, 160) }, 502);
+  }
+}
+
+/** Confere no Asaas e, se pagou, fecha o lead e avisa o placar. Idempotente (pago_em). */
+async function conferirGarantia(sb: SB, g: any) {
+  if (!g?.asaas_payment_id || g.status !== "pendente") return g?.status || "pendente";
+  const p = await asaas(`/payments/${g.asaas_payment_id}`).catch(() => null);
+  const st = String(p?.status || "");
+  if (!["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"].includes(st)) {
+    if (["OVERDUE", "DELETED", "REFUNDED"].includes(st) && Date.now() - Date.parse(g.criado_em) > 24 * 3600000) {
+      await sb.from("black_garantias").update({ status: "expirado" }).eq("id", g.id).eq("status", "pendente");
+    }
+    return "pendente";
+  }
+  const { data: trava } = await sb.from("black_garantias").update({ status: "pago", pago_em: new Date().toISOString() })
+    .eq("id", g.id).eq("status", "pendente").select("id");
+  if (!trava?.length) return "pago";
+  await sb.from("crm_leads").update({
+    stage_id: ETAPA.ganho, opportunity_value: VALOR_BLACK, closed_at: new Date().toISOString(),
+    owner_staff_id: CLOSER_STAFF, closer_staff_id: CLOSER_STAFF,
+  }).eq("id", g.lead_id);
+  try {
+    const { count } = await sb.from("black_garantias").select("id", { count: "exact", head: true }).eq("status", "pago");
+    const { data: inst } = await sb.from("whatsapp_instances").select("instance_name, api_url, api_key").eq("instance_name", INSTANCIA).maybeSingle();
+    if (inst?.api_url) {
+      const texto = `*PIX PAGO NA BLACK UNV*\n\n${g.empresa}${g.cidade ? `, de ${g.cidade}` : ""}\n${g.nome}\n\nGarantidas até agora: ${count ?? "?"}`;
+      await fetch(`${String(inst.api_url).replace(/\/+$/, "")}/message/sendText/${inst.instance_name}`, {
+        method: "POST", headers: { apikey: inst.api_key, "Content-Type": "application/json" },
+        body: JSON.stringify({ number: AVISO_PLACAR, text: texto }),
+      });
+      await sb.from("black_garantias").update({ avisado_em: new Date().toISOString() }).eq("id", g.id);
+    }
+  } catch (e) { console.error("[black-agenda] aviso placar", e); }
+  return "pago";
+}
+
+async function garantiaStatus(sb: SB, body: Record<string, unknown>) {
+  const id = String(body.id || "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ error: "id_invalido" }, 400);
+  const { data: g } = await sb.from("black_garantias").select("*").eq("id", id).maybeSingle();
+  if (!g) return json({ error: "nao_encontrado" }, 404);
+  const status = await conferirGarantia(sb, g);
+  return json({ ok: true, status });
+}
+
+/** Cancela um Pix ainda não pago (dado errado na página ou teste): apaga no Asaas e marca cancelado. */
+async function cancelarGarantia(sb: SB, body: Record<string, unknown>) {
+  const id = String(body.id || "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ error: "id_invalido" }, 400);
+  const { data: g } = await sb.from("black_garantias").select("*").eq("id", id).maybeSingle();
+  if (!g) return json({ error: "nao_encontrado" }, 404);
+  if ((await conferirGarantia(sb, g)) === "pago") return json({ error: "ja_pago" }, 409);
+  if (g.asaas_payment_id) await asaas(`/payments/${g.asaas_payment_id}`, "DELETE").catch(() => null);
+  await sb.from("black_garantias").update({ status: "cancelado" }).eq("id", id).eq("status", "pendente");
+  if (g.lead_payment_id) await sb.from("crm_lead_payments").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", g.lead_payment_id).neq("status", "paid");
+  return json({ ok: true, status: "cancelado" });
+}
+
+/** No cron: confere os Pix gerados nas últimas 48h que ainda não foram pagos (página fechada antes de pagar). */
+async function conferirPendentes(sb: SB) {
+  const { data } = await sb.from("black_garantias").select("*").eq("status", "pendente")
+    .gte("criado_em", new Date(Date.now() - 48 * 3600000).toISOString()).not("asaas_payment_id", "is", null).limit(20);
+  for (const g of data || []) await conferirGarantia(sb, g);
+}
+
 // ── mensagens agendadas do grupo ────────────────────────────────────────────
 // A sequência aprovada pelo Fabrício (06/11) fica em black_grupo_agenda. O cron de 2 min manda o que
 // venceu. Texto com [CAMPO] em aberto nunca sai; mensagem que perdeu a hora por mais de 60 min também
@@ -487,9 +642,13 @@ Deno.serve(async (req) => {
       case "grupo-sync": {
         // a agenda do grupo não pode depender da leitura de participantes dar certo
         try { await enviarAgendadas(sb); } catch (e) { console.error("[black-agenda] agenda", e); }
+        try { await conferirPendentes(sb); } catch (e) { console.error("[black-agenda] pix pendentes", e); }
         return await grupoSync(sb);
       }
       case "entrou-live": return await entrouLive(sb, body);
+      case "garantir": return await garantir(sb, body);
+      case "garantia-status": return await garantiaStatus(sb, body);
+      case "cancelar-garantia": return await cancelarGarantia(sb, body);
       default: return json({ error: "acao_invalida" }, 400);
     }
   } catch (e) {
