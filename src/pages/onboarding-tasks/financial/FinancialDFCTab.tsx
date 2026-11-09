@@ -9,6 +9,7 @@ import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { FinCategory, isVariableCategory, dfcSectionOf, monthKey, monthRange } from "./financeClassification";
 
 interface Props {
@@ -48,6 +49,11 @@ export default function FinancialDFCTab({ invoices, payables, banks, formatCurre
   const [overrides, setOverrides] = useState<Map<string, string>>(new Map());
   const [catDialog, setCatDialog] = useState<{ open: boolean; label: string; catType: "receita" | "despesa"; items: DfcItem[] }>({ open: false, label: "", catType: "despesa", items: [] });
   const [dialogCatId, setDialogCatId] = useState("");
+  // centro de custo (Fabrício 09/11: "quero poder editar pra pôr categoria e centro de custo")
+  // "" = manter o atual; "none" = tirar o centro de custo
+  const [dialogCcId, setDialogCcId] = useState("");
+  const [costCenters, setCostCenters] = useState<{ id: string; name: string; is_active: boolean | null; sort_order: number | null }[]>([]);
+  const [ccOverrides, setCcOverrides] = useState<Map<string, string | null>>(new Map());
   const [saving, setSaving] = useState(false);
 
   const now = new Date();
@@ -64,7 +70,9 @@ export default function FinancialDFCTab({ invoices, payables, banks, formatCurre
       supabase.from("staff_financial_categories").select("*"),
       (supabase as any).from("financial_categories").select("id, name, type"),
       supabase.from("staff_financial_entries").select("*"),
-    ]).then(([catRes, legacyRes, entRes]) => {
+      (supabase as any).from("staff_financial_cost_centers").select("id, name, is_active, sort_order"),
+    ]).then(([catRes, legacyRes, entRes, ccRes]) => {
+      if (ccRes?.data) setCostCenters(ccRes.data);
       if (catRes.data) setStaffCats(catRes.data as any);
       if (legacyRes.data) setLegacyCats(legacyRes.data);
       if (entRes.data) setEntries(entRes.data as any);
@@ -282,11 +290,15 @@ export default function FinancialDFCTab({ invoices, payables, banks, formatCurre
   const openCategorize = (row: DfcRow) => {
     if (!row.items?.length || !row.catType) return;
     setDialogCatId("");
+    setDialogCcId("");
     setCatDialog({ open: true, label: row.label, catType: row.catType, items: row.items });
   };
 
   const applyCategory = async () => {
-    if (!dialogCatId) { toast.error("Escolha uma categoria"); return; }
+    if (!dialogCatId && !dialogCcId) { toast.error("Escolha a categoria, o centro de custo ou os dois"); return; }
+    const payload: Record<string, string | null> = {};
+    if (dialogCatId) payload.category_id = dialogCatId;
+    if (dialogCcId) payload.cost_center_id = dialogCcId === "none" ? null : dialogCcId;
     setSaving(true);
     try {
       const bySource = new Map<string, string[]>();
@@ -297,16 +309,22 @@ export default function FinancialDFCTab({ invoices, payables, banks, formatCurre
       for (const [table, ids] of bySource.entries()) {
         for (let i = 0; i < ids.length; i += 200) {
           const chunk = ids.slice(i, i + 200);
-          const { error } = await (supabase as any).from(table).update({ category_id: dialogCatId }).in("id", chunk);
+          const { error } = await (supabase as any).from(table).update(payload).in("id", chunk);
           if (error) throw error;
         }
       }
-      setOverrides((prev) => {
+      if (dialogCatId) setOverrides((prev) => {
         const next = new Map(prev);
         catDialog.items.forEach((it) => next.set(`${it.source}:${it.id}`, dialogCatId));
         return next;
       });
-      toast.success(`${catDialog.items.length} lançamento(s) categorizados`);
+      if (dialogCcId) setCcOverrides((prev) => {
+        const next = new Map(prev);
+        catDialog.items.forEach((it) => next.set(`${it.source}:${it.id}`, dialogCcId === "none" ? null : dialogCcId));
+        return next;
+      });
+      const oque = dialogCatId && dialogCcId ? "categoria e centro de custo" : dialogCatId ? "categoria" : "centro de custo";
+      toast.success(`${oque[0].toUpperCase() + oque.slice(1)} aplicados em ${catDialog.items.length} lançamento(s)`);
       setCatDialog((d) => ({ ...d, open: false }));
     } catch (e: any) {
       toast.error("Erro ao categorizar: " + (e.message || e));
@@ -362,7 +380,7 @@ export default function FinancialDFCTab({ invoices, payables, banks, formatCurre
             {canCategorize && (
               <button
                 onClick={() => openCategorize(row)}
-                title="Categorizar estes lançamentos"
+                title="Categoria e centro de custo destes lançamentos"
                 className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-primary hover:text-primary/70"
               >
                 <Tag className="h-3.5 w-3.5" />
@@ -398,6 +416,32 @@ export default function FinancialDFCTab({ invoices, payables, banks, formatCurre
     return `${format(new Date(Number(y), Number(mo) - 1, 1), "MMM", { locale: ptBR })}/${y.substring(2)}`;
   };
 
+  // o que os lançamentos da linha têm hoje (pra mostrar na janela)
+  const linhasPorChave = useMemo(() => {
+    const m = new Map<string, any>();
+    invoices.forEach((r: any) => m.set(`${r.source_table || "company_invoices"}:${r.id}`, r));
+    payables.forEach((r: any) => m.set(`financial_payables:${r.id}`, r));
+    entries.forEach((r: any) => m.set(`staff_financial_entries:${r.id}`, r));
+    return m;
+  }, [invoices, payables, entries]);
+  const resumoAtual = (campo: "category_id" | "cost_center_id", nomeDe: (id: string) => string | undefined) => {
+    const ids = new Set<string>();
+    catDialog.items.forEach((it) => {
+      const k = `${it.source}:${it.id}`;
+      const ov = campo === "category_id" ? overrides.get(k) : ccOverrides.has(k) ? ccOverrides.get(k) : undefined;
+      const v = ov !== undefined ? ov : linhasPorChave.get(k)?.[campo];
+      ids.add(v || "");
+    });
+    if (ids.size === 0) return "—";
+    if (ids.size > 1) return "variados";
+    const unico = [...ids][0];
+    return unico ? nomeDe(unico) || "outro" : campo === "category_id" ? "sem categoria" : "sem centro de custo";
+  };
+  const ccOptions = costCenters
+    .filter((c) => c.is_active !== false)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name))
+    .map((c) => ({ value: c.id, label: c.name }));
+
   const activeCatOptions = staffCats
     .filter((c) => (c as any).is_active !== false && c.type === catDialog.catType)
     .sort((a, b) => (a.group_name || "").localeCompare(b.group_name || "") || a.sort_order - b.sort_order);
@@ -411,7 +455,7 @@ export default function FinancialDFCTab({ invoices, payables, banks, formatCurre
             DFC - Análise Vertical
           </h2>
           <p className="text-sm text-muted-foreground">
-            Clique no <ChevronRight className="h-3 w-3 inline" /> para abrir até o lançamento. Passe o mouse numa linha e use o <Tag className="h-3 w-3 inline text-primary" /> para categorizar. Arraste a tabela para o lado.
+            Clique no <ChevronRight className="h-3 w-3 inline" /> para abrir até o lançamento. Passe o mouse numa linha e use o <Tag className="h-3 w-3 inline text-primary" /> para pôr categoria e centro de custo. Arraste a tabela para o lado.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -496,26 +540,46 @@ export default function FinancialDFCTab({ invoices, payables, banks, formatCurre
       <Dialog open={catDialog.open} onOpenChange={(open) => setCatDialog((d) => ({ ...d, open }))}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Categorizar lançamentos</DialogTitle>
+            <DialogTitle>Categoria e centro de custo</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{catDialog.label}</span> — {catDialog.items.length} lançamento(s) no período visível receberão a categoria escolhida.
+              <span className="font-medium text-foreground">{catDialog.label}</span>: {catDialog.items.length} lançamento(s) no período visível. Campo em branco mantém o que já está.
             </p>
-            <Select value={dialogCatId} onValueChange={setDialogCatId}>
-              <SelectTrigger><SelectValue placeholder="Escolha a categoria" /></SelectTrigger>
-              <SelectContent className="max-h-72">
-                {activeCatOptions.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.group_name} · {c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-1.5">
+              <div className="flex items-baseline justify-between gap-2">
+                <label className="text-sm font-medium">Categoria</label>
+                <span className="text-[11px] text-muted-foreground truncate">hoje: {resumoAtual("category_id", (id) => staffCats.find((c) => c.id === id)?.name || legacyCats.find((c: any) => c.id === id)?.name)}</span>
+              </div>
+              <SearchableSelect
+                value={dialogCatId}
+                onValueChange={setDialogCatId}
+                options={activeCatOptions.map((c) => ({ value: c.id, label: c.name, hint: c.group_name || undefined }))}
+                placeholder="Manter a categoria atual"
+                emptyMessage="Nenhuma categoria encontrada."
+              />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-baseline justify-between gap-2">
+                <label className="text-sm font-medium">Centro de custo</label>
+                <span className="text-[11px] text-muted-foreground truncate">hoje: {resumoAtual("cost_center_id", (id) => costCenters.find((c) => c.id === id)?.name)}</span>
+              </div>
+              <SearchableSelect
+                value={dialogCcId}
+                onValueChange={setDialogCcId}
+                options={ccOptions}
+                allowNone
+                noneLabel="Sem centro de custo"
+                placeholder="Manter o centro de custo atual"
+                emptyMessage="Nenhum centro de custo encontrado."
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCatDialog((d) => ({ ...d, open: false }))}>Cancelar</Button>
-            <Button onClick={applyCategory} disabled={saving}>
+            <Button onClick={applyCategory} disabled={saving || (!dialogCatId && !dialogCcId)}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Aplicar categoria
+              Aplicar
             </Button>
           </DialogFooter>
         </DialogContent>
