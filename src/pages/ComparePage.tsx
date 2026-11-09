@@ -65,42 +65,6 @@ interface Product {
 
 const products: Product[] = [
   {
-    id: "core",
-    name: "UNV Core",
-    tagline: "Fundação Comercial Inicial",
-    icon: Layers,
-    color: "bg-blue-500",
-    category: "Trilha Principal",
-    icp: "Empresas organizando a base comercial",
-    revenue: "R$ 50k–150k/mês",
-    team: "1–5 vendedores",
-    price: "R$ 1.997",
-    priceType: "único",
-    link: "/core",
-    keyDiff: "Produto de entrada — estrutura básica de vendas para quem está começando",
-    bestFor: "Donos que vendem sozinhos ou com time pequeno e precisam de processo inicial",
-    notFor: "Quem já tem processo estruturado ou busca aceleração",
-    highlights: ["Diagnóstico comercial", "Funil estruturado", "Scripts essenciais", "Metas básicas"]
-  },
-  {
-    id: "control",
-    name: "UNV Control",
-    tagline: "Direção Comercial Recorrente",
-    icon: RefreshCw,
-    color: "bg-emerald-500",
-    category: "Trilha Principal",
-    icp: "Empresas que precisam de constância e disciplina",
-    revenue: "R$ 100k–400k/mês",
-    team: "Qualquer tamanho",
-    price: "R$ 5.997",
-    priceType: "/ano",
-    link: "/control",
-    keyDiff: "Acompanhamento mensal recorrente — mantém a disciplina comercial ativa",
-    bestFor: "Empresas que já vendem mas perdem ritmo sem cobrança externa",
-    notFor: "Quem precisa de estruturação completa ou treinamento de time",
-    highlights: ["Direção mensal", "Cobrança de execução", "Templates prontos", "AI Coach"]
-  },
-  {
     id: "sales-acceleration",
     name: "UNV Sales Acceleration",
     tagline: "Aceleração Comercial Completa",
@@ -117,24 +81,6 @@ const products: Product[] = [
     bestFor: "Empresas com time comercial que querem acelerar resultados com método",
     notFor: "Quem não tem time ou busca apenas padronização",
     highlights: ["Direção semanal", "Treinamento do time", "Cobrança ativa", "Diagnóstico completo"]
-  },
-  {
-    id: "sales-ops",
-    name: "UNV Sales Ops",
-    tagline: "Padronização & Treinamento de Times",
-    icon: Users2,
-    color: "bg-violet-500",
-    category: "Operação",
-    icp: "Empresas padronizando operação comercial",
-    revenue: "R$ 200k+/mês",
-    team: "5+ vendedores",
-    price: "R$ 12.000",
-    priceType: "/ano",
-    link: "/sales-ops",
-    keyDiff: "Operação comercial — trilhas por cargo, onboarding, treinamentos mensais em grupo",
-    bestFor: "Empresas com time comercial que perdem padrão quando alguém sai",
-    notFor: "Quem não tem time ou busca aceleração estratégica",
-    highlights: ["Trilhas por cargo", "Onboarding estruturado", "Treinamentos mensais", "Certificações"]
   },
   {
     id: "ads",
@@ -173,60 +119,6 @@ const products: Product[] = [
     highlights: ["Conteúdo estratégico", "Posicionamento", "Autoridade digital", "Aquecimento"]
   },
   {
-    id: "sales-force",
-    name: "UNV Sales Force",
-    tagline: "Outsourced SDR & Closing",
-    icon: Users2,
-    color: "bg-red-500",
-    category: "Operação",
-    icp: "Empresas com demanda que precisam de conversão",
-    revenue: "R$ 100k–1M+/mês",
-    team: "200+ leads/mês",
-    price: "R$ 3.000",
-    priceType: "/mês",
-    link: "/sales-force",
-    keyDiff: "Operação de vendas terceirizada — SDR e Closer executando para você",
-    bestFor: "Empresas com demanda qualificada que não conseguem converter internamente",
-    notFor: "Quem não gera leads ou quer testar",
-    highlights: ["SDR terceirizado", "Closer dedicado", "Pipeline gerenciado", "Comissão por resultado"]
-  },
-  {
-    id: "fractional-cro",
-    name: "UNV Fractional CRO",
-    tagline: "Diretor Comercial Terceirizado",
-    icon: Target,
-    color: "bg-amber-500",
-    category: "Operação",
-    icp: "Empresas com vendedores sem direção",
-    revenue: "R$ 50k–500k/mês",
-    team: "2–8 vendedores",
-    price: "R$ 4.000 + comissão",
-    priceType: "/mês",
-    link: "/fractional-cro",
-    keyDiff: "Direção comercial diária — reunião diária com time + cobrança + CRM",
-    bestFor: "Donos cansados de cobrar vendas que precisam de direção diária",
-    notFor: "Empresa sem vendedores ou dono que não aceita cobrança",
-    highlights: ["Daily com time", "Gestão pipeline", "Cobrança diária", "CRM incluso"]
-  },
-  {
-    id: "ai-sales-system",
-    name: "UNV Sales System",
-    tagline: "Inteligência Comercial Autônoma",
-    icon: Bot,
-    color: "bg-cyan-500",
-    category: "Tecnologia",
-    icp: "Empresas escalando vendas com IA",
-    revenue: "R$ 100k–2M+/mês",
-    team: "B2B e B2C",
-    price: "R$ 297–9.997",
-    priceType: "/mês + setup",
-    link: "/ai-sales-system",
-    keyDiff: "IA comercial — CRM inteligente + agentes autônomos + WhatsApp/Instagram",
-    bestFor: "Empresas que querem escalar vendas com IA, reduzindo custo",
-    notFor: "Quem não tem volume de leads ou busca só CRM tradicional",
-    highlights: ["CRM inteligente", "Agentes autônomos", "WhatsApp Bot", "Instagram automation"]
-  },
-  {
     id: "partners",
     name: "UNV Partners",
     tagline: "Direção Estratégica & Board Externo",
@@ -243,24 +135,6 @@ const products: Product[] = [
     bestFor: "Empresários que querem um parceiro de decisão, não apenas orientação",
     notFor: "Quem quer apenas treinamento ou precisa de execução",
     highlights: ["Board semanal", "Decisão conjunta", "Diagnóstico completo+", "Acesso direto"]
-  },
-  {
-    id: "leadership",
-    name: "UNV Leadership",
-    tagline: "Formação de Liderança",
-    icon: Brain,
-    color: "bg-cyan-500",
-    category: "Estratégico",
-    icp: "Empresas formando líderes intermediários",
-    revenue: "R$ 100k–2M+/mês",
-    team: "Gestores, coordenadores",
-    price: "R$ 15.000",
-    priceType: "/ano",
-    link: "/leadership",
-    keyDiff: "Formação de líderes — liderança que sustenta pessoas e performance",
-    bestFor: "Empresas onde fundador centraliza e líderes não cobram",
-    notFor: "Quem busca motivação, coaching vazio ou RH terceirizado",
-    highlights: ["Formação contínua", "Feedback estruturado", "Cobrança de líderes", "Certificação"]
   },
   {
     id: "people",
@@ -352,39 +226,20 @@ const products: Product[] = [
     notFor: "Quem busca execução, networking frouxo ou palco para ego",
     highlights: ["Hot seats", "Mansão empresarial", "Board coletivo", "Networking premium"]
   },
-  {
-    id: "execution-partnership",
-    name: "UNV Execution Partnership",
-    tagline: "Parceria de Execução Intensiva",
-    icon: Handshake,
-    color: "bg-purple-600",
-    category: "Estratégico",
-    icp: "Empresas que precisam de execução imediata",
-    revenue: "R$ 500k+/mês",
-    team: "CEO + time comercial",
-    price: "R$ 40.000",
-    priceType: "(3 meses)",
-    link: "/execution-partnership",
-    keyDiff: "Imersão de 3 meses — direção comercial intensiva com execução",
-    bestFor: "Empresas que precisam resolver gargalos rapidamente",
-    notFor: "Quem busca consultoria pontual ou não tem urgência",
-    highlights: ["3 meses intensivos", "Execução direta", "Acompanhamento semanal", "Resultados rápidos"]
-  }
 ];
 
-const categories = ["Trilha Principal", "Operação", "Tecnologia", "Estratégico", "Suporte", "Eventos"];
+const categories = ["Trilha Principal", "Operação", "Estratégico", "Suporte", "Eventos"];
 
 const categoryColors: Record<string, string> = {
   "Trilha Principal": "bg-accent text-white",
   "Operação": "bg-violet-500 text-white",
-  "Tecnologia": "bg-cyan-500 text-white",
   "Estratégico": "bg-amber-500 text-white",
   "Suporte": "bg-emerald-600 text-white",
   "Eventos": "bg-orange-500 text-white"
 };
 
 export default function ComparePage() {
-  const [selectedProducts, setSelectedProducts] = useState<string[]>(["core", "sales-acceleration"]);
+  const [selectedProducts, setSelectedProducts] = useState<string[]>(["sales-acceleration", "partners"]);
   const [showDiagnostic, setShowDiagnostic] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
