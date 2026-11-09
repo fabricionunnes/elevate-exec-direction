@@ -471,10 +471,18 @@ export const CRMInboxPage = () => {
   const loadingConversations = loadingWhatsApp || loadingInstagram;
 
   // Merge WhatsApp + Instagram conversations and tag the channel
+  // Uma conversa aparece uma vez só (09/11/2026): cópia repetida com o mesmo key ficava presa na lista
+  // e a troca de filtro ("Não lidas") não tirava os cartões antigos da tela.
+  const vistas = new Set<string>();
   const allConversations = [
     ...whatsappConversations.map(c => ({ ...c, channel: "whatsapp" as const })),
     ...instagramConversations,
-  ].sort((a, b) => {
+  ].filter((c: any) => {
+    const k = String(c.id);
+    if (vistas.has(k)) return false;
+    vistas.add(k);
+    return true;
+  }).sort((a, b) => {
     // Sempre a conversa com a mensagem mais recente (enviada OU recebida) em primeiro.
     // Conversa sem mensagem ainda usa a data de criação, pra não cair no fim da lista.
     const dateA = new Date(a.last_message_at || a.created_at || 0).getTime();
