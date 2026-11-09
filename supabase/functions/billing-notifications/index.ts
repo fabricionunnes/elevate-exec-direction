@@ -254,8 +254,13 @@ Deno.serve(async (req) => {
     // 4b. Try to fetch Asaas payment links for invoices missing one
     const ASAAS_API_KEY = Deno.env.get("ASAAS_API_KEY") || "";
     if (ASAAS_API_KEY) {
+      // Pix Automático (09/11/2026, Fabrício: "o cliente não pode receber link de pagamento, ele tem que
+      // receber um aviso que vai descontar, só isso, e se atrasar aí sim receber cobrança"): fatura com
+      // auto_debit só ganha link depois do vencimento, e o link é o da própria cobrança do Asaas (que já
+      // está vencida), pra pagar a mesma parcela sem duplicar com a nova tentativa de débito.
       const needsLink = invoices.filter(
         (inv: any) => (!inv.payment_link_url || !inv.payment_link_url.includes("asaas")) && inv.recurring_charge_id
+          && (!inv.auto_debit || inv.due_date < todayStr)
       );
       for (const inv of needsLink.slice(0, 10)) {
         try {
@@ -280,12 +285,14 @@ Deno.serve(async (req) => {
 
           if (charge?.pagarme_plan_id) {
             const subsResp = await fetch(
-              `https://api.asaas.com/v3/subscriptions/${charge.pagarme_plan_id}/payments?status=PENDING&dueDate=${inv.due_date}`,
+              `https://api.asaas.com/v3/subscriptions/${charge.pagarme_plan_id}/payments?${inv.auto_debit ? "" : "status=PENDING&"}dueDate=${inv.due_date}`,
               { headers: { "access_token": apiKeyToUse } }
             );
             if (subsResp.ok) {
               const subsData = await subsResp.json();
-              const payment = subsData.data?.[0];
+              const payment = inv.auto_debit
+                ? (subsData.data || []).find((p: any) => ["PENDING", "OVERDUE"].includes(p.status))
+                : subsData.data?.[0];
               if (payment?.invoiceUrl) {
                 inv.payment_link_url = payment.invoiceUrl;
                 await supabase.from("company_invoices")
@@ -392,6 +399,10 @@ Deno.serve(async (req) => {
           }
           autoDebitoHoje.add(String(invoice.id));
           message = buildAutoDebitMessage(rule, invoice, company);
+        } else if (invoice.auto_debit && !String(invoice.payment_link_url || "").includes("asaas")) {
+          // atrasou mas o Asaas ainda não devolveu a cobrança vencida: sem link não manda cobrança vazia
+          skippedReasons.push(`[${company.name}] Pix Automático vencido sem link da cobrança no Asaas`);
+          continue;
         } else {
           message = buildMessage(rule, invoice, company, today);
         }

@@ -204,7 +204,8 @@ async function sendWhatsAppInvoiceNotification(
   },
   paymentUrl: string,
   customerPhone: string,
-  customerName: string
+  customerName: string,
+  pixAutomatico = false,
 ) {
   if (!paymentUrl || !customerPhone) return;
 
@@ -253,7 +254,11 @@ async function sendWhatsAppInvoiceNotification(
     const discountedAmount = (invoice.amount_cents * 0.95 / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     const discountLine = showDiscount ? `\n\n🏷️ *Desconto de 5%* pagando até *${discountDateFormatted}*! Valor com desconto: *${discountedAmount}*` : "";
 
-    const message = `Olá ${customerName || ""}! 👋\n\nEstamos muito felizes em iniciar mais um mês conosco. 🎉\n\nSegue sua fatura:\n\n📄 *${invoice.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}${discountLine}\n\nAcesse o link abaixo para realizar o pagamento:\n\n🔗 ${paymentUrl}\n\nQualquer dúvida, estamos à disposição! ✨`;
+    // Pix Automático (09/11/2026): a única mensagem com link é a da ativação (QR da 1ª parcela, que
+    // autoriza os débitos). Sem desconto e sem "fatura": as seguintes saem sozinhas da conta.
+    const message = pixAutomatico
+      ? `Olá ${customerName || ""}! 👋\n\nPra ativar o *Pix Automático* da sua mensalidade, é só pagar a 1ª parcela pelo link abaixo. No mesmo pagamento o seu banco vai pedir pra autorizar os débitos automáticos.\n\n📄 *${invoice.description}*\n💰 *Valor:* ${amountFormatted}\n\n🔗 ${paymentUrl}\n\nDepois disso as próximas parcelas saem sozinhas da sua conta, sem boleto e sem link. Antes de cada débito a gente avisa por aqui.`
+      : `Olá ${customerName || ""}! 👋\n\nEstamos muito felizes em iniciar mais um mês conosco. 🎉\n\nSegue sua fatura:\n\n📄 *${invoice.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}${discountLine}\n\nAcesse o link abaixo para realizar o pagamento:\n\n🔗 ${paymentUrl}\n\nQualquer dúvida, estamos à disposição! ✨`;
 
     const sendResponse = await fetch(`${whatsappInstance.api_url}/message/sendText/${whatsappInstance.instance_name}`, {
       method: "POST",
@@ -468,7 +473,7 @@ Deno.serve(async (req) => {
             due_date: firstPendingInv.due_date,
             installment_number: firstPendingInv.installment_number,
             total_installments: firstPendingInv.total_installments,
-          }, firstInvoiceUrl, customerPhone, customerName);
+          }, firstInvoiceUrl, customerPhone, customerName, charge.payment_method === "pix_automatico");
         }
       }
 
