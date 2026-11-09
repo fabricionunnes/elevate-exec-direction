@@ -122,7 +122,25 @@ Deno.serve(async (req) => {
       const sbAuth = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
       const { data: mAuth } = await sbAuth.from("unv_start_members").select("id").eq("pix_auto_authorization_id", body.authorization.id).maybeSingle();
       if (mAuth) await forwardUnvStart(body);
-      return new Response(JSON.stringify({ received: true, unv_start_pix_auto: !!mAuth }), {
+      // Pix Automático das recorrências do Nexus (empresa e lead do CRM, 09/11/2026)
+      let nexusPixAuto = false;
+      try {
+        const a = body.authorization;
+        const { data: pa } = await sbAuth.from("asaas_pix_automatico").select("id, recurring_charge_id, subscription_id").eq("id", String(a.id)).maybeSingle();
+        if (pa) {
+          nexusPixAuto = true;
+          const sub = a.subscriptionId || a.subscription || null;
+          await sbAuth.from("asaas_pix_automatico").update({
+            status: a.status || pa.status, ultimo_evento: String(event), atualizado_em: new Date().toISOString(),
+            ...(sub && !pa.subscription_id ? { subscription_id: String(sub) } : {}),
+          }).eq("id", pa.id);
+          if (sub && pa.recurring_charge_id) {
+            await sbAuth.from("company_recurring_charges").update({ pagarme_plan_id: String(sub) }).eq("id", pa.recurring_charge_id).is("pagarme_plan_id", null);
+          }
+          console.log(`[Asaas Webhook] Pix Automático ${pa.id}: ${event} status=${a.status}`);
+        }
+      } catch (e) { console.error("[Asaas Webhook] pix automatico autorização", e); }
+      return new Response(JSON.stringify({ received: true, unv_start_pix_auto: !!mAuth, nexus_pix_auto: nexusPixAuto }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -142,7 +160,7 @@ Deno.serve(async (req) => {
     const paymentId = payment.id;
     const paymentStatus = payment.status;
     const newStatus = mapAsaasStatus(paymentStatus);
-    const subscriptionId = payment.subscription;
+    let subscriptionId = payment.subscription;
     const dueDate = payment.dueDate;
     const paymentValue = payment.value;
     const paymentNetValue = payment.netValue;
@@ -155,8 +173,14 @@ Deno.serve(async (req) => {
     try {
       const ASAAS_BANK = "6e9a3135-5826-4633-adf1-a63ef5b70e96"; // financial_banks: Asaas ATIVO (o 9f9de213… era um "Asaas" antigo e inativo — o dinheiro sumia do saldo, corrigido em 21/09/2026)
       const ASAAS_BANK_SOCIAL = "b5050c0f-b990-4d32-b0d1-4ac5f878ea11"; // financial_banks: Asaas UNV Social (links gerados com provider "asaas_social", 04/11/2026)
-      const { data: lp } = await supabase.from("crm_lead_payments")
+      let { data: lp } = await supabase.from("crm_lead_payments")
         .select("id, receivable_id, status, description, url, recurring, provider, lead:crm_leads(name)").in("provider", ["asaas", "asaas_social"]).eq("provider_ref", String(paymentId)).limit(1).maybeSingle();
+      // Pix Automático do lead (09/11/2026): o pagamento vem com a autorização, guardada no provider_ref
+      if (!lp && payment.pixAutomaticAuthorizationId) {
+        const r2 = await supabase.from("crm_lead_payments")
+          .select("id, receivable_id, status, description, url, recurring, provider, lead:crm_leads(name)").in("provider", ["asaas", "asaas_social"]).eq("provider_ref", String(payment.pixAutomaticAuthorizationId)).limit(1).maybeSingle();
+        lp = r2.data;
+      }
       if (lp && newStatus === "paid" && lp.status !== "paid") {
         const social = (lp as any).provider === "asaas_social";
         const bancoDoLink = social ? ASAAS_BANK_SOCIAL : ASAAS_BANK;
@@ -187,6 +211,36 @@ Deno.serve(async (req) => {
         });
       }
     } catch (e) { console.error("[Asaas Webhook] lead payment handling error", e); }
+
+    // === Pix Automático das recorrências de empresa (09/11/2026) ===
+    // O 1º pagamento (QR Code da autorização) vem sem assinatura: liga ele à 1ª parcela em aberto da
+    // recorrência (pagarme_charge_id) e segue pelo casamento direto da Strategy 2a. Os débitos seguintes
+    // vêm com a assinatura que o Asaas criou e casam por pagarme_plan_id + dueDate, como as demais.
+    if (payment.pixAutomaticAuthorizationId) {
+      try {
+        const { data: pa } = await supabase.from("asaas_pix_automatico")
+          .select("id, origem, recurring_charge_id, subscription_id, pago_em").eq("id", String(payment.pixAutomaticAuthorizationId)).maybeSingle();
+        if (pa) {
+          const patch: Record<string, unknown> = { atualizado_em: new Date().toISOString(), ultimo_evento: String(event) };
+          if (subscriptionId && !pa.subscription_id) {
+            patch.subscription_id = String(subscriptionId);
+            if (pa.recurring_charge_id) await supabase.from("company_recurring_charges").update({ pagarme_plan_id: String(subscriptionId) }).eq("id", pa.recurring_charge_id).is("pagarme_plan_id", null);
+          }
+          if (newStatus === "paid" && !pa.pago_em) { patch.pago_em = new Date().toISOString(); patch.primeiro_pagamento_id = String(paymentId); }
+          await supabase.from("asaas_pix_automatico").update(patch).eq("id", pa.id);
+          if (pa.origem === "empresa" && pa.recurring_charge_id && !subscriptionId) {
+            const { data: jaLigada } = await supabase.from("company_invoices").select("id").eq("pagarme_charge_id", String(paymentId)).limit(1);
+            if (!jaLigada?.length) {
+              const { data: primeira } = await supabase.from("company_invoices").select("id")
+                .eq("recurring_charge_id", pa.recurring_charge_id).is("pagarme_charge_id", null)
+                .not("status", "in", '("paid","partial","cancelled")').order("installment_number", { ascending: true }).limit(1);
+              if (primeira?.length) await supabase.from("company_invoices").update({ pagarme_charge_id: String(paymentId) }).eq("id", primeira[0].id);
+            }
+            subscriptionId = pa.subscription_id || `pixauto:${pa.id}`; // libera a Strategy 2a (casa por pagarme_charge_id)
+          }
+        }
+      } catch (e) { console.error("[Asaas Webhook] pix automatico pagamento", e); }
+    }
 
     // === UNV Start — assinatura (1ª cobrança, renovação, atraso, estorno) ===
     // Casa por externalReference, pela assinatura ou pela autorização do Pix Automático.
