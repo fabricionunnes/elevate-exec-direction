@@ -34,22 +34,28 @@ interface JourneyStep {
 }
 
 const allServices: JourneyStep[] = [
-  { id: "core", name: "UNV Core", shortName: "Core", objective: "Estruturar sua operação comercial do zero", description: "Diagnóstico completo + playbook comercial personalizado para sua empresa", price: "R$ 1.997 único", category: "Trilha Principal", icon: Target, link: "/core", carColor: "#dc2626" },
-  { id: "control", name: "UNV Control", shortName: "Control", objective: "Direção comercial contínua e previsibilidade", description: "Reuniões mensais de direcionamento + dashboards + rituais de gestão", price: "R$ 5.997/ano", category: "Trilha Principal", icon: Compass, link: "/control", carColor: "#2563eb" },
   { id: "sales-acceleration", name: "UNV Sales Acceleration", shortName: "Acceleration", objective: "Acelerar resultados com acompanhamento", description: "Mentorias semanais + acompanhamento individual do seu comercial", price: "R$ 36.000/ano", category: "Trilha Principal", icon: TrendingUp, link: "/sales-acceleration", carColor: "#16a34a" },
-  { id: "sales-ops", name: "UNV Sales Ops", shortName: "Sales Ops", objective: "Treinar e capacitar seu time comercial", description: "Treinamentos práticos + roleplay + certificação para vendedores", price: "R$ 12.000/ano", category: "Operação", icon: Users, link: "/sales-ops", carColor: "#ea580c" },
   { id: "ads", name: "UNV Ads", shortName: "Ads", objective: "Escalar geração de leads qualificados", description: "Gestão completa de tráfego pago + criativos + otimização", price: "A partir de R$ 1.800/mês", category: "Operação", icon: Megaphone, link: "/ads", carColor: "#7c3aed" },
   { id: "social", name: "UNV Social", shortName: "Social", objective: "Gestão profissional das redes sociais", description: "Produção de conteúdo + gestão de perfis + estratégia digital", price: "R$ 1.500/mês", category: "Operação", icon: Share2, link: "/social", carColor: "#db2777" },
-  { id: "ai-sales-system", name: "UNV Sales System", shortName: "Sales System", objective: "Automatizar vendas com IA", description: "Chatbots inteligentes + automações + integração com CRM", price: "R$ 297 a R$ 9.997/mês", category: "Operação", icon: Bot, link: "/ai-sales-system", carColor: "#0891b2" },
-  { id: "fractional-cro", name: "UNV Fractional CRO", shortName: "Fractional CRO", objective: "Diretor comercial terceirizado", description: "Liderança comercial experiente sem custo de CLT", price: "R$ 4.000/mês + comissão", category: "Operação", icon: UserCheck, link: "/fractional-cro", carColor: "#4f46e5" },
   { id: "growth-room", name: "UNV Growth Room", shortName: "Growth Room", objective: "Imersões intensivas para destravar", description: "3 dias presenciais de imersão com empresários selecionados", price: "R$ 3.997/evento", category: "Avançada", icon: Building2, link: "/growth-room", carColor: "#d97706" },
   { id: "partners", name: "UNV Partners", shortName: "Partners", objective: "Grupo estratégico de parceiros UNV", description: "Comunidade exclusiva + rituais mensais + networking qualificado", price: "R$ 30.000/ano", category: "Avançada", icon: Handshake, link: "/partners", carColor: "#059669" },
-  { id: "execution-partnership", name: "UNV Execution", shortName: "Execution", objective: "Implementação comercial direta", description: "Squad UNV implementando sua operação comercial por 3 meses", price: "R$ 40.000 projeto", category: "Avançada", icon: Handshake, link: "/execution-partnership", carColor: "#b91c1c" },
   { id: "mastermind", name: "UNV Mastermind", shortName: "Mastermind", objective: "Grupo exclusivo de empresários de elite", description: "Encontros presenciais + mentoria + acesso à Mansão Empreendedora", price: "R$ 50.000/ano", category: "Avançada", icon: Crown, link: "/mastermind", carColor: "#ca8a04" },
   { id: "people", name: "UNV People", shortName: "People", objective: "Gestão de pessoas e cultura", description: "RH estratégico + recrutamento + desenvolvimento de equipe", price: "R$ 2.500 a R$ 6.000/mês", category: "Estrutura", icon: Users, link: "/people", carColor: "#1d4ed8" },
   { id: "finance", name: "UNV Finance", shortName: "Finance", objective: "Controle financeiro estratégico", description: "Consultoria financeira + BPO com gestão à vista", price: "Sob consulta", category: "Estrutura", icon: DollarSign, link: "/finance", carColor: "#15803d" },
-  { id: "safe", name: "UNV Safe", shortName: "Safe", objective: "Assessoria jurídica preventiva", description: "Contratos + compliance + proteção legal para sua empresa", price: "R$ 3.000/mês", category: "Estrutura", icon: Shield, link: "/safe", carColor: "#475569" },
-  { id: "leadership", name: "UNV Leadership", shortName: "Leadership", objective: "Desenvolvimento de líderes", description: "Programa de formação de líderes comerciais na sua empresa", price: "R$ 10.000/ano", category: "Estrutura", icon: UserCheck, link: "/leadership", carColor: "#7c3aed" }
+  { id: "safe", name: "UNV Safe", shortName: "Safe", objective: "Assessoria jurídica preventiva", description: "Contratos + compliance + proteção legal para sua empresa", price: "R$ 3.000/mês", category: "Estrutura", icon: Shield, link: "/safe", carColor: "#475569" }
+];
+
+// Posições dos carros na pista mobile (a última é a linha de chegada)
+const mobileCarPositions = [
+  { x: 55, y: 15 },    // 1 - start
+  { x: 92, y: 35 },    // 2
+  { x: 45, y: 65 },    // 3
+  { x: 45, y: 115 },   // 4
+  { x: 45, y: 165 },   // 5
+  { x: 45, y: 215 },   // 6
+  { x: 55, y: 265 },   // 7
+  { x: 8, y: 285 },    // 8
+  { x: 8, y: 315 },    // 9 - chegada
 ];
 
 // Checkered flag pattern
@@ -112,25 +118,17 @@ export function ServiceJourneyPath() {
     L 50 18
   `;
 
-  // Car positions following the track precisely
+  // Car positions following the track precisely (um por serviço, espalhados pelo circuito)
   const carPositions = [
     { x: 54, y: 18, rotation: 0 },      // 1
-    { x: 72, y: 18, rotation: 0 },      // 2
-    { x: 88, y: 22, rotation: 45 },     // 3
-    { x: 92, y: 38, rotation: 90 },     // 4
-    { x: 92, y: 54, rotation: 90 },     // 5
-    { x: 85, y: 68, rotation: 135 },    // 6
-    { x: 70, y: 76, rotation: 160 },    // 7
-    { x: 52, y: 86, rotation: 200 },    // 8
-    { x: 35, y: 98, rotation: 225 },    // 9
-    { x: 18, y: 105, rotation: 250 },   // 10
-    { x: 10, y: 92, rotation: 270 },    // 11
-    { x: 10, y: 78, rotation: 270 },    // 12
-    { x: 18, y: 65, rotation: 315 },    // 13
-    { x: 28, y: 52, rotation: 270 },    // 14
-    { x: 30, y: 40, rotation: 220 },    // 15
-    { x: 22, y: 28, rotation: 315 },    // 16
-    { x: 38, y: 18, rotation: 0 },      // 17
+    { x: 88, y: 22, rotation: 45 },     // 2
+    { x: 92, y: 54, rotation: 90 },     // 3
+    { x: 70, y: 76, rotation: 160 },    // 4
+    { x: 35, y: 98, rotation: 225 },    // 5
+    { x: 10, y: 92, rotation: 270 },    // 6
+    { x: 18, y: 65, rotation: 315 },    // 7
+    { x: 30, y: 40, rotation: 220 },    // 8
+    { x: 38, y: 18, rotation: 0 },      // 9
   ];
 
   return (
@@ -146,7 +144,7 @@ export function ServiceJourneyPath() {
             Circuito UNV
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            17 etapas para cruzar a linha de chegada. Clique nos carros ou na legenda para conhecer cada serviço.
+            {allServices.length} etapas para cruzar a linha de chegada. Clique nos carros ou na legenda para conhecer cada serviço.
           </p>
         </div>
 
@@ -349,7 +347,7 @@ export function ServiceJourneyPath() {
           {/* Track title - positioned on the grass */}
           <div className="absolute top-4 left-1/2 -translate-x-1/2 text-center z-10">
             <h3 className="text-xl font-bold text-white drop-shadow-lg tracking-wider">CIRCUITO UNV</h3>
-            <p className="text-xs text-white/80 drop-shadow">17 serviços • Sua jornada de crescimento</p>
+            <p className="text-xs text-white/80 drop-shadow">{allServices.length} serviços • Sua jornada de crescimento</p>
           </div>
 
           {/* Start label */}
@@ -544,26 +542,7 @@ export function ServiceJourneyPath() {
 
               {/* Car positions on mobile track - Clickable */}
               {(() => {
-                const mobileCarPositions = [
-                  { x: 55, y: 15 },    // 1 - start
-                  { x: 75, y: 15 },    // 2
-                  { x: 92, y: 35 },    // 3
-                  { x: 75, y: 65 },    // 4
-                  { x: 45, y: 65 },    // 5
-                  { x: 8, y: 90 },     // 6
-                  { x: 45, y: 115 },   // 7
-                  { x: 92, y: 140 },   // 8
-                  { x: 45, y: 165 },   // 9
-                  { x: 8, y: 190 },    // 10
-                  { x: 45, y: 215 },   // 11
-                  { x: 92, y: 240 },   // 12
-                  { x: 55, y: 265 },   // 13
-                  { x: 20, y: 265 },   // 14
-                  { x: 8, y: 285 },    // 15
-                  { x: 8, y: 305 },    // 16
-                ];
-                
-                return allServices.slice(0, 16).map((service, index) => {
+                return allServices.slice(0, allServices.length - 1).map((service, index) => {
                   const pos = mobileCarPositions[index];
                   const isSelected = selectedMobileCar === index;
                   return (
@@ -587,18 +566,18 @@ export function ServiceJourneyPath() {
                 });
               })()}
 
-              {/* Car 17 at finish - Clickable */}
+              {/* Último carro na chegada - Clickable */}
               <g 
                 transform="translate(8, 315)"
-                onClick={() => handleMobileCarClick(16)}
+                onClick={() => handleMobileCarClick(allServices.length - 1)}
                 style={{ cursor: 'pointer' }}
               >
                 <circle r="10" fill="transparent" />
-                {selectedMobileCar === 16 && (
+                {selectedMobileCar === allServices.length - 1 && (
                   <circle r="7" fill="#fbbf24" opacity="0.3" />
                 )}
-                <circle r="5" fill="#fbbf24" stroke={selectedMobileCar === 16 ? "#fff" : "transparent"} strokeWidth="1" />
-                <text y="1.5" textAnchor="middle" fontSize="4" fill="#000" fontWeight="bold">17</text>
+                <circle r="5" fill="#fbbf24" stroke={selectedMobileCar === allServices.length - 1 ? "#fff" : "transparent"} strokeWidth="1" />
+                <text y="1.5" textAnchor="middle" fontSize="4" fill="#000" fontWeight="bold">{allServices.length}</text>
               </g>
             </svg>
 
@@ -614,26 +593,6 @@ export function ServiceJourneyPath() {
 
             {/* Mobile tooltip - positioned near the clicked car */}
             {selectedMobileCar !== null && (() => {
-              const mobileCarPositions = [
-                { x: 55, y: 15 },    // 1
-                { x: 75, y: 15 },    // 2
-                { x: 92, y: 35 },    // 3
-                { x: 75, y: 65 },    // 4
-                { x: 45, y: 65 },    // 5
-                { x: 8, y: 90 },     // 6
-                { x: 45, y: 115 },   // 7
-                { x: 92, y: 140 },   // 8
-                { x: 45, y: 165 },   // 9
-                { x: 8, y: 190 },    // 10
-                { x: 45, y: 215 },   // 11
-                { x: 92, y: 240 },   // 12
-                { x: 55, y: 265 },   // 13
-                { x: 20, y: 265 },   // 14
-                { x: 8, y: 285 },    // 15
-                { x: 8, y: 305 },    // 16
-                { x: 8, y: 315 },    // 17
-              ];
-              
               const pos = mobileCarPositions[selectedMobileCar];
               const topPercent = (pos.y / 320) * 100;
               const leftPercent = pos.x;
