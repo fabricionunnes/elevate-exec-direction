@@ -71,26 +71,8 @@ const ProductCard = ({ product, index, compact }: { product: Product; index: num
   </div>
 );
 
-// Main trail: Core → Control → Sales Acceleration
+// Trilha principal: Sales Acceleration
 const mainTrail: Product[] = [
-  {
-    name: "UNV Core",
-    tagline: "Fundação comercial",
-    description:
-      "Construa a fundação da sua operação comercial. Scripts, funil básico, metas e rotinas mínimas de cobrança.",
-    icp: "Faturamento R$ 50k–150k/mês • 1–5 vendedores",
-    href: "/core",
-    investment: "R$ 1.997",
-  },
-  {
-    name: "UNV Control",
-    tagline: "Disciplina de execução",
-    description:
-      "Direção recorrente para manter seu time executando com consistência. Check-ins mensais, templates e suporte com IA.",
-    icp: "Faturamento R$ 100k–400k/mês",
-    href: "/control",
-    investment: "R$ 5.997/ano",
-  },
   {
     name: "UNV Sales Acceleration",
     tagline: "Serviço principal",
@@ -103,17 +85,8 @@ const mainTrail: Product[] = [
   },
 ];
 
-// Support trail: Sales Ops / Ads / Social
+// Trilha de suporte: Ads / Social
 const supportTrail: Product[] = [
-  {
-    name: "UNV Sales Ops",
-    tagline: "Padronização de times",
-    description:
-      "Padronize seu time comercial em escala. Trilhas de treinamento por cargo, scorecards e suporte IA por função.",
-    icp: "Faturamento R$ 200k+/mês • 5+ vendedores",
-    href: "/sales-ops",
-    investment: "R$ 2.500/ano",
-  },
   {
     name: "UNV Ads",
     tagline: "Geração de demanda",
@@ -131,15 +104,6 @@ const supportTrail: Product[] = [
     icp: "Faturamento R$ 100k+/mês",
     href: "/social",
     investment: "R$ 1.500–3.500/mês",
-  },
-  {
-    name: "UNV Sales Force",
-    tagline: "Terceirização de vendas",
-    description:
-      "SDR e Closer terceirizados. A UNV executa a venda para empresas com demanda qualificada que precisam de conversão profissional.",
-    icp: "Faturamento R$ 100k–1M+/mês • 200+ leads/mês",
-    href: "/sales-force",
-    investment: "R$ 3.000/mês",
   },
 ];
 
@@ -182,17 +146,6 @@ const advancedTrail: Product[] = [
     investment: "R$ 36.000/ano",
   },
 ];
-
-// Leadership standalone
-const leadershipProduct: Product = {
-  name: "UNV Leadership",
-  tagline: "Desenvolvimento de líderes",
-  description:
-    "Desenvolva líderes intermediários capazes de sustentar a execução sem depender do fundador. Gestão de pessoas, performance e decisões.",
-  icp: "Faturamento R$ 100k–2M+/mês",
-  href: "/leadership",
-  investment: "R$ 15.000/ano",
-};
 
 // New products
 const strategicProducts: Product[] = [
@@ -265,13 +218,13 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* Main Trail: Core → Control → Sales Acceleration */}
+      {/* Trilha principal: Sales Acceleration */}
       <section className="section-padding bg-background">
         <div className="container-premium">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-3 h-3 rounded-full bg-primary" />
             <h2 className="text-xl font-bold text-foreground">Trilha Principal</h2>
-            <span className="text-sm text-muted-foreground">Core → Control → Sales Acceleration</span>
+            <span className="text-sm text-muted-foreground">Sales Acceleration</span>
           </div>
           <div className="grid gap-6">
             {mainTrail.map((product, i) => (
@@ -281,15 +234,15 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* Support Trail: Sales Ops / Ads / Social */}
+      {/* Trilha de suporte: Ads / Social */}
       <section className="section-padding bg-secondary">
         <div className="container-premium">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-3 h-3 rounded-full bg-accent" />
             <h2 className="text-xl font-bold text-foreground">Suporte à Operação</h2>
-            <span className="text-sm text-muted-foreground">Sales Ops • Ads • Social</span>
+            <span className="text-sm text-muted-foreground">Ads • Social</span>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 gap-6">
             {supportTrail.map((product, i) => (
               <ProductCard key={product.href} product={product} index={i} compact />
             ))}
@@ -313,19 +266,8 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* Leadership */}
-      <section className="section-padding bg-secondary">
-        <div className="container-premium">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-3 h-3 rounded-full bg-blue-500" />
-            <h2 className="text-xl font-bold text-foreground">Desenvolvimento de Líderes</h2>
-          </div>
-          <ProductCard product={leadershipProduct} index={0} />
-        </div>
-      </section>
-
       {/* Strategic Products */}
-      <section className="section-padding bg-background">
+      <section className="section-padding bg-secondary">
         <div className="container-premium">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-3 h-3 rounded-full bg-rose-500" />
@@ -341,7 +283,7 @@ export default function ProductsPage() {
       </section>
 
       {/* External */}
-      <section className="section-padding bg-secondary">
+      <section className="section-padding bg-background">
         <div className="container-premium">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-3 h-3 rounded-full bg-purple-500" />
