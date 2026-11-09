@@ -23,18 +23,6 @@ const problems = [
 
 const products = [
   {
-    name: "UNV Core",
-    description: "Estruture sua base comercial",
-    icp: "R$ 50k–150k/mês",
-    href: "/core",
-  },
-  {
-    name: "UNV Control",
-    description: "Mantenha a constância de execução",
-    icp: "R$ 100k–400k/mês",
-    href: "/control",
-  },
-  {
     name: "Sales Acceleration",
     description: "Programa completo de direção comercial",
     icp: "R$ 150k–1M/mês",
@@ -52,12 +40,6 @@ const products = [
     description: "Direção estratégica elite + Experiência Mansão",
     icp: "R$ 300k–2M/mês",
     href: "/partners",
-  },
-  {
-    name: "Sales Ops",
-    description: "Padronização de times em escala",
-    icp: "5+ vendedores",
-    href: "/sales-ops",
   },
   {
     name: "UNV Ads",
