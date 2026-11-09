@@ -41,31 +41,6 @@ interface ProductPrice {
 const products: ProductPrice[] = [
   // Trilha Principal
   {
-    id: "core",
-    name: "UNV Core",
-    tagline: "Estruturação Comercial Inicial",
-    icon: Target,
-    color: "text-red-500 bg-red-500/10",
-    price: "R$ 1.997",
-    priceType: "único",
-    link: "/core",
-    category: "Trilha Principal",
-    amountCents: 199700,
-  },
-  {
-    id: "control",
-    name: "UNV Control",
-    tagline: "Direção Comercial Recorrente",
-    icon: Compass,
-    color: "text-blue-500 bg-blue-500/10",
-    price: "R$ 5.997",
-    priceType: "/ano",
-    priceNote: "À vista ou parcelado",
-    link: "/control",
-    category: "Trilha Principal",
-    amountCents: 599700,
-  },
-  {
     id: "sales-acceleration",
     name: "UNV Sales Acceleration",
     tagline: "Aceleração com Acompanhamento Individual",
@@ -79,19 +54,6 @@ const products: ProductPrice[] = [
     amountCents: 3600000,
   },
   // Operação Comercial
-  {
-    id: "sales-ops",
-    name: "UNV Sales Ops",
-    tagline: "Treinamento de Time Comercial",
-    icon: Users,
-    color: "text-orange-500 bg-orange-500/10",
-    price: "R$ 12.000",
-    priceType: "/ano",
-    priceNote: "À vista ou parcelado",
-    link: "/sales-ops",
-    category: "Operação Comercial",
-    amountCents: 1200000,
-  },
   {
     id: "ads",
     name: "UNV Ads",
@@ -119,31 +81,6 @@ const products: ProductPrice[] = [
     priceType: "/mês",
     link: "/social",
     category: "Operação Comercial"
-  },
-  {
-    id: "ai-sales-system",
-    name: "UNV Sales System",
-    tagline: "Automação com Inteligência Artificial",
-    icon: Bot,
-    color: "text-cyan-500 bg-cyan-500/10",
-    price: "R$ 297 a R$ 9.997",
-    priceType: "/mês",
-    priceNote: "+ Implementação de R$ 2.500 a R$ 25.000",
-    link: "/ai-sales-system",
-    category: "Operação Comercial"
-  },
-  {
-    id: "fractional-cro",
-    name: "UNV Fractional CRO",
-    tagline: "Diretor Comercial Terceirizado",
-    icon: UserCheck,
-    color: "text-indigo-500 bg-indigo-500/10",
-    price: "R$ 4.000",
-    priceType: "/mês",
-    priceNote: "+ Comissão variável escalonável",
-    link: "/fractional-cro",
-    category: "Operação Comercial",
-    amountCents: 400000,
   },
   // Trilha Avançada
   {
@@ -183,19 +120,6 @@ const products: ProductPrice[] = [
     link: "/mastermind",
     category: "Trilha Avançada",
     amountCents: 5000000,
-  },
-  {
-    id: "execution-partnership",
-    name: "UNV Execution Partnership",
-    tagline: "Implementação Comercial Direta",
-    icon: Handshake,
-    color: "text-red-500 bg-red-500/10",
-    price: "R$ 40.000",
-    priceType: "projeto",
-    priceNote: "3 meses • Máximo 10 empresas",
-    link: "/execution-partnership",
-    category: "Trilha Avançada",
-    amountCents: 4000000,
   },
   // Estratégia & Estrutura
   {
@@ -249,28 +173,13 @@ const products: ProductPrice[] = [
     link: "/safe",
     category: "Estratégia & Estrutura"
   },
-  // Outros
-  {
-    id: "leadership",
-    name: "UNV Leadership",
-    tagline: "Desenvolvimento de Líderes",
-    icon: UserCheck,
-    color: "text-violet-500 bg-violet-500/10",
-    price: "R$ 10.000",
-    priceType: "/ano",
-    priceNote: "Por empresa",
-    link: "/leadership",
-    category: "Outros",
-    amountCents: 1000000,
-  }
 ];
 
 const categories = [
   "Trilha Principal",
   "Operação Comercial",
   "Trilha Avançada",
-  "Estratégia & Estrutura",
-  "Outros"
+  "Estratégia & Estrutura"
 ];
 
 export default function PricingPage() {
