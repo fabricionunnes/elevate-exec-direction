@@ -3171,6 +3171,18 @@ Deno.serve(async (req)=>{
                 if (hBR < 11 || hBR >= 16) continue;
               }
             }
+            // Conversa encerrada (09/11/2026, Fabrício: lead já estava no grupo da Black e levou follow-up
+            // propondo conversa "amanhã de manhã ou à tarde"). Se a IA já decidiu SEM_FOLLOWUP depois da
+            // última mensagem, não pergunta de novo a cada rodada.
+            {
+              const ultimaTs = String(hm[hm.length - 1]?.[tsCol] || "");
+              if (ultimaTs) {
+                const { data: jaPulou } = await supabase.from("crm_ai_agent_runs").select("id")
+                  .eq("conversation_id", cv.id).eq("mode", "followup").like("outcome", "skip%")
+                  .gt("created_at", ultimaTs).limit(1);
+                if (jaPulou?.length) continue;
+              }
+            }
             // monta prompt de reativação — tentativa N de M, com os follow-ups já
             // enviados listados pra IA NÃO repetir (o lead recebia a mesma pergunta
             // reescrita 5 vezes).
@@ -3204,9 +3216,10 @@ Deno.serve(async (req)=>{
               agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
               `\n\nAGENDA: neste follow-up você NÃO tem acesso à agenda. É proibido citar dia ou horário específico de reunião (nada de "segunda às 10h"). Se for puxar reagendamento, pergunte qual dia e período funcionam melhor pra ele; os horários reais você oferece quando ele responder.`,
               `\n\nO lead parou de responder. Escreva UMA mensagem CURTA de follow-up (1-2 frases, até 25 palavras), humana, sem pressão e sem repetir perguntas já respondidas. Não use markdown. Nunca revele que é uma IA.`,
-              `\n\nREGRAS DO FOLLOW-UP (medidas em 31/10/2026 em 968 follow-ups; valem acima da instrução do passo): a mensagem SEMPRE termina com uma pergunta de resposta curta; nas tentativas 1 e 2 essa pergunta propõe um período pra conversar ("prefere de manhã ou à tarde?", "hoje ainda ou amanhã?"), que é o que mais faz o lead voltar. PROIBIDO, mesmo que a instrução do passo peça: dizer que é a última tentativa, a última chance ou que não vai mais insistir (5% de resposta); fechar com "fico à disposição", "qualquer coisa me chama", "tô por aqui", "sem pressa" (4%); escassez de vagas, "as vagas estão acabando", "garantir a sua vaga", "fila de espera" (não ajuda e soa pressão). Se a instrução do passo pedir escassez ou última chance, troque por um ângulo novo da dor dele e feche propondo o período.`,
+              `\n\nREGRAS DO FOLLOW-UP (medidas em 31/10/2026 em 968 follow-ups; valem acima da instrução do passo): a mensagem SEMPRE termina com uma pergunta de resposta curta; nas tentativas 1 e 2, quando o que está em aberto com o lead é marcar uma conversa ou reunião, essa pergunta propõe um período pra conversar ("prefere de manhã ou à tarde?", "hoje ainda ou amanhã?"), que é o que mais faz o lead voltar. Quando as suas instruções dão a este lead outro objetivo (entrar num grupo, confirmar presença num evento, mandar um dado), a pergunta puxa esse objetivo e NÃO propõe conversa nem reunião. PROIBIDO, mesmo que a instrução do passo peça: dizer que é a última tentativa, a última chance ou que não vai mais insistir (5% de resposta); fechar com "fico à disposição", "qualquer coisa me chama", "tô por aqui", "sem pressa" (4%); escassez de vagas, "as vagas estão acabando", "garantir a sua vaga", "fila de espera" (não ajuda e soa pressão). Se a instrução do passo pedir escassez ou última chance, troque por um ângulo novo da dor dele e feche propondo o período.`,
               isBIG && cv.contact?.username ? `\n\nVocê JÁ TEM o @ do Instagram desta pessoa (@${cv.contact.username}): é o perfil pelo qual ela fala com você. NUNCA peça o @ do Instagram.` : "",
               `\n\nSe você já pediu a mesma informação duas vezes nesta conversa (contando follow-ups) e ela não veio, NÃO peça de novo: puxe outro assunto leve ligado ao negócio dela.`,
+              `\n\nANTES DE ESCREVER, decida se cabe follow-up. NÃO cabe quando: o lead já fez o que as suas instruções pedem pra ele (entrou no grupo, agendou, confirmou presença, mandou o que faltava); a conversa terminou combinada dos dois lados (a sua última mensagem encerrou o assunto, como "fechado então", "te espero lá", e não ficou pergunta sua sem resposta); ou o lead disse que não tem interesse. Nesses casos responda exatamente SEM_FOLLOWUP e nada mais. Silêncio depois de uma pergunta sua que ficou sem resposta CONTINUA cabendo follow-up.`,
               ESTILO_HUMANO,
               `\n\nAgora é ${agoraFu} (Brasília). Cada linha do histórico traz [dia/mês hora] de quando foi enviada: "amanhã", "hoje" ou dia da semana escritos ali valem praquela data, não pra agora. Nunca repita "amanhã" de uma mensagem antiga — calcule a data real ou não cite data.`,
               mtgCtx.texto,
@@ -3240,6 +3253,15 @@ Deno.serve(async (req)=>{
               ...new Set(fuTexts)
             ].join("").trim());
             if (!fuReply) continue;
+            if (/SEM_FOLLOWUP/i.test(fuReply)) {
+              if (body0.dry_run) { results.push(`[dry] ${b.channel}/${cv.id}: sem follow-up (conversa encerrada)`); continue; }
+              await supabase.from("crm_ai_agent_runs").insert({
+                agent_id: agent.id, channel: b.channel, conversation_id: cv.id, mode: "followup",
+                outcome: "skip: conversa encerrada", reply: null,
+              }).then(()=>{}, ()=>{});
+              results.push(`${b.channel}/${cv.id}: sem follow-up (conversa encerrada)`);
+              continue;
+            }
             if (body0.dry_run) {
               results.push(`[dry] ${b.channel}/${cv.id}: ${fuReply.slice(0, 80)}`);
               continue;
