@@ -78,27 +78,27 @@ const urgencyOptions = [
 function getRecommendation(data: FormData): Recommendation {
   const { revenue, team_size, team_work_mode, main_pain, has_sales_process } = data;
   
-  // Sales Force - Apenas para quem tem vendedores em home office
+  // Time em home office com problema de conversão/execução: direção comercial do próprio time
   if (team_work_mode === "home-office" && team_size !== "sozinho" && 
       (main_pain === "conversao-baixa" || main_pain === "time-desalinhado" || main_pain === "inconsistencia")) {
     return {
-      product: "UNV Sales Force",
-      reason: "Com vendedores em home office, o Sales Force oferece SDR e Closer terceirizados para converter sua demanda existente em vendas reais."
+      product: "UNV Sales Acceleration",
+      reason: "Com vendedores em home office, o Sales Acceleration coloca um diretor comercial para estruturar, acompanhar e cobrar o seu próprio time, transformando a demanda que você já tem em vendas reais."
     };
   }
   
   // Lógica de recomendação baseada nas respostas
   if (revenue === "menos-50k" || revenue === "50k-100k") {
     return {
-      product: "UNV Core",
-      reason: "Para o estágio atual da sua empresa, o Core vai ajudar a estruturar sua base comercial com processo, scripts e metas claras."
+      product: "UNV Sales Acceleration",
+      reason: "Para o estágio atual da sua empresa, o Sales Acceleration vai estruturar sua base comercial com processo, scripts e metas claras, com direção e cobrança todos os meses."
     };
   }
   
   if (!has_sales_process && (main_pain === "sem-processo" || main_pain === "inconsistencia")) {
     return {
-      product: "UNV Core",
-      reason: "Como você ainda não tem um processo definido, começar pelo Core vai criar a fundação necessária antes de acelerar."
+      product: "UNV Sales Acceleration",
+      reason: "Como você ainda não tem um processo definido, o Sales Acceleration começa criando a fundação comercial e depois acelera com direção e cobrança."
     };
   }
   
@@ -119,8 +119,8 @@ function getRecommendation(data: FormData): Recommendation {
   if (team_size === "6-10" || team_size === "10+") {
     if (main_pain === "time-desalinhado") {
       return {
-        product: "UNV Sales Ops",
-        reason: "Com um time desse tamanho, você precisa de trilhas por cargo e padronização. O Sales Ops vai resolver isso."
+        product: "UNV Sales Acceleration",
+        reason: "Com um time desse tamanho, você precisa de padronização, treinamento por cargo e cobrança. O Sales Acceleration vai alinhar o time com direção comercial contínua."
       };
     }
     return {
@@ -145,8 +145,8 @@ function getRecommendation(data: FormData): Recommendation {
   
   if (main_pain === "inconsistencia" || main_pain === "conversao-baixa") {
     return {
-      product: "UNV Control",
-      reason: "Você precisa de disciplina e constância comercial. O Control oferece acompanhamento mensal para manter o ritmo."
+      product: "UNV Sales Acceleration",
+      reason: "Você precisa de disciplina e constância comercial. O Sales Acceleration oferece acompanhamento e cobrança contínuos para manter o ritmo."
     };
   }
   
