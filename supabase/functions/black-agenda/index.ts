@@ -334,6 +334,57 @@ async function entrouLive(sb: SB, body: Record<string, unknown>) {
 }
 
 // ── grupo ───────────────────────────────────────────────────────────────────
+// ── entrada no grupo pelo anúncio ───────────────────────────────────────────
+// Página /black/grupo (destino dos anúncios). Cria ou atualiza o lead na Base do funil Black Friday,
+// sem aviso pro comercial (é topo de funil), e devolve o convite do grupo. Com UTM/fbclid do Meta a
+// trigger trg_capi_lead já manda o Lead pela CAPI com event_id <lead>:Lead, que a página repete no pixel.
+const CONVITE_GRUPO = "https://chat.whatsapp.com/JXjPFsed0pk7DzBxcdKor0";
+
+async function entrarGrupo(sb: SB, body: Record<string, unknown>) {
+  const nome = String(body.nome || "").trim().slice(0, 120);
+  const empresa = String(body.empresa || "").trim().slice(0, 120);
+  const k = chaveTel(body.telefone);
+  if (nome.length < 2 || !k) return json({ error: "dados_incompletos" }, 400);
+  const tel = String(body.telefone).replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+  const u = (n: string) => String(body[n] || "").slice(0, 200) || null;
+  const { data: cands } = await sb.from("crm_leads").select("id, phone").eq("pipeline_id", PIPELINE)
+    .ilike("phone", `%${k.slice(-8)}`).order("created_at", { ascending: true }).limit(10);
+  const achou: any = (cands || []).find((l: any) => chaveTel(l.phone) === k);
+  if (achou) {
+    if (empresa) await sb.from("crm_leads").update({ company: empresa }).eq("id", achou.id).is("company", null);
+    emSegundoPlano(convidarNoPrivado(sb, { id: achou.id, phone: achou.phone || tel }, nome));
+    return json({ ok: true, lead_id: achou.id, novo: false, convite: CONVITE_GRUPO });
+  }
+  const { data: novo, error } = await sb.from("crm_leads").insert({
+    name: nome, phone: tel, company: empresa || null, pipeline_id: PIPELINE, stage_id: ETAPA.base,
+    owner_staff_id: DONO_FABRICIO, entered_pipeline_at: new Date().toISOString(), urgency: "medium",
+    notes: "Veio do anúncio da Black UNV e foi mandado pro grupo (/black/grupo)",
+    utm_source: u("utm_source"), utm_medium: u("utm_medium"), utm_campaign: u("utm_campaign"),
+    utm_content: u("utm_content"), utm_term: u("utm_term"), fbclid: u("fbclid"),
+  }).select("id").single();
+  if (error || !novo) return json({ ok: true, lead_id: null, novo: false, convite: CONVITE_GRUPO }); // nunca segura a pessoa fora do grupo
+  emSegundoPlano(convidarNoPrivado(sb, { id: novo.id, phone: tel }, nome));
+  return json({ ok: true, lead_id: novo.id, novo: true, convite: CONVITE_GRUPO });
+}
+
+// A resposta da página não espera o WhatsApp sair (o convite abre na hora)
+function emSegundoPlano(p: Promise<unknown>) {
+  const er = (globalThis as any).EdgeRuntime;
+  if (er?.waitUntil) er.waitUntil(p.catch((e) => console.error("[black-agenda] convite", e)));
+  else p.catch(() => {});
+}
+
+/** Link do grupo no privado, pelo número do Ricardo (o agente da Black atende se a pessoa responder). Uma vez por lead. */
+async function convidarNoPrivado(sb: SB, lead: { id: string; phone: string }, nome: string) {
+  const { data: ja } = await sb.from("black_convites").select("lead_id").eq("lead_id", lead.id).maybeSingle();
+  if (ja) return;
+  await sb.from("black_convites").insert({ lead_id: lead.id, telefone: lead.phone });
+  const pn = primeiroNome(nome);
+  const texto = `Oi${pn ? `, ${pn}` : ""}! Aqui é o Ricardo, da UNV.\n\nRecebi seu cadastro na Black Friday UNV. Esse é o link do grupo VIP, onde o Fabrício vai revelar a condição na live de quarta, 25/11, às 20h:\n${CONVITE_GRUPO}\n\nSe você já entrou, é só ignorar. Qualquer dúvida, me chama aqui.`;
+  const r = await abrirConversa(sb, lead, texto);
+  if (!r.ok || r.erro) await sb.from("black_convites").update({ erro: r.erro || "falha" }).eq("lead_id", lead.id);
+}
+
 // ── garantir a vaga (Pix do 1º mês) ─────────────────────────────────────────
 // Página /black/garantir. Cobra o 1º mês (R$ 2.000) por Pix no Asaas principal (ASAAS_API_KEY) e
 // registra em crm_lead_payments com provider_ref = id do pagamento: o asaas-webhook já cria o recebível
@@ -646,6 +697,7 @@ Deno.serve(async (req) => {
         return await grupoSync(sb);
       }
       case "entrou-live": return await entrouLive(sb, body);
+      case "entrar-grupo": return await entrarGrupo(sb, body);
       case "garantir": return await garantir(sb, body);
       case "garantia-status": return await garantiaStatus(sb, body);
       case "cancelar-garantia": return await cancelarGarantia(sb, body);
