@@ -236,10 +236,10 @@ export const AddActivityDialog = ({
           </div>
           <div>
             <Label>Data/Hora{exigirDataHora ? " *" : ""}</Label>
-            <Input type="datetime-local" step={900} required={exigirDataHora}
-              // O passo de 15 min conta a partir do min: com min = agora (ex.: 19:48) só valiam 08:48, 09:03...
-              // e 09:00 dava "Insira um valor válido" (Fabrício, 09/11/2026). Min arredondado pro quarto de hora.
-              min={exigirDataHora ? new Date(Math.floor(Date.now() / 900000) * 900000 - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : undefined}
+            {/* Qualquer horário (Fabrício, 09/11/2026: "follow up pode ser qualquer horário"). Antes tinha passo de
+                15 min contado a partir de "agora", e 09:00 dava "Insira um valor válido". */}
+            <Input type="datetime-local" required={exigirDataHora}
+              min={exigirDataHora ? new Date(Math.floor(Date.now() / 60000) * 60000 - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : undefined}
               value={formData.scheduled_at} onChange={(e) => setFormData(p => ({ ...p, scheduled_at: e.target.value }))} />
           </div>
           <GoogleAgendaOption
