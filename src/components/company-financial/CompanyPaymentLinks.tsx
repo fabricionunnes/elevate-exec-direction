@@ -127,6 +127,7 @@ export function CompanyPaymentLinks({ companyId, companyName }: Props) {
 
   const METHOD_LABELS: Record<string, string> = {
     pix: "PIX",
+    pix_automatico: "Pix Automático",
     credit_card: "Cartão",
     boleto: "Boleto",
   };
