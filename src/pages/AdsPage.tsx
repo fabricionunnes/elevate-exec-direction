@@ -240,7 +240,7 @@ const naoEntrega = [
 // Próximos produtos
 const proximosProdutos = [
   { nome: "UNV Sales Acceleration", descricao: "Time preparado para converter", href: "/sales-acceleration" },
-  { nome: "UNV Control", descricao: "Execução constante", href: "/control" },
+  { nome: "UNV Social", descricao: "Autoridade que aquece o lead", href: "/social" },
   { nome: "UNV Growth Room", descricao: "Decisão de escala", href: "/growth-room" },
 ];
 
