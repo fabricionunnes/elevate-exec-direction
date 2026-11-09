@@ -125,7 +125,7 @@ export default function ScannerVendasUNV() {
         return;
       }
       loaded = true;
-      const pixelId = "247392077001023";
+      const pixelId = "2043723569621789";
       (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
         if (f.fbq) return;
         n = f.fbq = function () {

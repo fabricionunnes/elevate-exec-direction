@@ -2,7 +2,7 @@
 // O Purchase já é disparado server-side via CAPI no gate de pagamento
 // (unv-start-checkout); aqui ficam os eventos de navegador do topo do funil.
 
-export const META_PIXEL_ID = "247392077001023";
+export const META_PIXEL_ID = "2043723569621789";
 
 declare global {
   interface Window {

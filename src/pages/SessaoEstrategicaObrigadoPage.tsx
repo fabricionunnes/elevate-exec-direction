@@ -8,7 +8,7 @@ const FURAR_FILA_WA = "https://wa.me/5517992061688?text=" + encodeURIComponent(
 const SessaoEstrategicaObrigadoPage = () => {
   // Meta Pixel + Conversion Event
   useEffect(() => {
-    const pixelId = '247392077001023';
+    const pixelId = '2043723569621789';
     (function(f: any,b: any,e: any,v: any,n?: any,t?: any,s?: any){
       if(f.fbq)return;n=f.fbq=function(){n.callMethod?
       n.callMethod.apply(n,arguments):n.queue.push(arguments)};
