@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-11-09T21:01:06",
+ "gerado_em": "2026-11-09T22:31:20",
  "posts": [
+  {
+   "slug": "inteligencia-artificial-libera-vendedor-vender-mais",
+   "url": "/blog/inteligencia-artificial-libera-vendedor-vender-mais/",
+   "titulo": "Inteligência artificial libera o vendedor para vender mais",
+   "resumo": "Tarefa repetitiva toma tempo que deveria estar em venda ativa. IA resolve o que não precisa de gente e deixa o vendedor livre para bater meta.",
+   "tags": [
+    "automação",
+    "estrutura comercial",
+    "tempo do vendedor",
+    "processo comercial",
+    "inteligência artificial"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-09",
+   "ts": 2243
+  },
   {
    "slug": "automacao-elimina-trabalho-manual-nao-agrega-meta",
    "url": "/blog/automacao-elimina-trabalho-manual-nao-agrega-meta/",
