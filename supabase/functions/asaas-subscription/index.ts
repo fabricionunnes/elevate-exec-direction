@@ -187,6 +187,66 @@ Deno.serve(async (req) => {
 
     console.log("Asaas customer:", customerId);
 
+    // ── Pix Automático (09/11/2026) ─────────────────────────────────────────────
+    // O cliente paga a 1ª parcela por um QR Code que também autoriza os débitos seguintes no banco dele.
+    // O Asaas cria a assinatura sozinho (paymentCreationMode SUBSCRIPTION) a partir do startDate, que é o
+    // vencimento seguinte ao da 1ª parcela. Nada de POST /subscriptions nem cobrança avulsa aqui.
+    if (payment_method === "pix_automatico") {
+      if (!cleanDoc) throw new Error("Pix Automático exige o CPF/CNPJ do cliente.");
+      const frequency = recurrence === "quarterly" ? "QUARTERLY" : recurrence === "yearly" ? "ANNUALLY" : "MONTHLY";
+      const hojeBR = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+      const primeira = next_charge_date && next_charge_date >= hojeBR ? next_charge_date : hojeBR;
+      const somaCiclo = (iso: string) => {
+        const d = new Date(`${iso}T12:00:00Z`);
+        if (frequency === "QUARTERLY") d.setUTCMonth(d.getUTCMonth() + 3);
+        else if (frequency === "ANNUALLY") d.setUTCFullYear(d.getUTCFullYear() + 1);
+        else d.setUTCMonth(d.getUTCMonth() + 1);
+        return d.toISOString().slice(0, 10);
+      };
+      const startDate = somaCiclo(primeira);
+      // QR vale até o fim do dia do 1º vencimento (mínimo 2 dias, máximo 30)
+      const fimDoVencimento = new Date(`${primeira}T23:59:00-03:00`).getTime();
+      const expirationSeconds = Math.round(Math.min(30 * 86400, Math.max(2 * 86400, (fimDoVencimento - Date.now()) / 1000)));
+      const valor = amount_cents / 100;
+      const contractId = `nx${String(recurring_charge_id || crypto.randomUUID()).replace(/-/g, "")}`.slice(0, 35);
+      const auth = await asaasRequest("/pix/automatic/authorizations", "POST", ASAAS_API_KEY, {
+        customerId,
+        frequency,
+        contractId,
+        startDate,
+        value: valor,
+        description: String(description || "Mensalidade").slice(0, 35),
+        paymentCreationMode: "SUBSCRIPTION",
+        retryPolicy: "ALLOW_THREE_IN_SEVEN_DAYS",
+        immediateQrCode: { originalValue: valor, expirationSeconds, description: String(description || "Primeira parcela").slice(0, 35) },
+      });
+      const qrPayload = auth?.immediateQrCode?.payload || auth?.payload || null;
+      const qrImage = auth?.immediateQrCode?.encodedImage || auth?.encodedImage || null;
+      const link = `https://unvholdings.com.br/#/pix-automatico/${auth.id}`;
+      await supabaseAdmin.from("asaas_pix_automatico").upsert({
+        id: auth.id, origem: "empresa", recurring_charge_id: recurring_charge_id || null, company_id: company_id || null,
+        asaas_account_id: asaas_account_id || null, customer_id: customerId, subscription_id: auth.subscriptionId || null,
+        contract_id: contractId, valor_cents: amount_cents, frequencia: frequency, primeira_cobranca: primeira, start_date: startDate,
+        descricao: description, cliente_nome: customer_name, status: auth.status || "CREATED",
+        qr_payload: qrPayload, qr_image: qrImage,
+        qr_expira_em: auth?.immediateQrCode?.expirationDate ? new Date(String(auth.immediateQrCode.expirationDate).replace(" ", "T") + "-03:00").toISOString() : new Date(Date.now() + expirationSeconds * 1000).toISOString(),
+        ultimo_evento: "criada", atualizado_em: new Date().toISOString(),
+      });
+      if (recurring_charge_id) {
+        await supabaseAdmin.from("company_recurring_charges").update({
+          // a assinatura do Asaas casa as parcelas 2..N no webhook (pagarme_plan_id + dueDate)
+          pagarme_plan_id: auth.subscriptionId || null,
+          pagarme_link_url: link,
+          next_charge_date: primeira,
+        } as any).eq("id", recurring_charge_id);
+      }
+      console.log(`Pix Automático criado: ${auth.id} status=${auth.status} sub=${auth.subscriptionId} start=${startDate}`);
+      return new Response(JSON.stringify({
+        success: true, pix_automatico: true, authorization_id: auth.id, subscription_id: auth.subscriptionId || null,
+        invoice_url: link, pix_auto: { id: auth.id, status: auth.status || "CREATED", payload: qrPayload, image: qrImage, link, start_date: startDate, primeira_cobranca: primeira },
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // Step 2: Map recurrence to Asaas cycle
     let cycle = "MONTHLY";
     if (recurrence === "quarterly") cycle = "QUARTERLY";
