@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-11-05T21:01:15",
+ "gerado_em": "2026-11-09T21:01:06",
  "posts": [
+  {
+   "slug": "automacao-elimina-trabalho-manual-nao-agrega-meta",
+   "url": "/blog/automacao-elimina-trabalho-manual-nao-agrega-meta/",
+   "titulo": "Automação elimina trabalho manual que não agrega na meta",
+   "resumo": "Ferramenta que executa tarefa repetitiva sozinha libera vendedor para vender. Trabalho braçal que não fecha negócio precisa sair da rotina.",
+   "tags": [
+    "automação",
+    "estrutura comercial",
+    "tempo do vendedor",
+    "processo comercial",
+    "treino de vendedor"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-09",
+   "ts": 2242
+  },
   {
    "slug": "sistema-financeiro-simples-organiza-caos-equipe-grande",
    "url": "/blog/sistema-financeiro-simples-organiza-caos-equipe-grande/",
