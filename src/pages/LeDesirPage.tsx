@@ -100,7 +100,7 @@ const complements = [
   { name: "UNV Sales Acceleration", aspect: "decisão" },
   { name: "UNV Partners", aspect: "visão" },
   { name: "UNV Mastermind", aspect: "relação" },
-  { name: "UNV Leadership", aspect: "presença" }
+  { name: "UNV Social", aspect: "presença" }
 ];
 
 export default function LeDesirPage() {
