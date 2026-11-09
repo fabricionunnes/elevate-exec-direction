@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { PixAutomaticoQrDialog, BadgePixAutomatico, linkPixAutomatico, type PixAutomaticoInfo } from "@/components/financial/PixAutomaticoQrDialog";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, RefreshCw, Loader2, Trash2, Calendar, ExternalLink, Copy, FileText, AlertTriangle } from "lucide-react";
+import { Plus, RefreshCw, Loader2, Trash2, Calendar, ExternalLink, Copy, FileText, AlertTriangle, QrCode } from "lucide-react";
 import { format } from "date-fns";
 
 interface Props {
@@ -92,6 +93,9 @@ export function CompanyRecurringCharges({
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Pix Automático (09/11/2026): autorização de cada recorrência e o QR aberto na tela
+  const [pixAuto, setPixAuto] = useState<Record<string, any>>({});
+  const [qrAberto, setQrAberto] = useState<PixAutomaticoInfo | null>(null);
 
   const getDefaultNextDate = () => {
     const now = new Date();
@@ -154,6 +158,15 @@ export function CompanyRecurringCharges({
       .order("created_at", { ascending: false });
 
     if (!error) setCharges((data as any) || []);
+    const ids = ((data as any[]) || []).filter((c) => c.payment_method === "pix_automatico").map((c) => c.id);
+    if (ids.length) {
+      const { data: pas } = await (supabase as any).from("asaas_pix_automatico")
+        .select("id, recurring_charge_id, status, qr_payload, qr_image, primeira_cobranca, start_date, valor_cents, criado_em")
+        .in("recurring_charge_id", ids).order("criado_em", { ascending: true });
+      const m: Record<string, any> = {};
+      for (const pa of (pas as any[]) || []) m[pa.recurring_charge_id] = pa; // fica a mais recente
+      setPixAuto(m);
+    } else setPixAuto({});
     setLoading(false);
   };
 
@@ -236,13 +249,14 @@ export function CompanyRecurringCharges({
         },
       });
 
+      const pixCriado = subData?.pix_auto || null;
       if (subError) {
         console.error("Asaas subscription error:", subError);
         toast.warning("Recorrência salva, mas houve erro ao criar no Asaas: " + (subError.message || "erro desconhecido"));
       } else if (subData?.error) {
         toast.warning("Recorrência salva, mas houve erro no Asaas: " + subData.error);
       } else {
-        toast.success("Recorrência criada com sucesso no Asaas!");
+        toast.success(pixCriado ? "Pix Automático criado no Asaas! Mande o QR Code pro cliente autorizar." : "Recorrência criada com sucesso no Asaas!");
       }
 
       // Step 3: Auto-generate invoices/installments
@@ -263,6 +277,7 @@ export function CompanyRecurringCharges({
 
       setShowDialog(false);
       fetchCharges();
+      if (pixCriado) setQrAberto(pixCriado);
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar recorrência");
     } finally {
@@ -303,6 +318,15 @@ export function CompanyRecurringCharges({
 
   const toggleActive = async (charge: RecurringCharge) => {
     const newActive = !charge.is_active;
+
+    // Pix Automático: pausar cancela a autorização no Asaas (o cliente para de ser debitado)
+    const pa = pixAuto[charge.id];
+    if (!newActive && charge.payment_method === "pix_automatico" && pa && !["CANCELLED", "REFUSED", "EXPIRED"].includes(pa.status)) {
+      if (!confirm("Pausar cancela a autorização do Pix Automático no Asaas. Pra voltar a cobrar, o cliente vai precisar autorizar de novo. Continuar?")) return;
+      const { data: cx, error: cxErr } = await supabase.functions.invoke("pix-automatico", { body: { action: "cancelar", id: pa.id } });
+      if (cxErr || cx?.error) toast.error("Não consegui cancelar a autorização no Asaas: " + (cx?.error || cxErr?.message || "erro"));
+      else toast.success("Autorização do Pix Automático cancelada");
+    }
 
     // If deactivating and has an Asaas subscription, cancel it
     if (!newActive && charge.pagarme_plan_id) {
@@ -408,16 +432,12 @@ export function CompanyRecurringCharges({
                 {asaasAccounts.length > 1 && (
                   <div className="space-y-2">
                     <Label>Conta Asaas</Label>
-                    <Select value={form.asaasAccountId} onValueChange={(v) => setForm({ ...form, asaasAccountId: v })}>
-                      <SelectTrigger><SelectValue placeholder="Selecione a conta..." /></SelectTrigger>
-                      <SelectContent>
-                        {asaasAccounts.map((acc) => (
-                          <SelectItem key={acc.id} value={acc.id}>
-                            {acc.name} {acc.is_default ? "(Padrão)" : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={form.asaasAccountId}
+                      onValueChange={(v) => setForm({ ...form, asaasAccountId: v })}
+                      placeholder="Selecione a conta..."
+                      options={asaasAccounts.map((acc) => ({ value: acc.id, label: `${acc.name}${acc.is_default ? " (Padrão)" : ""}` }))}
+                    />
                   </div>
                 )}
                 <div className="space-y-2">
@@ -434,14 +454,11 @@ export function CompanyRecurringCharges({
                   </div>
                   <div className="space-y-2">
                     <Label>Recorrência</Label>
-                    <Select value={form.recurrence} onValueChange={(v) => setForm({ ...form, recurrence: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="monthly">Mensal</SelectItem>
-                        <SelectItem value="quarterly">Trimestral</SelectItem>
-                        <SelectItem value="yearly">Anual</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={form.recurrence}
+                      onValueChange={(v) => setForm({ ...form, recurrence: v })}
+                      options={[{ value: "monthly", label: "Mensal" }, { value: "quarterly", label: "Trimestral" }, { value: "yearly", label: "Anual" }]}
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -458,14 +475,16 @@ export function CompanyRecurringCharges({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Método de Pagamento</Label>
-                    <Select value={form.paymentMethod} onValueChange={(v) => setForm({ ...form, paymentMethod: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pix">PIX</SelectItem>
-                        <SelectItem value="credit_card">Cartão</SelectItem>
-                        <SelectItem value="boleto">Boleto</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={form.paymentMethod}
+                      onValueChange={(v) => setForm({ ...form, paymentMethod: v })}
+                      options={[
+                        { value: "pix", label: "PIX" },
+                        { value: "pix_automatico", label: "Pix Automático" },
+                        { value: "credit_card", label: "Cartão" },
+                        { value: "boleto", label: "Boleto" },
+                      ]}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Próxima Cobrança</Label>
@@ -476,6 +495,14 @@ export function CompanyRecurringCharges({
                     />
                   </div>
                 </div>
+                {form.paymentMethod === "pix_automatico" && (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs space-y-1">
+                    <p className="font-medium text-sm">Como funciona o Pix Automático</p>
+                    <p>O cliente recebe um QR Code e paga a 1ª parcela por ele. No mesmo passo, o banco dele pede pra autorizar os débitos automáticos.</p>
+                    <p>A partir do vencimento seguinte, o valor sai sozinho da conta dele, sem link e sem boleto. Se o saldo faltar, o Asaas tenta de novo até 3 vezes em 7 dias.</p>
+                    <p className="text-muted-foreground">"Próxima Cobrança" é o vencimento da 1ª parcela, paga pelo QR Code.</p>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Nome do Cliente</Label>
@@ -498,31 +525,27 @@ export function CompanyRecurringCharges({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Categoria</Label>
-                    <Select value={form.categoryId} onValueChange={(v) => setForm({ ...form, categoryId: v })}>
-                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                      <SelectContent>
-                        {categories.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={form.categoryId}
+                      onValueChange={(v) => setForm({ ...form, categoryId: v })}
+                      placeholder="Selecione..."
+                      options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Centro de Custo</Label>
-                    <Select value={form.costCenterId} onValueChange={(v) => setForm({ ...form, costCenterId: v })}>
-                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                      <SelectContent>
-                        {costCenters.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={form.costCenterId}
+                      onValueChange={(v) => setForm({ ...form, costCenterId: v })}
+                      placeholder="Selecione..."
+                      options={costCenters.map((c) => ({ value: c.id, label: c.name }))}
+                    />
                   </div>
                 </div>
                 <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/30">
                   <div>
-                    <Label className="text-sm font-medium">Enviar boleto via WhatsApp</Label>
-                    <p className="text-xs text-muted-foreground">Envia automaticamente o link de pagamento ao gerar as faturas</p>
+                    <Label className="text-sm font-medium">{form.paymentMethod === "pix_automatico" ? "Enviar o QR Code via WhatsApp" : "Enviar boleto via WhatsApp"}</Label>
+                    <p className="text-xs text-muted-foreground">{form.paymentMethod === "pix_automatico" ? "Envia ao cliente o link da página do QR Code pra ele autorizar" : "Envia automaticamente o link de pagamento ao gerar as faturas"}</p>
                   </div>
                   <Switch
                     checked={form.sendWhatsapp}
@@ -531,7 +554,7 @@ export function CompanyRecurringCharges({
                 </div>
                 <Button type="button" onClick={handleCreate} disabled={saving} className="w-full">
                   {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Criar Recorrência no Asaas
+                  {form.paymentMethod === "pix_automatico" ? "Criar Pix Automático no Asaas" : "Criar Recorrência no Asaas"}
                 </Button>
               </div>
             </DialogContent>
@@ -557,7 +580,9 @@ export function CompanyRecurringCharges({
                     <Badge variant={charge.is_active ? "default" : "secondary"}>
                       {charge.is_active ? "Ativo" : "Pausado"}
                     </Badge>
-                    {charge.pagarme_link_url && (
+                    {charge.payment_method === "pix_automatico" ? (
+                      <BadgePixAutomatico status={pixAuto[charge.id]?.status || (charge.pagarme_link_url ? "CREATED" : null)} />
+                    ) : charge.pagarme_link_url && (
                       <Badge variant="outline" className="text-xs">Asaas ✓</Badge>
                     )}
                     <Badge
@@ -586,7 +611,20 @@ export function CompanyRecurringCharges({
                       Próx: {format(new Date(charge.next_charge_date + "T12:00:00"), "dd/MM/yyyy")}
                     </span>
                   </div>
-                  {charge.pagarme_link_url && (
+                  {charge.payment_method === "pix_automatico" && pixAuto[charge.id] && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Button type="button" variant="ghost" size="sm" className="h-7 text-xs px-2"
+                        onClick={() => { const pa = pixAuto[charge.id]; setQrAberto({ id: pa.id, status: pa.status, payload: pa.qr_payload, image: pa.qr_image, link: linkPixAutomatico(pa.id), primeira_cobranca: pa.primeira_cobranca, start_date: pa.start_date, valor_cents: pa.valor_cents }); }}>
+                        <QrCode className="h-3 w-3 mr-1" />
+                        Ver QR Code
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => copyLink(linkPixAutomatico(pixAuto[charge.id].id))}>
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copiar Link
+                      </Button>
+                    </div>
+                  )}
+                  {charge.pagarme_link_url && charge.payment_method !== "pix_automatico" && (
                     <div className="flex items-center gap-2 mt-1">
                       <Button
                         type="button"
@@ -624,7 +662,7 @@ export function CompanyRecurringCharges({
                     <FileText className="h-3 w-3 mr-1" />
                     Gerar Parcelas
                   </Button>
-                  {charge.is_active && !charge.pagarme_plan_id && (
+                  {charge.is_active && !charge.pagarme_plan_id && !(charge.payment_method === "pix_automatico" && pixAuto[charge.id]) && (
                     <Button type="button" variant="outline" size="sm" disabled={retrying === charge.id}
                       className="border-amber-500/50 text-amber-700 dark:text-amber-400"
                       title="Esta recorrência não foi criada no Asaas, então as parcelas estão sem link de pagamento"
@@ -651,6 +689,7 @@ export function CompanyRecurringCharges({
           </div>
         )}
       </CardContent>
+      <PixAutomaticoQrDialog info={qrAberto} onOpenChange={(o) => { if (!o) setQrAberto(null); }} />
     </Card>
   );
 }
