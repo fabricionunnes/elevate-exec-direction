@@ -5,11 +5,8 @@ import logoUnv from "@/assets/logo-unv.png";
 const footerLinks = {
   products: [
     { name: "Sales Acceleration", href: "/sales-acceleration" },
-    { name: "UNV Core", href: "/core" },
-    { name: "UNV Control", href: "/control" },
     { name: "Growth Room", href: "/growth-room" },
     { name: "UNV Partners", href: "/partners" },
-    { name: "Sales Ops", href: "/sales-ops" },
   ],
   company: [
     { name: "Nosso Método", href: "/how-it-works" },
