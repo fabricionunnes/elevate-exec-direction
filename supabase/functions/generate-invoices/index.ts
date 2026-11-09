@@ -100,6 +100,19 @@ async function getOrCreateAsaasPaymentUrl(
     recurring_charge_id?: string;
   }
 ): Promise<string> {
+  // Pix Automático (09/11/2026): nunca cria cobrança Pix avulsa (o cliente pagaria duas vezes). Enquanto a
+  // autorização não está ativa, a 1ª parcela aponta pra página do QR Code; as seguintes são débito automático.
+  if (invoice.payment_method === "pix_automatico") {
+    if (!invoice.recurring_charge_id) return "";
+    const { data: pa } = await supabase.from("asaas_pix_automatico")
+      .select("id, status, primeira_cobranca").eq("recurring_charge_id", invoice.recurring_charge_id)
+      .order("criado_em", { ascending: false }).limit(1).maybeSingle();
+    if (pa && pa.status !== "ACTIVE" && (!pa.primeira_cobranca || invoice.due_date <= pa.primeira_cobranca)) {
+      return `https://unvholdings.com.br/#/pix-automatico/${pa.id}`;
+    }
+    return "";
+  }
+
   // Try to get subscription ID from recurring charge
   if (invoice.recurring_charge_id) {
     const { data: charge } = await supabase
@@ -390,6 +403,7 @@ Deno.serve(async (req) => {
           due_date: dueDateStr,
           status: "pending",
           payment_method: charge.payment_method,
+          auto_debit: charge.payment_method === "pix_automatico",
           installment_number: i + 1,
           total_installments: numInvoices,
           late_fee_percent: 2.0,
@@ -697,6 +711,7 @@ Deno.serve(async (req) => {
             due_date: payment.dueDate,
             status: payment.status === "RECEIVED" || payment.status === "CONFIRMED" ? "paid" : "pending",
             payment_method: charge.payment_method,
+          auto_debit: charge.payment_method === "pix_automatico",
             installment_number: installmentCounter,
             total_installments: 0,
             late_fee_percent: 2.0,
@@ -833,6 +848,7 @@ Deno.serve(async (req) => {
           due_date: dueDateStr,
           status: "pending",
           payment_method: charge.payment_method,
+          auto_debit: charge.payment_method === "pix_automatico",
           installment_number: i + 1,
           total_installments: numInvoices,
           late_fee_percent: 2.0,
