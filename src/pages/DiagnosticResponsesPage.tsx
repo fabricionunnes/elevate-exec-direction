@@ -166,59 +166,66 @@ const getRecommendedServices = (contextData: PortalPlanDiagnostic['context_data'
   const ownerRole = contextData.owner_role;
   const salespeople = parseInt(contextData.salespeople_count || '0') || 0;
   
+  // Evita serviço repetido: se já entrou, só sobe a prioridade quando a nova regra pede mais
+  const priorityOrder = { primary: 0, secondary: 1, complementary: 2 };
+  const addService = (name: string, reason: string, priority: 'primary' | 'secondary' | 'complementary') => {
+    const existing = services.find(s => s.name === name);
+    if (!existing) {
+      services.push({ name, reason, priority });
+      return;
+    }
+    if (priorityOrder[priority] < priorityOrder[existing.priority]) {
+      existing.priority = priority;
+      existing.reason = reason;
+    }
+  };
+  
   // Baseado no gargalo principal
   if (bottleneck === 'leads') {
-    services.push({ name: 'UNV Ads', reason: 'Gargalo em geração de leads', priority: 'primary' });
-    services.push({ name: 'UNV Social', reason: 'Complementar geração de demanda', priority: 'secondary' });
+    addService('UNV Ads', 'Gargalo em geração de leads', 'primary');
+    addService('UNV Social', 'Complementar geração de demanda', 'secondary');
   }
   
   if (bottleneck === 'conversion') {
-    services.push({ name: 'UNV Sales Acceleration', reason: 'Gargalo em conversão', priority: 'primary' });
-    services.push({ name: 'UNV Sales Ops', reason: 'Treinamento do time para melhorar conversão', priority: 'secondary' });
+    addService('UNV Sales Acceleration', 'Gargalo em conversão', 'primary');
   }
   
   if (bottleneck === 'team') {
-    services.push({ name: 'UNV Sales Force', reason: 'Gargalo no time comercial', priority: 'primary' });
-    services.push({ name: 'UNV People', reason: 'Gestão e recrutamento de pessoas', priority: 'secondary' });
+    addService('UNV Sales Acceleration', 'Gargalo no time comercial', 'primary');
+    addService('UNV People', 'Gestão e recrutamento de pessoas', 'secondary');
   }
   
   if (bottleneck === 'management') {
-    if (!hasManager) {
-      services.push({ name: 'Fractional CRO', reason: 'Não tem gestor comercial', priority: 'primary' });
-    }
-    services.push({ name: 'UNV Leadership', reason: 'Gargalo em gestão/cobrança', priority: hasManager ? 'primary' : 'secondary' });
+    addService('UNV Sales Acceleration', hasManager ? 'Gargalo em gestão/cobrança' : 'Não tem gestor comercial', 'primary');
   }
   
   if (bottleneck === 'process') {
-    services.push({ name: 'UNV Control', reason: 'Gargalo em processo/CRM', priority: 'primary' });
-    services.push({ name: 'UNV Sales Ops', reason: 'Padronização de processos', priority: 'secondary' });
+    addService('UNV Sales Acceleration', 'Gargalo em processo/CRM', 'primary');
   }
   
   // Baseado em necessidades específicas
-  if (needsManagement && !services.some(s => s.name.includes('CRO') || s.name.includes('Leadership'))) {
-    services.push({ name: 'Fractional CRO', reason: 'Precisa de gestão comercial', priority: 'secondary' });
+  if (needsManagement) {
+    addService('UNV Sales Acceleration', 'Precisa de gestão comercial', 'secondary');
   }
   
-  if (needsProcess && !services.some(s => s.name.includes('Control') || s.name.includes('Sales Ops'))) {
-    services.push({ name: 'UNV Control', reason: 'Precisa de processo/CRM', priority: 'secondary' });
+  if (needsProcess) {
+    addService('UNV Sales Acceleration', 'Precisa de processo/CRM', 'secondary');
   }
   
   // Baseado no papel do dono
   if (ownerRole === 'operational') {
-    if (!services.some(s => s.name.includes('Sales Force'))) {
-      services.push({ name: 'UNV Sales Force', reason: 'Dono ainda operacional em vendas', priority: 'complementary' });
-    }
+    addService('UNV Sales Acceleration', 'Dono ainda operacional em vendas', 'complementary');
   }
   
   // Baseado no tamanho do time
-  if (salespeople >= 5 && !services.some(s => s.name.includes('Sales Ops'))) {
-    services.push({ name: 'UNV Sales Ops', reason: `Time de ${salespeople} vendedores`, priority: 'complementary' });
+  if (salespeople >= 5) {
+    addService('UNV Sales Acceleration', `Time de ${salespeople} vendedores`, 'complementary');
   }
   
   // Se não tem nenhum serviço sugerido, sugere o básico
   if (services.length === 0) {
-    services.push({ name: 'UNV Core', reason: 'Estruturação comercial inicial', priority: 'primary' });
-    services.push({ name: 'UNV Growth Room', reason: 'Clareza estratégica', priority: 'secondary' });
+    addService('UNV Sales Acceleration', 'Estruturação comercial inicial', 'primary');
+    addService('UNV Growth Room', 'Clareza estratégica', 'secondary');
   }
   
   return services;
