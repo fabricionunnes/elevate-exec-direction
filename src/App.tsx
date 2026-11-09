@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { OAuthRedirectHandler } from "./components/OAuthRedirectHandler";
 import { InviteRedirectHandler } from "./components/InviteRedirectHandler";
@@ -27,8 +27,6 @@ const LeadRequestDecisionPage = lazy(() => import("./pages/LeadRequestDecisionPa
 const HowItWorksPage = lazy(() => import("./pages/HowItWorksPage"));
 const ProductsPage = lazy(() => import("./pages/ProductsPage"));
 const SalesAccelerationPage = lazy(() => import("./pages/SalesAccelerationPage"));
-const CorePage = lazy(() => import("./pages/CorePage"));
-const ControlPage = lazy(() => import("./pages/ControlPage"));
 const GrowthRoomPage = lazy(() => import("./pages/GrowthRoomPage"));
 const PartnersPage = lazy(() => import("./pages/PartnersPage"));
 const UNVBoardPage = lazy(() => import("./pages/UNVBoardPage"));
@@ -58,17 +56,11 @@ const MindMapsPage = lazy(() => import("./pages/onboarding-tasks/MindMapsPage"))
 const MindMapEditorPage = lazy(() => import("./pages/onboarding-tasks/MindMapEditorPage"));
 const AcademyCertificatesPage = lazy(() => import("./pages/academy/AcademyCertificatesPage"));
 const CRMAgentsPage = lazy(() => import("./pages/crm/CRMAgentsPage"));
-const SalesOpsPage = lazy(() => import("./pages/SalesOpsPage"));
-const AISalesSystemPage = lazy(() => import("./pages/AISalesSystemPage"));
-const FractionalCROPage = lazy(() => import("./pages/FractionalCROPage"));
-const ExecutionPartnershipPage = lazy(() => import("./pages/ExecutionPartnershipPage"));
 const AdsPage = lazy(() => import("./pages/AdsPage"));
 const SocialPage = lazy(() => import("./pages/SocialPage"));
-const SalesForcePage = lazy(() => import("./pages/SalesForcePage"));
 const MastermindPage = lazy(() => import("./pages/MastermindPage"));
 const MastermindApplyPage = lazy(() => import("./pages/MastermindApplyPage"));
 const MastermindApplicationsPage = lazy(() => import("./pages/MastermindApplicationsPage"));
-const LeadershipPage = lazy(() => import("./pages/LeadershipPage"));
 const LeDesirPage = lazy(() => import("./pages/LeDesirPage"));
 const FinancePage = lazy(() => import("./pages/FinancePage"));
 const PeoplePage = lazy(() => import("./pages/PeoplePage"));
@@ -433,8 +425,8 @@ const AppShell = () => {
             <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/sales-acceleration" element={<SalesAccelerationPage />} />
-            <Route path="/core" element={<CorePage />} />
-            <Route path="/control" element={<ControlPage />} />
+            <Route path="/core" element={<Navigate to="/" replace />} />
+            <Route path="/control" element={<Navigate to="/" replace />} />
             <Route path="/growth-room" element={<GrowthRoomPage />} />
             <Route path="/partners" element={<PartnersPage />} />
             <Route path="/unv-board" element={<UNVBoardPage />} />
@@ -445,17 +437,17 @@ const AppShell = () => {
             <Route path="/start/:token" element={<UNVStartPortalPage />} />
             <Route path="/unviaacademy/checkout" element={<IaAcademyCheckoutPage />} />
             <Route path="/unviaacademy/obrigado" element={<IaAcademyObrigadoPage />} />
-            <Route path="/sales-ops" element={<SalesOpsPage />} />
-            <Route path="/ai-sales-system" element={<AISalesSystemPage />} />
-            <Route path="/fractional-cro" element={<FractionalCROPage />} />
-            <Route path="/execution-partnership" element={<ExecutionPartnershipPage />} />
+            <Route path="/sales-ops" element={<Navigate to="/" replace />} />
+            <Route path="/ai-sales-system" element={<Navigate to="/" replace />} />
+            <Route path="/fractional-cro" element={<Navigate to="/" replace />} />
+            <Route path="/execution-partnership" element={<Navigate to="/" replace />} />
             <Route path="/ads" element={<AdsPage />} />
             <Route path="/social" element={<SocialPage />} />
-            <Route path="/sales-force" element={<SalesForcePage />} />
+            <Route path="/sales-force" element={<Navigate to="/" replace />} />
             <Route path="/mastermind" element={<MastermindPage />} />
             <Route path="/mastermind/apply" element={<MastermindApplyPage />} />
             <Route path="/mastermind/applications" element={<MastermindApplicationsPage />} />
-            <Route path="/leadership" element={<LeadershipPage />} />
+            <Route path="/leadership" element={<Navigate to="/" replace />} />
             <Route path="/le-desir" element={<LeDesirPage />} />
             <Route path="/finance" element={<FinancePage />} />
             <Route path="/people" element={<PeoplePage />} />
