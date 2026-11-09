@@ -132,21 +132,87 @@ function logUsoIA(model: string, usage: any, meta: any) {
   } catch { /* medidor nunca derruba o agente */ }
 }
 
-async function claude(model: string, system: string, messages: any[], tools?: any[], maxTokens = 600, forcarFerramenta?: string) {
-  if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY não configurada");
-  // temperature não é aceita nos modelos novos (400): não enviar.
-  const body: any = { model, max_tokens: maxTokens, system, messages };
-  if (tools?.length) body.tools = tools;
-  if (forcarFerramenta) body.tool_choice = { type: "tool", name: forcarFerramenta };
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
+// ---------- IA com reserva (09/11/2026) ----------
+// A conta da Anthropic ficou sem crédito em 05/11 e o agente parou de cobrar; como a régua deixa a
+// cobrança pós-vencimento pro agente, ninguém cobrava os atrasados. Agora, se a Anthropic falhar
+// (sem crédito, fora do ar, sem chave), o MESMO pedido vai pro OpenAI e a resposta volta no formato
+// da Anthropic (blocos text/tool_use), então o resto do agente não muda.
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const MODELO_OPENAI = "gpt-4o";
+
+function mensagensParaOpenAI(system: string, messages: any[]): any[] {
+  const out: any[] = [{ role: "system", content: system }];
+  for (const m of messages) {
+    if (typeof m.content === "string") { out.push({ role: m.role, content: m.content }); continue; }
+    const blocos: any[] = m.content || [];
+    if (m.role === "assistant") {
+      const texto = blocos.filter((b) => b.type === "text").map((b) => b.text).join("\n");
+      const chamadas = blocos.filter((b) => b.type === "tool_use").map((b) => ({ id: b.id, type: "function", function: { name: b.name, arguments: JSON.stringify(b.input ?? {}) } }));
+      out.push({ role: "assistant", content: texto || null, ...(chamadas.length ? { tool_calls: chamadas } : {}) });
+      continue;
+    }
+    // usuário: resultados de ferramenta viram mensagens "tool"; texto, imagem e PDF viram partes
+    for (const r of blocos.filter((b) => b.type === "tool_result")) {
+      const c = typeof r.content === "string" ? r.content : Array.isArray(r.content) ? r.content.map((x: any) => x.text ?? JSON.stringify(x)).join("\n") : JSON.stringify(r.content ?? "");
+      out.push({ role: "tool", tool_call_id: r.tool_use_id, content: c });
+    }
+    const partes: any[] = [];
+    for (const b of blocos) {
+      if (b.type === "text") partes.push({ type: "text", text: b.text });
+      else if (b.type === "image") partes.push({ type: "image_url", image_url: { url: b.source?.type === "base64" ? `data:${b.source.media_type};base64,${b.source.data}` : b.source?.url } });
+      else if (b.type === "document") partes.push({ type: "file", file: { filename: "documento.pdf", file_data: `data:${b.source?.media_type || "application/pdf"};base64,${b.source?.data}` } });
+    }
+    if (partes.length) out.push({ role: "user", content: partes });
+  }
+  return out;
+}
+
+async function openaiNoFormatoAnthropic(system: string, messages: any[], tools?: any[], maxTokens = 600, forcarFerramenta?: string) {
+  if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY não configurada");
+  const body: any = { model: MODELO_OPENAI, max_tokens: maxTokens, messages: mensagensParaOpenAI(system, messages) };
+  if (tools?.length) body.tools = tools.map((t) => ({ type: "function", function: { name: t.name, description: t.description || "", parameters: t.input_schema || { type: "object", properties: {} } } }));
+  if (forcarFerramenta) body.tool_choice = { type: "function", function: { name: forcarFerramenta } };
+  const r = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
     body: JSON.stringify(body),
   });
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(`Anthropic ${r.status}: ${JSON.stringify(d?.error || d).slice(0, 200)}`);
-  logUsoIA(model, d?.usage, { stop: d?.stop_reason });
-  return d;
+  if (!r.ok) throw new Error(`OpenAI ${r.status}: ${JSON.stringify(d?.error || d).slice(0, 200)}`);
+  const msg = d?.choices?.[0]?.message || {};
+  const content: any[] = [];
+  if (msg.content) content.push({ type: "text", text: String(msg.content) });
+  for (const c of msg.tool_calls || []) {
+    let input: any = {};
+    try { input = JSON.parse(c.function?.arguments || "{}"); } catch { input = {}; }
+    content.push({ type: "tool_use", id: c.id, name: c.function?.name, input });
+  }
+  const usage = { input_tokens: d?.usage?.prompt_tokens ?? 0, output_tokens: d?.usage?.completion_tokens ?? 0, cache_read_input_tokens: d?.usage?.prompt_tokens_details?.cached_tokens ?? 0 };
+  logUsoIA(MODELO_OPENAI, usage, { stop: d?.choices?.[0]?.finish_reason, reserva: true });
+  return { content, stop_reason: (msg.tool_calls || []).length ? "tool_use" : "end_turn", usage, model: MODELO_OPENAI };
+}
+
+async function claude(model: string, system: string, messages: any[], tools?: any[], maxTokens = 600, forcarFerramenta?: string) {
+  let erroAnthropic = "";
+  if (ANTHROPIC_API_KEY) {
+    // temperature não é aceita nos modelos novos (400): não enviar.
+    const body: any = { model, max_tokens: maxTokens, system, messages };
+    if (tools?.length) body.tools = tools;
+    if (forcarFerramenta) body.tool_choice = { type: "tool", name: forcarFerramenta };
+    try {
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) { logUsoIA(model, d?.usage, { stop: d?.stop_reason }); return d; }
+      erroAnthropic = `Anthropic ${r.status}: ${JSON.stringify(d?.error || d).slice(0, 200)}`;
+    } catch (e) { erroAnthropic = `Anthropic: ${String((e as any)?.message || e).slice(0, 200)}`; }
+    console.error(FN, erroAnthropic, "→ tentando o OpenAI");
+  } else erroAnthropic = "ANTHROPIC_API_KEY não configurada";
+  try { return await openaiNoFormatoAnthropic(system, messages, tools, maxTokens, forcarFerramenta); }
+  catch (e) { throw new Error(`${erroAnthropic} | ${String((e as any)?.message || e)}`); }
 }
 /** Primeiro objeto JSON de um texto (a IA às vezes escreve algo depois do fecha-chave). */
 function extrairJson(texto: string): any {
