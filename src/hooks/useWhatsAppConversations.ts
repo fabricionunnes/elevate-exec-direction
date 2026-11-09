@@ -60,6 +60,13 @@ interface UseWhatsAppConversationsOptions {
   assignedTo?: string | null;
 }
 
+const ordenarPorUltima = <T extends { last_message_at: string | null; id: string }>(lista: T[]) =>
+  lista.sort((a, b) => {
+    const dA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+    const dB = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+    return dB - dA || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  });
+
 export function useWhatsAppConversations(options: UseWhatsAppConversationsOptions = {}) {
   const [conversations, setConversations] = useState<WhatsAppConversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +76,9 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
 
   // corrida: só a carga mais nova pode escrever na lista
   const cargaAtual = useRef(0);
+  // ids já na lista, pra o realtime saber se precisa buscar a conversa
+  const idsCarregados = useRef<Set<string>>(new Set());
+  useEffect(() => { idsCarregados.current = new Set(conversations.map((c) => String(c.id))); }, [conversations]);
 
   const fetchConversations = async () => {
     const minhaCarga = ++cargaAtual.current;
@@ -107,19 +117,25 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
       if (erroInicio) throw erroInicio;
       if (minhaCarga !== cargaAtual.current) return;
 
-      const acc: any[] = [...(inicio || [])];
-      setConversations(acc as any);
+      // Por id (09/11/2026): a carga é por blocos ordenados pela última mensagem; com mensagem chegando
+      // no meio (disparo rodando), a conversa desce de bloco e vinha 2 ou 3 vezes. A cópia repetida
+      // ficava presa na tela e o filtro "Não lidas" parecia não funcionar.
+      const porId = new Map<string, any>();
+      const juntar = (linhas: any[] | null) => { for (const l of linhas || []) porId.set(String(l.id), l); };
+      juntar(inicio);
+      setConversations(ordenarPorUltima(Array.from(porId.values())) as any);
       loadedOnce.current = true;
       setLoading(false);
 
-      let from = acc.length;
-      while (acc.length >= PRIMEIRA) {
+      let from = (inicio || []).length;
+      let continuar = from >= PRIMEIRA;
+      while (continuar) {
         const { data: lote, error: erroLote } = await pagina(from, from + LOTE - 1);
         if (erroLote) throw erroLote;
         if (minhaCarga !== cargaAtual.current) return;
         if (!lote || lote.length === 0) break;
-        acc.push(...lote);
-        setConversations([...acc] as any);
+        juntar(lote);
+        setConversations(ordenarPorUltima(Array.from(porId.values())) as any);
         if (lote.length < LOTE) break;
         from += LOTE;
       }
@@ -151,10 +167,21 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
             // Fetch full conversation with contact
             fetchSingleConversation(payload.new.id).then((conv) => {
               if (conv) {
-                setConversations((prev) => [conv, ...prev]);
+                // a carga em blocos pode já ter trazido essa conversa: substitui em vez de duplicar
+                setConversations((prev) => prev.some((c) => c.id === conv.id)
+                  ? prev.map((c) => (c.id === conv.id ? conv : c))
+                  : [conv, ...prev]);
               }
             });
           } else if (payload.eventType === 'UPDATE') {
+            // Conversa que subiu de bloco durante a carga pode ter ficado de fora: traz quando mexer nela.
+            const id = String((payload.new as any).id);
+            if (loadedOnce.current && !idsCarregados.current.has(id) && !(payload.new as any).pessoal
+                && !options.instanceId && !options.status && !options.assignedTo) {
+              fetchSingleConversation(id).then((conv) => {
+                if (conv) setConversations((p2) => (p2.some((c) => c.id === conv.id) ? p2 : ordenarPorUltima([conv, ...p2])));
+              });
+            }
             setConversations((prev) => {
               // Update the conversation
               const updated = prev.map((c) => {
