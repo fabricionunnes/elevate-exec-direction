@@ -149,6 +149,8 @@ export const CRMLeadsPage = () => {
   // Telefone (Fabrício, 10/11/2026: "selecionar todos os leads com telefone ou todos os sem telefone"):
   // "all" | "com" | "sem". O "com" segue a regra do Enviar template (10+ dígitos).
   const [filterTel, setFilterTel] = useState("all");
+  // Status (Fabrício, 10/11/2026): "all" | "aberto" | "ganho" | "perdido", pelo tipo final da etapa
+  const [filterStatus, setFilterStatus] = useState("all");
   const selecionarAoFiltrar = useRef(false);
   const [dddOptions, setDddOptions] = useState<{ ddd: string; n: number }[]>([]);
   useEffect(() => {
@@ -209,8 +211,9 @@ export const CRMLeadsPage = () => {
     if (filterTags.length) f.tags = filterTags;
     if (filterSemTags.length) f.sem_tags = filterSemTags;
     if (filterTel !== "all") f.tel = filterTel;
+    if (filterStatus !== "all") f.status = filterStatus;
     return f;
-  }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd, filterTags, filterSemTags, filterTel]);
+  }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd, filterTags, filterSemTags, filterTel, filterStatus]);
   // trocar filtro desmarca tudo; exceção: o atalho "selecionar todos com/sem telefone" marca o filtro novo inteiro
   useEffect(() => {
     if (selecionarAoFiltrar.current) { selecionarAoFiltrar.current = false; setSelectedLeads([]); setTodosDoFiltro(true); }
@@ -293,8 +296,9 @@ export const CRMLeadsPage = () => {
     tags: filterTags,
     sem_tags: filterSemTags,
     tel: filterTel,
+    status: filterStatus,
     pageSize,
-  }), [searchTerm, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd, filterTags, filterSemTags, filterTel, pageSize]);
+  }), [searchTerm, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd, filterTags, filterSemTags, filterTel, filterStatus, pageSize]);
   const applySavedView = (v: Record<string, any>) => {
     const txt = (x: unknown, d = "all") => (typeof x === "string" && x ? x : d);
     // visão salva antes de 13/10 guarda um valor só ("all" = nenhum); as novas guardam lista
@@ -310,6 +314,7 @@ export const CRMLeadsPage = () => {
     setFilterTags(arr(v.tags));
     setFilterSemTags(arr(v.sem_tags));
     setFilterTel(v.tel === "com" || v.tel === "sem" ? v.tel : "all");
+    setFilterStatus(["aberto", "ganho", "perdido"].includes(v.status) ? v.status : "all");
     if ([10, 50, 100].includes(Number(v.pageSize))) setPageSize(Number(v.pageSize));
     limparSelecao();
   };
@@ -780,6 +785,19 @@ export const CRMLeadsPage = () => {
                 { value: "sem", label: "Sem telefone" },
               ]}
               placeholder="Telefone"
+              className="h-9 text-xs sm:text-sm"
+            />
+
+            <SearchableSelect
+              value={filterStatus}
+              onValueChange={setFilterStatus}
+              options={[
+                { value: "all", label: "Qualquer status" },
+                { value: "aberto", label: "Em aberto" },
+                { value: "ganho", label: "Ganho" },
+                { value: "perdido", label: "Perdido" },
+              ]}
+              placeholder="Status"
               className="h-9 text-xs sm:text-sm"
             />
           </div>
