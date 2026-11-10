@@ -1719,10 +1719,12 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
           const alvo = (notifyStaff || []).find((st)=>(st.phone || "").replace(/\D/g, "").length >= 10);
           // sem telefone cadastrado no responsável, o aviso vai pro Fabrício
           // (melhor avisar alguém do que perder o agendamento no silêncio)
-          const FALLBACK = "5531989840003";
+          // Pedido do Fabrício (09/11/2026): ele é avisado de TODO agendamento feito pelo
+          // agente, com o link da reunião, pra entrar junto. O responsável segue avisado também.
+          const FABRICIO = "5531989840003";
           {
             const digits = alvo ? String(alvo.phone).replace(/\D/g, "") : "";
-            const num = digits ? digits.startsWith("55") ? digits : `55${digits}` : FALLBACK;
+            const num = digits ? digits.startsWith("55") ? digits : `55${digits}` : FABRICIO;
             const quando = `${m[1].split("-").reverse().join("/")} às ${m[2]}:${m[3]}`;
             const texto = [
               "Agendamento feito pelo agente de IA",
@@ -1730,9 +1732,11 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
               `Lead: ${leadRow.name}${leadRow.company ? ` (${leadRow.company})` : ""}`,
               `Quando: ${quando} com ${staff.name}`,
               leadRow.phone ? `Telefone: ${leadRow.phone}` : null,
+              ev.event?.meetingLink ? `Link da reunião: ${ev.event.meetingLink}` : null,
               `Link no CRM: https://unvholdings.com.br/#/crm/leads/${leadRow.id}`
             ].filter(Boolean).join("\n");
             await sendWhatsAppAlert(supabase, num, texto);
+            if (num.slice(-8) !== FABRICIO.slice(-8)) await sendWhatsAppAlert(supabase, FABRICIO, texto);
           }
         }
       } catch (e) {
