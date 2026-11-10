@@ -3839,7 +3839,9 @@ Deno.serve(async (req)=>{
         if (ehPublicacaoIg(m)) {
           content = m.transcription ? `(${m.transcription})` : "(o lead compartilhou uma publicação do Instagram; o conteúdo não é acessível por aqui. Não finja que viu: pergunte de forma natural o que chamou a atenção dele nela)";
         } else if (isAudio(m)) {
-          content = m.transcription ? `(áudio do lead, transcrito) ${m.transcription}` : "(o lead mandou um áudio que não consegui transcrever)";
+          // Caso Dora (10/11/2026): "Não, tenho vendedores" virou "Não tenho vendedores" na transcrição e o agente
+          // concluiu o contrário. A transcrição erra pontuação e negação: frase que se contradiz pede confirmação.
+          content = m.transcription ? `(áudio do lead, transcrito automaticamente: a transcrição pode errar pontuação, principalmente vírgula depois de "não". Se a frase se contradiz ou muda o sentido de uma resposta importante, confirme com o lead numa pergunta curta antes de concluir) ${m.transcription}` : "(o lead mandou um áudio que não consegui transcrever)";
         } else if (isVideo(m)) {
           const leg = legendaDe(m);
           const quem = m.direction === "inbound" ? "vídeo do lead" : "vídeo enviado por nós";
