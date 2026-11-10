@@ -39,7 +39,69 @@ const GOOGLE_CALENDAR_SCOPES = [
   "https://www.googleapis.com/auth/gmail.modify",
   // 06/11: excluir definitivamente (Lixeira/Spam) exige o escopo completo do Gmail
   "https://mail.google.com/",
+  // 10/11/2026: no Business Standard não existe "gravação automática" geral no Admin; o CRM liga a
+  // gravação automática em cada reunião que cria (Meet REST API, config do espaço da reunião do Calendar)
+  "https://www.googleapis.com/auth/meetings.space.settings",
 ].join(" ");
+
+/** Liga a gravação automática da reunião do Meet (Fabrício, 10/11/2026: "depois que mudamos o plano do
+ *  google admin, parou de gravar automaticamente as chamadas"). Grava assim que o organizador (ou quem
+ *  pode gravar) entra. Nunca derruba o agendamento: só devolve o resultado. */
+async function ligarGravacaoAutomatica(accessToken: string, meetingLink: string | null | undefined) {
+  const code = String(meetingLink || "").match(/meet\.google\.com\/([a-z]{3,4}-[a-z]{4}-[a-z]{3,4})/i)?.[1];
+  if (!code) return { ok: false, motivo: "sem link do Meet" };
+  const auth = { Authorization: `Bearer ${accessToken}` };
+  let espaco: { name?: string } | null = null;
+  let ultimoErro = "";
+  // a reunião acabou de nascer no Calendar: o espaço do Meet pode levar alguns segundos pra existir
+  for (let i = 0; i < 4 && !espaco; i++) {
+    if (i) await new Promise((r) => setTimeout(r, 1500));
+    const g = await fetch(`https://meet.googleapis.com/v2/spaces/${code}`, { headers: auth });
+    if (g.ok) espaco = await g.json();
+    else {
+      ultimoErro = `GET ${g.status}: ${(await g.text()).slice(0, 200)}`;
+      if (g.status !== 404) break;
+    }
+  }
+  if (!espaco?.name) return { ok: false, motivo: ultimoErro || "espaço do Meet não encontrado" };
+  const p = await fetch(
+    `https://meet.googleapis.com/v2/${espaco.name}?updateMask=config.artifactConfig.recordingConfig.autoRecordingGeneration`,
+    {
+      method: "PATCH",
+      headers: { ...auth, "Content-Type": "application/json" },
+      body: JSON.stringify({ config: { artifactConfig: { recordingConfig: { autoRecordingGeneration: "ON" } } } }),
+    },
+  );
+  if (!p.ok) return { ok: false, motivo: `PATCH ${p.status}: ${(await p.text()).slice(0, 200)}` };
+  const d = await p.json().catch(() => ({}));
+  return { ok: true, valor: d?.config?.artifactConfig?.recordingConfig?.autoRecordingGeneration || "ON" };
+}
+
+/** Token do Google do usuário, renovado se venceu (mesma lógica do create-event). */
+// deno-lint-ignore no-explicit-any
+async function tokenGoogleValido(supabase: any, userId: string): Promise<string | null> {
+  const { data: t } = await supabase.from("user_google_tokens").select("*").eq("user_id", userId).maybeSingle();
+  if (!t?.access_token) return null;
+  if (!t.token_expires_at || new Date(t.token_expires_at) > new Date(Date.now() + 60_000)) return t.access_token;
+  if (!t.refresh_token) return null;
+  const r = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: Deno.env.get("GOOGLE_CLIENT_ID") || "",
+      client_secret: Deno.env.get("GOOGLE_CLIENT_SECRET") || "",
+      refresh_token: t.refresh_token,
+      grant_type: "refresh_token",
+    }),
+  });
+  if (!r.ok) return null;
+  const d = await r.json();
+  await supabase.from("user_google_tokens").update({
+    access_token: d.access_token,
+    token_expires_at: new Date(Date.now() + (d.expires_in || 3600) * 1000).toISOString(),
+  }).eq("user_id", userId);
+  return d.access_token;
+}
 
 // Helper function to transcribe recording using AssemblyAI
 async function transcribeRecordingWithAI(
@@ -809,9 +871,15 @@ Deno.serve(async (req) => {
       const meetingLink = createdEvent.hangoutLink || 
         createdEvent.conferenceData?.entryPoints?.find((ep: { entryPointType: string; uri: string }) => ep.entryPointType === "video")?.uri;
 
+      const gravacaoAutomatica = meetingLink
+        ? await ligarGravacaoAutomatica(accessToken, meetingLink).catch((e) => ({ ok: false, motivo: String(e) }))
+        : null;
+      console.log("Gravação automática:", JSON.stringify(gravacaoAutomatica));
+
       return new Response(
         JSON.stringify({
           success: true,
+          gravacaoAutomatica,
           event: {
             id: createdEvent.id,
             title: createdEvent.summary,
@@ -823,6 +891,42 @@ Deno.serve(async (req) => {
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Liga a gravação automática nas reuniões futuras do CRM (de quem já reconectou o Google com o
+    // escopo do Meet). body: { dry_run? }. Também serve pra uma reunião só: { meeting_link, target_user_id }.
+    if (action === "meet-autorecord") {
+      const body = await req.json().catch(() => ({}));
+      const alvos: { link: string; uid: string; id?: string }[] = [];
+      if (body.meeting_link) alvos.push({ link: body.meeting_link, uid: body.target_user_id || user.id });
+      else {
+        const { data: ats } = await supabase.from("crm_activities")
+          .select("id, meeting_link, google_calendar_user_id")
+          .eq("type", "meeting").eq("status", "pending")
+          .gt("scheduled_at", new Date(Date.now() - 2 * 3600_000).toISOString())
+          .not("meeting_link", "is", null).not("google_calendar_user_id", "is", null)
+          .order("scheduled_at").limit(200);
+        for (const a of ats || []) alvos.push({ link: a.meeting_link, uid: a.google_calendar_user_id, id: a.id });
+        // reuniões dos consultores nos projetos (Fabrício, 10/11/2026: "quero ativar isso também nos projetos")
+        const { data: rps } = await supabase.from("onboarding_meeting_notes")
+          .select("id, meeting_link, calendar_owner_id")
+          .gt("meeting_date", new Date(Date.now() - 2 * 3600_000).toISOString())
+          .not("meeting_link", "is", null).not("calendar_owner_id", "is", null)
+          .order("meeting_date").limit(200);
+        for (const r of rps || []) alvos.push({ link: r.meeting_link, uid: r.calendar_owner_id, id: r.id });
+      }
+      const tokens = new Map<string, string | null>();
+      const out: Record<string, unknown>[] = [];
+      for (const a of alvos) {
+        if (!tokens.has(a.uid)) tokens.set(a.uid, await tokenGoogleValido(supabase, a.uid));
+        const tk = tokens.get(a.uid);
+        if (!tk) { out.push({ ...a, ok: false, motivo: "sem token do Google" }); continue; }
+        if (body.dry_run) { out.push({ ...a, ok: null, motivo: "simulado" }); continue; }
+        out.push({ ...a, ...(await ligarGravacaoAutomatica(tk, a.link).catch((e) => ({ ok: false, motivo: String(e) }))) });
+      }
+      return new Response(JSON.stringify({ ok: true, total: out.length, ligadas: out.filter((o) => o.ok === true).length, out }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     if (action === "update-event") {
