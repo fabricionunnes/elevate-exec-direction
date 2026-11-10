@@ -566,6 +566,26 @@ async function leadRecusou(hist, leadNm) {
     return false;
   }
 }
+// Primeiro nome pras mensagens fixas (opt-out, recusa). Caso Fernando (10/11/2026): o nome do WhatsApp era
+// "DEUS É FIEL" e a despedida saiu "Tudo bem, DEUS". O nome do lead no CRM vem primeiro; o do WhatsApp só
+// entra se parecer nome de gente. Na dúvida, sem nome.
+const NAO_E_NOME = new Set(["sou", "eu", "me", "deus", "jesus", "cristo", "senhor", "senhora", "nossa", "fe", "fé", "amor", "gratidao", "gratidão", "abencoado", "abençoado", "abencoada", "abençoada", "loja", "oficial", "vendas", "atendimento", "comercial", "empresa", "contato", "whatsapp", "sem", "cliente", "lead", "user", "usuario", "usuário", "dr", "dra"]);
+function nomeDeGente(n) {
+  const t = String(n || "").trim().split(/\s+/)[0] || "";
+  if (!/^[A-Za-zÀ-ÿ'-]{2,20}$/.test(t)) return "";
+  if (NAO_E_NOME.has(t.toLowerCase())) return "";
+  return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+}
+async function primeiroNomeDoLead(supabase, conv) {
+  try {
+    if (conv?.lead_id) {
+      const { data: l } = await supabase.from("crm_leads").select("name").eq("id", conv.lead_id).maybeSingle();
+      const n = nomeDeGente(l?.name);
+      if (n) return n;
+    }
+  } catch  {}
+  return nomeDeGente(conv?.contact?.name);
+}
 const leadNmFor = (cv)=>cv?.contact?.name || cv?.contact?.username || "Lead";
 // ---------- Ferramentas configuráveis por agente (30/09/2026) ----------
 // crm_ai_agents.enabled_tools = { nome: true|false }. NULO (ou chave ausente) = padrão:
@@ -4017,12 +4037,7 @@ Deno.serve(async (req)=>{
       // pulam quem tem) e negócio marcado como perdido. Nada de tentar contornar.
       const OPT_OUT_RE = /\b(parar|pare|para|parem)\s+de\s+(receber|me\s+(mandar|enviar)|mandar|enviar)\b|n[aã]o\s+quero\s+(mais\s+)?(receber|mensagens?)|remov(e|a|er)\s+(o\s+)?meu\s+(n[uú]mero|contato)|descadastr|cancel(a|ar)\s+(as\s+)?mensagens|^\s*(sair|stop|parar|remover|cancelar|descadastrar)\s*[.!]*\s*$|n[aã]o\s+(me\s+)?(mande|manda|envie|envia)\s+mais/i;
       if (OPT_OUT_RE.test(msgs[msgs.length - 1].content || "")) {
-        const primeiro = String(conv.contact?.name || "").trim().split(/\s+/)[0];
-        const nomeOk = primeiro && !/^\d+$/.test(primeiro) && ![
-          "sou",
-          "eu",
-          "me"
-        ].includes(primeiro.toLowerCase()) ? primeiro : "";
+        const nomeOk = await primeiroNomeDoLead(supabase, conv);
         const despedida = `Tudo bem${nomeOk ? `, ${nomeOk}` : ""}. Não vou mais te mandar mensagens por aqui. Se um dia precisar de ajuda com o comercial da sua empresa, é só me chamar.`;
         if (dry_run) return {
           ok: true,
@@ -4123,12 +4138,7 @@ Deno.serve(async (req)=>{
         recusou = await leadRecusou(msgs.slice(-8), leadNmFor(conv));
       }
       if (recusou) {
-        const primeiroR = String(conv.contact?.name || "").trim().split(/\s+/)[0];
-        const nomeR = primeiroR && !/^\d+$/.test(primeiroR) && ![
-          "sou",
-          "eu",
-          "me"
-        ].includes(primeiroR.toLowerCase()) ? primeiroR : "";
+        const nomeR = await primeiroNomeDoLead(supabase, conv);
         const encerramento = `Tudo bem${nomeR ? `, ${nomeR}` : ""}. Obrigado pelo retorno, fico à disposição se um dia fizer sentido.`;
         if (dry_run) return {
           ok: true,
