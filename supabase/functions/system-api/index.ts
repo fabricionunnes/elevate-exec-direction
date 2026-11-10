@@ -2000,6 +2000,19 @@ serve(async (req) => {
             meetingLink = calEvent.hangoutLink
               || calEvent.conferenceData?.entryPoints?.find((ep: any) => ep.entryPointType === "video")?.uri
               || null;
+            // Gravação automática do Meet (10/11/2026): no Business Standard não há chave geral no Admin,
+            // então liga na própria reunião. Usa a mesma ação do google-calendar; nunca derruba a criação.
+            if (meetingLink) {
+              try {
+                const sk = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+                const gr = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/google-calendar?action=meet-autorecord`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${sk}` },
+                  body: JSON.stringify({ meeting_link: meetingLink, target_user_id: calUserId }),
+                });
+                console.log("gravação automática:", gr.status, (await gr.text()).slice(0, 300));
+              } catch (e) { console.error("gravação automática falhou", e); }
+            }
           }
           // ────────────────────────────────────────────────────────────────────
 
