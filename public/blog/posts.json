@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-11-10T00:01:09",
+ "gerado_em": "2026-11-10T10:01:04",
  "posts": [
+  {
+   "slug": "evento-mao-na-massa-entrega-mais-resultado",
+   "url": "/blog/evento-mao-na-massa-entrega-mais-resultado/",
+   "titulo": "Evento focado em mão na massa entrega mais resultado",
+   "resumo": "Palestra motiva, não estrutura. O que move resultado é treino operacional com cobrança de execução no dia seguinte.",
+   "tags": [
+    "evento",
+    "treino de vendedor",
+    "estrutura comercial",
+    "implementação",
+    "acompanhamento"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-10",
+   "ts": 2245
+  },
   {
    "slug": "inteligencia-artificial-aprende-jeito-empresa-fala",
    "url": "/blog/inteligencia-artificial-aprende-jeito-empresa-fala/",
