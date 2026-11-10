@@ -546,41 +546,48 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
             {targets.some((t) => t.id) && (
               <div className="space-y-1">
                 <Label>Depois de enviar, mover o lead para</Label>
-                <SearchableSelect
-                  value={moveMode}
-                  onValueChange={setMoveMode}
-                  options={[
-                    { value: "next", label: `Próxima etapa${nextExample ? ` (${nextExample})` : ""}` },
-                    { value: "none", label: "Não mover" },
-                    ...mainStages.filter((s) => !s.is_final && !s.final_type).map((s) => ({ value: s.id, label: s.name })),
-                    { value: "outro", label: "Outro funil..." },
-                  ]}
-                />
-                {moveMode === "outro" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                    <div className="space-y-1">
-                      <span className="text-[11px] text-muted-foreground">Funil</span>
-                      <SearchableSelect
-                        value={outroFunilId}
-                        onValueChange={setOutroFunilId}
-                        placeholder="Escolha o funil"
-                        emptyMessage="Nenhum funil encontrado."
-                        options={funis.map((f) => ({ value: f.id, label: f.name }))}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-[11px] text-muted-foreground">Etapa</span>
+                {/* Funil primeiro, etapa depois (Fabrício, 10/11/2026: "escolher o funil que deve mover, e a etapa que
+                    deve ficar"). Funil atual = próxima etapa, não mover ou uma etapa dele; outro funil = uma etapa dele. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <span className="text-[11px] text-muted-foreground">Funil</span>
+                    <SearchableSelect
+                      value={moveMode === "outro" ? outroFunilId : "atual"}
+                      onValueChange={(v) => {
+                        if (v === "atual") { setOutroFunilId(""); setMoveMode("next"); }
+                        else { setOutroFunilId(v); setMoveMode("outro"); }
+                      }}
+                      placeholder="Escolha o funil"
+                      emptyMessage="Nenhum funil encontrado."
+                      options={[
+                        { value: "atual", label: `Funil atual do lead${funis.find((f) => f.id === mainPipelineId)?.name ? ` (${funis.find((f) => f.id === mainPipelineId)?.name})` : ""}` },
+                        ...funis.filter((f) => f.id !== mainPipelineId).map((f) => ({ value: f.id, label: f.name })),
+                      ]}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[11px] text-muted-foreground">Etapa</span>
+                    {moveMode === "outro" ? (
                       <SearchableSelect
                         value={outroEtapaId}
                         onValueChange={setOutroEtapaId}
-                        placeholder={outroFunilId ? "Escolha a etapa" : "Escolha o funil antes"}
+                        placeholder="Escolha a etapa"
                         emptyMessage="Nenhuma etapa aberta neste funil."
-                        disabled={!outroFunilId}
                         options={etapasOutroFunil.map((s) => ({ value: s.id, label: s.name }))}
                       />
-                    </div>
+                    ) : (
+                      <SearchableSelect
+                        value={moveMode}
+                        onValueChange={setMoveMode}
+                        options={[
+                          { value: "next", label: `Próxima etapa${nextExample ? ` (${nextExample})` : ""}` },
+                          { value: "none", label: "Não mover" },
+                          ...mainStages.filter((s) => !s.is_final && !s.final_type).map((s) => ({ value: s.id, label: s.name })),
+                        ]}
+                      />
+                    )}
                   </div>
-                )}
+                </div>
                 <p className="text-[11px] text-muted-foreground">
                   Todo lead enviado recebe a etiqueta "{TAG_NAME}". Se a Meta não entregar, o lead volta pra etapa de antes.
                 </p>
