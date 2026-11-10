@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-11-09T22:31:20",
+ "gerado_em": "2026-11-10T00:01:09",
  "posts": [
+  {
+   "slug": "inteligencia-artificial-aprende-jeito-empresa-fala",
+   "url": "/blog/inteligencia-artificial-aprende-jeito-empresa-fala/",
+   "titulo": "Inteligência artificial aprende com o jeito que a empresa fala",
+   "resumo": "IA treinada com o vocabulário e a forma de atender da empresa vira extensão do time comercial. Sem isso, vira robô genérico que espanta cliente.",
+   "tags": [
+    "inteligência artificial",
+    "treino de vendedor",
+    "estrutura comercial",
+    "conversão",
+    "processo comercial"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-10",
+   "ts": 2244
+  },
   {
    "slug": "inteligencia-artificial-libera-vendedor-vender-mais",
    "url": "/blog/inteligencia-artificial-libera-vendedor-vender-mais/",
