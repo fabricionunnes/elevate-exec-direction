@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useOutletContext, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Plus, Search, Phone, Mail, ExternalLink, UserPlus, Tag, XCircle, Upload,
-  Copy, Loader2, AlertTriangle, Merge, ListChecks, ListPlus, ListMinus, Send } from "lucide-react";
+  Copy, Loader2, AlertTriangle, Merge, ListChecks, ListPlus, ListMinus, Send, ChevronDown } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -145,6 +146,10 @@ export const CRMLeadsPage = () => {
   // Etiquetas (Fabrício, 31/10/2026): "filtrar por tag, inclusive poder escolher quem não tem a determinada tag"
   const [filterTags, setFilterTags] = useState<string[]>([]);
   const [filterSemTags, setFilterSemTags] = useState<string[]>([]);
+  // Telefone (Fabrício, 10/11/2026: "selecionar todos os leads com telefone ou todos os sem telefone"):
+  // "all" | "com" | "sem". O "com" segue a regra do Enviar template (10+ dígitos).
+  const [filterTel, setFilterTel] = useState("all");
+  const selecionarAoFiltrar = useRef(false);
   const [dddOptions, setDddOptions] = useState<{ ddd: string; n: number }[]>([]);
   useEffect(() => {
     (async () => {
@@ -203,9 +208,19 @@ export const CRMLeadsPage = () => {
     if (filterDdd.length) f.ddds = filterDdd;
     if (filterTags.length) f.tags = filterTags;
     if (filterSemTags.length) f.sem_tags = filterSemTags;
+    if (filterTel !== "all") f.tel = filterTel;
     return f;
-  }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd, filterTags, filterSemTags]);
-  useEffect(() => { setTodosDoFiltro(false); }, [rpcFilters]);
+  }, [debouncedSearch, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd, filterTags, filterSemTags, filterTel]);
+  // trocar filtro desmarca tudo; exceção: o atalho "selecionar todos com/sem telefone" marca o filtro novo inteiro
+  useEffect(() => {
+    if (selecionarAoFiltrar.current) { selecionarAoFiltrar.current = false; setSelectedLeads([]); setTodosDoFiltro(true); }
+    else setTodosDoFiltro(false);
+  }, [rpcFilters]);
+  const selecionarPorTelefone = (tipo: "com" | "sem") => {
+    if (filterTel === tipo) { setSelectedLeads([]); setTodosDoFiltro(true); return; }
+    selecionarAoFiltrar.current = true;
+    setFilterTel(tipo);
+  };
 
   // Contagem de duplicados (em paralelo, não segura a tabela)
   const loadDupCounts = useCallback(async () => {
@@ -277,8 +292,9 @@ export const CRMLeadsPage = () => {
     ddd: filterDdd,
     tags: filterTags,
     sem_tags: filterSemTags,
+    tel: filterTel,
     pageSize,
-  }), [searchTerm, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd, filterTags, filterSemTags, pageSize]);
+  }), [searchTerm, filterPipeline, filterStage, filterOwner, filterUrgency, filterDuplicates, filterList, filterDdd, filterTags, filterSemTags, filterTel, pageSize]);
   const applySavedView = (v: Record<string, any>) => {
     const txt = (x: unknown, d = "all") => (typeof x === "string" && x ? x : d);
     // visão salva antes de 13/10 guarda um valor só ("all" = nenhum); as novas guardam lista
@@ -293,6 +309,7 @@ export const CRMLeadsPage = () => {
     setFilterDdd(arr(v.ddd));
     setFilterTags(arr(v.tags));
     setFilterSemTags(arr(v.sem_tags));
+    setFilterTel(v.tel === "com" || v.tel === "sem" ? v.tel : "all");
     if ([10, 50, 100].includes(Number(v.pageSize))) setPageSize(Number(v.pageSize));
     limparSelecao();
   };
@@ -753,6 +770,18 @@ export const CRMLeadsPage = () => {
               emptyMessage="Nenhuma etiqueta com esse nome."
               className="h-9 text-xs sm:text-sm"
             />
+
+            <SearchableSelect
+              value={filterTel}
+              onValueChange={setFilterTel}
+              options={[
+                { value: "all", label: "Com ou sem telefone" },
+                { value: "com", label: "Com telefone" },
+                { value: "sem", label: "Sem telefone" },
+              ]}
+              placeholder="Telefone"
+              className="h-9 text-xs sm:text-sm"
+            />
           </div>
           <SavedViews
             className="mt-3"
@@ -888,11 +917,36 @@ export const CRMLeadsPage = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[40px]">
-                    <Checkbox
-                      checked={todosDoFiltro || paginaToda}
-                      onCheckedChange={toggleSelectAll}
-                    />
+                  <TableHead className="w-[56px]">
+                    <div className="flex items-center gap-0.5">
+                      <Checkbox
+                        checked={todosDoFiltro || paginaToda}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button type="button" className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground" title="Selecionar por telefone">
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          <DropdownMenuLabel className="text-xs">Selecionar todos do filtro</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => selecionarPorTelefone("com")}>
+                            <Phone className="h-4 w-4 mr-2" /> Todos com telefone
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => selecionarPorTelefone("sem")}>
+                            <XCircle className="h-4 w-4 mr-2" /> Todos sem telefone
+                          </DropdownMenuItem>
+                          {(filterTel !== "all" || todosDoFiltro || selectedLeads.length > 0) && <DropdownMenuSeparator />}
+                          {filterTel !== "all" && (
+                            <DropdownMenuItem onClick={() => setFilterTel("all")}>Tirar o filtro de telefone</DropdownMenuItem>
+                          )}
+                          {(todosDoFiltro || selectedLeads.length > 0) && (
+                            <DropdownMenuItem onClick={limparSelecao}>Desmarcar todos</DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableHead>
                   <TableHead>Nome / Empresa</TableHead>
                   <TableHead>Telefone</TableHead>
