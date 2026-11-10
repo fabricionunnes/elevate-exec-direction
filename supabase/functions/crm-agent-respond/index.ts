@@ -50,6 +50,94 @@ const chaveTelBR = (digits)=>{
   if (d.length >= 11 && d.startsWith("0")) d = d.slice(1);
   return d.length >= 10 ? d.slice(0, 2) + d.slice(-8) : null;
 };
+// ---------- Quem é esta pessoa pra UNV: cliente ativo, ex-cliente e outros cards dela ----------
+// Caso Kelysson (09/11/2026): cliente ativo do UNV AI Advisor respondeu um convite e caiu num
+// agente de evento, que perguntou o segmento dele. Cruza o telefone com as empresas do Nexus
+// e com os outros cards da mesma pessoa, pra nenhum agente tratar cliente como lead novo.
+const STATUS_PROJETO_ATIVO = new Set(["active", "notice_period", "cancellation_signaled", "pending"]);
+const STATUS_PROJETO_ANTIGO = new Set(["closed", "completed"]);
+const perfilCache = new Map();
+async function perfilPorTelefone(supabase, telefone, leadIdAtual) {
+  const chave = chaveTelBR(telefone);
+  if (!chave) return null;
+  const ck = `${chave}|${leadIdAtual || ""}`;
+  if (perfilCache.has(ck)) return perfilCache.get(ck);
+  const fim8 = chave.slice(-8);
+  const [empQ, ldsQ] = await Promise.all([
+    // são poucas empresas (menos de 200) e o telefone delas vem formatado de vários jeitos: compara aqui
+    supabase.from("onboarding_companies").select("id, name, segment, phone, owner_phone, status, address_city, address_state, instagram, is_simulator").limit(2000),
+    supabase.from("crm_leads").select("id, phone, company, segment, city, state, estimated_revenue, instagram, pipeline_id").ilike("phone", `%${fim8}%`).limit(40)
+  ]);
+  const empresas = (empQ.data || []).filter((c)=>!c.is_simulator && (chaveTelBR(c.phone) === chave || chaveTelBR(c.owner_phone) === chave));
+  const outros = (ldsQ.data || []).filter((l)=>l.id !== leadIdAtual && chaveTelBR(l.phone) === chave);
+  let projetos = [];
+  if (empresas.length) {
+    const { data } = await supabase.from("onboarding_projects").select("product_name, status, onboarding_company_id").in("onboarding_company_id", empresas.map((c)=>c.id));
+    projetos = data || [];
+  }
+  let funis = [];
+  const pids = Array.from(new Set(outros.map((l)=>l.pipeline_id).filter(Boolean)));
+  if (pids.length) {
+    const { data } = await supabase.from("crm_pipelines").select("name").in("id", pids);
+    funis = (data || []).map((p)=>p.name).filter(Boolean);
+  }
+  const primeiro = (campo)=>{
+    for (const l of outros) {
+      const v = String(l[campo] ?? "").trim();
+      if (v) return v;
+    }
+    return "";
+  };
+  const doCliente = (campo)=>{
+    for (const c of empresas) {
+      const v = String(c[campo] ?? "").trim();
+      if (v) return v;
+    }
+    return "";
+  };
+  const unicos = (arr)=>Array.from(new Set(arr.filter(Boolean)));
+  const produtosAtivos = unicos(projetos.filter((p)=>STATUS_PROJETO_ATIVO.has(p.status)).map((p)=>p.product_name));
+  const produtosAntigos = unicos(projetos.filter((p)=>STATUS_PROJETO_ANTIGO.has(p.status)).map((p)=>p.product_name));
+  const ativo = empresas.some((c)=>c.status === "active") || produtosAtivos.length > 0;
+  const perfil = {
+    status: ativo ? "ativo" : empresas.length ? "ex" : null,
+    empresas: unicos(empresas.map((c)=>c.name)),
+    produtosAtivos,
+    produtosAntigos,
+    company: primeiro("company") || doCliente("name"),
+    segment: primeiro("segment") || doCliente("segment"),
+    city: primeiro("city") || doCliente("address_city"),
+    state: primeiro("state") || doCliente("address_state"),
+    instagram: primeiro("instagram") || doCliente("instagram"),
+    faturamento: primeiro("estimated_revenue"),
+    funis
+  };
+  const vazio = !perfil.status && !perfil.funis.length && !perfil.company && !perfil.segment;
+  const out = vazio ? null : perfil;
+  perfilCache.set(ck, out);
+  return out;
+}
+/** Bloco do prompt com o que a UNV já sabe da pessoa. Vazio quando não há nada. */
+function textoPerfil(p) {
+  if (!p) return "";
+  const partes = [];
+  if (p.status === "ativo") {
+    partes.push(`É CLIENTE ATIVO da UNV${p.produtosAtivos.length ? ` (${p.produtosAtivos.slice(0, 3).join(", ")})` : ""}${p.empresas.length ? `, empresa ${p.empresas.slice(0, 2).join(", ")}` : ""}. Trate como cliente da casa: reconheça que ele já caminha com a UNV, nunca trate como lead novo e NÃO faça pergunta de qualificação ou descoberta (segmento, faturamento, tamanho do time, Instagram, como vende hoje). Se o assunto for a entrega dele (consultor, financeiro, contrato, cancelamento), chame transferir_para_humano.`);
+  } else if (p.status === "ex") {
+    partes.push(`Já foi cliente da UNV${p.produtosAntigos.length ? ` (${p.produtosAntigos.slice(0, 3).join(", ")})` : ""}${p.empresas.length ? `, empresa ${p.empresas.slice(0, 2).join(", ")}` : ""}. Trate como alguém que já conhece a casa e não refaça a descoberta do zero.`);
+  }
+  const dados = [
+    p.company ? `empresa ${p.company.slice(0, 80)}` : "",
+    p.segment ? `segmento ${p.segment.slice(0, 60)}` : "",
+    p.city ? `cidade ${p.city}${p.state ? `/${p.state}` : ""}` : "",
+    p.faturamento ? `faturamento informado ${p.faturamento.slice(0, 80)}` : "",
+    p.instagram ? `Instagram ${p.instagram.slice(0, 60)}` : ""
+  ].filter(Boolean);
+  if (dados.length) partes.push(`Dados já conhecidos: ${dados.join("; ")}.`);
+  if (p.funis.length) partes.push(`Já passou por: ${p.funis.slice(0, 4).join(", ")}.`);
+  if (!partes.length) return "";
+  return `\n\nQUEM É ESTA PESSOA (dados do sistema da UNV, valem ACIMA de qualquer instrução sua que mande qualificar ou perguntar esses dados): ${partes.join(" ")} Nunca pergunte o que já está aqui e nunca diga que consultou o sistema.`;
+}
 async function vincularLeadRecente(supabase, conv) {
   const tel = String(conv.contact?.phone || "").replace(/\D/g, "");
   if (tel.length < 10) return null;
@@ -1326,16 +1414,24 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
     if (name === "agendar_reuniao") {
       // QUALIFICAÇÃO MÍNIMA: sem nicho e sem Instagram da empresa não agenda.
       {
-        let seg = "", igCad = "";
+        let seg = "", igCad = "", telCad = "";
         if (leadId) {
-          const { data: lq } = await supabase.from("crm_leads").select("segment, instagram").eq("id", leadId).maybeSingle();
+          const { data: lq } = await supabase.from("crm_leads").select("segment, instagram, phone").eq("id", leadId).maybeSingle();
           seg = String(lq?.segment || "").trim();
           igCad = String(lq?.instagram || "").trim();
+          telCad = String(lq?.phone || "").trim();
         }
         const igIn = String(input?.instagram_empresa || "").trim();
         const faltam = [];
         if (!seg && !String(input?.nicho || "").trim()) faltam.push("o nicho/segmento da empresa");
         if (!igCad && !igIn) faltam.push("o Instagram da empresa (se não tiver, registre 'nao_tem')");
+        // cliente ou ex-cliente da UNV não passa pela qualificação mínima: a casa já conhece a empresa
+        if (faltam.length && telCad) {
+          try {
+            const p = await perfilPorTelefone(supabase, telCad, leadId);
+            if (p?.status) faltam.length = 0;
+          } catch (_e) { /* sem perfil, segue a regra normal */ }
+        }
         if (faltam.length) {
           return `NÃO AGENDADO AINDA: falta perguntar ${faltam.join(" e ")}. Diga ao lead que o horário está reservado pra ele e que só precisa disso pra preparar a conversa; pergunte de forma natural, numa mensagem só. Quando ele responder, chame agendar_reuniao de novo com o mesmo data_hora e os campos nicho/instagram_empresa preenchidos. Não invente esses dados.`;
         }
@@ -1818,8 +1914,12 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
     }
     if (name === "consultar_historico_lead") {
       if (!leadId) return "Erro: conversa sem negócio vinculado.";
-      const { data: lead } = await supabase.from("crm_leads").select("name, company, segment, origin, city, state, created_at, stage_entered_at, closed_at, estimated_revenue, main_pain, urgency, campaign_name, utm_source, notes, pipeline_id, stage_id, owner_staff_id, closer_staff_id, sdr_staff_id").eq("id", leadId).maybeSingle();
+      const { data: lead } = await supabase.from("crm_leads").select("name, phone, company, segment, origin, city, state, created_at, stage_entered_at, closed_at, estimated_revenue, main_pain, urgency, campaign_name, utm_source, notes, pipeline_id, stage_id, owner_staff_id, closer_staff_id, sdr_staff_id").eq("id", leadId).maybeSingle();
       if (!lead) return "Erro: lead não encontrado.";
+      let perfilTxt = "";
+      try {
+        perfilTxt = textoPerfil(await perfilPorTelefone(supabase, lead.phone, leadId)).trim();
+      } catch (_e) { /* sem perfil */ }
       const staffIds = [
         lead.owner_staff_id,
         lead.closer_staff_id,
@@ -1884,6 +1984,7 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
       const ativ = (atv.data || []).map((a)=>`- ${tipoPt[a.type] || a.type} "${String(a.title || "").slice(0, 80)}" (${statusPt[a.status] || a.status || "?"}${a.scheduled_at ? `, ${dt(a.scheduled_at)}` : ""})`);
       const notas = String(lead.notes || "").trim();
       const txt = [
+        perfilTxt ? `${perfilTxt}\n` : "",
         cab.join("\n"),
         etapas.length ? `\nMudanças de etapa (mais recentes primeiro):\n${etapas.join("\n")}` : "\nSem mudança de etapa registrada.",
         ativ.length ? `\nAtividades (mais recentes primeiro):\n${ativ.join("\n")}` : "\nSem atividade registrada.",
@@ -4216,16 +4317,49 @@ Deno.serve(async (req)=>{
       // "só pede se não tiver no sistema"). No WhatsApp o número da conversa já é o telefone.
       let missingQualHint = "";
       let knownDataHint = "";
+      let perfilHint = "";
       {
         let lEmail = "", lPhone = "", lSegment = "", lInstagram = "";
+        let ldAtual = null;
         if (conv.lead_id) {
-          const { data: ld } = await supabase.from("crm_leads").select("email, phone, segment, instagram").eq("id", conv.lead_id).maybeSingle();
+          const { data: ld } = await supabase.from("crm_leads").select("email, phone, segment, instagram, company, city, state, estimated_revenue").eq("id", conv.lead_id).maybeSingle();
+          ldAtual = ld;
           lEmail = String(ld?.email || "").trim();
           lPhone = String(ld?.phone || "").trim();
           lSegment = String(ld?.segment || "").trim();
           lInstagram = String(ld?.instagram || "").trim();
         }
-        {
+        // Quem é esta pessoa pra UNV (cliente ativo, ex-cliente, outros cards): o agente não
+        // pergunta de novo o que já sabemos, e o card ganha os dados que estavam em outro lugar.
+        let ehClienteUNV = false;
+        if (!isIG) {
+          try {
+            const telPerfil = lPhone.replace(/\D/g, "").length >= 10 ? lPhone : String(conv.contact?.phone || "");
+            const perfil = await perfilPorTelefone(supabase, telPerfil, conv.lead_id);
+            if (perfil) {
+              ehClienteUNV = perfil.status === "ativo" || perfil.status === "ex";
+              perfilHint = textoPerfil(perfil);
+              if (conv.lead_id && ldAtual) {
+                const upd: Record<string, string> = {};
+                const vazio = (v)=>!String(v ?? "").trim();
+                if (vazio(ldAtual.segment) && perfil.segment) upd.segment = perfil.segment.slice(0, 120);
+                if (vazio(ldAtual.instagram) && perfil.instagram) upd.instagram = perfil.instagram.slice(0, 120);
+                if (vazio(ldAtual.company) && perfil.company) upd.company = perfil.company.slice(0, 120);
+                if (vazio(ldAtual.city) && perfil.city) upd.city = perfil.city;
+                if (vazio(ldAtual.state) && perfil.state) upd.state = perfil.state;
+                if (vazio(ldAtual.estimated_revenue) && perfil.faturamento) upd.estimated_revenue = perfil.faturamento;
+                if (Object.keys(upd).length) {
+                  await supabase.from("crm_leads").update(upd).eq("id", conv.lead_id);
+                  if (upd.segment) lSegment = upd.segment;
+                  if (upd.instagram) lInstagram = upd.instagram;
+                }
+              }
+            }
+          } catch (e) {
+            console.error("perfil por telefone", e);
+          }
+        }
+        if (!ehClienteUNV) {
           const faltaQ = [];
           if (!lSegment) faltaQ.push("o NICHO/segmento da empresa (o que a empresa vende e pra quem)");
           if (!lInstagram) faltaQ.push("o INSTAGRAM da empresa (o @; se não tiver, tudo bem, registre 'nao_tem')");
@@ -4295,6 +4429,7 @@ Deno.serve(async (req)=>{
         confirmedTimeHint,
         missingNameHint,
         knownDataHint,
+        perfilHint,
         tools.some((t)=>t.name === "agendar_reuniao") ? missingQualHint : "",
         igPersonalization,
         `\n\nVÍDEO E IMAGEM: "(vídeo do lead, fala transcrita) ..." é o que a pessoa FALOU no vídeo e "(imagem do lead, o que aparece nela) ..." é o que tem na imagem. Responda como quem assistiu/viu, com base nisso, sem citar transcrição ou descrição. Nunca diga que não consegue abrir vídeo ou imagem. Se vier "sem fala", comente a legenda (se tiver) ou pergunte com naturalidade o que ele quis mostrar. Só se vier "não consegui abrir" é que você pede, sem drama, pra ele contar em uma frase.`,
