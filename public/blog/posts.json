@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-11-11T10:01:29",
+ "gerado_em": "2026-11-11T15:01:28",
  "posts": [
+  {
+   "slug": "escada-valor-cresce-quando-cliente-ganhou-resultado",
+   "url": "/blog/escada-valor-cresce-quando-cliente-ganhou-resultado/",
+   "titulo": "Escada de valor cresce quando o cliente ganhou resultado",
+   "resumo": "Você não consegue vender mais caro ou mais completo para quem ainda não comprou nada de você. A segunda oferta só aparece depois da primeira dar certo.",
+   "tags": [
+    "escada de valor",
+    "conversão",
+    "estrutura comercial",
+    "processo comercial",
+    "ticket médio"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-11",
+   "ts": 2249
+  },
   {
    "slug": "preco-alto-por-lead-cabe-ticket-medio-alto",
    "url": "/blog/preco-alto-por-lead-cabe-ticket-medio-alto/",
