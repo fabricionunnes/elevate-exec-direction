@@ -102,14 +102,14 @@ export default function Financeiro() {
     void load();
   };
 
-  const monthOptions = Array.from({ length: 6 }, (_, k) => { const d = subMonths(new Date(), k); return { v: format(d, "yyyy-MM"), l: format(startOfMonth(d), "MMMM yyyy", { locale: ptBR }) }; });
+  const monthOptions = Array.from({ length: 6 }, (_, k) => { const d = subMonths(new Date(), k); const l = format(startOfMonth(d), "MMMM yyyy", { locale: ptBR }); return { v: format(d, "yyyy-MM"), l: l.charAt(0).toUpperCase() + l.slice(1) }; });
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-black text-choco-900">Financeiro</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={month} onChange={(e) => setMonth(e.target.value)} className="!h-10 capitalize"><option value={TUDO}>Todo o período</option>{monthOptions.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}</Select>
+          <Select value={month} onChange={(e) => setMonth(e.target.value)} className="!h-10"><option value={TUDO}>Todo o período</option>{monthOptions.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}</Select>
           <Button onClick={() => setNovo({ type: "despesa", category: "Insumos", occurred_on: todayISO() })}><Plus size={16} /> Lançar</Button>
         </div>
       </div>
