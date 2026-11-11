@@ -195,7 +195,7 @@ export function ConversationSidebar({
         (supabase as any).from("crm_ai_agents").select("id, name, is_active").eq("is_active", true).order("name"),
         agentInstanceId
           ? (supabase as any).from("crm_ai_agent_channels")
-              .select("agent:crm_ai_agents(id, name, is_active, created_at)")
+              .select("agent:crm_ai_agents(id, name, is_active, created_at, reply_mode)")
               .eq("channel", bindingChannel).eq("instance_id", agentInstanceId)
           : Promise.resolve({ data: [] }),
         (supabase as any).from("crm_ai_agent_conversation_overrides")
@@ -207,7 +207,25 @@ export function ConversationSidebar({
       // mesmo critério do motor: o agente mais antigo vinculado ao número
       const bound = ((chRows || []) as any[]).map((r) => r.agent).filter((a) => a?.is_active)
         .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
-      const padrao = bound[0] ? { id: bound[0].id, name: bound[0].name } : null;
+      // Caso Adriana (11/11/2026): o rótulo dizia "Padrão do número (Qualificação Ricardo Santos)", o mais
+      // antigo do número, mas quem responde é o agente que atende o FUNIL do lead (Agente UNV Finance).
+      // Mesma regra do crm-agent-respond: entre os agentes do número, o que atende o funil (auto antes de
+      // copiloto); agente sem funil configurado atende todos; nenhum atende = o mais antigo.
+      let padraoAg: any = bound[0] || null;
+      if (bound.length > 1 && conversation.lead_id) {
+        const [{ data: ld }, { data: binds }] = await Promise.all([
+          (supabase as any).from("crm_leads").select("pipeline_id").eq("id", conversation.lead_id).maybeSingle(),
+          (supabase as any).from("crm_ai_agent_pipelines").select("agent_id, pipeline_id, reply_mode").in("agent_id", bound.map((a: any) => a.id)),
+        ]);
+        if (!active) return;
+        const modo = (ag: any) => {
+          const lista = ((binds || []) as any[]).filter((b) => b.agent_id === ag.id);
+          if (!lista.length) return ag.reply_mode || "copilot";
+          return lista.find((b) => b.pipeline_id === ld?.pipeline_id)?.reply_mode || "off";
+        };
+        padraoAg = bound.find((a: any) => modo(a) === "auto") || bound.find((a: any) => modo(a) === "copilot") || bound[0];
+      }
+      const padrao = padraoAg ? { id: padraoAg.id, name: padraoAg.name } : null;
       setDefaultAgent(padrao);
       const fixado = ov?.agent_id ? opts.find((o) => o.id === ov.agent_id) || null : null;
       setPinnedAgentId(fixado && fixado.id !== padrao?.id ? fixado.id : null);
@@ -215,7 +233,7 @@ export function ConversationSidebar({
       if (ov) setAgentEnabled(ov.enabled !== false);
     })();
     return () => { active = false; };
-  }, [conversation.id, agentChannel, bindingChannel, agentInstanceId]);
+  }, [conversation.id, conversation.lead_id, agentChannel, bindingChannel, agentInstanceId]);
 
   const handleChangeAgent = async (value: string) => {
     const novo = value === "__padrao__" ? null : value;
@@ -964,19 +982,19 @@ export function ConversationSidebar({
             <Switch checked={!!convAgent && agentEnabled} onCheckedChange={handleToggleAgent} disabled={savingAgentToggle || !convAgent} />
           </div>
           {agentOptions.length > 0 && (
-            <Select value={pinnedAgentId || "__padrao__"} onValueChange={handleChangeAgent} disabled={savingAgentToggle}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__padrao__">
-                  {defaultAgent ? `Padrão do número (${defaultAgent.name})` : "Padrão do número (sem agente)"}
-                </SelectItem>
-                {agentOptions.filter((a) => a.id !== defaultAgent?.id).map((a) => (
-                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            // pesquisável (Fabrício, 11/11/2026: "quero um lugar pra pesquisar qual agente quero selecionar")
+            <SearchableSelect
+              value={pinnedAgentId || "__padrao__"}
+              onValueChange={handleChangeAgent}
+              disabled={savingAgentToggle}
+              placeholder="Escolha o agente"
+              emptyMessage="Nenhum agente com esse nome."
+              className="h-8 text-xs"
+              options={[
+                { value: "__padrao__", label: defaultAgent ? `Padrão do funil (${defaultAgent.name})` : "Padrão do número (sem agente)" },
+                ...agentOptions.filter((a) => a.id !== defaultAgent?.id).map((a) => ({ value: a.id, label: a.name })),
+              ]}
+            />
           )}
         </div>
       )}
