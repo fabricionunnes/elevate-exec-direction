@@ -11,6 +11,7 @@ import { Button, Card, Input, Select, Modal, Stat, Spinner, Empty, useToast } fr
 
 const CATS_DESPESA = ["Insumos", "Embalagens", "Gás / energia", "Entrega / combustível", "Marketing", "Equipamentos", "Taxas", "Outros"];
 const CATS_RECEITA = ["Vendas", "Encomenda especial", "Outros"];
+const TUDO = "tudo"; // valor do seletor pra "Todo o período"
 
 export default function Financeiro() {
   const toast = useToast();
@@ -22,13 +23,16 @@ export default function Financeiro() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
+    const tudo = month === TUDO;
     const from = format(subMonths(new Date(), 5), "yyyy-MM-01");
-    const monthEnd = format(endOfMonth(parseISO(`${month}-01`)), "yyyy-MM-dd");
-    const [t, i, o] = await Promise.all([
-      supabase.from("transactions").select("*").gte("occurred_on", from).order("occurred_on", { ascending: false }),
-      supabase.from("order_item_costs").select("*").gte("scheduled_date", `${month}-01`).lte("scheduled_date", monthEnd).neq("status", "cancelado"),
-      supabase.from("orders").select("total, payment_status, status").gte("scheduled_date", `${month}-01`).lte("scheduled_date", monthEnd).neq("status", "cancelado"),
-    ]);
+    const monthEnd = tudo ? "" : format(endOfMonth(parseISO(`${month}-01`)), "yyyy-MM-dd");
+    let tq = supabase.from("transactions").select("*");
+    if (!tudo) tq = tq.gte("occurred_on", from);
+    let iq = supabase.from("order_item_costs").select("*").neq("status", "cancelado");
+    if (!tudo) iq = iq.gte("scheduled_date", `${month}-01`).lte("scheduled_date", monthEnd);
+    let oq = supabase.from("orders").select("total, payment_status, status").neq("status", "cancelado");
+    if (!tudo) oq = oq.gte("scheduled_date", `${month}-01`).lte("scheduled_date", monthEnd);
+    const [t, i, o] = await Promise.all([tq.order("occurred_on", { ascending: false }), iq, oq]);
     setTx((t.data as Transaction[]) ?? []);
     setMonthOrders((o.data as { total: number; payment_status: string; status: string }[]) ?? []);
     const agg = new Map<string, { name: string; qty: number; total: number; cost: number }>();
@@ -41,7 +45,9 @@ export default function Financeiro() {
   }, [month]);
   useEffect(() => { void load(); }, [load]);
 
-  const monthTx = useMemo(() => (tx ?? []).filter((t) => t.occurred_on.startsWith(month)), [tx, month]);
+  const tudo = month === TUDO;
+  const noPeriodo = tudo ? "no período" : "no mês";
+  const monthTx = useMemo(() => (tx ?? []).filter((t) => month === TUDO || t.occurred_on.startsWith(month)), [tx, month]);
   // lista do mês em páginas de 10
   const PER_PAGE = 10;
   const [page, setPage] = useState(0);
@@ -103,7 +109,7 @@ export default function Financeiro() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-black text-choco-900">Financeiro</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={month} onChange={(e) => setMonth(e.target.value)} className="!h-10 capitalize">{monthOptions.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}</Select>
+          <Select value={month} onChange={(e) => setMonth(e.target.value)} className="!h-10 capitalize"><option value={TUDO}>Todo o período</option>{monthOptions.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}</Select>
           <Button onClick={() => setNovo({ type: "despesa", category: "Insumos", occurred_on: todayISO() })}><Plus size={16} /> Lançar</Button>
         </div>
       </div>
@@ -114,7 +120,7 @@ export default function Financeiro() {
         <Stat label="A receber" value={brl(aReceber)} tone={aReceber > 0 ? "accent" : "default"} sub={`${monthOrders.filter((o) => o.payment_status !== "pago").length} pedido(s) sem pagamento`} />
         <Stat label="Custo dos bolos (receitas)" value={brl(cmv)} tone="bad" sub="insumos usados em cada item vendido" />
         <Stat label="Lucro bruto" value={brl(lucroBruto)} tone={lucroBruto >= 0 ? "good" : "bad"} sub={receita ? `receita bruta − custo · margem ${Math.round((lucroBruto / receita) * 100)}%` : ""} />
-        <Stat label="Lucro do mês" value={brl(lucro)} tone={lucro >= 0 ? "good" : "bad"} sub={receita ? `− outras despesas ${brl(outrasDespesas)} · ${Math.round((lucro / receita) * 100)}%` : "receita bruta − custo − outras despesas"} />
+        <Stat label={tudo ? "Lucro do período" : "Lucro do mês"} value={brl(lucro)} tone={lucro >= 0 ? "good" : "bad"} sub={receita ? `− outras despesas ${brl(outrasDespesas)} · ${Math.round((lucro / receita) * 100)}%` : "receita bruta − custo − outras despesas"} />
         <Stat label="Compras de insumos" value={brl(comprasInsumos)} sub="caixa que saiu (vira estoque)" />
         <Stat label="Outras despesas" value={brl(outrasDespesas)} tone="bad" sub="embalagem, gás, entrega…" />
       </div>
@@ -136,7 +142,7 @@ export default function Financeiro() {
           </div>
         </Card>
         <Card title="Mais vendidos">
-          {topProducts.length === 0 ? <Empty>Sem vendas no mês.</Empty> : (
+          {topProducts.length === 0 ? <Empty>Sem vendas {noPeriodo}.</Empty> : (
             <ul className="space-y-1 text-sm">{topProducts.map((p) => <li key={p.name} className="flex justify-between gap-2"><span>{p.qty}x {p.name}</span><span className="text-right"><b>{brl(p.total)}</b><span className="block text-xs text-choco-500">custo {brl(p.cost)} · lucro {brl(p.total - p.cost)}</span></span></li>)}</ul>
           )}
           {byCat.length > 0 && (
@@ -148,8 +154,8 @@ export default function Financeiro() {
         </Card>
       </div>
 
-      <Card title="Lançamentos do mês">
-        {tx === null ? <Spinner /> : monthTx.length === 0 ? <Empty>Nada lançado neste mês. Receitas entram sozinhas quando você marca o pedido como pago.</Empty> : (
+      <Card title={tudo ? "Lançamentos de todo o período" : "Lançamentos do mês"}>
+        {tx === null ? <Spinner /> : monthTx.length === 0 ? <Empty>Nada lançado {tudo ? "ainda" : "neste mês"}. Receitas entram sozinhas quando você marca o pedido como pago.</Empty> : (
           <ul className="divide-y divide-choco-100 text-sm">
             {pageTx.map((t) => (
               <li key={t.id} className="flex items-center gap-3 py-2">
