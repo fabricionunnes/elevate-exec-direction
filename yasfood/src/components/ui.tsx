@@ -78,12 +78,21 @@ export function Badge({ className, children }: { className?: string; children: R
   return <span className={clsx("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset", className)}>{children}</span>;
 }
 
+// valor grande (ex.: R$ 10.668,00) diminui no celular pra caber no card de meia largura
+function tamanhoValor(value: ReactNode) {
+  const n = typeof value === "string" || typeof value === "number" ? String(value).length : 0;
+  if (n >= 13) return "text-base sm:text-2xl";
+  if (n >= 12) return "text-lg sm:text-2xl";
+  if (n >= 10) return "text-xl sm:text-2xl";
+  return "text-2xl";
+}
+
 export function Stat({ label, value, sub, tone = "default" }: { label: string; value: ReactNode; sub?: ReactNode; tone?: "default" | "good" | "bad" | "accent" }) {
   const t = { default: "text-choco-900", good: "text-emerald-700", bad: "text-red-700", accent: "text-vinho-600" }[tone];
   return (
-    <div className="rounded-2xl border border-choco-100 bg-white p-4 shadow-card">
+    <div className="min-w-0 rounded-2xl border border-choco-100 bg-white p-3.5 shadow-card sm:p-4">
       <div className="text-xs font-medium uppercase tracking-wide text-choco-500">{label}</div>
-      <div className={clsx("mt-1 text-2xl font-black", t)}>{value}</div>
+      <div className={clsx("mt-1 whitespace-nowrap font-black tabular-nums tracking-tight", tamanhoValor(value), t)}>{value}</div>
       {sub && <div className="mt-1 text-xs text-choco-500">{sub}</div>}
     </div>
   );
