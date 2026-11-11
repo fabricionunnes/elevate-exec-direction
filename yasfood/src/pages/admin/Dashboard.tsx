@@ -65,7 +65,7 @@ export default function Dashboard() {
     const today = todayISO();
     const from6 = format(subMonths(new Date(), 5), "yyyy-MM-01");
     const [o, c, t, av, ing, comp, rev, queue, win, zon, fb, prods] = await Promise.all([
-      supabase.from("orders").select("*, order_items(product_id, product_name, qty, line_total)").gte("scheduled_date", from6).order("scheduled_date").order("created_at"),
+      supabase.from("orders").select("*, order_items(product_id, product_name, qty, slots, line_total)").gte("scheduled_date", from6).order("scheduled_date").order("created_at"),
       supabase.from("customers").select("*"),
       supabase.from("transactions").select("*").gte("occurred_on", from6),
       supabase.rpc("availability", { p_from: today, p_to: addDaysISO(7) }),

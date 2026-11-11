@@ -5,7 +5,7 @@ import { ptBR } from "date-fns/locale";
 import type { Customer, Order, Transaction } from "./types";
 import { todayISO } from "./format";
 
-export interface DashOrder extends Order { order_items: { product_id?: string | null; product_name: string; qty: number; line_total: number }[] | null }
+export interface DashOrder extends Order { order_items: { product_id?: string | null; product_name: string; qty: number; slots?: number | null; line_total: number }[] | null }
 
 export interface Periodo { pedidos: number; bolos: number; receita: number; recebido: number; ticket: number; clientesNovos: number }
 export interface Fatia { nome: string; qtd: number; receita: number; cor: string }
@@ -13,7 +13,8 @@ export interface Fatia { nome: string; qtd: number; receita: number; cor: string
 export const CORES = ["#cd2345", "#e86f8d", "#d98a3a", "#8c5a2b", "#f08ea6", "#b86f26", "#5a2a1a", "#dc3a5c", "#e6a35a", "#d4a97c"];
 
 const ATIVO = (o: Order) => o.status !== "cancelado";
-const bolosDe = (o: DashOrder) => (o.order_items ?? []).reduce((a, i) => a + Number(i.qty), 0);
+// vagas da agenda: 1 bolo = 1; pão conta 1 a cada 4 (mínimo do produto)
+const bolosDe = (o: DashOrder) => (o.order_items ?? []).reduce((a, i) => a + Number(i.slots ?? i.qty), 0);
 const localDate = (iso: string) => format(new Date(iso), "yyyy-MM-dd");
 
 function periodo(orders: DashOrder[], customers: Customer[], from: string, to: string): Periodo {

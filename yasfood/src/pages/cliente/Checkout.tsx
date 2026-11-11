@@ -3,12 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { Minus, Plus, Trash2, Truck, Store, CheckCircle2, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
 import { supabase, friendlyError } from "@/lib/supabase";
-import { useCart, rememberOrder, saveMe, loadMe } from "@/lib/cart";
+import { useCart, rememberOrder, saveMe, loadMe, minQty } from "@/lib/cart";
 import { useSettings } from "@/lib/useSettings";
 import { notifyNewOrders } from "@/lib/push";
 import { brl, dayLabel, weekdayBR, todayISO, addDaysISO, onlyDigits, formatPhone, PAYMENT_LABEL, windowLabel } from "@/lib/format";
 import { waLink, pedidoClienteMsg } from "@/lib/whatsapp";
-import type { Addon, Availability, AvailableWindow, DeliveryZone, Fulfillment, PaymentMethod } from "@/lib/types";
+import type { Addon, Availability, AvailableWindow, DeliveryZone, Fulfillment, PaymentMethod, Product } from "@/lib/types";
 import { Button, Input, Textarea, Select, Empty, useToast } from "@/components/ui";
 
 export default function Checkout() {
@@ -40,10 +40,13 @@ export default function Checkout() {
 
   useEffect(() => {
     void (async () => {
-      const [z, ad] = await Promise.all([
+      const [z, ad, pr] = await Promise.all([
         supabase.from("delivery_zones").select("*").eq("active", true).order("sort_order").order("name"),
         supabase.from("addons").select("*").eq("active", true).order("sort_order").order("name"),
+        supabase.from("products").select("*").eq("active", true),
       ]);
+      // carrinho guardado no aparelho pode ter preço/mínimo antigo
+      if (!pr.error && pr.data) cart.sync(pr.data as Product[]);
       setAddons((ad.data as Addon[]) ?? []);
       setZones((z.data as DeliveryZone[]) ?? []);
     })();
@@ -160,7 +163,7 @@ export default function Checkout() {
             <li key={l.product.id} className="flex items-center justify-between gap-3 py-2">
               <div className="min-w-0 flex-1">
                 <div className="truncate font-semibold text-choco-900">{l.product.name}</div>
-                <div className="text-xs text-choco-500">{brl(l.product.price)} cada</div>
+                <div className="text-xs text-choco-500">{brl(l.product.price)} cada{minQty(l.product) > 1 ? ` · mínimo ${minQty(l.product)}` : ""}</div>
               </div>
               <div className="flex items-center gap-1 rounded-full bg-choco-100 p-0.5">
                 <button className="rounded-full bg-white p-1 text-choco-800" onClick={() => cart.setQty(l.product.id, l.qty - 1)} aria-label="Menos"><Minus size={14} /></button>

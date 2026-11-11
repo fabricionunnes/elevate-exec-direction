@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
 
     // catálogo pra o modelo casar nomes exatos
     const [prodRes, zoneRes, winRes, setRes] = await Promise.all([
-      admin.from("products").select("name, price, description").eq("active", true).order("sort_order"),
+      admin.from("products").select("name, price, description, min_qty").eq("active", true).order("sort_order"),
       admin.from("delivery_zones").select("name, fee, notes").eq("active", true).order("sort_order"),
       admin.from("delivery_windows").select("label, start_time, end_time, weekdays, applies_to").eq("active", true).order("sort_order"),
       admin.from("settings").select("pickup_enabled, pickup_address, business_name, read_order_notes").eq("id", 1).maybeSingle(),
@@ -122,6 +122,7 @@ Deno.serve(async (req) => {
 Regras:
 - As mensagens do lado direito (balão verde) são da confeiteira; as do lado esquerdo são do cliente. O nome no topo da conversa é o do cliente.
 - Quantidade: se o cliente pediu "2 bolos", qty 2. Se pediu "um com cobertura e um sem", dois itens de qty 1.
+- Produto vendido por unidade (marcado "por unidade, mínimo N"): qty é o número de unidades. "1 kit" ou "1 pacote" = o mínimo (N unidades); "8 pães" = qty 8.
 - Produto: case com o nome EXATO do catálogo abaixo. "Com cobertura" e "sem cobertura" são produtos diferentes. Se não casar, product_name null e explique em doubts.
 - Data: resolva expressões relativas usando a tabela de datas. "Sexta" = a próxima sexta a partir de hoje (se hoje for sexta e ele disser "sexta", registre dúvida). Se não houver data, null e dúvida.
 - Horário: case com o rótulo EXATO de um horário do catálogo quando o que o cliente pediu cabe nele (ex.: "de tarde" → 14:00–17:00). Senão null e time_text com o que ele escreveu.
@@ -144,7 +145,7 @@ Datas dos próximos dias:
 ${proximos}
 
 Catálogo de produtos:
-${(products ?? []).map((p: { name: string; price: number; description?: string }) => `- ${p.name} (R$ ${Number(p.price).toFixed(2)})${p.description ? ` — ${p.description}` : ""}`).join("\n") || "- (vazio)"}
+${(products ?? []).map((p: { name: string; price: number; description?: string; min_qty?: number }) => `- ${p.name} (R$ ${Number(p.price).toFixed(2)}${(p.min_qty ?? 1) > 1 ? ` por unidade, mínimo ${p.min_qty}` : ""})${p.description ? ` — ${p.description}` : ""}`).join("\n") || "- (vazio)"}
 
 Regiões de entrega (com observações que ajudam a casar o condomínio):
 ${(zones ?? []).map((z: { name: string; fee: number; notes?: string | null }) => `- ${z.name} (frete R$ ${Number(z.fee).toFixed(2)})${z.notes ? ` — ${z.notes}` : ""}`).join("\n") || "- (vazio)"}

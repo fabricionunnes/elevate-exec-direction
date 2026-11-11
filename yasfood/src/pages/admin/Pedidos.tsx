@@ -736,7 +736,7 @@ function NovoPedido({ onClose, onCreated, initial }: { onClose: () => void; onCr
           <h3 className="text-sm font-bold">Produtos</h3>
           {products.map((p) => (
             <div key={p.id} className="flex items-center justify-between rounded-xl border border-choco-100 bg-white p-2 text-sm">
-              <span>{p.name} <span className="text-choco-500">· {brl(p.price)}</span></span>
+              <span>{p.name} <span className="text-choco-500">· {brl(p.price)}{(p.min_qty ?? 1) > 1 ? ` cada · mín. ${p.min_qty}` : ""}</span></span>
               <input type="number" min={0} className="h-9 w-16 rounded-lg border border-choco-200 px-2 text-center" value={qty[p.id] ?? 0} onChange={(e) => setQty({ ...qty, [p.id]: Number(e.target.value) })} />
             </div>
           ))}
@@ -907,7 +907,7 @@ function EditOrder({ order, items, onClose, onSaved }: { order: Order; items: Or
           <h3 className="text-sm font-bold">Itens</h3>
           {products.map((p) => (
             <div key={p.id} className={clsx("flex items-center justify-between rounded-xl border border-choco-100 bg-white p-2 text-sm", !p.active && "opacity-60")}>
-              <span>{p.name} <span className="text-choco-500">· {brl(p.price)}</span></span>
+              <span>{p.name} <span className="text-choco-500">· {brl(p.price)}{(p.min_qty ?? 1) > 1 ? ` cada · mín. ${p.min_qty}` : ""}</span></span>
               <input type="number" min={0} className="h-9 w-16 rounded-lg border border-choco-200 px-2 text-center" value={qty[p.id] ?? 0} onChange={(e) => setQty({ ...qty, [p.id]: Number(e.target.value) })} />
             </div>
           ))}

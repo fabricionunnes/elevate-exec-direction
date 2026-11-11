@@ -11,7 +11,7 @@ import { waLink, msgs } from "@/lib/whatsapp";
 import { Card, Spinner, Empty, Stat } from "@/components/ui";
 import { Faixa } from "@/components/charts";
 
-interface Row { id: string; customer_id: string | null; customer_name: string; customer_phone: string; scheduled_date: string; status: string; total: number; order_items: { product_name: string; qty: number }[] | null }
+interface Row { id: string; customer_id: string | null; customer_name: string; customer_phone: string; scheduled_date: string; status: string; total: number; order_items: { product_name: string; qty: number; slots: number | null }[] | null }
 interface Cliente {
   key: string; nome: string; telefone: string;
   pedidos: number; bolos: number; gasto: number; ticket: number;
@@ -39,7 +39,7 @@ export default function Recompras() {
   const [open, setOpen] = useState<string | null>(null);
 
   useEffect(() => {
-    void supabase.from("orders").select("id, customer_id, customer_name, customer_phone, scheduled_date, status, total, order_items(product_name, qty)").neq("status", "cancelado").order("scheduled_date")
+    void supabase.from("orders").select("id, customer_id, customer_name, customer_phone, scheduled_date, status, total, order_items(product_name, qty, slots)").neq("status", "cancelado").order("scheduled_date")
       .then(({ data }) => setRows((data as Row[]) ?? []));
   }, []);
 
@@ -63,7 +63,7 @@ export default function Recompras() {
       const last = os[os.length - 1];
       return {
         key, nome: last.customer_name, telefone: last.customer_phone,
-        pedidos: os.length, bolos: os.reduce((a, o) => a + (o.order_items ?? []).reduce((x, i) => x + Number(i.qty), 0), 0), gasto, ticket: gasto / os.length,
+        pedidos: os.length, bolos: os.reduce((a, o) => a + (o.order_items ?? []).reduce((x, i) => x + Number(i.slots ?? i.qty), 0), 0), gasto, ticket: gasto / os.length,
         primeira: datas[0], ultima, datas, intervalos, mediaDias, diasDesde,
         proxima: mediaDias !== null ? addDias(ultima, mediaDias) : null, situacao, favorito,
       };

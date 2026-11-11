@@ -7,7 +7,7 @@ import type { Category, Ingredient, Product, ProductCost, ProductIngredient, Pro
 import { Button, Card, Input, Textarea, Select, Modal, Spinner, Empty, Badge, useToast } from "@/components/ui";
 import { AdicionaisAdmin } from "@/components/AdicionaisAdmin";
 
-const empty: Omit<Product, "id"> = { name: "", description: "", price: 35, weight_g: 570, image_url: null, category: "Bolos", active: true, sort_order: 0 };
+const empty: Omit<Product, "id"> = { name: "", description: "", price: 35, weight_g: 570, image_url: null, category: "Bolos", active: true, sort_order: 0, min_qty: 1 };
 
 export default function CardapioAdmin() {
   const toast = useToast();
@@ -37,7 +37,7 @@ export default function CardapioAdmin() {
     if (!editing?.name) return toast("Dê um nome ao produto.", "err");
     setBusy(true);
     const { id, ...rest } = editing;
-    const payload = { ...empty, ...rest, price: Number(rest.price ?? 0), weight_g: rest.weight_g ? Number(rest.weight_g) : null };
+    const payload = { ...empty, ...rest, price: Number(rest.price ?? 0), weight_g: rest.weight_g ? Number(rest.weight_g) : null, min_qty: Math.max(1, Math.round(Number(rest.min_qty ?? 1)) || 1) };
     const q = id ? supabase.from("products").update(payload).eq("id", id) : supabase.from("products").insert(payload);
     const { error } = await q;
     setBusy(false);
@@ -91,7 +91,7 @@ export default function CardapioAdmin() {
                   {p.image_url ? <img src={p.image_url} alt="" className="h-20 w-20 rounded-xl object-cover" /> : <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-rosa-100 text-3xl">🎂</div>}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2"><span className="truncate font-bold">{p.name}</span>{!p.active && <Badge className="bg-neutral-100 text-neutral-600 ring-neutral-300">inativo</Badge>}</div>
-                    <div className="text-sm text-choco-600">{brl(p.price)}{p.weight_g ? ` · ${p.weight_g}g` : ""} · {p.category}</div>
+                    <div className="text-sm text-choco-600">{brl(p.price)}{(p.min_qty ?? 1) > 1 ? ` cada · mín. ${p.min_qty}` : ""}{p.weight_g ? ` · ${p.weight_g}g` : ""} · {p.category}</div>
                     {c && Number(c.cost) > 0
                       ? <div className="text-xs text-choco-500">custo {brl(c.cost)} · margem {brl(c.margin)} ({c.margin_pct}%)</div>
                       : <div className="text-xs font-semibold text-amber-700">sem receita: custo zerado no Financeiro</div>}
@@ -128,11 +128,15 @@ export default function CardapioAdmin() {
             </div>
             <Input label="Nome" value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
             <Textarea label="Descrição" value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
-            <div className="grid grid-cols-3 gap-2">
-              <Input label="Preço (R$)" type="number" step="0.01" value={editing.price ?? 0} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} />
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <Input label={(editing.min_qty ?? 1) > 1 ? "Preço por unidade (R$)" : "Preço (R$)"} type="number" step="0.01" value={editing.price ?? 0} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} />
+              <Input label="Pedido mínimo (un.)" type="number" min={1} value={editing.min_qty ?? 1} onChange={(e) => setEditing({ ...editing, min_qty: Number(e.target.value) })} />
               <Input label="Peso (g)" type="number" value={editing.weight_g ?? ""} onChange={(e) => setEditing({ ...editing, weight_g: e.target.value ? Number(e.target.value) : null })} />
               <Input label="Ordem" type="number" value={editing.sort_order ?? 0} onChange={(e) => setEditing({ ...editing, sort_order: Number(e.target.value) })} />
             </div>
+            {(editing.min_qty ?? 1) > 1 && (
+              <p className="-mt-1 text-xs text-choco-500">Vendido por unidade: o cliente pede a partir de {editing.min_qty} e o valor sobe a cada unidade ({editing.min_qty} = {brl((editing.min_qty ?? 1) * Number(editing.price ?? 0))}). A receita é de 1 unidade.</p>
+            )}
             <div>
               <Select label="Categoria" value={editing.category ?? ""} onChange={(e) => setEditing({ ...editing, category: e.target.value })}>
                 {editing.category && !cats.some((c) => c.name === editing.category) && <option value={editing.category}>{editing.category}</option>}

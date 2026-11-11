@@ -46,6 +46,8 @@ export interface Product {
   category: string;
   active: boolean;
   sort_order: number;
+  /** pedido mínimo (pão de batata: 4). O preço é por unidade. */
+  min_qty?: number;
 }
 
 export interface Category {

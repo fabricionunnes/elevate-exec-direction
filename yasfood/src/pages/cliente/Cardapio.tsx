@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Minus, Plus, ShoppingBag, CalendarDays, Star } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { useCart } from "@/lib/cart";
+import { useCart, minQty } from "@/lib/cart";
 import { useSettings } from "@/lib/useSettings";
 import { brl, dayLabel, todayISO, addDaysISO, dateTimeBR } from "@/lib/format";
 import type { Availability, Banner, Category, Product, ProductMedia, PublicReview } from "@/lib/types";
@@ -35,6 +35,8 @@ export default function Cardapio() {
         supabase.from("categories").select("*").eq("active", true).order("sort_order").order("name"),
       ]);
       setProducts((p.data as Product[]) ?? []);
+      // carrinho guardado no aparelho pode ter preço/mínimo antigo
+      if (!p.error && p.data) cart.sync(p.data as Product[]);
       const grouped: Record<string, ProductMedia[]> = {};
       for (const row of ((m.data as ProductMedia[]) ?? [])) (grouped[row.product_id] ??= []).push(row);
       setMedia(grouped);
@@ -126,6 +128,7 @@ export default function Cardapio() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     {g.items.map((p) => {
                       const line = cart.lines.find((l) => l.product.id === p.id);
+                      const min = minQty(p);
                       return (
                         <article key={p.id} id={`produto-${p.id}`} className="overflow-hidden rounded-3xl border border-choco-100 bg-white shadow-card transition">
                           <Gallery media={media[p.id] ?? []} cover={p.image_url} alt={p.name} />
@@ -133,10 +136,19 @@ export default function Cardapio() {
                             <h3 className="text-lg font-bold leading-tight text-choco-900">{p.name}</h3>
                             {p.description && <p className="mt-1 text-sm text-choco-600">{p.description}</p>}
                             <div className="mt-3 flex items-center justify-between">
-                              <div>
-                                <div className="text-xl font-black text-vinho-700">{brl(p.price)}</div>
-                                {p.weight_g && <div className="text-xs text-choco-500">{p.weight_g}g</div>}
-                              </div>
+                              {min > 1 ? (
+                                <div>
+                                  <div className="text-xl font-black text-vinho-700">{brl(p.price)} <span className="text-sm font-semibold text-choco-500">cada</span></div>
+                                  <div className="text-xs text-choco-500">
+                                    {line ? <>{line.qty} unidades · <b className="text-vinho-700">{brl(line.qty * Number(p.price))}</b></> : <>mínimo {min} · {brl(min * Number(p.price))}</>}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <div className="text-xl font-black text-vinho-700">{brl(p.price)}</div>
+                                  {p.weight_g && <div className="text-xs text-choco-500">{p.weight_g}g</div>}
+                                </div>
+                              )}
                               {line ? (
                                 <div className="flex items-center gap-2 rounded-full bg-choco-100 p-1">
                                   <button className="rounded-full bg-white p-1.5 text-choco-800 shadow-sm" onClick={() => cart.setQty(p.id, line.qty - 1)} aria-label="Menos"><Minus size={16} /></button>
@@ -144,7 +156,7 @@ export default function Cardapio() {
                                   <button className="rounded-full bg-vinho-600 p-1.5 text-white shadow-sm" onClick={() => cart.setQty(p.id, line.qty + 1)} aria-label="Mais"><Plus size={16} /></button>
                                 </div>
                               ) : (
-                                <Button onClick={() => cart.add(p)} disabled={settings ? !settings.is_open : false}><Plus size={16} /> Adicionar</Button>
+                                <Button onClick={() => cart.add(p)} disabled={settings ? !settings.is_open : false}><Plus size={16} /> {min > 1 ? `Adicionar ${min}` : "Adicionar"}</Button>
                               )}
                             </div>
                           </div>
