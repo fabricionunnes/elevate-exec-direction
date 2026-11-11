@@ -534,7 +534,8 @@ function dividirEmMensagens(texto) {
 function tempoDigitandoMs(texto) {
   return Math.min(20000, Math.max(1800, String(texto || "").length * 170));
 }
-const PEDIU_HUMANO_RE = /(falar|conversar|atendimento|atender)\s+(com\s+)?(um|uma|algum|alguma|o|a)?\s*(atendente|humano|pessoa|vendedor|vendedora|consultor|consultora)\b|atendente\s+humano|pessoa\s+de\s+verdade|\b(voc[eê]|vc|tu|isso|aqui|ce)\s+(é|eh|e|eres)\s+(um\s+|uma\s+)?(rob[oô]|bot|ia|intelig[eê]ncia\s+artificial|chat\s*gpt|m[aá]quina)(?![a-zà-ú])|^\s*(é|eh|e)\s+(um\s+)?(rob[oô]|bot|ia)\s*\??\s*$|\b(t[oô]|estou)\s+falando\s+com\s+(um\s+|uma\s+)?(rob[oô]|bot|ia|m[aá]quina)(?![a-zà-ú])|\b(humano|pessoa|gente)\s+(ou|e)\s+(um\s+|uma\s+)?(rob[oô]|bot|ia|m[aá]quina|intelig[eê]ncia\s+artificial)(?![a-zà-ú])|\b(rob[oô]|bot|ia|m[aá]quina)\s+ou\s+(um\s+|uma\s+)?(humano|pessoa|gente)\b|\b(isso|essa\s+resposta|a\s+resposta|voc[eê]|vc)\s+(é|eh|e)\s+autom[aá]tic[oa]|\b(voc[eê]|vc)\s+(é|eh|e)\s+(uma\s+)?pessoa\s+(de\s+verdade|real)/i;
+const PEDIU_HUMANO_RE = /(falar|conversar|atendimento|atender)\s+(com\s+)?(um|uma|algum|alguma|o|a)?\s*(atendente|humano|pessoa|vendedor|vendedora|consultor|consultora)\b|atendente\s+humano|pessoa\s+de\s+verdade|\b(voc[eê]|vc|tu|isso|aqui|ce)\s+(é|eh|e|eres)\s+(um\s+|uma\s+)?(rob[oô]|bot|ia|intelig[eê]ncia\s+artificial|chat\s*gpt|m[aá]quina)(?![a-zà-ú])|^\s*(é|eh|e)\s+(um\s+)?(rob[oô]|bot|ia)\s*\??\s*$|\b(t[oô]|estou)\s+falando\s+com\s+(um\s+|uma\s+)?(rob[oô]|bot|ia|m[aá]quina)(?![a-zà-ú])|\b(humano|pessoa|gente)\s+(ou|e)\s+(um\s+|uma\s+)?(rob[oô]|bot|ia|m[aá]quina|intelig[eê]ncia\s+artificial)(?![a-zà-ú])|\b(rob[oô]|bot|ia|m[aá]quina)\s+ou\s+(um\s+|uma\s+)?(humano|pessoa|gente)\b|\b(isso|essa\s+resposta|a\s+resposta|voc[eê]|vc)\s+(é|eh|e)\s+autom[aá]tic[oa]|\b(voc[eê]|vc)\s+(é|eh|e)\s+(uma\s+)?pessoa\s+(de\s+verdade|real)|(^|\s)(é|eh|e)\s+(um\s+|uma\s+)?(rob[oô]|bot|ia|intelig[eê]ncia\s+artificial|m[aá]quina)\s*\?/i;
+// Caso Daianne (11/11/2026): "Cara é IA ?" não batia ("cara" não estava na lista de sujeitos).
 // Caso Sergio (10/11/2026): "Estou falando com um humano ou IA?" não batia (o humano vinha antes da IA),
 // caiu na transferência genérica e o agente respondeu "Vou verificar isso". Agora a pergunta é reconhecida.
 const PERGUNTOU_ROBO_RE = /\b(rob[oô]|bot|ia|intelig[eê]ncia\s+artificial|chat\s*gpt|m[aá]quina|autom[aá]tic[oa]|pessoa\s+(de\s+verdade|real)|humano\s+ou)(?![a-zà-ú])/i;
@@ -3962,8 +3963,12 @@ Deno.serve(async (req)=>{
       // desconfiança. Agora: resposta curta e honesta, conversa passa pra uma pessoa do time
       // (aviso no sistema + WhatsApp) e o agente sai desta conversa.
       const falaLead = String(msgs[msgs.length - 1].content || "");
-      if (PEDIU_HUMANO_RE.test(falaLead)) {
-        const perguntouRobo = PERGUNTOU_ROBO_RE.test(falaLead);
+      // a pergunta pode vir numa mensagem e outra logo depois ("Cara é IA ?" + "Meu Deus", caso Daianne 11/11)
+      const idxUltimaNossa = msgs.map((m)=>m.direction).lastIndexOf("outbound");
+      const rajadaLead = msgs.slice(idxUltimaNossa + 1).filter((m)=>m.direction === "inbound").map((m)=>String(m.content || "")).join("\n");
+      const falaRobo = rajadaLead.split("\n").find((t)=>PEDIU_HUMANO_RE.test(t)) || "";
+      if (falaRobo) {
+        const perguntouRobo = PERGUNTOU_ROBO_RE.test(falaRobo);
         // Fabrício (10/11/2026): "é só falar que sim, é um assistente de IA e que vai chamar o humano"
         const aviso = perguntouRobo ? "Sim, aqui é o assistente de IA do time. Já chamei uma pessoa pra seguir com você por aqui." : "Claro, já chamei uma pessoa do time pra seguir com você por aqui.";
         if (dry_run) return {
@@ -4516,6 +4521,7 @@ Deno.serve(async (req)=>{
       const toolCalls = [];
       let encerrarConversa = false; // marcar_perdido rodou: depois de responder, o agente sai desta conversa
       let transferidoHumano = false; // transferir_para_humano rodou: responde e sai desta conversa
+      let transferidoPorPerguntaIA = false; // o motivo da transferência foi o lead perguntar se é IA/robô
       let mcpChamadas = 0; // chamadas externas já feitas nesta resposta (teto MCP_MAX_CHAMADAS)
       let mcpRetiradas = false; // a IA recusou a lista com ferramenta externa: seguiu sem elas
       const mcpFora = new Set(); // servidores que falharam nesta resposta (não insiste)
@@ -4672,7 +4678,10 @@ Deno.serve(async (req)=>{
               // "RECUSADO: ... você precisa SONDAR" (piso de ICP) e aí o agente faz uma pergunta;
               // desligar nessa hora deixava o lead falando sozinho (Devid, Marcela, Bruna, Flávio).
               if (block.name === "marcar_fora_do_perfil" && /^(Negócio movido|Lead marcado)/.test(result)) encerrarConversa = true;
-              if (block.name === "transferir_para_humano" && result.startsWith("OK")) transferidoHumano = true;
+              if (block.name === "transferir_para_humano" && result.startsWith("OK")) {
+                transferidoHumano = true;
+                if (/\b(ia|rob[oô]|bot|intelig[eê]ncia artificial|m[aá]quina|humano|pessoa de verdade)\b/i.test(String(block.input?.motivo || ""))) transferidoPorPerguntaIA = true;
+              }
             }
             toolCalls.push(`${block.name}(${JSON.stringify(block.input)}) -> ${result.slice(0, 120)}`);
             toolResults.push({
@@ -4697,6 +4706,11 @@ Deno.serve(async (req)=>{
           ...new Set(texts)
         ].join("").trim());
         reply = unhalve(reply);
+        // Rede de segurança (caso Daianne 11/11): a IA chamou transferir_para_humano porque o lead perguntou
+        // se era IA e mesmo assim escreveu "vou verificar com o time". A resposta vira a fixa e honesta.
+        if (transferidoHumano && transferidoPorPerguntaIA) {
+          reply = "Sim, aqui é o assistente de IA do time. Já chamei uma pessoa pra seguir com você por aqui.";
+        }
         // Link escrito junto com a ferramenta e ausente da resposta final: vai junto, antes dela.
         // Só o que tem link entra, pra não vazar narração ("vou mover o lead...").
         const comLinkPerdido = textoJuntoComFerramenta.filter((t)=>{
