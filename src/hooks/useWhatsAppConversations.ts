@@ -82,6 +82,10 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
 
   const fetchConversations = async () => {
     const minhaCarga = ++cargaAtual.current;
+    // Recarga com a lista já na tela (11/11/2026, Fabrício: "quando chega muita msg, eu clico em uma aí some
+    // todas, depois volta"): antes a lista voltava só com as 300 mais recentes e o resto reaparecia aos poucos.
+    // Agora a lista antiga fica na tela até a nova estar completa, e só aí troca de uma vez.
+    const refazendo = loadedOnce.current;
     try {
       if (!loadedOnce.current) setLoading(true);
 
@@ -123,7 +127,7 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
       const porId = new Map<string, any>();
       const juntar = (linhas: any[] | null) => { for (const l of linhas || []) porId.set(String(l.id), l); };
       juntar(inicio);
-      setConversations(ordenarPorUltima(Array.from(porId.values())) as any);
+      if (!refazendo) setConversations(ordenarPorUltima(Array.from(porId.values())) as any);
       loadedOnce.current = true;
       setLoading(false);
 
@@ -135,10 +139,11 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
         if (minhaCarga !== cargaAtual.current) return;
         if (!lote || lote.length === 0) break;
         juntar(lote);
-        setConversations(ordenarPorUltima(Array.from(porId.values())) as any);
+        if (!refazendo) setConversations(ordenarPorUltima(Array.from(porId.values())) as any);
         if (lote.length < LOTE) break;
         from += LOTE;
       }
+      if (refazendo && minhaCarga === cargaAtual.current) setConversations(ordenarPorUltima(Array.from(porId.values())) as any);
     } catch (err) {
       console.error('Error fetching conversations:', err);
       if (minhaCarga === cargaAtual.current) setError(err as Error);

@@ -810,7 +810,8 @@ export const CRMInboxPage = () => {
       supabase.from("crm_whatsapp_conversations")
         .update({ waiting_seen_at: new Date(Date.now() + 5000).toISOString() } as any)
         .eq("id", id).eq("last_message_direction", "inbound")
-        .then(() => { refetchConversations(); }, () => {});
+        // sem recarregar a lista inteira a cada troca de conversa (11/11/2026): o tempo real já atualiza a linha
+        .then(() => {}, () => {});
     };
   }, [selectedConversation?.id]);
 
@@ -1031,7 +1032,8 @@ export const CRMInboxPage = () => {
       if (!haystack.some((v) => v.includes(search))) return false;
     }
 
-    if (quick === "unread" && !(conv.unread_count > 0)) return false;
+    // a conversa aberta fica na lista de "Não lidas" enquanto está aberta (abrir marca como lida e ela sumia)
+    if (quick === "unread" && !(conv.unread_count > 0) && conv.id !== selectedConversation?.id) return false;
     if (quick === "waiting" && !(esperando(conv) && !(stageMap[String((conv.lead as any)?.stage_id || "")] as any)?.lost)) return false;
     if (quick === "mine" && conv.assigned_to !== staffId) return false;
 
