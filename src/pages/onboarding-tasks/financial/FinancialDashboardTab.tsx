@@ -194,9 +194,11 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
   // cancellation_signaled / notice_period) já conta como MRR PERDIDO e sai do MRR
   // atual; se reverter (projeto volta a ativo), volta sozinho (Fabrício, 22/09/2026).
   // Só vale olhando o mês corrente: o status de hoje não diz nada sobre meses passados.
+  // Saída por COBRANÇA, não por cliente (Fabrício, 11/11/2026: Agile Save "pediram cancelamento do UNV Ads
+  // somente, ou seja, só 1000 reais, e não 3 mil"). Guarda os ids das cobranças do projeto que está saindo.
   const [leavingIds, setLeavingIds] = useState<Set<string>>(new Set());
-  const ativaSemSaida = (c: { is_active: boolean; company_id?: string | null }) =>
-    c.is_active && !(isCurrentMonth && c.company_id && leavingIds.has(c.company_id));
+  const ativaSemSaida = (c: { id?: string; is_active: boolean; company_id?: string | null }) =>
+    c.is_active && !(isCurrentMonth && c.id && leavingIds.has(c.id));
 
   const mrr = useMemo(() => {
     const activeCharges = recurringCharges.filter(ativaSemSaida);
@@ -237,6 +239,21 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
           const cid = c.company_id || "sem-cliente";
           addedByCompany.set(cid, (addedByCompany.get(cid) || 0) + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"));
         });
+      // MRR novo é CLIENTE novo (Fabrício, 11/11/2026: Santos Imóveis "é do mês passado" e Imobili "é um antigo já,
+      // só foi gerada nova parcela"). Recorrência recriada ou cliente que já tinha fatura ou recorrência antes do
+      // mês não entra.
+      {
+        const candidatos = Array.from(addedByCompany.keys()).filter((cid) => cid !== "sem-cliente");
+        if (candidatos.length) {
+          const inicioMes = `${monthStr}-01`;
+          const [{ data: cobAntigas }, { data: fatAntigas }] = await Promise.all([
+            supabase.from("company_recurring_charges").select("company_id").in("company_id", candidatos).lt("created_at", inicioMes),
+            supabase.from("company_invoices").select("company_id").in("company_id", candidatos).lt("due_date", inicioMes),
+          ]);
+          const jaEraCliente = new Set([...(cobAntigas || []), ...(fatAntigas || [])].map((r: any) => r.company_id));
+          jaEraCliente.forEach((cid) => addedByCompany.delete(cid));
+        }
+      }
 
       const start = `${monthStr}-01`;
       const end = new Date(selectedYear, selectedMonth + 1, 1).toISOString().slice(0, 10);
@@ -253,28 +270,44 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
         if (cid && !lostInfo.has(cid)) lostInfo.set(cid, { kind: "churned", date: p.churn_date || null, reason: p.churn_reason || null });
       });
 
-      // Saindo: pediu cancelamento ou cumprindo aviso → perda de MRR, fora do MRR atual
-      const leaving = new Set<string>();
+      // Saindo: pediu cancelamento ou cumprindo aviso → perda de MRR, fora do MRR atual.
+      // Só a cobrança do PRODUTO que está saindo: cliente com outro projeto ativo continua pagando o resto.
+      // A cobrança casa pelo nome do produto na descrição ("UNV Ads - EMPRESA"); cliente sem outro projeto
+      // ativo (ou sem cobrança que case) sai inteiro, como antes.
+      const leaving = new Set<string>(); // ids de cobranças
       if (isCurrentMonth) {
         const { data: saindo } = await supabase
           .from("onboarding_projects")
-          .select("onboarding_company_id, company_id, status, notice_end_date, cancellation_signal_date")
+          .select("onboarding_company_id, company_id, product_name, status, notice_end_date, cancellation_signal_date")
           .in("status", ["notice_period", "cancellation_signaled"]);
+        const empresasSaindo = Array.from(new Set((saindo || []).map((p: any) => p.onboarding_company_id || p.company_id).filter(Boolean)));
+        const { data: projetosDelas } = empresasSaindo.length
+          ? await supabase.from("onboarding_projects").select("onboarding_company_id, company_id, status").or(
+              `onboarding_company_id.in.(${empresasSaindo.join(",")}),company_id.in.(${empresasSaindo.join(",")})`)
+          : { data: [] as any[] };
+        const norm = (t: string) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
         (saindo || []).forEach((p: any) => {
           const cid = p.onboarding_company_id || p.company_id;
           if (!cid) return;
-          leaving.add(cid);
           if (!lostInfo.has(cid)) lostInfo.set(cid, {
             kind: p.status,
             // em aviso: a data que importa é quando o aviso termina; sinalizado: quando pediu
             date: p.status === "notice_period" ? (p.notice_end_date || p.cancellation_signal_date || null) : (p.cancellation_signal_date || null),
             reason: null,
           });
+          const daEmpresa = recurringCharges.filter((c: any) => c.is_active && c.company_id === cid);
+          const outroAtivo = (projetosDelas || []).some((q: any) => (q.onboarding_company_id || q.company_id) === cid
+            && !["notice_period", "cancellation_signaled", "churned", "closed", "completed", "interno", "cancelled", "canceled", "inactive"].includes(q.status));
+          const doProduto = p.product_name ? daEmpresa.filter((c: any) => norm(c.description).startsWith(norm(p.product_name))) : [];
+          const sai = outroAtivo && doProduto.length ? doProduto : outroAtivo ? [] : daEmpresa;
+          sai.forEach((c: any) => leaving.add(c.id));
         });
-        leaving.forEach(cid => {
-          const cents = currentByCompany.get(cid) || 0;
-          currentByCompany.delete(cid);
-          if (cents > 0 && !lostByCompany.has(cid)) lostByCompany.set(cid, cents);
+        recurringCharges.filter((c: any) => c.is_active && leaving.has(c.id)).forEach((c: any) => {
+          const cid = c.company_id || "sem-cliente";
+          const cents = toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly");
+          currentByCompany.set(cid, (currentByCompany.get(cid) || 0) - cents);
+          if ((currentByCompany.get(cid) || 0) <= 0) currentByCompany.delete(cid);
+          if (!lostIds.includes(cid)) lostByCompany.set(cid, (lostByCompany.get(cid) || 0) + cents);
         });
       }
       setLeavingIds(leaving);
