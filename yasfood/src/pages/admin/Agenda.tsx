@@ -51,14 +51,14 @@ export default function Agenda() {
     const to = addDaysISO(60);
     const [{ data, error }, { data: os }, { data: ws }] = await Promise.all([
       supabase.rpc("agenda_capacity", { p_from: from, p_to: to }),
-      supabase.from("orders").select("id, code, customer_name, status, fulfillment, scheduled_date, order_items(qty)").gte("scheduled_date", from).lte("scheduled_date", to).order("created_at"),
+      supabase.from("orders").select("id, code, customer_name, status, fulfillment, scheduled_date, order_items(qty, slots)").gte("scheduled_date", from).lte("scheduled_date", to).order("created_at"),
       supabase.from("delivery_windows").select("*").eq("active", true).order("start_time").order("sort_order"),
     ]);
     if (error) toast(friendlyError(error), "err");
     setDays((data as DayCap[]) ?? []);
     setWindows((ws as DeliveryWindow[]) ?? []);
-    type Row = Omit<DayOrder, "units"> & { order_items: { qty: number }[] | null };
-    setOrders(((os as Row[] | null) ?? []).map(({ order_items, ...o }) => ({ ...o, units: (order_items ?? []).reduce((a, i) => a + Number(i.qty), 0) })));
+    type Row = Omit<DayOrder, "units"> & { order_items: { qty: number; slots: number | null }[] | null };
+    setOrders(((os as Row[] | null) ?? []).map(({ order_items, ...o }) => ({ ...o, units: (order_items ?? []).reduce((a, i) => a + Number(i.slots ?? i.qty), 0) })));
   }, [toast]);
   useEffect(() => {
     void load();

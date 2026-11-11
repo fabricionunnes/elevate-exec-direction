@@ -29,6 +29,6 @@ select json_build_object(
     'janelas', (select json_agg(json_build_object('label', label, 'ini', start_time, 'fim', end_time, 'lead', min_lead_minutes, 'dias', weekdays, 'tipo', applies_to, 'ativo', active, 'max', max_orders)) from yasfood.delivery_windows)),
   'foto_biscoito', (select json_agg(json_build_object('p', p.name, 'capa', p.image_url, 'fotos', (select count(*) from yasfood.product_media m where m.product_id = p.id)))
                     from yasfood.products p where p.name ilike '%biscoito%'),
-  'pao_batata', (select json_agg(json_build_object('p', p.name, 'preco', p.price, 'ativo', p.active, 'cat', p.category, 'capa', p.image_url, 'fotos', (select count(*) from yasfood.product_media m where m.product_id = p.id)))
-                 from yasfood.products p where p.name ilike 'pão de batata%')
+  'pao_batata', (select json_agg(json_build_object('p', p.name, 'preco', p.price, 'min', p.min_qty, 'custo_un', (select pc.cost from yasfood.product_costs pc where pc.product_id = p.id), 'slots_hoje', (select sum(oi.slots) from yasfood.order_items oi join yasfood.orders o on o.id = oi.order_id where oi.product_id = p.id and o.scheduled_date >= yasfood.today_br()), 'ativo', p.active, 'cat', p.category, 'capa', p.image_url, 'fotos', (select count(*) from yasfood.product_media m where m.product_id = p.id)))
+                 from yasfood.products p where p.category = 'Pães')
 ) as diag;

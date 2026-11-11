@@ -10,6 +10,8 @@ interface CartCtx {
   lines: CartLine[];
   add: (p: Product, qty?: number) => void;
   setQty: (productId: string, qty: number) => void;
+  /** troca os produtos do carrinho pelos atuais do cardápio (preço, mínimo) e tira o que saiu */
+  sync: (products: Product[]) => void;
   remove: (productId: string) => void;
   clear: () => void;
   count: number;
@@ -17,6 +19,8 @@ interface CartCtx {
 }
 
 const Ctx = createContext<CartCtx | null>(null);
+
+export const minQty = (p: Pick<Product, "min_qty">) => Math.max(1, Number(p.min_qty ?? 1));
 const KEY = "dy_cart_v1";
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -39,13 +43,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const api = useMemo<CartCtx>(() => ({
     lines,
-    add: (p, qty = 1) =>
+    add: (p, qty) =>
       setLines((ls) => {
         const i = ls.findIndex((l) => l.product.id === p.id);
-        if (i >= 0) return ls.map((l, j) => (j === i ? { ...l, qty: l.qty + qty } : l));
-        return [...ls, { product: p, qty }];
+        if (i >= 0) return ls.map((l, j) => (j === i ? { ...l, qty: l.qty + (qty ?? 1) } : l));
+        return [...ls, { product: p, qty: Math.max(qty ?? minQty(p), minQty(p)) }];
       }),
-    setQty: (id, qty) => setLines((ls) => (qty <= 0 ? ls.filter((l) => l.product.id !== id) : ls.map((l) => (l.product.id === id ? { ...l, qty } : l)))),
+    // abaixo do mínimo sai do carrinho (pão: de 4 pra 3 remove)
+    setQty: (id, qty) => setLines((ls) => ls.flatMap((l) => (l.product.id !== id ? [l] : qty < minQty(l.product) ? [] : [{ ...l, qty }]))),
+    sync: (products) => setLines((ls) => {
+      const byId = new Map(products.map((p) => [p.id, p]));
+      const next = ls.flatMap((l) => { const p = byId.get(l.product.id); return p ? [{ product: p, qty: Math.max(l.qty, minQty(p)) }] : []; });
+      return JSON.stringify(next) === JSON.stringify(ls) ? ls : next;
+    }),
     remove: (id) => setLines((ls) => ls.filter((l) => l.product.id !== id)),
     clear: () => setLines([]),
     count: lines.reduce((a, l) => a + l.qty, 0),
