@@ -60,9 +60,10 @@ import {
   Copy,
   Pencil,
   Filter,
-  Bot
+  Bot,
+  Paperclip
 } from "lucide-react";
-import { PayableEditDialog } from "./PayableActionDialogs";
+import { PayableEditDialog, abrirAnexoPagar } from "./PayableActionDialogs";
 import { EditPaymentsDialog } from "./EditPaymentsDialog";
 import { DistributeAdjustmentDialog } from "./DistributeAdjustmentDialog";
 import {
@@ -1023,6 +1024,13 @@ export function PayablesPanel() {
                         <div>
                           <div className="flex items-center gap-1.5">
                             <p className="font-medium">{payable.description}</p>
+                            {(payable as any).attachment_path && (
+                              <button type="button" title={`Abrir anexo: ${(payable as any).attachment_name || "boleto"}`}
+                                className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                onClick={(e) => { e.stopPropagation(); abrirAnexoPagar((payable as any).attachment_path); }}>
+                                <Paperclip className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                             {isAutoAdjustment(payable) && (!payable.category_id || payable.supplier_name === "Asaas") && (
                               <Badge className="bg-amber-500/10 text-amber-600 border-amber-400/30 text-[10px] px-1.5 py-0 h-4 gap-0.5">
                                 <Bot className="h-2.5 w-2.5" /> Revisar
