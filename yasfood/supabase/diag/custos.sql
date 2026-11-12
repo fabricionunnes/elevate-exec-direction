@@ -33,5 +33,8 @@ select json_build_object(
                  from yasfood.products p where p.category = 'Pães'),
   'regioes', (select json_agg(json_build_object('n', z.name, 'frete', z.fee, 'ativo', z.active, 'ordem', z.sort_order,
                  'pedidos_30d', (select count(*) from yasfood.orders o where o.zone_id = z.id and o.scheduled_date >= yasfood.today_br() - 30)) order by z.sort_order)
-              from yasfood.delivery_zones z)
+              from yasfood.delivery_zones z),
+  'biscoitos_natal', (select json_agg(json_build_object('p', pc.name, 'preco', pc.price, 'custo', pc.cost, 'margem_pct', pc.margin_pct,
+                 'fotos', (select count(*) from yasfood.product_media m where m.product_id = pc.product_id)))
+              from yasfood.product_costs pc where pc.name ilike 'biscoitos de natal%')
 ) as diag;
