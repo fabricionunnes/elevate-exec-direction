@@ -588,8 +588,9 @@ export default function CRMEmailPage() {
                   const quem = m.is_sent ? `Para: ${(m.to_list || []).map((a) => a.name || a.email).join(", ") || "?"}` : nomeDe(m);
                   const nomeAvatar = m.is_sent ? (m.to_list?.[0]?.name || m.to_list?.[0]?.email || "?") : quem;
                   return (
-                    <li key={m.thread_id} className={cn("relative group border-b border-border/50 transition-colors", aberta ? "bg-[#0D2B5E]/[0.09] shadow-[inset_0_0_0_1px_rgba(13,43,94,0.18)]" : marcada ? "bg-[#0D2B5E]/[0.06]" : c.naoLida ? "bg-card hover:bg-muted/40" : "bg-muted/[0.15] hover:bg-muted/40", foco && "ring-1 ring-inset ring-[#0D2B5E]/40")} aria-selected={aberta}>
-                      {(aberta || c.naoLida) && <span className={cn("absolute left-0 top-0 bottom-0", aberta ? "w-1" : "w-[3px]")} style={{ background: aberta ? NAVY : "#0D2B5E55" }} />}
+                    <li key={m.thread_id} className={cn("relative group border-b border-border/50 transition-colors", aberta ? "bg-[#0D2B5E]/[0.09] shadow-[inset_0_0_0_1px_rgba(13,43,94,0.18)]" : marcada ? "bg-[#0D2B5E]/[0.06]" : c.naoLida ? "bg-[#0D2B5E]/[0.055] hover:bg-[#0D2B5E]/[0.09]" : "bg-transparent hover:bg-muted/40", foco && "ring-1 ring-inset ring-[#0D2B5E]/40")} aria-selected={aberta}>
+                      {/* não lida (12/11/2026, "quero destacar mais isso"): faixa navy cheia, fundo azulado, bolinha vermelha e negrito */}
+                      {(aberta || c.naoLida) && <span className="absolute left-0 top-0 bottom-0 w-1" style={{ background: NAVY }} />}
                       <div className="flex gap-2.5 px-3 py-2.5">
                         <div className="relative h-9 w-9 shrink-0 mt-0.5">
                           <Avatar className={cn("h-9 w-9 transition-opacity", (marcada || selecionadas.size > 0) ? "opacity-0" : "group-hover:opacity-0")}><AvatarFallback className="text-xs font-semibold text-white" style={{ background: corDe(m.from_email || quem) }}>{iniciais(nomeAvatar)}</AvatarFallback></Avatar>
@@ -599,17 +600,18 @@ export default function CRMEmailPage() {
                         </div>
                         <button onClick={(e) => { if (selecionadas.size > 0 && !e.metaKey) { alternarSelecao(m.thread_id); return; } setCursor(i); abrirThread(m.thread_id); }} className="flex-1 min-w-0 text-left">
                           <div className="flex items-center gap-2">
-                            <span className={cn("truncate text-[13px] flex-1", c.naoLida || aberta ? "font-semibold text-foreground" : "font-medium text-foreground/75")}>{quem}</span>
+                            {c.naoLida && <span className="h-2 w-2 rounded-full shrink-0" style={{ background: "#CC1B1B" }} title="Não lida" aria-label="Não lida" />}
+                            <span className={cn("truncate text-[13px] flex-1", c.naoLida ? "font-bold text-foreground" : aberta ? "font-semibold text-foreground" : "font-normal text-foreground/65")}>{quem}</span>
                             {c.qtd > 1 && <span className="text-[10px] text-muted-foreground tabular-nums rounded bg-muted px-1">{c.qtd}</span>}
-                            <span className={cn("text-[11px] tabular-nums shrink-0 group-hover:hidden", c.naoLida ? "font-semibold" : "text-muted-foreground")} style={c.naoLida ? { color: NAVY } : undefined}>{quando(m.internal_date)}</span>
+                            <span className={cn("text-[11px] tabular-nums shrink-0 group-hover:hidden", c.naoLida ? "font-bold" : "text-muted-foreground")} style={c.naoLida ? { color: NAVY } : undefined}>{quando(m.internal_date)}</span>
                           </div>
-                          <p className={cn("truncate text-[13px] flex items-center gap-1.5", aberta ? "font-semibold" : c.naoLida ? "font-medium text-foreground" : "text-foreground/80")} style={aberta ? { color: NAVY } : undefined}>
+                          <p className={cn("truncate text-[13px] flex items-center gap-1.5", c.naoLida ? "font-bold text-foreground" : aberta ? "font-semibold" : "font-normal text-foreground/65")} style={aberta && !c.naoLida ? { color: NAVY } : undefined}>
                             {c.importante && <Bookmark className="h-3 w-3 shrink-0 fill-current text-amber-500" />}
                             <span className="truncate">{assuntoPt(m) || "(sem assunto)"}</span>
                           </p>
                           <div className="flex items-center gap-1.5">
                             {traduzido(m) && m.subject_pt && <Languages className="h-3 w-3 shrink-0 text-muted-foreground/70" aria-label="Traduzido" />}
-                            <p className="truncate text-xs text-muted-foreground flex-1">{trechoPt(m)}</p>
+                            <p className={cn("truncate text-xs flex-1", c.naoLida ? "text-foreground/75" : "text-muted-foreground")}>{trechoPt(m)}</p>
                             {c.anexo && <Paperclip className="h-3 w-3 text-muted-foreground shrink-0" />}
                             {c.estrela && <Star className="h-3.5 w-3.5 shrink-0 fill-current text-amber-500" />}
                           </div>
