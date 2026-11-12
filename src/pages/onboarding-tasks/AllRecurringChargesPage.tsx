@@ -40,7 +40,7 @@ import {
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
   TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays, Bell, Truck, MessageSquare, ChevronDown, ChevronRight, Headphones, Split,
-  ArrowUpDown, ArrowUp, ArrowDown, FileCheck, Link2, DollarSign, Scale, Eye,
+  ArrowUpDown, ArrowUp, ArrowDown, FileCheck, Link2, DollarSign, Scale, Eye, Paperclip, Layers, RotateCcw,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -80,7 +80,8 @@ import { ReconciliationPanel } from "@/components/financial/ReconciliationPanel"
 import { NfsePanel } from "@/components/financial/NfsePanel";
 import { TenantIntegrationsSettings } from "@/components/whitelabel/TenantIntegrationsSettings";
 import { SupplierAutocomplete } from "@/components/financial/SupplierAutocomplete";
-import { PayablePaymentDialog, PayableEditDialog } from "@/components/financial/PayableActionDialogs";
+import { PayablePaymentDialog, PayableEditDialog, abrirAnexoPagar } from "@/components/financial/PayableActionDialogs";
+import { PayableInstallmentDialog } from "@/components/financial/PayableInstallmentDialog";
 import { BankTransactionsDialog } from "@/components/financial/BankTransactionsDialog";
 import { getNthBusinessDayOfMonth, ensureBusinessDay } from "@/lib/businessDays";
 import { DailyFinancialSummaryDialog, shouldShowDailySummary, markDailySummaryShown } from "@/components/financial/DailyFinancialSummaryDialog";
@@ -376,6 +377,8 @@ export default function AllRecurringChargesPage() {
 
   // Bulk selection - Payables
   const [selectedPayableIds, setSelectedPayableIds] = useState<Set<string>>(new Set());
+  // Parcelar várias contas (Fabrício, 12/11/2026)
+  const [parcelarOpen, setParcelarOpen] = useState(false);
   const [isBulkPayableAction, setIsBulkPayableAction] = useState(false);
 
   // Pagination
@@ -1094,6 +1097,19 @@ export default function AllRecurringChargesPage() {
   };
 
   // Bulk confirm payment payables
+  // Desfaz o parcelamento: apaga as parcelas e devolve as contas originais (só sem pagamento nas parcelas)
+  const desfazerParcelamento = async (renegId: string) => {
+    if (!confirm("Desfazer este parcelamento? As parcelas somem e as contas originais voltam pra lista.")) return;
+    try {
+      const { data, error } = await (supabase as any).rpc("financial_desfazer_parcelamento", { p_id: renegId });
+      if (error) throw error;
+      toast.success(`Parcelamento desfeito: ${data?.contas_restauradas ?? 0} conta(s) de volta`);
+      loadData();
+    } catch (e: any) {
+      toast.error("Não consegui desfazer: " + (e?.message || "erro"));
+    }
+  };
+
   const handleBulkConfirmPayables = async () => {
     const selected = payables.filter(p => selectedPayableIds.has(p.id) && p.status !== "paid");
     if (selected.length === 0) { toast.error("Nenhum lançamento pendente selecionado"); return; }
@@ -2416,6 +2432,15 @@ export default function AllRecurringChargesPage() {
                       <Button variant="outline" size="sm" onClick={() => setSelectedPayableIds(new Set())}>
                         Limpar seleção
                       </Button>
+                      <Button size="sm" variant="outline" className="gap-1.5" disabled={isBulkPayableAction}
+                        title="Junta as contas marcadas e divide em parcelas, com juros se precisar"
+                        onClick={() => {
+                          if (payables.some(p => selectedPayableIds.has(p.id) && p.status === "paid")) { toast.error("Tire da seleção as contas que já estão pagas"); return; }
+                          setParcelarOpen(true);
+                        }}>
+                        <Layers className="h-4 w-4" />
+                        Parcelar
+                      </Button>
                       <Button size="sm" variant="default" className="gap-1.5" disabled={isBulkPayableAction} onClick={handleBulkConfirmPayables}>
                         {isBulkPayableAction ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                         Dar Baixa
@@ -2482,7 +2507,18 @@ export default function AllRecurringChargesPage() {
                               />
                             </TableCell>
                             <TableCell className="font-medium max-w-[180px] truncate">{p.supplier_name || "-"}</TableCell>
-                            <TableCell className="max-w-[250px] truncate">{p.description}</TableCell>
+                            <TableCell className="max-w-[250px]">
+                              <div className="flex items-center gap-1.5">
+                                <span className="truncate">{p.description}</span>
+                                {(p as any).attachment_path && (
+                                  <button type="button" title={`Abrir anexo: ${(p as any).attachment_name || "boleto"}`}
+                                    className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    onClick={() => abrirAnexoPagar((p as any).attachment_path)}>
+                                    <Paperclip className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell className="text-right font-semibold">{formatCurrency(p.amount)}</TableCell>
                             <TableCell>{p.due_date ? format(new Date(p.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}</TableCell>
                             <TableCell>{p.reference_month}</TableCell>
@@ -2516,6 +2552,12 @@ export default function AllRecurringChargesPage() {
                                   onClick={() => setPayableEditDialog({ open: true, payable: p })}>
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
+                                {(p as any).renegotiation_id && (
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Desfazer o parcelamento (voltam as contas originais)"
+                                    onClick={() => desfazerParcelamento((p as any).renegotiation_id)}>
+                                    <RotateCcw className="h-4 w-4 text-amber-600" />
+                                  </Button>
+                                )}
                                 {isMaster && p.description?.startsWith("Ajuste automático Asaas") && (
                                   <Button variant="ghost" size="icon" className="h-8 w-8" title="Distribuir ajuste"
                                     onClick={() => setDistributePayable(p)}>
@@ -2574,6 +2616,14 @@ export default function AllRecurringChargesPage() {
                 payable={payablePaymentDialog.payable}
                 banks={banks}
                 onSuccess={loadData}
+              />
+              <PayableInstallmentDialog
+                open={parcelarOpen}
+                onOpenChange={setParcelarOpen}
+                contas={payables.filter(p => selectedPayableIds.has(p.id)) as any}
+                categories={staffCategories}
+                costCenters={staffCostCenters}
+                onSuccess={() => { setSelectedPayableIds(new Set()); loadData(); }}
               />
               <PayableEditDialog
                 open={payableEditDialog.open}
