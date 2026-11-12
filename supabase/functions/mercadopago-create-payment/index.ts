@@ -7,7 +7,12 @@ const cors = {
 };
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const MP_TOKEN = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN") || "";
+// Duas contas (12/11/2026): a da UNV (MERCADOPAGO_ACCESS_TOKEN) e a "Mercado Pago Yas",
+// da empresa da Yasmim (MERCADOPAGO_YAS_ACCESS_TOKEN). O front manda account: "yas" pra segunda.
+const TOKENS: Record<string, string> = {
+  unv: Deno.env.get("MERCADOPAGO_ACCESS_TOKEN") || "",
+  yas: Deno.env.get("MERCADOPAGO_YAS_ACCESS_TOKEN") || "",
+};
 const j = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 
@@ -18,11 +23,13 @@ Deno.serve(async (req) => {
   // Precisa estar autenticado (staff logado). O front chama via functions.invoke.
   const auth = req.headers.get("authorization") || "";
   if (!auth) return j({ ok: false, error: "não autenticado" }, 401);
-  if (!MP_TOKEN) return j({ ok: false, error: "Mercado Pago não configurado (falta o token no servidor)" });
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
   let body: any;
   try { body = await req.json(); } catch { return j({ ok: false, error: "JSON inválido" }); }
+  const account = body?.account === "yas" ? "yas" : "unv";
+  const MP_TOKEN = TOKENS[account];
+  if (!MP_TOKEN) return j({ ok: false, error: account === "yas" ? "Mercado Pago Yas não configurado (falta o token da conta da Yasmim no servidor)" : "Mercado Pago não configurado (falta o token no servidor)" });
 
   const { lead_id } = body;
   if (!lead_id) return j({ ok: false, error: "lead_id obrigatório" });
@@ -44,7 +51,7 @@ Deno.serve(async (req) => {
 
   // 1) Cria a linha de pagamento (pra usar o id como referência externa)
   const { data: row, error: insErr } = await supabase.from("crm_lead_payments").insert({
-    lead_id, amount_cents: amountCents, description, provider: "mercadopago",
+    lead_id, amount_cents: amountCents, description, provider: account === "yas" ? "mercadopago_yas" : "mercadopago",
     status: "pending", installments,
   }).select("id").single();
   if (insErr || !row) return j({ ok: false, error: "falha ao registrar pagamento" }, 500);
@@ -53,9 +60,9 @@ Deno.serve(async (req) => {
   const pref = {
     items: [{ title: description, quantity: 1, currency_id: "BRL", unit_price: amountCents / 100 }],
     external_reference: row.id,
-    notification_url: `${SUPABASE_URL}/functions/v1/mercadopago-webhook`,
+    notification_url: `${SUPABASE_URL}/functions/v1/mercadopago-webhook${account === "yas" ? "?account=yas" : ""}`,
     payment_methods: { installments },
-    metadata: { lead_id, payment_row: row.id },
+    metadata: { lead_id, payment_row: row.id, account },
   };
   const mpResp = await fetch("https://api.mercadopago.com/checkout/preferences", {
     method: "POST",
