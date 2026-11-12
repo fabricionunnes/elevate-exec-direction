@@ -589,6 +589,20 @@ async function primeiroNomeDoLead(supabase, conv) {
   } catch  {}
   return nomeDeGente(conv?.contact?.name);
 }
+function hashStr(t) { let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0; return h; }
+// Ângulos do follow-up depois do primeiro dia (Fabrício, 12/11/2026: "mais pontos de contato", "natural, puxar
+// assunto com coisas engraçadas que vai fazer ele querer responder", "variadas, não precisa ser engessada").
+// Os exemplos só mostram o tom: a IA escreve a mensagem na hora, com o que o lead contou.
+const ANGULOS_FOLLOWUP = [
+  "humor leve com o próprio sumiço, rindo de você e nunca dele (tom: \"foi a semana que te engoliu ou fui eu que falei demais?\")",
+  "palpite ou aposta bem-humorada sobre o negócio dele (tom: \"aposto um café que...\"), fechando com \"ganhei?\" ou parecido",
+  "frase de efeito curta sobre o problema que ele contou e uma pergunta sobre como é na empresa dele",
+  "um padrão que você vê em empresas parecidas com a dele, em uma frase, e a pergunta se acontece lá também",
+  "pergunta de escolha fácil, com duas ou três opções curtas ligadas ao que ele contou",
+  "pergunta de nota de 0 a 10, ou que se responde com uma palavra só",
+  "comentário leve sobre a correria de quem toca empresa, ligado ao que ele contou, e uma pergunta simples",
+  "oferta direta: conversa curta, o que ele leva dela, e a pergunta de qual período funciona",
+];
 const leadNmFor = (cv)=>cv?.contact?.name || cv?.contact?.username || "Lead";
 // ---------- Ferramentas configuráveis por agente (30/09/2026) ----------
 // crm_ai_agents.enabled_tools = { nome: true|false }. NULO (ou chave ausente) = padrão:
@@ -3109,7 +3123,7 @@ Deno.serve(async (req)=>{
       // Reenvia a conversa pro fluxo normal, que aplica todas as travas de sempre.
       try {
         const horaBR = new Date(Date.now() - 3 * 3600000).getUTCHours();
-        if (horaBR >= 8 && horaBR < 22 || body0.ignore_quiet_hours) {
+        if ((horaBR >= 8 && horaBR < 22 || body0.ignore_quiet_hours) && !(body0.dry_run && body0.previa)) { // a prévia pula o resgate
           const { data: orfas } = await supabase.from("crm_whatsapp_conversations").select("id, last_inbound_at, contact:crm_whatsapp_contacts(phone)").eq("last_message_direction", "inbound").neq("status", "closed").not("lead_id", "is", null).gte("last_inbound_at", new Date(Date.now() - 24 * 3600000).toISOString()).lte("last_inbound_at", new Date(Date.now() - 4 * 60000).toISOString()).order("last_inbound_at", {
             ascending: false
           }).limit(15);
@@ -3166,7 +3180,7 @@ Deno.serve(async (req)=>{
       const { data: agents } = await supabase.from("crm_ai_agents").select("*").eq("is_active", true).eq("followup_enabled", true);
       for (const agent of agents || []){
         // horário de atendimento vale pro follow-up também
-        if (!agentScheduleActive(agent)) continue;
+        if (!agentScheduleActive(agent) && !(body0.dry_run && body0.ignore_quiet_hours)) continue; // a simulação pode rodar fora do horário
         // Janela do follow-up (Fabrício, 18/09/2026: saiu follow-up às 4h). Fora dela não envia e NÃO perde:
         // o passo continua vencido e sai na primeira rodada depois da hora de início (padrão 8h–22h, Brasília).
         {
@@ -3184,32 +3198,83 @@ Deno.serve(async (req)=>{
         // Sem agenda cadastrada, vale o modelo antigo: "reativar após X" repetido N vezes.
         const legacyAfter = Math.max(15, agent.followup_after_minutes || 60);
         const legacyMax = Math.max(1, agent.followup_max_attempts || 2);
-        const schedule = (Array.isArray(agent.followup_schedule) ? agent.followup_schedule : []).map((st)=>({
+        const agendaBase = (Array.isArray(agent.followup_schedule) ? agent.followup_schedule : []).map((st)=>({
             after_minutes: Math.max(15, Number(st?.after_minutes) || 0),
             instruction: String(st?.instruction || "").trim()
           })).filter((st)=>st.after_minutes >= 15);
-        if (!schedule.length) for(let i = 0; i < legacyMax; i++)schedule.push({
+        if (!agendaBase.length) for(let i = 0; i < legacyMax; i++)agendaBase.push({
           after_minutes: legacyAfter,
           instruction: ""
         });
-        const maxAtt = schedule.length;
-        const afterMin = Math.min(...schedule.map((st)=>st.after_minutes));
-        // Teto por conversa somando todas as rodadas: o lead que responde e some de novo
-        // recomeça do passo 1, mas não recebe follow-up pra sempre (padrão: 2x a agenda).
-        const totalMax = Math.max(1, Number(agent.followup_total_max) || maxAtt * 2);
-        const { data: bindings } = await supabase.from("crm_ai_agent_channels").select("channel, instance_id").eq("agent_id", agent.id);
-        for (const b of bindings || []){
+        const { data: bindings0 } = await supabase.from("crm_ai_agent_channels").select("channel, instance_id").eq("agent_id", agent.id);
+        // deno-lint-ignore no-explicit-any
+        const bindings: any[] = [...(bindings0 || [])];
+        // Conversas FIXADAS neste agente em número que não é dele (12/11/2026): o disparo da API oficial fixa o
+        // agente escolhido (ex.: Qualificação Ricardo Santos) e ele não tem vínculo com o número oficial, então
+        // ninguém fazia follow-up nessas conversas. Entram como um vínculo extra, só com as conversas fixadas.
+        try {
+          const { data: fixas } = await supabase.from("crm_ai_agent_conversation_overrides").select("conversation_id")
+            .eq("agent_id", agent.id).eq("channel", "whatsapp").eq("enabled", true).eq("locked", true)
+            .gt("updated_at", new Date(Date.now() - 15 * 86400000).toISOString()).limit(600);
+          const idsFix = (fixas || []).map((f)=>String(f.conversation_id));
+          const porNumero = new Map();
+          for(let c = 0; c < idsFix.length; c += 80){
+            const { data: cvs } = await supabase.from("crm_whatsapp_conversations").select("id, instance_id, official_instance_id")
+              .in("id", idsFix.slice(c, c + 80)).eq("last_message_direction", "outbound")
+              .gt("last_inbound_at", new Date(Date.now() - 7 * 86400000).toISOString());
+            for (const cvx of cvs || []){
+              const oficial = !cvx.instance_id && cvx.official_instance_id;
+              const chave = `${oficial ? "whatsapp_official" : "whatsapp"}|${oficial ? cvx.official_instance_id : cvx.instance_id}`;
+              if (!cvx.instance_id && !cvx.official_instance_id) continue;
+              if (!porNumero.has(chave)) porNumero.set(chave, []);
+              porNumero.get(chave).push(String(cvx.id));
+            }
+          }
+          for (const [chave, ids] of porNumero){
+            const [canal, inst] = chave.split("|");
+            if (bindings.some((b)=>b.channel === canal && b.instance_id === inst)) continue; // o vínculo normal já cobre
+            bindings.push({ channel: canal, instance_id: inst, idsFixas: ids });
+          }
+        } catch (e) { console.error("follow-up: conversas fixadas", e); }
+        for (const b of bindings){
           const isBIG = b.channel === "instagram";
           const isOFF = b.channel === "whatsapp_official";
           const convTable = isBIG ? "instagram_conversations" : "crm_whatsapp_conversations";
           const msgTable = isBIG ? "instagram_messages" : "crm_whatsapp_messages";
           const tsCol = isBIG ? "timestamp" : "created_at";
+          // FLUXO DE FOLLOW-UP POR CANAL (Fabrício, 12/11/2026):
+          // - Número oficial e Instagram têm a janela de 24h da Meta: até 4 follow-ups dentro dela (2h, 5h, 10h e
+          //   17h depois, ou a agenda do agente) e, fechou a janela, PARA ("se acabou a janela pela api oficial,
+          //   pode parar o follow"). Nada de template.
+          // - Número comum: a agenda do agente no primeiro dia e depois 1 follow-up por dia até o 7º dia de
+          //   silêncio, em horário que varia por conversa (11h às 15h45).
+          const janela24 = isBIG || isOFF;
+          const schedule = agendaBase.filter((st)=>st.after_minutes < 1200).map((st)=>({ ...st, diario: false }));
+          if (janela24) {
+            const extras = [120, 180, 300, 420];
+            while(schedule.length < 4)schedule.push({ after_minutes: extras[schedule.length], instruction: "", diario: false });
+          } else {
+            if (!schedule.length) schedule.push({ after_minutes: Math.min(legacyAfter, 600), instruction: "", diario: false });
+            for(let d = 0; d < 6; d++)schedule.push({ after_minutes: 1080, instruction: "", diario: true });
+          }
+          const maxAtt = schedule.length;
+          const afterMin = Math.min(...schedule.map((st)=>st.after_minutes));
+          // Teto por conversa somando todas as rodadas: o lead que responde e some de novo
+          // recomeça do passo 1, mas não recebe follow-up pra sempre (padrão: 2x a agenda).
+          const totalMax = Math.max(1, Number(agent.followup_total_max) || maxAtt * 2);
           // (as any: o parser de tipos do supabase-js engasga com o select longo em ternário)
-          const { data: convs } = await supabase.from(convTable).select(isBIG ? "id, instance_id, lead_id, last_message_at, contact:instagram_contacts(name, username)" : "id, instance_id, official_instance_id, lead_id, last_message_at, contact:crm_whatsapp_contacts(name, phone)").eq(isOFF ? "official_instance_id" : "instance_id", b.instance_id).lt("last_message_at", new Date(Date.now() - afterMin * 60000).toISOString()).gt("last_message_at", new Date(Date.now() - 7 * 86400000).toISOString()).order("last_message_at", {
+          // deno-lint-ignore no-explicit-any
+          let qConv: any = supabase.from(convTable).select(isBIG ? "id, instance_id, lead_id, last_message_at, contact:instagram_contacts(name, username)" : "id, instance_id, official_instance_id, lead_id, last_message_at, contact:crm_whatsapp_contacts(name, phone)").eq(isOFF ? "official_instance_id" : "instance_id", b.instance_id).lt("last_message_at", new Date(Date.now() - afterMin * 60000).toISOString()).gt("last_message_at", new Date(Date.now() - 7 * 86400000).toISOString());
+          // WhatsApp: só conversa em que o lead JÁ respondeu e a última mensagem é nossa. Sem isso, depois de um
+          // disparo as 30 mais recentes eram todas de quem nunca respondeu e o follow-up do número não rodava.
+          if (b.idsFixas) qConv = qConv.in("id", b.idsFixas.slice(0, 80));
+          if (!isBIG) qConv = qConv.eq("last_message_direction", "outbound").not("last_inbound_at", "is", null)
+            .gt("last_inbound_at", new Date(Date.now() - (janela24 ? 24 * 3600000 : 7 * 86400000)).toISOString());
+          const { data: convs } = await qConv.order("last_message_at", {
             ascending: false
-          }).limit(30);
+          }).limit(40);
           for (const cv of convs || []){
-            if (results.length >= 10) break; // no máx 10 follow-ups por rodada
+            if (results.length >= (body0.dry_run && body0.previa ? 30 : 10)) break; // no máx 10 follow-ups por rodada
             // WhatsApp: nunca em grupo
             if (!isBIG) {
               const ph = String(cv.contact?.phone || "");
@@ -3218,10 +3283,16 @@ Deno.serve(async (req)=>{
             // Instagram: quem o Fabrício segue não recebe follow-up do agente
             if (isBIG && await igSeguidoPeloFabricio(supabase, cv.contact?.username, cv.instance_id)) continue;
             // agente desligado nesta conversa?
-            const { data: ov } = await supabase.from("crm_ai_agent_conversation_overrides").select("enabled, reply_mode, agent_id, locked").eq("conversation_id", cv.id).eq("channel", b.channel).maybeSingle();
+            // a conversa do número oficial guarda o agente no canal "whatsapp" (antes buscava "whatsapp_official",
+            // não achava nada e fazia follow-up até em conversa com o agente desligado)
+            const { data: ov } = await supabase.from("crm_ai_agent_conversation_overrides").select("enabled, reply_mode, agent_id, locked").eq("conversation_id", cv.id).eq("channel", isBIG ? "instagram" : "whatsapp").maybeSingle();
             if (ov && ov.enabled === false) continue;
             // follow-up só em modo auto (mesma regra de allowlist por funil)
             if (ov?.locked && ov.agent_id && ov.agent_id !== agent.id) continue; // conversa travada em outro agente
+            // conversa com agente definido (mesmo sem trava): só ele faz o follow-up. Antes, com vários agentes no
+            // mesmo número, o primeiro da fila escrevia pro lead de outro funil (prévia de 12/11: karol, do Social
+            // Media, apareceu pra quatro agentes).
+            if (ov?.agent_id && ov.agent_id !== agent.id) continue;
             const fmode = await resolveAgentMode(supabase, agent, cv.lead_id, ov);
             if (fmode !== "auto") continue;
             // retorno combinado pendente: a cadência de reativação espera a hora marcada
@@ -3250,7 +3321,7 @@ Deno.serve(async (req)=>{
               if (mtgCtx.ativas.length) continue;
             }
             // histórico: precisa terminar em outbound (lead sumiu) e ter tido inbound antes
-            const { data: hist } = await supabase.from(msgTable).select(`direction, content, ${tsCol}`).eq("conversation_id", cv.id).order(tsCol, {
+            const { data: hist } = await supabase.from(msgTable).select(`direction, content, is_ai, ${tsCol}`).eq("conversation_id", cv.id).order(tsCol, {
               ascending: false
             }).limit(60); // as ÚLTIMAS mensagens (antes pegava as 40 primeiras)
             (hist || []).reverse();
@@ -3261,6 +3332,19 @@ Deno.serve(async (req)=>{
             let trailing = 0;
             for(let i = hm.length - 1; i >= 0 && hm[i].direction === "outbound"; i--)trailing++;
             if (trailing >= hm.length) continue; // nunca teve resposta do lead
+            // Pessoa do time na conversa (12/11/2026, prévia da Ótica Universitária: o Ricardo mandou proposta e
+            // cobrou retorno, e a IA ia entrar no meio). Se depois da última fala do lead alguém do time escreveu,
+            // a conversa é dessa pessoa e a IA não faz follow-up.
+            {
+              const semMarca = hm.slice(hm.length - trailing).filter((m)=>m.is_ai !== true);
+              if (semMarca.length) {
+                // mensagem da IA que ficou sem a marca (envio ecoado pelo servidor): confere pelos registros do agente
+                const { data: rs } = await supabase.from("crm_ai_agent_runs").select("reply").eq("conversation_id", cv.id).not("reply", "is", null).order("created_at", { ascending: false }).limit(30);
+                const daIA = new Set((rs || []).map((r)=>String(r.reply || "").replace(/\s+/g, " ").trim()));
+                const ehDaIA = (t)=>{ const x = String(t || "").replace(/\s+/g, " ").trim(); return [...daIA].some((r)=>r === x || (x.length > 12 && r.includes(x))); };
+                if (semMarca.some((m)=>!ehDaIA(m.content))) continue;
+              }
+            }
             if (trailing - 1 >= maxAtt) continue; // já esgotou as tentativas
             // passo da agenda: espera o tempo DESTE follow-up desde a última mensagem enviada
             const passo = schedule[trailing - 1];
@@ -3270,7 +3354,14 @@ Deno.serve(async (req)=>{
             }).eq("conversation_id", cv.id).eq("mode", "followup").like("outcome", "sent%");
             if ((jaEnviados || 0) >= totalMax) continue; // teto da conversa atingido
             const lastConvMs = Date.parse(String(cv.last_message_at || ""));
-            if (!lastConvMs || Date.now() - lastConvMs < passo.after_minutes * 60000) continue;
+            // prévia (só em simulação): mostra o próximo follow-up de cada lead calado sem esperar o tempo do passo
+            const previa = !!(body0.dry_run && body0.previa);
+            if (!previa && (!lastConvMs || Date.now() - lastConvMs < passo.after_minutes * 60000)) continue;
+            if (passo.diario && !body0.ignore_quiet_hours) {
+              const alvoMin = 11 * 60 + hashStr(`${cv.id}:${trailing}`) % 285; // entre 11h00 e 15h45 (Brasília)
+              const agBR = new Date(Date.now() - 3 * 3600000);
+              if (agBR.getUTCHours() * 60 + agBR.getUTCMinutes() < alvoMin) continue;
+            }
             // TRAVA (09/09/2026): se a conversa tem last_message_at mais novo que a
             // última mensagem gravada, houve envio que não ficou registrado (era o
             // caso do follow-up via Evolution — a API não ecoa o que envia). Sem o
@@ -3288,6 +3379,11 @@ Deno.serve(async (req)=>{
             const lastInbound = [
               ...hm
             ].reverse().find((m)=>m.direction === "inbound");
+            const ultLeadMs0 = lastInbound ? Date.parse(String(lastInbound[tsCol] || "")) : 0;
+            // janela da Meta fechou (oficial/Instagram): para. Margem de 30 min pra mensagem não bater na trave.
+            if (janela24 && (!ultLeadMs0 || Date.now() - ultLeadMs0 > 23.5 * 3600000)) continue;
+            // número comum: o fluxo vai até o 7º dia de silêncio do lead
+            if (!janela24 && ultLeadMs0 && Date.now() - ultLeadMs0 > 7 * 86400000) continue;
             if (lastInbound && await leadRecusou(hm.slice(-8), leadNmFor(cv))) continue;
             // Lead calado há mais de um dia só recebe follow-up entre 11h e 16h (Brasília).
             // Medição 31/10/2026: o lote das 8h (fila da madrugada) com lead calado >1 dia
@@ -3337,14 +3433,20 @@ Deno.serve(async (req)=>{
               hour: "2-digit",
               minute: "2-digit"
             });
-            const anguloPadrao = attempt <= 1 ? "Primeiro follow-up: retome o assunto em aberto em meia frase, como quem lembrou do lead, e feche propondo um período pra conversar (manhã ou tarde, hoje ainda ou amanhã)." : attempt >= maxAtt ? "Último follow-up: NÃO repita a pergunta anterior nem a mesma estrutura. Traga um ângulo novo em uma frase (um dado, um exemplo rápido ou um benefício concreto) e feche com uma pergunta simples, de resposta curta. Não anuncie que é a última mensagem." : "Follow-up intermediário: NÃO repita a pergunta nem a abertura anterior. Traga um ângulo novo em uma frase e feche propondo um período pra conversar (manhã ou tarde, hoje ou amanhã).";
+            const diaSil = ultLeadMs0 ? Math.floor((Date.now() - ultLeadMs0) / 86400000) + 1 : 1;
+            const anguloDaVez = ANGULOS_FOLLOWUP[(hashStr(String(cv.id)) + attempt) % ANGULOS_FOLLOWUP.length];
+            const anguloPadrao = attempt <= 1
+              ? "Primeiro follow-up: retome o assunto em aberto em meia frase, como quem lembrou do lead, e feche propondo um período pra conversar (manhã ou tarde, hoje ainda ou amanhã)."
+              : attempt === 2 && diaSil <= 1
+                ? "Segundo follow-up do dia: NÃO repita a pergunta nem a abertura anterior. Traga um ângulo novo em uma frase e feche propondo um período pra conversar (manhã ou tarde, hoje ou amanhã)."
+                : `${diaSil > 1 ? `Dia ${diaSil} sem resposta do lead. ` : ""}O objetivo desta mensagem NÃO é marcar reunião: é fazer ele responder qualquer coisa. Ângulo desta vez: ${anguloDaVez}. O exemplo só mostra o tom: escreva a sua mensagem na hora, com algo que ELE contou (o negócio, o time, a dor), como alguém que lembrou dele agora. Nada de frase pronta.`;
             const angulo = passo.instruction ? `Instrução deste follow-up (siga à risca): ${passo.instruction}` : anguloPadrao;
             const fuSystem = [
               agent.instructions || "Você é um atendente comercial.",
               agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
               `\n\nAGENDA: neste follow-up você NÃO tem acesso à agenda. É proibido citar dia ou horário específico de reunião (nada de "segunda às 10h"). Se for puxar reagendamento, pergunte qual dia e período funcionam melhor pra ele; os horários reais você oferece quando ele responder.`,
-              `\n\nO lead parou de responder. Escreva UMA mensagem CURTA de follow-up (1-2 frases, até 25 palavras), humana, sem pressão e sem repetir perguntas já respondidas. Não use markdown. Nunca revele que é uma IA.`,
-              `\n\nREGRAS DO FOLLOW-UP (medidas em 31/10/2026 em 968 follow-ups; valem acima da instrução do passo): a mensagem SEMPRE termina com uma pergunta de resposta curta; nas tentativas 1 e 2, quando o que está em aberto com o lead é marcar uma conversa ou reunião, essa pergunta propõe um período pra conversar ("prefere de manhã ou à tarde?", "hoje ainda ou amanhã?"), que é o que mais faz o lead voltar. Quando as suas instruções dão a este lead outro objetivo (entrar num grupo, confirmar presença num evento, mandar um dado), a pergunta puxa esse objetivo e NÃO propõe conversa nem reunião. PROIBIDO, mesmo que a instrução do passo peça: dizer que é a última tentativa, a última chance ou que não vai mais insistir (5% de resposta); fechar com "fico à disposição", "qualquer coisa me chama", "tô por aqui", "sem pressa" (4%); escassez de vagas, "as vagas estão acabando", "garantir a sua vaga", "fila de espera" (não ajuda e soa pressão). Se a instrução do passo pedir escassez ou última chance, troque por um ângulo novo da dor dele e feche propondo o período.`,
+              `\n\nO lead parou de responder. Escreva UMA mensagem CURTA de follow-up (1-2 frases, até 30 palavras), humana, sem pressão e sem repetir perguntas já respondidas. Não use markdown. Nunca revele que é uma IA.`,
+              `\n\nREGRAS DO FOLLOW-UP (medidas em 31/10/2026 em 968 follow-ups; valem acima da instrução do passo): a mensagem SEMPRE termina com uma pergunta de resposta curta; nas tentativas 1 e 2 do primeiro dia, quando o que está em aberto com o lead é marcar uma conversa ou reunião, essa pergunta propõe um período pra conversar ("prefere de manhã ou à tarde?", "hoje ainda ou amanhã?"), que é o que mais faz o lead voltar. Quando as suas instruções dão a este lead outro objetivo (entrar num grupo, confirmar presença num evento, mandar um dado), a pergunta puxa esse objetivo e NÃO propõe conversa nem reunião. PROIBIDO, mesmo que a instrução do passo peça: dizer que é a última tentativa, a última chance ou que não vai mais insistir (5% de resposta); fechar com "fico à disposição", "qualquer coisa me chama", "tô por aqui", "sem pressa" (4%); escassez de vagas, "as vagas estão acabando", "garantir a sua vaga", "fila de espera" (não ajuda e soa pressão). Se a instrução do passo pedir escassez ou última chance, troque por um ângulo novo da dor dele e feche propondo o período. DA TERCEIRA TENTATIVA EM DIANTE (Fabrício, 12/11/2026): varie de verdade. Cada mensagem tem um jeito diferente das anteriores e parece escrita na hora por uma pessoa que lembrou dele, nunca um lembrete. Humor leve é bem-vindo: rir de você mesmo, palpite, aposta de um café. Sempre ligado ao que ele contou, nunca piada pronta, nunca ironia com o lead, nada de emoji. Não convide pra reunião em toda mensagem: no máximo uma a cada três propõe conversa. Não cobre resposta ("vi que não respondeu", "ainda aguardo seu retorno") e não peça desculpa por insistir.`,
               isBIG && cv.contact?.username ? `\n\nVocê JÁ TEM o @ do Instagram desta pessoa (@${cv.contact.username}): é o perfil pelo qual ela fala com você. NUNCA peça o @ do Instagram.` : "",
               `\n\nSe você já pediu a mesma informação duas vezes nesta conversa (contando follow-ups) e ela não veio, NÃO peça de novo: puxe outro assunto leve ligado ao negócio dela.`,
               `\n\nANTES DE ESCREVER, decida se cabe follow-up. NÃO cabe quando: o lead já fez o que as suas instruções pedem pra ele (entrou no grupo, agendou, confirmou presença, mandou o que faltava); a conversa terminou combinada dos dois lados (a sua última mensagem encerrou o assunto, como "fechado então", "te espero lá", e não ficou pergunta sua sem resposta); ou o lead disse que não tem interesse. Nesses casos responda exatamente SEM_FOLLOWUP e nada mais. Silêncio depois de uma pergunta sua que ficou sem resposta CONTINUA cabendo follow-up.`,
@@ -3391,7 +3493,7 @@ Deno.serve(async (req)=>{
               continue;
             }
             if (body0.dry_run) {
-              results.push(`[dry] ${b.channel}/${cv.id}: ${fuReply.slice(0, 80)}`);
+              results.push(`[dry] ${agent.name} | ${b.channel} | ${leadNm} | dia ${diaSil}, tentativa ${attempt}/${maxAtt}: ${fuReply.slice(0, 260)}`);
               continue;
             }
             if (isBIG) {
