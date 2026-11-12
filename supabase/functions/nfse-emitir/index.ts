@@ -309,6 +309,439 @@ async function gerarEspelho(xml: string, chave: string, logoB64: string = LOGO_U
   return new Uint8Array(doc.output("arraybuffer"));
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// DANFSe v2.0 no padrão nacional (Nota Técnica SE/CGNFS-e nº 008, versão 1.02, de 14/07/2026).
+// A API do gov que devolvia o PDF (adn.nfse.gov.br/danfse) foi suspensa em 03/08/2026: desde então quem
+// gera o DANFSe é o sistema emissor, a partir do XML autorizado, seguindo o modelo do Anexo I.
+// Fabrício, 12/11/2026: "a NF oficial do site do gov não está baixando".
+// Regras da NT seguidas aqui: A4 retrato, página única, borda de 1 pt, linhas de 0,5 pt, sombreamento de 5%
+// no cabeçalho, nos títulos dos blocos e nos campos "Emitente" e "Valor líquido + IBS/CBS"; título de bloco
+// 7 pt negrito em maiúsculas; título de campo 6 pt negrito; conteúdo 7 pt; QR Code da consulta pública;
+// campo sem informação no XML sai com traço; nada que não esteja no XML é impresso.
+// Medidas em centímetros, como na tabela 2.4.5 da NT. Fonte: Helvetica (equivalente métrica da Arial).
+// ─────────────────────────────────────────────────────────────────────────────
+const UF_IBGE: Record<string, string> = { "11": "RO", "12": "AC", "13": "AM", "14": "RR", "15": "PA", "16": "AP", "17": "TO", "21": "MA", "22": "PI", "23": "CE", "24": "RN", "25": "PB", "26": "PE", "27": "AL", "28": "SE", "29": "BA", "31": "MG", "32": "ES", "33": "RJ", "35": "SP", "41": "PR", "42": "SC", "43": "RS", "50": "MS", "51": "MT", "52": "GO", "53": "DF" };
+
+type DanfseOpts = {
+  jsPDF: any;                       // construtor do jsPDF
+  QRCode: any;                      // biblioteca "qrcode" (usa QRCode.create)
+  logoNfseB64: string;              // logomarca oficial da NFS-e (PNG, base64)
+  situacao?: "cancelada" | "substituida" | null;   // marca d'água
+  nomeMunicipio?: (cod: string) => Promise<string | null>;   // nome do município pelo código do IBGE
+};
+
+async function gerarDanfse(xml: string, o: DanfseOpts): Promise<Uint8Array> {
+  // ── leitura do XML ──
+  const semAss = xml.replace(/<Signature[\s\S]*?<\/Signature>/g, "");
+  const blocoDe = (tag: string, src: string) => (src.match(new RegExp(`<${tag}(?:\\s[^>]*)?>[\\s\\S]*?</${tag}>`)) || [""])[0];
+  const des = (s: string) => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&");
+  const g = (tag: string, src: string) => des(((src.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([^<]*)</${tag}>`)) || [])[1] || "").trim());
+  const dps = blocoDe("DPS", semAss);
+  const inf = dps ? semAss.replace(dps, "") : semAss;          // infNFSe sem a DPS (campos calculados pelo fisco)
+  const emit = blocoDe("emit", inf), valN = blocoDe("valores", inf), ibsN = blocoDe("IBSCBS", inf);
+  const prest = blocoDe("prest", dps), toma = blocoDe("toma", dps), interm = blocoDe("interm", dps);
+  const serv = blocoDe("serv", dps), valD = blocoDe("valores", dps), ibsD = blocoDe("IBSCBS", dps);
+  const destB = blocoDe("dest", ibsD);
+  const tribMun = blocoDe("tribMun", valD), tribFed = blocoDe("tribFed", valD), pisc = blocoDe("piscofins", tribFed), totTrib = blocoDe("totTrib", valD);
+  const chave = ((semAss.match(/<infNFSe[^>]*\sId="NFS(\d+)"/) || [])[1] || "").trim();
+
+  // ── formatação ──
+  const T = "-";
+  const v = (s: string) => (s && s.trim() ? s.trim() : T);
+  const corta = (s: string, max: number) => (s.length > max ? s.slice(0, max) + "..." : s);
+  const num = (s: string) => (s === "" || s == null ? null : Number(String(s).replace(",", ".")));
+  const fmt = (n: number) => n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const rs = (s: string) => { const n = num(s); return n == null || Number.isNaN(n) ? T : `R$ ${fmt(n)}`; };
+  const pct = (s: string) => { const n = num(s); return n == null || Number.isNaN(n) ? T : `${fmt(n)} %`; };
+  const docF = (b: string) => {
+    const c = g("CNPJ", b), p = g("CPF", b), n = g("NIF", b);
+    if (c) return c.length === 14 ? c.replace(/^(.{2})(.{3})(.{3})(.{4})(.{2})$/, "$1.$2.$3/$4-$5") : c;
+    if (p) return p.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+    return n || T;
+  };
+  const cepF = (c: string) => { const s = c.replace(/\D/g, ""); return s.length === 8 ? s.replace(/^(\d{2})(\d{3})(\d{3})$/, "$1.$2-$3") : c; };
+  const foneF = (f: string) => { const s = f.replace(/\D/g, ""); return s.length === 10 ? s.replace(/^(\d{2})(\d{4})(\d{4})$/, "($1) $2-$3") : s.length === 11 ? s.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3") : f; };
+  const dataF = (iso: string) => { const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : v(iso); };
+  const dataHoraF = (iso: string) => { const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}:${m[6]}` : v(iso); };
+  const ufDe = (cMun: string) => UF_IBGE[String(cMun || "").slice(0, 2)] || "";
+
+  // nome do município pelo código: primeiro o que o próprio XML traz, depois a consulta externa
+  const nomesXml: Record<string, string> = {};
+  const guarda = (cod: string, nome: string) => { if (cod && nome) nomesXml[cod] = nome; };
+  guarda(g("cLocEmi", dps), g("xLocEmi", inf));
+  guarda(g("cLocPrestacao", serv), g("xLocPrestacao", inf));
+  guarda(g("cLocIncid", inf), g("xLocIncid", inf));
+  guarda(g("cLocalidadeIncid", ibsN), g("xLocalidadeIncid", ibsN));
+  const nomeMun = async (cod: string) => {
+    if (!cod) return "";
+    if (nomesXml[cod]) return nomesXml[cod];
+    try { const n = o.nomeMunicipio ? await o.nomeMunicipio(cod) : null; if (n) { nomesXml[cod] = n; return n; } } catch { /* segue sem o nome */ }
+    return "";
+  };
+  const munUf = async (cod: string, cidadeExt = "") => {
+    if (!cod) return v(cidadeExt);
+    const n = await nomeMun(cod), uf = ufDe(cod);
+    return n ? `${n} / ${uf}` : uf ? `${T} / ${uf}` : T;
+  };
+
+  // pessoa (prestador, tomador, destinatário, intermediário) no formato dos blocos do DANFSe
+  const pessoa = async (b: string, reserva = "") => {
+    const pega = (tag: string) => g(tag, b) || (reserva ? g(tag, reserva) : "");
+    const end = blocoDe("end", b) || blocoDe("enderNac", b) || (reserva ? blocoDe("enderNac", reserva) || blocoDe("end", reserva) : "");
+    const cMun = g("cMun", end), cepV = g("CEP", end) || g("cEndPost", end);
+    const partes = [g("xLgr", end), g("nro", end), g("xCpl", end), g("xBairro", end)].filter(Boolean);
+    return {
+      doc: docF(b) !== T ? docF(b) : (reserva ? docF(reserva) : T),
+      im: v(pega("IM")),
+      fone: v(foneF(pega("fone"))),
+      nome: v(corta(pega("xNome"), 77)),
+      mun: await munUf(cMun, g("xCidade", end)),
+      ibgeCep: cMun || cepV ? `${cMun || T} / ${cepV ? cepF(cepV) : T}` : T,
+      endereco: partes.length ? corta(partes.join(", "), 77) : T,
+      email: v(corta(pega("email"), 77)),
+    };
+  };
+
+  // ── descrições dos códigos do leiaute ──
+  const tpAmb = g("tpAmb", dps);
+  const AMB_GER: Record<string, string> = { "1": "Prefeitura", "2": "Sistema Nacional da NFS-e" };
+  const TP_AMB: Record<string, string> = { "1": "Produção", "2": "Homologação" };
+  const TP_EMIT: Record<string, string> = { "1": "Prestador", "2": "Tomador", "3": "Intermediário" };
+  const C_STAT: Record<string, string> = { "100": "NFS-e Gerada", "101": "NFS-e de Substituição Gerada", "102": "NFS-e de Decisão Judicial ou Administrativa", "103": "NFS-e Avulsa" };
+  const FIN: Record<string, string> = { "0": "NFS-e regular" };
+  const OP_SN: Record<string, string> = { "1": "Não Optante", "2": "Optante - Microempreendedor Individual (MEI)", "3": "Optante - Microempresa ou Empresa de Pequeno Porte (ME/EPP)" };
+  const REG_AP_SN: Record<string, string> = {
+    "1": "Regime de apuração dos tributos federais e municipal pelo Simples Nacional",
+    "2": "Regime de apuração dos tributos federais pelo SN e o ISSQN pela NFS-e conforme respectiva legislação municipal do tributo",
+    "3": "Regime de apuração dos tributos federais e municipal pela NFS-e conforme respectivas legislações federal e municipal de cada tributo",
+  };
+  const TRIB_ISSQN: Record<string, string> = { "1": "Operação Tributável", "2": "Imunidade", "3": "Exportação de Serviço", "4": "Não Incidência" };
+  const RET_ISSQN: Record<string, string> = { "1": "Não Retido", "2": "Retido pelo Tomador", "3": "Retido pelo Intermediário" };
+  const REG_ESP: Record<string, string> = { "0": "Nenhum", "1": "Ato Cooperado (Cooperativa)", "2": "Estimativa", "3": "Microempresa Municipal", "4": "Notário ou Registrador", "5": "Profissional Autônomo", "6": "Sociedade de Profissionais", "9": "Outros" };
+  const IMUN: Record<string, string> = {
+    "0": "Imunidade (tipo não informado na nota de origem)", "1": "Patrimônio, renda ou serviços, uns dos outros",
+    "2": "Entidades religiosas e templos de qualquer culto", "3": "Patrimônio, renda ou serviços dos partidos políticos e entidades sem fins lucrativos",
+    "4": "Livros, jornais, periódicos e o papel destinado a sua impressão", "5": "Fonogramas e videofonogramas musicais produzidos no Brasil",
+  };
+  const SUSP: Record<string, string> = { "1": "Exigibilidade Suspensa por Decisão Judicial", "2": "Exigibilidade Suspensa por Processo Administrativo" };
+  const RET_PISCOFINS: Record<string, string> = {
+    "0": "PIS/COFINS/CSLL Não Retidos", "1": "PIS/COFINS Retido", "2": "PIS/COFINS Não Retido", "3": "PIS/COFINS/CSLL Retidos",
+    "4": "PIS/COFINS Retidos, CSLL Não Retido", "5": "PIS Retido, COFINS/CSLL Não Retido", "6": "COFINS Retido, PIS/CSLL Não Retido",
+    "7": "PIS Não Retido, COFINS/CSLL Retidos", "8": "PIS/COFINS Não Retidos, CSLL Retido", "9": "COFINS Não Retido, PIS/CSLL Retidos",
+  };
+  const cod = (mapa: Record<string, string>, c: string, max = 0) => (c === "" ? T : max ? corta(mapa[c] || c, max) : (mapa[c] || c));
+
+  // ── valores ──
+  const vServ = g("vServ", valD);
+  const descInc = g("vDescIncond", valD), descCond = g("vDescCond", valD);
+  const retPisCofins = g("tpRetPisCofins", pisc) === "1";
+  const soma = (...xs: string[]) => { const ns = xs.map(num).filter((n): n is number => n != null && !Number.isNaN(n)); return ns.length ? String(ns.reduce((a, b) => a + b, 0)) : ""; };
+  const contribRet = retPisCofins ? soma(g("vRetCSLL", tribFed), g("vPis", pisc), g("vCofins", pisc)) : g("vRetCSLL", tribFed);
+  const ibsMun = blocoDe("mun", blocoDe("valores", ibsN)), ibsUf = blocoDe("uf", blocoDe("valores", ibsN)), ibsFed = blocoDe("fed", blocoDe("valores", ibsN));
+  const totCibs = blocoDe("totCIBS", ibsN);
+  const temIbs = !!ibsN || !!ibsD;
+  const tresPct = (...xs: string[]) => (xs.some(Boolean) ? xs.map(pct).join(" / ") : T);
+
+  // ── documento ──
+  const doc = new o.jsPDF({ unit: "cm", format: "a4", orientation: "portrait", compress: true });
+  const X0 = 0.30, W = 20.40, XF = X0 + W, YF = 29.40;
+  const COL = [0.30, 5.41, 10.51, 15.62], CW = 5.09, PAD = 0.10;
+  const PT = 0.0352778;                                  // 1 ponto em cm
+  const CINZA5: [number, number, number] = [242, 242, 242];
+  const fonte = (tam: number, negrito = false) => { doc.setFont("helvetica", negrito ? "bold" : "normal"); doc.setFontSize(tam); doc.setTextColor(0, 0, 0); };
+  const linhaH = (y: number, x1 = X0, x2 = XF) => { doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.5 * PT); doc.line(x1, y, x2, y); };
+  const sombra = (x: number, y: number, w: number, h: number) => { doc.setFillColor(...CINZA5); doc.rect(x, y, w, h, "F"); };
+  const cabe = (txt: string, larg: number, tam: number, negrito = false) => {
+    fonte(tam, negrito);
+    if (doc.getTextWidth(txt) <= larg) return txt;
+    let t = txt;
+    while (t.length > 1 && doc.getTextWidth(t + "...") > larg) t = t.slice(0, -1);
+    return t + "...";
+  };
+  /** campo comum: título em 6 pt negrito e conteúdo em 7 pt logo abaixo */
+  const campo = (rotulo: string, valor: string, x: number, y: number, larg = CW) => {
+    fonte(6, true); doc.text(rotulo, x + PAD, y + 0.22);
+    doc.text(cabe(valor, larg - 2 * PAD, 7), x + PAD, y + 0.50);
+  };
+  /** campo do bloco de identificação: título em 7 pt negrito, tudo em maiúsculas */
+  const campoId = (rotulo: string, valor: string, x: number, y: number, larg = CW) => {
+    fonte(7, true); doc.text(rotulo, x + PAD, y + 0.25);
+    doc.text(cabe(valor, larg - 2 * PAD, 7), x + PAD, y + 0.54);
+  };
+  const tituloBloco = (txt: string, y: number, alt: number) => { sombra(X0, y, CW, alt); fonte(7, true); doc.text(txt, X0 + PAD, y + 0.30); };
+  const blocoSuprimido = (txt: string, y: number) => { linhaH(y); fonte(7); doc.text(txt, X0 + W / 2, y + 0.24, { align: "center" }); return y + 0.32; };
+
+  // borda da página (1 pt)
+  doc.setDrawColor(0, 0, 0); doc.setLineWidth(1 * PT); doc.rect(0.19, 0.19, 20.62, 29.32);
+
+  // ── cabeçalho ──
+  sombra(X0, 0.30, W, 1.16);
+  try { doc.addImage(o.logoNfseB64, "PNG", 0.49, 0.47, 4.00, 0.81); } catch { /* sem logomarca não deixa de gerar */ }
+  fonte(9, true);
+  const meioCab = COL[1] + 10.19 / 2;
+  doc.text("DANFSe v2.0", meioCab, tpAmb === "2" ? 0.62 : 0.78, { align: "center" });
+  doc.text("Documento Auxiliar da NFS-e", meioCab, tpAmb === "2" ? 0.96 : 1.12, { align: "center" });
+  if (tpAmb === "2") { doc.setTextColor(255, 0, 0); doc.text("NFS-e SEM VALIDADE JURÍDICA", meioCab, 1.30, { align: "center" }); doc.setTextColor(0, 0, 0); }
+  const cLocEmi = g("cLocEmi", dps);
+  const item99 = g("cTribNac", serv).startsWith("99");
+  if (!item99) { doc.text(cabe(`Município: ${await munUf(cLocEmi)}`, CW - 2 * PAD, 8), COL[3] + PAD, 0.72); }
+  fonte(6);
+  doc.text(`Ambiente Gerador: ${cod(AMB_GER, g("ambGer", inf))}`, COL[3] + PAD, 1.13);
+  doc.text(`Tipo de Ambiente: ${cod(TP_AMB, tpAmb)}`, COL[3] + PAD, 1.38);
+
+  // ── dados da NFS-e ──
+  linhaH(1.48);
+  campoId("CHAVE DE ACESSO DA NFS-E", v(chave), COL[0], 1.50, 15.30);
+  campoId("NÚMERO DA NFS-E", v(g("nNFSe", inf)), COL[0], 2.27);
+  campoId("COMPETÊNCIA DA NFS-E", dataF(g("dCompet", dps)), COL[1], 2.27);
+  campoId("DATA E HORA DA EMISSÃO DA NFS-E", dataHoraF(g("dhProc", inf)), COL[2], 2.27);
+  campoId("NÚMERO DA DPS", v(g("nDPS", dps)), COL[0], 2.96);
+  campoId("SÉRIE DA DPS", v(g("serie", dps)), COL[1], 2.96);
+  campoId("DATA E HORA DA EMISSÃO DA DPS", dataHoraF(g("dhEmi", dps)), COL[2], 2.96);
+  sombra(COL[0], 3.65, CW, 0.67);
+  campoId("EMITENTE DA NFS-E", cod(TP_EMIT, g("tpEmit", dps)), COL[0], 3.65);
+  campoId("SITUAÇÃO DA NFS-E", cod(C_STAT, g("cStat", inf), 37), COL[1], 3.65);
+  campoId("FINALIDADE", cod(FIN, g("finNFSe", ibsD), 37), COL[2], 3.65);
+
+  // QR Code da consulta pública (mínimo de 1,52 cm; posição X 17,48 / Y 1,67)
+  if (chave) {
+    const qr = o.QRCode.create(`https://www.nfse.gov.br/ConsultaPublica/?tpc=1&chave=${chave}`, { errorCorrectionLevel: "M" });
+    const n = qr.modules.size, dados = qr.modules.data, lado = 1.56, m = lado / n, qx = 17.46, qy = 1.67;
+    doc.setFillColor(0, 0, 0);
+    for (let r = 0; r < n; r++) {
+      let c = 0;
+      while (c < n) {
+        if (!dados[r * n + c]) { c++; continue; }
+        let f = c; while (f < n && dados[r * n + f]) f++;
+        doc.rect(qx + c * m, qy + r * m, (f - c) * m + 0.002, m + 0.002, "F");
+        c = f;
+      }
+    }
+  }
+  fonte(6);
+  ["A autenticidade desta NFS-e pode ser verificada", "pela leitura deste código QR ou pela consulta da", "chave de acesso no portal nacional da NFS-e"]
+    .forEach((l, i) => doc.text(l, 15.80 + 4.72 / 2, 3.54 + i * 0.23, { align: "center" }));
+
+  // ── blocos de pessoas ──
+  const H = 0.64;                                       // altura de linha dos blocos
+  let y = 4.34;
+  const blocoPessoaDanfse = (titulo: string, p: any, comIM: boolean) => {
+    linhaH(y); tituloBloco(titulo, y, H);
+    campo("CNPJ / CPF / NIF", p.doc, COL[1], y);
+    if (comIM) campo("Indicador Municipal (Inscrição)", p.im, COL[2], y);
+    campo("Telefone", p.fone, COL[3], y);
+    y += H;
+    campo("Nome / Nome Empresarial", p.nome, COL[0], y, 10.19);
+    campo("Município / Sigla UF", p.mun, COL[2], y);
+    campo("Código IBGE / CEP", p.ibgeCep, COL[3], y);
+    y += H;
+    campo("Endereço", p.endereco, COL[0], y, 10.19);
+    campo("E-mail", p.email, COL[2], y, 10.19);
+    y += H;
+  };
+
+  const pPrest = await pessoa(prest, emit);
+  blocoPessoaDanfse("PRESTADOR / FORNECEDOR", pPrest, true);
+  const regTrib = blocoDe("regTrib", prest);
+  campo("Simples Nacional na Data de Competência", cod(OP_SN, g("opSimpNac", regTrib), 37), COL[0], y);
+  campo("Regime de Apuração Tributária pelo SN", cod(REG_AP_SN, g("regApTribSN", regTrib), 77), COL[1], y, 10.19);
+  y += H;
+
+  const temToma = !!(g("CNPJ", toma) || g("CPF", toma) || g("NIF", toma) || g("xNome", toma));
+  if (temToma) blocoPessoaDanfse("TOMADOR / ADQUIRENTE", await pessoa(toma), true);
+  else y = blocoSuprimido("TOMADOR/ADQUIRENTE DA OPERAÇÃO NÃO IDENTIFICADO NA NFS-e", y);
+
+  const temDest = !!(g("CNPJ", destB) || g("CPF", destB) || g("NIF", destB) || g("xNome", destB));
+  const mesmoDoc = (a: string, b: string) => { const d = (s: string) => g("CNPJ", s) || g("CPF", s) || g("NIF", s); return !!d(a) && d(a) === d(b); };
+  if (temDest && !mesmoDoc(destB, toma)) blocoPessoaDanfse("DESTINATÁRIO DA OPERAÇÃO", await pessoa(destB), false);
+  else if (temDest) y = blocoSuprimido("O DESTINATÁRIO É O PRÓPRIO TOMADOR/ADQUIRENTE DA OPERAÇÃO", y);
+  else y = blocoSuprimido("DESTINATÁRIO DA OPERAÇÃO NÃO IDENTIFICADO NA NFS-e", y);
+
+  const temInterm = !!(g("CNPJ", interm) || g("CPF", interm) || g("NIF", interm) || g("xNome", interm));
+  if (temInterm) blocoPessoaDanfse("INTERMEDIÁRIO DA OPERAÇÃO", await pessoa(interm), true);
+  else y = blocoSuprimido("INTERMEDIÁRIO DA OPERAÇÃO NÃO IDENTIFICADO NA NFS-e", y);
+
+  // ── blocos de baixo: medidos antes, pra a sobra de altura ir pra descrição e pras informações complementares ──
+  const sujeitoIss = !!tribMun && g("tribISSQN", tribMun) !== "4";
+  const linhaRegime = !!(g("regEspTrib", regTrib) || g("tpImunidade", tribMun) || g("tpSusp", tribMun) || g("nProcesso", tribMun));
+  const linhaBM = !!(g("tpBM", valN) || g("vCalcBM", valN) || g("vRedBCBM", tribMun) || g("vDR", valD) || g("vCalcDR", valN) || descInc);
+  const linhaPisCofins = (g("dCompet", dps).slice(0, 4) || "2026") <= "2026";
+  const altIss = sujeitoIss ? H * (2 + (linhaRegime ? 1 : 0) + (linhaBM ? 1 : 0)) : 0.32;
+  const altFed = H * (1 + (linhaPisCofins ? 1 : 0));
+  const altIbs = H * 4, altTotal = 0.67 * 2, altTitInfo = 0.39;
+
+  // informações complementares (união dos campos, separados por barra vertical; a linha dos tributos é fixa)
+  const infoCompl = blocoDe("infoCompl", serv), obra = blocoDe("obra", serv), evento = blocoDe("atvEvento", serv);
+  const itens: string[] = [];
+  const junta = (rot: string, val: string) => { if (val) itens.push(`${rot} ${val}`); };
+  junta("Inf. Cont.:", g("xInfComp", infoCompl));
+  junta("NFS-e Subst.:", g("chSubstda", blocoDe("subst", dps)));
+  junta("Doc. Ref.:", g("docRef", infoCompl));
+  junta("Cod. Obra:", g("cObra", obra));
+  junta("Insc. Imob.:", g("inscImobFisc", obra) || g("inscImobFisc", blocoDe("imovel", ibsD)));
+  junta("Cod. Evt.:", g("idAtvEvt", evento));
+  junta("Doc. Tec.:", g("idDocTec", infoCompl));
+  junta("Núm. Ped.:", g("xPed", infoCompl));
+  junta("Item Ped.:", (infoCompl.match(/<xItemPed>([^<]*)<\/xItemPed>/g) || []).map((s) => des(s.replace(/<[^>]+>/g, ""))).join(", "));
+  junta("Inf. A. T. Mun.:", g("xOutInf", inf));
+  const vT = blocoDe("vTotTrib", totTrib), pT = blocoDe("pTotTrib", totTrib), pSN = g("pTotTribSN", totTrib);
+  const tributos = vT
+    ? `Federais: ${rs(g("vTotTribFed", vT))}; Estaduais: ${rs(g("vTotTribEst", vT))}; Municipais: ${rs(g("vTotTribMun", vT))}`
+    : pT
+      ? `Federais: ${pct(g("pTotTribFed", pT))}; Estaduais: ${pct(g("pTotTribEst", pT))}; Municipais: ${pct(g("pTotTribMun", pT))}`
+      : pSN !== ""
+        ? `Federais: ${T}; Estaduais: ${T}; Municipais: ${T}; Simples Nacional: ${pct(pSN)}`
+        : `Federais: ${T}; Estaduais: ${T}; Municipais: ${T}`;
+  const linhaTributos = `Totais Aproximados dos Tributos cfe. Lei nº 12.741/2012: ${tributos}`;
+  fonte(7);
+  const ENTRE = 0.30;                                   // entrelinha do texto corrido de 7 pt
+  const linhasInfo: string[] = itens.length ? doc.splitTextToSize(corta(itens.join(" | "), 1997), W - 2 * PAD) : [];
+  const descricao = corta(g("xDescServ", serv), 1297);
+  const linhasDesc: string[] = doc.splitTextToSize(descricao || T, W - 2 * PAD);
+
+  // ── serviço prestado ──
+  linhaH(y); tituloBloco("SERVIÇO PRESTADO", y, H);
+  const cTribNac = g("cTribNac", serv), cTribMun = g("cTribMun", serv);
+  const cTribF = cTribNac.length === 6 ? cTribNac.replace(/^(\d{2})(\d{2})(\d{2})$/, "$1.$2.$3") : cTribNac;
+  campo("Código de Tributação Nacional / Municipal", cTribNac ? `${cTribF} / ${cTribMun || T}` : T, COL[1], y);
+  const nbs = g("cNBS", serv);
+  campo("Código da NBS", nbs.length === 9 ? nbs.replace(/^(\d)(\d{4})(\d{2})(\d{2})$/, "$1.$2.$3.$4") : v(nbs), COL[2], y);
+  const cLocPrest = g("cLocPrestacao", serv), pais = g("cPaisPrestacao", serv);
+  campo("Local da Prestação / Sigla UF / País", cLocPrest ? `${await munUf(cLocPrest)} / ${pais || "BR"}` : v(pais), COL[3], y);
+  y += H;
+  fonte(7);
+  doc.text(cabe(corta(g("xTribMun", inf) || g("xTribNac", inf) || T, 167), W - 2 * PAD, 7), X0 + PAD, y + 0.26);
+  y += 0.38;
+
+  // altura que sobra na página depois dos blocos fixos
+  const fixoAbaixo = altIss + altFed + altIbs + altTotal + altTitInfo;
+  const sobra = YF - y - fixoAbaixo;
+  const altInfoMin = 0.20 + (linhasInfo.length + 1) * ENTRE + 0.15;
+  const altDescPedida = 0.30 + linhasDesc.length * ENTRE + 0.15;
+  const altDesc = Math.max(0.63, Math.min(altDescPedida < sobra * 0.45 ? sobra * 0.45 : altDescPedida, sobra - altInfoMin));
+  fonte(6, true); doc.text("Descrição do Serviço", X0 + PAD, y + 0.22);
+  fonte(7);
+  const cabemDesc = Math.max(1, Math.floor((altDesc - 0.30 - 0.05) / ENTRE));
+  linhasDesc.slice(0, cabemDesc).forEach((l, i) => doc.text(l, X0 + PAD, y + 0.52 + i * ENTRE));
+  y += altDesc;
+
+  // ── tributação municipal (ISSQN) ──
+  if (!sujeitoIss) {
+    y = blocoSuprimido("TRIBUTAÇÃO MUNICIPAL (ISSQN) - OPERAÇÃO NÃO SUJEITA AO ISSQN", y);
+  } else {
+    linhaH(y); tituloBloco("TRIBUTAÇÃO MUNICIPAL (ISSQN)", y, H);
+    campo("Tipo de Tributação do ISSQN", cod(TRIB_ISSQN, g("tribISSQN", tribMun)), COL[1], y);
+    const cInc = g("cLocIncid", inf);
+    campo("Município / Sigla UF / País de Incidência do ISSQN", cInc ? `${await munUf(cInc)} / ${g("cPaisResult", tribMun) || "BR"}` : T, COL[2], y, 10.19);
+    y += H;
+    if (linhaRegime) {
+      campo("Regime Especial de Tributação do ISSQN", cod(REG_ESP, g("regEspTrib", regTrib)), COL[0], y);
+      campo("Tipo de Imunidade do ISSQN", cod(IMUN, g("tpImunidade", tribMun), 37), COL[1], y);
+      campo("Suspensão da Exigibilidade do ISSQN", cod(SUSP, g("tpSusp", tribMun), 37), COL[2], y);
+      campo("Número Processo Suspensão", v(g("nProcesso", tribMun)), COL[3], y);
+      y += H;
+    }
+    if (linhaBM) {
+      campo("Benefício Municipal", v(g("tpBM", valN)), COL[0], y);
+      campo("Cálculo do BM", rs(g("vCalcBM", valN) || g("vRedBCBM", tribMun)), COL[1], y);
+      campo("Total Deduções/Reduções", rs(g("vDR", valD) || soma(g("vCalcDR", valN), g("vCalcReeRepRes", ibsN))), COL[2], y);
+      campo("Desconto Incondicionado", rs(descInc), COL[3], y);
+      y += H;
+    }
+    campo("BC ISSQN", rs(g("vBC", valN)), COL[0], y);
+    campo("Alíquota Aplicada", pct(g("pAliqAplic", valN)), COL[1], y);
+    campo("Retenção do ISSQN", cod(RET_ISSQN, g("tpRetISSQN", tribMun)), COL[2], y);
+    campo("ISSQN Apurado", rs(g("vISSQN", valN)), COL[3], y);
+    y += H;
+  }
+
+  // ── tributação federal (exceto CBS) ──
+  linhaH(y); tituloBloco("TRIBUTAÇÃO FEDERAL (EXCETO CBS)", y, H);
+  campo("IRRF", rs(g("vRetIRRF", tribFed)), COL[1], y);
+  campo("Contribuição Previdenciária - Retida", rs(g("vRetCP", tribFed)), COL[2], y);
+  campo("Contribuições Sociais - Retidas", rs(contribRet), COL[3], y);
+  y += H;
+  if (linhaPisCofins) {
+    campo("PIS - Débito Apuração Própria", pisc ? rs(retPisCofins ? "0" : g("vPis", pisc)) : T, COL[0], y);
+    campo("COFINS - Débito Apuração Própria", pisc ? rs(retPisCofins ? "0" : g("vCofins", pisc)) : T, COL[1], y);
+    campo("Descrição Contrib. Sociais - Retidas", cod(RET_PISCOFINS, g("tpRetPisCofins", pisc)), COL[2], y, 10.19);
+    y += H;
+  }
+
+  // ── tributação IBS / CBS ──
+  linhaH(y); tituloBloco("TRIBUTAÇÃO IBS / CBS", y, H);
+  const gIbs = blocoDe("gIBSCBS", ibsD);
+  campo("CST / cClassTrib", g("CST", gIbs) || g("cClassTrib", gIbs) ? `${g("CST", gIbs) || T} / ${g("cClassTrib", gIbs) || T}` : T, COL[1], y);
+  const cLocIbs = g("cLocalidadeIncid", ibsN);
+  campo("Indicador de Operação / Código IBGE Incidência / Município Incidência / Sigla UF",
+    temIbs && (g("cIndOp", ibsD) || cLocIbs) ? `${g("cIndOp", ibsD) || T} / ${cLocIbs || T} / ${cLocIbs ? await munUf(cLocIbs) : T}` : T, COL[2], y, 10.19);
+  y += H;
+  campo("Exclusões e Reduções da Base de Cálculo", temIbs ? rs(soma(descInc, g("vCalcReeRepRes", ibsN), g("vISSQN", valN), g("vPis", pisc), g("vCofins", pisc))) : T, COL[0], y);
+  campo("Base de Cálculo Após Exclusões e Reduções", rs(g("vBC", blocoDe("valores", ibsN))), COL[1], y);
+  campo("Red. Alíquota IBS / Red. Alíquota CBS", tresPct(g("pRedAliqUF", ibsUf), g("pRedAliqMun", ibsMun), g("pRedAliqCBS", ibsFed)), COL[2], y);
+  campo("Alíquota - IBS UF / IBS Mun", g("pIBSUF", ibsUf) || g("pIBSMun", ibsMun) ? `${pct(g("pIBSUF", ibsUf))} / ${pct(g("pIBSMun", ibsMun))}` : T, COL[3], y);
+  y += H;
+  campo("Alíq. Efetiva Municipal - IBS", pct(g("pAliqEfetMun", ibsMun)), COL[0], y);
+  campo("Valor Apurado Municipal - IBS", rs(g("vIBSMun", totCibs)), COL[1], y);
+  campo("Alíq. Efetiva Estadual - IBS", pct(g("pAliqEfetUF", ibsUf)), COL[2], y);
+  campo("Valor Apurado Estadual - IBS", rs(g("vIBSUF", totCibs)), COL[3], y);
+  y += H;
+  campo("Valor Total Apurado - IBS", rs(g("vIBSTot", totCibs)), COL[0], y);
+  campo("Alíquota - CBS", pct(g("pCBS", ibsFed)), COL[1], y);
+  campo("Alíquota Efetiva - CBS", pct(g("pAliqEfetCBS", ibsFed)), COL[2], y);
+  campo("Valor Total Apurado - CBS", rs(g("vCBS", totCibs)), COL[3], y);
+  y += H;
+
+  // ── valor total da NFS-e ──
+  const HT = 0.67;
+  linhaH(y); sombra(X0, y, CW, HT); fonte(7, true); doc.text("VALOR TOTAL DA NFS-E", X0 + PAD, y + 0.30);
+  campoId("VALOR DA OPERAÇÃO / SERVIÇO", rs(vServ), COL[1], y);
+  campo("Desconto Incondicionado", rs(descInc), COL[2], y);
+  campo("Desconto Condicionado", rs(descCond), COL[3], y);
+  y += HT;
+  campo("Total das Retenções (ISSQN / Federais)", rs(g("vTotalRet", valN)), COL[0], y);
+  campoId("VALOR LÍQUIDO DA NFS-e", rs(g("vLiq", valN)), COL[1], y);
+  campo("Total do IBS/CBS", rs(soma(g("vIBSTot", totCibs), g("vCBS", totCibs))), COL[2], y);
+  sombra(COL[3], y, CW, HT);
+  campoId("VALOR LÍQUIDO DA NFS-e + IBS/CBS", rs(g("vTotNF", totCibs)), COL[3], y);
+  y += HT;
+
+  // ── informações complementares (ocupa o resto da página; a linha dos tributos é obrigatória) ──
+  linhaH(y); sombra(X0, y, W, altTitInfo); fonte(7, true); doc.text("INFORMAÇÕES COMPLEMENTARES", X0 + PAD, y + 0.27);
+  y += altTitInfo;
+  fonte(7);
+  const cabemInfo = Math.max(0, Math.floor((YF - y - 0.20 - ENTRE - 0.10) / ENTRE));
+  linhasInfo.slice(0, cabemInfo).forEach((l, i) => doc.text(l, X0 + PAD, y + 0.30 + i * ENTRE));
+  doc.text(cabe(linhaTributos, W - 2 * PAD, 7), X0 + PAD, y + 0.30 + Math.min(linhasInfo.length, cabemInfo) * ENTRE);
+
+  // ── marca d'água de nota cancelada ou substituída (diagonal, Arial 50 pt no mínimo, cinza K35) ──
+  if (o.situacao === "cancelada" || o.situacao === "substituida") {
+    const marca = o.situacao === "cancelada" ? "CANCELADA" : "SUBSTITUÍDA";
+    doc.setFont("helvetica", "normal"); doc.setFontSize(88); doc.setTextColor(166, 166, 166);
+    // translúcida, pra não esconder os dados da nota
+    try { doc.saveGraphicsState(); doc.setGState(new doc.GState({ opacity: 0.45 })); } catch { /* sem transparência, segue opaca */ }
+    const larg = doc.getTextWidth(marca), ang = 50 * Math.PI / 180, alt = 88 * PT * 0.35;
+    // o texto gira em torno do início da linha de base: recua meio comprimento pra o centro cair no meio da página
+    doc.text(marca, 10.5 - (larg / 2) * Math.cos(ang) + alt * Math.sin(ang), 14.85 + (larg / 2) * Math.sin(ang) + alt * Math.cos(ang), { angle: 50 });
+    try { doc.restoreGraphicsState(); } catch { /* idem */ }
+    doc.setTextColor(0, 0, 0);
+  }
+  return new Uint8Array(doc.output("arraybuffer"));
+}
+
+// Logomarca oficial da NFS-e (gov.br/nfse, "Logo - NFS-e - Horizontal.png"), reduzida pra 520 px de largura
+const LOGO_NFSE_B64 = "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";
+
+/** nome do município pelo código do IBGE (o XML só traz o código do município do tomador) */
+async function nomeMunicipioIbge(cod: string): Promise<string | null> {
+  try {
+    const r = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/municipios/${cod}`, { signal: AbortSignal.timeout(2500) });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return typeof d?.nome === "string" && d.nome ? d.nome : null;
+  } catch { return null; }
+}
+
 async function enviarDocEvolution(supabase: any, phone: string, fileName: string, caption: string, pdf: Uint8Array) {
   const { data: cfgW } = await supabase.from("whatsapp_default_config")
     .select("setting_value").eq("setting_key", "default_instance").maybeSingle();
@@ -349,9 +782,10 @@ Deno.serve(async (req: Request) => {
         .select("id, role, is_active").eq("user_id", user.id).maybeSingle();
       staff = data;
     }
-    const ehServidor = (() => {
-      try { return JSON.parse(atob(token.split(".")[1] || "")).role === "service_role"; } catch { return false; }
-    })();
+    // A função roda sem verificação de JWT na entrada: ler só o "role" do token aceitava token forjado.
+    // Servidor é quem manda exatamente a chave de serviço do projeto.
+    const chaveServico = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const ehServidor = !!token && !!chaveServico && token === chaveServico;
     if (!ehServidor && (!staff?.is_active || !["master", "admin"].includes(staff.role))) {
       return json({ error: "Sem permissão para emitir nota." }, 403);
     }
@@ -380,49 +814,50 @@ Deno.serve(async (req: Request) => {
       return json({ ok: rN.status < 300, status: rN.status, chave_acesso: chave, nota: dN });
     }
 
-    // DANFSe: o PDF oficial da nota, direto do gov
+    // DANFSe: o PDF da nota. Desde 03/08/2026 o gov não entrega mais o PDF (NT 008/2026 suspendeu a API
+    // adn.nfse.gov.br/danfse): quem gera o DANFSe é o sistema emissor, no modelo nacional, a partir do XML.
+    //   fonte "espelho" = espelho no visual do Nexus; qualquer outro valor = DANFSe no modelo nacional.
     if (body.action === "danfse") {
       if (!body.chave_acesso) return json({ error: "informe chave_acesso" }, 400);
-      // fonte (04/11/2026, Fabrício: "dar a opção de baixar o espelho ou a NF verdadeira direto da receita"):
-      //   "gov" = só o PDF oficial (erro se o gov não responder); "espelho" = só o espelho do Nexus; vazio = oficial com reserva no espelho
-      const fonte = body.fonte === "gov" || body.fonte === "espelho" ? body.fonte : "auto";
-      const { data: cfgD } = await supabase.from("nfse_emitter_config").select("*").limit(1).maybeSingle();
-      const { data: certD } = await supabase.from("fiscal_certificates")
-        .select("file_path, senha_cifrada").eq("ativo", true).maybeSingle();
-      if (!cfgD || !certD) return json({ error: "configuração ou certificado ausente" }, 400);
-      const { data: arqD } = await supabase.storage.from("certificados").download(certD.file_path);
-      const senhaD = await decifrar(certD.senha_cifrada);
-      const abertoD = abrirPfx(bytesToB64(new Uint8Array(await arqD!.arrayBuffer())), senhaD);
-      const amb = String(body.ambiente || cfgD.ambiente);
-      const hostAdn = amb === "2" ? "adn.producaorestrita.nfse.gov.br" : "adn.nfse.gov.br";
-      const url = Deno.env.get("NFSE_BRIDGE_URL"), token = Deno.env.get("NFSE_BRIDGE_TOKEN");
-      let pdfB64: string | null = null;
-      const motivoGov: string[] = [];
-      for (let tent = 0; tent < 2 && !pdfB64 && fonte !== "espelho"; tent++) {
-        try {
-          const r = await fetch(`${url}/gov`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "x-bridge-token": token! },
-            body: JSON.stringify({ host: hostAdn, path: `/danfse/${body.chave_acesso}`, metodo: "GET",
-              cert_pem: abertoD.certPem, key_pem: abertoD.keyPem }),
-          });
-          const d = await r.json();
-          if (d?.status < 300 && d?.corpo_base64) pdfB64 = d.corpo_base64;
-          else motivoGov.push(`HTTP ${d?.status ?? r.status}`);
-        } catch (e) { motivoGov.push(String((e as Error)?.message || e).slice(0, 80)); }
-      }
-      if (pdfB64) return json({ ok: true, pdf_base64: pdfB64, fonte: "gov" });
-      if (fonte === "gov") return json({ error: `O portal nfse.gov.br não devolveu o PDF oficial agora (${motivoGov.join(" · ") || "sem resposta"}). O serviço deles oscila bastante: tente de novo em alguns minutos ou baixe o espelho.`, motivo_gov: motivoGov }, 503);
-
-      // gov fora do ar: espelho a partir do XML guardado (o XML é o documento legal)
+      const chaveD = String(body.chave_acesso);
+      const fonte = body.fonte === "espelho" ? "espelho" : "danfse";
       const { data: reg } = await supabase.from("nfse_records")
-        .select("xml_nfse").eq("chave_acesso", body.chave_acesso).maybeSingle();
-      if (!reg?.xml_nfse) return json({ error: "O serviço de PDF do gov está fora do ar e não tenho o XML desta nota guardado. Tente mais tarde." }, 503);
-      const xml = await gunzipB64(reg.xml_nfse);
-      const pdf = await gerarEspelho(xml, body.chave_acesso);
+        .select("id, xml_nfse, status").eq("chave_acesso", chaveD).maybeSingle();
+      let xmlGz: string | null = reg?.xml_nfse ?? null;
+      if (!xmlGz) {
+        // nota sem XML guardado: busca o XML autorizado no gov e guarda
+        try {
+          const { data: cfgD } = await supabase.from("nfse_emitter_config").select("*").limit(1).maybeSingle();
+          const { data: certD } = await supabase.from("fiscal_certificates")
+            .select("file_path, senha_cifrada").eq("ativo", true).maybeSingle();
+          if (cfgD && certD) {
+            const { data: arqD } = await supabase.storage.from("certificados").download(certD.file_path);
+            const abertoD = abrirPfx(bytesToB64(new Uint8Array(await arqD!.arrayBuffer())), await decifrar(certD.senha_cifrada));
+            const rN = await pontoGov(`/SefinNacional/nfse/${chaveD}`, "GET", undefined, abertoD.certPem, abertoD.keyPem, String(body.ambiente || cfgD.ambiente));
+            const dN = JSON.parse(rN.corpo);
+            if (dN?.nfseXmlGZipB64) {
+              xmlGz = dN.nfseXmlGZipB64;
+              if (reg?.id) await supabase.from("nfse_records").update({ xml_nfse: xmlGz }).eq("id", reg.id);
+            }
+          }
+        } catch (e) { console.error("[nfse-emitir] danfse: XML não veio do gov", e); }
+      }
+      if (!xmlGz) return json({ error: "Não tenho o XML desta nota guardado e o gov não devolveu agora. Tente de novo em alguns minutos." }, 503);
+      const xml = await gunzipB64(xmlGz);
+      let pdf: Uint8Array;
+      if (fonte === "espelho") {
+        pdf = await gerarEspelho(xml, chaveD);
+      } else {
+        const { jsPDF } = await import("https://esm.sh/jspdf@2.5.2");
+        const QRCode = (await import("https://esm.sh/qrcode@1.5.4")).default;
+        pdf = await gerarDanfse(xml, {
+          jsPDF, QRCode, logoNfseB64: LOGO_NFSE_B64, nomeMunicipio: nomeMunicipioIbge,
+          situacao: reg?.status === "cancelled" ? "cancelada" : reg?.status === "replaced" ? "substituida" : null,
+        });
+      }
       let b64 = "";
-      for (let i = 0; i < pdf.length; i += 8192) b64 += String.fromCharCode(...pdf.subarray(i, i + 8192));
-      return json({ ok: true, pdf_base64: btoa(b64), fonte: "espelho", motivo_gov: motivoGov });
+      for (let k = 0; k < pdf.length; k += 8192) b64 += String.fromCharCode(...pdf.subarray(k, k + 8192));
+      return json({ ok: true, pdf_base64: btoa(b64), fonte });
     }
 
     // envia a nota por WhatsApp pro cliente (PDF oficial; espelho se o gov cair)
