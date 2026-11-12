@@ -150,9 +150,15 @@ export function NfseGovDialog({ aberto, onOpenChange, onEmitida }: {
       }
       if ((data as any)?.error) throw new Error((data as any).error);
       const d = data as any;
-      toast.success(d.ambiente === "2"
-        ? `Nota de teste gerada (homologação). Chave: ${d.chave_acesso || "—"}`
-        : `NFS-e emitida! Chave: ${d.chave_acesso}`);
+      // A nota saiu no gov mas o sistema não gravou: avisa em vez de mostrar "emitida" e a nota não aparecer
+      // na lista (12/11/2026, nota avulsa 9013). Não emitir de novo: a nota existe.
+      if (d.aviso) {
+        toast.warning(`${d.aviso}. Não emita de novo: a nota existe no gov. Chave: ${d.chave_acesso || "—"}`, { duration: 30000 });
+      } else {
+        toast.success(d.ambiente === "2"
+          ? `Nota de teste gerada (homologação). Chave: ${d.chave_acesso || "—"}`
+          : `NFS-e emitida! Chave: ${d.chave_acesso}`);
+      }
       onOpenChange(false); onEmitida?.();
       setDescricao(""); setValor(""); setServNota({ codigo: "", nbs: "" });
       setTomador({ nome: "", documento: "", email: "", cep: "", municipio: "", logradouro: "", numero: "", bairro: "" });
