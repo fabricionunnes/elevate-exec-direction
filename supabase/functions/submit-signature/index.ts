@@ -1,6 +1,52 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders, createErrorResponse, createSuccessResponse, hashString, getGeoFromIp } from "../_shared/utils.ts";
+import { corsHeaders, createErrorResponse, createSuccessResponse, hashString, getGeoFromIp, generateToken } from "../_shared/utils.ts";
+
+// 12/11/2026 (Fabrício): "quando o cliente assina contrato quero receber uma notificação já com o link
+// pra eu fazer minha assinatura". Quem assina pela UNV é reconhecido pelo e-mail: o do master do Nexus
+// (ou a lista em UNV_SIGNER_EMAILS, separada por vírgula, se um dia outra pessoa assinar pela casa).
+const APP_URL = Deno.env.get("APP_URL") ?? "https://unvholdings.com.br";
+const TIPO_AVISO = "contrato_assinado_cliente";
+const limpo = (email: unknown) => String(email ?? "").toLowerCase().trim();
+
+type Signatario = { id: string; name: string | null; email: string | null; status: string };
+
+// deno-lint-ignore no-explicit-any
+async function emailsDaCasa(admin: any): Promise<string[]> {
+  const fixos = (Deno.env.get("UNV_SIGNER_EMAILS") ?? "").split(",").map(limpo).filter(Boolean);
+  if (fixos.length) return fixos;
+  const { data } = await admin.from("onboarding_staff").select("email").eq("role", "master").eq("is_active", true).is("tenant_id", null);
+  return ((data ?? []) as Array<{ email: string | null }>).map((r) => limpo(r.email)).filter(Boolean);
+}
+
+// Avisa o Fabrício pela Central de Avisos. Se a assinatura dele ainda falta, gera um link novo
+// (o anterior, se não foi usado, deixa de valer) e manda junto. Nunca derruba a assinatura do cliente.
+// deno-lint-ignore no-explicit-any
+async function avisarAssinaturaDoCliente(admin: any, envelope: { id: string; title: string }, quemAssinou: Signatario, todos: Signatario[]) {
+  const casa = await emailsDaCasa(admin);
+  const daCasa = (email: unknown) => casa.includes(limpo(email));
+  if (!casa.length || daCasa(quemAssinou.email)) return;
+  const pendentes = todos.filter((s) => s.id !== quemAssinou.id && s.status !== "signed" && s.status !== "declined");
+  const meu = pendentes.find((s) => daCasa(s.email));
+  const outros = pendentes.filter((s) => !daCasa(s.email)).map((s) => s.name || s.email).filter(Boolean);
+  const linhas = ["*Cliente assinou o contrato*", "", `${quemAssinou.name || quemAssinou.email} assinou agora:`, envelope.title];
+  if (meu) {
+    await admin.from("signing_tokens").delete().eq("signer_id", meu.id).is("used_at", null);
+    const novo = generateToken();
+    const { error } = await admin.from("signing_tokens").insert({ signer_id: meu.id, token_hash: await hashString(novo), expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString() });
+    if (error) {
+      console.error("aviso de assinatura: token não gerado", error.message);
+      linhas.push("", "Falta a sua assinatura. Não consegui gerar o link agora, abre o contrato no Nexus pra assinar.");
+    } else {
+      linhas.push("", "Falta a sua assinatura. É só abrir e assinar:", `${APP_URL}/#/assinar/${novo}`, "", "O link é só seu e vale 7 dias.");
+    }
+  } else if (!outros.length) {
+    linhas.push("", "Todas as assinaturas feitas. O contrato está concluído.");
+  }
+  if (outros.length) linhas.push("", `Ainda falta assinar: ${outros.join(", ")}.`);
+  const { error } = await admin.rpc("aviso_enviar", { p_tipo: TIPO_AVISO, p_texto: linhas.join("\n"), p_titulo: "Cliente assinou o contrato", p_origem: "nexus", p_nivel_padrao: "hora" });
+  if (error) console.error("aviso de assinatura falhou", error.message);
+}
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -35,7 +81,9 @@ serve(async (req: Request) => {
     await supabaseAdmin.from("signing_tokens").update({ used_at: signedAt }).eq("id", tr.id);
     const sigHash = await hashString(signature_image);
     await supabaseAdmin.from("audit_events").insert({ envelope_id: envelope.id, signer_id: signer.id, event_type: "signed", ip: clientIp, user_agent: userAgent, geo_country: geo.country, geo_region: geo.region, geo_city: geo.city, metadata: { email: signer.email, accepted_terms: true, accepted_terms_text: "Aceito assinar este documento eletronicamente nos termos da MP 2.200-2/2001", signed_at_utc: signedAt, signature_hash: sigHash, device_info: device_info ?? {} } });
-    const { data: allSigners } = await supabaseAdmin.from("signers").select("id,status").eq("envelope_id", envelope.id);
+    const { data: allSigners } = await supabaseAdmin.from("signers").select("id,name,email,status").eq("envelope_id", envelope.id);
+    try { await avisarAssinaturaDoCliente(supabaseAdmin, envelope, { ...signer, status: "signed" }, (allSigners ?? []) as Signatario[]); }
+    catch (e) { console.error("aviso de assinatura erro", e); }
     const allSigned = (allSigners ?? []).every((s: { status: string }) => s.status === "signed");
     if (allSigned) {
       // Espera a finalização: sem await o runtime encerrava antes da chamada sair e o envelope
