@@ -14,17 +14,89 @@ const pdfSafe = (t: unknown) => String(t ?? "").normalize("NFC").split("")
   .filter((ch) => { const c = ch.charCodeAt(0); return (c >= 0x20 && c <= 0x7e) || (c >= 0xa0 && c <= 0xff) || WIN_EXTRA.includes(ch); })
   .join("");
 
+// 12/11/2026 (Fabrício): "quando os dois assinarem, enviar o contrato em PDF no grupo integração, que é o
+// que está conectado lá no CRM Comercial". Grupo e número são os do aviso de ganho (crm_settings
+// won_notification_*). Só vai contrato que nasceu no gerador de contratos de cliente: documento avulso
+// subido na assinatura (contrato de colaborador, por exemplo) não vai pro grupo.
+const quando = (iso: string | null) => iso ? new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).replace(",", " às") : "";
+const nomeArquivo = (titulo: string) => (String(titulo || "Contrato").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9 ._-]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 90) || "Contrato") + " (assinado).pdf";
+
+// deno-lint-ignore no-explicit-any
+async function enviarContratoNoGrupo(admin: any, envelope: { id: string; title: string }, signers: any[], pdf: Uint8Array, opts: { destino?: string; forcar?: boolean } = {}): Promise<{ ok: boolean; pulado?: string; erro?: string }> {
+  if (!opts.forcar) {
+    const { data: gerado } = await admin.from("generated_contracts").select("id").eq("envelope_id", envelope.id).limit(1);
+    if (!gerado?.length) return { ok: false, pulado: "documento avulso, fora do gerador de contratos" };
+  }
+  const { data: settings } = await admin.from("crm_settings").select("setting_key, setting_value")
+    .in("setting_key", ["won_notification_instance_id", "won_notification_group_jid", "contract_signed_group_enabled"]);
+  const cfg: Record<string, string> = {};
+  // deno-lint-ignore no-explicit-any
+  (settings || []).forEach((s: any) => { cfg[s.setting_key] = typeof s.setting_value === "string" ? s.setting_value : JSON.stringify(s.setting_value).replace(/^"|"$/g, ""); });
+  if (cfg.contract_signed_group_enabled === "false") return { ok: false, pulado: "envio ao grupo desligado" };
+  const grupo = opts.destino || cfg.won_notification_group_jid;
+  if (!cfg.won_notification_instance_id || !grupo) return { ok: false, erro: "grupo de integração não configurado no CRM" };
+  const { data: inst } = await admin.from("whatsapp_instances").select("instance_name, api_url, api_key, provider_type").eq("id", cfg.won_notification_instance_id).maybeSingle();
+  const apiUrl = inst?.api_url || Deno.env.get("EVOLUTION_API_URL");
+  const apiKey = inst?.api_key || Deno.env.get("EVOLUTION_API_KEY");
+  if (!inst || !apiUrl || !apiKey) return { ok: false, erro: "número do grupo de integração sem conexão" };
+  const baseUrl = String(apiUrl).replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
+  let isV2 = inst.provider_type === "manager_v2";
+  try { if (!isV2) isV2 = new URL(baseUrl).hostname.toLowerCase().endsWith(".stevo.chat"); } catch { /* legado */ }
+  const numero = /@/.test(grupo) || /^\d{8,15}$/.test(grupo) ? grupo : `${grupo}@g.us`;
+  const assinaturas = (signers ?? []).filter((s) => s.status === "signed").map((s) => `- ${s.name}${s.signed_at ? `, ${quando(s.signed_at)}` : ""}`);
+  const caption = [opts.destino ? "*TESTE: contrato assinado pelas duas partes*" : "*Contrato assinado pelas duas partes*", "", envelope.title, "", "Assinaturas:", ...assinaturas].join("\n");
+  let b64 = "";
+  for (let i = 0; i < pdf.length; i += 8192) b64 += String.fromCharCode(...pdf.subarray(i, i + 8192));
+  b64 = btoa(b64);
+  const url = isV2 ? `${baseUrl}/send/media` : `${baseUrl}/message/sendMedia/${inst.instance_name}`;
+  const headers: Record<string, string> = isV2 ? { "Content-Type": "application/json", apikey: apiKey } : { "Content-Type": "application/json", apikey: apiKey, Authorization: `Bearer ${apiKey}` };
+  const r = await fetch(url, { method: "POST", headers, body: JSON.stringify({ number: numero, mediatype: "document", mimetype: "application/pdf", media: b64, caption, fileName: nomeArquivo(envelope.title) }) });
+  const corpo = await r.text();
+  if (!r.ok) return { ok: false, erro: `WhatsApp recusou (${r.status}): ${corpo.slice(0, 150)}` };
+  return { ok: true };
+}
+
+// Manda no grupo e, se não der, avisa o Fabrício pela Central de Avisos. Nunca derruba a finalização.
+// deno-lint-ignore no-explicit-any
+async function contratoNoGrupo(admin: any, envelope: { id: string; title: string }, signers: any[], pdf: Uint8Array, opts: { destino?: string; forcar?: boolean } = {}) {
+  let r: { ok: boolean; pulado?: string; erro?: string };
+  try { r = await enviarContratoNoGrupo(admin, envelope, signers, pdf, opts); }
+  catch (e) { r = { ok: false, erro: String((e as Error)?.message || e).slice(0, 200) }; }
+  if (r.erro) {
+    console.error("contrato no grupo falhou", envelope.id, r.erro);
+    if (!opts.destino) {
+      try { await admin.rpc("aviso_enviar", { p_tipo: "contrato_grupo_falhou", p_texto: `*Contrato assinado não foi pro grupo de integração*\n\n${envelope.title}\n\nMotivo: ${r.erro}\n\nO PDF assinado está guardado no Nexus.`, p_titulo: "Contrato não enviado ao grupo", p_origem: "nexus", p_nivel_padrao: "hora" }); }
+      catch (e) { console.error("aviso de falha do grupo erro", e); }
+    }
+  }
+  return r;
+}
+
 const fmtDate = (iso: string | null) => iso ? new Date(iso).toLocaleString("pt-BR", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) + " UTC" : "N/A";
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const { envelope_id } = await req.json() as { envelope_id?: string };
+    const corpoReq = await req.json() as { envelope_id?: string; reenviar_grupo?: boolean; destino?: string; forcar?: boolean };
+    const { envelope_id } = corpoReq;
     if (!envelope_id) return createErrorResponse("envelope_id obrigatório", 400);
     const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: envelope } = await supabaseAdmin.from("envelopes").select("*").eq("id", envelope_id).maybeSingle();
     if (!envelope) return createErrorResponse("Envelope não encontrado", 404);
-    if (envelope.status === "completed") return createSuccessResponse({ already_completed: true });
+    if (envelope.status === "completed") {
+      // Reenvio do PDF final ao grupo (ou a um destino de teste): só com o segredo interno.
+      if (corpoReq.reenviar_grupo === true) {
+        const { data: seg } = await supabaseAdmin.rpc("app_secret_get", { p_key: "crm_contrato_secret" });
+        const veio = req.headers.get("x-contrato-secret");
+        if (!seg || !veio || veio !== seg) return createErrorResponse("Não autorizado", 401);
+        const { data: finalBlob } = await supabaseAdmin.storage.from("envelopes").download(envelope.final_file_path);
+        if (!finalBlob) return createErrorResponse("PDF final não encontrado", 404);
+        const { data: sig } = await supabaseAdmin.from("signers").select("*").eq("envelope_id", envelope_id).order("order_index");
+        const grupo = await contratoNoGrupo(supabaseAdmin, envelope, sig ?? [], new Uint8Array(await finalBlob.arrayBuffer()), { destino: typeof corpoReq.destino === "string" && corpoReq.destino ? corpoReq.destino : undefined, forcar: corpoReq.forcar === true });
+        return createSuccessResponse({ already_completed: true, grupo });
+      }
+      return createSuccessResponse({ already_completed: true });
+    }
     const { data: signers } = await supabaseAdmin.from("signers").select("*").eq("envelope_id", envelope_id).order("order_index");
     const { data: auditEvents } = await supabaseAdmin.from("audit_events").select("*").eq("envelope_id", envelope_id).order("created_at");
     const { data: origPdfBlob } = await supabaseAdmin.storage.from("envelopes").download(envelope.original_file_path);
@@ -109,6 +181,7 @@ serve(async (req: Request) => {
         }
       }
     } catch (e) { console.error("email error:", e); }
-    return createSuccessResponse({ completed: true, final_file_hash: finalHash, completed_at: completedAt });
+    const grupo = await contratoNoGrupo(supabaseAdmin, envelope, signers ?? [], finalBytes);
+    return createSuccessResponse({ completed: true, final_file_hash: finalHash, completed_at: completedAt, grupo });
   } catch (err) { console.error(err); return createErrorResponse("Erro interno", 500); }
 });
