@@ -12,12 +12,15 @@ import { CreditCard, Copy, Loader2, ExternalLink, RefreshCw, Trash2, QrCode } fr
 import { toast } from "sonner";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 
-type ProviderKey = "mercadopago" | "dompagamentos" | "asaas" | "asaas_social" | "tmb";
+type ProviderKey = "mercadopago" | "mercadopago_yas" | "dompagamentos" | "asaas" | "asaas_social" | "tmb";
+// Mercado Pago também tem duas contas (Fabrício, 12/11/2026): a da UNV e a "Mercado Pago Yas"
+// (empresa da Yasmim, 59.237.272). Mesmo checkout de cartão; muda o token e o banco creditado.
 // Asaas tem duas contas: a principal e a UNV Social (Fabrício, 04/11/2026). As duas geram
 // assinatura mensal via PIX; o que muda é a conta que recebe (e o banco creditado no Financeiro).
 const isAsaas = (p: string) => p === "asaas" || p === "asaas_social";
 const PROVIDERS: { key: ProviderKey; name: string; sub: string }[] = [
   { key: "mercadopago", name: "Mercado Pago", sub: "Cartão parcelado" },
+  { key: "mercadopago_yas", name: "Mercado Pago Yas", sub: "Cartão parcelado" },
   { key: "dompagamentos", name: "Dom Pagamentos", sub: "Cartão parcelado" },
   { key: "asaas", name: "Asaas", sub: "PIX · mensal" },
   { key: "asaas_social", name: "Asaas UNV Social", sub: "PIX · mensal" },
@@ -25,7 +28,7 @@ const PROVIDERS: { key: ProviderKey; name: string; sub: string }[] = [
   // do negócio do CRM (o valor não é editável nessa forma).
   { key: "tmb", name: "TMB", sub: "Boleto parcelado" },
 ];
-const GRID_COLS: Record<number, string> = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-2", 5: "grid-cols-3", 6: "grid-cols-3" };
+const GRID_COLS: Record<number, string> = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-2", 5: "grid-cols-3", 6: "grid-cols-3", 7: "grid-cols-3" };
 type TmbProduto = { produto_id: number; nome: string; descricao: string | null; valor: string | null; ativo: boolean };
 
 interface Payment {
@@ -66,7 +69,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
   const [generating, setGenerating] = useState(false);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [enabled, setEnabled] = useState<Record<string, boolean>>({ mercadopago: true, dompagamentos: true, asaas: true, asaas_social: true, tmb: true });
+  const [enabled, setEnabled] = useState<Record<string, boolean>>({ mercadopago: true, mercadopago_yas: true, dompagamentos: true, asaas: true, asaas_social: true, tmb: true });
   const { isMaster, currentStaff } = useStaffPermissions();
   const canDelete = isMaster || currentStaff?.role === "admin";
 
@@ -74,7 +77,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
     (supabase as any).from("crm_payment_provider_settings").select("provider, is_enabled, config")
       .then(({ data }: any) => {
         if (!data?.length) return;
-        const map: Record<string, boolean> = { mercadopago: true, dompagamentos: true, asaas: true, asaas_social: true, tmb: true };
+        const map: Record<string, boolean> = { mercadopago: true, mercadopago_yas: true, dompagamentos: true, asaas: true, asaas_social: true, tmb: true };
         data.forEach((r: any) => {
           map[r.provider] = r.is_enabled;
           if (r.provider === "tmb" && r.config?.produto_id) { setTmbPadrao(String(r.config.produto_id)); setTmbProduto((cur) => cur || String(r.config.produto_id)); }
@@ -175,7 +178,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
         ? { lead_id: leadId, amount_cents: cents, installments: Number(installments), interest_free_installments: Number(installments), description: description || `Pagamento — ${leadName}` }
         : provider === "tmb"
         ? { lead_id: leadId, installments: Number(installments), produto_id: Number(tmbProduto), entry_cents: entradaCents || undefined, entry_due: tmbEntradaVenc || undefined, description: description || `Boleto parcelado TMB — ${leadName}` }
-        : { lead_id: leadId, amount_cents: cents, installments: Number(installments), description: description || `Pagamento — ${leadName}` };
+        : { lead_id: leadId, amount_cents: cents, installments: Number(installments), description: description || `Pagamento — ${leadName}`, ...(provider === "mercadopago_yas" ? { account: "yas" } : {}) };
       const { data, error } = await supabase.functions.invoke(fn, { body: payload });
       if (error || !data?.ok) { toast.error(data?.error || error?.message || "Falha ao gerar link"); return; }
       if (data.pix_auto) {
@@ -347,7 +350,7 @@ export function LeadPaymentPanel({ leadId, leadName, opportunityValue }: { leadI
                       <span className="font-semibold text-sm">{fmt(p.amount_cents)}</span>
                       <Badge variant={st.variant} className="text-[10px]">{st.label}</Badge>
                       {p.installments && p.installments > 1 && <span className="text-[11px] text-muted-foreground">{p.installments}x</span>}
-                      <span className="text-[10px] text-muted-foreground">{p.billing_type === "PIX_AUTOMATICO" ? `Pix Automático${p.provider === "asaas_social" ? " · UNV Social" : ""} (dia ${p.due_day})` : p.provider === "asaas" ? `PIX · mensal (dia ${p.due_day})` : p.provider === "asaas_social" ? `PIX · mensal · UNV Social (dia ${p.due_day})` : p.provider === "tmb" ? "Boleto parcelado (TMB)" : "Cartão"}</span>
+                      <span className="text-[10px] text-muted-foreground">{p.billing_type === "PIX_AUTOMATICO" ? `Pix Automático${p.provider === "asaas_social" ? " · UNV Social" : ""} (dia ${p.due_day})` : p.provider === "asaas" ? `PIX · mensal (dia ${p.due_day})` : p.provider === "asaas_social" ? `PIX · mensal · UNV Social (dia ${p.due_day})` : p.provider === "tmb" ? "Boleto parcelado (TMB)" : p.provider === "mercadopago_yas" ? "Cartão · Mercado Pago Yas" : "Cartão"}</span>
                     </div>
                     {p.billing_type === "PIX_AUTOMATICO" && p.provider_ref && pixAuto[p.provider_ref] && (
                       <div className="mt-1"><BadgePixAutomatico status={pixAuto[p.provider_ref].status} /></div>
