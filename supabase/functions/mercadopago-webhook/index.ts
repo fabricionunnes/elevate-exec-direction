@@ -5,7 +5,8 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // Conta da notificação: ?account=yas = "Mercado Pago Yas" (empresa da Yasmim); sem nada = conta da UNV.
 const TOKENS: Record<string, string> = {
   unv: Deno.env.get("MERCADOPAGO_ACCESS_TOKEN") || "",
-  yas: Deno.env.get("MERCADOPAGO_YAS_ACCESS_TOKEN") || "",
+  // o segredo foi salvo como MERCADOPAGOYAS no painel (12/11); aceita os dois nomes
+  yas: Deno.env.get("MERCADOPAGO_YAS_ACCESS_TOKEN") || Deno.env.get("MERCADOPAGOYAS") || "",
 };
 const BANKS: Record<string, string> = {
   unv: "50d90f6e-e8e6-4dd7-87e9-3757ccda9842", // financial_banks: Mercado pago
