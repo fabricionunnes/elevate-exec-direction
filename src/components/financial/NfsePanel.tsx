@@ -419,12 +419,13 @@ export function NfsePanel() {
     }
   };
 
-  // PDF de uma nota do Emissor Nacional. fonte (04/11/2026): "gov" = PDF oficial do nfse.gov.br;
-  // "espelho" = espelho do Nexus; vazio = oficial com reserva no espelho.
-  const obterPdfGov = async (record: NfseRecord, fonte?: "gov" | "espelho"): Promise<{ blob: Blob; nome: string; fonte: string } | null> => {
+  // PDF de uma nota do Emissor Nacional. O gov deixou de entregar o PDF em 03/08/2026 (NT 008/2026): o
+  // DANFSe agora é gerado pelo próprio sistema, no modelo nacional, a partir do XML autorizado.
+  // fonte: "danfse" = DANFSe no modelo nacional (padrão); "espelho" = espelho no visual do Nexus.
+  const obterPdfGov = async (record: NfseRecord, fonte?: "danfse" | "espelho"): Promise<{ blob: Blob; nome: string; fonte: string } | null> => {
     if (!record.chave_acesso) { toast.error("Nota sem chave de acesso guardada."); return null; }
     try {
-      toast.info(fonte === "espelho" ? "Gerando o espelho..." : "Buscando o PDF oficial no nfse.gov.br...");
+      toast.info(fonte === "espelho" ? "Gerando o espelho..." : "Gerando o DANFSe...");
       const { data, error } = await supabase.functions.invoke("nfse-emitir", {
         body: { action: "danfse", chave_acesso: record.chave_acesso, ambiente: record.environment, fonte: fonte || undefined },
       });
@@ -436,20 +437,14 @@ export function NfsePanel() {
       const d = data as any;
       const bytes = Uint8Array.from(atob(d.pdf_base64), (c) => c.charCodeAt(0));
       const blob = new Blob([bytes], { type: "application/pdf" });
-      if (d.fonte === "espelho" && fonte !== "espelho") {
-        // mostra POR QUE o gov não devolveu: antes só dizia "instável" e
-        // ninguém conseguia distinguir fora do ar de falta de permissão
-        const motivo = Array.isArray(d.motivo_gov) && d.motivo_gov.length ? ` (${d.motivo_gov.join(" · ")})` : "";
-        toast.info(`O PDF oficial do gov não veio${motivo}. Usei o espelho gerado do XML, que é o documento legal.`, { duration: 12000 });
-      }
-      return { blob, fonte: d.fonte, nome: `NFSe-${record.number || record.chave_acesso.slice(-8)}${d.fonte === "espelho" ? "-espelho" : ""}.pdf` };
+      return { blob, fonte: d.fonte, nome: `${d.fonte === "espelho" ? "NFSe" : "DANFSe"}-${record.number || record.chave_acesso.slice(-8)}${d.fonte === "espelho" ? "-espelho" : ""}.pdf` };
     } catch (e: any) {
       toast.error(e?.message || "Não consegui obter o PDF");
       return null;
     }
   };
 
-  const handleVerPdf = async (record: NfseRecord, fonte?: "gov" | "espelho") => {
+  const handleVerPdf = async (record: NfseRecord, fonte?: "danfse" | "espelho") => {
     if (record.origem === "gov") {
       const r = await obterPdfGov(record, fonte);
       if (r) visor.abrir({ nome: r.nome, tipo: "application/pdf", url: URL.createObjectURL(r.blob) });
@@ -459,7 +454,7 @@ export function NfsePanel() {
     toast.error("Esta nota não tem PDF guardado pra visualizar. Use o download.");
   };
 
-  const handleDownloadPdf = async (record: NfseRecord, fonte?: "gov" | "espelho") => {
+  const handleDownloadPdf = async (record: NfseRecord, fonte?: "danfse" | "espelho") => {
     if (record.origem === "gov") {
       const r = await obterPdfGov(record, fonte);
       if (!r) return;
@@ -1024,9 +1019,9 @@ export function NfsePanel() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-72">
                             <DropdownMenuLabel className="text-xs text-muted-foreground">Visualizar NFS-e {record.number ? `nº ${record.number}` : ""}</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleVerPdf(record, "gov")}>
+                            <DropdownMenuItem onClick={() => handleVerPdf(record, "danfse")}>
                               <div>
-                                <p className="text-sm font-medium">Ver PDF oficial (nfse.gov.br)</p>
+                                <p className="text-sm font-medium">Ver DANFSe (modelo oficial)</p>
                                 <p className="text-[11px] text-muted-foreground">Abre na tela, sem baixar.</p>
                               </div>
                             </DropdownMenuItem>
@@ -1038,10 +1033,10 @@ export function NfsePanel() {
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuLabel className="text-xs text-muted-foreground">Baixar</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleDownloadPdf(record, "gov")}>
+                            <DropdownMenuItem onClick={() => handleDownloadPdf(record, "danfse")}>
                               <div>
-                                <p className="text-sm font-medium">PDF oficial (nfse.gov.br)</p>
-                                <p className="text-[11px] text-muted-foreground">A DANFSe emitida pelo governo. O serviço deles oscila; se falhar, tente de novo.</p>
+                                <p className="text-sm font-medium">DANFSe (modelo oficial)</p>
+                                <p className="text-[11px] text-muted-foreground">Documento auxiliar no padrão nacional, com QR Code de consulta. O governo parou de fornecer o PDF em 03/08/2026; agora ele é gerado aqui, do XML autorizado.</p>
                               </div>
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleDownloadPdf(record, "espelho")}>
