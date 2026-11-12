@@ -470,6 +470,37 @@ export const CRMInboxPage = () => {
 
   const loadingConversations = loadingWhatsApp || loadingInstagram;
 
+  // Conversa de lead que está com outra pessoa não aparece (Fabrício, 12/11/2026: "o usuário Ricardo não pode
+  // ver as conversas com ele, mesmo tendo acesso ao número de whatsapp, só pode ver conversas de lead que não
+  // está vinculado a ninguém, ou que está vinculado a ele mesmo"). Master e admin veem tudo. A lista vem do
+  // banco (crm_inbox_conversas_de_outros) porque o vendedor nem sempre consegue ler o lead dos outros.
+  // null = ainda não carregou: até lá a lista fica em "carregando", pra não piscar conversa que vai sumir.
+  const veTodasAsConversas = staffRole === "master" || staffRole === "admin";
+  const [conversasDeOutros, setConversasDeOutros] = useState<Set<string> | null>(null);
+  const totalDeConversas = whatsappConversations.length + instagramConversations.length;
+  useEffect(() => {
+    if (veTodasAsConversas) { setConversasDeOutros(new Set()); return; }
+    if (!staffId) return;
+    let ativo = true;
+    let nova: ReturnType<typeof setTimeout> | undefined;
+    const carregar = async () => {
+      const { data, error } = await (supabase as any).rpc("crm_inbox_conversas_de_outros");
+      if (!ativo) return;
+      if (error) {
+        // sem a lista não dá pra saber o que esconder: tenta de novo em vez de mostrar tudo
+        console.error("[Inbox] crm_inbox_conversas_de_outros", error);
+        nova = setTimeout(carregar, 5000);
+        return;
+      }
+      setConversasDeOutros(new Set(((data || []) as any[]).map((x) => String(x))));
+    };
+    // conversa nova chegando ou lead trocando de dono: espera um instante e relê; e relê a cada minuto
+    const espera = setTimeout(carregar, conversasDeOutros === null ? 0 : 800);
+    const relogio = setInterval(carregar, 60000);
+    return () => { ativo = false; clearTimeout(espera); clearInterval(relogio); if (nova) clearTimeout(nova); };
+  }, [veTodasAsConversas, staffId, totalDeConversas]); // eslint-disable-line react-hooks/exhaustive-deps
+  const carregandoDono = !veTodasAsConversas && conversasDeOutros === null;
+
   // Merge WhatsApp + Instagram conversations and tag the channel
   // Uma conversa aparece uma vez só (09/11/2026): cópia repetida com o mesmo key ficava presa na lista
   // e a troca de filtro ("Não lidas") não tirava os cartões antigos da tela.
@@ -479,6 +510,7 @@ export const CRMInboxPage = () => {
     ...instagramConversations,
   ].filter((c: any) => {
     const k = String(c.id);
+    if (conversasDeOutros?.has(k)) return false; // lead está com outra pessoa
     if (vistas.has(k)) return false;
     vistas.add(k);
     return true;
@@ -513,7 +545,7 @@ export const CRMInboxPage = () => {
     // vale pra todos, inclusive master. Instância com "Atendimento" desligado não
     // aparece — nem pro master. As instâncias visíveis já estão em allowedInstanceIds.
     // If still loading access, don't filter yet - will re-render when loaded
-    if (loadingAccess) return false;
+    if (loadingAccess || carregandoDono) return false;
 
     // Instagram conversations - check IG instance access
     if (conv.channel === "instagram") {
@@ -733,6 +765,14 @@ export const CRMInboxPage = () => {
     }
   }, [conversations]);
 
+  // o lead da conversa aberta passou pra outra pessoa: a conversa sai da tela de quem não é o dono
+  useEffect(() => {
+    if (selectedConversation && conversasDeOutros?.has(String(selectedConversation.id))) {
+      setSelectedConversation(null);
+      toast.info("Esse lead está com outra pessoa do time. A conversa saiu da sua lista.");
+    }
+  }, [conversasDeOutros, selectedConversation?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // o Atendimento pode já estar aberto quando chega um link novo (?conversation=&texto=)
   useEffect(() => {
     const t = searchParams.get("texto");
@@ -751,6 +791,13 @@ export const CRMInboxPage = () => {
     if (!conversationIdFromUrl) return;
     if (urlConvAplicada.current === conversationIdFromUrl) return;
     
+    if (carregandoDono) return;
+    if (conversasDeOutros?.has(conversationIdFromUrl)) {
+      toast.error("Esse lead está com outra pessoa do time. Você não tem acesso a essa conversa.");
+      limparConvDaUrl();
+      return;
+    }
+
     // If already selected the correct conversation, skip
     if (selectedConversation?.id === conversationIdFromUrl) { limparConvDaUrl(); return; }
     
@@ -787,7 +834,7 @@ export const CRMInboxPage = () => {
       };
       fetchConversationById();
     }
-  }, [conversationIdFromUrl, conversations, selectedConversation, loadingConversations]);
+  }, [conversationIdFromUrl, conversations, selectedConversation, loadingConversations, conversasDeOutros, carregandoDono]);
 
   useEffect(() => {
     const pend = textoDaUrl.current;
@@ -1346,7 +1393,7 @@ export const CRMInboxPage = () => {
 
         {/* Conversations */}
         <ScrollArea className="flex-1 min-h-0 [&>[data-radix-scroll-area-viewport]>div]:!block">
-          {loadingConversations || loadingAccess ? (
+          {loadingConversations || loadingAccess || carregandoDono ? (
             <div className="flex items-center justify-center py-8">
               <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
