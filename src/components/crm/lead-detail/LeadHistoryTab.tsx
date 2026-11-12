@@ -24,6 +24,9 @@ import {
   Building2,
   LogIn,
   Gauge,
+  Send,
+  Bot,
+  Tag,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -41,7 +44,8 @@ import { cn } from "@/lib/utils";
 // por etapas pelo nome e o funil atual no topo; funil por evento não é inventado.
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Category = "etapa" | "reuniao" | "ligacao" | "mensagem" | "nota" | "proposta" | "pagamento" | "diagnostico" | "marco";
+type Category = "etapa" | "reuniao" | "ligacao" | "mensagem" | "nota" | "proposta" | "pagamento" | "diagnostico" | "marco"
+  | "disparo" | "conversa" | "ia" | "etiqueta";
 
 interface TimelineEvent {
   id: string;
@@ -70,6 +74,11 @@ const CATEGORY_META: Record<Category, { label: string; icon: any }> = {
   pagamento: { label: "Pagamento", icon: DollarSign },
   diagnostico: { label: "Diagnóstico", icon: Gauge },
   marco: { label: "Marco", icon: Flag },
+  // Percurso completo (Fabrício, 12/11/2026: "tem que ter tudo, e não somente mudança de etapa ou funil")
+  disparo: { label: "Disparo", icon: Send },
+  conversa: { label: "Conversa", icon: MessagesSquare },
+  ia: { label: "Agente de IA", icon: Bot },
+  etiqueta: { label: "Etiqueta", icon: Tag },
 };
 
 const brl = (cents?: number | null) =>
@@ -202,6 +211,12 @@ export const LeadHistoryTab = ({ leadId, originName, pipelineName }: LeadHistory
           ev.push({ id: `proj-${h.id}`, at: h.created_at, category: "marco", tone: "good", title: "Projeto de onboarding criado", note: h.notes || null, actor });
         } else if (h.action === "merge") {
           ev.push({ id: `merge-${h.id}`, at: h.created_at, category: "marco", title: "Leads unificados", note: h.notes || null, actor });
+        } else if (h.action === "pipeline_change") {
+          ev.push({ id: `funil-${h.id}`, at: h.created_at, category: "etapa", tone: "warn", title: `Funil: ${h.old_value || "—"} → ${h.new_value || "—"}`, actor });
+        } else if (h.action === "reentrada") {
+          ev.push({ id: `reent-${h.id}`, at: h.created_at, category: "marco", tone: "good", title: "Lead entrou de novo", note: h.notes || null, actor });
+        } else if (h.action === "meeting_rescheduled") {
+          ev.push({ id: `remarc-${h.id}`, at: h.created_at, category: "reuniao", tone: "warn", title: "Reunião remarcada", note: h.notes || null, actor });
         } else if (h.action === "meta_lead_form") {
           ev.push({ id: `meta-${h.id}`, at: h.created_at, category: "marco", title: "Veio de formulário da Meta", note: h.notes || null, actor });
         }
@@ -285,6 +300,151 @@ export const LeadHistoryTab = ({ leadId, originName, pipelineName }: LeadHistory
         });
       }
 
+      // ── Disparos, conversas, ações da IA, retornos, cadências e etiquetas (12/11/2026) ──
+      // Fabrício: "esse lead já tem dois disparos feitos, deve ter conversa, deve ter tentativa de agendamento".
+      try {
+        const [dispRes, waConvRes, igConvRes, retRes, cadRes, tagRes] = await Promise.all([
+          (supabase as any).from("whatsapp_official_campaign_recipients")
+            .select("id, campaign_id, status, error_text, sent_at, delivered_at, read_at, failed_at, created_at").eq("lead_id", leadId),
+          (supabase as any).from("crm_whatsapp_conversations")
+            .select("id, instance:whatsapp_instances(display_name, instance_name), official_instance:whatsapp_official_instances(display_name)").eq("lead_id", leadId),
+          (supabase as any).from("instagram_conversations").select("id").eq("lead_id", leadId),
+          (supabase as any).from("crm_ai_agent_retornos").select("id, due_at, motivo, status, sent_at, created_at").eq("lead_id", leadId),
+          (supabase as any).from("crm_cadence_enrollments").select("id, cadence_id, status, stopped_reason, enrolled_at, completed_at, created_at").eq("lead_id", leadId),
+          (supabase as any).from("crm_lead_tags").select("id, tag_id, created_at").eq("lead_id", leadId),
+        ]);
+        const disparos: any[] = dispRes.data || [];
+        const waConvs: any[] = waConvRes.data || [];
+        const igConvs: any[] = igConvRes.data || [];
+        const retornos: any[] = retRes.data || [];
+        const cadencias: any[] = cadRes.data || [];
+        const tagsLead: any[] = tagRes.data || [];
+        const waIds = waConvs.map((c) => c.id);
+        const igIds = igConvs.map((c) => c.id);
+        const convIds = [...waIds, ...igIds];
+        const campIds = [...new Set(disparos.map((d) => d.campaign_id).filter(Boolean))];
+        const cadIds = [...new Set(cadencias.map((c) => c.cadence_id).filter(Boolean))];
+        const tagIds = [...new Set(tagsLead.map((t) => t.tag_id).filter(Boolean))];
+        const vazio = Promise.resolve({ data: [] as any[] });
+
+        const [campRes, waMsgRes, igMsgRes, runsRes, cadNomeRes, tagNomeRes] = await Promise.all([
+          campIds.length ? (supabase as any).from("whatsapp_official_campaigns").select("id, template_name, created_by_name").in("id", campIds) : vazio,
+          waIds.length ? (supabase as any).from("crm_whatsapp_messages").select("conversation_id, direction, is_ai, sent_by, content, type, created_at")
+            .in("conversation_id", waIds).order("created_at", { ascending: false }).limit(1000) : vazio,
+          igIds.length ? (supabase as any).from("instagram_messages").select("conversation_id, direction, is_ai, sent_by, content, created_at")
+            .in("conversation_id", igIds).order("created_at", { ascending: false }).limit(1000) : vazio,
+          convIds.length ? (supabase as any).from("crm_ai_agent_runs").select("id, agent_id, conversation_id, mode, outcome, reply, tool_calls, created_at")
+            .in("conversation_id", convIds).order("created_at", { ascending: false }).limit(500) : vazio,
+          cadIds.length ? (supabase as any).from("crm_cadences").select("id, name").in("id", cadIds) : vazio,
+          tagIds.length ? (supabase as any).from("crm_tags").select("id, name").in("id", tagIds) : vazio,
+        ]);
+        const campMap = new Map<string, any>((campRes.data || []).map((c: any) => [c.id, c]));
+        const cadMap = new Map<string, string>((cadNomeRes.data || []).map((c: any) => [c.id, c.name]));
+        const tagMap = new Map<string, string>((tagNomeRes.data || []).map((t: any) => [t.id, t.name]));
+        const runs: any[] = runsRes.data || [];
+        const agIds = [...new Set(runs.map((r) => r.agent_id).filter(Boolean))];
+        const agRes = agIds.length ? await (supabase as any).from("crm_ai_agents").select("id, name").in("id", agIds) : { data: [] };
+        const agMap = new Map<string, string>((agRes.data || []).map((a: any) => [a.id, a.name]));
+        const curto = (t: unknown, n = 160) => { const x = String(t || "").replace(/\s+/g, " ").trim(); return x.length > n ? `${x.slice(0, n)}…` : x; };
+
+        // disparos de template (API oficial)
+        const rotuloDisparo: Record<string, string> = {
+          read: "Lido pelo lead", delivered: "Entregue", sent: "Enviado", pending: "Na fila", processing: "Enviando",
+          failed: "A Meta não entregou", error: "Falhou no envio", skipped: "Não enviado",
+        };
+        for (const d of disparos) {
+          const camp = campMap.get(d.campaign_id);
+          const falhou = d.status === "failed" || d.status === "error";
+          ev.push({
+            id: `disp-${d.id}`, at: d.sent_at || d.failed_at || d.created_at, category: "disparo",
+            tone: d.status === "read" ? "good" : falhou ? "bad" : d.status === "skipped" ? "warn" : "neutral",
+            title: `Disparo: ${camp?.template_name || "template"}`,
+            detail: `${rotuloDisparo[d.status] || d.status}${d.error_text && (falhou || d.status === "skipped") ? ` · ${curto(d.error_text, 120)}` : ""}`,
+            actor: camp?.created_by_name || null,
+          });
+        }
+
+        // conversas: um resumo por dia e por canal (quantas do lead, do time e da IA + o que o lead falou primeiro)
+        const canalDe = new Map<string, string>();
+        for (const c of waConvs) canalDe.set(c.id, c.official_instance?.display_name ? `WhatsApp oficial (${c.official_instance.display_name})` : `WhatsApp${c.instance?.display_name || c.instance?.instance_name ? ` (${c.instance.display_name || c.instance.instance_name})` : ""}`);
+        for (const c of igConvs) canalDe.set(c.id, "Instagram");
+        const diaBR = (iso: string) => new Date(new Date(iso).getTime() - 3 * 3600000).toISOString().slice(0, 10);
+        const grupos = new Map<string, { at: string; canal: string; lead: number; time: number; ia: number; fala: string }>();
+        for (const m of [...(waMsgRes.data || []), ...(igMsgRes.data || [])] as any[]) {
+          if (!m.created_at) continue;
+          const chave = `${m.conversation_id}|${diaBR(m.created_at)}`;
+          let g = grupos.get(chave);
+          if (!g) { g = { at: m.created_at, canal: canalDe.get(m.conversation_id) || "Conversa", lead: 0, time: 0, ia: 0, fala: "" }; grupos.set(chave, g); }
+          if (m.created_at < g.at) g.at = m.created_at;
+          if (m.direction === "inbound") {
+            g.lead++;
+            // a lista vem da mais nova pra mais antiga: a última atribuição é a primeira fala do dia
+            if (String(m.content || "").trim()) g.fala = String(m.content);
+          } else if (m.is_ai) g.ia++; else g.time++;
+        }
+        for (const [chave, g] of grupos) {
+          const partes = [g.lead ? `${g.lead} do lead` : "", g.time ? `${g.time} do time` : "", g.ia ? `${g.ia} da IA` : ""].filter(Boolean).join(", ");
+          ev.push({
+            id: `conv-${chave}`, at: g.at, category: "conversa", tone: g.lead ? "good" : "neutral",
+            title: g.lead ? `Conversa no ${g.canal}` : `Mensagem enviada no ${g.canal}, sem resposta do lead`,
+            detail: partes ? `Mensagens no dia: ${partes}` : null,
+            note: g.fala ? `Lead: "${curto(g.fala)}"` : null,
+          });
+        }
+
+        // ações do agente de IA que valem como passo do percurso (a resposta comum já entra no resumo da conversa)
+        for (const r of runs) {
+          const agente = r.agent_id ? agMap.get(r.agent_id) || "Agente de IA" : "Agente de IA";
+          const saida = String(r.outcome || "");
+          const ferramentas: string[] = (Array.isArray(r.tool_calls) ? r.tool_calls : []).map((t: any) => String(t).match(/^([a-z_]+)\(/i)?.[1] || "").filter(Boolean);
+          const base = { at: r.created_at, category: "ia" as Category, actor: agente };
+          if (r.mode === "followup" && saida.startsWith("sent")) {
+            ev.push({ ...base, id: `ia-fu-${r.id}`, title: `Follow-up da IA${saida.match(/\((.+)\)/) ? ` (${saida.match(/\((.+)\)/)![1]})` : ""}`, note: curto(r.reply, 220) || null });
+          } else if (r.mode === "retorno" && saida.startsWith("sent")) {
+            ev.push({ ...base, id: `ia-ret-${r.id}`, title: "IA voltou no horário combinado com o lead", note: curto(r.reply, 220) || null });
+          } else if (r.mode === "confirmacao" && saida.startsWith("sent")) {
+            ev.push({ ...base, id: `ia-conf-${r.id}`, tone: /liberad/.test(saida) ? "warn" : "neutral", title: /liberad/.test(saida) ? "IA liberou o horário da reunião (lead não confirmou)" : "IA pediu confirmação da reunião", note: curto(r.reply, 220) || null });
+          } else if (r.mode === "resgate" && saida.startsWith("sent")) {
+            ev.push({ ...base, id: `ia-resg-${r.id}`, title: "IA retomou conversa que tinha ficado sem resposta", note: curto(r.reply, 220) || null });
+          }
+          if (/handoff/.test(saida) || ferramentas.includes("transferir_para_humano")) {
+            ev.push({ ...base, id: `ia-hand-${r.id}`, tone: "warn", title: "IA passou a conversa pra uma pessoa do time", note: curto(r.reply, 220) || null });
+          }
+          if (/lost_closed|recusa/.test(saida)) ev.push({ ...base, id: `ia-rec-${r.id}`, tone: "bad", title: "Lead recusou e a IA encerrou a conversa", note: curto(r.reply, 220) || null });
+          if (/opt/.test(saida)) ev.push({ ...base, id: `ia-opt-${r.id}`, tone: "bad", title: "Lead pediu pra parar de receber mensagens" });
+          if (ferramentas.includes("consultar_horarios")) ev.push({ ...base, id: `ia-hor-${r.id}`, title: "Tentativa de agendamento: IA ofereceu horários", note: curto(r.reply, 220) || null });
+          if (ferramentas.includes("agendar_reuniao")) ev.push({ ...base, id: `ia-ag-${r.id}`, tone: "good", title: "IA agendou a reunião", note: curto(r.reply, 220) || null });
+          if (ferramentas.includes("marcar_fora_do_perfil")) ev.push({ ...base, id: `ia-icp-${r.id}`, tone: "bad", title: "IA marcou o lead como fora do perfil" });
+          if (ferramentas.includes("marcar_perdido")) ev.push({ ...base, id: `ia-perd-${r.id}`, tone: "bad", title: "IA marcou o negócio como perdido" });
+        }
+
+        // retornos combinados com o lead
+        for (const r of retornos) {
+          const quando = r.due_at ? format(new Date(r.due_at), "dd/MM 'às' HH:mm", { locale: ptBR }) : "";
+          ev.push({
+            id: `ret-${r.id}`, at: r.created_at, category: "ia", tone: r.status === "sent" ? "good" : "neutral",
+            title: `Retorno combinado${quando ? ` pra ${quando}` : ""}`,
+            detail: r.status === "sent" ? "A IA voltou no horário" : r.status === "pending" ? "Aguardando o horário" : "Substituído (o lead falou antes ou houve novo combinado)",
+            note: curto(r.motivo, 200) || null,
+          });
+        }
+
+        // cadências
+        for (const c of cadencias) {
+          const nome = cadMap.get(c.cadence_id) || "cadência";
+          ev.push({ id: `cad-${c.id}`, at: c.enrolled_at || c.created_at, category: "mensagem", title: `Entrou na cadência "${nome}"`,
+            detail: c.status === "stopped" ? `Parou${c.stopped_reason ? `: ${String(c.stopped_reason).replace(/_/g, " ")}` : ""}` : c.status === "completed" ? "Concluída" : "Em andamento" });
+        }
+
+        // etiquetas
+        for (const t of tagsLead) {
+          if (!t.created_at) continue;
+          ev.push({ id: `tag-${t.id}`, at: t.created_at, category: "etiqueta", title: `Etiqueta adicionada: ${tagMap.get(t.tag_id) || "etiqueta"}` });
+        }
+      } catch (e) {
+        console.error("Percurso: fontes de conversa, disparo e IA falharam", e);
+      }
+
       // ── desfecho de perda quando não veio como etapa final ────────────────────
       if (lead.closed_at && (lossName || lead.loss_reason_id)) {
         const jaTemPerda = ev.some((e) => e.tone === "bad" && e.title.startsWith("Perdido"));
@@ -350,6 +510,10 @@ export const LeadHistoryTab = ({ leadId, originName, pipelineName }: LeadHistory
             <SelectItem value="reuniao">Reuniões</SelectItem>
             <SelectItem value="ligacao">Ligações</SelectItem>
             <SelectItem value="mensagem">Mensagens e follow-ups</SelectItem>
+            <SelectItem value="conversa">Conversas</SelectItem>
+            <SelectItem value="disparo">Disparos</SelectItem>
+            <SelectItem value="ia">Agente de IA</SelectItem>
+            <SelectItem value="etiqueta">Etiquetas</SelectItem>
             <SelectItem value="nota">Notas</SelectItem>
             <SelectItem value="proposta">Propostas</SelectItem>
             <SelectItem value="pagamento">Pagamentos</SelectItem>
