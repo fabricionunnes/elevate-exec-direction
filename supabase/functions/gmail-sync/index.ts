@@ -273,6 +273,42 @@ function idiomaLocal(texto: string): "pt" | null {
 }
 const semHtml = (h: string) => h.replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<br\s*\/?>(?!\n)/gi, "\n").replace(/<\/(p|div|tr|li|h\d)>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/[ \t]+/g, " ").replace(/\n\s*\n\s*\n+/g, "\n\n").trim();
 
+// Texto do e-mail pra tradução COM os links (Fabrício, 12/11/2026: "o link do e-mail do clique aqui não está
+// clicável"). A tradução era texto puro e o botão "Sign in" virava só a palavra. Agora cada <a href> vira
+// [texto](L1) com o endereço guardado à parte: a IA traduz o texto sem ver (nem estragar) o endereço, que
+// costuma ser enorme, e depois o marcador volta a ser o endereço. A tela desenha [texto](url) como link.
+const ENTIDADES: Record<string, string> = { nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'", middot: "·", copy: "©", reg: "®", trade: "™", hellip: "…", ndash: "–", mdash: "-", laquo: "«", raquo: "»", lsquo: "‘", rsquo: "’", ldquo: "“", rdquo: "”", bull: "•" };
+const semEntidades = (t: string) => {
+  const uma = (x: string) => x
+    .replace(/&#x([0-9a-f]{1,6});/gi, (_m, h) => { try { return String.fromCodePoint(parseInt(h, 16)); } catch { return " "; } })
+    .replace(/&#(\d{1,7});/g, (_m, d) => { try { return String.fromCodePoint(Number(d)); } catch { return " "; } })
+    .replace(/&([a-z]+|#39);/gi, (m, n) => ENTIDADES[String(n).toLowerCase()] ?? m);
+  return uma(uma(t)).replace(/\u00a0/g, " ");   // duas passadas: alguns e-mails trazem "&amp;nbsp;"
+};
+function textoComLinks(html: string): { texto: string; links: string[] } {
+  const links: string[] = [];
+  let h = html
+    .replace(/<head[\s\S]*?<\/head>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<!--[\s\S]*?-->/g, " ")
+    // texto escondido (pré-cabeçalho de newsletter): não aparece no e-mail e não deve aparecer na tradução.
+    // Só display:none: "font-size:0" é truque de layout que envolve o e-mail inteiro e apagava tudo.
+    .replace(/<(div|span|p|td)\b[^>]*style\s*=\s*["'][^"']*display\s*:\s*none[^"']*["'][^>]*>[\s\S]*?<\/\1>/gi, " ");
+  h = h.replace(/<a\b[^>]*?href\s*=\s*(?:"([^"]*)"|'([^']*)')[^>]*>([\s\S]*?)<\/a>/gi, (_m, d1, d2, dentro) => {
+    const url = semEntidades(String(d1 ?? d2 ?? "").trim());
+    const alt = (String(dentro).match(/<img\b[^>]*\salt\s*=\s*["']([^"']+)["']/i) || [])[1] || "";
+    const rotulo = semEntidades(String(dentro).replace(/<[^>]+>/g, " ")).replace(/[\[\]]/g, "").replace(/\s+/g, " ").trim() || semEntidades(alt).replace(/[\[\]]/g, "").trim();
+    if (!rotulo) return " ";
+    if (!/^(https?:\/\/|mailto:)/i.test(url)) return ` ${rotulo} `;
+    if (rotulo.replace(/^https?:\/\//i, "").replace(/\/$/, "") === url.replace(/^https?:\/\//i, "").replace(/\/$/, "")) { links.push(url); return ` [${rotulo.slice(0, 80)}](L${links.length}) `; }
+    links.push(url);
+    return ` [${rotulo.slice(0, 200)}](L${links.length}) `;
+  });
+  const texto = semEntidades(h.replace(/<br\s*\/?>(?!\n)/gi, "\n").replace(/<\/(p|div|tr|li|h\d|table)>/gi, "\n").replace(/<[^>]+>/g, " "))
+    .replace(/[ \t]+/g, " ").replace(/\) ([.,;:!?])/g, ")$1").replace(/ *\n */g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  return { texto, links };
+}
+/** devolve os endereços aos marcadores [texto](L1); marcador que a IA perdeu ou inventou vira só o texto */
+const comEnderecos = (t: string, links: string[]) => t.replace(/\[([^\]\n]{1,300})\]\(\s*L(\d{1,4})\s*\)/g, (_m, rot, n) => (links[Number(n) - 1] ? `[${rot}](${links[Number(n) - 1]})` : rot));
+
 async function openai(prompt: string, maxTokens: number, meta: Record<string, unknown>): Promise<string> {
   const r = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -367,13 +403,16 @@ async function traduzirCorpo(accountId: string, gmailId: string): Promise<any> {
   // O lang que veio da lista olha assunto+trecho e pode errar (assunto em português, corpo em inglês).
   if (m.body_pt || m.translated_at) return m;
   // a parte "texto" de alguns e-mails (GitHub, newsletters) também traz HTML: limpa sempre
-  const texto = semHtml((m.body_text && m.body_text.trim().length > 40 ? m.body_text : m.body_html) || "") || m.snippet || "";
+  // com HTML, o texto sai do HTML e leva os links junto; sem HTML, vale a parte "texto" como antes
+  const comLinks = m.body_html && /<a\b[^>]*href/i.test(m.body_html) ? textoComLinks(m.body_html) : null;
+  const links = comLinks && comLinks.texto.length > 20 ? comLinks.links : [];
+  const texto = (comLinks && comLinks.texto.length > 20 ? comLinks.texto : semEntidades(semHtml((m.body_text && m.body_text.trim().length > 40 ? m.body_text : m.body_html) || ""))) || m.snippet || "";
   if (idiomaLocal(texto) === "pt") {
     await supabase.from("mail_messages").update({ translated_at: new Date().toISOString() }).eq("account_id", accountId).eq("gmail_id", gmailId);
     return { ...m, translated_at: new Date().toISOString() };
   }
   const corte = texto.slice(0, 12000);
-  const prompt = `Você recebe um e-mail. Primeira linha da resposta: só o código ISO de 2 letras do idioma original. Se for português, pare aí. Se não for, na segunda linha escreva "ASSUNTO: " e o assunto traduzido; depois uma linha em branco e o corpo traduzido para português do Brasil, natural e fiel, mantendo parágrafos, listas, valores, datas, nomes e links (URLs como estão). Não comente nada.\n\nASSUNTO ORIGINAL: ${m.subject || ""}\n\nCORPO:\n${corte}`;
+  const prompt = `Você recebe um e-mail. Primeira linha da resposta: só o código ISO de 2 letras do idioma original. Se for português, pare aí. Se não for, na segunda linha escreva "ASSUNTO: " e o assunto traduzido; depois uma linha em branco e o corpo traduzido para português do Brasil, natural e fiel, mantendo parágrafos, listas, valores, datas, nomes e links (URLs como estão). Links aparecem no formato [texto](L1), [texto](L2): traduza só o texto entre colchetes e mantenha os parênteses com L e o número EXATAMENTE iguais, sem tirar nenhum link e sem inventar outros. Não escreva a palavra CORPO nem comente nada.\n\nASSUNTO ORIGINAL: ${m.subject || ""}\n\nCORPO:\n${corte}`;
   const resp = await claude(prompt, 4000, { acao: "translate", gmail_id: gmailId, chars: corte.length });
   const linhas = resp.split("\n");
   const lang = (linhas[0] || "").trim().toLowerCase().slice(0, 2) || "xx";
@@ -382,6 +421,7 @@ async function traduzirCorpo(accountId: string, gmailId: string): Promise<any> {
   let assunto = m.subject_pt;
   const ma = resto.match(/^ASSUNTO:\s*(.*)$/m);
   if (ma) { assunto = ma[1].trim(); resto = resto.replace(ma[0], "").trim(); }
+  resto = comEnderecos(resto.replace(/^\s*CORPO:?\s*\n/i, ""), links).trim();
   const upd = { lang, subject_pt: assunto, body_pt: resto + (texto.length > corte.length ? "\n\n[...] (trecho final não traduzido: e-mail muito longo)" : ""), translated_at: new Date().toISOString() };
   await supabase.from("mail_messages").update(upd).eq("account_id", accountId).eq("gmail_id", gmailId);
   return { ...m, ...upd };
