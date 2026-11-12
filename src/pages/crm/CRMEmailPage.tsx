@@ -601,11 +601,11 @@ export default function CRMEmailPage() {
                         <button onClick={(e) => { if (selecionadas.size > 0 && !e.metaKey) { alternarSelecao(m.thread_id); return; } setCursor(i); abrirThread(m.thread_id); }} className="flex-1 min-w-0 text-left">
                           <div className="flex items-center gap-2">
                             {c.naoLida && <span className="h-2 w-2 rounded-full shrink-0" style={{ background: "#CC1B1B" }} title="Não lida" aria-label="Não lida" />}
-                            <span className={cn("truncate text-[13px] flex-1", c.naoLida ? "font-bold text-foreground" : aberta ? "font-semibold text-foreground" : "font-normal text-foreground/65")}>{quem}</span>
+                            <span className={cn("truncate text-[13px] flex-1", c.naoLida ? "font-bold text-foreground" : aberta ? "font-semibold text-foreground" : "font-normal text-foreground/80")}>{quem}</span>
                             {c.qtd > 1 && <span className="text-[10px] text-muted-foreground tabular-nums rounded bg-muted px-1">{c.qtd}</span>}
                             <span className={cn("text-[11px] tabular-nums shrink-0 group-hover:hidden", c.naoLida ? "font-bold" : "text-muted-foreground")} style={c.naoLida ? { color: NAVY } : undefined}>{quando(m.internal_date)}</span>
                           </div>
-                          <p className={cn("truncate text-[13px] flex items-center gap-1.5", c.naoLida ? "font-bold text-foreground" : aberta ? "font-semibold" : "font-normal text-foreground/65")} style={aberta && !c.naoLida ? { color: NAVY } : undefined}>
+                          <p className={cn("truncate text-[13px] flex items-center gap-1.5", c.naoLida ? "font-bold text-foreground" : aberta ? "font-semibold" : "font-normal text-foreground/80")} style={aberta && !c.naoLida ? { color: NAVY } : undefined}>
                             {c.importante && <Bookmark className="h-3 w-3 shrink-0 fill-current text-amber-500" />}
                             <span className="truncate">{assuntoPt(m) || "(sem assunto)"}</span>
                           </p>
