@@ -44,6 +44,56 @@ interface EnvelopeSigner {
   id?: string;
 }
 
+// Lê o endereço salvo no contrato de volta pros campos do formulário (Fabrício, 12/11/2026: "na edição não está
+// o CEP e nem o estado civil preenchidos"). O endereço é um texto só e existe em dois formatos:
+//  - gerador:        "Rua, nº 28, [Complemento,] Bairro, Cidade - UF, CEP 00000-000"
+//  - enviado do CRM: "Rua, nº 28, [Complemento,] Bairro, Cidade, UF, 00000-000"
+// A leitura antiga só entendia o primeiro, sem complemento: com um pedaço a mais os campos escorregavam e o
+// CEP e o estado ficavam vazios.
+const UFS_BR = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
+function lerEnderecoDoContrato(endereco: string | null | undefined) {
+  const r = { street: "", number: "", complement: "", neighborhood: "", city: "", state: "", cep: "" };
+  let partes = String(endereco || "").split(",").map((p) => p.trim()).filter(Boolean);
+  if (!partes.length) return r;
+  // CEP: último pedaço com 8 dígitos (com ou sem "CEP" na frente)
+  const iCep = partes.findIndex((p) => /^(CEP\s*)?\d{5}-?\d{3}$/i.test(p));
+  if (iCep >= 0) {
+    const d = partes[iCep].replace(/\D/g, "");
+    r.cep = `${d.slice(0, 5)}-${d.slice(5)}`;
+    partes.splice(iCep, 1);
+  }
+  r.street = partes.shift() || "";
+  if (partes.length) {
+    const n = partes.shift() || "";
+    r.number = n.replace(/^n[ºo°.]?\s*/i, "").trim() || n;
+  }
+  // cidade e UF: "Cidade - UF" no último pedaço, ou "Cidade", "UF" nos dois últimos
+  if (partes.length) {
+    const ultimo = partes[partes.length - 1];
+    const m = ultimo.match(/^(.+?)\s*[-\/]\s*([A-Za-z]{2})$/);
+    if (m && UFS_BR.includes(m[2].toUpperCase())) {
+      r.city = m[1].trim(); r.state = m[2].toUpperCase(); partes.pop();
+    } else if (UFS_BR.includes(ultimo.toUpperCase())) {
+      r.state = ultimo.toUpperCase(); partes.pop();
+      r.city = partes.pop() || "";
+    } else {
+      r.city = partes.pop() || "";
+    }
+  }
+  // o que sobrou entre o número e a cidade: bairro, ou complemento + bairro
+  if (partes.length >= 2) { r.complement = partes.slice(0, -1).join(", "); r.neighborhood = partes[partes.length - 1]; }
+  else if (partes.length === 1) r.neighborhood = partes[0];
+  return r;
+}
+// O formulário usa "divorciado(a)" em minúsculas; o contrato enviado do CRM grava "Divorciado(a)".
+const ESTADOS_CIVIS = ["solteiro(a)", "casado(a)", "divorciado(a)", "viúvo(a)", "união estável"];
+function estadoCivilDoFormulario(valor: string | null | undefined): string {
+  const limpo = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\(a\)|\s+/g, "").replace(/[ao]$/, "");
+  const v = limpo(String(valor || ""));
+  if (!v) return "";
+  return ESTADOS_CIVIS.find((o) => limpo(o) === v) || String(valor || "");
+}
+
 interface SavedContract {
   id: string;
   created_at: string;
@@ -562,7 +612,8 @@ export default function ContractGeneratorPage() {
     const contractData = {
       client_name: formData.clientName,
       client_document: formData.clientDocument,
-      client_address: `${formData.clientStreet}, nº ${formData.clientNumber}, ${formData.clientNeighborhood}, ${formData.clientCity} - ${formData.clientState}, CEP ${formData.clientCep}`,
+      // com o complemento, quando houver (antes ele se perdia ao salvar e não voltava na edição)
+      client_address: `${formData.clientStreet}, nº ${formData.clientNumber}${formData.clientComplement?.trim() ? `, ${formData.clientComplement.trim()}` : ""}, ${formData.clientNeighborhood}, ${formData.clientCity} - ${formData.clientState}, CEP ${formData.clientCep}`,
       client_email: formData.clientEmail,
       client_phone: formData.clientPhone,
       legal_rep_name: formData.legalRepName,
@@ -1032,35 +1083,7 @@ export default function ContractGeneratorPage() {
     
     // Parse address parts from saved address if available
     // Address format: "Rua, nº 123, Bairro, Cidade - UF, CEP 00000-000"
-    let addressParts = {
-      street: "",
-      number: "",
-      neighborhood: "",
-      city: "",
-      state: "",
-      cep: "",
-    };
-    
-    if (selectedContract.client_address) {
-      const parts = selectedContract.client_address.split(", ");
-      if (parts.length >= 5) {
-        addressParts.street = parts[0] || "";
-        const numberMatch = parts[1]?.match(/nº\s*(.+)/);
-        addressParts.number = numberMatch ? numberMatch[1] : parts[1] || "";
-        addressParts.neighborhood = parts[2] || "";
-        // City - State format: "Cidade - UF"
-        const cityStatePart = parts[3] || "";
-        const cityStateMatch = cityStatePart.match(/(.+)\s*-\s*(.+)/);
-        if (cityStateMatch) {
-          addressParts.city = cityStateMatch[1].trim();
-          addressParts.state = cityStateMatch[2].trim();
-        } else {
-          addressParts.city = cityStatePart;
-        }
-        const cepMatch = parts[4]?.match(/CEP\s*(.+)/);
-        addressParts.cep = cepMatch ? cepMatch[1] : "";
-      }
-    }
+    const addressParts = lerEnderecoDoContrato(selectedContract.client_address);
     
     // Pre-fill form with all client and legal rep data, but clear contract/payment details
     setFormData({
@@ -1070,7 +1093,7 @@ export default function ContractGeneratorPage() {
       clientCep: addressParts.cep,
       clientStreet: addressParts.street,
       clientNumber: addressParts.number,
-      clientComplement: "",
+      clientComplement: addressParts.complement,
       clientNeighborhood: addressParts.neighborhood,
       clientCity: addressParts.city,
       clientState: addressParts.state,
@@ -1081,7 +1104,7 @@ export default function ContractGeneratorPage() {
       legalRepName: selectedContract.legal_rep_name || "",
       legalRepCpf: selectedContract.legal_rep_cpf || "",
       legalRepRg: selectedContract.legal_rep_rg || "",
-      legalRepMaritalStatus: selectedContract.legal_rep_marital_status || "",
+      legalRepMaritalStatus: estadoCivilDoFormulario(selectedContract.legal_rep_marital_status),
       legalRepNationality: selectedContract.legal_rep_nationality || "brasileiro(a)",
       legalRepProfession: selectedContract.legal_rep_profession || "",
       
@@ -1108,34 +1131,7 @@ export default function ContractGeneratorPage() {
     setEditingOldZapSignToken(selectedContract.envelope_id || selectedContract.zapsign_document_token || null);
     
     // Parse address parts from saved address if available
-    let addressParts = {
-      street: "",
-      number: "",
-      neighborhood: "",
-      city: "",
-      state: "",
-      cep: "",
-    };
-    
-    if (selectedContract.client_address) {
-      const parts = selectedContract.client_address.split(", ");
-      if (parts.length >= 5) {
-        addressParts.street = parts[0] || "";
-        const numberMatch = parts[1]?.match(/nº\s*(.+)/);
-        addressParts.number = numberMatch ? numberMatch[1] : parts[1] || "";
-        addressParts.neighborhood = parts[2] || "";
-        const cityStatePart = parts[3] || "";
-        const cityStateMatch = cityStatePart.match(/(.+)\s*-\s*(.+)/);
-        if (cityStateMatch) {
-          addressParts.city = cityStateMatch[1].trim();
-          addressParts.state = cityStateMatch[2].trim();
-        } else {
-          addressParts.city = cityStatePart;
-        }
-        const cepMatch = parts[4]?.match(/CEP\s*(.+)/);
-        addressParts.cep = cepMatch ? cepMatch[1] : "";
-      }
-    }
+    const addressParts = lerEnderecoDoContrato(selectedContract.client_address);
     
     // Pre-fill form with ALL contract data for editing
     setFormData({
@@ -1144,7 +1140,7 @@ export default function ContractGeneratorPage() {
       clientCep: addressParts.cep,
       clientStreet: addressParts.street,
       clientNumber: addressParts.number,
-      clientComplement: "",
+      clientComplement: addressParts.complement,
       clientNeighborhood: addressParts.neighborhood,
       clientCity: addressParts.city,
       clientState: addressParts.state,
@@ -1153,7 +1149,7 @@ export default function ContractGeneratorPage() {
       legalRepName: selectedContract.legal_rep_name || "",
       legalRepCpf: selectedContract.legal_rep_cpf || "",
       legalRepRg: selectedContract.legal_rep_rg || "",
-      legalRepMaritalStatus: selectedContract.legal_rep_marital_status || "",
+      legalRepMaritalStatus: estadoCivilDoFormulario(selectedContract.legal_rep_marital_status),
       legalRepNationality: selectedContract.legal_rep_nationality || "brasileiro(a)",
       legalRepProfession: selectedContract.legal_rep_profession || "",
       // Contract data - ALL filled for editing
