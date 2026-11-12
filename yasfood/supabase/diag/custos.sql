@@ -30,5 +30,8 @@ select json_build_object(
   'foto_biscoito', (select json_agg(json_build_object('p', p.name, 'capa', p.image_url, 'fotos', (select count(*) from yasfood.product_media m where m.product_id = p.id)))
                     from yasfood.products p where p.name ilike '%biscoito%'),
   'pao_batata', (select json_agg(json_build_object('p', p.name, 'preco', p.price, 'min', p.min_qty, 'custo_un', (select pc.cost from yasfood.product_costs pc where pc.product_id = p.id), 'slots_hoje', (select sum(oi.slots) from yasfood.order_items oi join yasfood.orders o on o.id = oi.order_id where oi.product_id = p.id and o.scheduled_date >= yasfood.today_br()), 'ativo', p.active, 'cat', p.category, 'capa', p.image_url, 'fotos', (select count(*) from yasfood.product_media m where m.product_id = p.id)))
-                 from yasfood.products p where p.category = 'Pães')
+                 from yasfood.products p where p.category = 'Pães'),
+  'regioes', (select json_agg(json_build_object('n', z.name, 'frete', z.fee, 'ativo', z.active, 'ordem', z.sort_order,
+                 'pedidos_30d', (select count(*) from yasfood.orders o where o.zone_id = z.id and o.scheduled_date >= yasfood.today_br() - 30)) order by z.sort_order)
+              from yasfood.delivery_zones z)
 ) as diag;

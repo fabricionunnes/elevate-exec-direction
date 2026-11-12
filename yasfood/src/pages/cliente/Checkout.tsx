@@ -9,7 +9,7 @@ import { notifyNewOrders } from "@/lib/push";
 import { brl, dayLabel, weekdayBR, todayISO, addDaysISO, onlyDigits, formatPhone, PAYMENT_LABEL, windowLabel } from "@/lib/format";
 import { waLink, pedidoClienteMsg } from "@/lib/whatsapp";
 import type { Addon, Availability, AvailableWindow, DeliveryZone, Fulfillment, PaymentMethod, Product } from "@/lib/types";
-import { Button, Input, Textarea, Select, Empty, useToast } from "@/components/ui";
+import { Button, Input, Textarea, Empty, useToast } from "@/components/ui";
 
 export default function Checkout() {
   const cart = useCart();
@@ -24,7 +24,7 @@ export default function Checkout() {
   const [name, setName] = useState(me?.name ?? "");
   const [phone, setPhone] = useState(me?.phone ? formatPhone(me.phone) : "");
   const [fulfillment, setFulfillment] = useState<Fulfillment>("entrega");
-  const [zoneId, setZoneId] = useState(me?.zone_id ?? "");
+  const [bairro, setBairro] = useState(me?.bairro ?? "");
   const [address, setAddress] = useState(me?.address ?? "");
   const [reference, setReference] = useState(me?.reference ?? "");
   const [date, setDate] = useState("");
@@ -63,8 +63,7 @@ export default function Checkout() {
     if (settings && !settings.pickup_enabled) setFulfillment("entrega");
     // forma de pagamento desligada no site: cai pra primeira ligada
     if (settings?.payment_methods?.length && !settings.payment_methods.includes(payment)) setPayment(settings.payment_methods[0]);
-    if (!zoneId && zones.length) setZoneId(zones[0].id);
-  }, [settings, zones, zoneId]);
+  }, [settings]);
 
   useEffect(() => {
     setWindowId("");
@@ -72,7 +71,8 @@ export default function Checkout() {
     void supabase.rpc("available_windows", { p_date: date, p_fulfillment: fulfillment }).then(({ data }) => setWindows((data as AvailableWindow[]) ?? []));
   }, [date, fulfillment]);
 
-  const zone = zones.find((z) => z.id === zoneId);
+  // frete da região padrão (o cliente não escolhe região; o banco usa a mesma)
+  const zone = zones[0];
   const fee = fulfillment === "entrega" ? Number(zone?.fee ?? 0) : 0;
   // adicionais que valem pro carrinho (sem produto definido = vale pra qualquer pedido)
   const cartIds = cart.lines.map((l) => l.product.id);
@@ -81,10 +81,13 @@ export default function Checkout() {
   const addonsTotal = addonsSel.reduce((t, x) => t + x.qty * Number(x.a.price), 0);
   const total = cart.subtotal + fee + addonsTotal;
   const selectedDay = avail.find((d) => d.day === date);
-  const notEnough = selectedDay ? cart.count > selectedDay.remaining : false;
+  // vagas da agenda: pão conta 1 a cada mínimo (4 pães = 1 vaga), bolo 1 por 1
+  const slots = cart.lines.reduce((a, l) => a + Math.ceil(l.qty / minQty(l.product)), 0);
+  const notEnough = selectedDay ? slots > selectedDay.remaining : false;
 
   const submit = async () => {
     setError(null);
+    if (fulfillment === "entrega" && bairro.trim().length < 2) return setError("Informe o seu condomínio ou bairro.");
     if (!date) return setError("Escolha a data da encomenda.");
     if (notEnough) return setError(`Só temos ${selectedDay?.remaining} vaga(s) nesse dia. Reduza a quantidade ou escolha outra data.`);
     if (windows && windows.length > 0 && !windowId) return setError(`Escolha o horário de ${fulfillment === "entrega" ? "entrega" : "retirada"}.`);
@@ -95,7 +98,8 @@ export default function Checkout() {
       name: name.trim(),
       phone: onlyDigits(phone),
       fulfillment,
-      zone_id: fulfillment === "entrega" ? zoneId : null,
+      zone_id: null,
+      bairro: fulfillment === "entrega" ? bairro.trim() : "",
       address: address.trim(),
       reference: reference.trim(),
       scheduled_date: date,
@@ -121,7 +125,7 @@ export default function Checkout() {
         name: payload.name,
         items: [...cart.lines.map((l) => ({ name: l.product.name, qty: l.qty })), ...addonsSel.map((x) => ({ name: `Adicional: ${x.a.name}`, qty: x.qty }))],
         fulfillment,
-        zoneName: zone?.name,
+        zoneName: fulfillment === "entrega" ? payload.bairro : null,
         address: payload.address,
         reference: payload.reference,
         scheduledDate: date,
@@ -136,7 +140,7 @@ export default function Checkout() {
       waWindow.location.href = waLink(settings.whatsapp, msg);
     }
     rememberOrder({ code: res.code, token: res.tracking_token, created_at: new Date().toISOString() });
-    saveMe({ name: payload.name, phone: payload.phone, zone_id: zoneId, address: payload.address, reference: payload.reference });
+    saveMe({ name: payload.name, phone: payload.phone, zone_id: "", bairro: bairro.trim() || me?.bairro || "", address: payload.address, reference: payload.reference });
     cart.clear();
     toast(`Pedido ${res.code} enviado!`);
     nav(`/pedido/${res.tracking_token}?novo=1`);
@@ -217,9 +221,7 @@ export default function Checkout() {
         </div>
         {fulfillment === "entrega" ? (
           <div className="mt-3 space-y-3">
-            <Select label="Qual condomínio / região?" value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
-              {zones.map((z) => <option key={z.id} value={z.id}>{z.name} · {Number(z.fee) === 0 ? "frete grátis" : brl(z.fee)}</option>)}
-            </Select>
+            <Input label="Condomínio ou bairro" placeholder="Ex.: Alphaville Lagoa dos Ingleses" value={bairro} onChange={(e) => setBairro(e.target.value)} />
             <Input label="Endereço (rua, número, casa ou apto)" placeholder="Ex.: Rua das Acácias, 120, casa 7" value={address} onChange={(e) => setAddress(e.target.value)} />
             <Input label="Ponto de referência (opcional)" placeholder="Ex.: portaria principal, deixar com o porteiro" value={reference} onChange={(e) => setReference(e.target.value)} />
           </div>
@@ -254,7 +256,7 @@ export default function Checkout() {
             })}
           </div>
         )}
-        {notEnough && <p className="mt-2 text-sm text-red-600">Esse dia tem só {selectedDay?.remaining} vaga(s) e você pediu {cart.count}.</p>}
+        {notEnough && <p className="mt-2 text-sm text-red-600">Esse dia tem só {selectedDay?.remaining} vaga(s) e seu pedido ocupa {slots}.</p>}
 
         {date && windows && windows.length > 0 && (
           <div className="mt-4">
