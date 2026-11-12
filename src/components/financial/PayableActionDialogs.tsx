@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Loader2, Pencil, Trash2, Save, X } from "lucide-react";
+import { CalendarIcon, Loader2, Pencil, Trash2, Save, X, Paperclip, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -41,6 +41,17 @@ interface PayableEntry {
   installment_number?: number | null;
   total_installments?: number | null;
   conta_azul_id?: string | null;
+  attachment_path?: string | null;
+  attachment_name?: string | null;
+}
+
+// Boleto/anexo da conta a pagar (Fabrício, 12/11/2026: "aqui quero poder anexar o boleto").
+// Fica num local privado; o link de abrir vale por 5 minutos e só quem tem o menu Financeiro consegue gerar.
+export const ANEXO_BUCKET = "financial-attachments";
+export async function abrirAnexoPagar(path: string) {
+  const { data, error } = await supabase.storage.from(ANEXO_BUCKET).createSignedUrl(path, 300);
+  if (error || !data?.signedUrl) { toast.error("Não consegui abrir o anexo: " + (error?.message || "sem acesso")); return; }
+  window.open(data.signedUrl, "_blank", "noopener");
 }
 
 // ─── PAYMENT DIALOG ─────────────────────────────────────────────────────────
@@ -408,6 +419,8 @@ interface EditDialogProps {
 }
 
 export function PayableEditDialog({ open, onOpenChange, payable, categories, costCenters, suppliers, onSuccess, onSuppliersRefresh, onCostCentersRefresh }: EditDialogProps) {
+  const [anexo, setAnexo] = useState<{ path: string; name: string } | null>(null);
+  const [enviandoAnexo, setEnviandoAnexo] = useState(false);
   const [form, setForm] = useState({
     supplier_name: "",
     description: "",
@@ -449,6 +462,7 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
         notes: (payable as any).notes || "",
         cost_type: (payable as any).cost_type || "",
       });
+      setAnexo(payable.attachment_path ? { path: payable.attachment_path, name: payable.attachment_name || "Anexo" } : null);
       setEditScope("single");
       setEditId(null);
       // conta principal já vem escolhida; ordem = a da tela de Bancos
@@ -548,6 +562,40 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
     } finally {
       setRowSaving(false);
     }
+  };
+
+  // ── Boleto/anexo: envia na hora e grava no lançamento ──
+  const enviarAnexo = async (file: File) => {
+    if (!payable) return;
+    if (file.size > 15 * 1024 * 1024) { toast.error("O arquivo passa de 15 MB"); return; }
+    setEnviandoAnexo(true);
+    try {
+      const limpo = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9._-]+/g, "_").slice(-80);
+      const path = `payables/${payable.id}/${Date.now()}-${limpo}`;
+      const { error: upErr } = await supabase.storage.from(ANEXO_BUCKET).upload(path, file, { contentType: file.type || undefined });
+      if (upErr) throw upErr;
+      const { error } = await supabase.from("financial_payables").update({ attachment_path: path, attachment_name: file.name } as any).eq("id", payable.id);
+      if (error) throw error;
+      setAnexo({ path, name: file.name });
+      toast.success("Boleto anexado");
+      onSuccess();
+    } catch (e: any) {
+      toast.error("Não consegui anexar: " + (e?.message || "erro"));
+    } finally { setEnviandoAnexo(false); }
+  };
+  const removerAnexo = async () => {
+    if (!payable || !anexo) return;
+    setEnviandoAnexo(true);
+    try {
+      const { error } = await supabase.from("financial_payables").update({ attachment_path: null, attachment_name: null } as any).eq("id", payable.id);
+      if (error) throw error;
+      await supabase.storage.from(ANEXO_BUCKET).remove([anexo.path]);
+      setAnexo(null);
+      toast.success("Anexo removido");
+      onSuccess();
+    } catch (e: any) {
+      toast.error("Não consegui remover: " + (e?.message || "erro"));
+    } finally { setEnviandoAnexo(false); }
   };
 
   const handleSave = async () => {
@@ -723,6 +771,30 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
           <div>
             <Label>Observações</Label>
             <Input value={form.notes} onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Opcional" />
+          </div>
+
+          <div>
+            <Label>Boleto ou anexo</Label>
+            {anexo ? (
+              <div className="mt-1 flex items-center gap-2 rounded-md border px-3 py-2">
+                <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1 truncate text-sm">{anexo.name}</span>
+                <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={() => abrirAnexoPagar(anexo.path)}>
+                  <ExternalLink className="h-3.5 w-3.5 mr-1" /> Abrir
+                </Button>
+                <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-destructive" disabled={enviandoAnexo} onClick={removerAnexo} title="Remover anexo">
+                  {enviandoAnexo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+            ) : (
+              <label className={cn("mt-1 flex cursor-pointer items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground hover:bg-muted/40", enviandoAnexo && "pointer-events-none opacity-60")}>
+                {enviandoAnexo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+                {enviandoAnexo ? "Enviando..." : "Anexar boleto (PDF ou imagem, até 15 MB)"}
+                <input type="file" className="hidden" accept="application/pdf,image/*"
+                  onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) enviarAnexo(f); }} />
+              </label>
+            )}
+            <p className="mt-1 text-[11px] text-muted-foreground">O anexo é salvo na hora, sem precisar clicar em Salvar. Vale só pra este lançamento.</p>
           </div>
 
           {(loadingPg || pagamentos.length > 0) && (
