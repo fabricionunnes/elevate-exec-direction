@@ -1834,7 +1834,7 @@ export const CRMInboxPage = () => {
                             📷 Imagem não disponível
                           </div>
                           {message.content && !/^\[[^\]]{1,20}\]$/.test(message.content) && (
-                            <p className="text-sm whitespace-pre-wrap"><TextoWhatsApp texto={message.content} /></p>
+                            <p className="text-sm whitespace-pre-wrap [overflow-wrap:anywhere]"><TextoWhatsApp texto={message.content} /></p>
                           )}
                           {/* Receipt analysis button for inbound images when company has open invoices */}
                           {message.direction === "inbound" && identifiedCompany && companyInvoices.length > 0 && (
@@ -1879,7 +1879,7 @@ export const CRMInboxPage = () => {
                             🎥 Vídeo não disponível
                           </div>
                           {message.content && !/^\[[^\]]{1,20}\]$/.test(message.content) && (
-                            <p className="text-sm whitespace-pre-wrap"><TextoWhatsApp texto={message.content} /></p>
+                            <p className="text-sm whitespace-pre-wrap [overflow-wrap:anywhere]"><TextoWhatsApp texto={message.content} /></p>
                           )}
                         </div>
                       ) : message.type === "audio" ? (
@@ -1928,7 +1928,7 @@ export const CRMInboxPage = () => {
                           </div>
                         </div>
                       ) : (
-                        <p className="text-sm whitespace-pre-wrap"><TextoWhatsApp texto={message.content} /></p>
+                        <p className="text-sm whitespace-pre-wrap [overflow-wrap:anywhere]"><TextoWhatsApp texto={message.content} /></p>
                       )}
                       <div className="flex items-center justify-end gap-1 mt-1">
                         <span className="text-[10px] text-muted-foreground" title={format(new Date(message.created_at), "dd/MM/yyyy HH:mm")}>
