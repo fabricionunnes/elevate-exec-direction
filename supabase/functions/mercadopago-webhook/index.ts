@@ -2,7 +2,15 @@ import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const MP_TOKEN = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN") || "";
+// Conta da notificação: ?account=yas = "Mercado Pago Yas" (empresa da Yasmim); sem nada = conta da UNV.
+const TOKENS: Record<string, string> = {
+  unv: Deno.env.get("MERCADOPAGO_ACCESS_TOKEN") || "",
+  yas: Deno.env.get("MERCADOPAGO_YAS_ACCESS_TOKEN") || "",
+};
+const BANKS: Record<string, string> = {
+  unv: "50d90f6e-e8e6-4dd7-87e9-3757ccda9842", // financial_banks: Mercado pago
+  yas: "a4536364-73ff-4fa2-adea-7bdcbf5b61a2", // financial_banks: Mercado Pago Yas (fora do caixa)
+};
 
 // Mercado Pago manda notificação de pagamento. Buscamos o pagamento pela API,
 // e se aprovado, marcamos a linha correspondente (external_reference) como paga.
@@ -11,6 +19,8 @@ Deno.serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
   try {
     const url = new URL(req.url);
+    const account = url.searchParams.get("account") === "yas" ? "yas" : "unv";
+    const MP_TOKEN = TOKENS[account];
     let paymentId = url.searchParams.get("data.id") || url.searchParams.get("id") || "";
     let topic = url.searchParams.get("type") || url.searchParams.get("topic") || "";
     try {
@@ -37,7 +47,7 @@ Deno.serve(async (req) => {
       rejected: "rejected", cancelled: "cancelled", refunded: "refunded", charged_back: "chargeback",
     };
     const newStatus = statusMap[String(pay.status)] || "pending";
-    const MP_BANK = "50d90f6e-e8e6-4dd7-87e9-3757ccda9842"; // financial_banks: Mercado pago
+    const MP_BANK = BANKS[account];
 
     // valor líquido e taxa (MP informa)
     const gross = Math.round(Number(pay?.transaction_amount || 0) * 100);
@@ -76,7 +86,7 @@ Deno.serve(async (req) => {
       // Crédito no banco Mercado Pago (já com a taxa descontada)
       await supabase.from("financial_bank_transactions").insert({
         bank_id: MP_BANK, type: "credit", amount_cents: net, fee_cents: feeCents,
-        description: `Pagamento cartão (Mercado Pago) — pagamento ${lp.id}`,
+        description: `Pagamento cartão (${account === "yas" ? "Mercado Pago Yas" : "Mercado Pago"}) — pagamento ${lp.id}`,
         reference_type: "crm_lead_payment", reference_id: lp.id,
       });
     }
