@@ -412,7 +412,8 @@ export const LeadHistoryTab = ({ leadId, originName, pipelineName }: LeadHistory
           }
           if (/lost_closed|recusa/.test(saida)) ev.push({ ...base, id: `ia-rec-${r.id}`, tone: "bad", title: "Lead recusou e a IA encerrou a conversa", note: curto(r.reply, 220) || null });
           if (/opt/.test(saida)) ev.push({ ...base, id: `ia-opt-${r.id}`, tone: "bad", title: "Lead pediu pra parar de receber mensagens" });
-          if (ferramentas.includes("consultar_horarios")) ev.push({ ...base, id: `ia-hor-${r.id}`, title: "Tentativa de agendamento: IA ofereceu horários", note: curto(r.reply, 220) || null });
+          // se a mesma resposta já agendou, não repete como "ofereceu horários"
+          if (ferramentas.includes("consultar_horarios") && !ferramentas.includes("agendar_reuniao")) ev.push({ ...base, id: `ia-hor-${r.id}`, title: "Tentativa de agendamento: IA ofereceu horários", note: curto(r.reply, 220) || null });
           if (ferramentas.includes("agendar_reuniao")) ev.push({ ...base, id: `ia-ag-${r.id}`, tone: "good", title: "IA agendou a reunião", note: curto(r.reply, 220) || null });
           if (ferramentas.includes("marcar_fora_do_perfil")) ev.push({ ...base, id: `ia-icp-${r.id}`, tone: "bad", title: "IA marcou o lead como fora do perfil" });
           if (ferramentas.includes("marcar_perdido")) ev.push({ ...base, id: `ia-perd-${r.id}`, tone: "bad", title: "IA marcou o negócio como perdido" });
