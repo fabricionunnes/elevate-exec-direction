@@ -539,6 +539,24 @@ const PEDIU_HUMANO_RE = /(falar|conversar|atendimento|atender)\s+(com\s+)?(um|um
 // Caso Sergio (10/11/2026): "Estou falando com um humano ou IA?" não batia (o humano vinha antes da IA),
 // caiu na transferência genérica e o agente respondeu "Vou verificar isso". Agora a pergunta é reconhecida.
 const PERGUNTOU_ROBO_RE = /\b(rob[oô]|bot|ia|intelig[eê]ncia\s+artificial|chat\s*gpt|m[aá]quina|autom[aá]tic[oa]|pessoa\s+(de\s+verdade|real)|humano\s+ou)(?![a-zà-ú])/i;
+// Fabrício (12/11/2026): quando o lead só PERGUNTA se é IA, o time é avisado e a IA "continua" na conversa
+// (antes ela respondia, chamava uma pessoa e se desligava). Pedido explícito de falar com uma pessoa segue
+// passando a conversa e desligando o agente.
+const PEDIU_PESSOA_EXPLICITO_RE = /(falar|conversar|atendimento|atender)\s+(com\s+)?(um|uma|algum|alguma|o|a)?\s*(atendente|humano|pessoa|vendedor|vendedora|consultor|consultora)\b|atendente\s+humano|\b(passa|transfere|chama)\s+(pra|para|um|uma|o|a)\s+[^?\n]{0,20}(atendente|humano|pessoa|vendedor|vendedora|consultor|consultora)\b/i;
+const HUMANO_OU_IA_RE = /(humano|pessoa|gente)\s+(ou|e)\s+(um\s+|uma\s+)?(rob[oô]|bot|ia|m[aá]quina|intelig[eê]ncia\s+artificial)(?![a-zà-ú])|(rob[oô]|bot|ia|m[aá]quina)\s+ou\s+(um\s+|uma\s+)?(humano|pessoa|gente)\b/i;
+/** true quando a fala é só a pergunta "é IA/robô/pessoa?", sem pedir pra ser atendido por alguém */
+function soPerguntouSeEIA(fala) {
+  const t = String(fala || "");
+  if (!PERGUNTOU_ROBO_RE.test(t)) return false;
+  return !(PEDIU_PESSOA_EXPLICITO_RE.test(t) && !HUMANO_OU_IA_RE.test(t));
+}
+const NOTA_PERGUNTA_IA = [
+  "ATENÇÃO, SOBRE A ÚLTIMA MENSAGEM DO LEAD: ele perguntou se está falando com uma IA, um robô ou uma pessoa.",
+  "Responda a isso em UMA frase curta, leve e verdadeira: você é a assistente virtual do time, e uma pessoa do time acompanha esta conversa e pode entrar a qualquer momento.",
+  "Nunca diga que é humano e nunca negue ser IA. Não peça desculpas, não se alongue no assunto, não diga que vai verificar e não fale em transferência.",
+  "Na MESMA resposta, siga a conversa normalmente de onde parou: retome a pergunta pendente ou o próximo passo.",
+  "NÃO chame transferir_para_humano por causa dessa pergunta: o time já foi avisado e você continua na conversa.",
+].join(" ");
 async function leadRecusou(hist, leadNm) {
   try {
     const txt = hist.map((m)=>`${m.direction === "inbound" ? leadNm : "Atendente"}: ${m.content}`).join("\n");
@@ -706,7 +724,7 @@ function ferramentaLigada(agent, nome) {
   });
   if (ferramentaLigada(agent, "transferir_para_humano")) extras.push({
     name: "transferir_para_humano",
-    description: "Passa a conversa para uma pessoa do time e desliga você nesta conversa. Use quando o lead pedir pra falar com uma pessoa, quando houver reclamação, quando o assunto fugir do seu alcance (contrato, cobrança, suporte, negociação de condição) ou quando você não souber responder com segurança. O responsável é avisado na hora. Depois de chamar, escreva uma única mensagem curta dizendo que vai verificar e que o retorno vem por aqui mesmo, sem falar em transferência, sem prometer prazo e sem fazer pergunta. Se o lead perguntou se fala com robô, IA ou pessoa, NÃO diga que vai verificar: diga que sim, aqui é o assistente de IA do time, e que já chamou uma pessoa pra seguir com ele por aqui.",
+    description: "Passa a conversa para uma pessoa do time e desliga você nesta conversa. Use quando o lead pedir pra falar com uma pessoa, quando houver reclamação, quando o assunto fugir do seu alcance (contrato, cobrança, suporte, negociação de condição) ou quando você não souber responder com segurança. O responsável é avisado na hora. Depois de chamar, escreva uma única mensagem curta dizendo que vai verificar e que o retorno vem por aqui mesmo, sem falar em transferência, sem prometer prazo e sem fazer pergunta. Se o lead só perguntou se fala com robô, IA ou pessoa (sem pedir pra ser atendido por alguém), NÃO use esta ferramenta: responda em uma frase que você é a assistente virtual do time e que uma pessoa do time acompanha a conversa, e siga normalmente.",
     input_schema: {
       type: "object",
       properties: {
@@ -2153,6 +2171,8 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
       if (!ctx?.conversationId) return "Erro: sem conversa para transferir.";
       const motivo = String(input?.motivo || "").replace(/\s+/g, " ").trim().slice(0, 300) || "o agente pediu atendimento humano";
       const resumo = String(input?.resumo || "").trim().slice(0, 600);
+      // manter_agente: só avisa o time (lead perguntou se é IA); o agente NÃO sai da conversa
+      const manter = input?.manter_agente === true;
       let leadRow = null;
       if (leadId) {
         const { data: lr } = await supabase.from("crm_leads").select("id, name, company, phone, notes, owner_staff_id, closer_staff_id, sdr_staff_id").eq("id", leadId).maybeSingle();
@@ -2175,11 +2195,11 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
         const { error: nErr } = await supabase.from("onboarding_notifications").insert({
           staff_id: responsavel.id,
           type: "crm_agent_handoff",
-          title: `Agente de IA passou a conversa: ${quem}`.slice(0, 140),
+          title: (manter ? `Lead perguntou se fala com IA: ${quem}` : `Agente de IA passou a conversa: ${quem}`).slice(0, 140),
           message: [
             `Motivo: ${motivo}`,
             resumo ? `Resumo: ${resumo}` : null,
-            `Canal: ${canal}. O agente foi desligado nesta conversa.`
+            manter ? `Canal: ${canal}. O agente continua respondendo. Entre na conversa quando quiser.` : `Canal: ${canal}. O agente foi desligado nesta conversa.`
           ].filter(Boolean).join("\n"),
           reference_id: leadId || null,
           reference_type: leadId ? "crm_lead" : null,
@@ -2193,7 +2213,7 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
       const digitos = alvoTel ? String(alvoTel.phone).replace(/\D/g, "") : "";
       const numero = digitos ? digitos.startsWith("55") ? digitos : `55${digitos}` : "5531989840003";
       const avisado = await sendWhatsAppAlert(supabase, numero, [
-        "Agente de IA passou a conversa pra atendimento humano",
+        manter ? "Lead perguntou se está falando com IA" : "Agente de IA passou a conversa pra atendimento humano",
         "",
         `Lead: ${quem}${leadRow?.company ? ` (${leadRow.company})` : ""}`,
         `Canal: ${canal}`,
@@ -2202,17 +2222,18 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
         leadRow?.phone ? `Telefone: ${leadRow.phone}` : null,
         leadId ? `Link no CRM: https://unvholdings.com.br/#/crm/leads/${leadId}` : null,
         "",
-        "O agente foi desligado nesta conversa. Pra religar, use o Atendimento."
+        manter ? "O agente continua respondendo. Entre na conversa pelo Atendimento quando quiser." : "O agente foi desligado nesta conversa. Pra religar, use o Atendimento."
       ].filter((x)=>x !== null).join("\n"));
       // 3) registro no lead
       if (leadRow) {
         await supabase.from("crm_leads").update({
           notes: [
             leadRow.notes,
-            `[Agente IA] Conversa passada pra atendimento humano: ${motivo}`
+            manter ? `[Agente IA] Lead perguntou se fala com IA (time avisado, agente segue)` : `[Agente IA] Conversa passada pra atendimento humano: ${motivo}`
           ].filter(Boolean).join("\n")
         }).eq("id", leadId);
       }
+      if (manter) return `OK: time avisado${avisado ? " por WhatsApp" : ""} de que o lead perguntou se fala com IA. Você CONTINUA nesta conversa. Responda em UMA frase curta e verdadeira que você é a assistente virtual do time e que uma pessoa do time acompanha a conversa e pode entrar a qualquer momento; nunca diga que é humano. Na mesma resposta, siga a conversa de onde parou. Não diga que vai verificar e não fale em transferência.`;
       return `OK: conversa passada pra uma pessoa do time${responsavel ? ` (${responsavel.name})` : ""}${avisado ? ", que já foi avisada" : ""}. Agora escreva UMA mensagem curta dizendo que vai verificar e que o retorno vem por aqui mesmo. Se o lead perguntou se fala com robô, IA ou pessoa, troque o "vou verificar" por: sim, aqui é o assistente de IA do time e já chamei uma pessoa pra seguir com você por aqui. Não fale em transferência, não prometa prazo e não faça pergunta. Depois desta mensagem você não fala mais nesta conversa.`;
     }
     return `Ferramenta desconhecida: ${name}`;
@@ -4005,6 +4026,9 @@ Deno.serve(async (req)=>{
           content: unhalve(m.content)
         }));
       msgs = msgs.filter((m, i)=>!(i > 0 && msgs[i - 1].direction === m.direction && msgs[i - 1].content === m.content));
+      // Simulação (só no dry_run): acrescenta uma fala do lead no fim da conversa, pra testar a resposta do
+      // agente a uma pergunta específica sem escrever nada na conversa real.
+      if (dry_run && body0?.simular_fala) msgs.push({ direction: "inbound", content: String(body0.simular_fala) });
       if (msgs.length === 0) return {
         ok: true,
         skip: "sem conteúdo textual"
@@ -4064,12 +4088,35 @@ Deno.serve(async (req)=>{
       // mesmo, Ricardo" e continuou qualificando. Mentir que é humano é o que confirma a
       // desconfiança. Agora: resposta curta e honesta, conversa passa pra uma pessoa do time
       // (aviso no sistema + WhatsApp) e o agente sai desta conversa.
+      // 12/11/2026 (Fabrício): "quero continuar recebendo aviso que cliente perguntou, pra eu entrar na
+      // conversa, mas a IA continuar". Só a pergunta "é IA?": o time é avisado e o agente segue, com uma
+      // frase curta e verdadeira. Pedido de falar com uma pessoa continua passando a conversa.
+      let notaPerguntaIA = "";
       const falaLead = String(msgs[msgs.length - 1].content || "");
       // a pergunta pode vir numa mensagem e outra logo depois ("Cara é IA ?" + "Meu Deus", caso Daianne 11/11)
       const idxUltimaNossa = msgs.map((m)=>m.direction).lastIndexOf("outbound");
       const rajadaLead = msgs.slice(idxUltimaNossa + 1).filter((m)=>m.direction === "inbound").map((m)=>String(m.content || "")).join("\n");
       const falaRobo = rajadaLead.split("\n").find((t)=>PEDIU_HUMANO_RE.test(t)) || "";
-      if (falaRobo) {
+      if (falaRobo && soPerguntouSeEIA(falaRobo)) {
+        notaPerguntaIA = NOTA_PERGUNTA_IA;
+        if (!dry_run) {
+          // um aviso por pergunta: se já avisou nesta conversa nas últimas 2 horas, não repete
+          const { data: jaAvisou } = await supabase.from("crm_ai_agent_runs").select("id").eq("conversation_id", conversation_id)
+            .eq("outcome", "pergunta_ia_avisada").gte("created_at", new Date(Date.now() - 2 * 3600000).toISOString()).limit(1);
+          if (!jaAvisou?.length) {
+            await runTool(supabase, agent, conv.lead_id, "transferir_para_humano", {
+              motivo: "O lead perguntou se está falando com IA",
+              resumo: `Última mensagem do lead: "${falaLead.replace(/\s+/g, " ").slice(0, 200)}"`,
+              manter_agente: true
+            }, {
+              conversationId: conversation_id,
+              channel,
+              contactName: conv.contact?.name || conv.contact?.username || null
+            }).catch((e)=>console.error("aviso pergunta IA", e));
+            await supabase.from("crm_ai_agent_runs").insert({ agent_id: agent.id, channel, conversation_id, mode, outcome: "pergunta_ia_avisada", reply: falaRobo.slice(0, 300) }).then(()=>{}, ()=>{});
+          }
+        }
+      } else if (falaRobo) {
         const perguntouRobo = PERGUNTOU_ROBO_RE.test(falaRobo);
         // Fabrício (10/11/2026): "é só falar que sim, é um assistente de IA e que vai chamar o humano"
         const aviso = perguntouRobo ? "Sim, aqui é o assistente de IA do time. Já chamei uma pessoa pra seguir com você por aqui." : "Claro, já chamei uma pessoa do time pra seguir com você por aqui.";
@@ -4649,7 +4696,8 @@ Deno.serve(async (req)=>{
               cache_control: {
                 type: "ephemeral"
               }
-            }
+            },
+            ...(notaPerguntaIA ? [{ type: "text", text: notaPerguntaIA }] : [])
           ],
           messages: apiMessages,
           // 26/10/2026 (caso Luma): o modelo pensa antes de responder e 900 tokens acabavam no
@@ -4769,6 +4817,12 @@ Deno.serve(async (req)=>{
             } else if (dry_run && !FERRAMENTAS_SO_LEITURA.includes(block.name)) {
               result = `[dry_run] ferramenta ${block.name} NÃO executada (simulação).`;
             } else {
+              // a IA chamou a transferência só porque o lead perguntou se é IA: vira aviso, o agente segue
+              const motivoT = String(block.input?.motivo || "");
+              const sohPerguntaIA = block.name === "transferir_para_humano"
+                && /\b(ia|rob[oô]|bot|intelig[eê]ncia artificial|m[aá]quina)\b/i.test(motivoT)
+                && !/\b(pediu|pede|quer|solicit\w*|exig\w*)\s+(pra\s+|para\s+)?(falar|ser atendid|atendimento)/i.test(motivoT);
+              if (sohPerguntaIA) block.input = { ...(block.input || {}), manter_agente: true };
               result = await runTool(supabase, agent, conv.lead_id, block.name, block.input, {
                 conversationId: conversation_id,
                 channel,
@@ -4781,8 +4835,8 @@ Deno.serve(async (req)=>{
               // desligar nessa hora deixava o lead falando sozinho (Devid, Marcela, Bruna, Flávio).
               if (block.name === "marcar_fora_do_perfil" && /^(Negócio movido|Lead marcado)/.test(result)) encerrarConversa = true;
               if (block.name === "transferir_para_humano" && result.startsWith("OK")) {
-                transferidoHumano = true;
-                if (/\b(ia|rob[oô]|bot|intelig[eê]ncia artificial|m[aá]quina|humano|pessoa de verdade)\b/i.test(String(block.input?.motivo || ""))) transferidoPorPerguntaIA = true;
+                if (sohPerguntaIA) transferidoPorPerguntaIA = true; // só avisou: o agente continua
+                else transferidoHumano = true;
               }
             }
             toolCalls.push(`${block.name}(${JSON.stringify(block.input)}) -> ${result.slice(0, 120)}`);
@@ -4810,8 +4864,9 @@ Deno.serve(async (req)=>{
         reply = unhalve(reply);
         // Rede de segurança (caso Daianne 11/11): a IA chamou transferir_para_humano porque o lead perguntou
         // se era IA e mesmo assim escreveu "vou verificar com o time". A resposta vira a fixa e honesta.
-        if (transferidoHumano && transferidoPorPerguntaIA) {
-          reply = "Sim, aqui é o assistente de IA do time. Já chamei uma pessoa pra seguir com você por aqui.";
+        // 12/11/2026: nesse caso o agente não sai mais da conversa; só troca a resposta se ela veio com "vou verificar"
+        if (transferidoPorPerguntaIA && (!reply || /\bvou\s+(verificar|checar|confirmar)\b/i.test(reply))) {
+          reply = "Aqui é a assistente virtual do time. Uma pessoa do time acompanha a conversa e já entra por aqui.";
         }
         // Link escrito junto com a ferramenta e ausente da resposta final: vai junto, antes dela.
         // Só o que tem link entra, pra não vazar narração ("vou mover o lead...").
