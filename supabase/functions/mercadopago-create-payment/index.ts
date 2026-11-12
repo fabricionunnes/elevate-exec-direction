@@ -11,7 +11,8 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // da empresa da Yasmim (MERCADOPAGO_YAS_ACCESS_TOKEN). O front manda account: "yas" pra segunda.
 const TOKENS: Record<string, string> = {
   unv: Deno.env.get("MERCADOPAGO_ACCESS_TOKEN") || "",
-  yas: Deno.env.get("MERCADOPAGO_YAS_ACCESS_TOKEN") || "",
+  // o segredo foi salvo como MERCADOPAGOYAS no painel (12/11); aceita os dois nomes
+  yas: Deno.env.get("MERCADOPAGO_YAS_ACCESS_TOKEN") || Deno.env.get("MERCADOPAGOYAS") || "",
 };
 const j = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
