@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Minus, Plus, ShoppingBag, CalendarDays, Star } from "lucide-react";
+import { Minus, Plus, ShoppingBag, CalendarDays, Star, Search, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useCart, minQty } from "@/lib/cart";
 import { useSettings } from "@/lib/useSettings";
@@ -12,6 +12,8 @@ import { BannerCarousel } from "@/components/BannerCarousel";
 import { Button, Spinner, Empty, Stars } from "@/components/ui";
 import { Logo } from "./Layout";
 
+const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
 export default function Cardapio() {
   const { settings } = useSettings();
   const cart = useCart();
@@ -22,6 +24,7 @@ export default function Cardapio() {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [cats, setCats] = useState<Category[]>([]);
   const [cat, setCat] = useState<string | null>(null);
+  const [q, setQ] = useState("");
   const menuRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -53,10 +56,17 @@ export default function Cardapio() {
   const groups = cats
     .map((c) => ({ name: c.name, items: (products ?? []).filter((p) => p.category === c.name) }))
     .filter((g) => g.items.length > 0);
-  const shown = cat ? groups.filter((g) => g.name === cat) : groups;
+  // busca: sem acento e sem maiúscula, todas as palavras precisam aparecer (nome, descrição ou categoria)
+  const termos = norm(q).split(/\s+/).filter(Boolean);
+  const achou = (p: Product) => { const t = norm(`${p.name} ${p.description ?? ""} ${p.category}`); return termos.every((w) => t.includes(w)); };
+  const buscando = termos.length > 0;
+  const shown = buscando
+    ? groups.map((g) => ({ ...g, items: g.items.filter(achou) })).filter((g) => g.items.length > 0)
+    : cat ? groups.filter((g) => g.name === cat) : groups;
 
   const goToProduct = (id: string) => {
     setCat(null);
+    setQ("");
     setTimeout(() => {
       const el = document.getElementById(`produto-${id}`);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -103,8 +113,30 @@ export default function Cardapio() {
         <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-choco-600">Cardápio</h2>
         {products === null ? <Spinner /> : groups.length === 0 ? <Empty>Cardápio em atualização. Volte já já!</Empty> : (
           <>
-            {groups.length > 1 && (
-              <div className="sticky top-[61px] z-20 -mx-4 mb-3 flex gap-2 overflow-x-auto bg-creme/95 px-4 py-2 backdrop-blur">
+            <div className="sticky top-[61px] z-20 -mx-4 mb-3 space-y-2 bg-creme/95 px-4 py-2 backdrop-blur">
+              <label className="relative block">
+                <Search size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-choco-400" />
+                <input
+                  type="search"
+                  value={q}
+                  onChange={(e) => {
+                    setQ(e.target.value);
+                    // se estava lá embaixo na lista, sobe pro começo dos resultados
+                    const top = menuRef.current?.getBoundingClientRect().top ?? 0;
+                    if (top < 0) menuRef.current?.scrollIntoView({ block: "start" });
+                  }}
+                  placeholder="O que você procura? Ex.: bolo, pão, biscoito"
+                  aria-label="Buscar no cardápio"
+                  className="h-11 w-full rounded-full border border-choco-200 bg-white pl-10 pr-10 text-choco-900 outline-none ring-vinho-300 placeholder:text-choco-300 focus:ring-2 [&::-webkit-search-cancel-button]:hidden"
+                />
+                {q && (
+                  <button type="button" onClick={() => setQ("")} aria-label="Limpar busca" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-choco-500 hover:bg-choco-100">
+                    <X size={16} />
+                  </button>
+                )}
+              </label>
+            {groups.length > 1 && !buscando && (
+              <div className="-mx-4 flex gap-2 overflow-x-auto px-4">
                 {[{ name: null as string | null, label: "Todos", n: groups.reduce((a, g) => a + g.items.length, 0) }, ...groups.map((g) => ({ name: g.name as string | null, label: g.name, n: g.items.length }))].map((c) => (
                   <button
                     key={c.label}
@@ -121,10 +153,14 @@ export default function Cardapio() {
                 ))}
               </div>
             )}
+            </div>
+            {buscando && shown.length === 0 && (
+              <Empty>Não achamos “{q.trim()}”. Tente outra palavra ou peça direto no WhatsApp da Yas.</Empty>
+            )}
             <div className="space-y-6">
               {shown.map((g) => (
                 <div key={g.name}>
-                  {groups.length > 1 && <h3 className="mb-2 text-lg font-black text-vinho-700">{g.name}</h3>}
+                  {(groups.length > 1 || buscando) && <h3 className="mb-2 text-lg font-black text-vinho-700">{g.name}</h3>}
                   <div className="grid gap-3 sm:grid-cols-2">
                     {g.items.map((p) => {
                       const line = cart.lines.find((l) => l.product.id === p.id);
