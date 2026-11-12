@@ -86,6 +86,28 @@ const NOME_IDIOMA: Record<string, string> = { en: "inglês", es: "espanhol", fr:
 const iconeDoAnexo = (mime: string) => (/image\//.test(mime) ? ImageIcon : /spreadsheet|excel|csv/.test(mime) ? FileSpreadsheet : /zip|rar|7z|compressed/.test(mime) ? FileArchive : FileText);
 
 // HTML do e-mail numa sandbox: sem script, links abrem fora, largura contida
+// Tradução com links clicáveis (Fabrício, 12/11/2026: "o link do e-mail do clique aqui não está clicável").
+// A tradução guarda os links como [texto](endereço); endereço solto no texto também vira link.
+const LINK_TRADUCAO = /\[([^\]\n]{1,300})\]\(((?:https?:\/\/|mailto:)[^\s)]+)\)|((?:https?:\/\/|www\.)[^\s<>"]+)/g;
+function corpoComLinks(texto: string) {
+  const partes: (string | JSX.Element)[] = [];
+  let ultimo = 0; let k = 0;
+  for (const m of texto.matchAll(LINK_TRADUCAO)) {
+    const ini = m.index ?? 0;
+    if (ini > ultimo) partes.push(texto.slice(ultimo, ini));
+    let rotulo = m[1] || m[3] || ""; let url = m[2] || m[3] || ""; let sobra = "";
+    if (!m[1]) { sobra = (url.match(/[.,;:!?)\]}'"]+$/) || [""])[0]; if (sobra) { url = url.slice(0, -sobra.length); rotulo = url; } }
+    partes.push(
+      <a key={k++} href={/^www\./i.test(url) ? `https://${url}` : url} target="_blank" rel="noopener noreferrer"
+        className={m[1] ? "font-semibold underline underline-offset-2 text-[#0D2B5E] hover:text-[#CC1B1B]" : "underline underline-offset-2 break-all text-[#0D2B5E] hover:text-[#CC1B1B]"}>{rotulo}</a>,
+    );
+    if (sobra) partes.push(sobra);
+    ultimo = ini + m[0].length;
+  }
+  if (ultimo < texto.length) partes.push(texto.slice(ultimo));
+  return partes;
+}
+
 function docDoEmail(m: Msg): string {
   const corpo = m.body_html || (m.body_text ? `<pre style="white-space:pre-wrap;font-family:inherit">${escapeHtml(m.body_text)}</pre>` : `<p style="color:#6b7280">${escapeHtml(m.snippet || "")}</p>`);
   return `<!doctype html><html><head><meta charset="utf-8"><base target="_blank">
@@ -812,7 +834,7 @@ function Mensagem({ m, abertoInicial, chamar, onTraduzida, onBaixar, onEstrela, 
             </div>
           )}
           {mostrarTraducao ? (
-            <div className="px-6 py-4 text-[14px] leading-relaxed text-foreground/90 whitespace-pre-wrap break-words">{m.body_pt}</div>
+            <div className="px-6 py-4 text-[14px] leading-relaxed text-foreground/90 whitespace-pre-wrap [overflow-wrap:anywhere]">{corpoComLinks(m.body_pt || "")}</div>
           ) : (
             <iframe ref={ref} title={m.subject || "e-mail"} sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin" srcDoc={docDoEmail(m)} onLoad={ajustar} style={{ height: altura }} className="w-full border-0 bg-white" />
           )}
