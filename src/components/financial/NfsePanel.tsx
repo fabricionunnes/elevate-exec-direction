@@ -106,6 +106,11 @@ export function NfsePanel() {
   const isAdmin = isMaster || currentStaff?.role === "admin";
   const [companySearchOpen, setCompanySearchOpen] = useState(false);
    const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null);
+  // cancelamento da nota no Emissor Nacional (evento enviado ao gov, não é só apagar o registro)
+  const [cancelGov, setCancelGov] = useState<NfseRecord | null>(null);
+  const [cancelMotivo, setCancelMotivo] = useState("1");
+  const [cancelJust, setCancelJust] = useState("");
+  const [cancelando, setCancelando] = useState(false);
 
   const DEFAULT_CITY_SERVICE_CODE = "170601";
   const DEFAULT_NBS_CODE = "";
@@ -402,6 +407,32 @@ export function NfsePanel() {
       await loadRecords();
     } catch (err: any) {
       toast.error("Erro ao cancelar: " + err.message);
+    }
+  };
+
+  // Cancela a nota no gov (Emissor Nacional). Excluir o registro NÃO cancela: a nota continua valendo.
+  const handleCancelGov = async () => {
+    if (!cancelGov) return;
+    const just = cancelJust.replace(/\s+/g, " ").trim();
+    if (just.length < 15) { toast.error("Escreva a justificativa com pelo menos 15 caracteres."); return; }
+    setCancelando(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("nfse-emitir", {
+        body: { action: "cancelar", record_id: cancelGov.id, motivo: cancelMotivo, justificativa: just },
+      });
+      if (error) {
+        const det = await (error as any).context?.json?.().catch(() => null);
+        throw new Error(det?.error || error.message);
+      }
+      if ((data as any)?.error) throw new Error((data as any).error);
+      if ((data as any)?.aviso) toast.warning((data as any).aviso);
+      else toast.success(`NFS-e${cancelGov.number ? ` #${cancelGov.number}` : ""} cancelada no gov`);
+      setCancelGov(null);
+      await loadRecords();
+    } catch (err: any) {
+      toast.error("O gov não aceitou o cancelamento: " + err.message, { duration: 12000 });
+    } finally {
+      setCancelando(false);
     }
   };
 
@@ -1073,10 +1104,15 @@ export function NfsePanel() {
                           <XCircle className="h-4 w-4 text-destructive" />
                         </Button>
                       )}
+                      {isAdmin && record.origem === "gov" && record.chave_acesso && record.status !== "cancelled" && (
+                        <Button variant="ghost" size="icon" onClick={() => { setCancelGov(record); setCancelMotivo("1"); setCancelJust(""); }} title="Cancelar NFS-e no gov">
+                          <XCircle className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                       {isAdmin && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" title="Excluir registro">
+                            <Button variant="ghost" size="icon" title="Excluir registro do Nexus (não cancela a nota)">
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </AlertDialogTrigger>
@@ -1085,6 +1121,11 @@ export function NfsePanel() {
                               <AlertDialogTitle>Excluir NFS-e</AlertDialogTitle>
                               <AlertDialogDescription>
                                 Tem certeza que deseja excluir este registro de NFS-e{record.number ? ` #${record.number}` : ""}? Esta ação não pode ser desfeita.
+                                {record.origem === "gov" && record.status !== "cancelled" && (
+                                  <span className="mt-2 block font-medium text-destructive">
+                                    Excluir só tira o registro do Nexus. A nota continua válida no gov e o imposto continua devido. Pra cancelar a nota, use o botão Cancelar NFS-e no gov.
+                                  </span>
+                                )}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -1104,6 +1145,44 @@ export function NfsePanel() {
           })}
         </div>
       )}
+
+      <Dialog open={!!cancelGov} onOpenChange={(o) => { if (!o && !cancelando) setCancelGov(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancelar NFS-e{cancelGov?.number ? ` #${cancelGov.number}` : ""} no gov</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {cancelGov?.tomador_name || "Tomador não informado"} · {((cancelGov?.amount_cents || 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+            </p>
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              O cancelamento é enviado ao Emissor Nacional e não pode ser desfeito. Se o gov recusar (prazo do município vencido, por exemplo), a nota continua como está e o motivo aparece na tela.
+            </div>
+            <div className="space-y-1.5">
+              <Label>Motivo</Label>
+              <Select value={cancelMotivo} onValueChange={setCancelMotivo}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Erro na emissão</SelectItem>
+                  <SelectItem value="2">Serviço não prestado</SelectItem>
+                  <SelectItem value="9">Outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Justificativa</Label>
+              <Textarea value={cancelJust} onChange={(e) => setCancelJust(e.target.value.slice(0, 255))} rows={3} placeholder="Explique o motivo do cancelamento (mínimo de 15 caracteres)" />
+              <p className="text-xs text-muted-foreground">{cancelJust.trim().length} de 255 caracteres</p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setCancelGov(null)} disabled={cancelando}>Voltar</Button>
+              <Button variant="destructive" onClick={handleCancelGov} disabled={cancelando || cancelJust.replace(/\s+/g, " ").trim().length < 15}>
+                {cancelando ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cancelando no gov...</> : "Cancelar a nota"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
