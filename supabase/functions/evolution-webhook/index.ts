@@ -484,8 +484,22 @@ async function handleIncomingMessage(
   // Atendimento nem ocupam banco. Lista em crm_whatsapp_ignored_chats (menu ⋮ da conversa).
   const { data: ignorado } = await supabase.from('crm_whatsapp_ignored_chats').select('phone').eq('phone', phone).maybeSingle();
   if (ignorado) {
-    console.log('Conversa ignorada, descartando:', phone);
-    return;
+    // Exceção (13/11/2026): a conversa do número do financeiro com o dono é por onde ele responde os
+    // pedidos do agente de cobrança ("9 pode tirar os juros"). O Fabrício ignorou o próprio número no
+    // Atendimento em 19/09 e, desde então, as respostas dele eram descartadas aqui: o agente perguntava
+    // e nunca via a resposta. Essa conversa nunca é descartada. O número do financeiro não aparece no
+    // Atendimento, então a conversa continua fora da tela.
+    let respostaDoDono = false;
+    try {
+      const { data: cob } = await supabase.from('billing_agent_config').select('instance_id, owner_phone').limit(1).maybeSingle();
+      const fim8 = (v: unknown) => String(v ?? '').replace(/\D/g, '').slice(-8);
+      respostaDoDono = !!cob?.instance_id && cob.instance_id === instanceId && fim8(cob.owner_phone).length === 8 && fim8(cob.owner_phone) === fim8(phone);
+    } catch (_e) { /* sem configuração do agente: segue ignorando */ }
+    if (!respostaDoDono) {
+      console.log('Conversa ignorada, descartando:', phone);
+      return;
+    }
+    console.log('Conversa ignorada, mas é o dono falando com o agente de cobrança: mantida', phone);
   }
   
   // Get or create contact - use pushName from data level
