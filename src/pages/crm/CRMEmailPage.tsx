@@ -79,9 +79,11 @@ const tamanho = (n: number) => (n > 1024 * 1024 ? `${(n / 1048576).toFixed(1)} M
 const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const temLabel = (m: Msg, l: string) => (m.label_ids || []).includes(l);
 // em português quando o e-mail veio em outro idioma e já tem tradução
-const traduzido = (m: Msg) => !!m.lang && m.lang !== "pt";
-const assuntoPt = (m: Msg) => (traduzido(m) && m.subject_pt) || m.subject;
-const trechoPt = (m: Msg) => (traduzido(m) && m.snippet_pt) || m.snippet;
+// Fabrício, 13/11/2026: "todos os emails estão sendo traduzidos pra português, deixa que se eu
+// precisar eu clico em traduzir". Lista e cabeçalho mostram sempre o original; a tradução só
+// acontece no botão "Traduzir" de cada mensagem.
+const assuntoPt = (m: Msg) => m.subject;
+const trechoPt = (m: Msg) => m.snippet;
 const NOME_IDIOMA: Record<string, string> = { en: "inglês", es: "espanhol", fr: "francês", de: "alemão", it: "italiano", nl: "holandês", ja: "japonês", zh: "chinês", ko: "coreano", ru: "russo" };
 const iconeDoAnexo = (mime: string) => (/image\//.test(mime) ? ImageIcon : /spreadsheet|excel|csv/.test(mime) ? FileSpreadsheet : /zip|rar|7z|compressed/.test(mime) ? FileArchive : FileText);
 
@@ -193,11 +195,20 @@ export default function CRMEmailPage() {
     const { data } = await db.from("mail_labels").select("gmail_label_id, name, type, color").eq("account_id", acc.id).order("name");
     setLabels((data as Label[]) || []);
     const chaves = ["INBOX", "IMPORTANT", "SPAM", "DRAFT", ...((data as Label[]) || []).filter((l) => l.type === "user").map((l) => l.gmail_label_id)];
+    // O número de cada pasta conta CONVERSAS não lidas, igual à lista (Fabrício, 13/11/2026: "tá
+    // marcando que tem 5 não lida, mas só tem 1": eram 5 mensagens da mesma conversa).
     const contagem: Record<string, number> = {};
-    await Promise.all(chaves.map(async (k) => {
-      const { count } = await db.from("mail_messages").select("id", { count: "exact", head: true }).eq("account_id", acc.id).eq("is_unread", true).contains("label_ids", [k]).not("label_ids", "cs", "{TRASH}");
-      contagem[k] = count || 0;
-    }));
+    const { data: nl } = await db.from("mail_messages").select("thread_id, label_ids").eq("account_id", acc.id).eq("is_unread", true).not("label_ids", "cs", "{TRASH}").limit(1000);
+    const linhas = (nl as { thread_id: string; label_ids: string[] | null }[]) || [];
+    if (linhas.length < 1000) {
+      for (const k of chaves) contagem[k] = new Set(linhas.filter((m) => (m.label_ids || []).includes(k)).map((m) => m.thread_id)).size;
+    } else {
+      // caixa com mil ou mais não lidas: a consulta acima vem cortada, então conta por mensagem
+      await Promise.all(chaves.map(async (k) => {
+        const { count } = await db.from("mail_messages").select("id", { count: "exact", head: true }).eq("account_id", acc.id).eq("is_unread", true).contains("label_ids", [k]).not("label_ids", "cs", "{TRASH}");
+        contagem[k] = count || 0;
+      }));
+    }
     setNaoLidas(contagem);
   }, []);
 
@@ -271,19 +282,6 @@ export default function CRMEmailPage() {
   useEffect(() => { if (pagina > totalPaginas) setPagina(totalPaginas); }, [pagina, totalPaginas]);
   // só a página atual (20 por página)
   const conversas = useMemo(() => todasConversas.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA), [todasConversas, pagina, POR_PAGINA]);
-  // traduz assunto/trecho da página visível que ainda não tem idioma detectado (lote de 20, uma chamada)
-  const pedidosTraducao = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    const ids = conversas.map((c) => c.ultima).filter((m) => !m.lang && !pedidosTraducao.current.has(m.gmail_id)).map((m) => m.gmail_id);
-    if (!ids.length) return;
-    ids.forEach((id) => pedidosTraducao.current.add(id));
-    for (let i = 0; i < ids.length; i += 20) {
-      chamar({ action: "translate-list", gmail_ids: ids.slice(i, i + 20) }).then((r) => {
-        const porId = new Map<string, Partial<Msg>>((r?.items || []).map((x: Partial<Msg> & { gmail_id: string }) => [x.gmail_id, x]));
-        setMensagens((prev) => prev.map((m) => (porId.has(m.gmail_id) ? { ...m, ...porId.get(m.gmail_id) } : m)));
-      }).catch(() => {});
-    }
-  }, [conversas, chamar]);
   const mudarPagina = (p: number) => { setPagina(Math.min(totalPaginas, Math.max(1, p))); setSelecionadas(new Set()); setCursor(-1); };
 
   // Abrir conversa: carrega as mensagens da thread, corpo sob demanda, marca lida
@@ -632,7 +630,6 @@ export default function CRMEmailPage() {
                             <span className="truncate">{assuntoPt(m) || "(sem assunto)"}</span>
                           </p>
                           <div className="flex items-center gap-1.5">
-                            {traduzido(m) && m.subject_pt && <Languages className="h-3 w-3 shrink-0 text-muted-foreground/70" aria-label="Traduzido" />}
                             <p className={cn("truncate text-xs flex-1", c.naoLida ? "text-foreground/75" : "text-muted-foreground")}>{trechoPt(m)}</p>
                             {c.anexo && <Paperclip className="h-3 w-3 text-muted-foreground shrink-0" />}
                             {c.estrela && <Star className="h-3.5 w-3.5 shrink-0 fill-current text-amber-500" />}
@@ -786,20 +783,24 @@ function Mensagem({ m, abertoInicial, chamar, onTraduzida, onBaixar, onEstrela, 
   const ajustar = () => { try { const h = ref.current?.contentWindow?.document?.documentElement?.scrollHeight; if (h) setAltura(Math.min(Math.max(h + 8, 80), 4000)); } catch { /* sandbox */ } };
   const quem = nomeDe(m);
   const anexos = (m.attachments || []).filter((a) => !a.inline);
-  // tradução automática ao abrir (só quando o idioma não é português; fica em cache no banco)
-  const [verOriginal, setVerOriginal] = useState(false);
+  // Tradução só quando pedirem: a mensagem abre sempre no original. O primeiro clique em
+  // "Traduzir" chama a IA; depois a tradução fica guardada no banco e aparece na hora.
+  const [verTraducao, setVerTraducao] = useState(false);
   const [traduzindo, setTraduzindo] = useState(false);
-  useEffect(() => {
-    if (!aberto || !m.body_loaded || m.body_pt || m.translated_at || traduzindo) return;
-    let vivo = true;
+  const traduzir = () => {
+    if (m.body_pt) { setVerTraducao(true); return; }
+    if (traduzindo) return;
     setTraduzindo(true);
     chamar({ action: "translate", gmail_id: m.gmail_id })
-      .then((r) => { if (vivo && r) onTraduzida({ lang: r.lang, subject_pt: r.subject_pt, body_pt: r.body_pt, translated_at: r.translated_at || new Date().toISOString() }); })
-      .catch(() => {}).finally(() => { if (vivo) setTraduzindo(false); });
-    return () => { vivo = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aberto, m.body_loaded, m.body_pt, m.translated_at, m.gmail_id]);
-  const mostrarTraducao = !!m.body_pt && !verOriginal;
+      .then((r) => {
+        if (!r) return;
+        onTraduzida({ lang: r.lang, subject_pt: r.subject_pt, body_pt: r.body_pt, translated_at: r.translated_at || new Date().toISOString() });
+        if (r.body_pt) setVerTraducao(true); else toast.info("Este e-mail já está em português");
+      })
+      .catch(() => toast.error("Não consegui traduzir agora. Tente de novo."))
+      .finally(() => setTraduzindo(false));
+  };
+  const mostrarTraducao = !!m.body_pt && verTraducao;
   return (
     <div className={cn("rounded-xl border bg-card overflow-hidden transition-shadow", aberto ? "shadow-sm" : "hover:shadow-sm")}>
       <button className="w-full text-left px-4 py-3 flex items-start gap-3" onClick={() => setAberto((v) => !v)}>
@@ -810,6 +811,11 @@ function Mensagem({ m, abertoInicial, chamar, onTraduzida, onBaixar, onEstrela, 
             {m.from_name && <span className="text-xs text-muted-foreground truncate hidden sm:inline">&lt;{m.from_email}&gt;</span>}
             {temLabel(m, "IMPORTANT") && <Bookmark className="h-3 w-3 shrink-0 fill-current text-amber-500" />}
             <span className="ml-auto text-[11px] text-muted-foreground shrink-0" title={quandoLongo(m.internal_date)}>{aberto ? quandoLongo(m.internal_date) : quando(m.internal_date)}</span>
+            {aberto && !mostrarTraducao && (
+              <button onClick={(e) => { e.stopPropagation(); traduzir(); }} title="Traduzir pra português" className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground shrink-0">
+                {traduzindo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Languages className="h-3.5 w-3.5" />}<span className="hidden sm:inline">Traduzir</span>
+              </button>
+            )}
             <button onClick={(e) => { e.stopPropagation(); onEstrela(); }} className={cn(m.is_starred ? "text-amber-500" : "text-muted-foreground/40 hover:text-amber-500")}><Star className={cn("h-4 w-4", m.is_starred && "fill-current")} /></button>
           </div>
           {aberto ? (
@@ -821,15 +827,15 @@ function Mensagem({ m, abertoInicial, chamar, onTraduzida, onBaixar, onEstrela, 
       </button>
       {aberto && (
         <>
-          {(!!m.body_pt || traduzindo) && (
+          {(mostrarTraducao || traduzindo) && (
             <div className="mx-4 mb-1 flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs" style={{ background: "#0D2B5E0d", color: NAVY }}>
               <Languages className="h-3.5 w-3.5 shrink-0" />
-              {traduzindo && !m.body_pt ? (
+              {traduzindo ? (
                 <span className="flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Traduzindo pra português...</span>
               ) : (
                 <>
-                  <span>{verOriginal ? `Original em ${NOME_IDIOMA[m.lang || ""] || m.lang}` : `Traduzido do ${NOME_IDIOMA[m.lang || ""] || m.lang}`}</span>
-                  <button onClick={() => setVerOriginal((v) => !v)} className="ml-auto font-medium underline-offset-2 hover:underline">{verOriginal ? "Ver tradução" : "Ver original"}</button>
+                  <span>Traduzido do {NOME_IDIOMA[m.lang || ""] || m.lang || "original"}</span>
+                  <button onClick={() => setVerTraducao(false)} className="ml-auto font-medium underline-offset-2 hover:underline">Ver original</button>
                 </>
               )}
             </div>
