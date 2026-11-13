@@ -1,131 +1,24 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Blog UNV — gestão comercial por Fabrício Nunnes | UNV Holdings</title>
-<meta name="description" content="Blog de Fabrício Nunnes, CEO da UNV Holdings (Universidade Nacional de Vendas): gestão comercial, posicionamento, time de vendas e meta batida todo mês. Método, não teoria.">
-<meta name="author" content="Fabrício Nunnes — CEO da UNV Holdings, Universidade Nacional de Vendas">
+<title>Blog UNV Holdings: gestão comercial na prática, por Fabrício Nunnes</title>
+<meta name="description" content="Blog de Fabrício Nunnes, CEO da UNV Holdings (Universidade Nacional de Vendas) e diretor comercial terceirizado: gestão comercial, time de vendas, processo e meta batida todo mês.">
+<meta name="author" content="Fabrício Nunnes, CEO da UNV Holdings (Universidade Nacional de Vendas)">
 <link rel="canonical" href="https://unvholdings.com.br/blog/">
 <link rel="icon" href="/favicon.ico">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Blog UNV — guias de gestão comercial">
-<meta property="og:description" content="Guias práticos sobre modelo de negócio, posicionamento, conteúdo e marketing para donos de PME.">
+<meta property="og:site_name" content="Blog UNV Holdings">
+<meta property="og:title" content="Blog UNV Holdings: gestão comercial na prática, por Fabrício Nunnes">
+<meta property="og:description" content="Blog de Fabrício Nunnes, CEO da UNV Holdings (Universidade Nacional de Vendas) e diretor comercial terceirizado: gestão comercial, time de vendas, processo e meta batida todo mês.">
 <meta property="og:url" content="https://unvholdings.com.br/blog/">
-<meta property="og:image" content="https://unvholdings.com.br/images/unv-logo.png">
+<meta property="og:image" content="https://unvholdings.com.br/blog/img/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<style>
-:root{
-  --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#EDEFF3;
-  --ink:#0A1F45; --ink-2:#33415C; --muted:#5F6B80; --faint:#8B94A5;
-  --rule:#DCE1E9; --rule-2:#C3CBD7;
-  --navy:#0D2B5E; --red:#CC1B1B;
-  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
-  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
-}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D;
-    --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
-    --rule:#1E3557; --rule-2:#2C4770;
-    --navy:#7BA4E8; --red:#FF6B62;
-  }
-}
-:root[data-theme="dark"]{
-  --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D;
-  --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
-  --rule:#1E3557; --rule-2:#2C4770;
-  --navy:#7BA4E8; --red:#FF6B62;
-}
-*{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui);font-size:16.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1200px;margin:0 auto;padding:0 26px}
-p{margin:0 0 1em}
-strong{font-weight:680;color:var(--ink)}
-a{color:var(--red)}
-:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+<meta name="theme-color" content="#FFFFFF">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..900&family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/blog/blog.css?v=3">
 
-.topbar{border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--ground);z-index:10}
-.topbar .in{max-width:1200px;margin:0 auto;padding:12px 26px;display:flex;align-items:center;justify-content:space-between;gap:18px}
-.topbar picture{display:block}
-.topbar img{height:38px;width:auto;display:block}
-.topbar .cta{font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#fff;background:var(--red);padding:10px 17px;border-radius:2px;text-decoration:none;font-weight:700;white-space:nowrap}
-
-.hero{padding:74px 0 44px}
-.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0}
-.hero h1{font-size:clamp(40px,7vw,80px);line-height:.98;letter-spacing:-.042em;font-weight:820;margin:22px 0 0;text-wrap:balance;max-width:15ch}
-.hero .sub{font-size:clamp(17px,2vw,20px);line-height:1.5;color:var(--ink-2);max-width:62ch;margin:24px 0 0}
-
-.list{border-top:1px solid var(--rule);margin-top:52px}
-.post{display:grid;grid-template-columns:96px 1fr 200px;gap:34px;padding:38px 0;border-bottom:1px solid var(--rule);align-items:start}
-.post .num{font-family:var(--mono);font-size:12px;letter-spacing:.16em;color:var(--red);font-weight:600;padding-top:6px}
-.post h2{font-size:clamp(24px,3.2vw,33px);line-height:1.08;letter-spacing:-.028em;font-weight:800;margin:0 0 12px;text-wrap:balance;max-width:22ch}
-.post h2 a{color:var(--ink);text-decoration:none}
-.post h2 a:hover{color:var(--red)}
-.post .brief{font-size:16px;line-height:1.55;color:var(--ink-2);margin:0 0 16px;max-width:62ch}
-.post .tags{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px}
-.post .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface-2);padding:3px 8px;border-radius:2px}
-.post .side{padding-top:6px}
-.post .meta{font-family:var(--mono);font-size:11.5px;line-height:1.7;color:var(--muted);margin-bottom:14px}
-.post .go{display:inline-block;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:#fff;background:var(--navy);padding:11px 18px;border-radius:2px;text-decoration:none;white-space:nowrap}
-.post .go:hover{filter:brightness(1.15)}
-@media (max-width:860px){
-  .post{grid-template-columns:1fr;gap:16px;padding:32px 0}
-  .post .num{padding-top:0}
-  .post .side{padding-top:0}
-}
-
-.soon{padding:34px 0 0;border-bottom:1px solid var(--rule);padding-bottom:34px}
-.soon .k{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
-.soon p{color:var(--ink-2);max-width:62ch;margin:0}
-
-.final{background:var(--surface);border-top:1px solid var(--rule);margin-top:0}
-.final .in{max-width:1200px;margin:0 auto;padding:72px 26px 78px}
-.final h2{font-size:clamp(27px,4vw,42px);line-height:1.05;letter-spacing:-.03em;font-weight:800;margin:0 0 18px;max-width:18ch;text-wrap:balance}
-.final p{color:var(--ink-2);max-width:56ch;font-size:17.5px}
-.btn{display:inline-block;margin-top:14px;background:var(--red);color:#fff;font-weight:750;font-size:16px;padding:15px 28px;border-radius:2px;text-decoration:none;letter-spacing:-.01em}
-.btn:hover{filter:brightness(1.08)}
-.foot{border-top:1px solid var(--rule);background:var(--ground)}
-.foot .in{max-width:1200px;margin:0 auto;padding:34px 26px 50px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:space-between}
-.foot picture{display:block;flex:none}
-.foot img{height:44px;width:auto;opacity:.85}
-.foot p{font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--muted);margin:0;max-width:60ch}
-.foot b{color:var(--ink)}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
-@media (max-width:640px){
-  .wrap,.final .in,.foot .in,.topbar .in{padding-left:18px;padding-right:18px}
-  .hero{padding:48px 0 32px}
-  .topbar img{height:30px}.topbar .cta{font-size:11px;padding:8px 12px}
-}
-
-.byline{display:flex;gap:14px;align-items:center;margin:26px 0 0;padding:16px 0 0;border-top:1px solid var(--rule);flex-wrap:wrap}
-.byline .av{width:44px;height:44px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;letter-spacing:-.02em;flex:none}
-.byline .tx{font-size:14px;line-height:1.5;color:var(--muted)}
-.byline .tx b{color:var(--ink);font-weight:700}
-.autorbox{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--navy);border-radius:2px;padding:26px 28px;margin:44px 0 0;display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
-.autorbox .av{width:64px;height:64px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:21px;letter-spacing:-.02em;flex:none}
-.autorbox .c{flex:1 1 300px}
-.autorbox .n{font-size:19px;font-weight:780;letter-spacing:-.02em;margin:0}
-.autorbox .r{font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--red);margin:5px 0 10px}
-.autorbox .b{font-size:14.5px;line-height:1.55;color:var(--ink-2);margin:0}
-.autorbox .b a{color:var(--red)}
-
-.tools{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:40px 0 0;padding:18px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
-.tools input[type=search]{flex:1 1 280px;font-size:16px;padding:13px 15px;border:1px solid var(--rule-2);border-radius:2px;background:var(--surface);color:var(--ink);font-family:inherit}
-.tools .cnt{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
-.chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
-.chips button{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:6px 11px;border:1px solid var(--rule-2);background:var(--surface);color:var(--muted);border-radius:2px;cursor:pointer}
-.chips button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
-.badge{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;padding:2px 7px;border-radius:2px;font-weight:700}
-.badge.guia{background:var(--surface-2);color:var(--navy)}
-.badge.diario{background:var(--surface-2);color:var(--red)}
-.pager{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;padding:44px 0 0}
-.pager button{font-family:var(--mono);font-size:13px;padding:10px 15px;border:1px solid var(--rule-2);background:var(--surface);color:var(--ink-2);border-radius:2px;cursor:pointer;min-width:44px}
-.pager button[aria-current="true"]{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
-.pager button:disabled{opacity:.35;cursor:default}
-.vazio{padding:52px 0;text-align:center;color:var(--muted);font-size:16px}
-</style>
 <script type="application/ld+json">
 {
  "@context": "https://schema.org",
@@ -134,125 +27,102 @@ a{color:var(--red)}
    "@type": "Organization",
    "@id": "https://unvholdings.com.br/#org",
    "name": "UNV Holdings",
-   "alternateName": [
-    "Universidade Nacional de Vendas",
-    "UNV"
-   ],
+   "alternateName": ["Universidade Nacional de Vendas", "UNV"],
    "url": "https://unvholdings.com.br/",
-   "logo": {
-    "@type": "ImageObject",
-    "url": "https://unvholdings.com.br/images/unv-logo.png"
-   },
+   "logo": {"@type": "ImageObject", "url": "https://unvholdings.com.br/blog/img/unv-holdings.png"},
    "description": "Direção comercial terceirizada para pequenas e médias empresas.",
-   "founder": {
-    "@id": "https://unvholdings.com.br/#fabricio"
-   },
+   "founder": {"@id": "https://unvholdings.com.br/#fabricio"},
+   "foundingDate": "2023-07",
+   "address": {"@type": "PostalAddress", "streetAddress": "Rua Araguaia, 130, Alphaville", "addressLocality": "Nova Lima", "addressRegion": "MG", "addressCountry": "BR"},
    "areaServed": "BR",
-   "knowsAbout": [
-    "gestão comercial",
-    "direção comercial terceirizada",
-    "estruturação de time de vendas",
-    "previsibilidade de receita",
-    "marketing para PME"
-   ]
+   "knowsAbout": ["gestão comercial", "direção comercial terceirizada", "estruturação de time de vendas", "previsibilidade de receita", "treinamento de vendedores"]
   },
   {
    "@type": "Person",
    "@id": "https://unvholdings.com.br/#fabricio",
    "name": "Fabrício Nunnes",
    "alternateName": "Fabrício Nunes",
-   "jobTitle": [
-    "CEO",
-    "Diretor Comercial"
-   ],
+   "jobTitle": ["CEO", "Diretor Comercial"],
    "description": "CEO e fundador da UNV Holdings (Universidade Nacional de Vendas). Diretor comercial terceirizado para pequenas e médias empresas, com mais de 20 anos em vendas, mais de 10 como diretor comercial, mais de 600 empresas atendidas em 7 países e 3 continentes e mais de R$ 1 bilhão em vendas geradas.",
-   "worksFor": {
-    "@id": "https://unvholdings.com.br/#org"
-   },
-   "url": "https://unvholdings.com.br/",
-   "sameAs": [
-    "https://www.instagram.com/ofabricionunnes/",
-    "https://www.instagram.com/unvholdings/",
-    "https://www.linkedin.com/company/universidade-vendas",
-    "https://www.youtube.com/channel/UCppsePWHbTMG3z6Ne-znDzw",
-    "https://unvholdings.com.br/"
-   ],
-   "knowsAbout": [
-    "gestão comercial",
-    "vendas B2B",
-    "estruturação de time comercial",
-    "posicionamento",
-    "marketing"
-   ]
+   "image": "https://unvholdings.com.br/blog/img/fabricio-avatar.jpg",
+   "worksFor": {"@id": "https://unvholdings.com.br/#org"},
+   "url": "https://unvholdings.com.br/fabricio-nunnes/",
+   "mainEntityOfPage": "https://unvholdings.com.br/fabricio-nunnes/",
+   "sameAs": ["https://www.instagram.com/ofabricionunnes/", "https://www.instagram.com/unvholdings/", "https://www.linkedin.com/company/universidade-vendas", "https://www.youtube.com/channel/UCppsePWHbTMG3z6Ne-znDzw"],
+   "knowsAbout": ["gestão comercial", "direção comercial terceirizada", "vendas B2B", "estruturação de time comercial", "treinamento de vendedores", "Método CRESCER", "posicionamento", "previsibilidade de receita"]
   },
   {
    "@type": "Blog",
-   "headline": "Blog UNV — guias de gestão comercial para donos de PME",
-   "description": "Guias práticos da UNV sobre modelo de negócio, posicionamento, conteúdo e estrutura de marketing. Método, não teoria.",
+   "@id": "https://unvholdings.com.br/blog/#blog",
+   "name": "Blog UNV Holdings",
+   "headline": "Gestão comercial na prática, por Fabrício Nunnes",
+   "description": "Conteúdo diário de gestão comercial escrito por Fabrício Nunnes a partir das reuniões que ele conduz com donos de pequenas e médias empresas.",
    "url": "https://unvholdings.com.br/blog/",
    "inLanguage": "pt-BR",
-   "author": {
-    "@id": "https://unvholdings.com.br/#fabricio"
-   },
-   "publisher": {
-    "@id": "https://unvholdings.com.br/#org"
-   },
-   "mainEntityOfPage": {
-    "@type": "WebPage",
-    "@id": "https://unvholdings.com.br/blog/"
-   },
-   "image": "https://unvholdings.com.br/images/unv-logo.png",
-   "datePublished": "2026-08-12",
-   "dateModified": "2026-08-12"
+   "author": {"@id": "https://unvholdings.com.br/#fabricio"},
+   "publisher": {"@id": "https://unvholdings.com.br/#org"}
   }
  ]
 }
 </script>
-<style>
-.unv-by{display:flex;align-items:center;gap:12px;margin:18px 0 0;padding-top:16px;border-top:1px solid rgba(128,128,128,.22);font-size:14px;line-height:1.5;text-align:left}
-.unv-by .av{flex:0 0 40px;width:40px;height:40px;border-radius:50%;background:#0D2B5E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;letter-spacing:.5px}
-.unv-by .nm{font-weight:700}
-.unv-by .rl{opacity:.72}
-@media(prefers-color-scheme:dark){.unv-by .av{background:#C9A84C;color:#0A0A0A}}
-</style>
+<script src="/blog/blog.js?v=3" defer></script>
 </head>
-<body>
-
-<div class="topbar">
-  <div class="in">
-    <a href="/"><picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture></a>
-    <a class="cta" href="/sessao">Sessão estratégica</a>
+<body class="bx">
+<header class="uh" id="uh">
+  <div class="uh-in">
+    <a class="uh-logo" href="/" aria-label="UNV Holdings, página inicial"><img src="/blog/img/unv-holdings.png" alt="UNV Holdings" width="560" height="419"></a>
+    <nav class="uh-nav" aria-label="Principal">
+      <a href="/blog/" class="fica" aria-current="page">Blog</a>
+      <a href="/blog/arquivo/" class="opc">Todos os conteúdos</a>
+      <a href="/fabricio-nunnes/" class="opc">Quem escreve</a>
+      <a href="/diretor-comercial-terceirizado/" class="opc">Diretor comercial terceirizado</a>
+    </nav>
+    <a class="uh-cta" href="/sessao">Sessão estratégica</a>
   </div>
-</div>
+</header>
+<main class="wrap">
 
-<div class="wrap">
-
-  <header class="hero">
-    <p class="eyebrow">Blog UNV</p>
-    <h1>Gestão comercial na prática, todo dia</h1>
-    <p class="sub">
-      Guias longos sobre modelo de negócio, posicionamento e marketing, e o diário com o que sai das
-      minhas reuniões de diagnóstico com donos de empresa. Método CRESCER aplicado, sem teoria solta.
-    </p>
-    <div class="unv-by">
-      <span class="av">FN</span>
-      <span class="tx">
-        <span class="nm">Fabrício Nunnes</span><br>
-        <span class="rl">CEO e fundador da UNV Holdings — Universidade Nacional de Vendas · Diretor comercial terceirizado</span>
-      </span>
+  <section class="topo">
+    <div>
+      <span class="selo"><i></i>Blog da UNV Holdings</span>
+      <h1>Gestão comercial na prática, <em>todo dia.</em></h1>
+      <p class="sub">O que eu falo e decido nas reuniões com donos de empresa, organizado pelo Método CRESCER.
+      Escrito por <b>Fabrício Nunnes</b>, CEO da UNV Holdings e diretor comercial terceirizado de pequenas e médias empresas.</p>
+      <div class="busca">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input type="search" id="q" placeholder="Buscar por tema: preço, time, meta, vendedor..." aria-label="Buscar conteúdo">
+      </div>
+      <ul class="fatos">
+        <li><b>+20 anos</b>em vendas, mais de 10 como diretor comercial</li>
+        <li><b>+600</b>empresas atendidas em 7 países</li>
+        <li><b>3 por dia</b>conteúdos novos, de domingo a domingo</li>
+      </ul>
     </div>
-  </header>
+    <div class="retrato">
+      <img src="/blog/img/fabricio-palestra.jpg" alt="Fabrício Nunnes, CEO da UNV Holdings, durante uma palestra" width="860" height="946" fetchpriority="high">
+      <a class="cracha" href="/fabricio-nunnes/"><div><b>Fabrício Nunnes</b><span>CEO da UNV Holdings · Diretor comercial terceirizado</span></div><i aria-hidden="true">&rarr;</i></a>
+    </div>
+  </section>
 
-  <div class="tools">
-    <input type="search" id="q" placeholder="Buscar por tema: preço, time, tráfego, meta, churn..." aria-label="Buscar conteúdo">
-    <span class="cnt" id="cnt">—</span>
-  </div>
-  <div class="chips" id="chips"></div>
+  <section class="bloco" id="destaque">
+    <div class="bloco-h"><h2>Acabou de sair</h2><a href="/blog/arquivo/">Ver todos os conteúdos &rarr;</a></div>
+    <div class="dest" id="dest"><!--DEST--><a class="dest-a" href="/blog/produto-entrada-barato-atrai-cliente-nao-avanca/"><span class="rot">Mais recente · 13 nov 2026</span><h3>Produto de entrada barato atrai cliente que não avança</h3><p>Quando você começa com preço baixo, a base que entra não tem capacidade de subir na escada. O que parece volume se transforma em trava de crescimento.</p><span class="ir">Ler agora</span></a><div class="dest-b"><a class="card" href="/blog/mentoria-atrai-cliente-capital-real-investir/"><div class="top"><span class="tipo">Diário</span><time datetime="2026-11-13">13 nov 2026</time></div><h3>Mentoria atrai cliente com capital real para investir</h3><p class="res">Curso barato traz quem quer gastar pouco. Mentoria traz quem está pronto para investir de verdade no resultado.</p><div class="pe"><div class="tg"><span>ticket médio</span><span>qualificação</span></div><span class="seta" aria-hidden="true">&rarr;</span></div></a><a class="card" href="/blog/crescimento-rapido-sem-cuidar-entrega-mata-operacao/"><div class="top"><span class="tipo">Diário</span><time datetime="2026-11-12">12 nov 2026</time></div><h3>Crescimento rápido sem cuidar da entrega mata a operação</h3><p class="res">Escalar receita sem estruturar a entrega afunda a empresa no meio do caminho. A meta do mês que vem depende de quem comprou este mês voltar.</p><div class="pe"><div class="tg"><span>crescimento</span><span>estrutura comercial</span></div><span class="seta" aria-hidden="true">&rarr;</span></div></a></div><!--/DEST--></div>
+  </section>
 
-  <div class="list" id="lista"></div>
-  <div class="pager" id="pager"></div>
+  <section class="bloco" id="conteudos">
+    <div class="bloco-h"><h2 id="tit-lista">Todos os conteúdos</h2><p id="cnt">265 conteúdos</p></div>
+    <div class="temas" id="temas"><button type="button" data-t="" aria-pressed="true">Todos</button><button type="button" data-t="@guia" aria-pressed="false">Guias</button><button type="button" data-t="estrutura comercial" aria-pressed="false">Estrutura comercial</button><button type="button" data-t="treino de vendedor" aria-pressed="false">Treino de vendedor</button><button type="button" data-t="conversão" aria-pressed="false">Conversão</button><button type="button" data-t="meta mensal" aria-pressed="false">Meta mensal</button><button type="button" data-t="rotina de cobrança" aria-pressed="false">Rotina de cobrança</button><button type="button" data-t="decisão" aria-pressed="false">Decisão</button><button type="button" data-t="acompanhamento" aria-pressed="false">Acompanhamento</button><button type="button" data-t="processo comercial" aria-pressed="false">Processo comercial</button><button type="button" data-t="qualificação" aria-pressed="false">Qualificação</button><button type="button" data-t="implementação" aria-pressed="false">Implementação</button></div>
+    <div class="grade" id="lista"><!--LISTA--><a class="card" href="/blog/closer-entra-depois-dono-validar-oferta/"><div class="top"><span class="tipo">Diário</span><time datetime="2026-11-12">12 nov 2026</time></div><h3>Closer entra depois que o dono validou a oferta</h3><p class="res">Contratar closer antes de o dono fazer as primeiras vendas é queimar dinheiro sem ter o que escalar. O closer precisa repetir o que já funciona, não descobrir o que vende.</p><div class="pe"><div class="tg"><span>closer</span><span>validação de oferta</span></div><span class="seta" aria-hidden="true">&rarr;</span></div></a><a class="card" href="/blog/oferta-sexy-fecha-quando-cliente-sente-barganha/"><div class="top"><span class="tipo">Diário</span><time datetime="2026-11-12">12 nov 2026</time></div><h3>Oferta sexy fecha quando o cliente sente que ganhou</h3><p class="res">A venda travada não é falta de gatilho mental. É oferta que não deixa claro o quanto o cliente está levando a mais do que está pagando.</p><div class="pe"><div class="tg"><span>oferta</span><span>conversão</span></div><span class="seta" aria-hidden="true">&rarr;</span></div></a><a class="card" href="/blog/preco-alto-inicio-qualifica-funil-gera-margem/"><div class="top"><span class="tipo">Diário</span><time datetime="2026-11-11">11 nov 2026</time></div><h3>Preço alto desde o início qualifica funil e gera margem</h3><p class="res">Vender caro logo na entrada separa quem compra de quem passeia. A margem que sobra financia escala.</p><div class="pe"><div class="tg"><span>conversão</span><span>estrutura comercial</span></div><span class="seta" aria-hidden="true">&rarr;</span></div></a><a class="card" href="/blog/escada-valor-cresce-quando-cliente-ganhou-resultado/"><div class="top"><span class="tipo">Diário</span><time datetime="2026-11-11">11 nov 2026</time></div><h3>Escada de valor cresce quando o cliente ganhou resultado</h3><p class="res">Você não consegue vender mais caro ou mais completo para quem ainda não comprou nada de você. A segunda oferta só aparece depois da primeira dar certo.</p><div class="pe"><div class="tg"><span>escada de valor</span><span>conversão</span></div><span class="seta" aria-hidden="true">&rarr;</span></div></a><a class="card" href="/blog/preco-alto-por-lead-cabe-ticket-medio-alto/"><div class="top"><span class="tipo">Diário</span><time datetime="2026-11-11">11 nov 2026</time></div><h3>Preço alto por lead cabe quando o ticket médio é alto</h3><p class="res">Pagar caro por lead não é desperdício se o valor médio da venda justifica. O problema é comparar custo de aquisição sem olhar para o quanto cada cliente deixa na mesa.</p><div class="pe"><div class="tg"><span>custo de aquisição</span><span>conversão</span></div><span class="seta" aria-hidden="true">&rarr;</span></div></a><a class="card" href="/blog/gerente-comercial-estrutura-funil-treina-cobra-time/"><div class="top"><span class="tipo">Diário</span><time datetime="2026-11-10">10 nov 2026</time></div><h3>Gerente comercial estrutura funil treina e cobra do time</h3><p class="res">O gerente comercial cuida do funil, treina vendedor e cobra número todo dia. Quando isso não existe, o dono vira refém do improviso.</p><div class="pe"><div class="tg"><span>gerente de vendas</span><span>estrutura comercial</span></div><span class="seta" aria-hidden="true">&rarr;</span></div></a><a class="card" href="/blog/treinamento-sem-acompanhamento-diario-nao-bate-meta/"><div class="top"><span class="tipo">Diário</span><time datetime="2026-11-10">10 nov 2026</time></div><h3>Treinamento sem acompanhamento diário não bate meta</h3><p class="res">Treinar o vendedor e sumir é gastar dinheiro com resultado que evapora em três semanas. A meta só bate quando alguém cobra o número todo dia.</p><div class="pe"><div class="tg"><span>treino de vendedor</span><span>acompanhamento</span></div><span class="seta" aria-hidden="true">&rarr;</span></div></a><a class="card" href="/blog/evento-mao-na-massa-entrega-mais-resultado/"><div class="top"><span class="tipo">Diário</span><time datetime="2026-11-10">10 nov 2026</time></div><h3>Evento focado em mão na massa entrega mais resultado</h3><p class="res">Palestra motiva, não estrutura. O que move resultado é treino operacional com cobrança de execução no dia seguinte.</p><div class="pe"><div class="tg"><span>evento</span><span>treino de vendedor</span></div><span class="seta" aria-hidden="true">&rarr;</span></div></a><a class="card" href="/blog/inteligencia-artificial-aprende-jeito-empresa-fala/"><div class="top"><span class="tipo">Diário</span><time datetime="2026-11-10">10 nov 2026</time></div><h3>Inteligência artificial aprende com o jeito que a empresa fala</h3><p class="res">IA treinada com o vocabulário e a forma de atender da empresa vira extensão do time comercial. Sem isso, vira robô genérico que espanta cliente.</p><div class="pe"><div class="tg"><span>inteligência artificial</span><span>treino de vendedor</span></div><span class="seta" aria-hidden="true">&rarr;</span></div></a><a class="card" href="/blog/inteligencia-artificial-libera-vendedor-vender-mais/"><div class="top"><span class="tipo">Diário</span><time datetime="2026-11-09">9 nov 2026</time></div><h3>Inteligência artificial libera o vendedor para vender mais</h3><p class="res">Tarefa repetitiva toma tempo que deveria estar em venda ativa. IA resolve o que não precisa de gente e deixa o vendedor livre para bater meta.</p><div class="pe"><div class="tg"><span>automação</span><span>estrutura comercial</span></div><span class="seta" aria-hidden="true">&rarr;</span></div></a><!--/LISTA--></div>
+    <div class="pag" id="pager"><a href="/blog/arquivo/">Ver a lista completa</a></div>
+  </section>
 
-</div>
+  <section class="bloco" id="guias">
+    <div class="bloco-h"><h2>Guias para ler com calma</h2><p>Conteúdo longo, um tema por guia</p></div>
+    <div class="guias"><a href="/escalar_servico/"><span class="n">Guia 01</span><span class="t">Como escalar uma empresa de serviços de verdade</span><span class="d">Serviço é o negócio de maior margem que existe e a maioria vive apertada. Custo financeiro escondido, orçamento pela margem, três camadas de preço e como cobrar por resultado.</span></a><a href="/posicionamento/"><span class="n">Guia 02</span><span class="t">Posicionamento é uma decisão, não um resultado</span><span class="d">Arquétipo, nove formatos fixos, grade diária, stories e a hierarquia de métricas que realmente prevê venda.</span></a><a href="/marketing/"><span class="n">Guia 03</span><span class="t">Marketing complexo: como estruturar o marketing de uma empresa</span><span class="d">Os quatro critérios de priorização, parceiro como endosso, os três pilares e o mapa de canais por camada de funil.</span></a><a href="/parcerias/"><span class="n">Guia 04</span><span class="t">Por que quase toda parceria comercial morre no terceiro mês</span><span class="d">A regra dos 30%, a diferença entre benefício, endosso e canal de venda, e por que usar a marca do parceiro vale mais que o time dele.</span></a><a href="/networking/"><span class="n">Guia 05</span><span class="t">Networking não é trocar cartão. É montar canal.</span><span class="d">O parceiro como gerador de lead, o jantar que vira canal de aquisição e a conta do custo por apresentação.</span></a><a href="/foco/"><span class="n">Guia 06</span><span class="t">Muito empreendedor e pouco gestor</span><span class="d">Pegar uma coisa ótima e transformar em várias coisas boas. Cadência, identidade como filtro e o exercício de limpeza.</span></a><a href="/ecossistema/"><span class="n">Guia 07</span><span class="t">A sua base de clientes vale mais do que o serviço que você vende para ela</span><span class="d">Funcionário, caixa e transação: as três alavancas escondidas em qualquer carteira B2B.</span></a><a href="/decisao/"><span class="n">Guia 08</span><span class="t">Você já tem a informação. O que falta é a decisão.</span><span class="d">O intervalo entre saber e agir, a arquitetura social da venda B2B e quando diversificar é troca disfarçada.</span></a><a href="/valor/"><span class="n">Guia 09</span><span class="t">O negócio que enriquece o dono não se torna gigante</span><span class="d">Separar patrimônio da operação, medir a dependência do dono, decidir a margem e inverter o capital de giro.</span></a></div>
+  </section>
+
+</main>
+
 <div class="final">
   <div class="in">
     <h2>Ler é a parte fácil</h2>
@@ -264,122 +134,114 @@ a{color:var(--red)}
     <a class="btn" href="/sessao">Agendar uma sessão estratégica</a>
   </div>
 </div>
-
-<div class="foot">
-  <div class="in">
-    <picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture>
-    <p>
-      <b>UNV Holdings — Universidade Nacional de Vendas</b> · <a href="/diretor-comercial-terceirizado/">Direção comercial terceirizada</a> para pequenas e médias empresas.<br>
-      Blog escrito por <b>Fabrício Nunnes</b>, CEO e fundador, a partir das reuniões de diagnóstico que ele conduz com donos de empresa.
-      <a href="/">unvholdings.com.br</a>
-    </p>
+<footer class="uf">
+  <div class="uf-in">
+    <div class="uf-brand">
+      <img src="/blog/img/unv-holdings.png" alt="UNV Holdings" width="560" height="419" loading="lazy">
+      <p>Direção comercial terceirizada para pequenas e médias empresas.<br>Rua Araguaia, 130 · Alphaville · Nova Lima/MG</p>
+    </div>
+    <div>
+      <h4>Blog</h4>
+      <ul>
+        <li><a href="/blog/">Conteúdos mais recentes</a></li>
+        <li><a href="/blog/arquivo/">Todos os conteúdos</a></li>
+        <li><a href="/blog/#guias">Guias completos</a></li>
+        <li><a href="/fabricio-nunnes/">Quem é Fabrício Nunnes</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>UNV Holdings</h4>
+      <ul>
+        <li><a href="/diretor-comercial-terceirizado/">Diretor comercial terceirizado</a></li>
+        <li><a href="/sessao">Sessão estratégica</a></li>
+        <li><a href="/">unvholdings.com.br</a></li>
+      </ul>
+    </div>
+    <p class="uf-legal"><b>UNV Holdings</b>, a <b>Universidade Nacional de Vendas</b>. Conteúdo escrito por <b><a href="/fabricio-nunnes/">Fabrício Nunnes</a></b>, CEO e fundador, a partir das reuniões que ele conduz com donos de empresa.</p>
   </div>
-</div>
+</footer>
 
 <script>
 (function(){
   "use strict";
   var $=function(i){return document.getElementById(i);};
-  var POR_PAGINA=10, dados=[], tag="", pagina=1;
+  var POR=10, dados=[], tag="", pagina=1;
   var filtro=(new URLSearchParams(location.search).get("q")||"");
-
-  function norm(s){return (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");}
-
+  var MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  function norm(s){return (s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
+  function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+  function dc(d){var x=d.split("-");return (+x[2])+" "+MES[+x[1]-1]+" "+x[0];}
+  function card(p){
+    var g=p.tipo==="guia";
+    return '<a class="card" href="'+esc(p.url)+'"><div class="top"><span class="tipo'+(g?" guia":"")+'">'+(g?"Guia":"Diário")+'</span>'+
+      '<time datetime="'+p.data+'">'+dc(p.data)+'</time></div><h3>'+esc(p.titulo)+'</h3><p class="res">'+esc(p.resumo)+'</p>'+
+      '<div class="pe"><div class="tg">'+(p.tags||[]).slice(0,2).map(function(t){return '<span>'+esc(t)+'</span>';}).join("")+
+      '</div><span class="seta" aria-hidden="true">&rarr;</span></div></a>';
+  }
+  function destaque(ps){
+    var a=ps[0];
+    return '<a class="dest-a" href="'+esc(a.url)+'"><span class="rot">Mais recente · '+dc(a.data)+'</span><h3>'+esc(a.titulo)+'</h3><p>'+esc(a.resumo)+
+      '</p><span class="ir">Ler agora</span></a><div class="dest-b">'+ps.slice(1,3).map(card).join("")+'</div>';
+  }
   function filtrados(){
     var f=norm(filtro);
-    return dados.filter(function(p){
-      if(tag && p.tags.indexOf(tag)<0) return false;
-      if(!f) return true;
-      return norm(p.titulo+" "+p.resumo+" "+p.tags.join(" ")).indexOf(f)>=0;
+    var base=dados.filter(function(p){
+      if(tag==="@guia") return p.tipo==="guia";
+      return !tag || (p.tags||[]).indexOf(tag)>=0;
     });
-  }
-
-  function resultados(){
-    var r=filtrados();
-    if(r.length||!filtro) return r;
-    // nada exato: procura por qualquer palavra relevante do termo
-    var ps=norm(filtro).split(/\s+/).filter(function(w){return w.length>3;});
+    if(!f) return base;
+    var r=base.filter(function(p){return norm(p.titulo+" "+p.resumo+" "+(p.tags||[]).join(" ")).indexOf(f)>=0;});
+    if(r.length) return r;
+    var ps=f.split(/\s+/).filter(function(w){return w.length>3;});
     if(!ps.length) return r;
-    return dados.map(function(p){
-      var t=norm(p.titulo+" "+p.resumo+" "+p.tags.join(" "));
-      return {p:p, s:ps.filter(function(w){return t.indexOf(w)>=0;}).length};
-    }).filter(function(x){return x.s>0;})
-      .sort(function(a,b){return b.s-a.s;}).map(function(x){return x.p;});
+    return base.map(function(p){
+      var t=norm(p.titulo+" "+p.resumo+" "+(p.tags||[]).join(" "));
+      return {p:p,s:ps.filter(function(w){return t.indexOf(w)>=0;}).length};
+    }).filter(function(x){return x.s>0;}).sort(function(a,b){return b.s-a.s;}).map(function(x){return x.p;});
   }
-
-  function render(){
-    var arr=resultados();
-    var tot=Math.max(1,Math.ceil(arr.length/POR_PAGINA));
+  function render(rolar){
+    var livre=!filtro && !tag;
+    var arr=filtrados();
+    $("destaque").hidden=!livre;
+    if(livre){ $("dest").innerHTML=destaque(dados); arr=arr.slice(3); }
+    var tot=Math.max(1,Math.ceil(arr.length/POR));
     if(pagina>tot) pagina=tot;
-    var ini=(pagina-1)*POR_PAGINA;
-    var pag=arr.slice(ini,ini+POR_PAGINA);
-
-    $("cnt").textContent = arr.length===0 ? "nenhum resultado"
-      : arr.length+(arr.length===1?" conteúdo":" conteúdos")+(tot>1?" · página "+pagina+" de "+tot:"");
-
-    $("lista").innerHTML = pag.length===0
-      ? '<p class="vazio">Nada com esse termo ainda. Tente preço, time, meta, vendedor ou tráfego.</p>'
-      : pag.map(function(p,i){
-          var n=String(arr.length-(ini+i)).padStart(2,"0");
-          return '<article class="post">'+
-            '<div class="num">'+n+'</div>'+
-            '<div>'+
-              '<div class="tags"><span class="badge '+p.tipo+'">'+(p.tipo==="guia"?"Guia":"Diário")+'</span>'+
-              p.tags.slice(0,3).map(function(t){return '<span class="tag">'+t+'</span>';}).join("")+'</div>'+
-              '<h2><a href="'+p.url+'">'+p.titulo+'</a></h2>'+
-              '<p class="brief">'+p.resumo+'</p>'+
-            '</div>'+
-            '<div class="side">'+
-              '<p class="meta">'+p.data.split("-").reverse().join("/")+'</p>'+
-              '<a class="go" href="'+p.url+'">Ler</a>'+
-            '</div>'+
-          '</article>';
-        }).join("");
-
+    var ini=(pagina-1)*POR, pag=arr.slice(ini,ini+POR);
+    var n=livre?dados.length:arr.length;
+    $("tit-lista").textContent = livre ? "Todos os conteúdos" : (filtro ? 'Resultado para "'+filtro+'"' : (tag==="@guia"?"Guias":"Tema: "+tag));
+    $("cnt").textContent = n===0 ? "Nenhum resultado" : n+(n===1?" conteúdo":" conteúdos")+(tot>1?" · página "+pagina+" de "+tot:"");
+    $("lista").innerHTML = pag.length ? pag.map(card).join("")
+      : '<p class="vazio">Nada com esse termo ainda. Tente preço, time, meta, vendedor ou tráfego.</p>';
     var ph="";
     if(tot>1){
-      ph+='<button type="button" data-p="'+(pagina-1)+'"'+(pagina===1?" disabled":"")+'>anterior</button>';
+      ph+='<button type="button" data-p="'+(pagina-1)+'"'+(pagina===1?" disabled":"")+'>Anterior</button>';
       for(var i=1;i<=tot;i++){
-        if(tot>7 && i>2 && i<tot-1 && Math.abs(i-pagina)>1){ if(i===3) ph+='<span class="cnt">…</span>'; continue; }
+        if(tot>7 && i>2 && i<tot-1 && Math.abs(i-pagina)>1){ if(i===3||i===pagina+2) ph+='<span class="rt">…</span>'; continue; }
         ph+='<button type="button" data-p="'+i+'" aria-current="'+(i===pagina)+'">'+i+'</button>';
       }
-      ph+='<button type="button" data-p="'+(pagina+1)+'"'+(pagina===tot?" disabled":"")+'>próxima</button>';
+      ph+='<button type="button" data-p="'+(pagina+1)+'"'+(pagina===tot?" disabled":"")+'>Próxima</button>';
     }
     $("pager").innerHTML=ph;
-    $("pager").querySelectorAll("button[data-p]").forEach(function(b){
-      b.addEventListener("click",function(){
-        pagina=+b.dataset.p; render();
-        document.querySelector(".tools").scrollIntoView({behavior:"smooth",block:"start"});
-      });
+    [].forEach.call($("pager").querySelectorAll("button[data-p]"),function(b){
+      b.addEventListener("click",function(){ pagina=+b.dataset.p; render(true); });
     });
+    if(rolar){ var y=$("conteudos").getBoundingClientRect().top+window.scrollY-90; window.scrollTo({top:y,behavior:"smooth"}); }
   }
-
-  function montarChips(){
-    var c={};
-    dados.forEach(function(p){p.tags.forEach(function(t){c[t]=(c[t]||0)+1;});});
-    var top=Object.keys(c).sort(function(a,b){return c[b]-c[a];}).slice(0,10);
-    $("chips").innerHTML='<button type="button" data-t="" aria-pressed="true">todos</button>'+
-      top.map(function(t){return '<button type="button" data-t="'+t+'" aria-pressed="false">'+t+'</button>';}).join("");
-    $("chips").querySelectorAll("button").forEach(function(b){
-      b.addEventListener("click",function(){
-        tag=b.dataset.t; pagina=1;
-        $("chips").querySelectorAll("button").forEach(function(x){x.setAttribute("aria-pressed", x===b);});
-        render();
-      });
+  [].forEach.call($("temas").querySelectorAll("button"),function(b){
+    b.addEventListener("click",function(){
+      tag=b.dataset.t; pagina=1;
+      [].forEach.call($("temas").querySelectorAll("button"),function(x){x.setAttribute("aria-pressed", x===b);});
+      render(false);
     });
-  }
-
+  });
+  var t;
+  $("q").addEventListener("input",function(ev){ clearTimeout(t); t=setTimeout(function(){ filtro=ev.target.value.trim(); pagina=1; render(false); },160); });
+  $("q").addEventListener("keydown",function(ev){ if(ev.key==="Enter"){ ev.preventDefault(); render(true); } });
   fetch("/blog/posts.json?v="+Date.now()).then(function(r){return r.json();}).then(function(d){
     dados=(d.posts||[]).sort(function(a,b){return b.ts-a.ts;});
-    montarChips(); if(filtro){$("q").value=filtro;} render();
-  }).catch(function(){
-    $("lista").innerHTML='<p class="vazio">Não foi possível carregar a lista agora. Recarregue a página.</p>';
-  });
-
-  var t;
-  $("q").addEventListener("input",function(e){
-    clearTimeout(t); t=setTimeout(function(){ filtro=e.target.value; pagina=1; render(); },150);
-  });
+    if(filtro){ $("q").value=filtro; }
+    render(!!filtro);
+  }).catch(function(){});
 })();
 </script>
 </body>
