@@ -89,6 +89,54 @@ function assinar(xmlInfDps: string, idDps: string, cert: any, key: any) {
     `</Signature>`;
 }
 
+/** Assinatura XMLDSig de um elemento com Id que não é a DPS (pedido de evento). Mesma regra da
+ *  função assinar: digest sobre o trecho já canônico, com o namespace herdado do pai, RSA-SHA256. */
+function assinarElemento(xmlInf: string, tag: string, id: string, cert: any, key: any) {
+  const canon = xmlInf.replace(`<${tag} `, `<${tag} xmlns="http://www.sped.fazenda.gov.br/nfse" `);
+  const digest = forge.md.sha256.create();
+  digest.update(canon, "utf8");
+  const digestValue = forge.util.encode64(digest.digest().getBytes());
+  const signedInfo =
+    `<SignedInfo xmlns="http://www.w3.org/2000/09/xmldsig#">` +
+    `<CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"></CanonicalizationMethod>` +
+    `<SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"></SignatureMethod>` +
+    `<Reference URI="#${id}">` +
+    `<Transforms>` +
+    `<Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"></Transform>` +
+    `<Transform Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"></Transform>` +
+    `</Transforms>` +
+    `<DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"></DigestMethod>` +
+    `<DigestValue>${digestValue}</DigestValue>` +
+    `</Reference></SignedInfo>`;
+  const md = forge.md.sha256.create();
+  md.update(signedInfo, "utf8");
+  const signatureValue = forge.util.encode64(key.sign(md));
+  const certB64 = forge.util.encode64(forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes());
+  return `<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">${signedInfo}` +
+    `<SignatureValue>${signatureValue}</SignatureValue>` +
+    `<KeyInfo><X509Data><X509Certificate>${certB64}</X509Certificate></X509Data></KeyInfo>` +
+    `</Signature>`;
+}
+
+/** Pedido de cancelamento da NFS-e (evento e101101) no leiaute dos esquemas oficiais
+ *  NFSe-ESQUEMAS_XSD-v1.01-20260209: Id = "PRE" + chave de acesso (50) + 101101, sem nPedRegEvento
+ *  (o campo saiu dos esquemas em 26/12/2025). cMotivo: 1 erro na emissão, 2 serviço não prestado, 9 outros. */
+function montarPedidoCancelamento(o: { chave: string; ambiente: string; cnpj: string; motivo: string; justificativa: string }) {
+  const id = `PRE${o.chave}101101`;
+  const br = new Date(Date.now() - 3 * 3600000).toISOString();
+  // texto sem aspas: a forma canônica não escapa aspas e a assinatura deixaria de bater
+  const just = o.justificativa.replace(/["'`´]/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const inf = `<infPedReg Id="${id}">` +
+    `<tpAmb>${o.ambiente}</tpAmb>` +
+    `<verAplic>UNV-Nexus-1.0</verAplic>` +
+    `<dhEvento>${br.slice(0, 19)}-03:00</dhEvento>` +
+    `<CNPJAutor>${so(o.cnpj).padStart(14, "0")}</CNPJAutor>` +
+    `<chNFSe>${o.chave}</chNFSe>` +
+    `<e101101><xDesc>Cancelamento de NFS-e</xDesc><cMotivo>${o.motivo}</cMotivo><xMotivo>${just}</xMotivo></e101101>` +
+    `</infPedReg>`;
+  return { id, inf };
+}
+
 /** pessoa (tomador): CNPJ ou CPF, nome e endereço quando houver */
 function blocoPessoa(tag: string, p: any) {
   const doc = so(p.documento);
@@ -812,6 +860,59 @@ Deno.serve(async (req: Request) => {
       const rN = await pontoGov(`/SefinNacional/nfse/${chave}`, "GET", undefined, abertoC.certPem, abertoC.keyPem, amb);
       let dN: any = {}; try { dN = JSON.parse(rN.corpo); } catch { dN = { bruto: rN.corpo.slice(0, 400) }; }
       return json({ ok: rN.status < 300, status: rN.status, chave_acesso: chave, nota: dN });
+    }
+
+    // Cancelamento da nota no Emissor Nacional (Fabrício, 13/11/2026: "preciso de um botão pra cancelar
+    // a NF no site da receita"). Excluir o registro na tela NÃO cancela a nota: aqui vai o evento e101101
+    // assinado com o certificado. Só marca como cancelada no sistema quando o gov aceita.
+    if (body.action === "cancelar") {
+      const motivoC = String(body.motivo || "");
+      const justC = String(body.justificativa || "").replace(/\s+/g, " ").trim();
+      if (!["1", "2", "9"].includes(motivoC)) return json({ error: "Escolha o motivo do cancelamento." }, 400);
+      if (justC.length < 15 || justC.length > 255) return json({ error: "A justificativa precisa ter de 15 a 255 caracteres." }, 400);
+      let regC: any = null;
+      if (body.record_id) {
+        const { data } = await supabase.from("nfse_records").select("id, chave_acesso, status, environment, origem, number").eq("id", body.record_id).maybeSingle();
+        regC = data;
+        if (!regC) return json({ error: "Nota não encontrada no sistema." }, 404);
+      }
+      const chaveC = so(regC?.chave_acesso || body.chave_acesso);
+      if (chaveC.length !== 50) return json({ error: "Nota sem chave de acesso válida." }, 400);
+      if (regC?.status === "cancelled") return json({ error: "Esta nota já está cancelada." }, 400);
+      const { data: cfgK } = await supabase.from("nfse_emitter_config").select("*").limit(1).maybeSingle();
+      const { data: certK } = await supabase.from("fiscal_certificates")
+        .select("file_path, senha_cifrada").eq("ativo", true).maybeSingle();
+      if (!cfgK || !certK) return json({ error: "configuração ou certificado ausente" }, 400);
+      const { data: arqK } = await supabase.storage.from("certificados").download(certK.file_path);
+      if (!arqK) return json({ error: "Não achei o arquivo do certificado." }, 400);
+      const abertoK = abrirPfx(bytesToB64(new Uint8Array(await arqK.arrayBuffer())), await decifrar(certK.senha_cifrada));
+      const ambK = String(regC?.environment || body.ambiente || cfgK.ambiente);
+      const ped = montarPedidoCancelamento({ chave: chaveC, ambiente: ambK, cnpj: cfgK.cnpj, motivo: motivoC, justificativa: justC });
+      const xmlPed = `<?xml version="1.0" encoding="UTF-8"?><pedRegEvento xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.00">${ped.inf}${assinarElemento(ped.inf, "infPedReg", ped.id, abertoK.cert, abertoK.key)}</pedRegEvento>`;
+      // simulação: devolve o pedido montado e assinado, sem enviar ao gov
+      if (body.dry_run) return json({ ok: true, dry_run: true, id: ped.id, ambiente: ambK, xml: xmlPed });
+      const rK = await pontoGov(`/SefinNacional/nfse/${chaveC}/eventos`, "POST",
+        JSON.stringify({ pedidoRegistroEventoXmlGZipB64: await gzipB64(xmlPed) }), abertoK.certPem, abertoK.keyPem, ambK);
+      let retK: any = {};
+      try { retK = JSON.parse(rK.corpo); } catch { retK = { bruto: rK.corpo.slice(0, 800) }; }
+      if (rK.status < 200 || rK.status >= 300) {
+        const lista = Array.isArray(retK?.erros) ? retK.erros : Array.isArray(retK?.erro) ? retK.erro : retK?.erro ? [retK.erro] : [];
+        console.error("[nfse-emitir] cancelamento recusado:", rK.status, rK.corpo.slice(0, 600));
+        return json({
+          error: (lista.length
+              ? lista.map((e: any) => [e.Codigo || e.codigo, e.Descricao || e.descricao || e.mensagem].filter(Boolean).join(" - ")).join(" | ")
+              : null) || retK?.mensagem || retK?.message || `O gov recusou o cancelamento (HTTP ${rK.status}).`,
+          detalhe: retK,
+        }, 400);
+      }
+      console.log("[nfse-emitir] nota cancelada no gov:", chaveC, "motivo", motivoC, "por", user?.id || "servidor");
+      let avisoK: string | undefined;
+      if (regC?.id) {
+        const { error: upErr } = await supabase.from("nfse_records")
+          .update({ status: "cancelled", cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", regC.id);
+        if (upErr) { console.error("[nfse-emitir] nota cancelada no gov mas nao marcada:", upErr.message); avisoK = "A nota foi cancelada no gov, mas não consegui marcar no sistema: " + upErr.message; }
+      }
+      return json({ ok: true, cancelada: true, chave_acesso: chaveC, ambiente: ambK, aviso: avisoK });
     }
 
     // DANFSe: o PDF da nota. Desde 03/08/2026 o gov não entrega mais o PDF (NT 008/2026 suspendeu a API
