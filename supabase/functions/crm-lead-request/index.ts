@@ -128,7 +128,12 @@ Deno.serve(async (req)=>{
       add(dono);
     }
     for (const g of gestores || [])if ((g.tenant_id ?? null) === (me.tenant_id ?? null)) add(g);
-    const msgBase = `🙋 *Pedido de lead*\n\n*${me.name}* abriu o lead *${lead.name}*${lead.company ? ` (${lead.company})` : ""} e não tem acesso, porque ele está com *${donoNome || "outra pessoa"}*.` + `${lead.pipeline?.name ? `\n*Funil:* ${lead.pipeline.name}${lead.stage?.name ? ` · ${lead.stage.name}` : ""}` : ""}` + `\n\nVer o lead:\n📋 https://unvholdings.com.br/#/crm/leads/${lead.id}`;
+    const leadTxt = `*${lead.name}*${lead.company ? ` (${lead.company})` : ""}`;
+    const rodape = `${lead.pipeline?.name ? `\n*Funil:* ${lead.pipeline.name}${lead.stage?.name ? ` · ${lead.stage.name}` : ""}` : ""}` + `\n\nVer o lead:\n📋 https://unvholdings.com.br/#/crm/leads/${lead.id}`;
+    // terceira pessoa: quando o aviso sai pelo número institucional
+    const msgBase = `🙋 *Pedido de lead*\n\n*${me.name}* abriu o lead ${leadTxt} e não tem acesso, porque ele está com *${donoNome || "outra pessoa"}*.` + rodape;
+    // primeira pessoa: quando sai do WhatsApp de quem pediu (pro dono do lead vira "está com você")
+    const msgPropria = (paraODono)=>`🙋 *Pedido de lead*\n\nAbri o lead ${leadTxt} e não tenho acesso, porque ele está com ${paraODono ? "você" : `*${donoNome || "outra pessoa"}*`}. Pode passar pra mim?` + rodape;
     // sai do WhatsApp de quem pediu; sem conexão própria, do número institucional
     const propria = await instanciaDe(me);
     const inst = propria || await pickInstance();
@@ -140,7 +145,7 @@ Deno.serve(async (req)=>{
       destinatarios: [
         ...alvo.values()
       ].map((a)=>a.name),
-      msg: msgBase
+      msg: propria ? msgPropria(false) : msgBase
     });
     // o pedido nasce aqui pra cada gestor receber um link de decisão só dele
     const { data: pedido } = await supabase.from("crm_lead_access_requests").insert({
@@ -170,9 +175,11 @@ Deno.serve(async (req)=>{
         });
       }
       const link = `${DECIDE}?t=${encodeURIComponent(tk)}`;
-      const texto = `${msgBase}\n\n*Aceitar ou recusar em um toque:*\n${link}`;
+      const fim = `\n\n*Aceitar ou recusar em um toque:*\n${link}`;
+      const texto = (propria ? msgPropria(a.id === lead.owner_staff_id) : msgBase) + fim;
       let ok = await sendWhatsApp(inst, a.phone, texto);
-      if (!ok && reserva && digits(reserva.phone_number || "") !== a.phone) ok = await sendWhatsApp(reserva, a.phone, texto);
+      // pela reserva institucional o texto volta pra terceira pessoa
+      if (!ok && reserva && digits(reserva.phone_number || "") !== a.phone) ok = await sendWhatsApp(reserva, a.phone, msgBase + fim);
       if (ok) enviados.push(a.name);
     }
     if (pedido?.id) await supabase.from("crm_lead_access_requests").update({
