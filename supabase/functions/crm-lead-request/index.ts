@@ -20,7 +20,7 @@ const br = (p)=>{
   if (!d) return "";
   return d.startsWith("55") ? d : d.length === 10 || d.length === 11 ? `55${d}` : d;
 };
-// Mensagem de sistema: sai pelo número institucional, nunca pelo de um vendedor.
+// Número institucional: reserva pra quando quem pediu não tem WhatsApp próprio conectado.
 async function pickInstance() {
   for (const name of [
     "fabricionunnes",
@@ -30,6 +30,25 @@ async function pickInstance() {
     if (data) return data;
   }
   return null;
+}
+// O pedido sai pelo WhatsApp de quem pediu (decisão do Fabrício em 13/11/2026): a conexão
+// conectada do mesmo tenant cujo número é o telefone do cadastro da pessoa.
+const semDdi = (p)=>{
+  const d = digits(p);
+  return d.startsWith("55") && d.length >= 12 ? d.slice(2) : d;
+};
+// Mesmo DDD e mesmos 8 dígitos finais: tolera o nono dígito e o 55 na frente.
+const mesmoNumero = (a, b)=>{
+  const x = semDdi(a), y = semDdi(b);
+  if (x.length < 10 || y.length < 10) return false;
+  return x.slice(0, 2) === y.slice(0, 2) && x.slice(-8) === y.slice(-8);
+};
+async function instanciaDe(staff) {
+  if (!digits(staff?.phone || "")) return null;
+  let q = supabase.from("whatsapp_instances").select("instance_name, api_url, api_key, provider_type, phone_number").eq("status", "connected");
+  q = staff.tenant_id ? q.eq("tenant_id", staff.tenant_id) : q.is("tenant_id", null);
+  const { data } = await q;
+  return (data || []).find((i)=>mesmoNumero(i.phone_number, staff.phone)) || null;
 }
 async function sendWhatsApp(inst, phone, text) {
   if (!inst.api_url || !inst.api_key) return false;
@@ -63,7 +82,7 @@ Deno.serve(async (req)=>{
     if (!u?.user) return json({
       error: "não autenticado"
     }, 401);
-    const { data: me } = await supabase.from("onboarding_staff").select("id, name, tenant_id").eq("user_id", u.user.id).eq("is_active", true).maybeSingle();
+    const { data: me } = await supabase.from("onboarding_staff").select("id, name, tenant_id, phone").eq("user_id", u.user.id).eq("is_active", true).maybeSingle();
     if (!me) return json({
       error: "sem acesso ao CRM"
     }, 403);
@@ -109,10 +128,15 @@ Deno.serve(async (req)=>{
       add(dono);
     }
     for (const g of gestores || [])if ((g.tenant_id ?? null) === (me.tenant_id ?? null)) add(g);
-    const msgBase = `🙋 *Pedido de lead*\n\n*${me.name}* abriu o lead *${lead.name}*${lead.company ? ` (${lead.company})` : ""} e não tem acesso, porque ele está com *${donoNome || "outra pessoa"}*.` + `${lead.pipeline?.name ? `\n*Funil:* ${lead.pipeline.name}${lead.stage?.name ? ` · ${lead.stage.name}` : ""}` : ""}` + `\n\nSe for o caso, transfira o lead para ${me.name.split(" ")[0]} trocando o responsável:\n📋 https://unvholdings.com.br/#/crm/leads/${lead.id}`;
+    const msgBase = `🙋 *Pedido de lead*\n\n*${me.name}* abriu o lead *${lead.name}*${lead.company ? ` (${lead.company})` : ""} e não tem acesso, porque ele está com *${donoNome || "outra pessoa"}*.` + `${lead.pipeline?.name ? `\n*Funil:* ${lead.pipeline.name}${lead.stage?.name ? ` · ${lead.stage.name}` : ""}` : ""}` + `\n\nVer o lead:\n📋 https://unvholdings.com.br/#/crm/leads/${lead.id}`;
+    // sai do WhatsApp de quem pediu; sem conexão própria, do número institucional
+    const propria = await instanciaDe(me);
+    const inst = propria || await pickInstance();
     if (dryRun) return json({
       ok: true,
       dry: true,
+      instancia: inst?.instance_name || null,
+      da_propria_pessoa: !!propria,
       destinatarios: [
         ...alvo.values()
       ].map((a)=>a.name),
@@ -125,14 +149,15 @@ Deno.serve(async (req)=>{
       notified: [],
       status: "pending"
     }).select("id").single();
-    const DECIDE = `${SUPABASE_URL}/functions/v1/crm-lead-decide`;
+    const DECIDE = "https://unvholdings.com.br/#/pedido-lead";
     const novoToken = ()=>{
       const b = new Uint8Array(24);
       crypto.getRandomValues(b);
       return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
     };
-    const inst = await pickInstance();
     const instPhone = digits(inst?.phone_number || "");
+    // se o WhatsApp de quem pediu falhar no envio, o aviso não se perde: vai pelo institucional
+    const reserva = propria ? await pickInstance() : null;
     const enviados = [];
     if (inst) for (const a of alvo.values()){
       if (instPhone && a.phone === instPhone) continue;
@@ -145,8 +170,10 @@ Deno.serve(async (req)=>{
         });
       }
       const link = `${DECIDE}?t=${encodeURIComponent(tk)}`;
-      const texto = `${msgBase}\n\n*Responder:*\n✅ Aceitar e passar pro ${me.name.split(" ")[0]}:\n${link}&d=sim\n\n❌ Recusar:\n${link}&d=nao`;
-      if (await sendWhatsApp(inst, a.phone, texto)) enviados.push(a.name);
+      const texto = `${msgBase}\n\n*Aceitar ou recusar em um toque:*\n${link}`;
+      let ok = await sendWhatsApp(inst, a.phone, texto);
+      if (!ok && reserva && digits(reserva.phone_number || "") !== a.phone) ok = await sendWhatsApp(reserva, a.phone, texto);
+      if (ok) enviados.push(a.name);
     }
     if (pedido?.id) await supabase.from("crm_lead_access_requests").update({
       notified: enviados
@@ -155,6 +182,7 @@ Deno.serve(async (req)=>{
       ok: true,
       enviados,
       sem_instancia: !inst,
+      instancia: inst?.instance_name || null,
       pedido: pedido?.id
     });
   } catch (e) {
