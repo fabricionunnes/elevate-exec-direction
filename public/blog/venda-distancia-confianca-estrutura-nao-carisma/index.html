@@ -1,247 +1,25 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Venda à distância exige estrutura, não carisma do dono | UNV</title>
+<title>Venda à distância exige estrutura, não carisma do dono | Fabrício Nunnes · UNV Holdings</title>
 <meta name="description" content="Quando o cliente está longe, ele não compra de você, compra do que você montou. Sistema que vende sem dono presente é o que separa quem escala de quem fica preso no balcão.">
-<meta name="author" content="Fabrício Nunnes — CEO da UNV Holdings, Universidade Nacional de Vendas">
+<meta name="author" content="Fabrício Nunnes, CEO da UNV Holdings (Universidade Nacional de Vendas)">
 <link rel="canonical" href="https://unvholdings.com.br/blog/venda-distancia-confianca-estrutura-nao-carisma/">
 <link rel="icon" href="/favicon.ico">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Venda à distância exige estrutura, não carisma do dono">
+<meta property="og:site_name" content="Blog UNV Holdings">
+<meta property="og:title" content="Venda à distância exige estrutura, não carisma do dono | Fabrício Nunnes · UNV Holdings">
 <meta property="og:description" content="Quando o cliente está longe, ele não compra de você, compra do que você montou. Sistema que vende sem dono presente é o que separa quem escala de quem fica preso no balcão.">
 <meta property="og:url" content="https://unvholdings.com.br/blog/venda-distancia-confianca-estrutura-nao-carisma/">
-<meta property="og:image" content="https://unvholdings.com.br/images/unv-logo.png">
+<meta property="og:image" content="https://unvholdings.com.br/blog/img/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<style>
-
-:root{
-  --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#EDEFF3; --surface-3:#E2E6EC;
-  --ink:#0A1F45; --ink-2:#33415C; --muted:#5F6B80; --faint:#8B94A5;
-  --rule:#DCE1E9; --rule-2:#C3CBD7;
-  --navy:#0D2B5E; --red:#CC1B1B;
-  --good:#0F6B52; --good-bg:#E6F2EE;
-  --warn:#8A5B04; --warn-bg:#F7EEDC;
-  --bad:#B02318; --bad-bg:#FAEAE8;
-  --f1:#7A80DC; --f2:#3E5BA9; --f3:#0D2B5E;
-  --f1-bg:#EDEEFB; --f2-bg:#E4EAF6; --f3-bg:#DCE3F0;
-  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
-  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
-  --prose:min(100%,62ch);
-}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
-    --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
-    --rule:#1E3557; --rule-2:#2C4770;
-    --navy:#7BA4E8; --red:#FF6B62;
-    --good:#43BF9C; --good-bg:#0F2D28;
-    --warn:#D9A03C; --warn-bg:#2E2716;
-    --bad:#FF7A6E; --bad-bg:#33191A;
-    --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
-    --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
-  }
-}
-:root[data-theme="dark"]{
-  --ground:#08152B; --surface:#0E2140; --surface-2:#152A4D; --surface-3:#1D3559;
-  --ink:#E8EEF8; --ink-2:#BCC9DD; --muted:#8595AF; --faint:#65758F;
-  --rule:#1E3557; --rule-2:#2C4770;
-  --navy:#7BA4E8; --red:#FF6B62;
-  --good:#43BF9C; --good-bg:#0F2D28;
-  --warn:#D9A03C; --warn-bg:#2E2716;
-  --bad:#FF7A6E; --bad-bg:#33191A;
-  --f1:#A8B4EE; --f2:#6E8FD8; --f3:#4A6FC0;
-  --f1-bg:#17254A; --f2-bg:#152344; --f3-bg:#13203E;
-}
-*{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--ui);font-size:16.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1200px;margin:0 auto;padding:0 26px 0}
-.prose{width:var(--prose)}
-p{margin:0 0 1em}
-strong{font-weight:680;color:var(--ink)}
-a{color:var(--red)}
-:focus-visible{outline:2px solid var(--red);outline-offset:3px}
-
-.topbar{border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--ground);z-index:10}
-.topbar .in{max-width:1200px;margin:0 auto;padding:12px 26px;display:flex;align-items:center;justify-content:space-between;gap:18px}
-.topbar picture{display:block}
-.topbar img{height:38px;width:auto;display:block}
-.topbar .cta{font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#fff;background:var(--red);padding:10px 17px;border-radius:2px;text-decoration:none;font-weight:700;white-space:nowrap}
-
-.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.eyebrow .tc{color:var(--red);font-weight:600}
-.eyebrow .bar{width:26px;height:1px;background:var(--rule-2);flex:none}
-
-.hero{padding:70px 0 50px}
-.hero h1{font-size:clamp(38px,7vw,80px);line-height:.98;letter-spacing:-.042em;font-weight:820;margin:24px 0 0;text-wrap:balance;max-width:15ch}
-.hero .sub{font-size:clamp(17px,2vw,20px);line-height:1.5;color:var(--ink-2);max-width:60ch;margin:26px 0 0}
-
-.idx{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:42px 0 0}
-.idx a{background:var(--surface);padding:16px 18px;text-decoration:none;display:block}
-.idx a:hover{background:var(--surface-2)}
-.idx .n{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--red);display:block}
-.idx .t{font-size:14.5px;font-weight:640;color:var(--ink);margin-top:5px;display:block;line-height:1.3;letter-spacing:-.01em}
-
-.sec{padding:68px 0;border-top:1px solid var(--rule);scroll-margin-top:70px}
-h2{font-size:clamp(27px,4.2vw,45px);line-height:1.04;letter-spacing:-.032em;font-weight:800;margin:18px 0 24px;text-wrap:balance;max-width:19ch}
-h3{font-size:19px;font-weight:720;letter-spacing:-.012em;margin:40px 0 12px}
-h4{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 14px}
-
-.max{padding:0 0 0 24px;margin:0 0 30px;width:var(--prose);border-left:3px solid var(--red)}
-.max p{font-size:clamp(20px,2.5vw,26px);line-height:1.28;font-weight:700;letter-spacing:-.026em;margin:0 0 .4em;color:var(--ink)}
-.max p:last-child{margin-bottom:0}
-
-.panel{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:24px 26px;margin:26px 0}
-.panel.nv{border-left:3px solid var(--navy)}
-.panel.rd{border-left:3px solid var(--red)}
-.panel>:last-child{margin-bottom:0}
-
-.tw{overflow-x:auto;margin:24px 0;border:1px solid var(--rule);border-radius:2px;background:var(--surface)}
-table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:540px}
-th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
-thead th{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface-2);white-space:nowrap}
-tbody tr:last-child td{border-bottom:none}
-td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
-tr.hl td{background:var(--good-bg)}
-
-.crit{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:26px 0}
-.cr{background:var(--surface);padding:22px}
-.cr .t{font-size:20px;font-weight:800;letter-spacing:-.025em;color:var(--red)}
-.cr .d{font-size:14px;color:var(--ink-2);line-height:1.5;margin-top:10px}
-.cr .q{font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:12px;padding-top:12px;border-top:1px solid var(--rule)}
-
-.pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:26px 0}
-.pl{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:22px;position:relative}
-.pl .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
-.pl .t{font-size:21px;font-weight:780;letter-spacing:-.025em;margin:8px 0 10px}
-.pl .d{font-size:14px;color:var(--ink-2);line-height:1.5}
-.pl .m{margin-top:14px;padding-top:12px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.6}
-.pl.a{border-top:3px solid var(--f1)} .pl.b{border-top:3px solid var(--f2)} .pl.c{border-top:3px solid var(--f3)}
-
-.funnel{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:26px 0}
-.fl{background:var(--surface);padding:20px 22px;display:grid;grid-template-columns:130px 1fr;gap:20px;align-items:start}
-.fl .lb{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:700}
-.fl.t1 .lb{color:var(--f1)} .fl.t2 .lb{color:var(--f2)} .fl.t3 .lb{color:var(--f3)}
-.fl .lb small{display:block;font-size:10px;letter-spacing:.1em;color:var(--muted);font-weight:600;margin-top:5px}
-.fl dl{margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
-.fl dt{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.fl dd{margin:4px 0 0;font-size:14px;line-height:1.4;color:var(--ink-2)}
-@media(max-width:640px){.fl{grid-template-columns:1fr;gap:12px}}
-
-.calc{background:var(--surface-2);border:1px solid var(--rule-2);border-radius:2px;padding:26px;margin:32px 0}
-.calc h4{color:var(--ink)}
-.calc .hint{font-size:14px;color:var(--muted);margin:0 0 20px;line-height:1.5;max-width:64ch}
-.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px 24px;margin-bottom:22px}
-.field{display:flex;flex-direction:column;gap:8px}
-.field label{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.field input{font-family:var(--mono);font-size:16px;font-variant-numeric:tabular-nums;padding:10px 11px;border:1px solid var(--rule-2);border-radius:2px;background:var(--surface);color:var(--ink);width:100%}
-.field input[type=range]{padding:0;accent-color:var(--red);border:none;background:none}
-.rv{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--red)}
-.out{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:20px;padding-top:20px;border-top:1px solid var(--rule-2)}
-.o .ov{font-size:clamp(23px,3vw,31px);font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;display:block}
-.o .ol{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:7px;display:block}
-.verdict{margin-top:20px;padding:14px 16px;background:var(--surface);border:1px solid var(--rule);border-radius:2px;font-size:15px;line-height:1.55;color:var(--ink-2)}
-.verdict b{color:var(--red)}
-
-.scorer{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin:20px 0}
-.srow{background:var(--surface);padding:14px 18px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center}
-.srow .nm{font-size:15px;font-weight:640}
-.srow .ctrls{display:flex;gap:6px}
-.srow button{font-family:var(--mono);font-size:11.5px;padding:7px 11px;border:1px solid var(--rule-2);background:var(--surface);color:var(--muted);border-radius:2px;cursor:pointer;letter-spacing:.05em}
-.srow button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
-:root[data-theme="dark"] .srow button[aria-pressed="true"],
-:root:not([data-theme="light"]) .srow button[aria-pressed="true"]{color:#08152B}
-@media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .srow button[aria-pressed="true"]{color:#fff}}
-
-.acts{list-style:none;padding:0;margin:24px 0 0;width:var(--prose)}
-.acts li{position:relative;padding:14px 0 14px 34px;border-top:1px solid var(--rule);font-size:15.5px;line-height:1.5;color:var(--ink-2)}
-.acts li:last-child{border-bottom:1px solid var(--rule)}
-.acts li::before{content:"→";position:absolute;left:0;top:14px;font-family:var(--mono);color:var(--red);font-size:14px}
-.acts li b{color:var(--ink)}
-
-.pull{border-top:3px solid var(--navy);border-bottom:3px solid var(--navy);padding:24px 0;margin:36px 0;width:var(--prose)}
-.pull p{font-size:20px;line-height:1.4;font-weight:640;letter-spacing:-.018em;margin:0;text-wrap:balance}
-.note{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--muted);width:var(--prose)}
-
-.xlinks{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:36px 0 0}
-.xlink{display:block;text-decoration:none;background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:2px;padding:22px}
-.xlink:hover{background:var(--surface-2)}
-.xlink .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--red)}
-.xlink .t{font-size:19px;font-weight:760;letter-spacing:-.022em;color:var(--ink);margin-top:8px;line-height:1.2}
-.xlink .d{font-size:14px;color:var(--ink-2);margin-top:6px;line-height:1.45}
-
-.final{border-top:1px solid var(--rule);background:var(--surface)}
-.final .in{max-width:1200px;margin:0 auto;padding:70px 26px 74px}
-.final h2{margin-top:0;max-width:17ch}
-.final p{color:var(--ink-2);max-width:56ch;font-size:17.5px}
-.btn{display:inline-block;margin-top:14px;background:var(--red);color:#fff;font-weight:750;font-size:16px;padding:15px 28px;border-radius:2px;text-decoration:none;letter-spacing:-.01em}
-.btn:hover{filter:brightness(1.08)}
-.foot{border-top:1px solid var(--rule);background:var(--ground)}
-.foot .in{max-width:1200px;margin:0 auto;padding:34px 26px 50px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:space-between}
-.foot picture{display:block;flex:none}
-.foot img{height:44px;width:auto;opacity:.85}
-.foot p{font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--muted);margin:0;max-width:60ch}
-.foot b{color:var(--ink)}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
-@media (max-width:640px){
-  .wrap,.final .in,.foot .in,.topbar .in{padding-left:18px;padding-right:18px}
-  .hero{padding:48px 0 36px}.sec{padding:50px 0}
-  .topbar img{height:30px}.topbar .cta{font-size:11px;padding:8px 12px}
-}
-
-.tnav{display:flex;align-items:center;gap:14px}
-.tnav .back{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);text-decoration:none;padding:10px 12px;border:1px solid var(--rule-2);border-radius:2px;white-space:nowrap}
-.tnav .back:hover{background:var(--surface-2);color:var(--ink)}
-.midcta{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:2px;padding:26px 28px;margin:40px 0;display:flex;gap:24px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-.midcta .tx{max-width:52ch}
-.midcta .tt{font-size:19px;font-weight:760;letter-spacing:-.018em;margin:0 0 6px}
-.midcta .dd{font-size:15px;color:var(--ink-2);margin:0;line-height:1.5}
-.midcta a{display:inline-block;background:var(--red);color:#fff;font-weight:750;font-size:15px;padding:13px 24px;border-radius:2px;text-decoration:none;white-space:nowrap}
-.midcta a:hover{filter:brightness(1.08)}
-.backblog{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);text-decoration:none;padding:12px 16px;border:1px solid var(--rule-2);border-radius:2px;margin-top:26px}
-.backblog:hover{background:var(--surface-2);color:var(--ink)}
-@media(max-width:640px){.tnav .back{padding:8px 9px;font-size:11px}.midcta{flex-direction:column;align-items:flex-start}}
-
-
-.byline{display:flex;gap:14px;align-items:center;margin:26px 0 0;padding:16px 0 0;border-top:1px solid var(--rule);flex-wrap:wrap}
-.byline .av{width:44px;height:44px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;letter-spacing:-.02em;flex:none}
-.byline .tx{font-size:14px;line-height:1.5;color:var(--muted)}
-.byline .tx b{color:var(--ink);font-weight:700}
-.autorbox{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--navy);border-radius:2px;padding:26px 28px;margin:44px 0 0;display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
-.autorbox .av{width:64px;height:64px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:21px;letter-spacing:-.02em;flex:none}
-.autorbox .c{flex:1 1 300px}
-.autorbox .n{font-size:19px;font-weight:780;letter-spacing:-.02em;margin:0}
-.autorbox .r{font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--red);margin:5px 0 10px}
-.autorbox .b{font-size:14.5px;line-height:1.55;color:var(--ink-2);margin:0}
-.autorbox .b a{color:var(--red)}
-
-.cmt{border-top:1px solid var(--rule);margin-top:16px;padding-top:44px}
-.cmt h2{font-size:clamp(22px,3vw,30px);margin:0 0 8px}
-.cmt .sb{font-size:15px;color:var(--muted);margin:0 0 26px;max-width:56ch}
-.cmt .lista{display:flex;flex-direction:column;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin-bottom:30px}
-.cmt .c{background:var(--surface);padding:20px 22px}
-.cmt .c .top{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}
-.cmt .c .nm{font-weight:720;letter-spacing:-.01em}
-.cmt .c .mt{font-family:var(--mono);font-size:11px;color:var(--faint)}
-.cmt .c .tx{font-size:15px;line-height:1.55;color:var(--ink-2);white-space:pre-wrap}
-.cmt .c .rp{margin-top:14px;padding:14px 16px;background:var(--surface-2);border-left:3px solid var(--red);border-radius:2px}
-.cmt .c .rp .who{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:6px}
-.cmt .c .rp .tx{font-size:14.5px}
-.cmt form{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:24px;position:relative}
-.cmt .gr2{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:14px}
-.cmt label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:7px}
-.cmt input,.cmt textarea{width:100%;font:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--rule-2);border-radius:2px;background:var(--ground);color:var(--ink)}
-.cmt textarea{min-height:120px;resize:vertical;line-height:1.5}
-.cmt .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
-.cmt .send{margin-top:16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-.cmt button{background:var(--red);color:#fff;font:inherit;font-weight:720;font-size:15px;padding:13px 26px;border:none;border-radius:2px;cursor:pointer}
-.cmt button:disabled{opacity:.5;cursor:default}
-.cmt .msg{font-size:14px;line-height:1.45}
-.cmt .msg.ok{color:var(--good)}.cmt .msg.err{color:var(--bad)}
-.cmt .nota{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:14px;line-height:1.6}
-</style>
+<meta name="theme-color" content="#FFFFFF">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..900&family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/blog/blog.css?v=3">
+<meta property="article:published_time" content="2026-08-19">
+<meta property="article:author" content="https://unvholdings.com.br/fabricio-nunnes/">
 <script type="application/ld+json">
 {
  "@context": "https://schema.org",
@@ -250,141 +28,86 @@ tr.hl td{background:var(--good-bg)}
    "@type": "Organization",
    "@id": "https://unvholdings.com.br/#org",
    "name": "UNV Holdings",
-   "alternateName": [
-    "Universidade Nacional de Vendas",
-    "UNV"
-   ],
+   "alternateName": ["Universidade Nacional de Vendas", "UNV"],
    "url": "https://unvholdings.com.br/",
-   "logo": {
-    "@type": "ImageObject",
-    "url": "https://unvholdings.com.br/images/unv-logo.png"
-   },
-   "description": "Quando o cliente está longe, ele não compra de você, compra do que você montou. Sistema que vende sem dono presente é o que separa quem escala de quem fica preso no balcão.",
-   "founder": {
-    "@id": "https://unvholdings.com.br/#fabricio"
-   },
+   "logo": {"@type": "ImageObject", "url": "https://unvholdings.com.br/blog/img/unv-holdings.png"},
+   "description": "Direção comercial terceirizada para pequenas e médias empresas.",
+   "founder": {"@id": "https://unvholdings.com.br/#fabricio"},
+   "foundingDate": "2023-07",
+   "address": {"@type": "PostalAddress", "streetAddress": "Rua Araguaia, 130, Alphaville", "addressLocality": "Nova Lima", "addressRegion": "MG", "addressCountry": "BR"},
    "areaServed": "BR",
-   "knowsAbout": [
-    "gestão comercial",
-    "direção comercial terceirizada",
-    "estruturação de time de vendas",
-    "previsibilidade de receita",
-    "marketing para PME"
-   ]
+   "knowsAbout": ["gestão comercial", "direção comercial terceirizada", "estruturação de time de vendas", "previsibilidade de receita", "treinamento de vendedores"]
   },
   {
    "@type": "Person",
    "@id": "https://unvholdings.com.br/#fabricio",
    "name": "Fabrício Nunnes",
    "alternateName": "Fabrício Nunes",
-   "jobTitle": [
-    "CEO",
-    "Diretor Comercial"
-   ],
+   "jobTitle": ["CEO", "Diretor Comercial"],
    "description": "CEO e fundador da UNV Holdings (Universidade Nacional de Vendas). Diretor comercial terceirizado para pequenas e médias empresas, com mais de 20 anos em vendas, mais de 10 como diretor comercial, mais de 600 empresas atendidas em 7 países e 3 continentes e mais de R$ 1 bilhão em vendas geradas.",
-   "worksFor": {
-    "@id": "https://unvholdings.com.br/#org"
-   },
-   "url": "https://unvholdings.com.br/",
-   "sameAs": [
-    "https://www.instagram.com/ofabricionunnes/",
-    "https://www.instagram.com/unvholdings/",
-    "https://www.linkedin.com/company/universidade-vendas",
-    "https://www.youtube.com/channel/UCppsePWHbTMG3z6Ne-znDzw",
-    "https://unvholdings.com.br/"
-   ],
-   "knowsAbout": [
-    "gestão comercial",
-    "vendas B2B",
-    "estruturação de time comercial",
-    "posicionamento",
-    "marketing"
-   ]
+   "image": "https://unvholdings.com.br/blog/img/fabricio-avatar.jpg",
+   "worksFor": {"@id": "https://unvholdings.com.br/#org"},
+   "url": "https://unvholdings.com.br/fabricio-nunnes/",
+   "mainEntityOfPage": "https://unvholdings.com.br/fabricio-nunnes/",
+   "sameAs": ["https://www.instagram.com/ofabricionunnes/", "https://www.instagram.com/unvholdings/", "https://www.linkedin.com/company/universidade-vendas", "https://www.youtube.com/channel/UCppsePWHbTMG3z6Ne-znDzw"],
+   "knowsAbout": ["gestão comercial", "direção comercial terceirizada", "vendas B2B", "estruturação de time comercial", "treinamento de vendedores", "Método CRESCER", "posicionamento", "previsibilidade de receita"]
   },
   {
    "@type": "BlogPosting",
+   "@id": "https://unvholdings.com.br/blog/venda-distancia-confianca-estrutura-nao-carisma/#post",
    "headline": "Venda à distância exige estrutura, não carisma do dono",
-   "description": "Por que o dono atende o primeiro contato do lead e some da negociação que decide o mês. A conta do pior vendedor e o que muda quando ele sai da entrada do funil.",
+   "description": "Quando o cliente está longe, ele não compra de você, compra do que você montou. Sistema que vende sem dono presente é o que separa quem escala de quem fica preso no balcão.",
    "url": "https://unvholdings.com.br/blog/venda-distancia-confianca-estrutura-nao-carisma/",
    "inLanguage": "pt-BR",
-   "author": {
-    "@id": "https://unvholdings.com.br/#fabricio"
-   },
-   "publisher": {
-    "@id": "https://unvholdings.com.br/#org"
-   },
-   "mainEntityOfPage": {
-    "@type": "WebPage",
-    "@id": "https://unvholdings.com.br/blog/venda-distancia-confianca-estrutura-nao-carisma/"
-   },
-   "image": "https://unvholdings.com.br/images/unv-logo.png",
-   "datePublished": "2026-08-12",
-   "dateModified": "2026-08-12"
+   "author": {"@id": "https://unvholdings.com.br/#fabricio"},
+   "publisher": {"@id": "https://unvholdings.com.br/#org"},
+   "mainEntityOfPage": {"@type": "WebPage", "@id": "https://unvholdings.com.br/blog/venda-distancia-confianca-estrutura-nao-carisma/"},
+   "image": "https://unvholdings.com.br/blog/img/og.png",
+   "datePublished": "2026-08-19",
+   "dateModified": "2026-08-19",
+   "keywords": "venda à distância, estrutura comercial, sistema, treino de vendedor, delegação",
+   "wordCount": 1365,
+   "articleSection": "Gestão comercial",
+   "isPartOf": {"@type": "Blog", "@id": "https://unvholdings.com.br/blog/#blog", "name": "Blog UNV Holdings"}
+  },
+  {
+   "@type": "BreadcrumbList",
+   "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "UNV Holdings", "item": "https://unvholdings.com.br/"},
+    {"@type": "ListItem", "position": 2, "name": "Blog", "item": "https://unvholdings.com.br/blog/"},
+    {"@type": "ListItem", "position": 3, "name": "Venda à distância exige estrutura, não carisma do dono", "item": "https://unvholdings.com.br/blog/venda-distancia-confianca-estrutura-nao-carisma/"}
+   ]
   }
  ]
 }
 </script>
-<style>
-.unv-by{display:flex;align-items:center;gap:12px;margin:0 0 26px;padding:12px 0 18px;border-bottom:1px solid rgba(128,128,128,.22);font-size:14px;line-height:1.5}
-.unv-by .av{flex:0 0 40px;width:40px;height:40px;border-radius:50%;background:#0D2B5E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;letter-spacing:.5px}
-.unv-by .tx{min-width:0}
-.unv-by .nm{font-weight:700}
-.unv-by .rl{opacity:.72}
-@media(prefers-color-scheme:dark){.unv-by .av{background:#C9A84C;color:#0A0A0A}}
-.unv-au{margin:40px 0 0;padding:20px;border:1px solid rgba(128,128,128,.24);border-radius:12px;font-size:14.5px;line-height:1.62}
-.unv-au h3{margin:0 0 8px;font-size:15px}
-.unv-au p{margin:0}
-</style>
+<script src="/blog/blog.js?v=3" defer></script>
 </head>
-<body>
-<div class="topbar">
-  <div class="in">
-    <a href="/"><picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture></a>
-    <nav class="tnav"><a class="back" href="/blog/">&larr; Blog</a><a class="cta" href="/sessao">Sessão estratégica</a></nav>
+<body class="bx">
+<div class="barra" id="barra"></div>
+<header class="uh" id="uh">
+  <div class="uh-in">
+    <a class="uh-logo" href="/" aria-label="UNV Holdings, página inicial"><img src="/blog/img/unv-holdings.png" alt="UNV Holdings" width="560" height="419"></a>
+    <nav class="uh-nav" aria-label="Principal">
+      <a href="/blog/" class="fica">Blog</a>
+      <a href="/blog/arquivo/" class="opc">Todos os conteúdos</a>
+      <a href="/fabricio-nunnes/" class="opc">Quem escreve</a>
+      <a href="/diretor-comercial-terceirizado/" class="opc">Diretor comercial terceirizado</a>
+    </nav>
+    <a class="uh-cta" href="/sessao">Sessão estratégica</a>
   </div>
-</div>
-<div class="wrap">
-<style>
-.bl{margin:26px 0}
-.bl h4{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 14px}
-.cmp{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
-.cmp .hd{background:var(--surface-2);padding:12px 16px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
-.cmp .hd.e{color:var(--bad)}.cmp .hd.d{color:var(--good)}
-.cmp .cl{background:var(--surface);padding:13px 16px;font-size:14.5px;line-height:1.45;color:var(--ink-2)}
-.gr{background:var(--surface);border:1px solid var(--rule);border-radius:2px;padding:22px}
-.gr .row{display:grid;grid-template-columns:minmax(90px,32%) 1fr;gap:14px;align-items:center;padding:7px 0;font-size:14px}
-.gr .tk{background:var(--surface-2);height:18px;border-radius:2px;overflow:hidden}
-.gr .fl{height:100%;border-radius:2px}
-.gr .lg{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:12px;padding-top:12px;border-top:1px solid var(--rule);line-height:1.5}
-.ck{background:var(--surface);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
-.ck button{width:100%;text-align:left;background:var(--surface);border:none;border-bottom:1px solid var(--rule);padding:14px 18px;font:inherit;font-size:14.5px;color:var(--ink-2);cursor:pointer;display:flex;gap:12px;align-items:center}
-.ck button:last-of-type{border-bottom:none}
-.ck button::before{content:"";width:17px;height:17px;border:1.5px solid var(--rule-2);border-radius:3px;flex:none}
-.ck button[aria-pressed="true"]{color:var(--ink);font-weight:600}
-.ck button[aria-pressed="true"]::before{background:var(--red);border-color:var(--red)}
-.ck .vd{padding:16px 18px;background:var(--surface-2);font-size:14.5px;line-height:1.5;color:var(--ink-2);border-top:1px solid var(--rule)}
-.ps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
-.ps .p{background:var(--surface);padding:20px}
-.ps .n{font-family:var(--mono);font-size:22px;font-weight:800;color:var(--red);line-height:1}
-.ps .t{font-size:15.5px;font-weight:720;margin:8px 0 6px;letter-spacing:-.015em}
-.ps .x{font-size:14px;color:var(--ink-2);line-height:1.45}
-.pl2{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:2px;overflow:hidden}
-.pl2 .i{background:var(--surface);padding:22px}
-.pl2 .n{font-size:26px;font-weight:820;letter-spacing:-.03em;color:var(--red);line-height:1}
-.pl2 .r{font-size:14px;color:var(--ink-2);line-height:1.45;margin-top:9px}
-</style>
+</header>
+<main class="art" id="conteudo">
 <header class="hero">
-  <p class="eyebrow"><span>Diário UNV</span><span class="bar"></span><span class="tc">Método CRESCER</span><span class="bar"></span><span>19/08/2026</span></p>
+  <nav class="crumb" aria-label="Você está em"><a href="/blog/">Blog</a><span>/</span><span>Diário comercial · Método CRESCER</span></nav>
   <h1>Venda à distância exige estrutura, não carisma do dono</h1>
   <p class="sub">Quando o cliente está longe, ele não compra de você, compra do que você montou. Sistema que vende sem dono presente é o que separa quem escala de quem fica preso no balcão.</p>
+  <div class="tags"><a href="/blog/?q=venda%20à%20distância">venda à distância</a><a href="/blog/?q=estrutura%20comercial">estrutura comercial</a><a href="/blog/?q=sistema">sistema</a><a href="/blog/?q=treino%20de%20vendedor">treino de vendedor</a><a href="/blog/?q=delegação">delegação</a></div>
+  <div class="meta">
+    <a class="quem" href="/fabricio-nunnes/" rel="author"><img src="/blog/img/fabricio-avatar.jpg" alt="Fabrício Nunnes" width="52" height="52"><span><b>Fabrício Nunnes</b><span>CEO da UNV Holdings · Diretor comercial terceirizado</span></span></a>
+    <span class="quando"><time datetime="2026-08-19">19 de agosto de 2026</time> · 7 min de leitura</span>
+  </div>
 </header>
-<div class="unv-by">
-  <span class="av">FN</span>
-  <span class="tx">
-    <span class="nm">Fabrício Nunnes</span><br>
-    <span class="rl">CEO e fundador da UNV Holdings — Universidade Nacional de Vendas · Diretor comercial terceirizado</span>
-  </span>
-</div>
 <section class="sec">
   <p class="eyebrow"><span>C</span><span class="bar"></span><span>Cenário</span></p>
   <h2>Dono presente vende, dono ausente depende do sistema</h2>
@@ -483,14 +206,18 @@ document.querySelectorAll(".ck").forEach(function(c){
 });
 </script>
 
-<div class="unv-au">
-  <h3>Sobre o autor</h3>
-  <p><b>Fabrício Nunnes</b> é CEO e fundador da <b>UNV Holdings</b>, a <b>Universidade Nacional de Vendas</b>.
-  Atua como diretor comercial terceirizado de pequenas e médias empresas: assume a direção comercial,
-  estrutura o time e acompanha os vendedores para bater meta todo mês. São mais de 20 anos em vendas,
-  mais de 10 como diretor comercial e mais de 600 empresas atendidas em 7 países e 3 continentes.
-  Entenda <a href="/diretor-comercial-terceirizado/">como funciona o diretor comercial terceirizado</a>.</p>
-</div>
+<aside class="autor" aria-label="Sobre o autor">
+  <img src="/blog/img/fabricio-avatar.jpg" alt="Fabrício Nunnes, CEO da UNV Holdings" width="104" height="104" loading="lazy">
+  <div>
+    <h3><a href="/fabricio-nunnes/">Fabrício Nunnes</a></h3>
+    <p class="cg">CEO e fundador da UNV Holdings · Diretor comercial terceirizado</p>
+    <p><b>Fabrício Nunnes</b> é CEO e fundador da <b>UNV Holdings</b>, a <b>Universidade Nacional de Vendas</b>.
+    Atua como diretor comercial terceirizado de pequenas e médias empresas: assume a direção comercial,
+    estrutura o time e acompanha os vendedores para bater meta todo mês. São mais de 20 anos em vendas,
+    mais de 10 como diretor comercial e mais de 600 empresas atendidas em 7 países e 3 continentes.
+    Entenda <a href="/diretor-comercial-terceirizado/">como funciona o diretor comercial terceirizado</a>.</p>
+  </div>
+</aside>
 
 <section class="cmt" id="unv-coments">
   <h2>Comentários</h2>
@@ -512,9 +239,7 @@ document.querySelectorAll(".ck").forEach(function(c){
     <p class="nota">Os comentários passam por aprovação antes de aparecer.</p>
   </form>
 </section>
-
-</div>
-
+</main>
 <div class="final">
   <div class="in">
     <h2>estruture a venda para acontecer sem você</h2>
@@ -522,17 +247,32 @@ document.querySelectorAll(".ck").forEach(function(c){
     <a class="btn" href="/sessao">falar com a gente</a>
   </div>
 </div>
-<div class="foot">
-  <div class="in">
-    <picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture>
-    <p>
-      <b>UNV Holdings — Universidade Nacional de Vendas</b> · <a href="/diretor-comercial-terceirizado/">Direção comercial terceirizada</a> para pequenas e médias empresas.<br>
-      Conteúdo de <b>Fabrício Nunnes</b>, CEO e fundador, a partir das reuniões de diagnóstico que ele conduz com donos de empresa.
-      <a href="/">unvholdings.com.br</a>
-    </p>
+<footer class="uf">
+  <div class="uf-in">
+    <div class="uf-brand">
+      <img src="/blog/img/unv-holdings.png" alt="UNV Holdings" width="560" height="419" loading="lazy">
+      <p>Direção comercial terceirizada para pequenas e médias empresas.<br>Rua Araguaia, 130 · Alphaville · Nova Lima/MG</p>
+    </div>
+    <div>
+      <h4>Blog</h4>
+      <ul>
+        <li><a href="/blog/">Conteúdos mais recentes</a></li>
+        <li><a href="/blog/arquivo/">Todos os conteúdos</a></li>
+        <li><a href="/blog/#guias">Guias completos</a></li>
+        <li><a href="/fabricio-nunnes/">Quem é Fabrício Nunnes</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>UNV Holdings</h4>
+      <ul>
+        <li><a href="/diretor-comercial-terceirizado/">Diretor comercial terceirizado</a></li>
+        <li><a href="/sessao">Sessão estratégica</a></li>
+        <li><a href="/">unvholdings.com.br</a></li>
+      </ul>
+    </div>
+    <p class="uf-legal"><b>UNV Holdings</b>, a <b>Universidade Nacional de Vendas</b>. Conteúdo escrito por <b><a href="/fabricio-nunnes/">Fabrício Nunnes</a></b>, CEO e fundador, a partir das reuniões que ele conduz com donos de empresa.</p>
   </div>
-</div>
-
+</footer>
 
 <script>
 (function(){

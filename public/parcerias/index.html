@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,7 +12,7 @@
 <meta property="og:title" content="Parcerias que funcionam — a regra dos 30%">
 <meta property="og:description" content="Por que quase toda parceria comercial morre no terceiro mês, como testar se ela é relevante para o parceiro, e por que usar a marca dele vale mais que o time de vendas dele.">
 <meta property="og:url" content="https://unvholdings.com.br/parcerias/">
-<meta property="og:image" content="https://unvholdings.com.br/images/unv-logo.png">
+<meta property="og:image" content="https://unvholdings.com.br/blog/img/unv-holdings.png">
 <meta name="twitter:card" content="summary_large_image">
 <style>
 
@@ -232,7 +232,7 @@ tr.hl td{background:var(--good-bg)}
    "url": "https://unvholdings.com.br/",
    "logo": {
     "@type": "ImageObject",
-    "url": "https://unvholdings.com.br/images/unv-logo.png"
+    "url": "https://unvholdings.com.br/blog/img/unv-holdings.png"
    },
    "description": "Direção comercial terceirizada para pequenas e médias empresas.",
    "founder": {
@@ -292,22 +292,31 @@ tr.hl td{background:var(--good-bg)}
     "@type": "WebPage",
     "@id": "https://unvholdings.com.br/parcerias/"
    },
-   "image": "https://unvholdings.com.br/images/unv-logo.png",
+   "image": "https://unvholdings.com.br/blog/img/unv-holdings.png",
    "datePublished": "2026-08-12",
    "dateModified": "2026-08-12"
   }
  ]
 }
 </script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..900&family=Inter:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/blog/blog.css?v=3">
+<script src="/blog/blog.js?v=3" defer></script>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="in">
-    <a href="/"><picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture></a>
-    <nav class="tnav"><a class="back" href="/blog/">&larr; Blog</a><a class="cta" href="/sessao">Sessão estratégica</a></nav>
+<header class="uh" id="uh">
+  <div class="uh-in">
+    <a class="uh-logo" href="/" aria-label="UNV Holdings, página inicial"><img src="/blog/img/unv-holdings.png" alt="UNV Holdings" width="560" height="419"></a>
+    <nav class="uh-nav" aria-label="Principal">
+      <a href="/blog/" class="fica">Blog</a>
+      <a href="/blog/arquivo/" class="opc">Todos os conteúdos</a>
+      <a href="/fabricio-nunnes/" class="opc">Quem escreve</a>
+      <a href="/diretor-comercial-terceirizado/" class="opc">Diretor comercial terceirizado</a>
+    </nav>
+    <a class="uh-cta" href="/sessao">Sessão estratégica</a>
   </div>
-</div>
+</header>
 
 <div class="wrap">
 <header class="hero">
@@ -519,16 +528,32 @@ tr.hl td{background:var(--good-bg)}
     <a class="btn" href="/sessao">Agendar uma sessão estratégica</a>
   </div>
 </div>
-<div class="foot">
-  <div class="in">
-    <picture><source srcset="/images/unv-logo-dark.png" media="(prefers-color-scheme: dark)"><img src="/images/unv-logo.png" alt="UNV — Universidade Nacional de Vendas"></picture>
-    <p>
-      <b>UNV Holdings</b> · <a href="/diretor-comercial-terceirizado/">Direção comercial terceirizada</a> para pequenas e médias empresas.<br>
-      Guia produzido pelo time da UNV a partir da nossa prática com times comerciais de PME.
-      <a href="/">unvholdings.com.br</a>
-    </p>
+<footer class="uf">
+  <div class="uf-in">
+    <div class="uf-brand">
+      <img src="/blog/img/unv-holdings.png" alt="UNV Holdings" width="560" height="419" loading="lazy">
+      <p>Direção comercial terceirizada para pequenas e médias empresas.<br>Rua Araguaia, 130 · Alphaville · Nova Lima/MG</p>
+    </div>
+    <div>
+      <h4>Blog</h4>
+      <ul>
+        <li><a href="/blog/">Conteúdos mais recentes</a></li>
+        <li><a href="/blog/arquivo/">Todos os conteúdos</a></li>
+        <li><a href="/blog/#guias">Guias completos</a></li>
+        <li><a href="/fabricio-nunnes/">Quem é Fabrício Nunnes</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>UNV Holdings</h4>
+      <ul>
+        <li><a href="/diretor-comercial-terceirizado/">Diretor comercial terceirizado</a></li>
+        <li><a href="/sessao">Sessão estratégica</a></li>
+        <li><a href="/">unvholdings.com.br</a></li>
+      </ul>
+    </div>
+    <p class="uf-legal"><b>UNV Holdings</b>, a <b>Universidade Nacional de Vendas</b>. Conteúdo escrito por <b><a href="/fabricio-nunnes/">Fabrício Nunnes</a></b>, CEO e fundador, a partir das reuniões que ele conduz com donos de empresa.</p>
   </div>
-</div>
+</footer>
 
 <script>
 (function(){
