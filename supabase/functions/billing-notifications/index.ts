@@ -48,11 +48,27 @@ Deno.serve(async (req) => {
 
     // Parse request body to check if it's a manual execution
     let isManual = false;
+    let pixAutoSimular = false;
+    let soPixAuto = false;
     try {
       const body = await req.json();
       isManual = body?.manual === true;
+      pixAutoSimular = body?.pix_auto_simular === true;
+      soPixAuto = body?.so_pix_automatico === true || pixAutoSimular;
     } catch {
       // no body or invalid JSON — treat as scheduled
+    }
+
+    // Pix Automático (13/11/2026): link das parcelas vencidas e aviso de débito recusado no mesmo dia.
+    // Roda toda hora, antes do filtro de horário das regras, e nunca derruba a régua.
+    try {
+      diagnostics.pix_automatico = await avisosPixAutomatico(supabase, pixAutoSimular, EVOLUTION_API_URL, EVOLUTION_API_KEY);
+    } catch (e) {
+      console.error("[billing-notifications] pix automático", e);
+      diagnostics.pix_automatico = { erro: String((e as any)?.message || e) };
+    }
+    if (soPixAuto) {
+      return new Response(JSON.stringify({ sent: 0, diagnostics }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Current UTC time for time-based filtering
@@ -392,7 +408,18 @@ Deno.serve(async (req) => {
         }
 
         let message: string;
-        if (invoice.auto_debit && (rule.trigger_type === "before" || rule.trigger_type === "on_due")) {
+        // Pix Automático (13/11/2026, Fabrício: "o primeiro tem que enviar, as parcelas restantes não"):
+        // a 1ª parcela é a que ativa a autorização e é paga pelo link, então segue a régua com o link
+        // (texto próprio, sem a oferta de desconto, que o QR não dá). No máximo uma por dia.
+        const ativacaoPix = !!invoice.auto_debit && String(invoice.payment_link_url || "").includes("/pix-automatico/");
+        if (ativacaoPix) {
+          if (autoDebitoHoje.has(String(invoice.id))) {
+            skippedReasons.push(`[${company.name}] Pix Automático: lembrete da 1ª parcela já enviado hoje`);
+            continue;
+          }
+          autoDebitoHoje.add(String(invoice.id));
+          message = buildPixActivationMessage(rule, invoice, company);
+        } else if (invoice.auto_debit && (rule.trigger_type === "before" || rule.trigger_type === "on_due")) {
           if (autoDebitoHoje.has(String(invoice.id))) {
             skippedReasons.push(`[${company.name}] Pix Automático: lembrete de débito já enviado hoje`);
             continue;
@@ -578,4 +605,230 @@ function buildMessage(rule: any, invoice: any, company: any, today: Date): strin
   msg = msg.replace(/\{\{parcela\}\}/g, parcela);
 
   return msg;
+}
+
+/** 1ª parcela do Pix Automático: é paga pelo link, e o mesmo pagamento autoriza os débitos seguintes. */
+function buildPixActivationMessage(rule: any, invoice: any, company: any): string {
+  const valor = (invoice.amount_cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const [a, m, d] = String(invoice.due_date).split("-");
+  const quando = rule.trigger_type === "on_due" ? "vence *hoje*"
+    : rule.trigger_type === "after" ? `venceu no dia *${d}/${m}/${a}*`
+    : `vence no dia *${d}/${m}/${a}*`;
+  return `Olá ${company.name || ""}! 👋\n\n` +
+    `Passando pra lembrar que a 1ª parcela da sua mensalidade ${quando}. É só pagar pelo link abaixo, e no mesmo pagamento o seu banco pede pra autorizar o *Pix Automático* das próximas:\n\n` +
+    `📄 *${invoice.description || "Mensalidade"}*\n💰 *Valor:* ${valor}\n\n` +
+    `🔗 ${invoice.payment_link_url}\n\n` +
+    `Qualquer dúvida, é só responder esta mensagem.`;
+}
+
+/** Chave da conta Asaas da recorrência (mesma ordem das funções que criam a cobrança). */
+async function chaveAsaasDaRecorrencia(supabase: any, asaasAccountId?: string | null): Promise<string> {
+  if (asaasAccountId) {
+    const { data: porRef } = await supabase.from("tenant_integration_secrets")
+      .select("secret_value").eq("provider", "asaas").eq("reference_id", asaasAccountId).limit(1);
+    if (porRef?.[0]?.secret_value) return String(porRef[0].secret_value);
+    const { data: acc } = await supabase.from("asaas_accounts").select("api_key_secret_name").eq("id", asaasAccountId).maybeSingle();
+    if (acc?.api_key_secret_name) {
+      const { data: porNome } = await supabase.from("tenant_integration_secrets")
+        .select("secret_value").eq("secret_name", acc.api_key_secret_name).limit(1);
+      const k = (porNome?.[0]?.secret_value as string) || Deno.env.get(acc.api_key_secret_name) || "";
+      if (k) return k;
+    }
+  }
+  return Deno.env.get("ASAAS_API_KEY") || "";
+}
+
+async function asaasGet(key: string, path: string): Promise<any> {
+  const r = await fetch(`https://api.asaas.com/v3${path}`, { headers: { access_token: key } });
+  const t = await r.text();
+  if (!r.ok) throw new Error(`Asaas HTTP ${r.status}`);
+  try { return t ? JSON.parse(t) : {}; } catch { return {}; }
+}
+
+/**
+ * Pix Automático, da 2ª parcela em diante (13/11/2026, Fabrício: "deixa descontar, se atrasar 1 dia aí já
+ * avisa" e "se o pix for feito pela manhã, a tarde já tem que ser avisado que não descontou"):
+ *  1) parcela vencida ganha o link da cobrança do Asaas, senão o agente de cobrança pula por falta de link;
+ *  2) tentativa de débito recusada (gravada pelo asaas-webhook em pix_automatico_recusas) vira aviso pro
+ *     cliente no mesmo dia, entre 8h e 20h, pela instância padrão do financeiro, um por parcela por dia.
+ */
+async function avisosPixAutomatico(supabase: any, simular: boolean, envUrl: string, envKey: string) {
+  const out: Record<string, any> = { links: [], avisos: [] };
+  const agora = new Date();
+  const br = new Date(agora.getTime() - 3 * 3600000);
+  const hojeBR = br.toISOString().slice(0, 10);
+  const horaBR = br.getUTCHours();
+
+  const linkDaParcela = async (inv: any, paymentId?: string | null): Promise<{ url: string | null; paga: boolean }> => {
+    const { data: charge } = await supabase.from("company_recurring_charges")
+      .select("pagarme_plan_id, asaas_account_id").eq("id", inv.recurring_charge_id).maybeSingle();
+    const key = await chaveAsaasDaRecorrencia(supabase, charge?.asaas_account_id);
+    if (!key) return { url: null, paga: false };
+    const pagos = ["RECEIVED", "RECEIVED_IN_CASH", "CONFIRMED"];
+    if (paymentId) {
+      try {
+        const p = await asaasGet(key, `/payments/${paymentId}`);
+        if (pagos.includes(String(p?.status))) return { url: null, paga: true };
+        if (p?.invoiceUrl) return { url: String(p.invoiceUrl), paga: false };
+      } catch (e) { console.error("[pix-auto] payment", paymentId, String((e as any)?.message || e)); }
+    }
+    if (charge?.pagarme_plan_id) {
+      const lista = await asaasGet(key, `/subscriptions/${charge.pagarme_plan_id}/payments?dueDate=${inv.due_date}`);
+      const todos = lista?.data || [];
+      const aberto = todos.find((p: any) => ["PENDING", "OVERDUE"].includes(String(p.status)));
+      if (aberto?.invoiceUrl) return { url: String(aberto.invoiceUrl), paga: false };
+      if (todos.length && todos.every((p: any) => pagos.includes(String(p.status)))) return { url: null, paga: true };
+    }
+    return { url: null, paga: false };
+  };
+
+  // 1) Link das parcelas de Pix Automático já vencidas (até 60 dias)
+  const de = new Date(br.getTime() - 60 * 86400000).toISOString().slice(0, 10);
+  const { data: vencidas } = await supabase.from("company_invoices")
+    .select("id, due_date, payment_link_url, recurring_charge_id, company_id")
+    .eq("auto_debit", true).in("status", ["pending", "overdue"]).is("paid_at", null)
+    .lt("due_date", hojeBR).gte("due_date", de).not("recurring_charge_id", "is", null)
+    .order("due_date", { ascending: true }).limit(50);
+  const semLink = (vencidas || []).filter((i: any) => {
+    const l = String(i.payment_link_url || "");
+    return !l.includes("asaas") && !l.includes("/pix-automatico/");
+  }).slice(0, 10);
+  for (const inv of semLink) {
+    try {
+      const { url } = await linkDaParcela(inv);
+      if (url && !simular) await supabase.from("company_invoices").update({ payment_link_url: url }).eq("id", inv.id);
+      out.links.push({ invoice_id: inv.id, vencimento: inv.due_date, achou: !!url });
+    } catch (e) {
+      out.links.push({ invoice_id: inv.id, erro: String((e as any)?.message || e) });
+    }
+  }
+
+  // 2) Aviso de débito recusado
+  if (!simular && (horaBR < 8 || horaBR >= 20)) { out.fora_do_horario = true; return out; }
+  const { data: recusas, error: recErr } = await supabase.from("pix_automatico_recusas")
+    .select("*").eq("aviso_status", "pendente")
+    .gte("recebido_em", new Date(agora.getTime() - 3 * 86400000).toISOString())
+    .order("recebido_em", { ascending: true }).limit(20);
+  if (recErr) { out.erro_recusas = recErr.message; return out; }
+  if (!recusas?.length) return out;
+
+  const { data: agentCfg } = await supabase.from("billing_agent_config").select("enabled, dry_run, instance_id").eq("id", true).maybeSingle();
+  const agenteCobra = !!(agentCfg?.enabled && !agentCfg?.dry_run && agentCfg?.instance_id);
+  const { data: defCfg } = await supabase.from("whatsapp_default_config").select("setting_value").eq("setting_key", "default_instance").maybeSingle();
+  const { data: inst } = defCfg?.setting_value
+    ? await supabase.from("whatsapp_instances").select("api_url, api_key, instance_name").eq("status", "connected").eq("instance_name", defCfg.setting_value).maybeSingle()
+    : { data: null };
+  const apiUrl = normalizeBaseUrl(String(inst?.api_url || envUrl || ""));
+  const apiKey = String(inst?.api_key || envKey || "");
+
+  const fechar = async (r: any, status: string, motivo: string, extra: Record<string, unknown> = {}) => {
+    out.avisos.push({ instrucao: r.id, status, motivo, ...(extra.preview ? { preview: extra.preview } : {}), ...(extra.telefone ? { telefone: extra.telefone } : {}) });
+    if (simular) return;
+    const patch: Record<string, unknown> = { aviso_status: status, aviso_motivo: motivo.slice(0, 300), avisado_em: new Date().toISOString() };
+    if (extra.invoice_id) patch.invoice_id = extra.invoice_id;
+    await supabase.from("pix_automatico_recusas").update(patch).eq("id", r.id);
+  };
+
+  const avisadasAgora = new Set<string>();
+  for (const r of recusas) {
+    try {
+      const { data: pa } = r.authorization_id
+        ? await supabase.from("asaas_pix_automatico").select("id, recurring_charge_id, company_id").eq("id", r.authorization_id).maybeSingle()
+        : { data: null };
+      const recId = r.recurring_charge_id || pa?.recurring_charge_id;
+      if (!recId) { await fechar(r, "dispensado", "autorização sem recorrência do Nexus"); continue; }
+
+      const campos = "id, amount_cents, description, due_date, status, paid_at, payment_link_url, company_id, recurring_charge_id, send_whatsapp, auto_debit, installment_number";
+      let inv: any = null;
+      if (r.invoice_id) inv = (await supabase.from("company_invoices").select(campos).eq("id", r.invoice_id).maybeSingle()).data;
+      if (!inv && r.due_date) inv = (await supabase.from("company_invoices").select(campos).eq("recurring_charge_id", recId).eq("due_date", r.due_date).limit(1).maybeSingle()).data;
+      if (!inv) {
+        const limite = new Date(br.getTime() - 10 * 86400000).toISOString().slice(0, 10);
+        inv = (await supabase.from("company_invoices").select(campos).eq("recurring_charge_id", recId)
+          .in("status", ["pending", "overdue"]).is("paid_at", null).gte("due_date", limite)
+          .order("due_date", { ascending: true }).limit(1).maybeSingle()).data;
+      }
+      if (!inv) { await fechar(r, "dispensado", "parcela não encontrada"); continue; }
+      const idInv = { invoice_id: inv.id };
+      if (inv.paid_at || !["pending", "overdue"].includes(String(inv.status))) { await fechar(r, "dispensado", "parcela já paga ou cancelada", idInv); continue; }
+      if (inv.send_whatsapp === false) { await fechar(r, "dispensado", "parcela com WhatsApp desligado", idInv); continue; }
+      if (String(inv.payment_link_url || "").includes("/pix-automatico/")) { await fechar(r, "dispensado", "1ª parcela, segue a régua com o link de ativação", idInv); continue; }
+
+      // Link da cobrança no Asaas, pra quem quiser pagar na hora
+      let link = String(inv.payment_link_url || "").includes("asaas") ? String(inv.payment_link_url) : "";
+      try {
+        const achado = await linkDaParcela(inv, r.payment_id);
+        if (achado.paga) { await fechar(r, "dispensado", "cobrança já consta paga no Asaas", idInv); continue; }
+        if (achado.url) {
+          link = achado.url;
+          if (!simular && link !== inv.payment_link_url) await supabase.from("company_invoices").update({ payment_link_url: link }).eq("id", inv.id);
+        }
+      } catch (e) { console.error("[pix-auto] link", inv.id, String((e as any)?.message || e)); }
+
+      if (inv.due_date < hojeBR && agenteCobra) { await fechar(r, "dispensado", "parcela já vencida, o agente de cobrança assume", idInv); continue; }
+
+      // Um aviso por parcela por dia (o banco pode tentar mais de uma vez)
+      if (avisadasAgora.has(String(inv.id))) { await fechar(r, "dispensado", "parcela já avisada hoje", idInv); continue; }
+      const { data: jaHoje } = await supabase.from("pix_automatico_recusas").select("id")
+        .eq("invoice_id", inv.id).eq("aviso_status", "enviado").gte("avisado_em", `${hojeBR}T03:00:00Z`).limit(1);
+      if (jaHoje?.length) { await fechar(r, "dispensado", "parcela já avisada hoje", idInv); continue; }
+
+      const { data: company } = await supabase.from("onboarding_companies").select("id, name, phone").eq("id", inv.company_id).maybeSingle();
+      let fone = String(company?.phone || "").replace(/\D/g, "");
+      if (fone.length < 10) {
+        const { data: ch } = await supabase.from("company_recurring_charges").select("customer_phone").eq("id", recId).maybeSingle();
+        fone = String(ch?.customer_phone || "").replace(/\D/g, "");
+      }
+      if (fone.length < 10) { await fechar(r, "falhou", "empresa sem telefone válido", idInv); continue; }
+      if (!fone.startsWith("55")) fone = `55${fone}`;
+
+      const valor = (inv.amount_cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      const [a, m, d] = String(inv.due_date).split("-");
+      const message = `Olá ${company?.name || ""}! 👋\n\n` +
+        `Passando pra avisar que o débito da sua mensalidade pelo *Pix Automático* não foi concluído hoje:\n\n` +
+        `📄 *${inv.description || "Mensalidade"}*\n💰 *Valor:* ${valor}\n📅 *Vencimento:* ${d}/${m}/${a}\n\n` +
+        `Normalmente é saldo ou limite do Pix na conta. O banco tenta de novo nos próximos dias, então vale conferir.` +
+        (link ? `\n\nSe preferir resolver agora, é só pagar por aqui:\n🔗 ${link}` : "") +
+        `\n\nQualquer dúvida, é só responder esta mensagem.`;
+
+      if (simular) { await fechar(r, "simulado", "prévia, nada enviado", { ...idInv, preview: message, telefone: fone }); continue; }
+      if (!apiUrl || !apiKey || !inst?.instance_name) { out.avisos.push({ instrucao: r.id, status: "pendente", motivo: "instância do financeiro desconectada, tenta na próxima hora" }); continue; }
+
+      const isV2 = isManagerV2Url(apiUrl);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      let ok = false; let corpo = "";
+      try {
+        const resp = await fetch(isV2 ? `${apiUrl}/send/text` : `${apiUrl}/message/sendText/${inst.instance_name}`, {
+          method: "POST",
+          headers: isV2 ? { "Content-Type": "application/json", apikey: apiKey } : buildEvolutionHeaders(apiKey),
+          body: JSON.stringify({ number: fone, text: message }),
+          signal: controller.signal,
+        });
+        ok = resp.ok; corpo = (await resp.text()).slice(0, 200);
+      } catch (e: any) { corpo = e?.message || "timeout"; }
+      clearTimeout(timeout);
+
+      await supabase.from("billing_notification_logs").insert({
+        rule_id: null, invoice_id: inv.id, company_id: inv.company_id, phone: fone, message_sent: message, status: ok ? "sent" : "failed",
+      });
+      if (ok) {
+        avisadasAgora.add(String(inv.id));
+        await fechar(r, "enviado", "aviso de débito recusado enviado", { ...idInv, telefone: fone });
+      } else {
+        // falha de envio: tenta de novo na próxima hora, até 3 vezes
+        const tent = Number(r.tentativas || 0) + 1;
+        if (tent >= 3) await fechar(r, "falhou", `falha no envio (3 tentativas): ${corpo}`, { ...idInv, telefone: fone });
+        else {
+          await supabase.from("pix_automatico_recusas").update({ tentativas: tent, aviso_motivo: `falha no envio: ${corpo}`.slice(0, 300), invoice_id: inv.id }).eq("id", r.id);
+          out.avisos.push({ instrucao: r.id, status: "pendente", motivo: `falha no envio, tentativa ${tent} de 3` });
+        }
+      }
+      console.log(`[billing-notifications] Pix Automático recusado: ${company?.name} ${ok ? "avisado" : "FALHOU"}`);
+    } catch (e) {
+      console.error("[billing-notifications] recusa", r.id, e);
+      out.avisos.push({ instrucao: r.id, status: "erro", motivo: String((e as any)?.message || e) });
+    }
+  }
+  return out;
 }
