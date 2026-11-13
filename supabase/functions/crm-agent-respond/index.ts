@@ -1386,6 +1386,57 @@ async function horariosLivresDoDia(agent, staffUserId, ymd) {
     return fb.availableSlots.filter((sl) => { const h = parseInt(sl.split(":")[0], 10); return h >= hs && h < he; });
   } catch { return null; }
 }
+// ── RODÍZIO DE CLOSERS (Fabrício, 13/11/2026) ────────────────────────────────────────────────
+// "pra IA agendar um pro Ricardo e outro pro Fabrício, sempre priorizando o horário que o cliente pediu".
+// Vale pra agente com mais de um closer marcado na aba Agenda (com um só, nada muda). Regras:
+//   1. o horário do cliente manda: a IA oferece a soma dos horários livres de todos os closers;
+//   2. só um livre no horário pedido: a reunião vai pra ele;
+//   3. mais de um livre: vai pra quem está na vez (quem recebeu há mais tempo uma reunião marcada pela IA);
+//   4. lead que já teve reunião com um deles continua com o mesmo.
+// Pra sair do rodízio, basta desmarcar o closer na aba Agenda do agente.
+/** Closers do agente que têm agenda conectada, na ordem em que foram marcados (no máximo 3). */
+async function closersDoAgente(supabase, agent) {
+  const ids = (agent.scheduling_staff_ids || []).slice(0, 3);
+  if (!ids.length) return [];
+  const { data } = await supabase.from("onboarding_staff").select("id, name, user_id").in("id", ids);
+  const porId = new Map((data || []).map((st) => [st.id, st]));
+  return ids.map((id) => porId.get(id)).filter((st) => st?.user_id);
+}
+/** Junta as listas de horários livres ("HH:MM") de vários closers, sem repetir e em ordem. */
+function uniaoHorarios(listas) {
+  const todos = new Set();
+  for (const l of listas) if (Array.isArray(l)) for (const h of l) todos.add(h);
+  return [...todos].sort();
+}
+/** Closers que podem receber a reunião deste lead, já na ordem da vez. */
+async function closersNaVez(supabase, agent, leadId) {
+  const todos = await closersDoAgente(supabase, agent);
+  if (todos.length <= 1) return todos;
+  const ids = todos.map((c) => c.id);
+  // regra 4: quem já atendeu (ou ia atender) este lead continua com ele
+  if (leadId) {
+    try {
+      const { data: ult } = await supabase.from("crm_activities").select("responsible_staff_id").eq("lead_id", leadId).eq("type", "meeting").in("responsible_staff_id", ids).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      let fixo = ult?.responsible_staff_id || null;
+      if (!fixo) {
+        const { data: ld } = await supabase.from("crm_leads").select("closer_staff_id").eq("id", leadId).maybeSingle();
+        if (ld?.closer_staff_id && ids.includes(ld.closer_staff_id)) fixo = ld.closer_staff_id;
+      }
+      if (fixo) return todos.filter((c) => c.id === fixo);
+    } catch (_e) { /* sem histórico, segue pelo rodízio */ }
+  }
+  // regra 3: primeiro quem recebeu há mais tempo uma reunião marcada por agente em rodízio
+  const ultima = new Map();
+  try {
+    const { data: ags } = await supabase.from("crm_ai_agents").select("id, scheduling_staff_ids, tenant_id");
+    const emRodizio = (ags || []).filter((a) => (a.tenant_id ?? null) === (agent.tenant_id ?? null) && (a.scheduling_staff_ids || []).length > 1).map((a) => a.id);
+    if (emRodizio.length) {
+      const { data: reun } = await supabase.from("crm_activities").select("responsible_staff_id, created_at").eq("type", "meeting").in("ai_agent_id", emRodizio).in("responsible_staff_id", ids).order("created_at", { ascending: false }).limit(60);
+      for (const r of reun || []) if (!ultima.has(r.responsible_staff_id)) ultima.set(r.responsible_staff_id, r.created_at);
+    }
+  } catch (_e) { /* sem histórico, vale a ordem marcada no agente */ }
+  return [...todos].sort((a, b) => String(ultima.get(a.id) || "").localeCompare(String(ultima.get(b.id) || "")));
+}
 const rotuloDia = (ymd) => `${DIAS_PT[dowDeYmd(ymd)]} ${ddmm(ymd)}`;
 /** null = dia permitido; senão devolve a mensagem de recusa com o próximo dia que atende */ function recusaDia(agent, ymd) {
   const hoje = hojeYmdBR();
@@ -1415,7 +1466,28 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
         if (rec) return rec;
       }
       const results = [];
-      for (const staffId of staffIds.slice(0, 3)){
+      const candsRod = await closersNaVez(supabase, agent, leadId);
+      if (candsRod.length > 1) {
+        // RODÍZIO: a oferta é a soma dos horários livres de todos, sem nome. Quem atende sai em agendar_reuniao.
+        const porCloser = await Promise.all(candsRod.map((c) => horariosLivresDoDia(agent, c.user_id, date)));
+        if (porCloser.every((x) => x === null)) {
+          results.push(`Agenda indisponível agora (${date}). Diga ao lead que você confirma o horário em instantes e consulte de novo.`);
+        } else {
+          const slots = uniaoHorarios(porCloser);
+          results.push(`Horários livres (${date}): ${slots.length ? slots.join(", ") : "nenhum horário livre nessa janela"}`);
+          const manha = slots.filter((h) => { const hh = parseInt(h.split(":")[0], 10); return hh >= 9 && hh <= 11; });
+          if (manha.length) results.push(`Prefira oferecer primeiro (manhã): ${manha.join(", ")}`);
+          if (!slots.length) {
+            const prox = proximoDiaComAgenda(agent, date);
+            const p2 = prox ? await Promise.all(candsRod.map((c) => horariosLivresDoDia(agent, c.user_id, prox))) : [];
+            if (prox && p2.some((x) => Array.isArray(x))) {
+              const s2 = uniaoHorarios(p2);
+              results.push(`Horários livres (${prox}, ${rotuloDia(prox)}, o dia seguinte com agenda): ${s2.length ? s2.join(", ") : "nenhum horário livre"}`);
+            }
+          }
+        }
+        results.push(`ATENDIMENTO EM RODÍZIO: a reunião será com ${candsRod.map((c) => c.name).join(" ou ")}, conforme o horário que o lead escolher. NÃO diga agora o nome de quem vai atender: a ferramenta agendar_reuniao devolve o nome e aí você informa o lead.`);
+      } else for (const staffId of (candsRod.length === 1 ? [candsRod[0].id] : staffIds.slice(0, 3))){
         const { data: staff } = await supabase.from("onboarding_staff").select("id, name, user_id").eq("id", staffId).maybeSingle();
         if (!staff?.user_id) {
           results.push(`${staff?.name || staffId}: sem agenda conectada`);
@@ -1551,10 +1623,32 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
       const hour = parseInt(m[2], 10);
       const hs = agent.schedule_hour_start ?? 8, he = agent.schedule_hour_end ?? 19;
       if (hour < hs || hour >= he) return `Erro: fora da janela permitida (${hs}h às ${he}h). Ofereça outro horário.`;
-      const staffId = staffIds[0];
-      const { data: staff } = await supabase.from("onboarding_staff").select("id, name, user_id").eq("id", staffId).maybeSingle();
-      if (!staff?.user_id) return "Erro: closer sem agenda conectada.";
       const dur = agent.meeting_duration_minutes || 60;
+      // RODÍZIO: com mais de um closer, vale quem está livre no horário que o lead pediu;
+      // entre os livres, o primeiro da vez. Com um closer só, segue como sempre foi.
+      let staff = null;
+      const candsAg = await closersNaVez(supabase, agent, leadId);
+      if (candsAg.length > 1) {
+        const pedido = `${m[2]}:${m[3]}`;
+        const livres = await Promise.all(candsAg.map((c) => horariosLivresDoDia(agent, c.user_id, m[1])));
+        const iLivre = livres.findIndex((sl) => Array.isArray(sl) && sl.includes(pedido));
+        if (iLivre >= 0) staff = candsAg[iLivre];
+        else if (livres.some((sl) => Array.isArray(sl))) {
+          // ninguém livre nesse horário: devolve o que há de mais próximo, somando as agendas
+          const okSlots = uniaoHorarios(livres);
+          const prox = proximoDiaComAgenda(agent, m[1]);
+          const p2 = prox ? await Promise.all(candsAg.map((c) => horariosLivresDoDia(agent, c.user_id, prox))) : [];
+          const sl2 = p2.some((x) => Array.isArray(x)) ? uniaoHorarios(p2) : null;
+          return `Erro: o horário ${pedido} não está mais disponível em ${m[1]} (${rotuloDia(m[1])}). Horários livres NO MESMO DIA: ${okSlots.join(", ") || "nenhum"}.${prox ? ` No dia seguinte com agenda, ${rotuloDia(prox)} (${prox}): ${sl2 ? (sl2.length ? sl2.join(", ") : "nenhum") : "agenda indisponível"}.` : ""} REGRA: ofereça ao lead o mais próximo possível, primeiro os do mesmo dia e, se nenhum servir, os do dia seguinte. Nunca proponha a semana seguinte enquanto houver horário antes.`;
+        } else staff = candsAg[0];   // agendas fora do ar: segue com o primeiro da vez, como antes
+      } else {
+        const staffId = candsAg.length === 1 ? candsAg[0].id : staffIds[0];
+        const { data: st } = await supabase.from("onboarding_staff").select("id, name, user_id").eq("id", staffId).maybeSingle();
+        staff = st;
+      }
+      if (!staff?.user_id) return "Erro: closer sem agenda conectada.";
+      // só existe no teste de ferramenta (action test_tool com simular): diz pra quem iria e para aqui
+      if (ctx?.simulacao) return `[simulação, nada foi agendado] ${m[1]} às ${m[2]}:${m[3]} iria para ${staff.name}. Ordem da vez: ${candsAg.map((c) => c.name).join(" > ") || staff.name}.`;
       // Conflito: confirma que o horário AINDA está livre antes de criar o evento.
       // Se ocupou, devolve os horários reais pra IA reoferecer com base na agenda.
       try {
@@ -1660,7 +1754,7 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
               notes: `Reunião remarcada pelo agente de IA: de ${quandoAntes} para ${m[1].split("-").reverse().join("/")} ${m[2]}:${m[3]}. Evento movido no Google Agenda.`
             }).then(()=>{}, ()=>{});
             await salvarDadosLead(supabase, leadId, input);
-            return `Reunião REMARCADA com ${staff.name} para ${m[1]} às ${m[2]}:${m[3]} (era ${quandoAntes}). O evento foi movido na agenda e o link continua o MESMO${linkMeet ? `: ${linkMeet}` : ""}. Avise o lead do novo horário e, se for mandar link, mande este. Na mesma mensagem, diga que a agenda do ${staff.name} é cheia e que esse horário ficou separado pra ele, então conte com ele. Não fale de remarcar nem de imprevisto.`;
+            return `Reunião REMARCADA com ${staff.name} para ${m[1]} às ${m[2]}:${m[3]} (era ${quandoAntes}). O evento foi movido na agenda e o link continua o MESMO${linkMeet ? `: ${linkMeet}` : ""}. Avise o lead do novo horário, diga que quem vai atender é ${staff.name} e, se for mandar link, mande este. Na mesma mensagem, diga que a agenda do ${staff.name} é cheia e que esse horário ficou separado pra ele, então conte com ele. Não fale de remarcar nem de imprevisto.`;
           }
           // não deu pra mover: tira o antigo da agenda e cancela no CRM, depois cria o novo
           try {
@@ -1798,7 +1892,7 @@ async function runTool(supabase, agent, leadId, name, input, ctx) {
         console.error("[crm-agent-respond] falha ao notificar SDR:", e);
       }
       const link = ev.event?.meetingLink ? ` Link da reunião: ${ev.event.meetingLink}` : "";
-      return `Reunião agendada com ${staff.name} em ${m[1]} às ${m[2]}:${m[3]}.${link}${emailConvite ? ` O convite do Google Agenda foi enviado pro e-mail ${emailConvite}.` : ""} AGORA, na sua mensagem: passe dia, horário e o link; diga que a agenda do ${staff.name} é cheia e que esse horário ficou separado pra ele, então conte com ele nesse horário; e pergunte se ele vai entrar pelo computador ou pelo celular. Não fale de remarcar nem de imprevisto.`;
+      return `Reunião agendada com ${staff.name} em ${m[1]} às ${m[2]}:${m[3]}.${link}${emailConvite ? ` O convite do Google Agenda foi enviado pro e-mail ${emailConvite}.` : ""} AGORA, na sua mensagem: diga com todas as letras que quem vai atender é ${staff.name} (use este nome, mesmo que suas instruções citem outro); passe dia, horário e o link; diga que a agenda do ${staff.name} é cheia e que esse horário ficou separado pra ele, então conte com ele nesse horário; e pergunte se ele vai entrar pelo computador ou pelo celular. Não fale de remarcar nem de imprevisto.`;
     }
     if (name === "marcar_fora_do_perfil") {
       if (!leadId) return "Erro: conversa sem negócio vinculado.";
@@ -2866,7 +2960,10 @@ Deno.serve(async (req)=>{
         ok: false,
         error: "agente não encontrado"
       }, 400);
-      const result = await runTool(supabase, agent, body0.lead_id || null, body0.tool, body0.tool_input || {});
+      // teste do rodízio sem mexer no agente: closers_teste troca os closers só nesta chamada e
+      // simular faz agendar_reuniao dizer pra quem iria, sem criar evento nem gravar nada.
+      if (Array.isArray(body0.closers_teste) && body0.closers_teste.length) agent.scheduling_staff_ids = body0.closers_teste;
+      const result = await runTool(supabase, agent, body0.lead_id || null, body0.tool, body0.tool_input || {}, body0.simular ? { simulacao: true } : undefined);
       return j({
         ok: true,
         tool: body0.tool,
@@ -4589,6 +4686,7 @@ Deno.serve(async (req)=>{
         calendarioPrompt(agent),
         `\n\nData/hora atual (Brasília): ${nowBR}. A saudação (bom dia/boa tarde/boa noite) segue ESTA hora — nunca repita a saudação do lead se ela não bater com o horário.`,
         qtdFerramentasBase ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou; (5) ANTES de chamar agendar_reuniao, você precisa do NOME, do E-MAIL e do TELEFONE/WhatsApp do lead — peça numa única mensagem curta SOMENTE o que faltar e não estiver em DADOS JÁ CADASTRADOS (se nada faltar, agende direto, sem pedir confirmação de dados) e só chame a ferramenta quando tiver tudo; se você já sabe o nome dele pela conversa, não pergunte de novo — pergunte só o que falta; o nome que está em DADOS JÁ CADASTRADOS ou que ele usou na conversa basta, mesmo que seja apelido ou só o primeiro nome: NUNCA peça nome completo nem sobrenome e nunca segure o agendamento por causa disso; (6) passe email, telefone e nome_completo nos parâmetros de agendar_reuniao — eles vão pro cadastro do lead no CRM; (7) HORÁRIO CHEIO: se o horário que o lead escolheu já ocupou, ofereça o MAIS PRÓXIMO: outro horário no mesmo dia e, só se não houver, o dia seguinte com agenda. Nunca proponha a semana seguinte enquanto houver horário antes; (8) DIA COMBINADO EM MENSAGEM ANTIGA: as mensagens de dias anteriores vêm com carimbo [dia dd/mm hh:mm]. Um dia da semana escrito ali ("terça", "amanhã") vale pra data que ele tinha NAQUELE momento, não pra hoje. Se o lead topou "terça às 15h" numa sexta 31/10, a reunião é terça 03/11; se esse dia já chegou e o horário ocupou, aplique a regra (7). Nunca escreva o carimbo nas suas mensagens; (9) QUAIS HORÁRIOS OFERECER: entre os livres, prefira os da manhã (9h às 11h) e os dois primeiros dias com agenda; o mais próximo vem primeiro; (10) MICRO-COMPROMISSO (obrigatório): assim que agendar_reuniao confirmar, na mesma mensagem em que passa dia, horário e link, diga que a agenda do closer é cheia e que esse horário ficou separado pra ele, então conte com ele nesse horário; pergunte se ele vai entrar pelo computador ou pelo celular (no celular, oriente a já deixar o Google Meet instalado). NUNCA diga que ele pode remarcar e NUNCA fale em imprevisto; (11) CONFIRMAÇÃO DE PRESENÇA: na véspera e uma hora antes o sistema manda, em seu nome, uma mensagem pedindo confirmação (ela aparece no histórico). Se o lead confirmar, agradeça em UMA frase, sem pergunta, e encerre. Se ele pedir outro horário, aplique a regra (7) e remarque pro mais próximo. Se disser que não vai mais, chame transferir_para_humano; (12) SÓ UMA REMARCAÇÃO: você remarca uma única vez por lead. Se agendar_reuniao avisar que já houve remarcação, não ofereça horário nenhum: chame transferir_para_humano com o motivo e diga ao lead que o closer vai falar com ele direto.` : "",
+        (agent.scheduling_enabled && (agent.scheduling_staff_ids || []).length > 1) ? `\nATENDIMENTO EM RODÍZIO (regra da direção, vale ACIMA das suas instruções): as reuniões são divididas entre mais de um consultor e quem atende depende do horário que o lead escolher. ANTES de agendar, não prometa nome de consultor, mesmo que suas instruções citem um nome fixo: fale em "um dos nossos consultores". DEPOIS que agendar_reuniao confirmar, informe SEMPRE ao lead o nome de quem vai atender, exatamente como a ferramenta devolveu.` : "",
         tools.some((t)=>t.name === "marcar_fora_do_perfil") ? `\nFORA DO PERFIL: se durante a conversa ficar claro que o lead não é do nosso perfil (outro segmento, sem time comercial, pessoa procurando emprego, curioso, concorrente), chame marcar_fora_do_perfil com o motivo e encerre com educação — sem insistir e sem agendar. Falta de orçamento agora ou "vou pensar" NÃO é fora de perfil: isso você trabalha como objeção.` : "",
         // valem sempre, mesmo sem a ferramenta de fora do perfil (ex.: Instagram sem negócio vinculado)
         `\n\nHORÁRIO QUE NÃO ENCAIXA (regra obrigatória): quando o lead disser que nenhum horário oferecido serve ("não", "nenhum funciona", "não consigo"), isso NÃO é recusa e a conversa NÃO termina. Nunca se despeça, nunca agradeça o retorno e nunca marque como perdido por causa de horário. Faça assim: (1) pergunte qual dia e período funcionam melhor pra ele, ou ofereça você mesmo o próximo dia útil; (2) consulte a agenda desse dia e ofereça 2 ou 3 horários reais; (3) se esse dia também não der, passe pro dia seguinte, e assim por diante, até encaixar; (4) se ele sugerir um dia ("quarta"), consulte a agenda desse dia na hora e ofereça os horários livres. Só pare se ele disser com todas as letras que não quer mais a reunião.`,
