@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-11-13T19:56:40",
+ "gerado_em": "2026-11-13T21:02:06",
  "posts": [
+  {
+   "slug": "consultoria-sem-sistema-nao-sai-papel",
+   "url": "/blog/consultoria-sem-sistema-nao-sai-papel/",
+   "titulo": "Consultoria sem sistema não sai do papel",
+   "resumo": "O processo desenhado pelo consultor só funciona se entrar no sistema que o vendedor usa todo dia. Senão fica no PowerPoint.",
+   "tags": [
+    "implementação",
+    "sistema",
+    "estrutura comercial",
+    "processo comercial",
+    "treino"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-13",
+   "ts": 2257
+  },
   {
    "slug": "trafego-pago-ajuste-constante-ate-achar-encaixe",
    "url": "/blog/trafego-pago-ajuste-constante-ate-achar-encaixe/",
