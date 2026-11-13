@@ -117,6 +117,41 @@ Deno.serve(async (req) => {
       });
     }
 
+    // === Pix Automático: tentativa de débito de uma parcela recusada (13/11/2026) ===
+    // Fabrício: "se o pix for feito pela manhã, a tarde já tem que ser avisado que não descontou".
+    // Aqui só grava; quem avisa o cliente é a régua (billing-notifications), que roda toda hora,
+    // respeita o horário comercial e manda um aviso por parcela por dia.
+    if (event && String(event).startsWith("PIX_AUTOMATIC_RECURRING_PAYMENT_INSTRUCTION_")) {
+      const pi = body.paymentInstruction || body.instruction || {};
+      const authId = pi?.authorization?.id || pi?.authorizationId || (typeof pi?.authorization === "string" ? pi.authorization : null) || body.authorization?.id || null;
+      const payId = pi?.paymentId || pi?.payment?.id || (typeof pi?.payment === "string" ? pi.payment : null) || null;
+      let registrada = false;
+      try {
+        const sbPi = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        const { data: pa } = authId
+          ? await sbPi.from("asaas_pix_automatico").select("id, recurring_charge_id, company_id").eq("id", String(authId)).maybeSingle()
+          : { data: null };
+        if (pa) {
+          await sbPi.from("asaas_pix_automatico").update({ ultimo_evento: String(event), atualizado_em: new Date().toISOString() }).eq("id", pa.id);
+          if (String(event).endsWith("_REFUSED")) {
+            const venc = /^\d{4}-\d{2}-\d{2}/.test(String(pi?.dueDate || "")) ? String(pi.dueDate).slice(0, 10) : null;
+            const { error: insErr } = await sbPi.from("pix_automatico_recusas").upsert({
+              id: String(pi?.id || body.id || crypto.randomUUID()),
+              authorization_id: String(pa.id), payment_id: payId ? String(payId) : null, due_date: venc,
+              recurring_charge_id: pa.recurring_charge_id, company_id: pa.company_id,
+              evento: String(event), payload: body,
+            }, { onConflict: "id", ignoreDuplicates: true });
+            if (insErr) console.error("[Asaas Webhook] pix automatico recusa", insErr.message);
+            registrada = !insErr;
+          }
+          console.log(`[Asaas Webhook] Pix Automático ${pa.id}: ${event} instrução=${pi?.id} venc=${pi?.dueDate} status=${pi?.status}`);
+          return new Response(JSON.stringify({ received: true, nexus_pix_auto: true, recusa_registrada: registrada }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      } catch (e) { console.error("[Asaas Webhook] pix automatico instrução", e); }
+    }
+
     // === UNV Start — autorização do Pix Automático (vem sem objeto payment) ===
     if (event && String(event).startsWith("PIX_AUTOMATIC_") && body.authorization?.id) {
       const sbAuth = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
