@@ -714,8 +714,9 @@ export default function CRMEmailPage() {
               </div>
               <ScrollArea className="flex-1 bg-muted/30">
                 <div className="p-4 space-y-3 max-w-5xl">
-                  {thread.map((m, i) => {
-                    const aberto = i === thread.length - 1 || thread.length <= 3;
+                  {/* mais recente em cima, mais antiga embaixo; a lista `thread` segue em ordem cronológica pro resto da tela */}
+                  {[...thread].reverse().map((m, i) => {
+                    const aberto = i === 0 || thread.length <= 3;
                     return <Mensagem key={m.id} m={m} abertoInicial={aberto} chamar={chamar} onTraduzida={(x) => setThread((p) => p.map((k) => (k.gmail_id === m.gmail_id ? { ...k, ...x } : k)))} onBaixar={(a) => baixarAnexo(m, a)} onEstrela={() => estrelaMsg(m)}
                       onResponder={() => setCompor({ modo: "responder", base: m })} onResponderTodos={() => setCompor({ modo: "todos", base: m })} onEncaminhar={() => setCompor({ modo: "encaminhar", base: m })} />;
                   })}
