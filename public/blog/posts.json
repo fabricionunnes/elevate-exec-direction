@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-11-13T21:02:06",
+ "gerado_em": "2026-11-14T10:01:04",
  "posts": [
+  {
+   "slug": "backup-diario-impede-perder-cliente-rotina",
+   "url": "/blog/backup-diario-impede-perder-cliente-rotina/",
+   "titulo": "Backup diário impede você de perder cliente por rotina travada",
+   "resumo": "Estrutura que depende de uma pessoa sem backup perde o mês inteiro quando ela falta. Sistema bem montado roda mesmo quando alguém sai.",
+   "tags": [
+    "processo comercial",
+    "estrutura comercial",
+    "dependência operacional",
+    "backup",
+    "rotina de cobrança"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-14",
+   "ts": 2258
+  },
   {
    "slug": "consultoria-sem-sistema-nao-sai-papel",
    "url": "/blog/consultoria-sem-sistema-nao-sai-papel/",
