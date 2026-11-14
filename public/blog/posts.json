@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-11-14T10:01:04",
+ "gerado_em": "2026-11-14T15:01:27",
  "posts": [
+  {
+   "slug": "teste-comercial-ate-furar-mostra-onde-trava",
+   "url": "/blog/teste-comercial-ate-furar-mostra-onde-trava/",
+   "titulo": "Teste o comercial até furar e você descobre onde trava",
+   "resumo": "Estressar o próprio sistema comercial revela o gargalo antes do cliente encontrar. Quem espera a meta travar para ajustar perde dinheiro todo mês.",
+   "tags": [
+    "processo comercial",
+    "estrutura comercial",
+    "diagnóstico",
+    "acompanhamento",
+    "previsibilidade"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-14",
+   "ts": 2259
+  },
   {
    "slug": "backup-diario-impede-perder-cliente-rotina",
    "url": "/blog/backup-diario-impede-perder-cliente-rotina/",
