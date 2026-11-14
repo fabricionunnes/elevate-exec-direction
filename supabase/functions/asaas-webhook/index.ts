@@ -60,6 +60,54 @@ async function forwardUnvStart(body: unknown) {
   }
 }
 
+// === Origem do evento (13/11/2026) ===
+// O Asaas manda o token do webhook no cabeçalho asaas-access-token. As chamadas internas (asaas-sync
+// reenviando pagamento) vêm com a chave de serviço. Qualquer outra origem é desconhecida.
+// Segredos: ASAAS_WEBHOOK_TOKEN (um ou mais tokens separados por vírgula, pra trocar sem derrubar)
+// e ASAAS_WEBHOOK_AUTH_MODE ("exigir" bloqueia com 401; qualquer outro valor só registra e segue).
+// Sem ASAAS_WEBHOOK_TOKEN nunca bloqueia. O que não confere fica em asaas_webhook_origem_log.
+function iguaisSeguro(a: string, b: string): boolean {
+  const ea = new TextEncoder().encode(a), eb = new TextEncoder().encode(b);
+  let dif = ea.length ^ eb.length;
+  const n = Math.max(ea.length, eb.length);
+  for (let i = 0; i < n; i++) dif |= (ea[i] ?? 0) ^ (eb[i] ?? 0);
+  return dif === 0;
+}
+// Impressão curta do token recebido (8 hex do SHA-256): dá pra saber se o Asaas já manda token e
+// se as contas mandam tokens diferentes, sem nunca gravar o token.
+async function impressaoDe(v: string): Promise<string | null> {
+  if (!v) return null;
+  const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v));
+  return Array.from(new Uint8Array(h)).slice(0, 4).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+type OrigemEvento = {
+  ok: boolean; origem: "interna" | "asaas" | "desconhecida"; motivo: string; modo: "observar" | "exigir";
+  temCabecalho: boolean; impressao: string | null; ip: string | null; ua: string | null;
+};
+async function conferirOrigem(req: Request): Promise<OrigemEvento> {
+  const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const esperados = (Deno.env.get("ASAAS_WEBHOOK_TOKEN") || "").split(",").map((t) => t.trim()).filter((t) => t.length >= 32);
+  const modo = esperados.length && (Deno.env.get("ASAAS_WEBHOOK_AUTH_MODE") || "").trim().toLowerCase() === "exigir" ? "exigir" : "observar";
+  const recebido = (req.headers.get("asaas-access-token") || "").trim();
+  const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  const apikey = (req.headers.get("apikey") || "").trim();
+  const base = {
+    modo, temCabecalho: !!recebido, impressao: await impressaoDe(recebido),
+    ip: (req.headers.get("cf-connecting-ip") || req.headers.get("x-real-ip") || (req.headers.get("x-forwarded-for") || "").split(",")[0] || "").trim().slice(0, 60) || null,
+    ua: (req.headers.get("user-agent") || "").slice(0, 200) || null,
+  } as const;
+  if (serviceRole && ((bearer && iguaisSeguro(bearer, serviceRole)) || (apikey && iguaisSeguro(apikey, serviceRole)))) {
+    return { ...base, ok: true, origem: "interna", motivo: "chave de serviço" };
+  }
+  if (recebido && esperados.some((t) => iguaisSeguro(recebido, t))) {
+    return { ...base, ok: true, origem: "asaas", motivo: "token confere" };
+  }
+  const motivo = !esperados.length
+    ? (recebido ? "veio token, mas o Nexus não tem token configurado" : "sem token, e o Nexus não tem token configurado")
+    : (recebido ? "token diferente do configurado" : "sem token");
+  return { ...base, ok: false, origem: "desconhecida", motivo };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -83,6 +131,29 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ received: true, error: "invalid_json" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Confere de onde veio antes de processar qualquer coisa (ver conferirOrigem lá em cima)
+    const origemEv = await conferirOrigem(req);
+    if (origemEv.ok) {
+      console.log(`[Asaas Webhook][origem] ok origem=${origemEv.origem} modo=${origemEv.modo}`);
+    } else {
+      const bloquear = origemEv.modo === "exigir";
+      console.warn(`[Asaas Webhook][origem] NAO CONFERIDA modo=${origemEv.modo} bloqueado=${bloquear} motivo="${origemEv.motivo}" evento=${String(body?.event || "").slice(0, 80)} pagamento=${String(body?.payment?.id || "").slice(0, 60)} ip=${origemEv.ip} ua="${origemEv.ua}" cabecalho=${origemEv.temCabecalho} impressao=${origemEv.impressao}`);
+      try {
+        const sbOrigem = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        await sbOrigem.from("asaas_webhook_origem_log").insert({
+          evento: String(body?.event || "").slice(0, 80) || null,
+          payment_id: String(body?.payment?.id || "").slice(0, 60) || null,
+          motivo: origemEv.motivo, modo: origemEv.modo, bloqueado: bloquear,
+          tem_cabecalho: origemEv.temCabecalho, impressao: origemEv.impressao, ip: origemEv.ip, user_agent: origemEv.ua,
+        });
+      } catch (e) { console.error("[Asaas Webhook][origem] falha ao registrar", e); }
+      if (bloquear) {
+        return new Response(JSON.stringify({ received: false, error: "unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     console.log("[Asaas Webhook] Received:", JSON.stringify(body).substring(0, 800));
