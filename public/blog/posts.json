@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-11-14T15:01:27",
+ "gerado_em": "2026-11-14T21:02:31",
  "posts": [
+  {
+   "slug": "sistema-um-pedaco-por-vez-nao-trava-operacao",
+   "url": "/blog/sistema-um-pedaco-por-vez-nao-trava-operacao/",
+   "titulo": "Sistema um pedaço por vez não trava a operação",
+   "resumo": "Migrar tudo de uma vez paralisa a empresa. Começar pelo CRM e crescer aos poucos mantém o comercial funcionando enquanto você estrutura.",
+   "tags": [
+    "sistema",
+    "estrutura comercial",
+    "crm",
+    "implementação",
+    "processo comercial"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-14",
+   "ts": 2260
+  },
   {
    "slug": "teste-comercial-ate-furar-mostra-onde-trava",
    "url": "/blog/teste-comercial-ate-furar-mostra-onde-trava/",
