@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-11-15T10:01:04",
+ "gerado_em": "2026-11-15T15:01:25",
  "posts": [
+  {
+   "slug": "sistema-personalizado-nao-vende-concorrente",
+   "url": "/blog/sistema-personalizado-nao-vende-concorrente/",
+   "titulo": "Sistema personalizado fica tão na sua cara que nem vale vender pro concorrente",
+   "resumo": "A melhor proteção de investimento em sistema não é contrato. É fazer ele tão encaixado no seu jeito de vender que não serve pra mais ninguém.",
+   "tags": [
+    "sistema",
+    "estrutura comercial",
+    "implementação",
+    "processo comercial",
+    "personalização"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-15",
+   "ts": 2262
+  },
   {
    "slug": "migracao-sistema-identico-ninguem-aprende-nada",
    "url": "/blog/migracao-sistema-identico-ninguem-aprende-nada/",
