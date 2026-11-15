@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-11-15T15:01:25",
+ "gerado_em": "2026-11-15T22:31:09",
  "posts": [
+  {
+   "slug": "sistema-burro-escala-complicado-depende-dono",
+   "url": "/blog/sistema-burro-escala-complicado-depende-dono/",
+   "titulo": "Sistema burro escala complicado depende do dono",
+   "resumo": "Sistema que qualquer um usa sem pensar é o que escala. Complexidade vira dependência e trava crescimento.",
+   "tags": [
+    "sistema",
+    "estrutura comercial",
+    "processo comercial",
+    "escala",
+    "dependência operacional"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-15",
+   "ts": 2263
+  },
   {
    "slug": "sistema-personalizado-nao-vende-concorrente",
    "url": "/blog/sistema-personalizado-nao-vende-concorrente/",
