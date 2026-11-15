@@ -1,6 +1,22 @@
 {
- "gerado_em": "2026-11-14T21:02:31",
+ "gerado_em": "2026-11-15T10:01:04",
  "posts": [
+  {
+   "slug": "migracao-sistema-identico-ninguem-aprende-nada",
+   "url": "/blog/migracao-sistema-identico-ninguem-aprende-nada/",
+   "titulo": "Migração de sistema idêntico faz ninguém aprender nada",
+   "resumo": "Replicar exatamente o que o cliente já usa não treina o time e não melhora o resultado. O sistema novo tem que forçar o processo certo desde o primeiro dia.",
+   "tags": [
+    "sistema",
+    "implementação",
+    "treino",
+    "estrutura comercial",
+    "processo comercial"
+   ],
+   "tipo": "diario",
+   "data": "2026-11-15",
+   "ts": 2261
+  },
   {
    "slug": "sistema-um-pedaco-por-vez-nao-trava-operacao",
    "url": "/blog/sistema-um-pedaco-por-vez-nao-trava-operacao/",
