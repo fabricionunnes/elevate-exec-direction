@@ -74,6 +74,13 @@ Deno.serve(async (req) => {
       console.error("[billing-notifications] volta pra pix normal", e);
       diagnostics.pix_automatico_volta = { erro: String((e as any)?.message || e) };
     }
+    // Aviso agendado da situação de uma recorrência em Pix Automático (ex.: Trilobit em 23/11)
+    try {
+      diagnostics.pix_automatico_acompanhamento = await avisosDeAcompanhamentoPix(supabase, pixAutoSimular);
+    } catch (e) {
+      console.error("[billing-notifications] acompanhamento pix automático", e);
+      diagnostics.pix_automatico_acompanhamento = { erro: String((e as any)?.message || e) };
+    }
     if (soPixAuto) {
       return new Response(JSON.stringify({ sent: 0, diagnostics }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -678,6 +685,70 @@ async function asaasGet(key: string, path: string): Promise<any> {
   const t = await r.text();
   if (!r.ok) throw new Error(`Asaas HTTP ${r.status}`);
   try { return t ? JSON.parse(t) : {}; } catch { return {}; }
+}
+
+/**
+ * Aviso agendado por WhatsApp sobre a situação de uma recorrência em Pix Automático (16/11/2026).
+ * Fabrício: "coloca para no dia 23 me avisar no whatsapp no meu número através da instância Fabrício
+ * Nunnes". Linhas em pix_automatico_acompanhamentos: no dia marcado, entre 8h e 20h de Brasília, manda
+ * UMA mensagem com o que aconteceu (autorização aprovada, voltou pra Pix normal ou ainda travada).
+ * Falha de envio tenta de novo na hora seguinte. Com simular = true mostra o texto e não envia.
+ */
+async function avisosDeAcompanhamentoPix(supabase: any, simular: boolean) {
+  const out: any[] = [];
+  const br = new Date(Date.now() - 3 * 3600000);
+  const hojeBR = br.toISOString().slice(0, 10);
+  const horaBR = br.getUTCHours();
+  let q = supabase.from("pix_automatico_acompanhamentos").select("*").is("avisado_em", null);
+  if (!simular) q = q.lte("avisar_em", hojeBR);
+  const { data: linhas } = await q.limit(20);
+  if (!linhas?.length) return out;
+  if (!simular && (horaBR < 8 || horaBR >= 20)) return [{ situacao: "fora do horário, aviso sai entre 8h e 20h" }];
+  const ddmm = (iso: string) => { const [a, m, d] = String(iso).slice(0, 10).split("-"); return `${d}/${m}/${a}`; };
+  for (const l of linhas as any[]) {
+    const { data: rc } = await supabase.from("company_recurring_charges").select("id, company_id, payment_method, amount_cents, is_active").eq("id", l.recurring_charge_id).maybeSingle();
+    const { data: emp } = rc?.company_id ? await supabase.from("onboarding_companies").select("name").eq("id", rc.company_id).maybeSingle() : { data: null };
+    const { data: aus } = await supabase.from("asaas_pix_automatico").select("id, status, ultimo_evento").eq("recurring_charge_id", l.recurring_charge_id).order("criado_em", { ascending: false }).limit(1);
+    const { data: abertas } = await supabase.from("company_invoices").select("due_date, payment_link_url")
+      .eq("recurring_charge_id", l.recurring_charge_id).in("status", ["pending", "overdue"]).is("paid_at", null).order("due_date", { ascending: true }).limit(60);
+    const nome = emp?.name || "Cliente";
+    const au = aus?.[0];
+    const n = abertas?.length || 0;
+    const proxima = n ? ddmm(abertas![0].due_date) : null;
+    const comLink = (abertas || []).filter((i: any) => /asaas\.com|mercadopago/i.test(String(i.payment_link_url || ""))).length;
+    let texto: string;
+    if (!rc) texto = `${nome}, Pix Automático. A recorrência não existe mais no Nexus.`;
+    else if (rc.payment_method === "pix") {
+      texto = `${nome}, Pix Automático. A autorização do débito automático não foi aprovada até o QR vencer, então a recorrência voltou pra Pix normal.` +
+        (n ? `\n\nSão ${n} parcela(s) em aberto, a próxima vence em ${proxima}. ${comLink} já têm link de pagamento, e a régua cobra normalmente a partir de agora.` : "\n\nNão há parcela em aberto.");
+    } else if (au?.status === "ACTIVE") {
+      texto = `${nome}, Pix Automático. A autorização do débito automático foi aprovada e está ativa.` + (proxima ? ` A próxima parcela, de ${proxima}, sai sozinha da conta do cliente.` : "");
+    } else {
+      texto = `${nome}, Pix Automático. A recorrência ainda está no Pix Automático e a autorização não foi aprovada (situação no Asaas: ${au?.status || "desconhecida"}). ` +
+        `A volta pra Pix normal não aconteceu ainda; a régua tenta de novo a cada hora depois que o QR vence. Vale conferir a recorrência no Nexus.` + (proxima ? ` Próxima parcela: ${proxima}.` : "");
+    }
+    if (simular) { out.push({ recorrencia: l.recurring_charge_id, avisar_em: l.avisar_em, telefone: l.telefone, instancia: l.instancia, preview: texto }); continue; }
+    const { data: inst } = await supabase.from("whatsapp_instances").select("api_url, api_key, instance_name").eq("instance_name", l.instancia).maybeSingle();
+    const apiUrl = normalizeBaseUrl(String(inst?.api_url || ""));
+    if (!apiUrl || !inst?.api_key) { out.push({ recorrencia: l.recurring_charge_id, situacao: `instância ${l.instancia} sem acesso, tenta na próxima hora` }); continue; }
+    const isV2 = isManagerV2Url(apiUrl);
+    let ok = false; let corpo = "";
+    try {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 10000);
+      const resp = await fetch(isV2 ? `${apiUrl}/send/text` : `${apiUrl}/message/sendText/${inst.instance_name}`, {
+        method: "POST",
+        headers: isV2 ? { "Content-Type": "application/json", apikey: inst.api_key } : buildEvolutionHeaders(inst.api_key),
+        body: JSON.stringify({ number: String(l.telefone).replace(/\D/g, ""), text: texto }),
+        signal: controller.signal,
+      });
+      clearTimeout(t);
+      ok = resp.ok; corpo = (await resp.text()).slice(0, 160);
+    } catch (e: any) { corpo = e?.message || "tempo esgotado"; }
+    if (ok) await supabase.from("pix_automatico_acompanhamentos").update({ avisado_em: new Date().toISOString(), resultado: texto.slice(0, 600) }).eq("recurring_charge_id", l.recurring_charge_id);
+    out.push({ recorrencia: l.recurring_charge_id, enviado: ok, ...(ok ? {} : { erro: corpo }) });
+  }
+  return out;
 }
 
 /**
