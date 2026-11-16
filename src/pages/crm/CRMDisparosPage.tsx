@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -147,11 +148,12 @@ async function contarEnviosDoDia() {
   const desde24 = new Date(Date.now() - 864e5);
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
   const inicio = desde24 < hoje ? desde24 : hoje;
-  const { data } = await supabase.from("whatsapp_official_campaign_recipients" as any)
+  // paginado: a API devolve no máximo 1000 linhas por consulta e um dia de disparo passa disso
+  const data = await fetchAllRows<any>((from, to) => supabase.from("whatsapp_official_campaign_recipients" as any)
     .select("phone, sent_at")
     .in("status", ["sent", "delivered", "read"]) // falha de entrega não consome limite nem conta como enviado
     .gte("sent_at", inicio.toISOString())
-    .limit(10000);
+    .order("id").range(from, to)).catch(() => [] as any[]);
   // último envio de cada contato na janela: ele sai da conta da Meta 24h depois desse envio
   const ultimoPorContato = new Map<string, number>();
   let hojeTotal = 0;
@@ -806,12 +808,14 @@ function DisparoDetalhe({ id }: { id: string }) {
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
+    // destinatários paginados (a função já ordena por criação e id): sem isso um disparo de 10 mil
+    // aparecia com 1000 destinatários e os números da fila, entregues e pulados saíam errados
     const [c, r] = await Promise.all([
       supabase.from("whatsapp_official_campaigns" as any).select("*").eq("id", id).maybeSingle(),
-      supabase.rpc("official_campaign_recipients" as any, { p_campaign: id }),
+      fetchAllRows<RecipientRow>((from, to) => supabase.rpc("official_campaign_recipients" as any, { p_campaign: id }).range(from, to)).catch(() => [] as RecipientRow[]),
     ]);
     setCampaign(c.data || null);
-    setRows((r.data || []) as RecipientRow[]);
+    setRows(r);
     setLoading(false);
   }, [id]);
   useEffect(() => { load(); }, [load]);
@@ -821,7 +825,8 @@ function DisparoDetalhe({ id }: { id: string }) {
     if (!campaign) return;
     const recente = campaign.status === "sending" || campaign.status === "paused" || Date.now() - new Date(campaign.created_at).getTime() < 3 * 3600e3;
     if (!recente) return;
-    const t = setInterval(() => load(true), 15000);
+    // disparo grande recarrega mais devagar, pra não pesar o banco a cada 15 s
+    const t = setInterval(() => load(true), Number(campaign.total || 0) > 2000 ? 60000 : 15000);
     return () => clearInterval(t);
   }, [campaign, load]);
 
