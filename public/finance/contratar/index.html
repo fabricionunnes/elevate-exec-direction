@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Contratar UNV Finance | UNV Holdings</title>
+<meta name="description" content="Contrate a UNV Finance: consultoria financeira e BPO, com o Aloísio conduzindo." />
+<meta name="robots" content="noindex,nofollow" />
+<meta name="theme-color" content="#082B48" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+:root{--red:#F40505;--navy:#082B48;--black:#000;--white:#fff;--ga:#E91D2D;--gb:#CC572D;--muted:#4A6178;--soft:#7A8DA0;--line:#D5DCE4;--card:#EEF2F6;--ok:#12925A}
+html,body{margin:0;padding:0}
+body{font-family:Inter,"Helvetica Neue",Helvetica,Arial,sans-serif;background:var(--white);color:var(--navy);min-height:100svh;overflow-x:hidden}
+.wrap{max-width:560px;margin:0 auto;padding:20px 16px 40px}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.top img{height:58px;width:auto;display:block}
+.pill{font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--red);border:1.5px solid var(--red);border-radius:999px;padding:6px 11px;text-transform:uppercase}
+h1,h2,.bebas{font-family:"Bebas Neue",Impact,"Arial Narrow",sans-serif;font-weight:400;letter-spacing:.01em;text-transform:uppercase;line-height:.98;margin:0}
+h1{font-size:clamp(40px,11vw,54px);margin:0 0 10px}
+h1 .r,h2 .r{color:var(--red)}
+h2{font-size:30px;margin:0 0 12px}
+.sub{color:var(--muted);font-size:15.5px;line-height:1.55;margin:0 0 18px}
+.sub b{color:var(--navy)}
+.oferta{background:var(--navy);color:#fff;border-radius:16px;padding:18px;margin:0 0 14px}
+.oferta .preco{display:flex;align-items:baseline;gap:8px;margin:2px 0 4px}
+.oferta .preco b{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:58px;line-height:1}
+.oferta .preco span{font-size:15px;color:#C9D6E3}
+.oferta .de{font-size:13.5px;color:#C9D6E3;margin:0 0 12px}
+.oferta ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.oferta li{font-size:14.5px;line-height:1.45;padding-left:22px;position:relative;color:#E6EDF4}
+.oferta li::before{content:"";position:absolute;left:2px;top:7px;width:9px;height:9px;border-radius:2px;background:var(--red)}
+.oferta li b{color:#fff}
+.bonus{background:linear-gradient(180deg,var(--ga),var(--gb));color:#fff;border-radius:14px;padding:14px 16px;margin:0 0 14px;font-size:14.5px;line-height:1.45}
+.bonus small{display:block;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.9;margin-bottom:2px}
+.vagas{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--navy);margin:0 0 22px}
+.vagas b{font-family:"Bebas Neue",Impact,sans-serif;font-weight:400;font-size:28px;color:var(--red);line-height:1}
+.aviso{background:#FFF4F4;border:1.5px solid #F7B5B5;border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.5;color:#7A1B1B;margin:0 0 18px}
+.card{background:#fff;border:1.5px solid var(--line);border-radius:18px;padding:18px}
+.bloco{margin:0 0 18px}
+.bloco h3{font-size:11.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--red);margin:0 0 12px}
+label{display:block;margin:0 0 12px}
+label span{display:block;font-size:13px;font-weight:700;color:var(--navy);margin:0 0 6px}
+label span i{color:var(--red);font-style:normal}
+input{width:100%;font-size:16px;font-family:inherit;color:var(--navy);background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:14px 13px;outline:none;-webkit-appearance:none;appearance:none}
+input::placeholder{color:#9AAABB}
+input:focus{border-color:var(--navy)}
+input.bad{border-color:var(--red);background:#FFF7F7}
+.dois{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cep{display:grid;grid-template-columns:1fr 92px;gap:10px}
+.err{color:var(--red);font-size:14px;font-weight:600;margin:6px 0 0;min-height:18px;line-height:1.4}
+.btn{display:block;width:100%;border:0;border-radius:14px;cursor:pointer;font-family:inherit;text-align:center;text-decoration:none;font-size:17px;font-weight:800;padding:17px;min-height:58px;line-height:1.3;color:#fff;background:linear-gradient(180deg,var(--ga),var(--gb));box-shadow:0 10px 24px rgba(233,29,45,.25);margin-top:10px}
+.btn:disabled{opacity:.55}
+.btn.navy{background:var(--navy);box-shadow:0 10px 24px rgba(8,43,72,.22)}
+.btn.ghost{background:#fff;color:var(--navy);border:1.5px solid var(--line);box-shadow:none}
+.hint{color:var(--soft);font-size:12.5px;text-align:center;margin:12px 0 0;line-height:1.5}
+section{display:none}
+section.on{display:block}
+.escolha{display:grid;gap:12px;margin:6px 0 0}
+.opcao{display:block;width:100%;text-align:left;border:1.5px solid var(--line);background:#fff;border-radius:16px;padding:18px;cursor:pointer;font-family:inherit;color:var(--navy)}
+.opcao b{display:block;font-size:17px;margin-bottom:4px}
+.opcao span{font-size:14px;color:var(--muted);line-height:1.45}
+.opcao.forte{background:var(--navy);border-color:var(--navy);color:#fff}
+.opcao.forte span{color:#C9D6E3}
+.dias{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;margin:0 0 6px;scrollbar-width:none}
+.dias::-webkit-scrollbar{display:none}
+.dia{flex:0 0 auto;border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:10px 13px;font-family:inherit;font-size:14px;font-weight:700;color:var(--navy);cursor:pointer;text-transform:capitalize}
+.dia.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.horas{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 6px}
+.hora{border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:13px 0;font-family:inherit;font-size:16px;font-weight:700;color:var(--navy);cursor:pointer}
+.hora.on{background:var(--red);border-color:var(--red);color:#fff}
+.aceite{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--navy);line-height:1.5;margin:4px 0 2px;cursor:pointer}
+.aceite span{display:block;font-weight:500;font-size:14px;margin:0}
+.aceite span b{font-weight:800}
+.aceite input{width:22px;height:22px;flex:0 0 22px;margin-top:1px;accent-color:var(--red);-webkit-appearance:checkbox;appearance:checkbox;padding:0}
+.resumo{background:var(--card);border-radius:14px;padding:14px 16px;margin:0 0 14px;font-size:14.5px;line-height:1.6}
+.resumo b{color:var(--navy)}
+.qr{background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:12px;width:min(260px,78vw);margin:6px auto 12px;display:block}
+.qr img{width:100%;display:block}
+.cola{background:var(--card);border:1.5px dashed var(--line);border-radius:12px;padding:12px;font-size:12px;color:var(--muted);word-break:break-all;max-height:84px;overflow:hidden;margin:0 0 4px}
+.esperando{display:flex;align-items:center;gap:10px;justify-content:center;color:var(--muted);font-size:14px;margin:14px 0 0}
+.spin{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--line);border-top-color:var(--red);animation:g .8s linear infinite;flex:0 0 18px}
+@keyframes g{to{transform:rotate(360deg)}}
+.carregando{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px;padding:14px 0}
+.ok{width:62px;height:62px;border-radius:50%;background:#E3F5EC;display:grid;place-items:center;margin:0 0 14px}
+.ok svg{width:30px;height:30px}
+.passos{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:8px;counter-reset:p}
+.passos li{counter-increment:p;position:relative;padding:12px 14px 12px 46px;background:var(--card);border-radius:12px;font-size:14.5px;line-height:1.45}
+.passos li::before{content:counter(p);position:absolute;left:14px;top:11px;width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center}
+.voltar{background:none;border:0;color:var(--muted);font-family:inherit;font-size:14px;font-weight:600;padding:6px 0;margin:0 0 10px;cursor:pointer}
+.ftr{text-align:center;color:var(--soft);font-size:11.5px;margin-top:28px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><img src="unv-finance.png" alt="UNV Finance" /><span class="pill">Mansão · Contratação</span></div>
+
+  <!-- 1: oferta + dados contratuais -->
+  <section id="vDados" class="on">
+    <h1>Tira o peso da sua cabeça. <span class="r">Coloca na nossa.</span></h1>
+    <p class="sub">Consultoria financeira e BPO num contrato só, com o <b>Aloísio conduzindo</b>. Preenche os dados da empresa e já sai daqui com tudo resolvido.</p>
+    <div class="oferta">
+      <div class="preco"><b>R$ 2.000</b><span>por mês · 12 meses</span></div>
+      <p class="de" id="deText">Condição de quem fecha hoje, na Mansão. Depois do evento, R$ 3.000 por mês.</p>
+      <ul>
+        <li><b>Auditoria e consultoria:</b> caixa, custos, dívidas, mapa de vazamentos e plano de ação</li>
+        <li><b>BPO financeiro:</b> o BPO entra nas contas e paga tudo por você, todo dia</li>
+        <li><b>Gestão à vista:</b> fluxo de caixa, contas a receber, cobrança e reunião mensal de resultado</li>
+      </ul>
+    </div>
+    <div class="bonus"><small>Bônus de quem fecha hoje</small><b>Sistema UNV Finance grátis por 1 ano</b>, liberado durante os 12 meses do contrato.</div>
+    <div class="vagas" id="vagasBox" hidden><b id="vagasN">5</b><span id="vagasT">vagas nessa condição. O Aloísio conduz cada projeto pessoalmente.</span></div>
+    <div class="aviso" id="encerrado" hidden></div>
+
+    <form class="card" id="fDados" autocomplete="on" novalidate>
+      <h2>Dados da empresa</h2>
+      <p class="sub" style="font-size:14px;margin-bottom:14px">São os dados do contrato. Leva uns 2 minutos.</p>
+      <div class="bloco">
+        <h3>Empresa</h3>
+        <label><span>Razão social <i>*</i></span><input id="razao" autocomplete="organization" maxlength="160" placeholder="Como está no CNPJ" /></label>
+        <label><span>Nome fantasia <i>*</i></span><input id="fantasia" maxlength="160" placeholder="Como a empresa é conhecida" /></label>
+        <label><span>CNPJ <i>*</i></span><input id="cnpj" inputmode="numeric" maxlength="18" placeholder="00.000.000/0000-00" /></label>
+        <label><span>E-mail <i>*</i></span><input id="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="160" placeholder="voce@suaempresa.com.br" /></label>
+        <label><span>WhatsApp <i>*</i></span><input id="tel" type="tel" inputmode="numeric" autocomplete="tel" maxlength="24" placeholder="(31) 99999-9999" /></label>
+      </div>
+      <div class="bloco">
+        <h3>Endereço</h3>
+        <div class="cep">
+          <label><span>CEP <i>*</i></span><input id="cep" inputmode="numeric" autocomplete="postal-code" maxlength="9" placeholder="00000-000" /></label>
+          <label><span>UF <i>*</i></span><input id="uf" list="ufs" maxlength="2" autocapitalize="characters" placeholder="MG" /></label>
+        </div>
+        <label><span>Endereço <i>*</i></span><input id="endereco" autocomplete="address-line1" maxlength="200" placeholder="Rua, avenida" /></label>
+        <div class="dois">
+          <label><span>Número <i>*</i></span><input id="numero" maxlength="30" placeholder="123" /></label>
+          <label><span>Complemento</span><input id="complemento" maxlength="100" placeholder="Sala, loja" /></label>
+        </div>
+        <div class="dois">
+          <label><span>Bairro <i>*</i></span><input id="bairro" maxlength="100" placeholder="Bairro" /></label>
+          <label><span>Cidade <i>*</i></span><input id="cidade" autocomplete="address-level2" maxlength="100" placeholder="Cidade" /></label>
+        </div>
+      </div>
+      <div class="bloco">
+        <h3>Representante legal</h3>
+        <label><span>Nome completo <i>*</i></span><input id="rep" autocomplete="name" autocapitalize="words" maxlength="160" placeholder="Quem assina pela empresa" /></label>
+        <label><span>Estado civil <i>*</i></span><input id="civil" list="civis" maxlength="40" placeholder="Digite ou escolha" /></label>
+        <div class="dois">
+          <label><span>RG <i>*</i></span><input id="rg" maxlength="30" placeholder="Número do RG" /></label>
+          <label><span>CPF <i>*</i></span><input id="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" /></label>
+        </div>
+      </div>
+      <p class="err" id="errDados"></p>
+      <button type="submit" class="btn" id="goDados">Continuar</button>
+      <p class="hint">Seus dados vão só pra UNV e servem pro contrato e pra nota fiscal.</p>
+    </form>
+    <datalist id="civis"><option value="Solteiro(a)"><option value="Casado(a)"><option value="Divorciado(a)"><option value="Viúvo(a)"><option value="Separado(a)"><option value="União Estável"></datalist>
+    <datalist id="ufs"><option value="AC"><option value="AL"><option value="AP"><option value="AM"><option value="BA"><option value="CE"><option value="DF"><option value="ES"><option value="GO"><option value="MA"><option value="MT"><option value="MS"><option value="MG"><option value="PA"><option value="PB"><option value="PR"><option value="PE"><option value="PI"><option value="RJ"><option value="RN"><option value="RS"><option value="RO"><option value="RR"><option value="SC"><option value="SP"><option value="SE"><option value="TO"></datalist>
+  </section>
+
+  <!-- 2: ainda tem dúvida? -->
+  <section id="vDuvida">
+    <h1>Antes de fechar: <span class="r">ficou alguma dúvida?</span></h1>
+    <p class="sub">Se ficou, você marca agora uma conversa rápida com o Ricardo, do nosso time. Se está tudo claro, você já fecha e garante a condição de hoje.</p>
+    <div class="escolha">
+      <button type="button" class="opcao forte" id="opFechar"><b>Não, quero fechar agora</b><span>Pix de R$ 2.000 da 1ª mensalidade, com débito automático nos meses seguintes.</span></button>
+      <button type="button" class="opcao" id="opDuvida"><b>Sim, quero tirar uma dúvida</b><span>Escolho um horário livre na agenda do Ricardo. São 30 minutos.</span></button>
+    </div>
+  </section>
+
+  <!-- 3a: agenda do Ricardo -->
+  <section id="vAgenda">
+    <button type="button" class="voltar" id="voltarAgenda">← Voltar</button>
+    <h1>Escolhe o <span class="r">melhor horário.</span></h1>
+    <p class="sub">Só aparecem horários livres de verdade na agenda do Ricardo. A reunião é online, pelo Google Meet, e dura 30 minutos.</p>
+    <div class="card">
+      <div class="carregando" id="agCarregando"><span class="spin"></span><span>Buscando os horários livres…</span></div>
+      <div id="agConteudo" hidden>
+        <div class="dias" id="dias"></div>
+        <div class="horas" id="horas"></div>
+      </div>
+      <p class="err" id="errAgenda"></p>
+      <button type="button" class="btn navy" id="goAgendar" disabled>Escolhe um horário</button>
+    </div>
+  </section>
+
+  <!-- 4a: agendado -->
+  <section id="vAgendado">
+    <div class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="#12925A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+    <h1>Reunião <span class="r">marcada.</span></h1>
+    <p class="sub" id="agTexto"></p>
+    <a class="btn navy" id="agMeet" href="#" target="_blank" rel="noopener" hidden>Abrir o link da reunião</a>
+    <p class="hint">O Ricardo também te mandou a confirmação no WhatsApp.</p>
+  </section>
+
+  <!-- 3b: Pix Automático -->
+  <section id="vPix">
+    <button type="button" class="voltar" id="voltarPix">← Voltar</button>
+    <h1>Falta só <span class="r">o Pix.</span></h1>
+    <div id="pixAntes">
+      <div class="resumo" id="resumo"></div>
+      <div class="card">
+        <label class="aceite"><input type="checkbox" id="aceite" /><span>Entendo que a UNV Finance custa <b>R$ 2.000 por mês por 12 meses</b>. Pago agora a 1ª mensalidade e autorizo o débito automático das próximas no mesmo dia de cada mês.</span></label>
+        <p class="err" id="errPix"></p>
+        <button type="button" class="btn" id="goPix">Gerar o Pix de R$ 2.000</button>
+        <p class="hint">É o Pix Automático: o próprio app do seu banco pede a autorização dos débitos mensais quando você paga.</p>
+      </div>
+    </div>
+    <div id="pixQr" hidden>
+      <p class="sub">Abre o app do seu banco, lê o QR Code (ou copia o código) e confirma a autorização do débito mensal. Assim que cair, esta tela confirma sozinha.</p>
+      <div class="qr"><img id="qrImg" alt="QR Code do Pix de R$ 2.000" /></div>
+      <div class="cola" id="cola"></div>
+      <button type="button" class="btn navy" id="copiar">Copiar código Pix</button>
+      <div class="esperando"><span class="spin"></span><span>Aguardando o pagamento…</span></div>
+      <p class="hint">Valor: R$ 2.000,00 · Beneficiário: UNV Holdings</p>
+    </div>
+  </section>
+
+  <!-- 4b: pago -->
+  <section id="vPago">
+    <div class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="#12925A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+    <h1 id="pagoTitulo">Fechado. <span class="r">Bem-vindo à UNV Finance.</span></h1>
+    <p class="sub">A 1ª mensalidade caiu e o débito dos próximos meses está autorizado. A partir daqui, o financeiro da sua empresa é com a gente.</p>
+    <ol class="passos">
+      <li>Nosso time te chama no WhatsApp pra marcar o kickoff com o Aloísio.</li>
+      <li>Você manda os extratos, as contas a pagar e a receber, as dívidas e os relatórios que tiver.</li>
+      <li>Começa a auditoria: em 30 dias você sabe onde o dinheiro está indo.</li>
+    </ol>
+  </section>
+
+  <p class="ftr">UNV Holdings · Universidade Nacional de Vendas · CNPJ 51.356.237/0001-40</p>
+</div>
+<script>
+(function(){
+"use strict";
+var SUPA = "https://xrncvhzxjmddqluxoosu.supabase.co";
+var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+var FN = SUPA + "/functions/v1/finance-contratar";
+var CHAVE = "unv_finance_contratacao";
+function $(id){ return document.getElementById(id); }
+function qp(n){ try { return new URLSearchParams(location.search).get(n) || undefined; } catch(e){ return undefined; } }
+function view(id){ Array.prototype.forEach.call(document.querySelectorAll("section"), function(s){ s.classList.toggle("on", s.id === id); }); try { window.scrollTo(0,0); } catch(e){} }
+function api(body){
+  return fetch(FN, { method:"POST", headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + ANON, "apikey": ANON }, body: JSON.stringify(body) })
+    .then(function(r){ return r.json().then(function(d){ if(!r.ok || d.error){ var e = new Error(d && d.error || r.status); e.code = d && d.error; e.dados = d; throw e; } return d; }); });
+}
+function guardar(o){ try { var s = JSON.parse(localStorage.getItem(CHAVE) || "{}"); for(var k in o) s[k] = o[k]; s.em = Date.now(); localStorage.setItem(CHAVE, JSON.stringify(s)); } catch(e){} }
+function lido(){ try { var s = JSON.parse(localStorage.getItem(CHAVE) || "{}"); return (s.em && Date.now() - s.em < 24*3600000) ? s : {}; } catch(e){ return {}; } }
+
+// ── máscaras e validação ──
+function maskPhone(v){
+  var d = String(v || "").replace(/\D/g,"").replace(/^0+/,"");
+  if(d.length > 11 && d.slice(0,2) === "55") d = d.slice(2);
+  d = d.slice(0,11);
+  if(d.length <= 2) return d.length ? "(" + d : d;
+  if(d.length <= 6) return "(" + d.slice(0,2) + ") " + d.slice(2);
+  if(d.length <= 10) return "(" + d.slice(0,2) + ") " + d.slice(2,6) + "-" + d.slice(6);
+  return "(" + d.slice(0,2) + ") " + d.slice(2,7) + "-" + d.slice(7);
+}
+function maskCnpj(v){ var d = String(v||"").replace(/\D/g,"").slice(0,14); return d.replace(/^(\d{2})(\d)/,"$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1/$2").replace(/(\d{4})(\d{1,2})$/,"$1-$2"); }
+function maskCpf(v){ var d = String(v||"").replace(/\D/g,"").slice(0,11); return d.replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})\.(\d{3})(\d)/,"$1.$2.$3").replace(/(\d{3})\.(\d{3})\.(\d{3})(\d{1,2})$/,"$1.$2.$3-$4"); }
+function maskCep(v){ var d = String(v||"").replace(/\D/g,"").slice(0,8); return d.length > 5 ? d.slice(0,5) + "-" + d.slice(5) : d; }
+function cpfOk(c){ if(c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false; for(var t=9;t<11;t++){ var s=0; for(var i=0;i<t;i++) s+=+c[i]*(t+1-i); if(((s*10)%11)%10 !== +c[t]) return false; } return true; }
+function cnpjOk(c){ if(c.length !== 14 || /^(\d)\1{13}$/.test(c)) return false; var p=[5,4,3,2,9,8,7,6,5,4,3,2]; for(var k=0;k<2;k++){ var pe=k?[6].concat(p):p, s=0; for(var i=0;i<pe.length;i++) s+=+c[i]*pe[i]; var r=s%11<2?0:11-s%11; if(r !== +c[12+k]) return false; } return true; }
+var MASCARAS = { tel: maskPhone, cnpj: maskCnpj, cpf: maskCpf, cep: maskCep };
+Object.keys(MASCARAS).forEach(function(id){
+  ["input","blur"].forEach(function(ev){ $(id).addEventListener(ev, function(){ var m = MASCARAS[id](this.value); if(m !== this.value) this.value = m; }); });
+});
+$("uf").addEventListener("input", function(){ var v = this.value.toUpperCase().replace(/[^A-Z]/g,"").slice(0,2); if(v !== this.value) this.value = v; });
+
+// CEP preenche endereço, bairro, cidade e UF
+var ultimoCep = "";
+$("cep").addEventListener("input", function(){
+  var c = this.value.replace(/\D/g,"");
+  if(c.length !== 8 || c === ultimoCep) return;
+  ultimoCep = c;
+  fetch("https://viacep.com.br/ws/" + c + "/json/").then(function(r){ return r.json(); }).then(function(d){
+    if(!d || d.erro) return;
+    if(d.logradouro && !$("endereco").value) $("endereco").value = d.logradouro;
+    if(d.bairro && !$("bairro").value) $("bairro").value = d.bairro;
+    if(d.localidade) $("cidade").value = d.localidade;
+    if(d.uf) $("uf").value = d.uf;
+    if(!$("numero").value) $("numero").focus();
+  }).catch(function(){});
+});
+
+// ── estado ──
+var ID = null, ABERTO = true, timer = null, EMPRESA = "", AG = { dia:null, hora:null, dias:[] };
+var salvo = lido();
+
+api({ action:"vagas" }).then(function(v){
+  ABERTO = !!v.aberto;
+  if(v.no_prazo){
+    $("vagasBox").hidden = false;
+    $("vagasN").textContent = v.restantes;
+    $("vagasT").textContent = v.restantes === 1 ? "vaga nessa condição. O Aloísio conduz cada projeto pessoalmente." : "vagas nessa condição. O Aloísio conduz cada projeto pessoalmente.";
+  }
+  if(!ABERTO){
+    $("encerrado").hidden = false;
+    $("encerrado").textContent = v.no_prazo
+      ? "As 5 vagas da condição de hoje já foram preenchidas. Preenche os dados e marca uma conversa com o Ricardo, que ele te mostra o que dá pra fazer."
+      : "A condição do evento encerrou. Preenche os dados e marca uma conversa com o Ricardo.";
+    $("goDados").textContent = "Continuar e marcar conversa";
+  }
+}).catch(function(){});
+
+// volta de onde parou (página recarregada ou fechada sem querer)
+if(salvo.id && salvo.etapa === "pix"){ ID = salvo.id; EMPRESA = salvo.empresa || ""; gerarPix(true); }
+else if(salvo.id && salvo.etapa === "duvida"){ ID = salvo.id; EMPRESA = salvo.empresa || ""; view("vDuvida"); }
+
+// ── 1: dados ──
+var CAMPOS = [
+  ["razao","Razão social"],["fantasia","Nome fantasia"],["cnpj","CNPJ"],["email","E-mail"],["tel","WhatsApp"],
+  ["cep","CEP"],["uf","UF"],["endereco","Endereço"],["numero","Número"],["bairro","Bairro"],["cidade","Cidade"],
+  ["rep","Nome do representante legal"],["civil","Estado civil"],["rg","RG"],["cpf","CPF"]
+];
+function erroDados(msg, id){
+  $("errDados").textContent = msg || "";
+  Array.prototype.forEach.call(document.querySelectorAll("#fDados input"), function(i){ i.classList.remove("bad"); });
+  if(id){ $(id).classList.add("bad"); $(id).focus(); }
+}
+$("fDados").addEventListener("submit", function(ev){
+  ev.preventDefault();
+  for(var i=0;i<CAMPOS.length;i++){ if(!$(CAMPOS[i][0]).value.trim()) return erroDados("Falta preencher: " + CAMPOS[i][1] + ".", CAMPOS[i][0]); }
+  var cnpj = $("cnpj").value.replace(/\D/g,""), cpf = $("cpf").value.replace(/\D/g,""), tel = $("tel").value.replace(/\D/g,"");
+  if(!cnpjOk(cnpj)) return erroDados("Confere o CNPJ.", "cnpj");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test($("email").value.trim())) return erroDados("Confere o e-mail.", "email");
+  if(tel.length < 10) return erroDados("Coloca o WhatsApp com DDD.", "tel");
+  if($("cep").value.replace(/\D/g,"").length !== 8) return erroDados("Confere o CEP.", "cep");
+  if($("uf").value.trim().length !== 2) return erroDados("Coloca a UF com 2 letras.", "uf");
+  if(!cpfOk(cpf)) return erroDados("Confere o CPF do representante.", "cpf");
+  erroDados("");
+  $("goDados").disabled = true; $("goDados").textContent = "Salvando…";
+  EMPRESA = $("fantasia").value.trim() || $("razao").value.trim();
+  api({
+    action:"dados", razao_social:$("razao").value, nome_fantasia:$("fantasia").value, cnpj:cnpj, email:$("email").value, telefone:tel,
+    cep:$("cep").value, uf:$("uf").value, endereco:$("endereco").value, numero:$("numero").value, complemento:$("complemento").value,
+    bairro:$("bairro").value, cidade:$("cidade").value, representante:$("rep").value, estado_civil:$("civil").value, rg:$("rg").value, cpf:cpf,
+    utm_source: qp("utm_source"), utm_medium: qp("utm_medium"), utm_campaign: qp("utm_campaign")
+  }).then(function(d){
+    ID = d.id;
+    guardar({ id: ID, empresa: EMPRESA, etapa: "duvida" });
+    if(d.status === "pago"){ pago(); return; }
+    if(d.status === "pix_gerado"){ gerarPix(true); return; }
+    if(!ABERTO){ abrirAgenda(); return; }
+    view("vDuvida");
+  }).catch(function(e){
+    $("goDados").disabled = false; $("goDados").textContent = ABERTO ? "Continuar" : "Continuar e marcar conversa";
+    var m = { cnpj_invalido:["Confere o CNPJ.","cnpj"], cpf_invalido:["Confere o CPF do representante.","cpf"], email_invalido:["Confere o e-mail.","email"], telefone_invalido:["Confere o WhatsApp.","tel"] }[e.code];
+    if(m) return erroDados(m[0], m[1]);
+    erroDados("Não consegui salvar agora. Confere a internet e tenta de novo.");
+  });
+});
+
+// ── 2: dúvida? ──
+$("opDuvida").addEventListener("click", function(){ abrirAgenda(); });
+$("opFechar").addEventListener("click", function(){
+  $("resumo").innerHTML = "<b>" + esc(EMPRESA || "Sua empresa") + "</b><br>UNV Finance · consultoria financeira + BPO<br>R$ 2.000 por mês · 12 meses<br>Bônus: sistema UNV Finance grátis por 1 ano";
+  $("pixAntes").hidden = false; $("pixQr").hidden = true; $("errPix").textContent = "";
+  view("vPix");
+});
+$("voltarAgenda").addEventListener("click", function(){ view(ABERTO ? "vDuvida" : "vDados"); });
+$("voltarPix").addEventListener("click", function(){ clearInterval(timer); view("vDuvida"); });
+function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return { "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]; }); }
+
+// ── 3a: agenda ──
+function abrirAgenda(aviso){
+  view("vAgenda");
+  AG = { dia:null, hora:null, dias:[] };
+  $("agCarregando").hidden = false; $("agConteudo").hidden = true; $("errAgenda").textContent = typeof aviso === "string" ? aviso : "";
+  $("goAgendar").disabled = true; $("goAgendar").textContent = "Escolhe um horário";
+  api({ action:"horarios", id: ID }).then(function(d){
+    $("agCarregando").hidden = true;
+    AG.dias = d.dias || [];
+    if(!AG.dias.length){ $("errAgenda").textContent = "A agenda do Ricardo está cheia nos próximos dias. Ele te chama no WhatsApp pra combinar um horário."; return; }
+    $("agConteudo").hidden = false;
+    desenharDias(); escolherDia(0);
+  }).catch(function(){
+    $("agCarregando").hidden = true;
+    $("errAgenda").textContent = "Não consegui abrir a agenda agora. Tenta de novo em instantes.";
+  });
+}
+function desenharDias(){
+  $("dias").innerHTML = "";
+  AG.dias.forEach(function(d, i){
+    var b = document.createElement("button"); b.type = "button"; b.className = "dia"; b.textContent = d.rotulo;
+    b.addEventListener("click", function(){ escolherDia(i); });
+    $("dias").appendChild(b);
+  });
+}
+function escolherDia(i){
+  AG.dia = AG.dias[i]; AG.hora = null;
+  Array.prototype.forEach.call($("dias").children, function(b, j){ b.classList.toggle("on", j === i); });
+  $("horas").innerHTML = "";
+  AG.dia.horarios.forEach(function(h){
+    var b = document.createElement("button"); b.type = "button"; b.className = "hora"; b.textContent = h;
+    b.addEventListener("click", function(){
+      AG.hora = h;
+      Array.prototype.forEach.call($("horas").children, function(x){ x.classList.toggle("on", x === b); });
+      $("goAgendar").disabled = false; $("goAgendar").textContent = "Marcar " + AG.dia.rotulo + ", às " + h;
+    });
+    $("horas").appendChild(b);
+  });
+  $("goAgendar").disabled = true; $("goAgendar").textContent = "Escolhe um horário";
+}
+$("goAgendar").addEventListener("click", function(){
+  if(!AG.dia || !AG.hora) return;
+  $("goAgendar").disabled = true; $("goAgendar").textContent = "Conferindo na agenda…"; $("errAgenda").textContent = "";
+  api({ action:"agendar", id: ID, data: AG.dia.data, hora: AG.hora }).then(function(d){
+    guardar({ etapa: "agendado" });
+    var q = d.quando || (AG.dia.rotulo + ", às " + AG.hora);
+    if(d.ja_tinha){ try { q = new Date(d.scheduled_at).toLocaleString("pt-BR", { weekday:"long", day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit", timeZone:"America/Sao_Paulo" }); } catch(e){} }
+    $("agTexto").innerHTML = "Sua conversa com o Ricardo ficou pra <b>" + esc(q) + "</b>. Ele tira suas dúvidas e, se fizer sentido, você fecha ali mesmo.";
+    if(d.meeting_link){ $("agMeet").href = d.meeting_link; $("agMeet").hidden = false; }
+    view("vAgendado");
+  }).catch(function(e){
+    if(e.code === "horario_ocupado"){
+      abrirAgenda("Esse horário acabou de ser ocupado. Atualizei a agenda, escolhe outro.");
+      return;
+    }
+    $("goAgendar").disabled = false; $("goAgendar").textContent = "Marcar " + AG.dia.rotulo + ", às " + AG.hora;
+    $("errAgenda").textContent = "Não consegui marcar agora. Tenta de novo em instantes.";
+  });
+});
+
+// ── 3b: Pix Automático ──
+var SO_AGENDA = false;
+$("goPix").addEventListener("click", function(){
+  if(SO_AGENDA){ abrirAgenda(); return; }
+  if(!$("aceite").checked){ $("errPix").textContent = "Marca a caixinha confirmando o valor e o débito mensal."; return; }
+  gerarPix(false);
+});
+function gerarPix(retomando){
+  view("vPix");
+  $("errPix").textContent = "";
+  $("goPix").disabled = true; $("goPix").textContent = "Gerando o Pix…";
+  api({ action:"pix", id: ID }).then(function(d){
+    guardar({ etapa: "pix" });
+    if(d.status === "pago"){ pago(); return; }
+    if(!d.pix || !d.pix.payload) throw new Error("sem_pix");
+    $("qrImg").src = "data:image/png;base64," + d.pix.image;
+    $("cola").textContent = d.pix.payload;
+    $("pixAntes").hidden = true; $("pixQr").hidden = false;
+    acompanhar();
+  }).catch(function(e){
+    $("goPix").disabled = false; $("goPix").textContent = "Gerar o Pix de R$ 2.000";
+    if(retomando){ $("pixAntes").hidden = false; $("pixQr").hidden = true; }
+    if(e.code === "vagas_esgotadas" || e.code === "prazo_encerrado"){
+      ABERTO = false;
+      $("errPix").textContent = e.code === "vagas_esgotadas" ? "As 5 vagas de hoje acabaram de ser preenchidas. Marca uma conversa com o Ricardo." : "A condição do evento encerrou. Marca uma conversa com o Ricardo.";
+      $("goPix").textContent = "Marcar conversa com o Ricardo"; $("goPix").disabled = false;
+      SO_AGENDA = true;
+      return;
+    }
+    if(e.code === "contratacao_invalida"){ try { localStorage.removeItem(CHAVE); } catch(x){} view("vDados"); return; }
+    $("errPix").textContent = "Não consegui gerar o Pix agora. Tenta de novo em instantes.";
+  });
+}
+function acompanhar(){
+  clearInterval(timer);
+  timer = setInterval(function(){
+    api({ action:"status", id: ID }).then(function(d){ if(d.status === "pago"){ clearInterval(timer); pago(); } }).catch(function(){});
+  }, 5000);
+}
+function pago(){
+  clearInterval(timer);
+  guardar({ etapa: "pago" });
+  if(EMPRESA) $("pagoTitulo").innerHTML = "Fechado, " + esc(EMPRESA) + ". <span class=\"r\">Bem-vindo à UNV Finance.</span>";
+  view("vPago");
+}
+$("copiar").addEventListener("click", function(){
+  var t = $("cola").textContent;
+  var feito = function(){ $("copiar").textContent = "Código copiado"; setTimeout(function(){ $("copiar").textContent = "Copiar código Pix"; }, 2500); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(feito, function(){});
+  else { var r = document.createRange(); r.selectNodeContents($("cola")); var s = getSelection(); s.removeAllRanges(); s.addRange(r); try { document.execCommand("copy"); feito(); } catch(e){} }
+});
+// voltou pra aba depois de pagar no app do banco: confere na hora
+document.addEventListener("visibilitychange", function(){
+  if(!document.hidden && ID && !$("pixQr").hidden) api({ action:"status", id: ID }).then(function(d){ if(d.status === "pago") pago(); }).catch(function(){});
+});
+})();
+</script>
+</body>
+</html>
