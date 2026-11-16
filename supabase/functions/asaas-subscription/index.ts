@@ -264,6 +264,7 @@ Deno.serve(async (req) => {
         contract_id: contractId, valor_cents: amount_cents, frequencia: frequency, primeira_cobranca: primeira, start_date: startDate,
         descricao: description, cliente_nome: customer_name, status: auth.status || "CREATED",
         qr_payload: qrPayload, qr_image: qrImage,
+        qr_conciliacao: auth?.immediateQrCode?.conciliationIdentifier || null,
         qr_expira_em: auth?.immediateQrCode?.expirationDate ? new Date(String(auth.immediateQrCode.expirationDate).replace(" ", "T") + "-03:00").toISOString() : new Date(Date.now() + expirationSeconds * 1000).toISOString(),
         ultimo_evento: "criada", atualizado_em: new Date().toISOString(),
       });
