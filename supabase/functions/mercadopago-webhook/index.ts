@@ -142,6 +142,43 @@ async function baixaDaParcela(supabase: any, invoiceId: string, newStatus: strin
     }
   } catch (e) { console.error("[mercadopago-webhook] recebível", e); }
 
+  await regrasAoPagar(supabase, invoiceId);
+
   try { await supabase.functions.invoke("notify-payment-confirmed", { body: { invoice_id: invoiceId } }); } catch (e) { console.error("[mercadopago-webhook] aviso de pagamento", e); }
   console.log(`[mercadopago-webhook] parcela ${invoiceId} paga no ${nomeConta}: bruto ${gross}, líquido ${net}`);
+}
+
+// Regras "pagou esta parcela, exclui aquela" (tabela invoice_paid_rules, 16/11/2026).
+// Fabrício, sobre a Duarte: "se ele pagar, quero que exclua a parcela deste mês dele".
+// Só exclui parcela que ainda está em aberto; apaga a cobrança no Asaas antes e guarda o resultado.
+// Erro aqui nunca desfaz a baixa do pagamento.
+async function regrasAoPagar(supabase: any, invoiceId: string) {
+  try {
+    const { data: regras } = await supabase.from("invoice_paid_rules")
+      .select("id, delete_invoice_id").eq("paid_invoice_id", invoiceId).is("executed_at", null);
+    for (const r of regras || []) {
+      const res: Record<string, unknown> = {};
+      try {
+        const { data: alvo } = await supabase.from("company_invoices").select("*").eq("id", r.delete_invoice_id).maybeSingle();
+        if (!alvo) res.situacao = "a parcela já não existia";
+        else if (!["pending", "overdue"].includes(String(alvo.status))) res.situacao = `a parcela está ${alvo.status}, mantida`;
+        else {
+          res.parcela = alvo;
+          const noLink = String(alvo.payment_link_url || "").match(/asaas\.com\/i\/([a-z0-9]+)/i);
+          const cobranca = alvo.pagarme_charge_id && !String(alvo.pagarme_charge_id).startsWith("mp:")
+            ? String(alvo.pagarme_charge_id) : (noLink ? `pay_${noLink[1]}` : null);
+          if (cobranca) {
+            const { data: del, error: delErr } = await supabase.functions.invoke("asaas-delete-payment", { body: { payment_ids: [cobranca] } });
+            res.asaas = delErr ? { erro: String(delErr.message || delErr) } : del;
+          } else res.asaas = "parcela sem cobrança no Asaas";
+          // avisos de cobrança já enviados ficam no histórico, só soltam da parcela (a FK não deixaria apagar)
+          await supabase.from("billing_notification_logs").update({ invoice_id: null }).eq("invoice_id", alvo.id);
+          const { error: exErr } = await supabase.from("company_invoices").delete().eq("id", alvo.id).in("status", ["pending", "overdue"]);
+          res.situacao = exErr ? `erro ao excluir: ${exErr.message}` : "excluída";
+        }
+      } catch (e) { res.erro = String((e as Error).message || e); }
+      await supabase.from("invoice_paid_rules").update({ executed_at: new Date().toISOString(), result: res }).eq("id", r.id);
+      console.log(`[mercadopago-webhook] regra ao pagar ${r.id}: ${res.situacao || res.erro}`);
+    }
+  } catch (e) { console.error("[mercadopago-webhook] regras ao pagar", e); }
 }
