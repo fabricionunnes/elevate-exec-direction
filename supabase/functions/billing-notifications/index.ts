@@ -67,6 +67,13 @@ Deno.serve(async (req) => {
       console.error("[billing-notifications] pix automático", e);
       diagnostics.pix_automatico = { erro: String((e as any)?.message || e) };
     }
+    // Pix Automático que não foi autorizado (16/11/2026): volta a recorrência pra Pix normal. Nunca derruba a régua.
+    try {
+      diagnostics.pix_automatico_volta = await voltaPraPixNormal(supabase, pixAutoSimular);
+    } catch (e) {
+      console.error("[billing-notifications] volta pra pix normal", e);
+      diagnostics.pix_automatico_volta = { erro: String((e as any)?.message || e) };
+    }
     if (soPixAuto) {
       return new Response(JSON.stringify({ sent: 0, diagnostics }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -671,6 +678,85 @@ async function asaasGet(key: string, path: string): Promise<any> {
   const t = await r.text();
   if (!r.ok) throw new Error(`Asaas HTTP ${r.status}`);
   try { return t ? JSON.parse(t) : {}; } catch { return {}; }
+}
+
+/**
+ * Pix Automático pago e NÃO autorizado volta pra Pix normal (16/11/2026, caso Trilobit).
+ * O cliente pagou a 1ª parcela pelo QR, mas o banco dele processou como Pix comum e a autorização do
+ * débito automático nunca ficou ativa. Fabrício: "vai acompanhando, e se ver que depois do dia 22
+ * continuou a mesma coisa, vc volta pra pix normal" (22/11 era o vencimento do QR).
+ * Regra: recorrência de empresa em pix_automatico cuja autorização mais recente tem a 1ª parcela paga,
+ * o QR já venceu e o Asaas confirma que NÃO está ativa. Aí: cancela a autorização no Asaas (pra ela não
+ * ser aceita depois e debitar em dobro), cria a assinatura de Pix comum a partir da próxima parcela em
+ * aberto, tira o débito automático das parcelas e gera os links. Se o Asaas disser que está ativa, só
+ * atualiza a situação. Com simular = true não altera nada.
+ */
+async function voltaPraPixNormal(supabase: any, simular: boolean) {
+  const out: any[] = [];
+  // na simulação entram também as que ainda não venceram, pra dar pra conferir antes do prazo
+  let qPagas = supabase.from("asaas_pix_automatico")
+    .select("id, status, recurring_charge_id, company_id, asaas_account_id, pago_em, qr_expira_em, criado_em")
+    .eq("origem", "empresa").not("pago_em", "is", null).not("recurring_charge_id", "is", null).neq("status", "ACTIVE");
+  if (!simular) qPagas = qPagas.lt("qr_expira_em", new Date().toISOString());
+  const { data: pagas } = await qPagas.order("criado_em", { ascending: false }).limit(20);
+  const vistos = new Set<string>();
+  for (const pa of (pagas || []) as any[]) {
+    if (vistos.has(pa.recurring_charge_id)) continue; // só a autorização mais recente de cada recorrência
+    vistos.add(pa.recurring_charge_id);
+    const linha: Record<string, unknown> = { autorizacao: pa.id, recorrencia: pa.recurring_charge_id, qr_vence_em: pa.qr_expira_em };
+    try {
+      const { data: rc } = await supabase.from("company_recurring_charges").select("*").eq("id", pa.recurring_charge_id).maybeSingle();
+      if (!rc || rc.payment_method !== "pix_automatico" || rc.is_active === false) { linha.situacao = "recorrência já não é Pix Automático ou está pausada"; out.push(linha); continue; }
+      // existe autorização mais nova pra mesma recorrência (QR renovado)? então esta não manda
+      const { data: maisNova } = await supabase.from("asaas_pix_automatico").select("id").eq("recurring_charge_id", pa.recurring_charge_id).gt("criado_em", pa.criado_em).limit(1);
+      if (maisNova?.length) { linha.situacao = "há autorização mais nova"; out.push(linha); continue; }
+      const key = await chaveAsaasDaRecorrencia(supabase, rc.asaas_account_id || pa.asaas_account_id);
+      if (!key) { linha.situacao = "chave da conta Asaas não encontrada"; out.push(linha); continue; }
+      let noAsaas = "";
+      try { const au = await asaasGet(key, `/pix/automatic/authorizations/${pa.id}`); noAsaas = String(au?.status || ""); }
+      catch (e) { linha.situacao = `não consegui consultar o Asaas: ${String((e as any)?.message || e)}`; out.push(linha); continue; }
+      linha.status_no_asaas = noAsaas;
+      if (noAsaas === "ACTIVE") {
+        if (!simular) await supabase.from("asaas_pix_automatico").update({ status: "ACTIVE", ultimo_evento: "consulta", atualizado_em: new Date().toISOString() }).eq("id", pa.id);
+        linha.situacao = "autorização ativa, segue no Pix Automático"; out.push(linha); continue;
+      }
+      const { data: abertas } = await supabase.from("company_invoices").select("id, due_date")
+        .eq("recurring_charge_id", rc.id).in("status", ["pending", "overdue"]).is("paid_at", null).order("due_date", { ascending: true }).limit(60);
+      if (!abertas?.length) { linha.situacao = "sem parcela em aberto"; out.push(linha); continue; }
+      linha.parcelas_em_aberto = abertas.length;
+      linha.proxima = abertas[0].due_date;
+      if (simular) { linha.situacao = "simulação: voltaria pra Pix normal"; out.push(linha); continue; }
+
+      // 1) cancela a autorização no Asaas; se ela ainda está viva e não cancelou, tenta de novo na próxima hora
+      const mortas = ["REFUSED", "EXPIRED", "CANCELLED", "DENIED"];
+      if (!mortas.includes(noAsaas)) {
+        const del = await fetch(`https://api.asaas.com/v3/pix/automatic/authorizations/${pa.id}`, { method: "DELETE", headers: { access_token: key } });
+        if (!del.ok) { linha.situacao = `não consegui cancelar a autorização no Asaas (HTTP ${del.status}), tento de novo`; await del.text(); out.push(linha); continue; }
+        await del.text();
+      }
+      await supabase.from("asaas_pix_automatico").update({ status: mortas.includes(noAsaas) ? noAsaas : "CANCELLED", ultimo_evento: "voltou pra Pix normal", atualizado_em: new Date().toISOString() }).eq("id", pa.id);
+
+      // 2) a recorrência e as parcelas em aberto deixam de ser débito automático
+      await supabase.from("company_recurring_charges").update({ payment_method: "pix", pagarme_link_url: null, updated_at: new Date().toISOString() }).eq("id", rc.id);
+      await supabase.from("company_invoices").update({ payment_method: "pix", auto_debit: false })
+        .eq("recurring_charge_id", rc.id).in("status", ["pending", "overdue"]).is("paid_at", null);
+
+      // 3) assinatura de Pix comum no Asaas a partir da próxima parcela em aberto, e os links das parcelas
+      const { data: sub, error: subErr } = await supabase.functions.invoke("asaas-subscription", { body: {
+        description: rc.description, amount_cents: rc.amount_cents, payment_method: "pix", recurrence: rc.recurrence,
+        customer_name: rc.customer_name, customer_email: rc.customer_email, customer_document: rc.customer_document, customer_phone: rc.customer_phone,
+        company_id: rc.company_id, recurring_charge_id: rc.id, next_charge_date: abertas[0].due_date, asaas_account_id: rc.asaas_account_id,
+      } });
+      if (subErr || sub?.error) { linha.situacao = `virou Pix normal, mas a assinatura no Asaas falhou: ${sub?.error || subErr?.message}`; out.push(linha); continue; }
+      const { data: bf } = await supabase.functions.invoke("generate-invoices", { body: { action: "backfill_payment_links", recurring_charge_id: rc.id } });
+      linha.assinatura = sub?.subscription_id || null;
+      linha.links = bf?.fixed ?? null;
+      linha.situacao = "voltou pra Pix normal";
+      console.log(`[pix-auto] recorrência ${rc.id} voltou pra Pix normal (autorização ${pa.id} ficou ${noAsaas || "sem status"})`);
+    } catch (e) { linha.situacao = `erro: ${String((e as any)?.message || e)}`; }
+    out.push(linha);
+  }
+  return out;
 }
 
 /**
