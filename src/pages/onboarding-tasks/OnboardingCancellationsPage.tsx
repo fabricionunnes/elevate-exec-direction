@@ -202,8 +202,9 @@ export default function OnboardingCancellationsPage() {
         .update({
           status: "closed",
           churn_date: format(new Date(), "yyyy-MM-dd"),
-          churn_reason: churnReason || null,
-          churn_notes: churnNotes || null,
+          // cliente que sinalizou cancelamento encerra com o mesmo motivo da sinalização
+          churn_reason: project.cancellation_signal_reason || churnReason || null,
+          churn_notes: (project.cancellation_signal_reason ? project.cancellation_signal_notes : churnNotes) || null,
           retention_status: "encerrado",
         } as any)
         .eq("id", project.id);
@@ -651,6 +652,19 @@ export default function OnboardingCancellationsPage() {
               Esta ação irá marcar o projeto como encerrado e inativar a empresa caso não tenha outros projetos ativos.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {closeDialog.project?.cancellation_signal_reason ? (
+            <div className="rounded-lg border bg-muted/40 p-3 space-y-2 my-2">
+              <p className="text-xs text-muted-foreground">O encerramento usa o mesmo motivo informado na sinalização de cancelamento.</p>
+              <div>
+                <p className="text-xs text-muted-foreground">Motivo</p>
+                <p className="text-sm font-medium">{closeDialog.project.cancellation_signal_reason}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Observação</p>
+                <p className="text-sm whitespace-pre-wrap">{closeDialog.project.cancellation_signal_notes?.trim() || "Sem observação registrada na sinalização."}</p>
+              </div>
+            </div>
+          ) : (
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Motivo do churn</Label>
@@ -670,6 +684,7 @@ export default function OnboardingCancellationsPage() {
               />
             </div>
           </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleCloseProject} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={saving}>

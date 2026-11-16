@@ -38,6 +38,10 @@ interface ChurnReasonDialogProps {
   onConfirm: (reason: string, notes: string) => void;
   isLoading?: boolean;
   mode?: DialogMode;
+  /** Cliente que já sinalizou cancelamento (16/11/2026, Fabrício: "o motivo tem que ser o mesmo de quando
+   *  sinalizou cancelamento" e "não tem que dar opção de escolher, só de confirmar"): o encerramento usa o
+   *  motivo e a observação gravados na sinalização, sem campo pra editar. */
+  fixo?: { reason: string; notes: string } | null;
 }
 
 const DIALOG_CONFIG: Record<DialogMode, { title: string; description: string; confirmLabel: string }> = {
@@ -59,6 +63,7 @@ export function ChurnReasonDialog({
   onConfirm,
   isLoading = false,
   mode = "churn",
+  fixo = null,
 }: ChurnReasonDialogProps) {
   const [reason, setReason] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
@@ -74,6 +79,7 @@ export function ChurnReasonDialog({
   }, [open]);
 
   const handleConfirm = () => {
+    if (fixo) { onConfirm(fixo.reason, (fixo.notes || "").trim()); return; }
     if (!reason || !notes.trim()) return;
     onConfirm(reason, notes.trim());
   };
@@ -84,7 +90,7 @@ export function ChurnReasonDialog({
     onOpenChange(false);
   };
 
-  const isValid = reason && notes.trim().length > 0;
+  const isValid = fixo ? !!fixo.reason : reason && notes.trim().length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -92,10 +98,26 @@ export function ChurnReasonDialog({
         <DialogHeader>
           <DialogTitle>{config.title}</DialogTitle>
           <DialogDescription>
-            {config.description}
+            {fixo
+              ? "Este cliente já sinalizou cancelamento. O encerramento usa o mesmo motivo informado na sinalização."
+              : config.description}
           </DialogDescription>
         </DialogHeader>
 
+        {fixo ? (
+          <div className="space-y-3 py-4">
+            <div className="rounded-lg border bg-muted/40 p-3 space-y-2">
+              <div>
+                <p className="text-xs text-muted-foreground">Motivo</p>
+                <p className="text-sm font-medium">{fixo.reason}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Observação</p>
+                <p className="text-sm whitespace-pre-wrap">{fixo.notes?.trim() || "Sem observação registrada na sinalização."}</p>
+              </div>
+            </div>
+          </div>
+        ) : (
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="churn-reason">Motivo *</Label>
@@ -127,6 +149,7 @@ export function ChurnReasonDialog({
             />
           </div>
         </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={handleCancel} disabled={isLoading}>
