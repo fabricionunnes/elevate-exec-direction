@@ -4463,7 +4463,7 @@ Deno.serve(async (req)=>{
         };
       }
       // 6) Base de conhecimento
-      const { data: kn } = await supabase.from("crm_ai_agent_knowledge").select("title, content").eq("agent_id", agent.id).eq("status", "ready");
+      const { data: kn } = await supabase.from("crm_ai_agent_knowledge").select("title, content").eq("agent_id", agent.id).eq("status", "ready").order("created_at", { ascending: true }).order("id", { ascending: true });
       let knowledge = "";
       for (const k of kn || []){
         if (!k.content) continue;
@@ -4474,6 +4474,7 @@ Deno.serve(async (req)=>{
       // EQUIPE DA UNV: a IA precisa saber quem é do time. Em 24/09/2026 ela disse pro lead
       // que "não tem ninguém com esse nome no meu time" sobre o Ricardo, que é closer.
       let equipeTexto = "";
+      let donoDoLeadTexto = ""; // muda por lead: vai na parte variável das instruções (cache)
       try {
         const { data: time } = await supabase.from("onboarding_staff").select("id, name, role, is_crm_closer").eq("is_active", true).order("name");
         const papel = (r, closer)=>closer ? "closer (faz as reuniões)" : r === "master" ? "direção" : r === "head_comercial" ? "head comercial" : r === "admin" ? "gestão" : r === "consultor" ? "consultor" : "time UNV";
@@ -4484,8 +4485,9 @@ Deno.serve(async (req)=>{
           donoId = ld?.closer_staff_id || ld?.owner_staff_id || null;
         }
         const dono = (time || []).find((t)=>t.id === donoId);
+        if (lista.length && dono) donoDoLeadTexto = `\n\nQuem cuida DESTE lead junto com você, da EQUIPE DA UNV listada acima: ${dono.name}.`;
         if (lista.length) {
-          equipeTexto = `\n\nEQUIPE DA UNV (pessoas de verdade, todas trabalham aqui):\n- ${lista.join("\n- ")}` + (dono ? `\nQuem cuida DESTE lead junto com você: ${dono.name}.` : "") + `\nREGRA: se o lead citar o nome de alguém dessa lista, CONFIRME que a pessoa é do time da UNV e siga a conversa com naturalidade ` + `(ex.: "é sim, o Ricardo é o nosso especialista, ele que vai te atender na reunião"). NUNCA diga que uma pessoa dessa lista não trabalha aqui, ` + `não é do seu time ou que você não conhece. Se o nome NÃO estiver na lista, não negue de forma seca: diga que vai confirmar com o time e volte pro assunto. ` + `Você é colega dessas pessoas, mesmo sem falar com todas no dia a dia.`;
+          equipeTexto = `\n\nEQUIPE DA UNV (pessoas de verdade, todas trabalham aqui):\n- ${lista.join("\n- ")}` + `\nREGRA: se o lead citar o nome de alguém dessa lista, CONFIRME que a pessoa é do time da UNV e siga a conversa com naturalidade ` + `(ex.: "é sim, o Ricardo é o nosso especialista, ele que vai te atender na reunião"). NUNCA diga que uma pessoa dessa lista não trabalha aqui, ` + `não é do seu time ou que você não conhece. Se o nome NÃO estiver na lista, não negue de forma seca: diga que vai confirmar com o time e volte pro assunto. ` + `Você é colega dessas pessoas, mesmo sem falar com todas no dia a dia.`;
         }
       } catch  {}
       const leadName = conv.contact?.name || conv.contact?.username || conv.contact?.phone || "o lead";
@@ -4677,14 +4679,18 @@ Deno.serve(async (req)=>{
         temBusca ? `- NUNCA invente dados da empresa. Se a busca não trouxer nada concreto e verdadeiro, não afirme — pergunte.` : `- NUNCA invente dados da empresa. Se você não tem nada concreto e verdadeiro, não afirme — pergunte.`,
         temBusca ? `- A busca é SILENCIOSA: nunca comente o processo ("vou pesquisar", "não achei nada sobre o perfil", "vou perguntar direto"). Escreva somente a mensagem final, como se a busca nunca tivesse existido.` : ""
       ].join("") : "";
-      const system = [
+      // CACHE (16/11/2026): as instruções vão em duas partes. A hora atual e os dados do lead ficavam no
+      // meio do texto e invalidavam o cache a cada minuto: 69% das chamadas regravavam uns 19,5 mil tokens
+      // pagando 125%. Agora a parte FIXA por agente (roteiro, base de conhecimento, equipe e regras) vem
+      // primeiro e é reaproveitada entre conversas; a parte VARIÁVEL (calendário, hora, dados do lead)
+      // vem depois. O texto de cada pedaço é o mesmo de antes, só a ordem mudou. Nada de data, hora ou
+      // dado de lead pode entrar na parte fixa.
+      const sysFixoBase = [
         agent.instructions || "Você é um atendente comercial.",
         agent.objective ? `\nOBJETIVO: ${agent.objective}` : "",
         agent.tone ? `\nTOM DE VOZ: ${agent.tone}` : "",
         knowledge ? `\n\nBASE DE CONHECIMENTO (use quando relevante, não invente):${knowledge}` : "",
         equipeTexto,
-        calendarioPrompt(agent),
-        `\n\nData/hora atual (Brasília): ${nowBR}. A saudação (bom dia/boa tarde/boa noite) segue ESTA hora — nunca repita a saudação do lead se ela não bater com o horário.`,
         qtdFerramentasBase ? `\nVocê TEM ferramentas de agenda/funil. REGRAS DE AGENDAMENTO (obrigatórias): (1) NUNCA cite horários sem antes chamar consultar_horarios para a data — não invente horários; (2) ofereça 2-3 opções vindas da ferramenta; (3) assim que o lead confirmar um dos horários oferecidos, chame agendar_reuniao IMEDIATAMENTE com esse horário — não consulte de novo, não ofereça outros; (4) só reofereça horários se agendar_reuniao retornar erro dizendo que ocupou; (5) ANTES de chamar agendar_reuniao, você precisa do NOME, do E-MAIL e do TELEFONE/WhatsApp do lead — peça numa única mensagem curta SOMENTE o que faltar e não estiver em DADOS JÁ CADASTRADOS (se nada faltar, agende direto, sem pedir confirmação de dados) e só chame a ferramenta quando tiver tudo; se você já sabe o nome dele pela conversa, não pergunte de novo — pergunte só o que falta; o nome que está em DADOS JÁ CADASTRADOS ou que ele usou na conversa basta, mesmo que seja apelido ou só o primeiro nome: NUNCA peça nome completo nem sobrenome e nunca segure o agendamento por causa disso; (6) passe email, telefone e nome_completo nos parâmetros de agendar_reuniao — eles vão pro cadastro do lead no CRM; (7) HORÁRIO CHEIO: se o horário que o lead escolheu já ocupou, ofereça o MAIS PRÓXIMO: outro horário no mesmo dia e, só se não houver, o dia seguinte com agenda. Nunca proponha a semana seguinte enquanto houver horário antes; (8) DIA COMBINADO EM MENSAGEM ANTIGA: as mensagens de dias anteriores vêm com carimbo [dia dd/mm hh:mm]. Um dia da semana escrito ali ("terça", "amanhã") vale pra data que ele tinha NAQUELE momento, não pra hoje. Se o lead topou "terça às 15h" numa sexta 31/10, a reunião é terça 03/11; se esse dia já chegou e o horário ocupou, aplique a regra (7). Nunca escreva o carimbo nas suas mensagens; (9) QUAIS HORÁRIOS OFERECER: entre os livres, prefira os da manhã (9h às 11h) e os dois primeiros dias com agenda; o mais próximo vem primeiro; (10) MICRO-COMPROMISSO (obrigatório): assim que agendar_reuniao confirmar, na mesma mensagem em que passa dia, horário e link, diga que a agenda do closer é cheia e que esse horário ficou separado pra ele, então conte com ele nesse horário; pergunte se ele vai entrar pelo computador ou pelo celular (no celular, oriente a já deixar o Google Meet instalado). NUNCA diga que ele pode remarcar e NUNCA fale em imprevisto; (11) CONFIRMAÇÃO DE PRESENÇA: na véspera e uma hora antes o sistema manda, em seu nome, uma mensagem pedindo confirmação (ela aparece no histórico). Se o lead confirmar, agradeça em UMA frase, sem pergunta, e encerre. Se ele pedir outro horário, aplique a regra (7) e remarque pro mais próximo. Se disser que não vai mais, chame transferir_para_humano; (12) SÓ UMA REMARCAÇÃO: você remarca uma única vez por lead. Se agendar_reuniao avisar que já houve remarcação, não ofereça horário nenhum: chame transferir_para_humano com o motivo e diga ao lead que o closer vai falar com ele direto.` : "",
         (agent.scheduling_enabled && (agent.scheduling_staff_ids || []).length > 1) ? `\nATENDIMENTO EM RODÍZIO (regra da direção, vale ACIMA das suas instruções): as reuniões são divididas entre mais de um consultor e quem atende depende do horário que o lead escolher. ANTES de agendar, não prometa nome de consultor, mesmo que suas instruções citem um nome fixo: fale em "um dos nossos consultores". DEPOIS que agendar_reuniao confirmar, informe SEMPRE ao lead o nome de quem vai atender, exatamente como a ferramenta devolveu.` : "",
         tools.some((t)=>t.name === "marcar_fora_do_perfil") ? `\nFORA DO PERFIL: se durante a conversa ficar claro que o lead não é do nosso perfil (outro segmento, sem time comercial, pessoa procurando emprego, curioso, concorrente), chame marcar_fora_do_perfil com o motivo e encerre com educação — sem insistir e sem agendar. Falta de orçamento agora ou "vou pensar" NÃO é fora de perfil: isso você trabalha como objeção.` : "",
@@ -4696,6 +4702,15 @@ Deno.serve(async (req)=>{
           ? `\n\nPISO DE FATURAMENTO (regra do Fabrício, vale ACIMA de qualquer instrução sua em contrário): você só agenda empresa que fatura ${Number(agent.min_revenue).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })} POR MÊS ou mais. Descubra isso em três passos, um por vez, sem parecer interrogatório: (1) pergunte quanto a empresa fatura por mês; (2) se ele não quiser passar o número, pergunte qual a meta de faturamento dele; (3) se ainda assim não vier, pergunte quantas pessoas trabalham com ele ou se tem time comercial — empresa com time montado já fatura acima do piso, então considere DENTRO e pare de perguntar. Assim que ele disser qualquer uma dessas coisas, chame salvar_dados_lead com o campo faturamento. Se ele DECLARAR faturamento abaixo do piso, NÃO agende nem que ele diga que tem dinheiro, que está animado ou que é só uma conversa: disposição de investir não substitui faturamento. Encerre com educação, sem humilhar e sem prometer retorno, e chame marcar_fora_do_perfil com tipo iniciante_ou_faturamento_baixo. Se ele se recusar a falar de faturamento, meta e porte depois de você ter tentado os três passos, aí sim agende e passe faturamento_nao_informado na chamada, pro closer saber que o lead veio sem qualificação. Não confunda faturamento com ticket nem com verba de tráfego.`
           : `\n\nSONDAGEM ANTES DE DISPENSAR (esta regra vale ACIMA de qualquer corte de faturamento escrito nas suas instruções): quando o lead disser que está começando, que ainda não fatura, que fatura pouco, que ainda não tem time ou que está atrás dos primeiros clientes, NÃO encerre, NÃO diga que "não é o momento" e NÃO suma. Faça a sondagem: (1) reconheça o momento dele em uma frase, sem julgamento; (2) pergunte de forma direta e natural se, mesmo nessa fase, ele tem disposição e condição de investir agora para estruturar isso do jeito certo — sem citar valores; (3) se ele disser que SIM, trate como lead qualificado e conduza para o agendamento normalmente; (4) se disser que NÃO ou que agora não tem como, aí sim encerre com educação deixando a porta aberta e chame marcar_fora_do_perfil com tipo iniciante_ou_faturamento_baixo e disposto_a_investir "nao"; (5) se ele desconversar, pergunte uma segunda vez de outro jeito antes de decidir. Nunca dispense alguém por faturamento sem ter feito essa pergunta.`),
         `\n\nGERENTE NA CONVERSA (esta regra vale ACIMA de qualquer instrução sua que mande encerrar com gerente): se o lead for gerente, gestor, coordenador, supervisor ou líder comercial, NÃO encerre e NÃO suma — continue a conversa e qualifique normalmente, ele conhece a operação. Na hora de agendar, tente UMA vez, com argumento de verdade, colocar o proprietário na reunião (quem decide investimento e meta é o dono, então com ele junto a conversa já sai com decisão; e o gerente ganha um aliado pra aprovar o que ele precisa). Se ele topar, agende com os dois ou com o dono. Se ele disser que o dono não pode, não quer ou que ele mesmo resolve, agende com o gerente mesmo, sem insistir de novo, e informe no agendamento que a reunião é com o gerente. Nunca deixe sem resposta alguém que disse ser gerente. Vendedor ou funcionário sem nenhuma influência na decisão: pergunte se consegue colocar o dono ou o gerente na conversa antes de qualquer encerramento.`,        tools.some((t)=>t.name === "marcar_perdido") ? `\nRECUSA (regra obrigatória): se o lead disser que NÃO quer, não tem interesse, já tem outra solução ou pede pra parar, NÃO tente contornar, NÃO argumente e NÃO faça pergunta. Chame marcar_perdido com o motivo e o tipo e encerre com uma frase curta de agradecimento, sem pergunta. Depois disso você não fala mais com este lead. Silêncio não é recusa; dúvida ou "vou pensar" também não. E "não" como resposta a uma pergunta de horário, dia ou opção NUNCA é recusa.` : "",
+        `\n\nVÍDEO E IMAGEM: "(vídeo do lead, fala transcrita) ..." é o que a pessoa FALOU no vídeo e "(imagem do lead, o que aparece nela) ..." é o que tem na imagem. Responda como quem assistiu/viu, com base nisso, sem citar transcrição ou descrição. Nunca diga que não consegue abrir vídeo ou imagem. Se vier "sem fala", comente a legenda (se tiver) ou pergunte com naturalidade o que ele quis mostrar. Só se vier "não consegui abrir" é que você pede, sem drama, pra ele contar em uma frase.`,
+        `\n\nÁUDIO: quando a mensagem vier como "(áudio do lead, transcrito) ...", o lead FALOU aquilo — trate como se tivesse ouvido e responda normalmente, SEMPRE em texto. Nunca diga que não conseguiu ouvir e nunca peça pra ele repetir por escrito. Só se vier "(o lead mandou um áudio que não consegui transcrever)" é que você pede, com naturalidade, que ele reescreva.`,
+        ESTILO_HUMANO,
+        `\n\nFERRAMENTAS E MENSAGEM: o lead só recebe o texto que você escreve DEPOIS de usar as ferramentas. Se for mandar um link (assinatura, página, formulário), ele tem que estar na sua mensagem final, mesmo que você já tenha escrito antes de chamar uma ferramenta. Nunca diga "qualquer dúvida na hora de assinar" sem o link estar na mesma mensagem ou numa mensagem sua anterior que o lead já recebeu.`,
+      ].join("");
+      const sysVariavelBase = [
+        donoDoLeadTexto,
+        calendarioPrompt(agent),
+        `\n\nData/hora atual (Brasília): ${nowBR}. A saudação (bom dia/boa tarde/boa noite) segue ESTA hora — nunca repita a saudação do lead se ela não bater com o horário.`,
         mtgCtxMain.texto,
         confirmedTimeHint,
         missingNameHint,
@@ -4703,19 +4718,16 @@ Deno.serve(async (req)=>{
         perfilHint,
         tools.some((t)=>t.name === "agendar_reuniao") ? missingQualHint : "",
         igPersonalization,
-        `\n\nVÍDEO E IMAGEM: "(vídeo do lead, fala transcrita) ..." é o que a pessoa FALOU no vídeo e "(imagem do lead, o que aparece nela) ..." é o que tem na imagem. Responda como quem assistiu/viu, com base nisso, sem citar transcrição ou descrição. Nunca diga que não consegue abrir vídeo ou imagem. Se vier "sem fala", comente a legenda (se tiver) ou pergunte com naturalidade o que ele quis mostrar. Só se vier "não consegui abrir" é que você pede, sem drama, pra ele contar em uma frase.`,
-        `\n\nÁUDIO: quando a mensagem vier como "(áudio do lead, transcrito) ...", o lead FALOU aquilo — trate como se tivesse ouvido e responda normalmente, SEMPRE em texto. Nunca diga que não conseguiu ouvir e nunca peça pra ele repetir por escrito. Só se vier "(o lead mandou um áudio que não consegui transcrever)" é que você pede, com naturalidade, que ele reescreva.`,
-        ESTILO_HUMANO,
-        `\n\nFERRAMENTAS E MENSAGEM: o lead só recebe o texto que você escreve DEPOIS de usar as ferramentas. Se for mandar um link (assinatura, página, formulário), ele tem que estar na sua mensagem final, mesmo que você já tenha escrito antes de chamar uma ferramenta. Nunca diga "qualquer dúvida na hora de assinar" sem o link estar na mesma mensagem ou numa mensagem sua anterior que o lead já recebeu.`,
         `\n\nVocê está respondendo uma conversa de ${channelLabel} com ${leadName}. Responda como mensagem: curta, humana, sem markdown, sem títulos, uma ideia por mensagem. NUNCA repita uma pergunta que o lead já respondeu — antes de perguntar, confira o histórico. Escreva a resposta UMA única vez, sem repetir o texto. Não diga por conta própria que é assistente virtual ou IA, e também NUNCA afirme que é humano ou que é "a própria pessoa" falando. Se o lead pedir pra falar com uma pessoa ou perguntar se está falando com robô, não negue: chame transferir_para_humano (o sistema já trata esse caso antes de você, isto é só garantia). Se não souber algo, seja honesto e ofereça encaminhar para uma pessoa. TUDO que você escrever é enviado ao lead exatamente como está — jamais inclua raciocínio, plano, anotação interna ou comentário sobre ferramentas no texto.`
       ].join("");
       // INTERVENÇÃO HUMANA (19/09/2026, Fabrício): "o agente tem que ler o que qualquer pessoa
       // manda de forma manual, pra seguir o ritmo". As mensagens do time já entravam no
       // histórico, mas como se fossem do próprio agente — ele não sabia que uma pessoa tinha
       // mudado o rumo (ex.: agente dispensou o lead e o Fabrício reabriu oferecendo reunião).
-      let systemFinal = system;
-      // só entra quando o agente tem ferramenta externa liberada
-      if (mcp.tools.length) systemFinal += MCP_AVISO;
+      let sysFixo = sysFixoBase;
+      // só entra quando o agente tem ferramenta externa liberada (fixo por agente)
+      if (mcp.tools.length) sysFixo += MCP_AVISO;
+      let systemFinal = sysVariavelBase; // parte variável: recebe também as mensagens escritas à mão pelo time
       try {
         const recentes = msgs.slice(-16);
         const manuais = recentes.filter((m)=>m.humano).slice(-5);
@@ -4766,6 +4778,7 @@ Deno.serve(async (req)=>{
       }
       // 8) Loop de IA com tool_use (máx 5 iterações)
       const toolCalls = [];
+      const usosIA = []; // uso de tokens de cada chamada (sai só na simulação, pra conferir o cache)
       let encerrarConversa = false; // marcar_perdido rodou: depois de responder, o agente sai desta conversa
       let transferidoHumano = false; // transferir_para_humano rodou: responde e sai desta conversa
       let transferidoPorPerguntaIA = false; // o motivo da transferência foi o lead perguntar se é IA/robô
@@ -4788,6 +4801,15 @@ Deno.serve(async (req)=>{
           // iteração do loop de tools e entre mensagens da mesma conversa — sem
           // cache, cada rodada paga o preço cheio dessa parte de novo
           system: [
+            // parte fixa por agente: reaproveitada entre conversas enquanto o cache estiver quente
+            {
+              type: "text",
+              text: sysFixo,
+              cache_control: {
+                type: "ephemeral"
+              }
+            },
+            // parte variável (hora, calendário, dados do lead): reaproveitada só nas voltas desta resposta
             {
               type: "text",
               text: systemFinal,
@@ -4838,6 +4860,7 @@ Deno.serve(async (req)=>{
           };
         }
         const aiData = await aiResp.json();
+        usosIA.push({ entrada: aiData?.usage?.input_tokens ?? 0, saida: aiData?.usage?.output_tokens ?? 0, cache_lido: aiData?.usage?.cache_read_input_tokens ?? 0, cache_gravado: aiData?.usage?.cache_creation_input_tokens ?? 0 });
         logUsoIA("crm-agent-respond", body.model, aiData?.usage, {
           agente: agent?.name,
           canal: channel
@@ -5060,7 +5083,10 @@ Deno.serve(async (req)=>{
         tool_calls: toolCalls,
         content_shape: lastContentShape,
         // conferência: a lista exata de ferramentas que foi pro modelo, na ordem
-        tools_offered: tools.map((t)=>t.name)
+        tools_offered: tools.map((t)=>t.name),
+        // conferência do cache: tamanho de cada parte das instruções e o uso de tokens de cada chamada
+        prompt_partes: { fixo_caracteres: sysFixo.length, variavel_caracteres: systemFinal.length },
+        uso_ia: usosIA
       };
       // 9) Envia (auto) ou guarda sugestão (copiloto)
       if (mode === "auto") {
