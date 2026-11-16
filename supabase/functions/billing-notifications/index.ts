@@ -426,6 +426,16 @@ Deno.serve(async (req) => {
           }
           autoDebitoHoje.add(String(invoice.id));
           message = buildAutoDebitMessage(rule, invoice, company);
+        } else if (rule.trigger_type === "before" && /mercadopago|mercadolivre|mpago\./i.test(String(invoice.payment_link_url || ""))) {
+          // Link de cartão do Mercado Pago (16/11/2026, Fabrício: "ajusta o texto dos lembretes pra não
+          // falar do desconto"): o link cobra o valor cheio, então o lembrete antes do vencimento sai com
+          // texto próprio, sem a oferta de 5%, e no máximo um por dia.
+          if (autoDebitoHoje.has(String(invoice.id))) {
+            skippedReasons.push(`[${company.name}] link de cartão: lembrete já enviado hoje`);
+            continue;
+          }
+          autoDebitoHoje.add(String(invoice.id));
+          message = buildCardLinkMessage(invoice, company);
         } else if (invoice.auto_debit && !String(invoice.payment_link_url || "").includes("asaas")) {
           // atrasou mas o Asaas ainda não devolveu a cobrança vencida: sem link não manda cobrança vazia
           skippedReasons.push(`[${company.name}] Pix Automático vencido sem link da cobrança no Asaas`);
@@ -605,6 +615,17 @@ function buildMessage(rule: any, invoice: any, company: any, today: Date): strin
   msg = msg.replace(/\{\{parcela\}\}/g, parcela);
 
   return msg;
+}
+
+/** Lembrete antes do vencimento pra parcela com link de cartão do Mercado Pago: sem oferta de desconto. */
+function buildCardLinkMessage(invoice: any, company: any): string {
+  const valor = (invoice.amount_cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const [a, m, d] = String(invoice.due_date).split("-");
+  return `Olá ${company.name || ""}! 👋\n\n` +
+    `Lembramos que você tem uma fatura próxima do vencimento:\n\n` +
+    `📄 *${invoice.description || "Fatura"}*\n💰 *Valor:* ${valor}\n📅 *Vencimento:* ${d}/${m}/${a}\n\n` +
+    `Acesse o link para pagar no cartão de crédito:\n🔗 ${invoice.payment_link_url}\n\n` +
+    `Obrigado! ✨`;
 }
 
 /** 1ª parcela do Pix Automático: é paga pelo link, e o mesmo pagamento autoriza os débitos seguintes. */
