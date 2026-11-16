@@ -261,6 +261,8 @@ Deno.serve(async (req) => {
           await sbAuth.from("asaas_pix_automatico").update({
             status: a.status || pa.status, ultimo_evento: String(event), atualizado_em: new Date().toISOString(),
             ...(sub && !pa.subscription_id ? { subscription_id: String(sub) } : {}),
+            // identificador do QR da 1ª parcela: é por ele que o pagamento feito como Pix comum é reconhecido
+            ...(a.immediateQrCode?.conciliationIdentifier ? { qr_conciliacao: String(a.immediateQrCode.conciliationIdentifier) } : {}),
           }).eq("id", pa.id);
           if (sub && pa.recurring_charge_id) {
             await sbAuth.from("company_recurring_charges").update({ pagarme_plan_id: String(sub) }).eq("id", pa.recurring_charge_id).is("pagarme_plan_id", null);
@@ -296,6 +298,21 @@ Deno.serve(async (req) => {
     const paymentValueCents = Math.round((paymentValue || 0) * 100);
 
     console.log(`[Asaas Webhook] Event: ${event}, Payment: ${paymentId}, Status: ${paymentStatus} -> ${newStatus}, Subscription: ${subscriptionId}, DueDate: ${dueDate}, Value: ${paymentValue}, Discount: ${paymentDiscount}`);
+
+    // === Pix Automático pago como Pix comum (16/11/2026, caso Trilobit) ===
+    // O banco do cliente pagou o QR da 1ª parcela sem autorizar a recorrência: o Asaas mandou o pagamento
+    // como "Pix recebido", sem pixAutomaticAuthorizationId, só com pixQrCodeId (o identificador do QR).
+    // Sem isso o pagamento não casava com parcela nenhuma e ficava sem baixa. Aqui o pagamento é ligado
+    // à autorização pelo identificador, e daí pra frente segue o mesmo caminho do Pix Automático.
+    if (!payment.pixAutomaticAuthorizationId && payment.pixQrCodeId) {
+      try {
+        const { data: porQr } = await supabase.from("asaas_pix_automatico").select("id").eq("qr_conciliacao", String(payment.pixQrCodeId)).limit(1);
+        if (porQr?.[0]?.id) {
+          payment.pixAutomaticAuthorizationId = porQr[0].id;
+          console.log(`[Asaas Webhook] Pagamento ${paymentId} reconhecido pelo QR do Pix Automático ${porQr[0].id} (pago como Pix comum)`);
+        }
+      } catch (e) { console.error("[Asaas Webhook] pix automatico por QR", e); }
+    }
 
     // === Pagamento gerado no CRM (lead) — marca pago + credita banco Asaas (já com taxa) ===
     try {
