@@ -352,6 +352,13 @@ export function CompanyRecurringCharges({
         },
       });
       if (subError || subData?.error) throw new Error(subData?.error || subError?.message || "erro no Asaas");
+      // Pix Automático: o QR novo já sai com a 1ª parcela apontando pra ele; é só mostrar e mandar pro cliente
+      if (subData?.pix_auto) {
+        toast.success(subData.ja_existia ? "Esta recorrência já tem um QR Code válido." : "QR Code novo gerado. Mande o link pro cliente autorizar.");
+        fetchCharges();
+        setQrAberto(subData.pix_auto);
+        return;
+      }
       toast.info("Gerando os links de pagamento das parcelas...");
       const { data: bf, error: bfError } = await supabase.functions.invoke("generate-invoices", {
         body: { action: "backfill_payment_links", recurring_charge_id: charge.id },
@@ -720,6 +727,15 @@ export function CompanyRecurringCharges({
                     <FileText className="h-3 w-3 mr-1" />
                     Gerar Parcelas
                   </Button>
+                  {charge.is_active && charge.payment_method === "pix_automatico" && ["REFUSED", "EXPIRED", "CANCELLED", "DENIED"].includes(String(pixAuto[charge.id]?.status || "")) && (
+                    <Button type="button" variant="outline" size="sm" disabled={retrying === charge.id}
+                      className="border-amber-500/50 text-amber-700 dark:text-amber-400"
+                      title="O QR Code venceu ou o banco não confirmou a autorização. Gera um QR novo pra mesma recorrência, sem mexer nas parcelas"
+                      onClick={() => tentarAsaasDeNovo(charge)}>
+                      {retrying === charge.id ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <QrCode className="h-3 w-3 mr-1" />}
+                      Gerar novo QR Code
+                    </Button>
+                  )}
                   {charge.pagarme_link_id === MP_YAS_MARCA && (
                     <Button type="button" variant="outline" size="sm" className="h-7 text-xs" disabled={gerandoLink === charge.id}
                       title="Gera o link de cartão do Mercado Pago Yas das parcelas em aberto que ainda não têm e copia o da primeira"
