@@ -101,6 +101,10 @@ async function tarefaContrato(sb: any, projectId: string | null) {
 async function verificarLead(sb: any, l: any, dryRun: boolean) {
   const { data: reg } = await sb.from("crm_contrato_ganho").select("*").eq("lead_id", l.id).maybeSingle();
   if (reg?.status === "anexado") return { lead: l.name, status: "ja_anexado" };
+  // Dispensado (Fabrício, 16/11/2026: "Expert Integrado e Karla Villanova não é pra mandar lembrete de
+  // contrato"): ganho que não vai ter contrato pelo Nexus. Fica fora da conferência e da cobrança do closer.
+  // Marca-se à mão: update crm_contrato_ganho set status = 'dispensado' where lead_id = '<lead>'.
+  if (reg?.status === "dispensado") return { lead: l.name, status: "dispensado" };
   const emp = await empresaDoLead(sb, l);
   const envs = await envelopesDoLead(sb, l);
   const assinado = envs.find((e) => e.status === "completed" && e.final_file_path);
