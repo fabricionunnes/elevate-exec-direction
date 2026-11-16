@@ -96,15 +96,17 @@ export function OfficialDispatchProgress() {
 
       const lista: Andamento[] = [];
       for (const c of relevantes) {
-        const { data: recs } = await supabase.from(REC as any).select("status").eq("campaign_id", c.id).limit(10000);
-        let total = 0, pendentes = 0, enviados = 0, falhas = 0;
-        for (const r of (recs || []) as any[]) {
-          if (r.status === "skipped") continue;
-          total++;
-          if (r.status === "pending" || r.status === "processing") pendentes++;
-          else if (r.status === "error" || r.status === "failed") falhas++;
-          else enviados++;
-        }
+        // Contagem exata no banco. Antes trazia as linhas e contava aqui, mas a API devolve no máximo
+        // 1000 por consulta: num disparo de 10 mil a barra mostrava só a fatia das primeiras 1000
+        // (caso de 16/11/2026: "773" num disparo com 5.589 na fila).
+        const conta = async (st: string[] | null) => {
+          let q = supabase.from(REC as any).select("id", { count: "exact", head: true }).eq("campaign_id", c.id);
+          q = st ? q.in("status", st) : q.neq("status", "skipped");
+          const { count } = await q;
+          return count || 0;
+        };
+        const [total, pendentes, falhas] = await Promise.all([conta(null), conta(["pending", "processing"]), conta(["error", "failed"])]);
+        const enviados = Math.max(total - pendentes - falhas, 0);
         const antes = statusAnterior.current.get(c.id);
         if (antes && antes !== c.status) {
           if (c.status === "done") {
