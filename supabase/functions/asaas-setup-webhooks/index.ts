@@ -5,7 +5,7 @@
 // em eventos nem recria nada. O que faz:
 //   POST {}                         só lista, nada muda: por conta, se o webhook existe, se tem token,
 //                                   se a fila está parada e quantos eventos assina.
-//   POST { aplicar_token: true }    grava o 1º token de ASAAS_WEBHOOK_TOKEN como authToken do webhook
+//   POST { aplicar_token: true }    grava o 1º token configurado (ASAAS_WEBHOOK_TOKEN) como authToken do webhook
 //                                   (atualização parcial: nome, eventos e o resto ficam como estão).
 //   POST { reativar_fila: true }    religa a fila que o Asaas parou depois de falhas seguidas.
 //   Os dois podem ir juntos. "contas": ["principal", "social"] limita por nome (trecho, sem acento).
@@ -36,8 +36,18 @@ function iguaisSeguro(a: string, b: string): boolean {
 }
 const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
-const tokensDoWebhook = () =>
-  (Deno.env.get("ASAAS_WEBHOOK_TOKEN") || "").split(",").map((t) => t.trim()).filter((t) => t.length >= 32);
+// Token e modo moram em tenant_integration_secrets (provider "asaas_webhook"): o projeto bateu no limite
+// de 100 segredos do Supabase em 16/11/2026. Se existirem como segredo de ambiente, valem também.
+async function configDoWebhook(supabase: any): Promise<{ tokens: string[]; modo: string }> {
+  let tokensTxt = Deno.env.get("ASAAS_WEBHOOK_TOKEN") || "";
+  let modo = Deno.env.get("ASAAS_WEBHOOK_AUTH_MODE") || "";
+  const { data } = await supabase.from("tenant_integration_secrets").select("secret_name, secret_value").eq("provider", "asaas_webhook");
+  for (const r of data || []) {
+    if (r.secret_name === "ASAAS_WEBHOOK_TOKEN") tokensTxt = [tokensTxt, r.secret_value].filter(Boolean).join(",");
+    if (r.secret_name === "ASAAS_WEBHOOK_AUTH_MODE" && !modo) modo = String(r.secret_value || "");
+  }
+  return { tokens: tokensTxt.split(",").map((t) => t.trim()).filter((t) => t.length >= 32), modo: modo.trim().toLowerCase() || "observar" };
+}
 
 async function asaas(key: string, path: string, method: string, body?: unknown) {
   const res = await fetch(`${ASAAS_BASE}${path}`, {
@@ -65,9 +75,9 @@ async function chaveDaConta(supabase: any, acc: { id: string; api_key_secret_nam
   return "";
 }
 
-async function podeChamar(req: Request, supabase: any): Promise<boolean> {
+async function podeChamar(req: Request, supabase: any, tokens: string[]): Promise<boolean> {
   const enviado = (req.headers.get("x-setup-token") || "").trim();
-  if (enviado && tokensDoWebhook().some((t) => iguaisSeguro(enviado, t))) return true;
+  if (enviado && tokens.some((t) => iguaisSeguro(enviado, t))) return true;
   const jwt = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!jwt) return false;
   if (iguaisSeguro(jwt, SERVICE_ROLE)) return true;
@@ -83,7 +93,8 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return j({ ok: false, error: "use POST" }, 405);
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
-  if (!(await podeChamar(req, supabase))) return j({ ok: false, error: "não autorizado" }, 401);
+  const cfg = await configDoWebhook(supabase);
+  if (!(await podeChamar(req, supabase, cfg.tokens))) return j({ ok: false, error: "não autorizado" }, 401);
 
   let body: any = {};
   try { body = await req.json(); } catch { /* corpo vazio = só listar */ }
@@ -91,7 +102,7 @@ Deno.serve(async (req) => {
   const reativarFila = body?.reativar_fila === true;
   const filtro: string[] = Array.isArray(body?.contas) ? body.contas.map((c: unknown) => semAcento(String(c))) : [];
 
-  const token = tokensDoWebhook()[0] || "";
+  const token = cfg.tokens[0] || "";
   if (aplicarToken && !token) return j({ ok: false, error: "ASAAS_WEBHOOK_TOKEN não está configurado (mínimo 32 caracteres)" }, 400);
 
   const { data: accounts, error } = await supabase.from("asaas_accounts")
@@ -140,7 +151,7 @@ Deno.serve(async (req) => {
   console.log("[asaas-setup-webhooks]", JSON.stringify({ aplicarToken, reativarFila, contas }));
   return j({
     ok: true, webhook_url: WEBHOOK_URL, aplicou_token: aplicarToken, reativou_fila: reativarFila,
-    token_configurado_no_nexus: !!token, modo: (Deno.env.get("ASAAS_WEBHOOK_AUTH_MODE") || "observar").trim().toLowerCase(),
+    token_configurado_no_nexus: !!token, modo: cfg.modo,
     contas,
   });
 });

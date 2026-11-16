@@ -63,9 +63,30 @@ async function forwardUnvStart(body: unknown) {
 // === Origem do evento (13/11/2026) ===
 // O Asaas manda o token do webhook no cabeçalho asaas-access-token. As chamadas internas (asaas-sync
 // reenviando pagamento) vêm com a chave de serviço. Qualquer outra origem é desconhecida.
-// Segredos: ASAAS_WEBHOOK_TOKEN (um ou mais tokens separados por vírgula, pra trocar sem derrubar)
+// Configuração: ASAAS_WEBHOOK_TOKEN (um ou mais tokens separados por vírgula, pra trocar sem derrubar)
 // e ASAAS_WEBHOOK_AUTH_MODE ("exigir" bloqueia com 401; qualquer outro valor só registra e segue).
-// Sem ASAAS_WEBHOOK_TOKEN nunca bloqueia. O que não confere fica em asaas_webhook_origem_log.
+// Os dois moram em tenant_integration_secrets (provider "asaas_webhook"), porque o projeto bateu no
+// limite de 100 segredos do Supabase em 16/11/2026; se existirem como segredo de ambiente, valem também.
+// Sem token configurado nunca bloqueia. O que não confere fica em asaas_webhook_origem_log.
+let cfgOrigem: { tokens: string[]; modo: string; lidoEm: number } | null = null;
+async function configDaOrigem(): Promise<{ tokens: string[]; modo: string }> {
+  if (cfgOrigem && Date.now() - cfgOrigem.lidoEm < 60000) return cfgOrigem;
+  let tokensTxt = Deno.env.get("ASAAS_WEBHOOK_TOKEN") || "";
+  let modo = Deno.env.get("ASAAS_WEBHOOK_AUTH_MODE") || "";
+  try {
+    const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data } = await sb.from("tenant_integration_secrets").select("secret_name, secret_value").eq("provider", "asaas_webhook");
+    for (const r of data || []) {
+      if (r.secret_name === "ASAAS_WEBHOOK_TOKEN") tokensTxt = [tokensTxt, r.secret_value].filter(Boolean).join(",");
+      if (r.secret_name === "ASAAS_WEBHOOK_AUTH_MODE" && !modo) modo = String(r.secret_value || "");
+    }
+  } catch (e) { console.error("[Asaas Webhook][origem] falha ao ler a configuração", e); }
+  cfgOrigem = {
+    tokens: tokensTxt.split(",").map((t) => t.trim()).filter((t) => t.length >= 32),
+    modo: modo.trim().toLowerCase(), lidoEm: Date.now(),
+  };
+  return cfgOrigem;
+}
 function iguaisSeguro(a: string, b: string): boolean {
   const ea = new TextEncoder().encode(a), eb = new TextEncoder().encode(b);
   let dif = ea.length ^ eb.length;
@@ -86,8 +107,9 @@ type OrigemEvento = {
 };
 async function conferirOrigem(req: Request): Promise<OrigemEvento> {
   const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-  const esperados = (Deno.env.get("ASAAS_WEBHOOK_TOKEN") || "").split(",").map((t) => t.trim()).filter((t) => t.length >= 32);
-  const modo = esperados.length && (Deno.env.get("ASAAS_WEBHOOK_AUTH_MODE") || "").trim().toLowerCase() === "exigir" ? "exigir" : "observar";
+  const cfg = await configDaOrigem();
+  const esperados = cfg.tokens;
+  const modo = esperados.length && cfg.modo === "exigir" ? "exigir" : "observar";
   const recebido = (req.headers.get("asaas-access-token") || "").trim();
   const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
   const apikey = (req.headers.get("apikey") || "").trim();
