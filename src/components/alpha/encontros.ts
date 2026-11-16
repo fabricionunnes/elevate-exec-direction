@@ -42,6 +42,9 @@ const dreMes = (d: DadosAlpha, mes: number) => d.dre.find((m) => m.mes === mes);
 const abre = (foco: string) => ({ hora: "14h15", titulo: "A Mesa", texto: `Cada membro abre o painel na tela: ${foco} do mês passado contra o plano, os 3 compromissos (cumpriu ou não) e uma vitória. Quem cumpriu os 3 toca o sino.` });
 const fecha = { hora: "16h30", titulo: "Compromissos no sistema", texto: "Cada membro sai com 3 compromissos lançados aqui, ligados ao tema do mês. Eles são cobrados no encontro online, 15 dias depois." };
 const hot = (texto: string) => ({ hora: "15h45", titulo: "Hot seats", texto });
+/** Vitrine Alpha (pedido do Fabrício, 16/11/2026): todo mês, em rodízio, dois membros apresentam o próprio negócio. */
+const vitrine = { hora: "16h00", titulo: "Vitrine Alpha", texto: "Os 2 membros da vez, em rodízio, apresentam seu produto ou serviço para a mesa: 10 minutos cada e 5 de perguntas. Venda, parceria e indicação entre os membros começam aqui. Ao longo do ano, todo mundo tem a sua vez." };
+const vitrineKart = { hora: "12h30", titulo: "Vitrine Alpha no almoço", texto: "Os 2 membros da vez, em rodízio, apresentam seu produto ou serviço para a mesa durante o almoço, antes do GP." };
 
 export const ENCONTROS: Encontro[] = [
   {
@@ -52,6 +55,7 @@ export const ENCONTROS: Encontro[] = [
       { hora: "14h45", titulo: "Aula: o ano começa pelo lucro", texto: "Do DRE do ano passado ao plano deste ano. Faturamento é consequência: primeiro a meta de lucro, depois o faturamento e o teto de despesa que fecham a conta." },
       { hora: "15h30", titulo: "Mão na massa", texto: "Cada membro monta o plano no sistema, ao vivo: faturamento do ano anterior, crescimento de 15%, impostos, custo variável, despesa fixa e reserva de caixa." },
       hot("2 membros apresentam o plano e a mesa questiona as premissas: o crescimento está ancorado em quê?"),
+      vitrine,
       fecha,
     ],
     conceitos: ["Lucro líquido como placar", "Sazonalidade: o plano segue o ano anterior", "Reserva de caixa antes de distribuir", "Reinvestimento é decisão, não sobra"],
@@ -73,6 +77,7 @@ export const ENCONTROS: Encontro[] = [
       { hora: "14h45", titulo: "Aula: meta que ninguém assina não existe", texto: "Como quebrar a meta do plano por produto e por vendedor, como definir o indicador de rotina (ticket, conversão, reuniões) e como fazer a reunião semanal com número na tela." },
       { hora: "15h20", titulo: "Mão na massa", texto: "Cadastro das metas do mês no sistema, por vendedor e por produto, e réplica até dezembro." },
       hot("Quem tem time comercial maior mostra como distribuiu a meta. A mesa testa se a soma bate com o plano."),
+      vitrine,
       fecha,
     ],
     conceitos: ["Meta da empresa = soma das metas individuais", "Indicador de rotina antecipa o resultado", "Reunião semanal de funil"],
@@ -93,6 +98,7 @@ export const ENCONTROS: Encontro[] = [
       { hora: "14h45", titulo: "Aula: margem de contribuição", texto: "Receita menos imposto menos custo variável. O produto que mais vende nem sempre é o que mais lucra. Política de desconto com teto e com troca." },
       { hora: "15h20", titulo: "Mão na massa", texto: "Separar o custo variável em categorias no sistema e ler a margem de contribuição de fevereiro no DRE." },
       hot("Quem dá mais desconto mostra o efeito no lucro. A mesa propõe a regra."),
+      vitrine,
       fecha,
     ],
     conceitos: ["Margem de contribuição", "Ponto de equilíbrio", "Desconto come margem, não faturamento"],
@@ -112,6 +118,7 @@ export const ENCONTROS: Encontro[] = [
       { hora: "14h45", titulo: "Aula: lucro não é caixa", texto: "Leitura do fluxo de caixa do trimestre: prazo de recebimento, despesa que cresce sozinha, capital de giro. Como a reserva protege a distribuição." },
       { hora: "15h20", titulo: "Mão na massa", texto: "Cada membro aprova a participação do 1º trimestre no sistema e lista 3 despesas para cortar." },
       hot("Quem está com caixa apertado abre o fluxo. A mesa acha o vazamento."),
+      vitrine,
       fecha,
     ],
     conceitos: ["Regime de caixa x competência", "Capital de giro", "Despesa que não gera receita"],
@@ -130,6 +137,7 @@ export const ENCONTROS: Encontro[] = [
       { hora: "09h00", titulo: "A Mesa (manhã, antes do kart)", texto: "Painel na tela e compromissos de abril. O dia de GP começa com número." },
       { hora: "09h30", titulo: "Aula: o agente que vende enquanto você dorme", texto: "Onde a IA entra no funil: primeiro atendimento, follow-up, reativação da base. Como medir: meta própria para vendas da IA." },
       { hora: "11h00", titulo: "Mão na massa", texto: "Cada membro escolhe o agente, define a meta de vendas da IA no sistema e marca a data de entrada no ar." },
+      vitrineKart,
       { hora: "14h00", titulo: "GP de kart", texto: "Tomada de tempo, corrida e premiação." },
     ],
     conceitos: ["IA no topo do funil", "Follow-up que não esquece", "Reativação da base parada"],
@@ -148,6 +156,7 @@ export const ENCONTROS: Encontro[] = [
       { hora: "14h45", titulo: "Aula: replanejar sem se enganar", texto: "O que segue, o que muda e o que para. Como corrigir o plano sem baixar a meta do ano." },
       { hora: "15h20", titulo: "Mão na massa", texto: "Revisão do plano de julho a dezembro no sistema." },
       hot("Quem está no amarelo ou no vermelho do semáforo vai pro hot seat obrigatório."),
+      vitrine,
       fecha,
     ],
     conceitos: ["Semáforo do plano", "Replanejamento", "Meta do ano não se renegocia, o caminho sim"],
@@ -166,6 +175,7 @@ export const ENCONTROS: Encontro[] = [
       { hora: "14h45", titulo: "Aula: comissão que dá lucro", texto: "Comissão sobre margem, não só sobre faturamento. Piso, variável e teto. Custo do time como percentual da receita." },
       { hora: "15h20", titulo: "Mão na massa", texto: "Conferir o custo do time no DRE e aprovar a participação do 2º trimestre." },
       hot("Quem tem o time mais caro em relação à receita abre os números."),
+      vitrine,
       fecha,
     ],
     conceitos: ["Custo de pessoal sobre receita", "Comissão sobre margem", "Remuneração variável"],
@@ -184,6 +194,7 @@ export const ENCONTROS: Encontro[] = [
       { hora: "14h45", titulo: "Aula: CAC e retorno por canal", texto: "Custo de aquisição, retorno do investimento em mídia e o canal que você deveria cortar." },
       { hora: "15h20", titulo: "Mão na massa", texto: "Separar a despesa comercial por canal e criar a meta de CAC." },
       hot("Quem investe mais em mídia mostra o retorno de cada canal."),
+      vitrine,
       fecha,
     ],
     conceitos: ["CAC", "Retorno por canal", "Corte do canal que não paga"],
@@ -201,6 +212,7 @@ export const ENCONTROS: Encontro[] = [
       { hora: "14h45", titulo: "Aula: o cliente que você já tem", texto: "Ticket médio, recompra, oferta para a carteira. Receita da carteira separada da venda nova." },
       { hora: "15h20", titulo: "Mão na massa", texto: "Separar a receita da carteira e criar a meta de ticket médio." },
       hot("Quem tem a maior carteira parada desenha a campanha de reativação."),
+      vitrine,
       fecha,
     ],
     conceitos: ["Ticket médio", "LTV", "Receita recorrente"],
@@ -219,6 +231,7 @@ export const ENCONTROS: Encontro[] = [
       { hora: "14h45", titulo: "Aula: a empresa que roda sem você", texto: "Mapa das tarefas do dono, o que automatizar, o que delegar e quanto isso devolve no DRE." },
       { hora: "15h20", titulo: "Mão na massa", texto: "Registrar os cortes no sistema e aprovar a participação do 3º trimestre." },
       hot("Quem ainda faz tudo sozinho mostra a agenda da semana."),
+      vitrine,
       fecha,
     ],
     conceitos: ["Dependência do dono", "Automação com IA", "Processo documentado"],
@@ -236,6 +249,7 @@ export const ENCONTROS: Encontro[] = [
       { hora: "09h00", titulo: "A Mesa (manhã, antes do kart)", texto: "Painel na tela com a projeção do ano." },
       { hora: "09h30", titulo: "Aula: o orçamento que começa em novembro", texto: "Projeção de fechamento do ano, meta do ano seguinte e o investimento que destrava o próximo salto." },
       { hora: "11h00", titulo: "Mão na massa", texto: "Rascunho do planejamento do próximo ano no sistema (troque o ano no topo)." },
+      vitrineKart,
       { hora: "14h00", titulo: "GP de kart", texto: "Tomada de tempo, corrida e premiação." },
     ],
     conceitos: ["Projeção de fechamento", "Orçamento base zero", "Investimento com retorno"],
@@ -253,6 +267,7 @@ export const ENCONTROS: Encontro[] = [
       abre("lucro do ano"),
       { hora: "14h45", titulo: "Aula: o ano no papel", texto: "DRE do ano contra o plano, crescimento contra o ano anterior, quanto virou participação de lucro." },
       { hora: "15h30", titulo: "Abertura das cartas", texto: "Cada membro abre a carta que escreveu na iniciação e compara com o número de hoje." },
+      vitrine,
       fecha,
     ],
     conceitos: ["Fechamento anual", "Crescimento real", "Distribuição de lucro"],
