@@ -55,6 +55,12 @@ Deno.serve(async (req) => {
     const net = Math.round(Number(pay?.transaction_details?.net_received_amount || pay?.transaction_amount || 0) * 100);
     const feeCents = Math.max(0, gross - net);
 
+    // === Parcela de empresa (recorrência do Financeiro com link do Mercado Pago), 16/11/2026 ===
+    if (String(extRef).startsWith("inv:")) {
+      await baixaDaParcela(supabase, String(extRef).slice(4), newStatus, gross, net, feeCents, MP_BANK, account, String(paymentId));
+      return new Response("ok");
+    }
+
     const { data: lp } = await supabase.from("crm_lead_payments")
       .select("id, receivable_id, status, amount_cents, description, url, lead:crm_leads(name)").eq("id", extRef).maybeSingle();
     if (!lp) return new Response("ok");
@@ -98,3 +104,44 @@ Deno.serve(async (req) => {
     return new Response("ok"); // sempre 200 pro MP não reenviar em loop
   }
 });
+
+// Baixa da parcela (company_invoices) paga no cartão pelo Mercado Pago. O pagamento já foi conferido na
+// API do Mercado Pago lá em cima; aqui só entra quando ele está aprovado e a parcela ainda não foi paga.
+async function baixaDaParcela(supabase: any, invoiceId: string, newStatus: string, gross: number, net: number, feeCents: number, bankId: string, account: string, mpPaymentId: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(invoiceId)) return;
+  const { data: inv } = await supabase.from("company_invoices")
+    .select("id, company_id, status, amount_cents, due_date, description").eq("id", invoiceId).maybeSingle();
+  if (!inv) { console.log(`[mercadopago-webhook] parcela ${invoiceId} não encontrada`); return; }
+  if (newStatus !== "paid") { console.log(`[mercadopago-webhook] parcela ${invoiceId}: pagamento ${mpPaymentId} ${newStatus}`); return; }
+  if (inv.status === "paid" || inv.status === "partial") { console.log(`[mercadopago-webhook] parcela ${invoiceId} já estava paga`); return; }
+
+  const pago = gross > 0 ? gross : inv.amount_cents;
+  // Trava de corrida: só segue quem conseguir virar a parcela pra paga
+  const { data: virou } = await supabase.from("company_invoices").update({
+    status: "paid", paid_at: new Date().toISOString(), paid_amount_cents: pago, payment_fee_cents: feeCents,
+    bank_id: bankId, pagarme_charge_id: `mp:${mpPaymentId}`,
+  }).eq("id", invoiceId).not("status", "in", '("paid","partial")').select("id");
+  if (!virou?.length) return;
+
+  const nomeConta = account === "yas" ? "Mercado Pago Yas" : "Mercado Pago";
+  try { await supabase.rpc("increment_bank_balance", { p_bank_id: bankId, p_amount: net }); } catch (e) { console.error("[mercadopago-webhook] saldo do banco", e); }
+  await supabase.from("financial_bank_transactions").insert({
+    bank_id: bankId, type: "credit", amount_cents: net, fee_cents: feeCents,
+    description: `Recebimento cartão (${nomeConta}): Fatura ${invoiceId}`, reference_type: "invoice", reference_id: invoiceId,
+  });
+
+  // Recebível do Financeiro com a mesma empresa, vencimento e valor
+  try {
+    const { data: rows } = await supabase.from("financial_receivables").select("id, amount")
+      .eq("company_id", inv.company_id).eq("due_date", inv.due_date).not("status", "in", '("paid","cancelled")')
+      .order("created_at", { ascending: true }).limit(10);
+    const alvo = (rows || []).find((r: any) => Math.abs(Number(r.amount) - inv.amount_cents / 100) <= Math.max(1, inv.amount_cents / 100 * 0.02));
+    if (alvo) {
+      const today = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+      await supabase.from("financial_receivables").update({ status: "paid", paid_date: today, paid_amount: net / 100, fee_amount: feeCents / 100, updated_at: new Date().toISOString() }).eq("id", alvo.id);
+    }
+  } catch (e) { console.error("[mercadopago-webhook] recebível", e); }
+
+  try { await supabase.functions.invoke("notify-payment-confirmed", { body: { invoice_id: invoiceId } }); } catch (e) { console.error("[mercadopago-webhook] aviso de pagamento", e); }
+  console.log(`[mercadopago-webhook] parcela ${invoiceId} paga no ${nomeConta}: bruto ${gross}, líquido ${net}`);
+}

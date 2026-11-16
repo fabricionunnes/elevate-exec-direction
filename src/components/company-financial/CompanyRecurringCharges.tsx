@@ -71,6 +71,11 @@ interface RecurringCharge {
   created_at: string;
 }
 
+// Conta de recebimento que não é Asaas: Mercado Pago da Yasmim, só cartão de crédito (16/11/2026).
+// A recorrência fica marcada em pagarme_link_id = "mercadopago_yas" e cada parcela ganha um link do Mercado Pago.
+const MP_YAS = "mp_yas";
+const MP_YAS_MARCA = "mercadopago_yas";
+
 const RECURRENCE_LABELS: Record<string, string> = {
   monthly: "Mensal",
   quarterly: "Trimestral",
@@ -201,6 +206,7 @@ export function CompanyRecurringCharges({
       return;
     }
 
+    const viaMpYas = form.asaasAccountId === MP_YAS;
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -210,7 +216,7 @@ export function CompanyRecurringCharges({
         company_id: companyId,
         description: form.description,
         amount_cents: Math.round(form.amount * 100),
-        payment_method: form.paymentMethod,
+        payment_method: viaMpYas ? "credit_card" : form.paymentMethod,
         recurrence: form.recurrence,
         installments: form.totalInstallments,
         next_charge_date: form.nextChargeDate,
@@ -222,13 +228,31 @@ export function CompanyRecurringCharges({
         created_by: user?.id,
         category_id: form.categoryId || null,
         cost_center_id: form.costCenterId || null,
-        asaas_account_id: form.asaasAccountId || null,
+        asaas_account_id: viaMpYas ? null : (form.asaasAccountId || null),
+        pagarme_link_id: viaMpYas ? MP_YAS_MARCA : null,
         send_whatsapp: form.sendWhatsapp,
       } as any).select().single();
 
       if (error) throw error;
 
       const chargeId = (insertedData as any)?.id;
+
+      // Mercado Pago Yas: não cria nada no Asaas. Gera as parcelas e um link de cartão pra cada uma.
+      if (viaMpYas) {
+        toast.info("Gerando parcelas...");
+        const { data: invData, error: invError } = await supabase.functions.invoke("generate-invoices", {
+          body: { action: "generate", recurring_charge_id: chargeId },
+        });
+        if (invError || invData?.error) throw new Error(invData?.error || invError?.message || "erro ao gerar parcelas");
+        const link = await gerarLinkMpYas(chargeId);
+        setShowDialog(false);
+        fetchCharges();
+        if (link) {
+          try { await navigator.clipboard.writeText(link); toast.success("Link do cartão gerado no Mercado Pago Yas e copiado!"); }
+          catch { toast.success("Link do cartão gerado no Mercado Pago Yas. Use Copiar Link na recorrência."); }
+        }
+        return;
+      }
 
       // Step 2: Create subscription on Asaas
       toast.info("Criando assinatura no Asaas...");
@@ -283,6 +307,30 @@ export function CompanyRecurringCharges({
     } finally {
       setSaving(false);
     }
+  };
+
+  // Gera (ou busca) o link de cartão do Mercado Pago Yas de cada parcela em aberto. Devolve o da 1ª.
+  const gerarLinkMpYas = async (chargeId: string): Promise<string | null> => {
+    const { data, error } = await supabase.functions.invoke("mercadopago-create-payment", {
+      body: { account: "yas", recurring_charge_id: chargeId },
+    });
+    if (error || !data?.ok) {
+      toast.error("Não consegui gerar o link no Mercado Pago Yas: " + (data?.error || error?.message || "erro"));
+      return null;
+    }
+    if (data.erros?.length) toast.warning(`${data.erros.length} parcela(s) ficaram sem link: ${data.erros[0]}`);
+    return data.url || null;
+  };
+  const [gerandoLink, setGerandoLink] = useState<string | null>(null);
+  const linkMpYasDaRecorrencia = async (chargeId: string) => {
+    setGerandoLink(chargeId);
+    try {
+      const link = await gerarLinkMpYas(chargeId);
+      if (link) {
+        try { await navigator.clipboard.writeText(link); toast.success("Link do cartão copiado!"); } catch { toast.success("Link do cartão gerado."); }
+        fetchCharges();
+      }
+    } finally { setGerandoLink(null); }
   };
 
   // Recorrência salva mas sem assinatura no Asaas (erro na criação): tenta de novo e refaz os links das parcelas
@@ -429,17 +477,18 @@ export function CompanyRecurringCharges({
                 <DialogTitle>Nova Cobrança Recorrente</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 overflow-y-auto pr-1">
-                {asaasAccounts.length > 1 && (
-                  <div className="space-y-2">
-                    <Label>Conta Asaas</Label>
-                    <SearchableSelect
-                      value={form.asaasAccountId}
-                      onValueChange={(v) => setForm({ ...form, asaasAccountId: v })}
-                      placeholder="Selecione a conta..."
-                      options={asaasAccounts.map((acc) => ({ value: acc.id, label: `${acc.name}${acc.is_default ? " (Padrão)" : ""}` }))}
-                    />
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label>Conta de recebimento</Label>
+                  <SearchableSelect
+                    value={form.asaasAccountId}
+                    onValueChange={(v) => setForm({ ...form, asaasAccountId: v, paymentMethod: v === MP_YAS ? "credit_card" : form.paymentMethod })}
+                    placeholder="Selecione a conta..."
+                    options={[
+                      ...asaasAccounts.map((acc) => ({ value: acc.id, label: `${acc.name}${acc.is_default ? " (Padrão)" : ""}` })),
+                      { value: MP_YAS, label: "Mercado Pago Yas (cartão de crédito)" },
+                    ]}
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label>Descrição</Label>
                   <Input
@@ -478,7 +527,7 @@ export function CompanyRecurringCharges({
                     <SearchableSelect
                       value={form.paymentMethod}
                       onValueChange={(v) => setForm({ ...form, paymentMethod: v })}
-                      options={[
+                      options={form.asaasAccountId === MP_YAS ? [{ value: "credit_card", label: "Cartão" }] : [
                         { value: "pix", label: "PIX" },
                         { value: "pix_automatico", label: "Pix Automático" },
                         { value: "credit_card", label: "Cartão" },
@@ -495,7 +544,14 @@ export function CompanyRecurringCharges({
                     />
                   </div>
                 </div>
-                {form.paymentMethod === "pix_automatico" && (
+                {form.asaasAccountId === MP_YAS && (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs space-y-1">
+                    <p className="font-medium text-sm">Cartão pelo Mercado Pago Yas</p>
+                    <p>Cada parcela ganha um link de cartão de crédito do Mercado Pago da Yasmim. O cliente pode dividir em até 12x no cartão.</p>
+                    <p>Quando ele paga, a parcela é baixada sozinha e o valor entra no banco "Mercado Pago Yas", fora do caixa da UNV.</p>
+                  </div>
+                )}
+                {form.paymentMethod === "pix_automatico" && form.asaasAccountId !== MP_YAS && (
                   <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs space-y-1">
                     <p className="font-medium text-sm">Como funciona o Pix Automático</p>
                     <p>O cliente recebe um QR Code e paga a 1ª parcela por ele. No mesmo passo, o banco dele pede pra autorizar os débitos automáticos.</p>
@@ -544,8 +600,8 @@ export function CompanyRecurringCharges({
                 </div>
                 <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/30">
                   <div>
-                    <Label className="text-sm font-medium">{form.paymentMethod === "pix_automatico" ? "Enviar o QR Code via WhatsApp" : "Enviar boleto via WhatsApp"}</Label>
-                    <p className="text-xs text-muted-foreground">{form.paymentMethod === "pix_automatico" ? "Envia ao cliente o link da página do QR Code pra ele autorizar" : "Envia automaticamente o link de pagamento ao gerar as faturas"}</p>
+                    <Label className="text-sm font-medium">{form.asaasAccountId === MP_YAS ? "Lembretes com o link via WhatsApp" : form.paymentMethod === "pix_automatico" ? "Enviar o QR Code via WhatsApp" : "Enviar boleto via WhatsApp"}</Label>
+                    <p className="text-xs text-muted-foreground">{form.asaasAccountId === MP_YAS ? "O link é copiado na hora pra você mandar. A régua de cobrança usa ele nos lembretes seguintes" : form.paymentMethod === "pix_automatico" ? "Envia ao cliente o link da página do QR Code pra ele autorizar" : "Envia automaticamente o link de pagamento ao gerar as faturas"}</p>
                   </div>
                   <Switch
                     checked={form.sendWhatsapp}
@@ -554,7 +610,7 @@ export function CompanyRecurringCharges({
                 </div>
                 <Button type="button" onClick={handleCreate} disabled={saving} className="w-full">
                   {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  {form.paymentMethod === "pix_automatico" ? "Criar Pix Automático no Asaas" : "Criar Recorrência no Asaas"}
+                  {form.asaasAccountId === MP_YAS ? "Gerar link de cartão no Mercado Pago Yas" : form.paymentMethod === "pix_automatico" ? "Criar Pix Automático no Asaas" : "Criar Recorrência no Asaas"}
                 </Button>
               </div>
             </DialogContent>
@@ -582,6 +638,8 @@ export function CompanyRecurringCharges({
                     </Badge>
                     {charge.payment_method === "pix_automatico" ? (
                       <BadgePixAutomatico status={pixAuto[charge.id]?.status || (charge.pagarme_link_url ? "CREATED" : null)} />
+                    ) : charge.pagarme_link_id === MP_YAS_MARCA ? (
+                      <Badge variant="outline" className="text-xs">Mercado Pago Yas{charge.pagarme_link_url ? " ✓" : ""}</Badge>
                     ) : charge.pagarme_link_url && (
                       <Badge variant="outline" className="text-xs">Asaas ✓</Badge>
                     )}
@@ -662,7 +720,15 @@ export function CompanyRecurringCharges({
                     <FileText className="h-3 w-3 mr-1" />
                     Gerar Parcelas
                   </Button>
-                  {charge.is_active && !charge.pagarme_plan_id && !(charge.payment_method === "pix_automatico" && pixAuto[charge.id]) && (
+                  {charge.pagarme_link_id === MP_YAS_MARCA && (
+                    <Button type="button" variant="outline" size="sm" className="h-7 text-xs" disabled={gerandoLink === charge.id}
+                      title="Gera o link de cartão do Mercado Pago Yas das parcelas em aberto que ainda não têm e copia o da primeira"
+                      onClick={() => linkMpYasDaRecorrencia(charge.id)}>
+                      {gerandoLink === charge.id ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Copy className="h-3 w-3 mr-1" />}
+                      Link do cartão
+                    </Button>
+                  )}
+                  {charge.is_active && !charge.pagarme_plan_id && charge.pagarme_link_id !== MP_YAS_MARCA && !(charge.payment_method === "pix_automatico" && pixAuto[charge.id]) && (
                     <Button type="button" variant="outline" size="sm" disabled={retrying === charge.id}
                       className="border-amber-500/50 text-amber-700 dark:text-amber-400"
                       title="Esta recorrência não foi criada no Asaas, então as parcelas estão sem link de pagamento"
