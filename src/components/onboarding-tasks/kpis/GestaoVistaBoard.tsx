@@ -303,8 +303,11 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
         // (sábado conta por padrão, domingo não, feriado nacional fora).
         // KPI da meta do dia: entre os principais em R$, o que tem meta individual no mês (ex.: CR
         // Sublime tem Receita e Faturamento, as metas por vendedor estão no Faturamento); senão o main.
-        const metaKpi = rows.filter(r => r.is_main_goal && r.kpi_type === "monetary")
-          .find(r => targets.some(t => t.kpi_id === r.id && t.salesperson_id && t.level_order === 1 && Number(t.target_value || 0) > 0)) || main;
+        // 16/11/2026 (Drogarias Prime): a meta por pessoa é em ENTREGAS e o principal em R$ não tem meta
+        // individual. Se nenhum principal em R$ tem meta individual, vale o principal de quantidade que tem.
+        const temMetaInd = (r: Kpi) => targets.some(t => t.kpi_id === r.id && t.salesperson_id && t.level_order === 1 && Number(t.target_value || 0) > 0);
+        const principais = rows.filter(r => r.is_main_goal);
+        const metaKpi = principais.filter(r => r.kpi_type === "monetary").find(temMetaInd) || principais.find(temMetaInd) || main;
         if (metaKpi && isThisMonth && people.length) {
           const main = metaKpi;
           const t0 = new Date();
@@ -339,7 +342,8 @@ export function GestaoVistaBoard({ companyId, isStaff = false }: { companyId: st
             const meta = own > 0 ? own : derivada;
             const real = ateOntem.get(p.id) || 0;
             return {
-              name: p.name, metaDia: meta > 0 ? Math.max(0, meta - real) / dias : 0, hoje: hojePor.get(p.id) || 0,
+              // em quantidade (entregas, vendas) a diária arredonda pra cima, como na imagem do Marcelo
+              name: p.name, metaDia: meta > 0 ? (main.kpi_type === "monetary" ? Math.max(0, meta - real) / dias : Math.ceil(Math.max(0, meta - real) / dias)) : 0, hoje: hojePor.get(p.id) || 0,
               pctMes: meta > 0 ? ((real + (hojePor.get(p.id) || 0)) / meta) * 100 : 0,
               batida: meta > 0 && real >= meta, estimada: !(own > 0), temMeta: meta > 0,
             };
