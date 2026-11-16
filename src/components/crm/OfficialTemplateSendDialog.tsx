@@ -13,6 +13,7 @@
 // (15/09/2026: 26 leads receberam 2x).
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -240,10 +241,10 @@ export function OfficialTemplateSendDialog({ open, onOpenChange, leads, leadIds,
       const desde = new Date(Date.now() - 864e5).toISOString();
       const [res, rec] = await Promise.all([
         supabase.functions.invoke("whatsapp-official-api", { body: { action: "getLimits", instanceId } }),
-        supabase.from("whatsapp_official_campaign_recipients").select("phone").in("status", ["sent", "delivered", "read"]).gte("sent_at", desde).limit(10000),
+        fetchAllRows<any>((from, to) => supabase.from("whatsapp_official_campaign_recipients").select("phone").in("status", ["sent", "delivered", "read"]).gte("sent_at", desde).order("id").range(from, to)).catch(() => [] as any[]),
       ]);
       if (res.error || res.data?.error) { setLimite(null); return; }
-      const usados = new Set(((rec.data || []) as any[]).map((r) => r.phone).filter(Boolean)).size;
+      const usados = new Set((rec as any[]).map((r) => r.phone).filter(Boolean)).size;
       setLimite({ dailyLimit: res.data?.dailyLimit ?? null, usados });
     })();
   }, [open, instanceId]);
