@@ -195,7 +195,35 @@ Deno.serve(async (req) => {
       if (!cleanDoc) throw new Error("Pix Automático exige o CPF/CNPJ do cliente.");
       const frequency = recurrence === "quarterly" ? "QUARTERLY" : recurrence === "yearly" ? "ANNUALLY" : "MONTHLY";
       const hojeBR = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
-      const primeira = next_charge_date && next_charge_date >= hojeBR ? next_charge_date : hojeBR;
+      // Renovação (16/11/2026, caso Trilobit): o QR da 1ª parcela venceu, o banco recusou a autorização e
+      // o link ficou morto, sem jeito de gerar outro. Agora, chamando de novo pra mesma recorrência:
+      //  - se já existe autorização viva (aguardando ou ativa), devolve ela, sem criar outra;
+      //  - se a última morreu (recusada, vencida ou cancelada) sem pagamento, cria uma nova mantendo o
+      //    vencimento da 1ª parcela e o início dos débitos, pra continuar casando com as parcelas geradas.
+      const MORTAS = ["REFUSED", "EXPIRED", "CANCELLED", "DENIED"];
+      let anterior: any = null;
+      let jaCriadas = 0;
+      if (recurring_charge_id) {
+        const { data: ants } = await supabaseAdmin.from("asaas_pix_automatico")
+          .select("id, status, start_date, primeira_cobranca, pago_em, qr_payload, qr_image, criado_em")
+          .eq("recurring_charge_id", recurring_charge_id).order("criado_em", { ascending: false }).limit(50);
+        jaCriadas = (ants || []).length;
+        const viva = (ants || []).find((a: any) => !MORTAS.includes(String(a.status)));
+        if (viva) {
+          const linkVivo = `https://unvholdings.com.br/#/pix-automatico/${viva.id}`;
+          console.log(`Pix Automático: recorrência ${recurring_charge_id} já tem autorização viva ${viva.id} (${viva.status})`);
+          return new Response(JSON.stringify({
+            success: true, pix_automatico: true, ja_existia: true, authorization_id: viva.id, invoice_url: linkVivo,
+            pix_auto: { id: viva.id, status: viva.status, payload: viva.qr_payload, image: viva.qr_image, link: linkVivo, start_date: viva.start_date, primeira_cobranca: viva.primeira_cobranca },
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        anterior = (ants || [])[0] || null;
+      }
+      const renovando = !!anterior && !anterior.pago_em;
+      const primeira = renovando && anterior.primeira_cobranca
+        ? String(anterior.primeira_cobranca)
+        : (next_charge_date && next_charge_date >= hojeBR ? next_charge_date : hojeBR);
+      const somaDiasIso = (iso: string, n: number) => new Date(new Date(`${iso}T12:00:00Z`).getTime() + n * 86400000).toISOString().slice(0, 10);
       const somaCiclo = (iso: string) => {
         const d = new Date(`${iso}T12:00:00Z`);
         if (frequency === "QUARTERLY") d.setUTCMonth(d.getUTCMonth() + 3);
@@ -203,12 +231,19 @@ Deno.serve(async (req) => {
         else d.setUTCMonth(d.getUTCMonth() + 1);
         return d.toISOString().slice(0, 10);
       };
-      const startDate = somaCiclo(primeira);
-      // QR vale até o fim do dia do 1º vencimento (mínimo 2 dias, máximo 30)
-      const fimDoVencimento = new Date(`${primeira}T23:59:00-03:00`).getTime();
-      const expirationSeconds = Math.round(Math.min(30 * 86400, Math.max(2 * 86400, (fimDoVencimento - Date.now()) / 1000)));
+      let startDate = renovando && anterior.start_date ? String(anterior.start_date) : somaCiclo(primeira);
+      // o débito automático não começa no passado nem colado em hoje: pula pro ciclo seguinte
+      while (startDate <= somaDiasIso(hojeBR, 2)) startDate = somaCiclo(startDate);
+      // QR vale até 7 dias depois do 1º vencimento (mínimo 2 dias a partir de agora, máximo 30) e sempre
+      // vence antes de os débitos começarem. Antes valia só até o fim do dia do vencimento: quem pagava
+      // um dia depois caía num link morto.
+      const fimDaJanela = new Date(`${somaDiasIso(primeira, 7)}T23:59:00-03:00`).getTime();
+      const antesDoInicio = new Date(`${somaDiasIso(startDate, -1)}T12:00:00-03:00`).getTime();
+      const expirationSeconds = Math.round(Math.max(3600, Math.min(30 * 86400, (antesDoInicio - Date.now()) / 1000, Math.max(2 * 86400, (fimDaJanela - Date.now()) / 1000))));
       const valor = amount_cents / 100;
-      const contractId = `nx${String(recurring_charge_id || crypto.randomUUID()).replace(/-/g, "")}`.slice(0, 35);
+      const baseContrato = `nx${String(recurring_charge_id || crypto.randomUUID()).replace(/-/g, "")}`;
+      // na renovação o contrato ganha um sufixo, pra não repetir o identificador da autorização que morreu
+      const contractId = (renovando ? `${baseContrato.slice(0, 31)}r${jaCriadas}` : baseContrato).slice(0, 35);
       const auth = await asaasRequest("/pix/automatic/authorizations", "POST", ASAAS_API_KEY, {
         customerId,
         frequency,
@@ -240,9 +275,14 @@ Deno.serve(async (req) => {
           next_charge_date: primeira,
         } as any).eq("id", recurring_charge_id);
       }
-      console.log(`Pix Automático criado: ${auth.id} status=${auth.status} sub=${auth.subscriptionId} start=${startDate}`);
+      // renovação: a 1ª parcela (e qualquer outra em aberto que apontava pra página antiga) passa a apontar pro QR novo
+      if (renovando && recurring_charge_id) {
+        await supabaseAdmin.from("company_invoices").update({ payment_link_url: link } as any)
+          .eq("recurring_charge_id", recurring_charge_id).in("status", ["pending", "overdue"]).like("payment_link_url", "%/pix-automatico/%");
+      }
+      console.log(`Pix Automático ${renovando ? "renovado" : "criado"}: ${auth.id} status=${auth.status} sub=${auth.subscriptionId} start=${startDate} qr_ate=${new Date(Date.now() + expirationSeconds * 1000).toISOString()}`);
       return new Response(JSON.stringify({
-        success: true, pix_automatico: true, authorization_id: auth.id, subscription_id: auth.subscriptionId || null,
+        success: true, pix_automatico: true, renovado: renovando, authorization_id: auth.id, subscription_id: auth.subscriptionId || null,
         invoice_url: link, pix_auto: { id: auth.id, status: auth.status || "CREATED", payload: qrPayload, image: qrImage, link, start_date: startDate, primeira_cobranca: primeira },
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
