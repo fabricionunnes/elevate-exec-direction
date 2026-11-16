@@ -602,6 +602,13 @@ function buildMessage(rule: any, invoice: any, company: any, today: Date): strin
       : "";
 
   let msg = rule.message_template;
+  // Link de cartão do Mercado Pago (16/11/2026): o link cobra o valor original, então o texto de
+  // atraso sai sem as linhas de multa, juros e total atualizado.
+  if (/mercadopago|mercadolivre|mpago\./i.test(String(invoice.payment_link_url || ""))) {
+    msg = String(msg).split("\n")
+      .filter((l: string) => !/\{\{(multa|juros|total_atualizado|desconto|total_com_desconto)\}\}/.test(l))
+      .join("\n").replace(/Valor original:/g, "Valor:");
+  }
   msg = msg.replace(/\{\{nome_cliente\}\}/g, company.name || "");
   msg = msg.replace(/\{\{valor\}\}/g, amountBRL);
   msg = msg.replace(/\{\{vencimento\}\}/g, dueDateFormatted);
