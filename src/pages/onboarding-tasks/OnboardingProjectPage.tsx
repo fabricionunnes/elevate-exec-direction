@@ -315,6 +315,8 @@ const OnboardingProjectPage = () => {
   const [taskResponsibleFilter, setTaskResponsibleFilter] = useState("all");
   const [showReorganizeDatesDialog, setShowReorganizeDatesDialog] = useState(false);
   const [showChurnDialog, setShowChurnDialog] = useState(false);
+  // motivo gravado na sinalização de cancelamento: encerrar cliente em aviso usa ele, só confirmando
+  const [motivoDaSinalizacao, setMotivoDaSinalizacao] = useState<{ reason: string; notes: string } | null>(null);
   const [showCancellationSignalDialog, setShowCancellationSignalDialog] = useState(false);
   const [showNoticePeriodDialog, setShowNoticePeriodDialog] = useState(false);
   const [noticePeriodLoading, setNoticePeriodLoading] = useState(false);
@@ -812,8 +814,18 @@ const OnboardingProjectPage = () => {
     }
   };
 
-  const handleProjectStatusChange = (value: string) => {
+  const handleProjectStatusChange = async (value: string) => {
     if (value === "closed") {
+      // Cliente em aviso (sinalizou cancelamento ou cumprindo aviso): o motivo do encerramento é o mesmo
+      // da sinalização, sem escolher de novo. Sem motivo gravado (sinalização antiga), cai no formulário.
+      let fixo: { reason: string; notes: string } | null = null;
+      if (projectId && (project?.status === "cancellation_signaled" || project?.status === "notice_period")) {
+        const { data: sinal } = await supabase.from("onboarding_projects")
+          .select("cancellation_signal_reason, cancellation_signal_notes").eq("id", projectId).maybeSingle();
+        const motivo = String((sinal as any)?.cancellation_signal_reason || "").trim();
+        if (motivo) fixo = { reason: motivo, notes: String((sinal as any)?.cancellation_signal_notes || "") };
+      }
+      setMotivoDaSinalizacao(fixo);
       setShowChurnDialog(true);
     } else if (value === "cancellation_signaled") {
       setShowCancellationSignalDialog(true);
@@ -2225,6 +2237,7 @@ const OnboardingProjectPage = () => {
         onConfirm={handleChurnConfirm}
         isLoading={churnLoading}
         mode="churn"
+        fixo={motivoDaSinalizacao}
       />
 
       <ChurnReasonDialog
