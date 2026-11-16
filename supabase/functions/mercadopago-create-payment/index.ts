@@ -32,6 +32,12 @@ Deno.serve(async (req) => {
   const MP_TOKEN = TOKENS[account];
   if (!MP_TOKEN) return j({ ok: false, error: account === "yas" ? "Mercado Pago Yas não configurado (falta o token da conta da Yasmim no servidor)" : "Mercado Pago não configurado (falta o token no servidor)" });
 
+  // Conferência da conta: diz só se o token responde no Mercado Pago (sem devolver dado nenhum da conta)
+  if (body?.action === "conferir") {
+    const r = await fetch("https://api.mercadopago.com/users/me", { headers: { Authorization: `Bearer ${MP_TOKEN}` } });
+    return j({ ok: r.ok, conta: account, http: r.status });
+  }
+
   // === Cobrança de empresa (recorrência do Financeiro), 16/11/2026 ===
   // Fabrício: "aqui quero poder gerar cobrança via cartão de crédito da conta da yasmim do mercado pago".
   // Gera um link de cartão (Checkout Pro) pra cada parcela em aberto da recorrência e grava na parcela.
