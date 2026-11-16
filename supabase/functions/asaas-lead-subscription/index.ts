@@ -151,6 +151,7 @@ Deno.serve(async (req) => {
         valor_cents: amountCents, frequencia: "MONTHLY", primeira_cobranca: primeira, start_date: startDate,
         descricao: description, cliente_nome: lead.name || null, status: auth.status || "CREATED",
         qr_payload: qrPayload, qr_image: qrImage,
+        qr_conciliacao: auth?.immediateQrCode?.conciliationIdentifier || null,
         qr_expira_em: new Date(Date.now() + expirationSeconds * 1000).toISOString(),
         ultimo_evento: "criada", atualizado_em: new Date().toISOString(),
       });
