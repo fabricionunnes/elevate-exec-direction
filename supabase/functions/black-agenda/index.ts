@@ -653,6 +653,151 @@ async function grupoSync(sb: SB) {
   return json({ ok: true, participantes: presentes.size, entraram, sairam, criados, chamados });
 }
 
+// ── Follow-up de quem pediu o grupo e não entrou (16/11/2026) ───────────────
+// Fabrício: "os que não entrarem no grupo é pra fazer follow up por pelo menos 3 dias".
+// Quem entra aqui: lead do disparo do convite que clicou "Quero entrar no grupo" ou escreveu depois
+// (black_followup_registrar), enquanto está em Base, Disparo efetuado ou Saiu do grupo.
+// São 3 toques com o link: o 1º depois de 4h (em horário comercial) e os outros com 20h de intervalo.
+// Com a janela de 24h do número oficial aberta, vai pela mesma conversa; fechou, vai pelo número do
+// Ricardo, onde o agente da Black atende quem responder. Entrou no grupo, pediu pra parar, respondeu
+// o toque ou avançou no funil: para. O follow-up do agente (crm-agent-respond) não soma em cima.
+const OFICIAL = "4e80640c-35af-45d5-a836-f7d5db36def5";
+const FU_HORA_INI = 9, FU_HORA_FIM = 19, FU_TOQUES = 3, FU_POR_RODADA = 6;
+const FU_PRIMEIRO_MS = 4 * 3600000, FU_INTERVALO_MS = 20 * 3600000, FU_SILENCIO_MS = 3 * 3600000;
+const FU_FIM = Date.parse("2026-11-25T20:00:00-03:00"); // começou a live, acabou o convite
+
+const NOME_GENERICO = /^(a|o|dr|dra|sr|sra|proprietari[oa]|gerente|decisor|cliente|lead|contato|grupo|loja|clinica|empresa)$/i;
+function nomeDePessoa(n: unknown) {
+  const p = primeiroNome(n).normalize("NFD").replace(/[̀-ͯ]/g, "");
+  if (!/^[A-Za-z]{3,14}$/.test(p) || NOME_GENERICO.test(p)) return "";
+  const o = primeiroNome(n);
+  return o === o.toUpperCase() ? o.charAt(0) + o.slice(1).toLowerCase() : o;
+}
+
+function textoFollowupGrupo(numero: number, nome: string, canal: "oficial" | "ricardo", primeiraDoRicardo: boolean, horaBR: number) {
+  const oi = horaBR < 12 ? "Bom dia" : "Boa tarde";
+  const comNome = nome ? `, ${nome}` : "";
+  if (canal === "ricardo" && primeiraDoRicardo) {
+    return `${oi}${comNome}! Aqui é o Ricardo, do time do Fabrício Nunnes, da UNV.\n\nVocê recebeu o convite do Fabrício pro grupo da Black Friday UNV e ainda não te vi por lá. O link é este\n${CONVITE_GRUPO}\n\nA live em que ele abre a condição é quarta, 25/11, às 20h, e o link da live sai só no grupo.`;
+  }
+  if (numero === 1) {
+    return `${oi}${comNome}! Vi que você ainda não entrou no grupo da Black Friday UNV. O link é este\n${CONVITE_GRUPO}\n\nÉ só por lá que o Fabrício vai abrir a condição e as vagas.`;
+  }
+  if (numero === 2) {
+    return `${nome ? `${nome}, passando` : "Passando"} pra lembrar do grupo da Black Friday UNV. A live em que o Fabrício abre a condição é quarta, 25/11, às 20h, e o link da live sai só lá dentro.\n${CONVITE_GRUPO}`;
+  }
+  return `${nome ? `${nome}, último` : "Último"} lembrete pra não te incomodar. O grupo da Black Friday UNV continua aberto neste link\n${CONVITE_GRUPO}\n\nSe não fizer mais sentido pra você, é só me avisar que eu paro por aqui.`;
+}
+
+/** Texto livre pelo número oficial (só funciona com a janela de 24h aberta) e registro no Atendimento. */
+async function enviarPeloOficial(sb: SB, conversaId: string, telefone: string, texto: string) {
+  const { data: inst } = await sb.from("whatsapp_official_instances").select("phone_number_id, access_token").eq("id", OFICIAL).maybeSingle();
+  if (!inst?.phone_number_id || !inst?.access_token) return { ok: false, erro: "numero oficial sem token" };
+  let to = String(telefone || "").replace(/\D/g, "");
+  if (to && (!to.startsWith("55") || to.length < 12)) to = `55${to}`;
+  const r = await fetch(`https://graph.facebook.com/v21.0/${inst.phone_number_id}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${inst.access_token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to, type: "text", text: { body: texto, preview_url: true } }),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) return { ok: false, erro: String(d?.error?.message || `HTTP ${r.status}`).slice(0, 200) };
+  const agora = new Date().toISOString();
+  await sb.from("crm_whatsapp_messages").insert({
+    conversation_id: conversaId, content: texto, type: "text", direction: "outbound", status: "sent",
+    remote_id: d?.messages?.[0]?.id || null, is_ai: true, sent_by: null,
+  });
+  await sb.from("crm_whatsapp_conversations").update({ last_message: texto.slice(0, 255), last_message_at: agora, last_message_direction: "outbound" }).eq("id", conversaId);
+  return { ok: true };
+}
+
+async function followupGrupo(sb: SB, simular = false) {
+  const registrados = simular ? 0 : ((await sb.rpc("black_followup_registrar")).data ?? 0);
+  const br = new Date(Date.now() - 3 * 3600000);
+  const hora = br.getUTCHours(), dow = br.getUTCDay(), ymd = br.toISOString().slice(0, 10);
+  const foraDeHora = dow === 0 || FERIADOS.has(ymd) || hora < FU_HORA_INI || hora >= FU_HORA_FIM || (dow === 6 && hora >= 13);
+  if (Date.now() >= FU_FIM) return { registrados, enviados: 0, motivo: "live já começou" };
+  if (foraDeHora && !simular) return { registrados, enviados: 0, motivo: "fora do horário (seg a sex 9h às 19h, sábado até 13h)" };
+
+  const { data: fila } = await sb.from("black_followup_grupo").select("*").is("encerrado_em", null).lt("toques", FU_TOQUES).order("pediu_em").limit(80);
+  const detalhe: string[] = [];
+  let enviados = 0;
+  for (const f of fila || []) {
+    if (enviados >= FU_POR_RODADA) break;
+    const agora = new Date().toISOString();
+    const encerrar = async (motivo: string) => {
+      detalhe.push(`${f.lead_id}: encerrado (${motivo})`);
+      if (!simular) await sb.from("black_followup_grupo").update({ encerrado_em: agora, motivo_encerramento: motivo }).eq("lead_id", f.lead_id);
+    };
+    const base = Date.parse(f.ultimo_toque_em || f.pediu_em);
+    if (!simular && Date.now() - base < (f.toques === 0 ? FU_PRIMEIRO_MS : FU_INTERVALO_MS)) continue;
+
+    const { data: lead } = await sb.from("crm_leads").select("id, name, phone, stage_id, pipeline_id").eq("id", f.lead_id).maybeSingle();
+    if (!lead) { await encerrar("lead não existe mais"); continue; }
+    if (lead.pipeline_id !== PIPELINE) { await encerrar("saiu do funil da Black"); continue; }
+    if (lead.stage_id === ETAPA.perdido) { await encerrar("lead perdido"); continue; }
+    if (![ETAPA.base, ETAPA.disparo, ETAPA.saiuGrupo].includes(lead.stage_id)) { await encerrar("entrou no grupo ou avançou no funil"); continue; }
+    const k = chaveTel(lead.phone || f.telefone);
+    if (k) {
+      const { data: m } = await sb.from("black_grupo_membros").select("no_grupo").eq("chave", k).maybeSingle();
+      if (m?.no_grupo) { await encerrar("já está no grupo"); continue; }
+    }
+    const { data: ov } = await sb.from("crm_ai_agent_conversation_overrides").select("enabled").eq("conversation_id", f.conversa_oficial).eq("channel", "whatsapp").maybeSingle();
+    if (ov && ov.enabled === false) { await encerrar("agente desligado na conversa (pediu pra parar, recusou ou alguém do time assumiu)"); continue; }
+    const { data: cv } = await sb.from("crm_whatsapp_conversations").select("id, last_inbound_at, last_message_at, contact:crm_whatsapp_contacts(phone)").eq("id", f.conversa_oficial).maybeSingle();
+    if (!cv) { await encerrar("conversa não encontrada"); continue; }
+    const ultIn = Date.parse(String(cv.last_inbound_at || "")) || 0;
+    const ultMsg = Date.parse(String(cv.last_message_at || "")) || 0;
+    // respondeu depois de um toque: a conversa voltou pro agente, que segue com o follow-up normal dele
+    if (f.toques > 0 && f.ultimo_toque_em) {
+      const desde = Date.parse(f.ultimo_toque_em);
+      let respondeu = ultIn > desde;
+      if (!respondeu) {
+        const { data: noRicardo } = await sb.from("crm_whatsapp_conversations").select("last_inbound_at").eq("instance_id", INSTANCIA_CLOSER).eq("lead_id", f.lead_id).gt("last_inbound_at", f.ultimo_toque_em).limit(1);
+        respondeu = !!noRicardo?.length;
+      }
+      if (respondeu) { await encerrar("respondeu ao follow-up, o agente segue a conversa"); continue; }
+    }
+    // conversa em andamento agora: espera esfriar
+    if (!simular && Date.now() - ultMsg < FU_SILENCIO_MS) continue;
+
+    const numero = f.toques + 1;
+    const janelaAberta = !!ultIn && Date.now() - ultIn < 23.5 * 3600000;
+    let canal: "oficial" | "ricardo" = janelaAberta ? "oficial" : "ricardo";
+    const nome = nomeDePessoa(lead.name);
+    const telefone = String(cv.contact?.phone || lead.phone || f.telefone || "");
+    if (simular) {
+      detalhe.push(`${lead.name}: toque ${numero} pelo ${canal === "oficial" ? "número oficial" : "número do Ricardo"} → ${textoFollowupGrupo(numero, nome, canal, f.ultimo_canal !== "ricardo", hora).replace(/\n+/g, " / ")}`);
+      enviados++;
+      continue;
+    }
+    // marca antes de enviar (e só segue quem conseguiu marcar): se travar no meio, não manda duas vezes
+    const { data: marcou } = await sb.from("black_followup_grupo").update({ toques: numero, ultimo_toque_em: agora, ultimo_canal: canal, erro: null })
+      .eq("lead_id", f.lead_id).eq("toques", f.toques).is("encerrado_em", null).select("lead_id");
+    if (!marcou?.length) continue;
+    let r: { ok: boolean; erro?: string } = { ok: false };
+    if (canal === "oficial") {
+      r = await enviarPeloOficial(sb, cv.id, telefone, textoFollowupGrupo(numero, nome, "oficial", false, hora));
+      if (!r.ok) canal = "ricardo"; // a janela fechou no caminho
+    }
+    if (canal === "ricardo") {
+      const ab = await abrirConversa(sb, { id: lead.id, phone: lead.phone || telefone }, textoFollowupGrupo(numero, nome, "ricardo", f.ultimo_canal !== "ricardo", hora));
+      r = { ok: !!ab.ok, erro: ab.erro };
+    }
+    await sb.from("black_followup_grupo").update({ ultimo_canal: canal, erro: r.ok ? (r.erro || null) : (r.erro || "falha no envio") }).eq("lead_id", f.lead_id);
+    if (r.ok) {
+      enviados++;
+      detalhe.push(`${lead.name}: toque ${numero} enviado pelo ${canal}`);
+      await sb.from("crm_ai_agent_runs").insert({ agent_id: AGENTE, channel: "whatsapp", conversation_id: cv.id, mode: "black_followup", outcome: `sent (follow-up do grupo ${numero}/${FU_TOQUES}, ${canal})` }).then(() => {}, () => {});
+    } else {
+      detalhe.push(`${lead.name}: toque ${numero} falhou (${r.erro || "?"})`);
+      if (r.erro === "sem_whatsapp") await encerrar("número sem WhatsApp");
+    }
+    if (numero >= FU_TOQUES && r.ok) await sb.from("black_followup_grupo").update({ encerrado_em: agora, motivo_encerramento: "3 toques enviados" }).eq("lead_id", f.lead_id);
+  }
+  return { registrados, enviados, detalhe };
+}
+
 /** Aplicou e não marcou na página: depois de 15 min o Ricardo chama no WhatsApp e o agente segue. */
 async function chamarQuemNaoAgendou(sb: SB) {
   const horaBR = new Date(Date.now() - 3 * 3600000).getUTCHours();
@@ -694,8 +839,15 @@ Deno.serve(async (req) => {
         // a agenda do grupo não pode depender da leitura de participantes dar certo
         try { await enviarAgendadas(sb); } catch (e) { console.error("[black-agenda] agenda", e); }
         try { await conferirPendentes(sb); } catch (e) { console.error("[black-agenda] pix pendentes", e); }
-        return await grupoSync(sb);
+        const resp = await grupoSync(sb);
+        // follow-up de quem pediu o grupo e não entrou: depois da leitura dos participantes, a cada 10 min
+        if (new Date().getUTCMinutes() % 10 < 2) {
+          try { await followupGrupo(sb); } catch (e) { console.error("[black-agenda] follow-up do grupo", e); }
+        }
+        return resp;
       }
+      // prévia do follow-up do grupo: não envia nem grava nada
+      case "followup-grupo-previa": return json(await followupGrupo(sb, true));
       case "entrou-live": return await entrouLive(sb, body);
       case "entrar-grupo": return await entrarGrupo(sb, body);
       case "garantir": return await garantir(sb, body);
