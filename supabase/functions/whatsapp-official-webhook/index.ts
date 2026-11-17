@@ -590,7 +590,7 @@ async function respostaIgnoravelDeDisparo(supabase: any, conversationId: string,
   try {
     if (type !== 'text' && type !== 'button' && type !== 'interactive') return false;
     const txt = String(content || '');
-    const { data } = await supabase.from('whatsapp_official_campaign_recipients').select('sent_at, delivered_at')
+    const { data } = await supabase.from('whatsapp_official_campaign_recipients').select('sent_at, delivered_at, status')
       .eq('conversation_id', conversationId).not('sent_at', 'is', null)
       .gt('sent_at', new Date(Date.now() - 4 * 86400000).toISOString()).order('sent_at', { ascending: false }).limit(1);
     const r = data?.[0];
@@ -601,6 +601,13 @@ async function respostaIgnoravelDeDisparo(supabase: any, conversationId: string,
     const sentMs = Date.parse(String(r.sent_at));
     const entMs = r.delivered_at ? Date.parse(String(r.delivered_at)) : 0;
     if (t >= sentMs - 5000 && t <= Math.max(sentMs, entMs || 0) + 45000) return true;
+    // O recibo de entrega ainda não chegou e o lado de lá já "respondeu": o telefone estava desligado, recebeu
+    // o disparo agora e a auto-resposta saiu na chegada (caso das 23h34 de 16/11, disparo das 22h14).
+    if (!entMs && r.status === 'sent' && txt.replace(/\s+/g, ' ').trim().length >= 25) return true;
+    // segunda ou terceira mensagem do robô, colada na anterior
+    const { data: ant } = await supabase.from('crm_whatsapp_messages').select('automatica, created_at')
+      .eq('conversation_id', conversationId).eq('direction', 'inbound').order('created_at', { ascending: false }).limit(1);
+    if (ant?.[0]?.automatica && t - Date.parse(String(ant[0].created_at)) <= 25000) return true;
     // fora do relógio, só o que é claramente automático e enquanto ninguém de verdade falou na conversa
     if (txt.replace(/\s+/g, ' ').trim().length >= 12 && AUTO_RE.test(txt)) {
       const { count } = await supabase.from('crm_whatsapp_messages').select('id', { count: 'exact', head: true })
