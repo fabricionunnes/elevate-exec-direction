@@ -417,6 +417,31 @@ export const CRMInboxPage = () => {
     })();
     return () => { ativo = false; };
   }, [filters.aiAgentId]);
+  // Filtro "Disparo" (17/11/2026, Fabrício: "quero poder filtrar por disparo efetuado"): conversas que
+  // receberam um disparo oficial. A lista de disparos vem dos últimos 60 dias; as conversas do disparo
+  // escolhido vêm numa lista só do banco e são relidas a cada 30 s (disparo em andamento cria conversa nova).
+  const [disparos, setDisparos] = useState<{ id: string; template_name: string; created_at: string; total: number | null; status: string }[]>([]);
+  const [disparoConvIds, setDisparoConvIds] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    (supabase as any).from("whatsapp_official_campaigns")
+      .select("id, template_name, created_at, total, status")
+      .gte("created_at", new Date(Date.now() - 60 * 86400000).toISOString())
+      .order("created_at", { ascending: false }).limit(80)
+      .then(({ data }: any) => setDisparos((data || []) as any[]));
+  }, []);
+  useEffect(() => {
+    if (!filters.disparoId) { setDisparoConvIds(null); return; }
+    let ativo = true;
+    const ler = async () => {
+      const { data, error } = await (supabase as any).rpc("crm_disparo_conversation_ids", { p_campaign: filters.disparoId });
+      if (!ativo) return;
+      if (error) { toast.error("Não consegui aplicar o filtro de disparo"); setDisparoConvIds(null); return; }
+      setDisparoConvIds(new Set(((data || []) as any[]).map((id) => String(id))));
+    };
+    ler();
+    const t = setInterval(ler, 30000);
+    return () => { ativo = false; clearInterval(t); };
+  }, [filters.disparoId]);
   const [showMobileInfo, setShowMobileInfo] = useState(false);
   const [igSending, setIgSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -1094,6 +1119,8 @@ export const CRMInboxPage = () => {
     if (filters.sectorId && conv.sector_id !== filters.sectorId) return false;
     if (filters.aiAgentId && !aiAgentConvIds) return false; // filtro ainda carregando
     if (filters.aiAgentId && aiAgentConvIds && !aiAgentConvIds.has(String(conv.id))) return false;
+    if (filters.disparoId && !disparoConvIds) return false; // filtro ainda carregando
+    if (filters.disparoId && disparoConvIds && !disparoConvIds.has(String(conv.id))) return false;
     if (filters.instanceId) {
       if (filters.instanceId.startsWith("official:")) {
         const officialId = filters.instanceId.replace("official:", "");
@@ -1174,6 +1201,7 @@ export const CRMInboxPage = () => {
       assigned_to: filters.assignedTo || "",
       sector_id: filters.sectorId || "",
       ai_agent: filters.aiAgentId || "",
+      disparo: filters.disparoId || "",
       has_deal: filters.hasDeal || "",
       pipelines: filters.dealPipeline ?? [],
       stages: filters.dealStage ?? [],
@@ -1188,7 +1216,7 @@ export const CRMInboxPage = () => {
     if (action === "hide" || action === "unhide") {
       (supabase as any).from("crm_whatsapp_ignored_chats").select("phone").then(({ data }: any) => setIgnoredPhones(new Set(((data || []) as any[]).map((r) => r.phone))));
     }
-    if (action === "close" || action === "reopen" || action === "assign" || action === "sector" || action === "link_pipeline") setSelectedConversation(null);
+    if (action === "close" || action === "reopen" || action === "assign" || action === "sector" || action === "link_pipeline" || action === "move_pipeline") setSelectedConversation(null);
   };
 
   const getStatusIcon = (status: string, errorText?: string | null) => {
@@ -1356,6 +1384,23 @@ export const CRMInboxPage = () => {
               ...pipelines.map((p) => ({ value: p.id, label: p.name })),
             ]}
           />
+          {/* Filtro por disparo efetuado (17/11/2026): só as conversas que receberam o disparo escolhido */}
+          {disparos.length > 0 && (
+            <SearchableSelect
+              value={filters.disparoId || "all"}
+              onValueChange={(v) => setFilters((f) => ({ ...f, disparoId: v === "all" ? "" : v }))}
+              className="h-7 text-xs"
+              placeholder="Todos os disparos"
+              emptyMessage="Nenhum disparo encontrado."
+              options={[
+                { value: "all", label: "Todos os disparos" },
+                ...disparos.map((d) => ({
+                  value: d.id,
+                  label: `${d.template_name} · ${format(new Date(d.created_at), "dd/MM HH:mm")}${d.total ? ` · ${d.total.toLocaleString("pt-BR")}` : ""}${d.status === "sending" ? " · enviando" : d.status === "paused" ? " · pausado" : ""}`,
+                })),
+              ]}
+            />
+          )}
           {/* Visões salvas: guarda atalho, número, canal, status, busca e o painel de filtros */}
           <InboxSavedViews
             staffId={staffId}
