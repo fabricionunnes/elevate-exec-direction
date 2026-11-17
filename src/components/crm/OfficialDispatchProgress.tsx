@@ -67,8 +67,16 @@ export function OfficialDispatchProgress() {
   }, []);
   const statusAnterior = useRef<Map<string, string>>(new Map());
   const concluidosEm = useRef<Map<string, number>>(new Map());
+  // 17/11/2026: esta barra roda em toda tela do CRM, a cada 5 s. Com dois disparos pausados ela ficou a noite
+  // inteira recontando 10 mil linhas e deixou o banco lento (o Financeiro chegou a mostrar a lista de contas
+  // vazia). Duas travas: nunca começa uma rodada com outra em andamento, e disparo pausado só é recontado a
+  // cada 60 s (os números dele não mudam).
+  const emAndamento = useRef(false);
+  const contagemPausado = useRef<Map<string, { em: number; total: number; pendentes: number; falhas: number }>>(new Map());
 
   const carregar = useCallback(async () => {
+    if (emAndamento.current) return;
+    emAndamento.current = true;
     try {
       if (!staffIdRef.current) {
         const { data: { user } } = await supabase.auth.getUser();
@@ -105,7 +113,15 @@ export function OfficialDispatchProgress() {
           const { count } = await q;
           return count || 0;
         };
-        const [total, pendentes, falhas] = await Promise.all([conta(null), conta(["pending", "processing"]), conta(["error", "failed"])]);
+        const guardada = c.status === "paused" ? contagemPausado.current.get(c.id) : undefined;
+        let total: number, pendentes: number, falhas: number;
+        if (guardada && agora - guardada.em < 60_000) {
+          ({ total, pendentes, falhas } = guardada);
+        } else {
+          [total, pendentes, falhas] = await Promise.all([conta(null), conta(["pending", "processing"]), conta(["error", "failed"])]);
+          if (c.status === "paused") contagemPausado.current.set(c.id, { em: agora, total, pendentes, falhas });
+          else contagemPausado.current.delete(c.id);
+        }
         const enviados = Math.max(total - pendentes - falhas, 0);
         const antes = statusAnterior.current.get(c.id);
         if (antes && antes !== c.status) {
@@ -124,6 +140,8 @@ export function OfficialDispatchProgress() {
       setItens(lista);
     } catch (e) {
       console.error("andamento disparos:", e);
+    } finally {
+      emAndamento.current = false;
     }
   }, [navigate]);
 
