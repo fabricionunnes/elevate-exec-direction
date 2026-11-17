@@ -501,22 +501,39 @@ export default function AllRecurringChargesPage() {
     }
   }, [activeTab]);
 
+  // Páginas pela chave (id) e não pela posição (17/11/2026, Fabrício: "as contas do contas a pagar sumiram").
+  // Com offset, cada página relia todas as anteriores, e as regras de acesso custam perto de 0,75 ms por
+  // linha: a 3ª página das contas a pagar levava 3,6 s sozinha e, com a tela inteira carregando junto,
+  // estourava os 8 s da API. A consulta falhava e a lista ficava vazia sem aviso nenhum. Agora cada página lê
+  // só as próprias linhas, tenta de novo se falhar, e a ordem por data é refeita aqui.
   const fetchAllRows = async (table: string, orderCol: string) => {
     const PAGE_SIZE = 1000;
     let allData: any[] = [];
-    let from = 0;
-    let hasMore = true;
-    while (hasMore) {
-      const { data, error } = await (supabase as any)
-        .from(table)
-        .select("*")
-        .order(orderCol, { ascending: true })
-        .range(from, from + PAGE_SIZE - 1);
+    let ultimoId: string | null = null;
+    for (;;) {
+      let data: any[] | null = null;
+      let error: any = null;
+      for (let tentativa = 0; tentativa < 3; tentativa++) {
+        let q = (supabase as any).from(table).select("*").order("id", { ascending: true }).limit(PAGE_SIZE);
+        if (ultimoId) q = q.gt("id", ultimoId);
+        const r = await q;
+        data = r.data; error = r.error;
+        if (!error) break;
+        await new Promise((ok) => setTimeout(ok, 800 * (tentativa + 1)));
+      }
       if (error) return { data: null, error };
-      allData = allData.concat(data || []);
-      hasMore = (data?.length || 0) === PAGE_SIZE;
-      from += PAGE_SIZE;
+      const pagina = data || [];
+      allData = allData.concat(pagina);
+      if (pagina.length < PAGE_SIZE) break;
+      ultimoId = String(pagina[pagina.length - 1].id);
     }
+    allData.sort((a, b) => {
+      const x = a[orderCol], y = b[orderCol];
+      if (x === y) return String(a.id) < String(b.id) ? -1 : 1;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      return x < y ? -1 : 1;
+    });
     return { data: allData, error: null };
   };
 
@@ -526,6 +543,7 @@ export default function AllRecurringChargesPage() {
   // A recarga é silenciosa (sem tela de carregando) e nunca roda mais de uma vez a cada 8 segundos.
   const loadDataRef = useRef<() => Promise<void>>(async () => {});
   const ultimaCargaRef = useRef(0);
+  const falhasSeguidasRef = useRef(0);
   const recargaAgendadaRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
   const recarregarSilencioso = useCallback((motivo: string) => {
@@ -575,6 +593,10 @@ export default function AllRecurringChargesPage() {
       ]);
       if (chargesRes.error) throw chargesRes.error;
       if (companiesRes.error) throw companiesRes.error;
+      // falhou alguma das listas grandes: não zera o que está na tela, avisa e tenta de novo sozinho
+      if (payablesRes.error) throw payablesRes.error;
+      if (invoicesRes.error) throw invoicesRes.error;
+      if (financialReceivablesRes.error) throw financialReceivablesRes.error;
       const allCompaniesRaw = companiesRes.data || [];
       const allCompanies = allCompaniesRaw.filter((c: any) => !c.is_simulator);
       // Use ALL companies (including simulators) for name/phone maps so invoices always resolve
@@ -630,6 +652,7 @@ export default function AllRecurringChargesPage() {
         };
       });
       setInvoices([...legacyInvoices, ...centralReceivables]);
+      falhasSeguidasRef.current = 0;
       setBanks((banksRes.data as any) || []);
       setStaffCategories((catRes.data as any) || []);
       setStaffCostCenters((ccRes.data as any) || []);
@@ -646,7 +669,10 @@ export default function AllRecurringChargesPage() {
       } catch { setJuridicoCompanyIds(new Set()); }
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao carregar dados");
+      // avisa uma vez por sequência de falhas e tenta sozinho até 3 vezes; depois disso fica o relógio de 2 min
+      falhasSeguidasRef.current += 1;
+      if (falhasSeguidasRef.current === 1) toast.error("Não consegui carregar os dados do financeiro. Tentando de novo.");
+      if (falhasSeguidasRef.current <= 3) recarregarSilencioso("falha na carga");
     }
   };
   loadDataRef.current = loadData;
