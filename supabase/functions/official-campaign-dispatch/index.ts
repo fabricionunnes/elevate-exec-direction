@@ -34,6 +34,21 @@ Deno.serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE);
   let body: any = {};
   try { body = await req.json(); } catch { /* sem corpo */ }
+  // Retomada agendada (16/11/2026, Fabrício: pausar os disparos às 23h e retomar sozinho às 8h).
+  // Não pede login porque não recebe nada de fora: só retoma disparo que está pausado E com
+  // auto_resume_at vencido, e essa marca só é gravada por quem tem acesso ao banco.
+  if (body.action === "retomar_agendados") {
+    const { data: camps } = await supabase.from(CAMP)
+      .update({ status: "sending", resumed_at: new Date().toISOString(), auto_resume_at: null, notes: null })
+      .eq("status", "paused").not("auto_resume_at", "is", null).lte("auto_resume_at", new Date().toISOString())
+      .select("id");
+    for (const c of camps || []) {
+      // @ts-ignore EdgeRuntime existe no runtime do Supabase
+      EdgeRuntime.waitUntil(processar(supabase, c.id, 0, 0));
+    }
+    return j({ ok: true, retomados: (camps || []).map((c: any) => c.id) });
+  }
+
   const campaignId = String(body.campaign_id || "");
   if (!campaignId) return j({ error: "campaign_id obrigatório" }, 400);
 
