@@ -38,7 +38,9 @@ export const CRMInboundMessageNotifier = ({ staffId, isAdmin, isMaster = false }
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "crm_whatsapp_messages", filter: "direction=eq.inbound" },
         async (payload) => {
-          const msg = payload.new as { id: string; conversation_id: string; content: string | null; type: string | null; created_at: string };
+          const msg = payload.new as { id: string; conversation_id: string; content: string | null; type: string | null; created_at: string; automatica?: boolean };
+          // resposta automática do lead ou "parar de receber" depois de um disparo: não avisa (16/11/2026)
+          if (msg.automatica) return;
           const p = prefsRef.current;
           if (!p.notify_new_message) return;
           if (!isWithinNotifyWindow(p)) return;
