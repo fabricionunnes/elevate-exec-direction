@@ -47,6 +47,7 @@ export default function CRMWhatsAppConnectionPage() {
   // (/onboarding-tasks/minhas-conexoes-whatsapp), então o papel é lido aqui.
   const [canDelete, setCanDelete] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [restarting, setRestarting] = useState<string | null>(null);
   const timers = useRef<number[]>([]);
 
   const refresh = useCallback(async () => {
@@ -113,11 +114,28 @@ export default function CRMWhatsAppConnectionPage() {
   };
   const closeQr = () => { stopLoops(); setQrFor(null); setQrImg(null); };
 
+  // Reconectar: religa a sessão e CONFERE o estado real. Se o login do número caiu no
+  // servidor, religar não resolve e ele passa a pedir QR: aí o QR abre sozinho.
+  // (17/11/2026: todas as sessões perderam o login, a tela dizia "Conectada" e o
+  // Reconectar só mostrava um aviso, sem resolver nada.)
   const restart = async (name: string) => {
+    setRestarting(name);
     try {
       await callApi("restart", { instance_name: name });
-      toast.success("Reconexão disparada. Atualize em ~15s.");
+      let state = "";
+      for (let i = 0; i < 6 && state !== "open"; i++) {
+        await new Promise((r) => setTimeout(r, 3000));
+        try { state = (await callApi("status", { instance_name: name })).state || ""; } catch { /* tenta de novo */ }
+      }
+      await refresh();
+      if (state === "open") {
+        toast.success("WhatsApp reconectado.");
+      } else {
+        toast.warning("Esse número saiu do WhatsApp. Leia o QR pra conectar de novo.");
+        await openQr(name);
+      }
     } catch (e: unknown) { toast.error((e as Error).message); }
+    finally { setRestarting(null); }
   };
 
   const remove = async (inst: Instance) => {
@@ -130,7 +148,9 @@ export default function CRMWhatsAppConnectionPage() {
     finally { setDeleting(null); }
   };
 
-  const connected = (s: string | null) => s === "connected" || s === "connecting";
+  // "connecting" NÃO é conectado: é o servidor esperando a leitura do QR.
+  const connected = (s: string | null) => s === "connected";
+  const waitingQr = (s: string | null) => s === "connecting";
 
   if (loading) {
     return <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -164,22 +184,31 @@ export default function CRMWhatsAppConnectionPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {instances.map((inst) => (
-            <Card key={inst.id} className={connected(inst.status) ? "border-emerald-500/30" : "border-destructive/30"}>
+            <Card key={inst.id} className={connected(inst.status) ? "border-emerald-500/30" : waitingQr(inst.status) ? "border-amber-500/40" : "border-destructive/30"}>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base flex items-center gap-2">
                     {connected(inst.status)
                       ? <Wifi className="h-4 w-4 text-emerald-500" />
-                      : <WifiOff className="h-4 w-4 text-destructive" />}
+                      : waitingQr(inst.status)
+                        ? <QrCode className="h-4 w-4 text-amber-500" />
+                        : <WifiOff className="h-4 w-4 text-destructive" />}
                     {inst.display_name || inst.instance_name}
                   </CardTitle>
                   {connected(inst.status)
                     ? <Badge className="bg-emerald-500 text-white border-0 text-xs">Conectada</Badge>
-                    : <Badge variant="destructive" className="text-xs">Desconectada</Badge>}
+                    : waitingQr(inst.status)
+                      ? <Badge className="bg-amber-500 text-white border-0 text-xs">Aguardando QR</Badge>
+                      : <Badge variant="destructive" className="text-xs">Desconectada</Badge>}
                 </div>
                 <CardDescription className="font-mono text-xs">
                   {inst.phone_number || inst.instance_name}
                 </CardDescription>
+                {waitingQr(inst.status) && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Esse número saiu do WhatsApp. Clique em Conectar (QR) e leia o código no celular.
+                  </p>
+                )}
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2 pt-2">
                 {!connected(inst.status) && (
@@ -187,8 +216,8 @@ export default function CRMWhatsAppConnectionPage() {
                     <QrCode className="h-3.5 w-3.5" /> Conectar (QR)
                   </Button>
                 )}
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => restart(inst.instance_name)}>
-                  <RefreshCw className="h-3.5 w-3.5" /> Reconectar
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => restart(inst.instance_name)} disabled={restarting === inst.instance_name}>
+                  <RefreshCw className={`h-3.5 w-3.5 ${restarting === inst.instance_name ? "animate-spin" : ""}`} /> {restarting === inst.instance_name ? "Reconectando..." : "Reconectar"}
                 </Button>
                 {canDelete && (
                   <AlertDialog>
@@ -232,7 +261,7 @@ export default function CRMWhatsAppConnectionPage() {
               ? <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               : qrImg
                 ? <img src={qrImg} alt="QR Code" className="w-64 h-64 rounded-lg bg-white p-2" />
-                : <p className="text-sm text-muted-foreground">QR indisponível — tente Reconectar e abrir de novo.</p>}
+                : <p className="text-sm text-muted-foreground">QR indisponível. Clique em Gerar novo QR.</p>}
           </div>
           <Button variant="outline" size="sm" className="gap-2" onClick={() => qrFor && fetchQr(qrFor)} disabled={qrLoading}>
             <RefreshCw className={`h-4 w-4 ${qrLoading ? "animate-spin" : ""}`} /> Gerar novo QR
