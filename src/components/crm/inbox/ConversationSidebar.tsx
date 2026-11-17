@@ -113,6 +113,8 @@ export function ConversationSidebar({
 
   // Agente de IA vinculado à instância desta conversa + override liga/desliga
   const [convAgent, setConvAgent] = useState<{ id: string; name: string } | null>(null);
+  // enquanto as consultas não voltam, o card não pode dizer "Nenhum agente" (16/11/2026: com a tela carregada parecia que o disparo tinha saído sem agente)
+  const [carregandoAgente, setCarregandoAgente] = useState(true);
   // Troca manual de agente nesta conversa: lista de agentes ativos, agente padrão do número
   // e o agente fixado no override (null = segue o padrão do número)
   const [agentOptions, setAgentOptions] = useState<{ id: string; name: string }[]>([]);
@@ -190,6 +192,7 @@ export function ConversationSidebar({
     setAgentEnabled(true);
     setDefaultAgent(null);
     setPinnedAgentId(null);
+    setCarregandoAgente(true);
     (async () => {
       const [{ data: all }, { data: chRows }, { data: ov }] = await Promise.all([
         (supabase as any).from("crm_ai_agents").select("id, name, is_active").eq("is_active", true).order("name"),
@@ -231,7 +234,8 @@ export function ConversationSidebar({
       setPinnedAgentId(fixado && fixado.id !== padrao?.id ? fixado.id : null);
       setConvAgent(fixado || padrao);
       if (ov) setAgentEnabled(ov.enabled !== false);
-    })();
+      setCarregandoAgente(false);
+    })().catch(() => { if (active) setCarregandoAgente(false); });
     return () => { active = false; };
   }, [conversation.id, conversation.lead_id, agentChannel, bindingChannel, agentInstanceId]);
 
@@ -973,9 +977,9 @@ export function ConversationSidebar({
             <div className="flex items-center gap-2 min-w-0">
               <Bot className={`h-4 w-4 shrink-0 ${convAgent && agentEnabled ? "text-primary" : "text-muted-foreground"}`} />
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{convAgent?.name || "Nenhum agente nesta conversa"}</p>
+                <p className="text-sm font-medium truncate">{convAgent?.name || (carregandoAgente ? "Carregando agente..." : "Nenhum agente nesta conversa")}</p>
                 <p className="text-[11px] text-muted-foreground">
-                  {!convAgent ? "Escolha um agente abaixo" : !agentEnabled ? "Desligado nesta conversa" : pinnedAgentId ? "Fixo nesta conversa · só ele responde" : "Respondendo esta conversa"}
+                  {!convAgent ? (carregandoAgente ? "Só um instante" : "Escolha um agente abaixo") : !agentEnabled ? "Desligado nesta conversa" : pinnedAgentId ? "Fixo nesta conversa · só ele responde" : "Respondendo esta conversa"}
                 </p>
               </div>
             </div>
@@ -986,12 +990,12 @@ export function ConversationSidebar({
             <SearchableSelect
               value={pinnedAgentId || "__padrao__"}
               onValueChange={handleChangeAgent}
-              disabled={savingAgentToggle}
+              disabled={savingAgentToggle || carregandoAgente}
               placeholder="Escolha o agente"
               emptyMessage="Nenhum agente com esse nome."
               className="h-8 text-xs"
               options={[
-                { value: "__padrao__", label: defaultAgent ? `Padrão do funil (${defaultAgent.name})` : "Padrão do número (sem agente)" },
+                { value: "__padrao__", label: defaultAgent ? `Padrão do funil (${defaultAgent.name})` : carregandoAgente ? "Carregando..." : "Padrão do número (sem agente)" },
                 ...agentOptions.filter((a) => a.id !== defaultAgent?.id).map((a) => ({ value: a.id, label: a.name })),
               ]}
             />

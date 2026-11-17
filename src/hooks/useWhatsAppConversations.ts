@@ -155,6 +155,39 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
   useEffect(() => {
     fetchConversations();
 
+    // Tempo real em lotes (16/11/2026). Durante um disparo chegam mais de 200 mudanças de conversa por
+    // minuto e cada uma redesenhava a lista inteira (e buscava a conversa no banco): a tela travava e a
+    // conversa clicada demorava a abrir. Agora as mudanças se acumulam e entram juntas a cada 1,2 s, as
+    // conversas novas vêm numa consulta só e a lista só é reordenada quando a data da última mensagem muda.
+    const pendentes = new Map<string, Record<string, unknown>>();
+    const buscar = new Set<string>();
+    const removidas = new Set<string>();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let vivo = true;
+    const aplicar = async () => {
+      timer = null;
+      const upd = new Map(pendentes); pendentes.clear();
+      const ids = Array.from(buscar); buscar.clear();
+      const del = new Set(removidas); removidas.clear();
+      const completas = ids.length ? await fetchVariasConversas(ids.slice(0, 300)) : [];
+      if (!vivo) return;
+      setConversations((prev) => {
+        const novas = new Map<string, WhatsAppConversation>(completas.map((c) => [String(c.id), c] as [string, WhatsAppConversation]));
+        let reordenar = false;
+        let lista = prev.filter((c) => !del.has(String(c.id))).map((c) => {
+          const inteira = novas.get(String(c.id));
+          if (inteira) { novas.delete(String(c.id)); if (inteira.last_message_at !== c.last_message_at) reordenar = true; return inteira; }
+          const u = upd.get(String(c.id));
+          if (!u) return c;
+          if (u.last_message_at !== c.last_message_at) reordenar = true;
+          return { ...c, ...u } as unknown as WhatsAppConversation;
+        });
+        if (novas.size) { lista = [...Array.from(novas.values()), ...lista]; reordenar = true; }
+        return reordenar ? ordenarPorUltima(lista) : lista;
+      });
+    };
+    const agendar = () => { if (!timer) timer = setTimeout(aplicar, 1200); };
+
     // Subscribe to realtime updates
     const channel: RealtimeChannel = supabase
       .channel('whatsapp_conversations_changes')
@@ -166,55 +199,49 @@ export function useWhatsAppConversations(options: UseWhatsAppConversationsOption
           table: 'crm_whatsapp_conversations',
         },
         (payload) => {
-          console.log('Conversation change:', payload);
-          
           if (payload.eventType === 'INSERT') {
-            // Fetch full conversation with contact
-            fetchSingleConversation(payload.new.id).then((conv) => {
-              if (conv) {
-                // a carga em blocos pode já ter trazido essa conversa: substitui em vez de duplicar
-                setConversations((prev) => prev.some((c) => c.id === conv.id)
-                  ? prev.map((c) => (c.id === conv.id ? conv : c))
-                  : [conv, ...prev]);
-              }
-            });
+            // conversa nova: vem completa (com contato e lead) na próxima leva
+            if (!(payload.new as any).pessoal) buscar.add(String(payload.new.id));
           } else if (payload.eventType === 'UPDATE') {
-            // Conversa que subiu de bloco durante a carga pode ter ficado de fora: traz quando mexer nela.
             const id = String((payload.new as any).id);
+            // Conversa que subiu de bloco durante a carga pode ter ficado de fora: traz quando mexer nela.
             if (loadedOnce.current && !idsCarregados.current.has(id) && !(payload.new as any).pessoal
-                && !options.instanceId && !options.status && !options.assignedTo) {
-              fetchSingleConversation(id).then((conv) => {
-                if (conv) setConversations((p2) => (p2.some((c) => c.id === conv.id) ? p2 : ordenarPorUltima([conv, ...p2])));
-              });
-            }
-            setConversations((prev) => {
-              // Update the conversation
-              const updated = prev.map((c) => {
-                if (c.id === payload.new.id) {
-                  return { ...c, ...payload.new };
-                }
-                return c;
-              });
-              // Re-sort by last_message_at (most recent first)
-              return updated.sort((a, b) => {
-                const dateA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
-                const dateB = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
-                return dateB - dateA;
-              });
-            });
+                && !options.instanceId && !options.status && !options.assignedTo) buscar.add(id);
+            pendentes.set(id, { ...(pendentes.get(id) || {}), ...(payload.new as Record<string, unknown>) });
           } else if (payload.eventType === 'DELETE') {
-            setConversations((prev) =>
-              prev.filter((c) => c.id !== payload.old.id)
-            );
+            removidas.add(String(payload.old.id));
           }
+          agendar();
         }
       )
       .subscribe();
 
     return () => {
+      vivo = false;
+      if (timer) clearTimeout(timer);
       supabase.removeChannel(channel);
     };
   }, [options.instanceId, options.status, options.assignedTo]);
+
+  // Várias conversas completas de uma vez (usado pelo tempo real em lotes)
+  const fetchVariasConversas = async (ids: string[]): Promise<WhatsAppConversation[]> => {
+    const { data, error } = await supabase
+      .from('crm_whatsapp_conversations')
+      .select(`
+        *,
+        contact:crm_whatsapp_contacts(*),
+        lead:crm_leads(id, name, company, origin_id, stage_id),
+        assigned_staff:onboarding_staff(id, name, avatar_url),
+        instance:whatsapp_instances(id, instance_name, display_name),
+        official_instance:whatsapp_official_instances(id, display_name, phone_number)
+      `)
+      .in('id', ids);
+    if (error) {
+      console.error('Error fetching conversations batch:', error);
+      return [];
+    }
+    return ((data || []) as any[]).filter((c) => !c.pessoal) as WhatsAppConversation[];
+  };
 
   const fetchSingleConversation = async (id: string): Promise<WhatsAppConversation | null> => {
     const { data, error } = await supabase

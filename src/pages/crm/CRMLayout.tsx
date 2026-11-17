@@ -156,11 +156,15 @@ export const CRMLayout = () => {
     const timer = setInterval(ler, 60000);
     window.addEventListener("crm-inbox-filter", ler);
     window.addEventListener("storage", ler);
+    // Freio (16/11/2026): num disparo são centenas de mudanças por minuto e cada uma chamava a contagem
+    // no banco. Agora recalcula no máximo uma vez a cada 4 s.
+    let espera: ReturnType<typeof setTimeout> | null = null;
+    const lerComFreio = () => { if (!espera) espera = setTimeout(() => { espera = null; ler(); }, 4000); };
     const canal = supabase.channel("crm-inbox-nao-lidas")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "crm_whatsapp_conversations" }, ler)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "instagram_conversations" }, ler)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "crm_whatsapp_conversations" }, lerComFreio)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "instagram_conversations" }, lerComFreio)
       .subscribe();
-    return () => { vivo = false; clearInterval(timer); window.removeEventListener("crm-inbox-filter", ler); window.removeEventListener("storage", ler); supabase.removeChannel(canal); };
+    return () => { vivo = false; clearInterval(timer); if (espera) clearTimeout(espera); window.removeEventListener("crm-inbox-filter", ler); window.removeEventListener("storage", ler); supabase.removeChannel(canal); };
   }, []);
   useEffect(() => {
     const onComposer = (e: Event) => setChatComposerOnScreen(!!(e as CustomEvent).detail);
