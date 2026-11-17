@@ -12,7 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { toast } from "sonner";
 import { Loader2, ChevronDown, X, SquareCheck, RotateCcw, UserRound, Building2, Tag, MailOpen, EyeOff, Eye, Bot, BotOff, GitBranch, Check } from "lucide-react";
 
-export type BulkAction = "close" | "reopen" | "assign" | "sector" | "tag" | "read" | "hide" | "unhide" | "agent_on" | "agent_off" | "link_pipeline";
+export type BulkAction = "close" | "reopen" | "assign" | "sector" | "tag" | "read" | "hide" | "unhide" | "agent_on" | "agent_off" | "agent_set" | "link_pipeline" | "move_pipeline";
 
 const ROTULO: Record<BulkAction, { label: string; verbo: string; icon: any }> = {
   close: { label: "Finalizar", verbo: "finalizar", icon: SquareCheck },
@@ -26,6 +26,9 @@ const ROTULO: Record<BulkAction, { label: string; verbo: string; icon: any }> = 
   agent_on: { label: "Ligar agente de IA", verbo: "ligar o agente de IA em", icon: Bot },
   agent_off: { label: "Desligar agente de IA", verbo: "desligar o agente de IA em", icon: BotOff },
   link_pipeline: { label: "Vincular a funil", verbo: "criar negócio (pra quem não tem) em", icon: GitBranch },
+  // 17/11/2026, Fabrício: "selecionar vários e fazer ações em massa, como mudar de funil ou mudar de agente"
+  move_pipeline: { label: "Mudar de funil", verbo: "mudar de funil e etapa", icon: GitBranch },
+  agent_set: { label: "Trocar agente de IA", verbo: "trocar o agente de IA de", icon: Bot },
 };
 
 interface Props {
@@ -49,6 +52,7 @@ export function BulkActionsBar({ selectedIds, filter, quick, onClearSelection, o
   const [tags, setTags] = useState<{ value: string; label: string }[]>([]);
   const [pipelines, setPipelines] = useState<{ value: string; label: string }[]>([]);
   const [stages, setStages] = useState<{ id: string; name: string; pipeline_id: string }[]>([]);
+  const [agents, setAgents] = useState<{ value: string; label: string }[]>([]);
 
   const semSelecao = selectedIds.length === 0;
 
@@ -87,7 +91,11 @@ export function BulkActionsBar({ selectedIds, filter, quick, onClearSelection, o
         const { data } = await supabase.from("crm_tags").select("id, name").eq("is_active", true).order("name");
         setTags(((data || []) as any[]).map((t) => ({ value: t.id, label: t.name })));
       }
-      if (action === "link_pipeline" && pipelines.length === 0) {
+      if (action === "agent_set" && agents.length === 0) {
+        const { data } = await (supabase as any).from("crm_ai_agents").select("id, name").eq("is_active", true).order("name");
+        setAgents(((data || []) as any[]).map((a) => ({ value: a.id, label: a.name })));
+      }
+      if ((action === "link_pipeline" || action === "move_pipeline") && pipelines.length === 0) {
         const [{ data: pp }, { data: st }] = await Promise.all([
           supabase.from("crm_pipelines").select("id, name").order("name"),
           supabase.from("crm_stages").select("id, name, pipeline_id, sort_order").order("sort_order"),
@@ -100,7 +108,7 @@ export function BulkActionsBar({ selectedIds, filter, quick, onClearSelection, o
 
   const abrir = (a: BulkAction) => { setParams({}); setAction(a); };
 
-  const precisaParam = action === "assign" ? false : action === "sector" ? false : action === "tag" ? !params.tag_id : action === "link_pipeline" ? !(params.pipeline_id && params.stage_id) : false;
+  const precisaParam = action === "assign" ? false : action === "sector" ? false : action === "tag" ? !params.tag_id : action === "link_pipeline" || action === "move_pipeline" ? !(params.pipeline_id && params.stage_id) : action === "agent_set" ? !params.agent_id : false;
 
   const executar = async () => {
     if (!action) return;
@@ -113,7 +121,8 @@ export function BulkActionsBar({ selectedIds, filter, quick, onClearSelection, o
     const r = (data || {}) as any;
     const partes = [`${r.affected ?? 0} conversa${(r.affected ?? 0) === 1 ? "" : "s"}`];
     if (action === "link_pipeline") partes[0] = `${r.leads_created ?? 0} negócio${(r.leads_created ?? 0) === 1 ? "" : "s"} criado${(r.leads_created ?? 0) === 1 ? "" : "s"}`;
-    if (r.skipped) partes.push(`${r.skipped} ficaram de fora${action === "tag" ? " (sem negócio)" : action === "link_pipeline" ? " (já tinham negócio ou são grupo)" : ""}`);
+    if (action === "move_pipeline") partes[0] = `${r.leads_moved ?? 0} negócio${(r.leads_moved ?? 0) === 1 ? "" : "s"} movido${(r.leads_moved ?? 0) === 1 ? "" : "s"}${r.leads_created ? ` e ${r.leads_created} criado${r.leads_created === 1 ? "" : "s"}` : ""}`;
+    if (r.skipped) partes.push(`${r.skipped} ficaram de fora${action === "tag" ? " (sem negócio)" : action === "link_pipeline" ? " (já tinham negócio ou são grupo)" : action === "move_pipeline" ? " (grupo ou sem telefone)" : ""}`);
     toast.success(`${ROTULO[action].label}: ${partes.join(", ")}`);
     const feita = action;
     setAction(null);
@@ -150,9 +159,11 @@ export function BulkActionsBar({ selectedIds, filter, quick, onClearSelection, o
             <DropdownMenuItem onClick={() => abrir("sector")}><Building2 className="h-4 w-4 mr-2" />Transferir setor</DropdownMenuItem>
             <DropdownMenuItem onClick={() => abrir("tag")}><Tag className="h-4 w-4 mr-2" />Aplicar etiqueta</DropdownMenuItem>
             <DropdownMenuItem onClick={() => abrir("link_pipeline")}><GitBranch className="h-4 w-4 mr-2" />Vincular a funil</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => abrir("move_pipeline")}><GitBranch className="h-4 w-4 mr-2" />Mudar de funil</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => abrir("agent_on")}><Bot className="h-4 w-4 mr-2" />Ligar agente de IA</DropdownMenuItem>
             <DropdownMenuItem onClick={() => abrir("agent_off")}><BotOff className="h-4 w-4 mr-2" />Desligar agente de IA</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => abrir("agent_set")}><Bot className="h-4 w-4 mr-2" />Trocar agente de IA</DropdownMenuItem>
             <DropdownMenuSeparator />
             {quick === "hidden" ? (
               <DropdownMenuItem onClick={() => abrir("unhide")}><Eye className="h-4 w-4 mr-2" />Reexibir</DropdownMenuItem>
@@ -200,7 +211,14 @@ export function BulkActionsBar({ selectedIds, filter, quick, onClearSelection, o
               <p className="text-xs text-muted-foreground">A etiqueta é do negócio: conversa sem negócio fica de fora.</p>
             </div>
           )}
-          {action === "link_pipeline" && (
+          {action === "agent_set" && (
+            <div className="space-y-1">
+              <Label>Agente de IA</Label>
+              <SearchableSelect value={params.agent_id || ""} onValueChange={(v) => setParams({ agent_id: v })} options={agents} placeholder="Escolher agente" emptyMessage="Nenhum agente ativo." />
+              <p className="text-xs text-muted-foreground">O agente escolhido fica fixo nessas conversas e ligado: só ele responde, até alguém trocar ou desligar.</p>
+            </div>
+          )}
+          {(action === "link_pipeline" || action === "move_pipeline") && (
             <div className="space-y-2">
               <div className="space-y-1">
                 <Label>Funil</Label>
@@ -210,7 +228,9 @@ export function BulkActionsBar({ selectedIds, filter, quick, onClearSelection, o
                 <Label>Etapa</Label>
                 <SearchableSelect value={params.stage_id || ""} onValueChange={(v) => setParams((p) => ({ ...p, stage_id: v }))} options={etapasDoFunil} placeholder={params.pipeline_id ? "Escolher etapa" : "Escolha o funil primeiro"} emptyMessage="Nenhuma etapa." disabled={!params.pipeline_id} />
               </div>
-              <p className="text-xs text-muted-foreground">Cria o negócio só pra quem ainda não tem, com o nome e o telefone do contato. Quem já tem negócio não muda.</p>
+              <p className="text-xs text-muted-foreground">{action === "move_pipeline"
+                ? "Quem já tem negócio vai pro funil e etapa escolhidos (as automações da etapa valem). Quem não tem ganha o negócio já nessa etapa."
+                : "Cria o negócio só pra quem ainda não tem, com o nome e o telefone do contato. Quem já tem negócio não muda."}</p>
             </div>
           )}
           {action === "hide" && <p className="text-xs text-muted-foreground">Elas somem do Atendimento e o sistema para de guardar as mensagens desses números. Dá pra reexibir na aba Ocultas.</p>}
