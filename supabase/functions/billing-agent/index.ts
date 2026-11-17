@@ -666,6 +666,12 @@ async function autorizado(supabase: any, req: Request) {
   return null;
 }
 
+/** Dia (aaaa-mm-dd) no horário de Brasília de um instante ISO; vazio se não tiver. */
+function diaBR(iso: unknown): string {
+  const t = iso ? new Date(String(iso)).getTime() : NaN;
+  return Number.isFinite(t) ? new Date(t - 3 * 3600000).toISOString().slice(0, 10) : "";
+}
+
 // ---------- cobrança proativa ----------
 async function rodarCobranca(supabase: any, cfg: any, opts: { simulando: boolean; companyId?: string; limite?: number }) {
   const hoje = hojeYmdBR();
@@ -714,10 +720,21 @@ async function rodarCobranca(supabase: any, cfg: any, opts: { simulando: boolean
 
     if (noJuridico.has(companyId)) { pular(nome, "no jurídico"); continue; }
     if (cobradoHoje.has(companyId)) { pular(nome, "já cobrado hoje"); continue; }
-    if (caso?.status === "humano") { pular(nome, "em atendimento humano"); continue; }
+    // REGRA (Fabrício, 13/11/2026: "se tiver parcela em aberto pode cobrar, só não cobra se não tiver"; 17/11/2026:
+    // "hoje ninguém que está devendo recebeu mensagem de cobrança... todo dia tenho que vir aqui pedir pra mandar").
+    // Caso que saiu do automático (cliente reclamou, falou em cancelar, outra pessoa respondeu) fica parado só no
+    // dia em que isso aconteceu. No dia seguinte, com parcela vencida em aberto, o agente volta a cobrar sozinho:
+    // o assunto fica com a direção e ele não discute. Só "pausado" (decisão explícita de não cobrar) segura.
+    if (caso?.status === "humano") {
+      if (diaBR(caso.updated_at) >= hoje) { pular(nome, "em atendimento humano (saiu do automático hoje, volta amanhã)"); continue; }
+      const instr = caso.owner_instruction || `Regra geral da direção: com parcela vencida em aberto, cobra normalmente todos os dias. Assunto que está com a direção e que você NÃO discute: ${caso.pause_reason || "tratado pela direção"}. Cobre só a parcela vencida. Se o cliente voltar a esse assunto, diga em uma frase que a direção trata disso com ele e que a parcela continua em aberto.`;
+      caso = { ...caso, status: "ativo", owner_instruction: instr };
+      if (!opts.simulando) await salvarCaso(supabase, companyId, { status: "ativo", owner_instruction: instr });
+    }
     if (caso?.status === "pausado") { pular(nome, `não cobrar, por decisão da direção (${caso.pause_reason || "sem motivo"})`); continue; }
     if (caso?.paused_until && new Date(caso.paused_until).getTime() > Date.now()) { pular(nome, `pausado até ${caso.paused_until.slice(0, 10)} (${caso.pause_reason || "sem motivo"})`); continue; }
-    if (caso?.status === "aguardando_decisao" && !caso?.context_flag && caso?.decision_asked_at && Date.now() - new Date(caso.decision_asked_at).getTime() < 48 * 3600000) { pular(nome, "aguardando decisão da direção"); continue; }
+    // pedido do cliente esperando a direção: segura só no dia do pedido (antes eram 48h)
+    if (caso?.status === "aguardando_decisao" && !caso?.context_flag && caso?.decision_asked_at && diaBR(caso.decision_asked_at) >= hoje) { pular(nome, "aguardando decisão da direção (pedido de hoje)"); continue; }
     if (caso?.status === "promessa" && caso?.promise_date) {
       if (caso.promise_date >= hoje) { pular(nome, `promessa de pagamento para ${ddmm(caso.promise_date)}`); continue; }
       // Passou a data e a fatura segue aberta: promessa furada, sobe o tom.
@@ -738,7 +755,8 @@ async function rodarCobranca(supabase: any, cfg: any, opts: { simulando: boolean
 
     let faturas = porEmpresa.get(companyId)!;
     const diasAtraso = diffDias(hoje, faturas[0].due_date);
-    if (diasAtraso > Number(cfg.max_days_overdue ?? 60)) {
+    // o teto não vale pra quem a direção mandou cobrar (caso Bahia Prev: "cobra normal" e 89 dias de atraso)
+    if (diasAtraso > Number(cfg.max_days_overdue ?? 60) && !caso?.owner_instruction && !caso?.manual_note) {
       pular(nome, `${diasAtraso} dias de atraso, acima do teto do agente`);
       if (!caso?.cap_alerted_at) {
         await avisarDono(supabase, cfg, `Cobrança: ${nome} passou de ${cfg.max_days_overdue ?? 60} dias de atraso (${diasAtraso} dias, ${brl(faturas.reduce((s, f) => s + f.amount_cents, 0))}). Parei de cobrar por aqui. Vale mandar pro Jurídico.`, { company_id: companyId }, opts.simulando);
@@ -786,19 +804,22 @@ async function rodarCobranca(supabase: any, cfg: any, opts: { simulando: boolean
         continue;
       }
     }
-    // Combinado fora do padrão e a direção ainda não disse como seguir: segura e pergunta.
+    // Combinado fora do padrão e a direção ainda não disse como seguir. Antes o agente segurava a cobrança e
+    // ficava esperando resposta (pedidos 10, 11 e 12 ficaram sem resposta e ninguém foi cobrado). Agora avisa
+    // a direção uma vez e cobra no mesmo dia, respeitando o combinado que leu. Se a direção responder
+    // "<código> não cobra", o caso vira pausado e para.
     if (caso?.context_flag && !caso?.owner_instruction && !caso?.manual_note) {
-      pular(nome, `combinado fora do padrão, aguardando orientação (${caso._motivo_especial || "ver contexto"})`);
-      if (opts.simulando) {
-        resumo.mensagens.push({ empresa: nome, telefone: fone, faixa: "segurado", dias: diffDias(hoje, faturas[0].due_date), motivos: [caso._motivo_especial || "combinado fora do padrão"], texto: `(não envia nada ao cliente) Contexto lido: ${caso.context_summary}` });
-      } else if (!caso?.decision_asked_at || Date.now() - new Date(caso.decision_asked_at).getTime() > 5 * 86400000) {
+      const instr = "Regra geral da direção: com parcela vencida em aberto, não fica sem cobrar. Cobre hoje respeitando o combinado descrito no contexto (data, forma de pagamento, parcelamento). Se o combinado for pagar de outra forma, acompanhe a entrega do combinado em vez de mandar link.";
+      if (!opts.simulando && (!caso?.decision_asked_at || Date.now() - new Date(caso.decision_asked_at).getTime() > 5 * 86400000)) {
         const { data: d } = await supabase.from("billing_agent_decisions").insert({ company_id: companyId, kind: "contexto", request: `Como cobrar: ${caso._motivo_especial || "combinado fora do padrão"}` }).select("code").single();
         await avisarDono(supabase, cfg,
-          `Cobrança, pedido ${d?.code}\n${nome} tem ${brl(faturas.reduce((s2, f) => s2 + f.amount_cents, 0))} em atraso (${diffDias(hoje, faturas[0].due_date)} dias), mas li nas conversas um combinado diferente e não cobrei.\n\n${caso.context_summary}\n\nComo eu sigo? Ex.: "${d?.code} cobra normal", "${d?.code} não cobra, é permuta, espera ele mandar o consórcio" ou "${d?.code} só cobra depois do dia 20".`,
+          `Cobrança, aviso ${d?.code}\n${nome} tem ${brl(faturas.reduce((s2, f) => s2 + f.amount_cents, 0))} em atraso (${diffDias(hoje, faturas[0].due_date)} dias) e li nas conversas um combinado diferente:\n\n${caso.context_summary}\n\nVou cobrar normalmente, respeitando esse combinado. Se for pra não cobrar ou cobrar de outro jeito, responda aqui. Ex.: "${d?.code} não cobra, é permuta", "${d?.code} cobra a partir de 20/11".`,
           { company_id: companyId, meta: { decision_code: d?.code } }, false);
-        await salvarCaso(supabase, companyId, { phone: fone, status: "aguardando_decisao", decision_asked_at: new Date().toISOString() });
+        await salvarCaso(supabase, companyId, { phone: fone, decision_asked_at: new Date().toISOString(), owner_instruction: instr });
+      } else if (!opts.simulando) {
+        await salvarCaso(supabase, companyId, { phone: fone, owner_instruction: instr });
       }
-      continue;
+      caso = { ...caso, owner_instruction: instr, status: caso?.status === "aguardando_decisao" ? "ativo" : caso?.status };
     }
 
     const { faixa, motivos } = calcularFaixa(cfg, diffDias(hoje, faturas[0].due_date), caso);
