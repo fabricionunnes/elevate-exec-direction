@@ -371,6 +371,10 @@ async function processIncomingMessage(
     if (stored) { mediaUrl = stored.url; mediaMimetype = stored.mime; }
   }
 
+  // Resposta automática ou "parar de receber" logo depois de um disparo: fica na conversa, mas não conta
+  // como não lida, não entra em Esperando e não gera aviso (Fabrício, 16/11/2026: "só ignora").
+  const ignoravel = await respostaIgnoravelDeDisparo(supabase, conversationId, content, type, timestamp);
+
   // Insert message
   const { error: msgError } = await supabase
     .from('crm_whatsapp_messages')
@@ -385,6 +389,7 @@ async function processIncomingMessage(
       media_mimetype: mediaMimetype,
       quoted_message_id: quotedMessageId,
       created_at: timestamp,
+      automatica: ignoravel,
     });
 
   if (msgError) {
@@ -399,8 +404,10 @@ async function processIncomingMessage(
     .update({
       last_message: (type === 'reaction' ? `Reagiu com ${content}` : content).substring(0, 255),
       last_message_at: timestamp,
-      unread_count: type === 'reaction' ? currentUnread : currentUnread + 1,
+      unread_count: type === 'reaction' || ignoravel ? currentUnread : currentUnread + 1,
       status: 'open',
+      // "visto" depois da mensagem: tira a conversa da fila Esperando sem mexer em quem falou por último
+      ...(ignoravel ? { waiting_seen_at: new Date(Date.now() + 5000).toISOString() } : {}),
     })
     .eq('id', conversationId);
 
@@ -566,5 +573,43 @@ async function storeOfficialMedia(
   } catch (e) {
     console.error('[WhatsApp Official] storeOfficialMedia error:', e);
     return null;
+  }
+}
+
+
+// ── Resposta de disparo que não precisa de gente (16/11/2026) ────────────────
+// Depois de um disparo de template chegam centenas de mensagens que ninguém precisa ler: a auto-resposta
+// do WhatsApp Business do lead (ausência, boas-vindas, menu) e o clique em "Parar de receber mensagens".
+// Regra do relógio medida em 16/11: tudo que chegou em até 45 s da entrega era automático (190 de 190);
+// a pessoa mais rápida a escrever levou 89 s. Toque em botão do template chega rápido e é gente.
+const AUTO_RE = /mensagem\s+autom[aá]tica|resposta\s+autom[aá]tica|atendimento\s+(virtual|automatizado|digital)|assistente\s+virtual|agradece(mos)?\s+(a\s+|o\s+)?(sua|seu|pelo|pela)?\s*(mensagem|contato)|agrade[cç]o\s+(o\s+|a\s+)?(seu|sua|pelo|pela)?\s*(contato|mensagem)|obrigad[oa]\s+por\s+(entrar\s+em\s+)?conta(to|tar)|recebemos\s+(a\s+|sua\s+)?mensagem|n[aã]o\s+estamos\s+dispon[ií]ve|fora\s+do\s+(nosso\s+)?hor[aá]rio|hor[aá]rio\s+de\s+(atendimento|funcionamento)|retornaremos|responderemos\s+(assim|em\s+breve|o\s+mais)|entraremos\s+em\s+contato|digite\s+(o\s+n[uú]mero|uma\s+op[cç][aã]o|\d)|escolha\s+(uma|a)\s+op[cç][aã]o|selecione\s+(uma|a)\s+op[cç][aã]o|seja\s+(muito\s+)?bem[-\s]?vind|indispon[ií]vel\s+no\s+momento|desculp[ea],?\s+n[aã]o\s+(identifiquei|entendi)|j[aá]\s+fechamos/i;
+const PARAR_RE = /^\s*parar de receber/i;
+const RAPIDA_DE_GENTE_RE = /^\s*(quero entrar no grupo|quero saber mais|sim|n[aã]o|tenho interesse|quero|pode sim|pode|claro|bora|vamos)\s*[.!]*\s*$/i;
+// deno-lint-ignore no-explicit-any
+async function respostaIgnoravelDeDisparo(supabase: any, conversationId: string, content: string, type: string, timestamp: string): Promise<boolean> {
+  try {
+    if (type !== 'text' && type !== 'button' && type !== 'interactive') return false;
+    const txt = String(content || '');
+    const { data } = await supabase.from('whatsapp_official_campaign_recipients').select('sent_at, delivered_at')
+      .eq('conversation_id', conversationId).not('sent_at', 'is', null)
+      .gt('sent_at', new Date(Date.now() - 4 * 86400000).toISOString()).order('sent_at', { ascending: false }).limit(1);
+    const r = data?.[0];
+    if (!r) return false; // conversa sem disparo recente segue como sempre
+    if (PARAR_RE.test(txt)) return true;
+    if (RAPIDA_DE_GENTE_RE.test(txt)) return false;
+    const t = Date.parse(timestamp) || Date.now();
+    const sentMs = Date.parse(String(r.sent_at));
+    const entMs = r.delivered_at ? Date.parse(String(r.delivered_at)) : 0;
+    if (t >= sentMs - 5000 && t <= Math.max(sentMs, entMs || 0) + 45000) return true;
+    // fora do relógio, só o que é claramente automático e enquanto ninguém de verdade falou na conversa
+    if (txt.replace(/\s+/g, ' ').trim().length >= 12 && AUTO_RE.test(txt)) {
+      const { count } = await supabase.from('crm_whatsapp_messages').select('id', { count: 'exact', head: true })
+        .eq('conversation_id', conversationId).eq('direction', 'inbound').eq('automatica', false).gt('created_at', r.sent_at);
+      return (count || 0) === 0;
+    }
+    return false;
+  } catch (e) {
+    console.error('[WhatsApp Official] respostaIgnoravelDeDisparo', e);
+    return false;
   }
 }

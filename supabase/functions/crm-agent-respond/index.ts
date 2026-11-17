@@ -347,7 +347,7 @@ O QUE ENTREGA ROBÔ (leads perceberam, 20/10/2026), evite sempre:
   // "Me conta, qual o ramo?" → "Qual o ramo?"
   t = t.replace(/(^|[.!?]\s+|\n\s*)(me conta|me diz|me fala|conta pra mim)\s*,\s*(?=\S)/gi, "$1");
   // tirou muleta: a frase que sobrou começa com maiúscula
-  if (t !== antesMuleta) t = t.replace(/(^|[.!?]\s+|\n\s*)([a-zà-ú])/g, (_m, a, b)=>a + b.toUpperCase());
+  if (t !== antesMuleta) t = t.replace(/(^|[.!?]\s+|\n\s*)(?!https?:\/\/|www\.)([a-zà-ú])/g, (_m, a, b)=>a + b.toUpperCase()); // link no começo da linha fica como está (16/11/2026: saía "Https://")
   t = t.replace(/\s*[—–]\s*/g, ", "); // travessão → vírgula
   t = t.replace(/(?<!\d):\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])/g, ". "); // ": Palavra" → ". Palavra"
   t = t.replace(/(?<!\d):\s+/g, ", "); // ": palavra" → ", palavra"
@@ -2807,7 +2807,7 @@ const mcpSlug = (s)=>String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").to
 // mensagens automáticas". Auto-resposta do WhatsApp Business, fila de atendimento,
 // menu de chatbot, "fora do horário" etc. NÃO é o lead falando: o agente não responde,
 // não conta como resposta do lead e a mensagem fica fora do histórico que a IA vê.
-const AUTOMATICA_FORTE_RE = /mensagem\s+autom[aá]tica|resposta\s+autom[aá]tica|atendimento\s+(virtual|automatizado)|assistente\s+virtual|chatbot|\d+[ºo°]\s+da\s+fila|posi[cç][aã]o\s+na\s+fila|logo\s+(voc[eê]\s+)?ser[aá]\s+atendid|aguarde\s+(um\s+)?(momento|instante)|agradece(mos)?\s+(a\s+|o\s+)?(sua|seu|pelo|pela)?\s*(mensagem|contato)|agrade[cç]o\s+(o\s+|a\s+)?(seu|sua|pelo|pela)?\s*(contato|mensagem)|lerei\s+(a\s+)?sua\s+mensagem|obrigad[oa]\s+por\s+(entrar\s+em\s+)?conta(to|tar)|recebemos\s+(a\s+|sua\s+)?mensagem|n[aã]o\s+estamos\s+dispon[ií]ve|fora\s+do\s+(nosso\s+)?hor[aá]rio|hor[aá]rio\s+de\s+(atendimento|funcionamento)|retornaremos|responderemos\s+(assim|em\s+breve|o\s+mais)|entraremos\s+em\s+contato|um\s+de\s+nossos\s+(atendentes|consultores|especialistas)|digite\s+(o\s+n[uú]mero|uma\s+op[cç][aã]o|\d)|escolha\s+(uma|a)\s+op[cç][aã]o|selecione\s+(uma|a)\s+op[cç][aã]o|n[uú]mero\s+do\s+protocolo|seu\s+protocolo|seja\s+bem[-\s]?vind|bem[-\s]?vind[oa]\(a\)\s+ao\s+atendimento|indispon[ií]vel\s+no\s+momento|estou\s+indispon[ií]vel|canal\s+(de\s+\w+\s+)?fora\s+do\s+ar|estou\s+de\s+f[ée]rias|estarei\s+(ausente|de\s+f[ée]rias|fora)|n[aã]o\s+houve\s+intera[cç][aã]o|ser[aá]\s+direcionad|em\s+instantes\s+(j[aá]\s+)?(iremos|vamos)|para\s+agilizar\s+(o\s+|seu\s+)?atendimento|clique\s+no\s+link\s+abaixo|acesse\s+o\s+link|canal\s+de\s+relacionamento|atendimento\s+(r[aá]pido|personalizado)\s+(clique|acesse)|ficamos\s+(muito\s+)?feli[zs]\s+com\s+sua\s+mensagem/i;
+const AUTOMATICA_FORTE_RE = /mensagem\s+autom[aá]tica|resposta\s+autom[aá]tica|atendimento\s+(virtual|automatizado)|assistente\s+virtual|chatbot|\d+[ºo°]\s+da\s+fila|posi[cç][aã]o\s+na\s+fila|logo\s+(voc[eê]\s+)?ser[aá]\s+atendid|aguarde\s+(um\s+)?(momento|instante)|agradece(mos)?\s+(a\s+|o\s+)?(sua|seu|pelo|pela)?\s*(mensagem|contato)|agrade[cç]o\s+(o\s+|a\s+)?(seu|sua|pelo|pela)?\s*(contato|mensagem)|lerei\s+(a\s+)?sua\s+mensagem|obrigad[oa]\s+por\s+(entrar\s+em\s+)?conta(to|tar)|recebemos\s+(a\s+|sua\s+)?mensagem|n[aã]o\s+estamos\s+dispon[ií]ve|fora\s+do\s+(nosso\s+)?hor[aá]rio|hor[aá]rio\s+de\s+(atendimento|funcionamento)|retornaremos|responderemos\s+(assim|em\s+breve|o\s+mais)|entraremos\s+em\s+contato|um\s+de\s+nossos\s+(atendentes|consultores|especialistas)|digite\s+(o\s+n[uú]mero|uma\s+op[cç][aã]o|\d)|escolha\s+(uma|a)\s+op[cç][aã]o|selecione\s+(uma|a)\s+op[cç][aã]o|n[uú]mero\s+do\s+protocolo|seu\s+protocolo|seja\s+bem[-\s]?vind|bem[-\s]?vind[oa]\(a\)\s+ao\s+atendimento|indispon[ií]vel\s+no\s+momento|estou\s+indispon[ií]vel|canal\s+(de\s+\w+\s+)?fora\s+do\s+ar|estou\s+de\s+f[ée]rias|estarei\s+(ausente|de\s+f[ée]rias|fora)|n[aã]o\s+houve\s+intera[cç][aã]o|ser[aá]\s+direcionad|em\s+instantes\s+(j[aá]\s+)?(iremos|vamos)|para\s+agilizar\s+(o\s+|seu\s+)?atendimento|clique\s+no\s+link\s+abaixo|acesse\s+o\s+link|canal\s+de\s+relacionamento|atendimento\s+(r[aá]pido|personalizado)\s+(clique|acesse)|ficamos\s+(muito\s+)?feli[zs]\s+com\s+sua\s+mensagem|desculp[ea],?\s+n[aã]o\s+(identifiquei|entendi)|digite\s+\*?menu\*?|j[aá]\s+fechamos|voltamos\s+amanh[aã]|seja\s+muito\s+bem[-\s]?vind|atendimento\s+digital|placeholder|digite\s+apenas|op[cç][aã]o\s+desejada|selecione\s+uma\s+das\s+op[cç][oõ]es|digitou\s+algo\s+diferente|voc[eê]\s+ainda\s+est[aá]\s+por\s+a[ií]|atendimento\s+foi\s+iniciado|escolha\s+a\s+unidade|continuar\s+seu\s+atendimento|op[cç][oõ]es\s+(acima|abaixo|da\s+lista)/i;
 const AUTOMATICA_FRACA_RE = /em\s+breve|em\s+instantes|atendente|hor[aá]rio\s+de|segunda\s+a\s+sexta|op[cç][aã]o|\bmenu\b|bem[-\s]?vind|nossa\s+equipe|assim\s+que\s+poss[ií]vel|\d\s*[-.)]\s*\S/gi;
 // Texto que o NOSSO formulário monta pro lead mandar pelo wa.me (diagnóstico da UNV Ads e
 // afins). É a pessoa falando, mesmo cheio de "Nome: / WhatsApp: / E-mail:". Sem esta exceção
@@ -2829,15 +2829,50 @@ function inboundRepetido(lista) {
   for (const m of lista) {
     if (m.direction !== "inbound") continue;
     const k = String(m.content || "").replace(/\s+/g, " ").trim().toLowerCase();
-    if (k.length < 40) continue;
+    // 16/11/2026: robô de menu repete frases curtas ("Por favor, selecione uma das opções"); o piso desceu de 40 pra 25
+    if (k.length < 25) continue;
     vistos.set(k, (vistos.get(k) || 0) + 1);
   }
   return new Set([...vistos.entries()].filter(([, n]) => n >= 2).map(([k]) => k));
 }
 function semAutomaticas(lista) {
   const rep = inboundRepetido(lista);
-  const out = lista.filter((m) => !(m.direction === "inbound" && (ehMensagemAutomatica(m.content) || rep.has(String(m.content || "").replace(/\s+/g, " ").trim().toLowerCase()))));
+  const out = lista.filter((m) => !(m.direction === "inbound" && (m.auto === true || ehMensagemAutomatica(m.content) || rep.has(String(m.content || "").replace(/\s+/g, " ").trim().toLowerCase()))));
   return { lista: out, removidas: lista.length - out.length };
+}
+
+// ── Resposta automática medida pelo relógio (16/11/2026) ───────────────────────
+// Depois de um disparo de template, resposta que chega em até 45 s da entrega é robô (auto-resposta do
+// WhatsApp Business, boas-vindas, menu, fila). Medido nos disparos de 16/11/2026: 190 respostas em até 34 s,
+// todas automáticas; a pessoa mais rápida a ESCREVER levou 89 s. Só o toque num botão do template chega
+// rápido e é gente, por isso os textos de botão e as respostas de uma palavra ficam de fora.
+const RESPOSTA_RAPIDA_DE_GENTE_RE = /^\s*(quero entrar no grupo|quero saber mais|parar de receber mensagens?|parar de receber mensagen|sim|n[aã]o|tenho interesse|quero|pode sim|pode|claro|bora|vamos)\s*[.!]*\s*$/i;
+async function disparoDaConversa(supabase, conversationId) {
+  try {
+    const { data } = await supabase.from("whatsapp_official_campaign_recipients").select("sent_at, delivered_at")
+      .eq("conversation_id", conversationId).not("sent_at", "is", null)
+      .gt("sent_at", new Date(Date.now() - 4 * 86400000).toISOString()).order("sent_at", { ascending: false }).limit(1);
+    const r = data?.[0];
+    const sentMs = r ? Date.parse(String(r.sent_at)) : 0;
+    if (!sentMs) return null;
+    const entMs = r.delivered_at ? Date.parse(String(r.delivered_at)) : 0;
+    return { sentMs, limiteMs: Math.max(sentMs, entMs || 0) + 45000 };
+  } catch { return null; }
+}
+/** Marca (auto: true) as mensagens do lead que chegaram coladas na entrega do disparo. `ts` lê a data da mensagem. */
+function marcarAutomaticasPorTempo(lista, disparo, ts) {
+  if (!disparo) return 0;
+  let ultimaAuto = 0, n = 0;
+  for (const m of lista) {
+    if (m.direction !== "inbound") continue;
+    const t = Date.parse(String(ts(m) || ""));
+    if (!t || t < disparo.sentMs - 5000) continue;
+    const colada = t <= disparo.limiteMs || (ultimaAuto && t - ultimaAuto <= 20000); // robô costuma mandar 2 ou 3 seguidas
+    if (!colada) continue;
+    if (RESPOSTA_RAPIDA_DE_GENTE_RE.test(String(m.content || ""))) continue;
+    m.auto = true; ultimaAuto = t; n++;
+  }
+  return n;
 }
 
 // Reação que vale como "sim" (polegar com qualquer tom de pele, ok, check, aperto de mão, palmas, 100)
@@ -3068,6 +3103,109 @@ Deno.serve(async (req)=>{
         greeted
       });
     }
+    // ---------- Toque depois de resposta automática (cron a cada 5 min), 16/11/2026 ----------
+    // Fabrício, sobre a reativação de diretor comercial: "se vire, faça follow up usando o agente apropriado...
+    // precisa de pelo menos 9 reuniões". No disparo oficial, 1 em cada 5 entregas devolve só mensagem
+    // automática (ausência, boas-vindas, menu). Essa mensagem abre a janela de 24h da Meta, então dá pra
+    // escrever de graça pra quem vai ler a conversa de manhã. O agente NÃO conversa com o robô; ele manda
+    // até 2 toques curtos (90 min depois da automática e 5 h depois do primeiro), em horário comercial, só
+    // nos disparos com toque_pos_automatica ligado. Respondeu uma pessoa, segue o fluxo normal do agente.
+    if (body0.action === "toques") {
+      const out = [];
+      const brT = new Date(Date.now() - 3 * 3600000);
+      const minT = brT.getUTCHours() * 60 + brT.getUTCMinutes(), dowT = brT.getUTCDay();
+      const dentroT = dowT >= 1 && dowT <= 5 ? minT >= 8 * 60 + 30 && minT < 18 * 60 + 30 : dowT === 6 ? minT >= 9 * 60 && minT < 12 * 60 : false;
+      if (!dentroT && !body0.ignore_quiet_hours) return j({ ok: true, toques: 0, skip: "fora do horário dos toques (seg a sex 8h30 às 18h30, sábado 9h às 12h)" });
+      const previaT = !!(body0.dry_run && body0.previa);
+      const { data: cands, error: candErr } = await supabase.rpc("disparo_toque_candidatos", {
+        p_limite: Math.min(40, Number(body0.limite) || 12), p_espera_min: previaT ? 1 : 90, p_intervalo_min: previaT ? 1 : 300
+      });
+      if (candErr) return j({ ok: false, error: candErr.message }, 500);
+      const agentesT = new Map();
+      for (const c of cands || []){
+        const n = (Number(c.toques) || 0) + 1;
+        // quem não pode receber fica registrado com o motivo, pra não voltar a cada rodada
+        const pular = async (motivo)=>{
+          out.push(`${c.conversation_id}: pulado (${motivo})`);
+          if (!body0.dry_run) await supabase.from("crm_disparo_toques").insert({ conversation_id: c.conversation_id, campaign_id: c.campaign_id, n, erro: motivo }).then(()=>{}, ()=>{});
+        };
+        try {
+          if (!agentesT.has(c.agent_id)) {
+            const { data: ag } = await supabase.from("crm_ai_agents").select("id, name, model, is_active").eq("id", c.agent_id).maybeSingle();
+            agentesT.set(c.agent_id, ag || null);
+          }
+          const agT = agentesT.get(c.agent_id);
+          if (!agT?.is_active) { await pular("agente inativo"); continue; }
+          if (c.lead_id) {
+            const { data: ld } = await supabase.from("crm_leads").select("closed_at, stage:crm_stages(final_type, name)").eq("id", c.lead_id).maybeSingle();
+            if (ld?.stage?.final_type === "lost" || ld?.stage?.final_type === "won" || ld?.closed_at || /fora do icp|fora de icp|fora do perfil/i.test(String(ld?.stage?.name || ""))) { await pular("lead encerrado"); continue; }
+          }
+          const sentMs = Date.parse(String(c.sent_at));
+          const { data: hist } = await supabase.from("crm_whatsapp_messages").select("direction, content, type, is_ai, created_at")
+            .eq("conversation_id", c.conversation_id).gt("created_at", new Date(sentMs - 60000).toISOString()).order("created_at", { ascending: true }).limit(40);
+          const h = (hist || []).filter((m)=>String(m.content || "").trim().length > 0);
+          const entMs = c.delivered_at ? Date.parse(String(c.delivered_at)) : 0;
+          marcarAutomaticasPorTempo(h, { sentMs, limiteMs: Math.max(sentMs, entMs || 0) + 45000 }, (m)=>m.created_at);
+          const rep = inboundRepetido(h);
+          const ehAuto = (m)=>m.auto === true || ehMensagemAutomatica(m.content) || rep.has(String(m.content || "").replace(/\s+/g, " ").trim().toLowerCase());
+          const entradas = h.filter((m)=>m.direction === "inbound");
+          if (!entradas.length) { await pular("sem mensagem do lado do lead"); continue; }
+          // pessoa de verdade respondeu (ou tocou num botão): a conversa é do fluxo normal do agente
+          if (entradas.some((m)=>!ehAuto(m))) { await pular("tem resposta de pessoa"); continue; }
+          const nossas = h.filter((m)=>m.direction === "outbound");
+          const modelo = nossas[0]?.content || "";
+          // alguém do time (ou o próprio agente) já escreveu depois do disparo: não é caso de toque
+          const nossasDepois = nossas.slice(1);
+          if (n === 1 && nossasDepois.length) { await pular("já houve mensagem nossa depois do disparo"); continue; }
+          if (n === 2 && nossasDepois.length !== 1) { await pular("conversa mudou depois do primeiro toque"); continue; }
+          // janela da Meta: 24h da última mensagem do lado de lá, com margem
+          const ultEntMs = Date.parse(String(entradas[entradas.length - 1].created_at));
+          if (!ultEntMs || Date.now() - ultEntMs > 23.5 * 3600000) { await pular("janela de 24h fechada"); continue; }
+          const agoraTxt = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "long", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+          const autos = entradas.slice(0, 3).map((m)=>String(m.content || "").replace(/\s+/g, " ").slice(0, 400)).join("\n---\n");
+          const sysT = [
+            "Você é Ricardo Santos, do time comercial do Fabrício Nunnes (UNV), que atua como diretor comercial terceirizado de pequenas e médias empresas.",
+            "\n\nSituação: o Fabrício mandou a mensagem abaixo pra um contato pelo WhatsApp e, do lado de lá, só voltou resposta automática (ausência, boas-vindas ou menu de atendimento). Nenhuma pessoa respondeu ainda. Uma pessoa da empresa vai ler esta conversa no horário comercial.",
+            "\n\nSua tarefa: escrever UMA mensagem curta (no máximo 2 frases, até 230 caracteres) que faça uma pessoa de verdade responder.",
+            "\n\nRegras:",
+            "\n- 1ª tentativa: cumprimente conforme o horário, diga que é o Ricardo, do time do Fabrício Nunnes, e pergunte de forma simples se consegue falar com o dono ou com quem cuida das vendas da empresa. Se a resposta automática mostrar o nome da empresa, use o nome da empresa.",
+            "\n- 2ª tentativa: não cumprimente nem se apresente de novo. Mude o ângulo: diga em uma frase o motivo do contato (o Fabrício assume a direção comercial de empresas pra fazer o time de vendas bater meta todo mês) e pergunte qual o melhor horário pra falar com o responsável.",
+            "\n- Só use o nome do contato se for claramente nome de pessoa. Se for genérico (\"A identificar\", \"Proprietário\", \"Gerente\", \"Decisor\") ou nome de empresa, não chame ninguém pelo nome.",
+            "\n- Não responda ao menu, não escolha opção, não agradeça a mensagem automática, não peça desculpa, não fale de preço, não diga que é uma IA, não invente nada sobre a empresa.",
+            "\n- Sem emoji, sem travessão, sem dois-pontos, sem aspas, sem markdown. Toda frase começa com letra maiúscula. Português do Brasil, tom humano e direto.",
+            "\nResponda só com o texto da mensagem."
+          ].join("");
+          const usrT = `Agora é ${agoraTxt} (Brasília).\nTentativa: ${n}ª.\nNome do contato no CRM: ${c.lead_name || "(sem nome)"}\n\nMensagem que o Fabrício enviou:\n${String(modelo).slice(0, 700)}\n\nResposta automática que voltou:\n${autos}${n === 2 ? `\n\nSeu primeiro toque (já enviado, não repita):\n${String(nossasDepois[0]?.content || "").slice(0, 300)}` : ""}`;
+          const aiT = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+            body: JSON.stringify({ model: agT.model || "claude-sonnet-5", system: sysT, max_tokens: 200, messages: [{ role: "user", content: usrT }] })
+          });
+          if (!aiT.ok) { out.push(`${c.conversation_id}: IA ${aiT.status}`); continue; }
+          const aiTD = await aiT.json();
+          let texto = humanizar((Array.isArray(aiTD?.content) ? aiTD.content : []).filter((x)=>x?.type === "text").map((x)=>String(x.text)).join("").trim()).replace(/^["“]|["”]$/g, "").trim();
+          if (!texto || texto.length > 400) { out.push(`${c.conversation_id}: IA sem texto útil`); continue; }
+          if (body0.dry_run) { out.push(`[dry toque ${n}] ${c.lead_name || ""} | automática: ${autos.slice(0, 90)} | toque: ${texto}`); continue; }
+          // registra antes de enviar: se travar no meio, não manda duas vezes
+          const { error: insErr } = await supabase.from("crm_disparo_toques").insert({ conversation_id: c.conversation_id, campaign_id: c.campaign_id, n, texto });
+          if (insErr) { out.push(`${c.conversation_id}: já registrado`); continue; }
+          const envT = await sendOfficialText(supabase, c.official_instance_id, String(c.phone || "").replace(/\D/g, ""), texto);
+          if (!envT.ok) {
+            await supabase.from("crm_disparo_toques").update({ erro: `envio falhou: ${String(envT.error || "").slice(0, 200)}` }).eq("conversation_id", c.conversation_id).eq("n", n);
+            out.push(`${c.conversation_id}: envio falhou (${String(envT.error || "").slice(0, 80)})`);
+            continue;
+          }
+          const agoraIso = new Date().toISOString();
+          await supabase.from("crm_whatsapp_messages").insert({ conversation_id: c.conversation_id, content: texto, type: "text", direction: "outbound", status: "sent", remote_id: envT.remoteId || null, is_ai: true, sent_by: null });
+          await supabase.from("crm_whatsapp_conversations").update({ last_message: texto.substring(0, 255), last_message_at: agoraIso, last_message_direction: "outbound" }).eq("id", c.conversation_id);
+          await supabase.from("crm_ai_agent_runs").insert({ agent_id: agT.id, channel: "whatsapp", conversation_id: c.conversation_id, mode: "toque", outcome: `sent (toque ${n} pós-automática)`, reply: texto }).then(()=>{}, ()=>{});
+          out.push(`${c.conversation_id}: toque ${n} enviado`);
+        } catch (e) {
+          out.push(`${c.conversation_id}: erro ${String(e?.message || e).slice(0, 120)}`);
+        }
+      }
+      return j({ ok: true, toques: out.filter((x)=>/enviado|dry toque/.test(x)).length, candidatos: (cands || []).length, detail: out });
+    }
     // ---------- Follow-up automático (cron): reativa leads que pararam de responder ----------
     if (body0.action === "followups") {
       const results = [];
@@ -3104,6 +3242,7 @@ Deno.serve(async (req)=>{
           // o lead voltou a falar depois de combinar: a conversa seguiu, o retorno perdeu o sentido
           const criadoMs = Date.parse(r.created_at);
           if (h.some((m)=>m.direction === "inbound" && Date.parse(String(m[tsCol] || "")) > criadoMs + 2 * 60000)) { await marcar("superseded", { erro: "lead falou depois do combinado" }); continue; }
+          if (!isBIG && cv.official_instance_id) marcarAutomaticasPorTempo(h, await disparoDaConversa(supabase, cv.id), (m)=>m[tsCol]);
           const hm = semAutomaticas(h.filter((m)=>(m.content || "").trim().length > 0)).lista;
           const leadNm = cv.contact?.name || cv.contact?.username || "o lead";
           const carimboR = (m)=>{ const t = Date.parse(String(m[tsCol] || "")); return t ? new Date(t).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "sem data"; };
@@ -3331,27 +3470,23 @@ Deno.serve(async (req)=>{
         // agente escolhido (ex.: Qualificação Ricardo Santos) e ele não tem vínculo com o número oficial, então
         // ninguém fazia follow-up nessas conversas. Entram como um vínculo extra, só com as conversas fixadas.
         try {
-          const { data: fixas } = await supabase.from("crm_ai_agent_conversation_overrides").select("conversation_id")
-            .eq("agent_id", agent.id).eq("channel", "whatsapp").eq("enabled", true).eq("locked", true)
-            .gt("updated_at", new Date(Date.now() - 15 * 86400000).toISOString()).limit(600);
-          const idsFix = (fixas || []).map((f)=>String(f.conversation_id));
+          // 16/11/2026: eram lidos 600 vínculos sem ordem; com dois disparos grandes o Funil SE tinha 4.318 conversas
+          // fixadas e quase nenhuma das que responderam entrava. Agora o banco devolve só as que interessam
+          // (lead já falou, última mensagem é nossa, dentro do prazo do canal), as mais recentes primeiro.
+          const { data: cvs, error: fxErr } = await supabase.rpc("crm_agent_fixadas_followup", { p_agent: agent.id, p_min_minutos: 15 });
+          if (fxErr) console.error("follow-up: conversas fixadas (rpc)", fxErr.message);
           const porNumero = new Map();
-          for(let c = 0; c < idsFix.length; c += 80){
-            const { data: cvs } = await supabase.from("crm_whatsapp_conversations").select("id, instance_id, official_instance_id")
-              .in("id", idsFix.slice(c, c + 80)).eq("last_message_direction", "outbound")
-              .gt("last_inbound_at", new Date(Date.now() - 7 * 86400000).toISOString());
-            for (const cvx of cvs || []){
-              const oficial = !cvx.instance_id && cvx.official_instance_id;
-              const chave = `${oficial ? "whatsapp_official" : "whatsapp"}|${oficial ? cvx.official_instance_id : cvx.instance_id}`;
-              if (!cvx.instance_id && !cvx.official_instance_id) continue;
-              if (!porNumero.has(chave)) porNumero.set(chave, []);
-              porNumero.get(chave).push(String(cvx.id));
-            }
+          for (const cvx of cvs || []){
+            const oficial = !cvx.instance_id && cvx.official_instance_id;
+            if (!cvx.instance_id && !cvx.official_instance_id) continue;
+            const chave = `${oficial ? "whatsapp_official" : "whatsapp"}|${oficial ? cvx.official_instance_id : cvx.instance_id}`;
+            if (!porNumero.has(chave)) porNumero.set(chave, []);
+            porNumero.get(chave).push(String(cvx.id));
           }
           for (const [chave, ids] of porNumero){
             const [canal, inst] = chave.split("|");
-            if (bindings.some((b)=>b.channel === canal && b.instance_id === inst)) continue; // o vínculo normal já cobre
-            bindings.push({ channel: canal, instance_id: inst, idsFixas: ids });
+            if (bindings0?.some((b)=>b.channel === canal && b.instance_id === inst)) continue; // o vínculo normal já cobre
+            for(let c = 0; c < ids.length; c += 80)bindings.push({ channel: canal, instance_id: inst, idsFixas: ids.slice(c, c + 80) });
           }
         } catch (e) { console.error("follow-up: conversas fixadas", e); }
         for (const b of bindings){
@@ -3385,12 +3520,12 @@ Deno.serve(async (req)=>{
           let qConv: any = supabase.from(convTable).select(isBIG ? "id, instance_id, lead_id, last_message_at, contact:instagram_contacts(name, username)" : "id, instance_id, official_instance_id, lead_id, last_message_at, contact:crm_whatsapp_contacts(name, phone)").eq(isOFF ? "official_instance_id" : "instance_id", b.instance_id).lt("last_message_at", new Date(Date.now() - afterMin * 60000).toISOString()).gt("last_message_at", new Date(Date.now() - 7 * 86400000).toISOString());
           // WhatsApp: só conversa em que o lead JÁ respondeu e a última mensagem é nossa. Sem isso, depois de um
           // disparo as 30 mais recentes eram todas de quem nunca respondeu e o follow-up do número não rodava.
-          if (b.idsFixas) qConv = qConv.in("id", b.idsFixas.slice(0, 80));
+          if (b.idsFixas) qConv = qConv.in("id", b.idsFixas);
           if (!isBIG) qConv = qConv.eq("last_message_direction", "outbound").not("last_inbound_at", "is", null)
             .gt("last_inbound_at", new Date(Date.now() - (janela24 ? 24 * 3600000 : 7 * 86400000)).toISOString());
           const { data: convs } = await qConv.order("last_message_at", {
             ascending: false
-          }).limit(40);
+          }).limit(b.idsFixas ? 80 : 40);
           for (const cv of convs || []){
             if (results.length >= (body0.dry_run && body0.previa ? 30 : 10)) break; // no máx 10 follow-ups por rodada
             // WhatsApp: nunca em grupo
@@ -3413,6 +3548,12 @@ Deno.serve(async (req)=>{
             if (ov?.agent_id && ov.agent_id !== agent.id) continue;
             const fmode = await resolveAgentMode(supabase, agent, cv.lead_id, ov);
             if (fmode !== "auto") continue;
+            // Black Friday (16/11/2026): quem pediu o grupo e não entrou é acompanhado por 3 dias pela rotina do
+            // black-agenda (um toque por dia, com o link). O motor não soma follow-up em cima.
+            if (!isBIG) {
+              const { count: naBlack } = await supabase.from("black_followup_grupo").select("lead_id", { count: "exact", head: true }).eq("conversa_oficial", cv.id).is("encerrado_em", null);
+              if (naBlack) continue;
+            }
             // retorno combinado pendente: a cadência de reativação espera a hora marcada
             {
               const { count: pendR } = await supabase.from("crm_ai_agent_retornos").select("id", { count: "exact", head: true }).eq("conversation_id", cv.id).eq("status", "pending");
@@ -3444,6 +3585,7 @@ Deno.serve(async (req)=>{
             }).limit(60); // as ÚLTIMAS mensagens (antes pegava as 40 primeiras)
             (hist || []).reverse();
             // mensagem automática do lado do lead não conta como resposta dele
+            if (!isBIG && cv.official_instance_id) marcarAutomaticasPorTempo(hist || [], await disparoDaConversa(supabase, cv.id), (m)=>m[tsCol]);
             const hm = semAutomaticas((hist || []).filter((m)=>(m.content || "").trim().length > 0)).lista;
             if (hm.length < 2) continue;
             if (hm[hm.length - 1].direction !== "outbound") continue;
@@ -4014,6 +4156,8 @@ Deno.serve(async (req)=>{
             message_type: m.type,
             ts: m.created_at
           }));
+        // conversa de disparo oficial: o que chegou colado na entrega é resposta automática
+        if (conv.official_instance_id) marcarAutomaticasPorTempo(rawHistory, await disparoDaConversa(supabase, conversation_id), (m)=>m.created_at);
       }
       // Áudio: o lead manda voz e a mensagem chega como "[audio]". Transcrevemos
       // (até 4 dos mais recentes) pra o agente responder o que foi dito, em texto.
@@ -4100,6 +4244,7 @@ Deno.serve(async (req)=>{
           direction: m.direction,
           content,
           ts: m.ts,
+          auto: m.auto === true,
           humano: m.direction === "outbound" && !m.is_ai,
           sentBy: m.sent_by || null
         };
