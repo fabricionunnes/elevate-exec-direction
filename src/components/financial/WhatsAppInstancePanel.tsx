@@ -176,7 +176,7 @@ export function WhatsAppInstancePanel() {
   };
 
   const isConnected = (status: string | null) =>
-    status === "connected" || status === "connecting";
+    status === "connected"; // "connecting" é o servidor esperando QR, não é conectado
 
   if (isLoading) {
     return (
