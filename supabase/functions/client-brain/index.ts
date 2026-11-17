@@ -127,7 +127,7 @@ async function generateBrain(supabase: SupabaseClient, projectId: string, opts: 
 
   const { data: project } = await supabase
     .from("onboarding_projects")
-    .select("*, company:onboarding_companies(id, name, segment)")
+    .select("*, company:onboarding_companies(id, name, segment, owner_name)")
     .eq("id", projectId)
     .maybeSingle();
   if (!project) throw new Error("Projeto não encontrado");
@@ -302,7 +302,19 @@ async function generateBrain(supabase: SupabaseClient, projectId: string, opts: 
     }
   }
 
+  // Quem é quem: sem isso a IA confunde gente da UNV com gente do cliente. Caso real (Cubo, nov/2026):
+  // o Fabrício atende o cliente e o cérebro saiu dizendo "o fundador Fabrício", quando o dono é outro.
+  const { data: timeUnv } = await supabase.from("onboarding_staff").select("id, name, is_active");
+  const nomeStaff = (id: string | null | undefined) => (timeUnv || []).find((s: any) => s.id === id)?.name || null;
+  const quemEQuem = {
+    dono_do_cliente: project.company?.owner_name || null,
+    consultor_unv_do_projeto: nomeStaff((project as any).consultant_id),
+    cs_unv_do_projeto: nomeStaff((project as any).cs_id),
+    time_da_unv: [...new Set((timeUnv || []).map((s: any) => String(s.name || "").trim()).filter(Boolean))],
+  };
+
   const ctx = {
+    quem_e_quem: quemEQuem,
     empresa: project.company?.name,
     segmento: project.company?.segment,
     produto_contratado: project.product_name,
@@ -322,8 +334,14 @@ async function generateBrain(supabase: SupabaseClient, projectId: string, opts: 
       data: mm.meeting_date,
       no_show: mm.is_no_show,
       interna: mm.is_internal,
-      notas: truncate(mm.notes, 500),
-      transcricao: truncate(mm.transcript, 1400),
+      // Reunião gravada pelo UNV Copilot traz resumo e combinados nas notas e a transcrição com as duas
+      // vozes depois do marcador: é a fonte mais fiel, então ela tem prioridade sobre o texto anterior.
+      notas: String(mm.notes || "").includes("RESUMO (UNV Copilot)")
+        ? truncate(String(mm.notes).slice(String(mm.notes).indexOf("RESUMO (UNV Copilot)")), 1800)
+        : truncate(mm.notes, 500),
+      transcricao: String(mm.transcript || "").includes("[Transcrição do UNV Copilot]")
+        ? truncate(String(mm.transcript).split("[Transcrição do UNV Copilot]").pop(), 1400)
+        : truncate(mm.transcript, 1400),
     })),
     ligacoes_90d: (projectCalls || []).map((pc: any) => ({
       quando: pc.created_at,
@@ -354,6 +372,8 @@ Responda APENAS com JSON válido (sem markdown) neste formato:
   "relacionamento": { "ultima_reuniao": "data ou null", "dias_sem_reuniao": número ou null, "whatsapp": "ativo | morno | silencioso", "resumo": "1 frase sobre a qualidade da relação" },
   "citacoes_chave": [{ "quem": "nome", "frase": "citação real e relevante", "quando": "data", "leitura": "o que essa frase significa pro churn" }]
 }
+
+QUEM É QUEM (não confunda): "quem_e_quem.time_da_unv" lista as pessoas da UNV (consultores, CS, sócios, o Fabrício). Elas atendem o cliente, NÃO fazem parte da empresa dele. Nunca chame alguém da UNV de dono, fundador, sócio, gestor ou funcionário do cliente, mesmo que apareça falando muito nas reuniões e no WhatsApp. O dono do cliente é "quem_e_quem.dono_do_cliente"; se estiver vazio, descubra pelo contexto e, na dúvida, escreva "o dono" sem nome. Em "citacoes_chave" entram só frases de gente do CLIENTE. Em "promessas", "quem" é "UNV" quando quem prometeu está em time_da_unv.
 
 Regras: promessas VENCIDAS e riscos vêm primeiro nas listas. Máximo 3 itens por lista (só o que muda a decisão do consultor), frases curtas e diretas, sem repetir a mesma evidência em campos diferentes. Se não houver dado pra um campo, use lista vazia ou null — NÃO invente. Português do Brasil.`;
 
