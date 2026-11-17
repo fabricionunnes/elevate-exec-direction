@@ -49,6 +49,7 @@ export interface ConversationFiltersData {
   assignedTo: string;
   sectorId: string;
   aiAgentId: string; // "" = todos | "any" = qualquer agente de IA | id do agente
+  disparoId?: string; // "" = todos | id do disparo oficial (conversas que receberam aquele disparo)
   // Data da última mensagem (de / até) e ordenação da lista (30/09/2026)
   lastMessageFrom: Date | undefined;
   lastMessageTo: Date | undefined;
@@ -249,6 +250,7 @@ export function ConversationFilters({
       assignedTo: "",
       sectorId: "",
       aiAgentId: "",
+      disparoId: "",
       lastMessageFrom: undefined,
       lastMessageTo: undefined,
       sortBy: "recent",
@@ -805,6 +807,7 @@ export const defaultFilters: ConversationFiltersData = {
   assignedTo: "",
   sectorId: "",
   aiAgentId: "",
+  disparoId: "",
   lastMessageFrom: undefined,
   lastMessageTo: undefined,
   sortBy: "recent",
@@ -850,6 +853,7 @@ export const conversationFiltersFromJson = (j: Record<string, any> | null | unde
     assignedTo: txt(v.assignedTo),
     sectorId: txt(v.sectorId),
     aiAgentId: txt(v.aiAgentId),
+    disparoId: txt(v.disparoId),
     lastMessageFrom: dateFromJson(v.lastMessageFrom),
     lastMessageTo: dateFromJson(v.lastMessageTo),
     sortBy: v.sortBy === "oldest" || v.sortBy === "waiting_longest" ? v.sortBy : "recent",
