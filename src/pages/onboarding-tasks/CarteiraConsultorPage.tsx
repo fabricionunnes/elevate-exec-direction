@@ -44,7 +44,8 @@ interface LinhaCarteira {
   venda_primeiro_mes: boolean;
   atraso_pago_cents: number | null;
   // Troca de consultor no mês: quem saiu recebe até o dia da troca, quem entrou do dia seguinte em
-  // diante. `atual` falso é o trecho de quem já passou o cliente adiante.
+  // diante. `atual` falso é o trecho de quem já passou o cliente adiante. `troca_tipo` "novo" é a
+  // empresa que entrou no meio do mês e conta só do dia da entrada em diante.
   atual?: boolean | null;
   troca_tipo?: string | null;
   troca_data?: string | null;
@@ -1473,6 +1474,9 @@ export default function CarteiraConsultorPage() {
                             {l.troca_com ? `, veio de ${l.troca_com}` : ""}
                           </i>
                         )}
+                        {l.troca_tipo === "novo" && l.troca_data && (
+                          <i className="tag pos"> entrou em {dataBR(l.troca_data)}</i>
+                        )}
                         {Number(l.nao_pago_cents) > 0 && (
                           <i className="tag warn"> não pagou {brl(Number(l.nao_pago_cents) / 100)}</i>
                         )}
@@ -1514,7 +1518,7 @@ export default function CarteiraConsultorPage() {
                             ) : (
                               <span>
                                 {brlFull(Number(l.comissao_cents) / 100)}
-                                {(Number(l.comissao_cheia_cents) > Number(l.comissao_cents) || l.troca_tipo === "entrou") && (
+                                {(Number(l.comissao_cheia_cents) > Number(l.comissao_cents) || l.troca_tipo === "entrou" || l.troca_tipo === "novo") && (
                                   <i className="tag warn">
                                     {" "}
                                     {l.dias_comissionados}/{l.dias_do_mes} dias
