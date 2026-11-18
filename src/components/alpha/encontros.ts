@@ -39,9 +39,9 @@ const tri = (d: DadosAlpha, t: number) => {
 const dreMes = (d: DadosAlpha, mes: number) => d.dre.find((m) => m.mes === mes);
 
 /** Abertura e fechamento são iguais todo mês; o meio muda com o tema. */
-const abre = (foco: string) => ({ hora: "14h15", titulo: "A Mesa", texto: `Cada membro abre o painel na tela: ${foco} do mês passado contra o plano, os 3 compromissos (cumpriu ou não) e uma vitória. Quem cumpriu os 3 toca o sino.` });
-const fecha = { hora: "16h30", titulo: "Compromissos no sistema", texto: "Cada membro sai com 3 compromissos lançados aqui, ligados ao tema do mês. Eles são cobrados no encontro online, 15 dias depois." };
-const hot = (texto: string) => ({ hora: "15h45", titulo: "Hot seats", texto });
+const abre = (foco: string) => ({ hora: "14h15", titulo: "A Mesa, em células de 10", texto: `Na sua célula, cada membro abre o painel na tela: ${foco} do mês passado contra o plano, os 3 compromissos (cumpriu ou não) e uma vitória. Quem cumpriu os 3 toca o sino.` });
+const fecha = { hora: "16h30", titulo: "Compromissos e rodada de pedidos", texto: "Na célula, cada membro sai com 3 compromissos lançados aqui, ligados ao tema do mês, cobrados no encontro online 15 dias depois. Depois, a rodada de pedidos: em 30 segundos, cada um diz quem quer conhecer. Os pedidos ficam em Membros e indicações." };
+const hot = (texto: string) => ({ hora: "15h45", titulo: "Hot seats nas células", texto: `${texto} Cada célula faz o seu hot seat, então todo membro passa pela cadeira ao longo do ano.` });
 /** Vitrine Alpha (pedido do Fabrício, 16/11/2026): todo mês, em rodízio, dois membros apresentam o próprio negócio. */
 const vitrine = { hora: "16h00", titulo: "Vitrine Alpha", texto: "Os 5 membros da vez, em rodízio, apresentam seu produto ou serviço para a mesa: 5 minutos cada, com perguntas no fim. Venda, parceria e indicação entre os membros começam aqui. Ao longo do ano, todo mundo tem a sua vez." };
 const vitrineKart = { hora: "12h30", titulo: "Vitrine Alpha no almoço", texto: "Os 5 membros da vez, em rodízio, apresentam seu produto ou serviço para a mesa durante o almoço, antes do GP." };
