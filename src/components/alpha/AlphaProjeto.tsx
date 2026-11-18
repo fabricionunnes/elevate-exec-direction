@@ -12,6 +12,7 @@ import { SimuladorAlpha } from "./SimuladorAlpha";
 import { FechamentoAlpha } from "./FechamentoAlpha";
 import { NegociosAlpha } from "./NegociosAlpha";
 import { CapitalAlpha } from "./CapitalAlpha";
+import { MesaAlpha } from "./MesaAlpha";
 import { PainelAlpha } from "./PainelAlpha";
 import { PlanejamentoAlpha } from "./PlanejamentoAlpha";
 import { MetasAlpha } from "./MetasAlpha";
@@ -37,6 +38,7 @@ const ABAS = [
   { k: "participacao", nome: "Participação de lucro", grupo: "Seu dinheiro" },
   { k: "capital", nome: "Capital do Próximo Salto", grupo: "Seu dinheiro" },
   { k: "cronograma", nome: "Encontros do ano", grupo: "A mesa" },
+  { k: "mesa", nome: "Membros e indicações", grupo: "A mesa" },
   { k: "negocios", nome: "Negócios da mesa", grupo: "A mesa" },
   { k: "lancamentos", nome: "Lançamentos", grupo: "Dados" },
   { k: "fechamento", nome: "Fechamento do mês", grupo: "Dados" },
@@ -162,6 +164,7 @@ export function AlphaProjeto({ projectId, empresa, modo, onVoltar, onSair, onMen
             {aba === "simulador" && <SimuladorAlpha d={dados} r={resumo} projectId={projectId} onSalvo={carregar} />}
             {aba === "fechamento" && <FechamentoAlpha d={dados} x={extras} projectId={projectId} onSalvo={carregar} irPara={ir} />}
             {aba === "negocios" && <NegociosAlpha x={extras} ano={dados.ano} projectId={projectId} onSalvo={carregar} />}
+            {aba === "mesa" && <MesaAlpha ano={dados.ano} projectId={projectId} modo={modo} irPara={ir} />}
             {aba === "capital" && <CapitalAlpha d={dados} x={extras} projectId={projectId} onSalvo={carregar} irPara={ir} />}
             {aba === "planejamento" && <PlanejamentoAlpha d={dados} anterior={anterior} projectId={projectId} onSalvo={carregar} />}
             {aba === "metas" && <MetasAlpha d={dados} projectId={projectId} onSalvo={carregar} />}
