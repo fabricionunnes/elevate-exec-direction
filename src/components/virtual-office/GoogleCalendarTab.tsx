@@ -154,6 +154,8 @@ const GoogleCalendarTab = ({ currentStaff: currentStaffProp = null }: GoogleCale
   const [selectedStaffUserId, setSelectedStaffUserId] = useState<string | null>(null);
 
   const isCSOrAdmin = true;
+  // false = conectado, mas sem a permissão que liga a gravação automática do Meet
+  const [podeGravar, setPodeGravar] = useState<boolean | null>(null);
 
   const checkConnection = async () => {
     try {
@@ -171,6 +173,7 @@ const GoogleCalendarTab = ({ currentStaff: currentStaffProp = null }: GoogleCale
       const ownStaff = staff.find((member) => member.user_id === currentUserId) ?? null;
 
       setConnected(connectionData?.connected ?? false);
+      setPodeGravar(connectionData?.podeGravar ?? null);
       setConnectedStaff(staff);
       setCurrentStaff(ownStaff ?? (currentStaffProp ? { id: currentStaffProp.id, user_id: currentStaffProp.user_id, name: "Minha Agenda" } : null));
     } catch (error) {
@@ -659,6 +662,18 @@ const GoogleCalendarTab = ({ currentStaff: currentStaffProp = null }: GoogleCale
           </Button>
         </div>
       </div>
+
+      {podeGravar === false && (
+        <div className="flex flex-wrap items-center gap-3 p-3 mb-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Suas reuniões do Meet não estão sendo gravadas</p>
+            <p className="text-xs text-muted-foreground">
+              Falta uma permissão na sua conta Google. Reconecte e aceite as permissões. As reuniões que você já marcou passam a gravar sozinhas.
+            </p>
+          </div>
+          <Button size="sm" onClick={handleGoogleLogin}>Reconectar Google</Button>
+        </div>
+      )}
 
       {/* Calendar/List Content */}
       {viewMode === "list" ? (
