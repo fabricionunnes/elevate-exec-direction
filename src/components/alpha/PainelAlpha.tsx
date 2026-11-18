@@ -4,15 +4,17 @@ import { Tile, Panel, BarrasItens, BarH, Tabela } from "@/components/painel-cont
 import { brl, fp, kfmt } from "@/components/painel-controle/fmt";
 import type { DadosAlpha, Resumo } from "./tipos";
 import { ENCONTROS, progressoMes } from "./encontros";
+import type { ItemSaude } from "./analise";
 import {
   MESES_CURTO, MESES_NOME, SEMAFORO_TXT, lucroReal, lucroPlano, despesaFixa, despesaTotalReal, planoDoMes, trimestres, saldosMensais,
 } from "./tipos";
 
 const cor = (v: number | null) => (v == null ? "" : v >= 0 ? "pos" : "neg");
 
-export function PainelAlpha({ d, anterior, r, irPara, tarefasEncontro, onAbrirEncontro }: {
+export function PainelAlpha({ d, anterior, r, irPara, tarefasEncontro, onAbrirEncontro, saude }: {
   d: DadosAlpha; anterior: DadosAlpha | null; r: Resumo; irPara: (aba: string) => void;
   tarefasEncontro?: (mes: number) => Record<string, boolean>; onAbrirEncontro?: (mes: number) => void;
+  saude?: { itens: ItemSaude[]; nota: number } | null;
 }) {
   const [mes, setMes] = useState(Math.max(r.fechado, 1));
   const sem = SEMAFORO_TXT[r.status];
@@ -50,6 +52,21 @@ export function PainelAlpha({ d, anterior, r, irPara, tarefasEncontro, onAbrirEn
           </div>
         );
       })()}
+
+      {saude && saude.nota < 100 && (
+        <div className="p al-saude">
+          <div className="al-saude-n">
+            <div className="lbl">Saúde do sistema</div>
+            <strong className={saude.nota >= 85 ? "pos" : saude.nota >= 60 ? "warn" : "neg"}>{saude.nota}%</strong>
+            <div className="sub">o painel só é confiável com o sistema em dia</div>
+          </div>
+          <div className="al-saude-l">
+            {saude.itens.filter((i) => !i.ok).map((i) => (
+              <button type="button" key={i.nome} className="al-pend" onClick={() => irPara(i.aba)}><b>{i.nome}</b><span>{i.dica}</span></button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid k6">
         <Tile main label={`Lucro líquido ${r.fechado ? `jan a ${MESES_CURTO[r.fechado - 1].toLowerCase()}` : "do ano"}`} valor={r.temDados ? brl(r.lucroAcum) : "-"} cls={cor(r.lucroAcum)}
