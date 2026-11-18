@@ -212,6 +212,14 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
       console.log("Empresa criada:", companyId);
     }
 
+    // Pix Automático pago ainda como lead: a recorrência e as parcelas passam pro financeiro da empresa
+    // (sem isso a empresa nascia sem cobrança e o pagamento ficava como "Empresa desconhecida").
+    try {
+      await (supabase as any).rpc("pix_automatico_lead_para_empresa", { p_lead: leadId, p_company: companyId });
+    } catch (e) {
+      console.error("Pix Automático do lead não foi levado pra empresa:", e);
+    }
+
     // Calcular data de término do contrato baseado no plano
     let contractEndDate: string | null = null;
     const startDate = new Date();
