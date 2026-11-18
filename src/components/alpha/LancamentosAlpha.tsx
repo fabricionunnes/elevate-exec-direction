@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Panel, Tabela } from "@/components/painel-controle/ui";
-import { brl, dataBR, dataHoraBR } from "@/components/painel-controle/fmt";
+import { brl, brlFull, dataBR, dataHoraBR } from "@/components/painel-controle/fmt";
 import type { DadosAlpha } from "./tipos";
 import { GRUPOS_DRE } from "./tipos";
 
@@ -145,7 +145,7 @@ export function LancamentosAlpha({ d, projectId, onSalvo }: { d: DadosAlpha; pro
                 {l.categoria ? ` · ${l.categoria}` : " · sem categoria"}
               </small>
             </div>
-            <b className={l.tipo === "receita" ? "pos" : ""}>{brl(l.valor)}</b>
+            <b className={l.tipo === "receita" ? "pos" : ""}>{brlFull(l.valor)}</b>
             <input className="al-in" type="date" aria-label={l.tipo === "receita" ? "Data do recebimento" : "Data do pagamento"} value={dataPg[l.id] ?? hoje} onChange={(e) => setDataPg({ ...dataPg, [l.id]: e.target.value })} />
             <button type="button" className="al-btn pri" disabled={ocupado === l.id} onClick={() => quitar(l)}>{l.tipo === "receita" ? "Marcar como recebido" : "Marcar como pago"}</button>
           </div>
@@ -170,7 +170,7 @@ export function LancamentosAlpha({ d, projectId, onSalvo }: { d: DadosAlpha; pro
       <Panel titulo="Últimos lançamentos" sub="os 40 mais recentes">
         <Tabela cols={[{ h: "Competência", tl: true }, { h: "Descrição", tl: true }, { h: "Categoria", tl: true }, "Tipo", "Valor", "Situação", "Origem", ""]} vazio="Nenhum lançamento." rows={lancs.map((l) => [
           dataBR(l.comp), l.descricao, l.categoria ?? <span className="nd">Sem categoria</span>, l.tipo === "receita" ? "Receita" : "Despesa",
-          <span key="v" className={l.tipo === "receita" ? "pos" : ""}>{brl(l.valor)}</span>,
+          <span key="v" className={l.tipo === "receita" ? "pos" : ""}>{brlFull(l.valor)}</span>,
           l.status === "paid" ? (l.tipo === "receita" ? `Recebido${l.pagoEm ? ` em ${dataBR(l.pagoEm)}` : ""}` : `Pago${l.pagoEm ? ` em ${dataBR(l.pagoEm)}` : ""}`) : l.status === "partial" ? "Parcial" : l.status === "overdue" ? "Vencido" : "Em aberto",
           ORIGEM[l.origem ?? "manual"] ?? l.origem,
           <span key="a" style={{ display: "inline-flex", gap: 6 }}>
