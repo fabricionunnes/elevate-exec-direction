@@ -284,6 +284,13 @@ async function moverLead(supabase: any, camp: any, lead: any, cache: Map<string,
     to = list.find((s: any) => s.sort_order > cur.sort_order && !s.is_final && !s.final_type) || null;
   }
   if (!to || to.id === lead.stage_id) return null;
+  // Cliente ganho NÃO sai da etapa de ganho por causa de disparo (Fabrício, 18/11/2026). Tirar de "Fechado"
+  // apagava a venda, e a volta (quando a Meta recusa o envio) contava como venda nova: avisava o grupo de
+  // integração e trocava a data da venda pra hoje.
+  if (lead.stage_id) {
+    const { data: atual } = await supabase.from("crm_stages").select("final_type").eq("id", lead.stage_id).maybeSingle();
+    if (atual?.final_type === "won") return null;
+  }
   const upd: Record<string, string> = { stage_id: to.id };
   if (to.pipeline_id !== lead.pipeline_id) upd.pipeline_id = to.pipeline_id;
   const { error } = await supabase.from("crm_leads").update(upd).eq("id", lead.id);
