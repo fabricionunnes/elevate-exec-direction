@@ -135,3 +135,8 @@ button.al-check { cursor: pointer; }
   .pc .al-form[style] { grid-template-columns: 1fr 1fr !important; }
 }
 @media (max-width: 560px) { .pc .k4, .pc .al-fech { grid-template-columns: 1fr; } .pc .al-form[style] { grid-template-columns: 1fr !important; } }
+/* com o menu lateral a área útil ficou mais estreita: seis cartões em linha estouram */
+.pc .al-main .k6 { grid-template-columns: repeat(3, 1fr); }
+.pc .al-main .k6 .p.main .val, .pc .al-main .k6 .val { font-size: clamp(20px, 2vw, 28px); }
+@media (max-width: 980px) { .pc .al-main .k6 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .pc .al-main .k6 { grid-template-columns: 1fr; } }

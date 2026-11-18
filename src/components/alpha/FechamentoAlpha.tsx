@@ -10,7 +10,7 @@ import { MESES_NOME, despesaTotalReal, lucroReal } from "./tipos";
 import { situacaoMeses, type ExtrasAlpha, type SituacaoMes } from "./analise";
 
 const ROT: Record<SituacaoMes["estado"], { t: string; c: string }> = {
-  futuro: { t: "Ainda não terminou", c: "n" }, aberto: { t: "Aberto, no prazo", c: "a" }, atrasado: { t: "Passou do prazo", c: "r" },
+  antes: { t: "Antes da sua entrada", c: "n" }, futuro: { t: "Ainda não terminou", c: "n" }, aberto: { t: "Aberto, no prazo", c: "a" }, atrasado: { t: "Passou do prazo", c: "r" },
   fechado: { t: "Fechado no prazo", c: "g" }, fechado_fora: { t: "Fechado fora do prazo", c: "a" },
 };
 
@@ -18,7 +18,7 @@ export function FechamentoAlpha({ d, x, projectId, onSalvo, irPara }: {
   d: DadosAlpha; x: ExtrasAlpha; projectId: string; onSalvo: () => void; irPara: (aba: string) => void;
 }) {
   const db = supabase as any;
-  const sit = situacaoMeses(d, x.fechamentos);
+  const sit = situacaoMeses(d, x.fechamentos, new Date(), x.inicio);
   const [obs, setObs] = useState<Record<number, string>>({});
   const [ocupado, setOcupado] = useState<number | null>(null);
   const noPrazo = sit.filter((s) => s.estado === "fechado").length;
@@ -62,7 +62,8 @@ export function FechamentoAlpha({ d, x, projectId, onSalvo, irPara }: {
             <div key={s.mes} className={`p al-fmes ${rot.c}`}>
               <div className="lbl">{MESES_NOME[s.mes - 1]}</div>
               <span className={`st ${rot.c}`}>{rot.t}</span>
-              {s.estado !== "futuro" && (
+              {s.estado === "antes" && <div className="sub" style={{ marginTop: 8 }}>Não conta para o Capital do Próximo Salto.</div>}
+              {s.estado !== "futuro" && s.estado !== "antes" && (
                 <>
                   <div className="v" style={{ fontSize: 18, fontWeight: 800, margin: "8px 0 2px" }}><span className={lucroReal(m) >= 0 ? "pos" : "neg"}>{brl(lucroReal(m))}</span></div>
                   <div className="sub">lucro · faturamento {brl(m.receita)} · {m.lancamentos} lançamentos</div>
