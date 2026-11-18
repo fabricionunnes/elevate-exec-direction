@@ -6,6 +6,12 @@ import "@/components/painel-controle/painel.css";
 import "./alpha.css";
 import type { DadosAlpha } from "./tipos";
 import { resumir } from "./tipos";
+import { EXTRAS_VAZIO, saude, type ExtrasAlpha } from "./analise";
+import { DiagnosticoAlpha } from "./DiagnosticoAlpha";
+import { SimuladorAlpha } from "./SimuladorAlpha";
+import { FechamentoAlpha } from "./FechamentoAlpha";
+import { NegociosAlpha } from "./NegociosAlpha";
+import { CapitalAlpha } from "./CapitalAlpha";
 import { PainelAlpha } from "./PainelAlpha";
 import { PlanejamentoAlpha } from "./PlanejamentoAlpha";
 import { MetasAlpha } from "./MetasAlpha";
@@ -19,16 +25,23 @@ import { EncontroMes, type RegistroEncontro } from "./EncontroMes";
 export const ehProjetoAlpha = (p: { product_id?: string | null; product_name?: string | null } | null | undefined) =>
   !!p && (p.product_id === "mastermind-alpha" || p.product_name === "UNV Mastermind Alpha");
 
+// Menu lateral em grupos: o resultado, o plano, o dinheiro do dono, a mesa e os dados.
 const ABAS = [
-  { k: "painel", nome: "Painel de controle" },
-  { k: "planejamento", nome: "Planejamento" },
-  { k: "metas", nome: "Metas" },
-  { k: "dre", nome: "DRE" },
-  { k: "dfc", nome: "Fluxo de caixa" },
-  { k: "participacao", nome: "Participação de lucro" },
-  { k: "lancamentos", nome: "Lançamentos" },
-  { k: "cronograma", nome: "Encontros do ano" },
+  { k: "painel", nome: "Painel de controle", grupo: "Resultado" },
+  { k: "diagnostico", nome: "Diagnóstico e plano de ação", grupo: "Resultado" },
+  { k: "dre", nome: "DRE", grupo: "Resultado" },
+  { k: "dfc", nome: "Fluxo de caixa", grupo: "Resultado" },
+  { k: "planejamento", nome: "Planejamento", grupo: "Plano do ano" },
+  { k: "metas", nome: "Metas", grupo: "Plano do ano" },
+  { k: "simulador", nome: "Simulador de lucro", grupo: "Plano do ano" },
+  { k: "participacao", nome: "Participação de lucro", grupo: "Seu dinheiro" },
+  { k: "capital", nome: "Capital do Próximo Salto", grupo: "Seu dinheiro" },
+  { k: "cronograma", nome: "Encontros do ano", grupo: "A mesa" },
+  { k: "negocios", nome: "Negócios da mesa", grupo: "A mesa" },
+  { k: "lancamentos", nome: "Lançamentos", grupo: "Dados" },
+  { k: "fechamento", nome: "Fechamento do mês", grupo: "Dados" },
 ] as const;
+const GRUPOS = Array.from(new Set(ABAS.map((a) => a.grupo)));
 type Aba = (typeof ABAS)[number]["k"];
 
 export function AlphaProjeto({ projectId, empresa, modo, onVoltar, onSair, onMenusEquipe }: {
@@ -46,16 +59,32 @@ export function AlphaProjeto({ projectId, empresa, modo, onVoltar, onSair, onMen
   const [carregando, setCarregando] = useState(true);
   const [encontros, setEncontros] = useState<RegistroEncontro[]>([]);
   const [mesAberto, setMesAberto] = useState<number | null>(null);
+  const [extras, setExtras] = useState<ExtrasAlpha>(EXTRAS_VAZIO);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
     setErro(null);
     const rpc = (a: number) => (supabase as any).rpc("alpha_painel", { p_project: projectId, p_ano: a });
-    const [r1, r0, enc] = await Promise.all([
+    const db = supabase as any;
+    const [r1, r0, enc, fech, acoes, negs, salto, cob] = await Promise.all([
       rpc(ano), rpc(ano - 1),
-      (supabase as any).from("alpha_encontros").select("mes, data_presencial, data_online, presente_presencial, presente_online, tarefas, ata").eq("project_id", projectId).eq("ano", ano),
+      db.from("alpha_encontros").select("mes, data_presencial, data_online, presente_presencial, presente_online, tarefas, ata").eq("project_id", projectId).eq("ano", ano),
+      db.from("alpha_fechamentos").select("mes, fechado_em, observacao").eq("project_id", projectId).eq("ano", ano),
+      db.from("alpha_acoes").select("id, ano, origem, texto, responsavel, prazo, impacto_mensal, status, created_at").eq("project_id", projectId).eq("ano", ano).order("created_at", { ascending: false }),
+      db.from("alpha_negocios").select("id, data, tipo, com_quem, descricao, valor, status").eq("project_id", projectId).order("data", { ascending: false }).limit(500),
+      db.from("alpha_saltos").select("tipo, descricao, investimento_total, retorno_esperado, inicio").eq("project_id", projectId).eq("ano", ano).maybeSingle(),
+      db.rpc("alpha_capital", { p_project: projectId }),
     ]);
-    setEncontros(enc.error ? [] : (enc.data as RegistroEncontro[]));
+    const regs = enc.error ? [] : (enc.data as RegistroEncontro[]);
+    setEncontros(regs);
+    setExtras({
+      fechamentos: fech.error ? [] : fech.data, acoes: acoes.error ? [] : acoes.data, negocios: negs.error ? [] : negs.data,
+      salto: salto.error ? null : salto.data, cobrancas: cob.error ? null : cob.data,
+      presencas: regs.filter((x) => x.presente_presencial === true).length,
+      encontrosRegistrados: regs.filter((x) => x.presente_presencial != null).length,
+      // as tabelas novas ainda não existem no banco: as telas novas avisam em vez de quebrar
+      pronto: !fech.error && !acoes.error && !negs.error,
+    });
     if (r1.error) {
       setErro(r1.error.message?.includes("sem acesso") ? "Este painel é exclusivo do dono da empresa e do time da UNV." : r1.error.message);
       setDados(null);
@@ -70,6 +99,9 @@ export function AlphaProjeto({ projectId, empresa, modo, onVoltar, onSair, onMen
 
   const resumo = useMemo(() => (dados ? resumir(dados, anterior) : null), [dados, anterior]);
   const anos = [ano - 1, ano, ano + 1].filter((a) => a >= 2024);
+  const ir = (k: string) => { setAba(k as Aba); setMesAberto(null); window.scrollTo(0, 0); };
+  const sd = useMemo(() => (dados && resumo ? saude(dados, resumo, extras) : null), [dados, resumo, extras]);
+  const novas = ["diagnostico", "simulador", "fechamento", "negocios", "capital"];
 
   return (
     <div className="pc alpha">
@@ -93,18 +125,42 @@ export function AlphaProjeto({ projectId, empresa, modo, onVoltar, onSair, onMen
           </div>
         </div>
 
-        <nav className="al-tabs">
-          {ABAS.map((a) => (
-            <button type="button" key={a.k} className={`al-tab ${aba === a.k ? "on" : ""}`} onClick={() => { setAba(a.k); setMesAberto(null); }}>{a.nome}</button>
-          ))}
+        <div className="al-shell">
+        <nav className="al-side" aria-label="Menu do projeto">
+          <select className="al-sel al-side-sel" value={aba} aria-label="Ir para" onChange={(e) => ir(e.target.value)}>
+            {GRUPOS.map((g) => <optgroup key={g} label={g}>{ABAS.filter((a) => a.grupo === g).map((a) => <option key={a.k} value={a.k}>{a.nome}</option>)}</optgroup>)}
+          </select>
+          <div className="al-side-lista">
+            {GRUPOS.map((g) => (
+              <div key={g} className="al-side-g">
+                <div className="lbl">{g}</div>
+                {ABAS.filter((a) => a.grupo === g).map((a) => (
+                  <button type="button" key={a.k} className={`al-nav ${aba === a.k ? "on" : ""}`} aria-current={aba === a.k ? "page" : undefined} onClick={() => ir(a.k)}>{a.nome}</button>
+                ))}
+              </div>
+            ))}
+            {sd && (
+              <button type="button" className="al-saude-mini" onClick={() => ir("painel")}>
+                <div className="lbl">Saúde do sistema</div>
+                <strong className={sd.nota >= 85 ? "pos" : sd.nota >= 60 ? "warn" : "neg"}>{sd.nota}%</strong>
+                <div className="al-prog"><i className={sd.nota >= 85 ? "g" : sd.nota >= 60 ? "a" : "r"} style={{ width: `${sd.nota}%` }} /></div>
+              </button>
+            )}
+          </div>
         </nav>
-
+        <div className="al-main">
         {erro && <div className="al-vazio">{erro}</div>}
         {!erro && !dados && <div className="al-vazio">Carregando o painel...</div>}
-        {!erro && dados && resumo && (
+        {!erro && dados && resumo && novas.includes(aba) && !extras.pronto && <div className="al-vazio">Esta área está sendo ativada. Atualize a página em alguns minutos.</div>}
+        {!erro && dados && resumo && (!novas.includes(aba) || extras.pronto) && (
           <>
-            {aba === "painel" && <PainelAlpha d={dados} anterior={anterior} r={resumo} irPara={(k) => setAba(k as Aba)}
+            {aba === "painel" && <PainelAlpha d={dados} anterior={anterior} r={resumo} irPara={ir} saude={extras.pronto ? sd : null}
               tarefasEncontro={(m) => encontros.find((x) => x.mes === m)?.tarefas ?? {}} onAbrirEncontro={(m) => { setAba("cronograma"); setMesAberto(m); }} />}
+            {aba === "diagnostico" && <DiagnosticoAlpha d={dados} r={resumo} x={extras} projectId={projectId} onSalvo={carregar} irPara={ir} />}
+            {aba === "simulador" && <SimuladorAlpha d={dados} r={resumo} projectId={projectId} onSalvo={carregar} />}
+            {aba === "fechamento" && <FechamentoAlpha d={dados} x={extras} projectId={projectId} onSalvo={carregar} irPara={ir} />}
+            {aba === "negocios" && <NegociosAlpha x={extras} ano={dados.ano} projectId={projectId} onSalvo={carregar} />}
+            {aba === "capital" && <CapitalAlpha d={dados} x={extras} projectId={projectId} onSalvo={carregar} irPara={ir} />}
             {aba === "planejamento" && <PlanejamentoAlpha d={dados} anterior={anterior} projectId={projectId} onSalvo={carregar} />}
             {aba === "metas" && <MetasAlpha d={dados} projectId={projectId} onSalvo={carregar} />}
             {aba === "dre" && <DreAlpha d={dados} />}
@@ -118,6 +174,8 @@ export function AlphaProjeto({ projectId, empresa, modo, onVoltar, onSair, onMen
             )}
           </>
         )}
+        </div>
+        </div>
       </div>
     </div>
   );
