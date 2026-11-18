@@ -147,7 +147,8 @@ async function buildMetrics(supabase: SupabaseClient, companyId: string, today: 
   const { data: people } = await supabase
     .from("company_salespeople").select("id, name")
     .eq("company_id", companyId).eq("is_active", true)
-    .eq("exclude_from_ranking", false); // canais de integração ficam fora de "lançaram/faltaram"
+    .eq("exclude_from_ranking", false) // canais de integração ficam fora de "lançaram/faltaram"
+    .eq("exclude_from_launch_check", false); // quem vende mas não lança no dia a dia (vendas entram pelo CRM)
   const launchedToday = new Set(
     (entries || []).filter((e: any) => e.entry_date === today && e.salesperson_id).map((e: any) => e.salesperson_id),
   );
