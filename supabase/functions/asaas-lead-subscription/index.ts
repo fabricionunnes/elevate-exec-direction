@@ -50,6 +50,15 @@ async function asaas(key: string, path: string, method: string, body?: unknown) 
 }
 
 // Próxima data com o dia escolhido (1/5/10/15/20/25), nunca no passado
+// Pix Automático: o Asaas recusa a descrição da autorização com travessão, acento ou símbolo
+// ("A descrição da autorização contém caracteres não permitidos", Fernanda Oliveira 18/11/2026).
+// Vai só letra sem acento, número e espaço, em até 35 caracteres.
+function descPixAuto(s: unknown, padrao: string): string {
+  const t = String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  return (t || padrao).slice(0, 35).trim();
+}
+
 function nextDueDate(day: number): string {
   const now = new Date(Date.now() - 3 * 3600000); // BRT
   const y = now.getFullYear(), m = now.getMonth(), today = now.getDate();
@@ -134,9 +143,9 @@ Deno.serve(async (req) => {
       try {
         auth = await asaas(ASAAS_KEY, "/pix/automatic/authorizations", "POST", {
           customerId, frequency: "MONTHLY", contractId, startDate, value: valor,
-          description: description.slice(0, 35), paymentCreationMode: "SUBSCRIPTION",
+          description: descPixAuto(description, "Assinatura mensal"), paymentCreationMode: "SUBSCRIPTION",
           retryPolicy: "ALLOW_THREE_IN_SEVEN_DAYS",
-          immediateQrCode: { originalValue: valor, expirationSeconds, description: description.slice(0, 35) },
+          immediateQrCode: { originalValue: valor, expirationSeconds, description: descPixAuto(description, "Primeira mensalidade") },
         });
       } catch (e) {
         if (row?.id) await supabase.from("crm_lead_payments").delete().eq("id", row.id);
