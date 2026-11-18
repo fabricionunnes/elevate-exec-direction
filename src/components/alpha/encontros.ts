@@ -43,8 +43,8 @@ const abre = (foco: string) => ({ hora: "14h15", titulo: "A Mesa", texto: `Cada 
 const fecha = { hora: "16h30", titulo: "Compromissos no sistema", texto: "Cada membro sai com 3 compromissos lançados aqui, ligados ao tema do mês. Eles são cobrados no encontro online, 15 dias depois." };
 const hot = (texto: string) => ({ hora: "15h45", titulo: "Hot seats", texto });
 /** Vitrine Alpha (pedido do Fabrício, 16/11/2026): todo mês, em rodízio, dois membros apresentam o próprio negócio. */
-const vitrine = { hora: "16h00", titulo: "Vitrine Alpha", texto: "Os 2 membros da vez, em rodízio, apresentam seu produto ou serviço para a mesa: 10 minutos cada e 5 de perguntas. Venda, parceria e indicação entre os membros começam aqui. Ao longo do ano, todo mundo tem a sua vez." };
-const vitrineKart = { hora: "12h30", titulo: "Vitrine Alpha no almoço", texto: "Os 2 membros da vez, em rodízio, apresentam seu produto ou serviço para a mesa durante o almoço, antes do GP." };
+const vitrine = { hora: "16h00", titulo: "Vitrine Alpha", texto: "Os 5 membros da vez, em rodízio, apresentam seu produto ou serviço para a mesa: 5 minutos cada, com perguntas no fim. Venda, parceria e indicação entre os membros começam aqui. Ao longo do ano, todo mundo tem a sua vez." };
+const vitrineKart = { hora: "12h30", titulo: "Vitrine Alpha no almoço", texto: "Os 5 membros da vez, em rodízio, apresentam seu produto ou serviço para a mesa durante o almoço, antes do GP." };
 
 export const ENCONTROS: Encontro[] = [
   {
