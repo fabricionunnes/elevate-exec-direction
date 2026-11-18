@@ -248,7 +248,7 @@ export const ENCONTROS: Encontro[] = [
     aula: [
       { hora: "09h00", titulo: "A Mesa (manhã, antes do kart)", texto: "Painel na tela com a projeção do ano." },
       { hora: "09h30", titulo: "Aula: o orçamento que começa em novembro", texto: "Projeção de fechamento do ano, meta do ano seguinte e o investimento que destrava o próximo salto." },
-      { hora: "11h00", titulo: "Mão na massa", texto: "Rascunho do planejamento do próximo ano no sistema (troque o ano no topo)." },
+      { hora: "11h00", titulo: "Mão na massa", texto: "Rascunho do planejamento do próximo ano no sistema (troque o ano no topo) e escolha do próximo salto: o investimento que destrava o ano seguinte e que vai receber o Capital do Próximo Salto em dezembro." },
       vitrineKart,
       { hora: "14h00", titulo: "GP de kart", texto: "Tomada de tempo, corrida e premiação." },
     ],
@@ -257,16 +257,18 @@ export const ENCONTROS: Encontro[] = [
     tarefas: [
       { id: "projecao", texto: "Ler a projeção de lucro do ano no painel", aba: "painel" },
       { id: "plano_prox", texto: "Montar o rascunho do planejamento do próximo ano", aba: "planejamento" },
+      { id: "proximo_salto", texto: "Definir o próximo salto: onde entra o Capital do Próximo Salto (vendedor novo, tráfego ou agente de IA)", aba: "planejamento" },
       { id: "conselho_bal", texto: "Fazer o conselho individual de balanço com o Fabrício", aba: "painel" },
     ],
   },
   {
-    mes: 12, tema: "Fechamento do ano", foco: "lucro", marcos: ["4ª participação de lucro", "Renovação"],
+    mes: 12, tema: "Fechamento do ano", foco: "lucro", marcos: ["4ª participação de lucro", "Capital do Próximo Salto", "Renovação"],
     objetivo: "Fechar o ano no sistema, comparar com o plano de janeiro e distribuir o lucro do último trimestre.",
     aula: [
       abre("lucro do ano"),
       { hora: "14h45", titulo: "Aula: o ano no papel", texto: "DRE do ano contra o plano, crescimento contra o ano anterior, quanto virou participação de lucro." },
       { hora: "15h30", titulo: "Abertura das cartas", texto: "Cada membro abre a carta que escreveu na iniciação e compara com o número de hoje." },
+      { hora: "15h45", titulo: "Capital do Próximo Salto", texto: "Quem executou o ano (12 mensalidades em dia, presença em pelo menos 10 dos 12 encontros e sistema alimentado todo mês) recebe do Fabrício R$ 6.000 por Pix, investidos no salto definido em novembro para começar em janeiro." },
       vitrine,
       fecha,
     ],
