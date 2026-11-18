@@ -319,12 +319,14 @@ Deno.serve(async (req) => {
       const ASAAS_BANK = "6e9a3135-5826-4633-adf1-a63ef5b70e96"; // financial_banks: Asaas ATIVO (o 9f9de213… era um "Asaas" antigo e inativo — o dinheiro sumia do saldo, corrigido em 21/09/2026)
       const ASAAS_BANK_SOCIAL = "b5050c0f-b990-4d32-b0d1-4ac5f878ea11"; // financial_banks: Asaas UNV Social (links gerados com provider "asaas_social", 04/11/2026)
       let { data: lp } = await supabase.from("crm_lead_payments")
-        .select("id, receivable_id, status, description, url, recurring, provider, lead:crm_leads(name)").in("provider", ["asaas", "asaas_social"]).eq("provider_ref", String(paymentId)).limit(1).maybeSingle();
+        .select("id, receivable_id, status, description, url, recurring, provider, lead_id, due_day, lead:crm_leads(name)").in("provider", ["asaas", "asaas_social"]).eq("provider_ref", String(paymentId)).limit(1).maybeSingle();
       // Pix Automático do lead (09/11/2026): o pagamento vem com a autorização, guardada no provider_ref
+      let lpPelaAutorizacao = false;
       if (!lp && payment.pixAutomaticAuthorizationId) {
         const r2 = await supabase.from("crm_lead_payments")
-          .select("id, receivable_id, status, description, url, recurring, provider, lead:crm_leads(name)").in("provider", ["asaas", "asaas_social"]).eq("provider_ref", String(payment.pixAutomaticAuthorizationId)).limit(1).maybeSingle();
+          .select("id, receivable_id, status, description, url, recurring, provider, lead_id, due_day, lead:crm_leads(name)").in("provider", ["asaas", "asaas_social"]).eq("provider_ref", String(payment.pixAutomaticAuthorizationId)).limit(1).maybeSingle();
         lp = r2.data;
+        lpPelaAutorizacao = !!lp;
       }
       if (lp && newStatus === "paid" && lp.status !== "paid") {
         const social = (lp as any).provider === "asaas_social";
@@ -354,6 +356,42 @@ Deno.serve(async (req) => {
           bank_id: bancoDoLink, type: "credit", amount_cents: netCents, fee_cents: feeCents,
           description: `Pagamento PIX (${social ? "Asaas UNV Social" : "Asaas"}) — pagamento ${lp.id}`, reference_type: "crm_lead_payment", reference_id: lp.id,
         });
+      }
+      // Débito mensal do Pix Automático de quem continua lead (18/11/2026). Do 2º mês em diante o pagamento
+      // chega com a mesma autorização e outro id, e o lançamento do lead já está pago: antes não ficava
+      // registrado em lugar nenhum. Cada débito vira um pagamento do lead + conta a receber paga + crédito no
+      // banco. Se a autorização já está numa recorrência de empresa, quem dá a baixa é a parcela, não aqui.
+      else if (lp && lpPelaAutorizacao && newStatus === "paid" && lp.status === "paid") {
+        const { data: pa } = await supabase.from("asaas_pix_automatico")
+          .select("id, recurring_charge_id, primeiro_pagamento_id").eq("id", String(payment.pixAutomaticAuthorizationId)).maybeSingle();
+        const { data: jaConta } = await supabase.from("financial_receivables").select("id").eq("asaas_payment_id", String(paymentId)).limit(1);
+        const { data: jaFatura } = await supabase.from("company_invoices").select("id").eq("pagarme_charge_id", String(paymentId)).limit(1);
+        const primeiro = !pa?.primeiro_pagamento_id || String(pa.primeiro_pagamento_id) === String(paymentId);
+        if (pa && !pa.recurring_charge_id && !primeiro && !jaConta?.length && !jaFatura?.length) {
+          const social = (lp as any).provider === "asaas_social";
+          const today = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+          const netCents = Math.round((paymentNetValue || paymentValue || 0) * 100);
+          const feeCents = Math.max(0, Math.round((paymentValue || 0) * 100) - netCents);
+          const mes = String(dueDate || today).slice(0, 7).split("-").reverse().join("/");
+          const descricao = `${lp.description || "Mensalidade"} (${mes})`;
+          const { data: rec } = await supabase.from("financial_receivables").insert({
+            description: descricao, amount: (paymentValue || 0), due_date: dueDate || today,
+            status: "paid", paid_date: today, paid_amount: netCents / 100, fee_amount: feeCents / 100,
+            payment_method: "PIX", payment_link: lp.url || null, is_recurring: true,
+            asaas_payment_id: String(paymentId),
+            notes: `CRM · lead ${(lp as any).lead?.name || ""} · débito mensal do Pix Automático`.trim(),
+          }).select("id").single();
+          const { data: novo } = await supabase.from("crm_lead_payments").insert({
+            lead_id: (lp as any).lead_id, amount_cents: Math.round((paymentValue || 0) * 100), description: descricao,
+            provider: (lp as any).provider, billing_type: "PIX_AUTOMATICO", recurring: true, due_day: (lp as any).due_day || null,
+            provider_ref: String(paymentId), url: lp.url || "", status: "paid", paid_at: new Date().toISOString(),
+            receivable_id: rec?.id || null,
+          }).select("id").single();
+          await supabase.from("financial_bank_transactions").insert({
+            bank_id: social ? ASAAS_BANK_SOCIAL : ASAAS_BANK, type: "credit", amount_cents: netCents, fee_cents: feeCents,
+            description: `Pagamento PIX (${social ? "Asaas UNV Social" : "Asaas"}) — pagamento ${novo?.id || lp.id}`, reference_type: "crm_lead_payment", reference_id: novo?.id || lp.id,
+          });
+        }
       }
     } catch (e) { console.error("[Asaas Webhook] lead payment handling error", e); }
 
@@ -824,6 +862,14 @@ Deno.serve(async (req) => {
           matched = true;
         }
       }
+    }
+
+    // Pagamento que já está numa parcela paga (ex.: Pix Automático do lead levado pra empresa pelo gatilho do
+    // banco no meio deste mesmo evento): não cai na baixa por valor e data, que poderia pegar conta de outro cliente.
+    if (!matched && newStatus === "paid") {
+      const { data: jaNaParcela } = await supabase.from("company_invoices").select("id")
+        .eq("pagarme_charge_id", String(paymentId)).in("status", ["paid", "partial"]).limit(1);
+      if (jaNaParcela?.length) matched = true;
     }
 
     // Fallback: if no company_invoice was matched but payment is confirmed,
