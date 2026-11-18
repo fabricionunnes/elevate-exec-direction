@@ -66,7 +66,7 @@ export function AlphaProjeto({ projectId, empresa, modo, onVoltar, onSair, onMen
     setErro(null);
     const rpc = (a: number) => (supabase as any).rpc("alpha_painel", { p_project: projectId, p_ano: a });
     const db = supabase as any;
-    const [r1, r0, enc, fech, acoes, negs, salto, cob] = await Promise.all([
+    const [r1, r0, enc, fech, acoes, negs, salto, cob, proj] = await Promise.all([
       rpc(ano), rpc(ano - 1),
       db.from("alpha_encontros").select("mes, data_presencial, data_online, presente_presencial, presente_online, tarefas, ata").eq("project_id", projectId).eq("ano", ano),
       db.from("alpha_fechamentos").select("mes, fechado_em, observacao").eq("project_id", projectId).eq("ano", ano),
@@ -74,6 +74,7 @@ export function AlphaProjeto({ projectId, empresa, modo, onVoltar, onSair, onMen
       db.from("alpha_negocios").select("id, data, tipo, com_quem, descricao, valor, status").eq("project_id", projectId).order("data", { ascending: false }).limit(500),
       db.from("alpha_saltos").select("tipo, descricao, investimento_total, retorno_esperado, inicio").eq("project_id", projectId).eq("ano", ano).maybeSingle(),
       db.rpc("alpha_capital", { p_project: projectId }),
+      db.from("onboarding_projects").select("created_at, contract_start_date").eq("id", projectId).maybeSingle(),
     ]);
     const regs = enc.error ? [] : (enc.data as RegistroEncontro[]);
     setEncontros(regs);
@@ -84,6 +85,7 @@ export function AlphaProjeto({ projectId, empresa, modo, onVoltar, onSair, onMen
       encontrosRegistrados: regs.filter((x) => x.presente_presencial != null).length,
       // as tabelas novas ainda não existem no banco: as telas novas avisam em vez de quebrar
       pronto: !fech.error && !acoes.error && !negs.error,
+      inicio: proj.error || !proj.data ? null : (proj.data.contract_start_date ?? proj.data.created_at ?? null),
     });
     if (r1.error) {
       setErro(r1.error.message?.includes("sem acesso") ? "Este painel é exclusivo do dono da empresa e do time da UNV." : r1.error.message);

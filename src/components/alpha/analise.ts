@@ -17,8 +17,10 @@ export type CobrancasAlpha = { atrasadas: number; pagas: number; abertas: number
 export type ExtrasAlpha = {
   fechamentos: Fechamento[]; acoes: Acao[]; negocios: Negocio[]; salto: Salto | null; cobrancas: CobrancasAlpha | null;
   presencas: number; encontrosRegistrados: number; pronto: boolean;
+  /** Data em que o projeto do membro começou: meses anteriores não contam para fechamento nem para o Capital. */
+  inicio: string | null;
 };
-export const EXTRAS_VAZIO: ExtrasAlpha = { fechamentos: [], acoes: [], negocios: [], salto: null, cobrancas: null, presencas: 0, encontrosRegistrados: 0, pronto: false };
+export const EXTRAS_VAZIO: ExtrasAlpha = { fechamentos: [], acoes: [], negocios: [], salto: null, cobrancas: null, presencas: 0, encontrosRegistrados: 0, pronto: false, inicio: null };
 
 /* ---------- indicadores de base ---------- */
 export type Base = {
@@ -122,15 +124,19 @@ export function alertas(d: DadosAlpha, r: Resumo, b: Base): Alerta[] {
 }
 
 /* ---------- fechamento do mês ---------- */
-export type SituacaoMes = { mes: number; estado: "futuro" | "aberto" | "atrasado" | "fechado" | "fechado_fora"; prazo: Date; fechadoEm: string | null };
+export type SituacaoMes = { mes: number; estado: "antes" | "futuro" | "aberto" | "atrasado" | "fechado" | "fechado_fora"; prazo: Date; fechadoEm: string | null };
 /** Prazo de fechamento: dia 10 do mês seguinte. */
 export const prazoFechamento = (ano: number, mes: number) => new Date(ano, mes, 10, 23, 59, 59);
-export function situacaoMeses(d: DadosAlpha, fechamentos: Fechamento[], hoje = new Date()): SituacaoMes[] {
+export function situacaoMeses(d: DadosAlpha, fechamentos: Fechamento[], hoje = new Date(), inicio: string | null = null): SituacaoMes[] {
   const fechado = ultimoMesFechado(d.ano, hoje);
+  // primeiro mês que conta: o mês em que o membro entrou (antes disso ele ainda não tinha o sistema)
+  const ini = inicio ? new Date(inicio) : null;
+  const primeiro = !ini ? 1 : ini.getFullYear() > d.ano ? 13 : ini.getFullYear() < d.ano ? 1 : ini.getMonth() + 1;
   return d.dre.map((m) => {
     const prazo = prazoFechamento(d.ano, m.mes);
     const f = fechamentos.find((x) => x.mes === m.mes);
-    if (f) return { mes: m.mes, estado: new Date(f.fechado_em) <= prazo ? "fechado" : "fechado_fora", prazo, fechadoEm: f.fechado_em };
+    if (f) return { mes: m.mes, estado: new Date(f.fechado_em) <= prazo || m.mes < primeiro ? "fechado" : "fechado_fora", prazo, fechadoEm: f.fechado_em };
+    if (m.mes < primeiro) return { mes: m.mes, estado: "antes", prazo, fechadoEm: null };
     if (m.mes > fechado) return { mes: m.mes, estado: "futuro", prazo, fechadoEm: null };
     return { mes: m.mes, estado: hoje > prazo ? "atrasado" : "aberto", prazo, fechadoEm: null };
   });
@@ -140,7 +146,7 @@ export function situacaoMeses(d: DadosAlpha, fechamentos: Fechamento[], hoje = n
 export type ItemSaude = { ok: boolean; nome: string; dica: string; aba: string };
 export function saude(d: DadosAlpha, r: Resumo, x: ExtrasAlpha, hoje = new Date()): { itens: ItemSaude[]; nota: number } {
   const mesAtual = hoje.getFullYear() === d.ano ? hoje.getMonth() + 1 : 12;
-  const sit = situacaoMeses(d, x.fechamentos, hoje);
+  const sit = situacaoMeses(d, x.fechamentos, hoje, x.inicio);
   const pendentes = sit.filter((s) => s.estado === "atrasado").length;
   const ultimo = d.fonte.ultimo_lancamento ? (hoje.getTime() - new Date(d.fonte.ultimo_lancamento).getTime()) / 86400000 : null;
   const itens: ItemSaude[] = [
@@ -149,7 +155,7 @@ export function saude(d: DadosAlpha, r: Resumo, x: ExtrasAlpha, hoje = new Date(
     { ok: d.metas.some((m) => m.mes === mesAtual || m.mes == null), nome: `Metas de ${MESES_NOME[mesAtual - 1].toLowerCase()} cadastradas`, dica: "Cadastre as metas do mês", aba: "metas" },
     { ok: ultimo != null && ultimo <= 10, nome: "Lançamentos em dia", dica: ultimo == null ? "Nenhum lançamento no sistema" : `Último lançamento há ${Math.round(ultimo)} dias`, aba: "lancamentos" },
     { ok: d.fonte.categorias_sem_grupo === 0, nome: "Categorias ligadas ao DRE", dica: `${d.fonte.categorias_sem_grupo} categorias sem grupo`, aba: "lancamentos" },
-    { ok: pendentes === 0 && r.fechado > 0, nome: "Meses fechados no prazo", dica: pendentes ? `${pendentes} mês(es) passaram do prazo sem fechar` : "Feche o mês até o dia 10", aba: "fechamento" },
+    { ok: pendentes === 0, nome: "Meses fechados no prazo", dica: pendentes ? `${pendentes} mês(es) passaram do prazo sem fechar` : "Feche o mês até o dia 10", aba: "fechamento" },
     { ok: d.compromissos.some((c) => Number(c.mes.slice(5, 7)) === mesAtual), nome: "Compromissos do mês registrados", dica: "Registre os 3 compromissos do encontro", aba: "cronograma" },
   ];
   return { itens, nota: Math.round((itens.filter((i) => i.ok).length / itens.length) * 100) };
@@ -160,8 +166,8 @@ export const CAPITAL_VALOR = 6000;
 export const PRESENCA_MINIMA = 10;
 export type Criterio = { k: string; nome: string; ok: boolean; risco: boolean; feito: string; regra: string };
 export function criteriosCapital(d: DadosAlpha, x: ExtrasAlpha, hoje = new Date()): { criterios: Criterio[]; estado: "garantido" | "caminho" | "risco" | "fora" } {
-  const sit = situacaoMeses(d, x.fechamentos, hoje);
-  const passados = sit.filter((s) => s.estado !== "futuro");
+  const sit = situacaoMeses(d, x.fechamentos, hoje, x.inicio);
+  const passados = sit.filter((s) => s.estado !== "futuro" && s.estado !== "antes");
   const noPrazo = sit.filter((s) => s.estado === "fechado").length;
   const perdidos = sit.filter((s) => s.estado === "atrasado" || s.estado === "fechado_fora").length;
   const mesAtual = hoje.getFullYear() === d.ano ? hoje.getMonth() + 1 : hoje.getFullYear() > d.ano ? 12 : 0;
