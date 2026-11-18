@@ -424,6 +424,9 @@ export const CRMPipelinePage = () => {
           .select(LEAD_SELECT)
           .eq("pipeline_id", selectedPipeline)
           .order("created_at", { ascending: false })
+          // Desempate pelo id: lead importado em lote tem o mesmo created_at, e sem ordem estável a
+          // paginação por range pulava cards entre uma página e outra (Black Friday, 18/11: 24 de 40).
+          .order("id", { ascending: false })
           .range(from, from + size - 1);
 
         if (origin) {
