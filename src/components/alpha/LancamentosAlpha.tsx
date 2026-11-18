@@ -9,7 +9,7 @@ import type { DadosAlpha } from "./tipos";
 import { GRUPOS_DRE } from "./tipos";
 
 type Cat = { id: string; name: string; type: string | null; dre_grupo: string | null };
-type Lanc = { id: string; tipo: "receita" | "despesa"; descricao: string; valor: number; comp: string | null; status: string; origem: string | null; categoria: string | null };
+type Lanc = { id: string; tipo: "receita" | "despesa"; descricao: string; valor: number; comp: string | null; venc: string | null; status: string; origem: string | null; categoria: string | null; pagoEm: string | null };
 const n = (v: string) => Number(String(v).replace(/\./g, "").replace(",", ".")) || 0;
 const ORIGEM: Record<string, string> = { demonstracao: "Demonstração", manual: "Manual", manual_alpha: "Manual (Alpha)", integracao: "Integração", conta_azul: "Conta Azul", bling: "Bling", omie: "Omie", asaas: "Asaas" };
 
@@ -20,21 +20,32 @@ export function LancamentosAlpha({ d, projectId, onSalvo }: { d: DadosAlpha; pro
   const hoje = new Date().toISOString().slice(0, 10);
   const [novo, setNovo] = useState({ tipo: "despesa" as "receita" | "despesa", descricao: "", categoria_id: "", valor: "", competencia: hoje, pago: true });
   const [novaCat, setNovaCat] = useState({ nome: "", grupo: "administrativa" });
+  const [abertos, setAbertos] = useState<Lanc[]>([]);
+  const [dataPg, setDataPg] = useState<Record<string, string>>({});
+  const [ocupado, setOcupado] = useState<string | null>(null);
 
   const carregar = async () => {
-    const [c, r, p] = await Promise.all([
+    const campos = "id, description, amount, competence_date, due_date, status, origin, category_id, paid_at";
+    const [c, r, p, ra, pa] = await Promise.all([
       db.from("client_financial_categories").select("id, name, type, dre_grupo").eq("project_id", projectId).order("name"),
-      db.from("client_financial_receivables").select("id, description, client_name, amount, competence_date, due_date, status, origin, category_id").eq("project_id", projectId).order("created_at", { ascending: false }).limit(40),
-      db.from("client_financial_payables").select("id, description, supplier_name, amount, competence_date, due_date, status, origin, category_id").eq("project_id", projectId).order("created_at", { ascending: false }).limit(40),
+      db.from("client_financial_receivables").select(`${campos}, client_name`).eq("project_id", projectId).order("created_at", { ascending: false }).limit(40),
+      db.from("client_financial_payables").select(`${campos}, supplier_name`).eq("project_id", projectId).order("created_at", { ascending: false }).limit(40),
+      // tudo o que ainda não foi pago ou recebido, por vencimento
+      db.from("client_financial_receivables").select(`${campos}, client_name`).eq("project_id", projectId).in("status", ["open", "overdue"]).order("due_date").limit(300),
+      db.from("client_financial_payables").select(`${campos}, supplier_name`).eq("project_id", projectId).in("status", ["open", "overdue"]).order("due_date").limit(300),
     ]);
     const cs: Cat[] = c.data ?? [];
     setCats(cs);
     const nome = (id: string | null) => cs.find((x) => x.id === id)?.name ?? null;
-    const l: Lanc[] = [
-      ...(r.data ?? []).map((x: any) => ({ id: x.id, tipo: "receita" as const, descricao: x.description || x.client_name || "", valor: Number(x.amount), comp: x.competence_date || x.due_date, status: x.status, origem: x.origin, categoria: nome(x.category_id) })),
-      ...(p.data ?? []).map((x: any) => ({ id: x.id, tipo: "despesa" as const, descricao: x.description || x.supplier_name || "", valor: Number(x.amount), comp: x.competence_date || x.due_date, status: x.status, origem: x.origin, categoria: nome(x.category_id) })),
-    ].sort((a, b) => String(b.comp).localeCompare(String(a.comp))).slice(0, 40);
+    const conv = (x: any, tipo: "receita" | "despesa"): Lanc => ({
+      id: x.id, tipo, descricao: x.description || x.client_name || x.supplier_name || "", valor: Number(x.amount), comp: x.competence_date || x.due_date,
+      venc: x.due_date, status: x.status, origem: x.origin, categoria: nome(x.category_id), pagoEm: x.paid_at,
+    });
+    const l: Lanc[] = [...(r.data ?? []).map((x: any) => conv(x, "receita")), ...(p.data ?? []).map((x: any) => conv(x, "despesa"))]
+      .sort((a, b) => String(b.comp).localeCompare(String(a.comp))).slice(0, 40);
     setLancs(l);
+    setAbertos([...(ra.data ?? []).map((x: any) => conv(x, "receita")), ...(pa.data ?? []).map((x: any) => conv(x, "despesa"))]
+      .sort((a, b) => String(a.venc).localeCompare(String(b.venc))));
   };
   useEffect(() => { carregar(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [projectId, d.gerado_em]);
 
@@ -66,6 +77,35 @@ export function LancamentosAlpha({ d, projectId, onSalvo }: { d: DadosAlpha; pro
     onSalvo();
   };
 
+  const tabela = (l: Lanc) => (l.tipo === "receita" ? "client_financial_receivables" : "client_financial_payables");
+  /** Marca como pago (despesa) ou recebido (receita) na data informada. O caixa passa a contar a partir dessa data. */
+  const quitar = async (l: Lanc) => {
+    const data = dataPg[l.id] || hoje;
+    setOcupado(l.id);
+    const { error } = await db.from(tabela(l)).update({ status: "paid", paid_at: data, paid_amount: l.valor }).eq("id", l.id);
+    setOcupado(null);
+    if (error) { toast.error(`Não salvou: ${error.message}`); return; }
+    toast.success(l.tipo === "receita" ? "Marcado como recebido." : "Marcado como pago.");
+    carregar(); onSalvo();
+  };
+  const reabrir = async (l: Lanc) => {
+    if (!window.confirm(`Voltar "${l.descricao}" para em aberto?`)) return;
+    const { error } = await db.from(tabela(l)).update({ status: "open", paid_at: null, paid_amount: null }).eq("id", l.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Lançamento voltou para em aberto.");
+    carregar(); onSalvo();
+  };
+  const excluir = async (l: Lanc) => {
+    if (!window.confirm(`Excluir o lançamento "${l.descricao}" de ${brl(l.valor)}? Não dá para desfazer.`)) return;
+    const { error } = await db.from(tabela(l)).delete().eq("id", l.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Lançamento excluído.");
+    carregar(); onSalvo();
+  };
+  const aPagar = abertos.filter((l) => l.tipo === "despesa"), aReceber = abertos.filter((l) => l.tipo === "receita");
+  const total = (xs: Lanc[]) => xs.reduce((a, b) => a + b.valor, 0);
+  const vencido = (l: Lanc) => !!l.venc && l.venc < hoje;
+
   const origens = Object.entries(d.fonte.origens);
   return (
     <>
@@ -94,6 +134,24 @@ export function LancamentosAlpha({ d, projectId, onSalvo }: { d: DadosAlpha; pro
         </Panel>
       </div>
 
+      <Panel titulo="Contas em aberto" sub={abertos.length ? `a pagar ${brl(total(aPagar))} · a receber ${brl(total(aReceber))}` : "o que ainda não foi pago nem recebido"}>
+        {abertos.length === 0 && <div className="empty">Nada em aberto. Quando você lançar algo como "Não, em aberto", ele aparece aqui para ser marcado como pago depois.</div>}
+        {abertos.map((l) => (
+          <div key={l.id} className="al-acao" style={{ gridTemplateColumns: "1fr auto auto auto" }}>
+            <div>
+              <b>{l.descricao} <span className="nd">· {l.tipo === "receita" ? "a receber" : "a pagar"}</span></b>
+              <small>
+                <span className={vencido(l) ? "neg" : ""}>vence {dataBR(l.venc)}{vencido(l) ? " (vencido)" : ""}</span>
+                {l.categoria ? ` · ${l.categoria}` : " · sem categoria"}
+              </small>
+            </div>
+            <b className={l.tipo === "receita" ? "pos" : ""}>{brl(l.valor)}</b>
+            <input className="al-in" type="date" aria-label={l.tipo === "receita" ? "Data do recebimento" : "Data do pagamento"} value={dataPg[l.id] ?? hoje} onChange={(e) => setDataPg({ ...dataPg, [l.id]: e.target.value })} />
+            <button type="button" className="al-btn pri" disabled={ocupado === l.id} onClick={() => quitar(l)}>{l.tipo === "receita" ? "Marcar como recebido" : "Marcar como pago"}</button>
+          </div>
+        ))}
+      </Panel>
+
       <Panel titulo="Categorias e grupo do DRE" sub={d.fonte.categorias_sem_grupo ? `${d.fonte.categorias_sem_grupo} sem grupo: elas caem em "Sem categoria"` : "todas as categorias têm grupo"}>
         <Tabela cols={[{ h: "Categoria", tl: true }, { h: "Grupo do DRE", tl: true }]} vazio="Nenhuma categoria cadastrada." rows={cats.map((c) => [
           c.name,
@@ -110,11 +168,17 @@ export function LancamentosAlpha({ d, projectId, onSalvo }: { d: DadosAlpha; pro
       </Panel>
 
       <Panel titulo="Últimos lançamentos" sub="os 40 mais recentes">
-        <Tabela cols={[{ h: "Competência", tl: true }, { h: "Descrição", tl: true }, { h: "Categoria", tl: true }, "Tipo", "Valor", "Situação", "Origem"]} vazio="Nenhum lançamento." rows={lancs.map((l) => [
+        <Tabela cols={[{ h: "Competência", tl: true }, { h: "Descrição", tl: true }, { h: "Categoria", tl: true }, "Tipo", "Valor", "Situação", "Origem", ""]} vazio="Nenhum lançamento." rows={lancs.map((l) => [
           dataBR(l.comp), l.descricao, l.categoria ?? <span className="nd">Sem categoria</span>, l.tipo === "receita" ? "Receita" : "Despesa",
           <span key="v" className={l.tipo === "receita" ? "pos" : ""}>{brl(l.valor)}</span>,
-          l.status === "paid" ? "Pago" : l.status === "partial" ? "Parcial" : l.status === "overdue" ? "Vencido" : "Em aberto",
+          l.status === "paid" ? (l.tipo === "receita" ? `Recebido${l.pagoEm ? ` em ${dataBR(l.pagoEm)}` : ""}` : `Pago${l.pagoEm ? ` em ${dataBR(l.pagoEm)}` : ""}`) : l.status === "partial" ? "Parcial" : l.status === "overdue" ? "Vencido" : "Em aberto",
           ORIGEM[l.origem ?? "manual"] ?? l.origem,
+          <span key="a" style={{ display: "inline-flex", gap: 6 }}>
+            {l.status === "paid"
+              ? <button type="button" className="al-btn" onClick={() => reabrir(l)}>Voltar para em aberto</button>
+              : <button type="button" className="al-btn" disabled={ocupado === l.id} onClick={() => quitar(l)}>{l.tipo === "receita" ? "Recebido hoje" : "Pago hoje"}</button>}
+            {l.origem === "manual_alpha" && <button type="button" className="al-btn" onClick={() => excluir(l)}>Excluir</button>}
+          </span>,
         ])} />
       </Panel>
     </>
