@@ -77,6 +77,69 @@ async function ligarGravacaoAutomatica(accessToken: string, meetingLink: string 
   return { ok: true, valor: d?.config?.artifactConfig?.recordingConfig?.autoRecordingGeneration || "ON" };
 }
 
+/** A conexão do Google desta pessoa tem a permissão que liga a gravação do Meet? null = não deu pra saber.
+ *  18/11/2026: quem não reconectou o Google depois de 10/11 criava reunião sem gravação e ninguém ficava sabendo. */
+async function temPermissaoDeGravacao(accessToken: string | null | undefined): Promise<boolean | null> {
+  if (!accessToken) return null;
+  try {
+    const r = await fetch("https://oauth2.googleapis.com/tokeninfo?access_token=" + encodeURIComponent(accessToken));
+    if (!r.ok) return null;
+    const d = await r.json();
+    return String(d?.scope || "").includes("meetings.space.settings");
+  } catch {
+    return null;
+  }
+}
+
+/** Religa a gravação automática nas reuniões futuras de UMA pessoa. Roda quando ela reconecta o Google. */
+// deno-lint-ignore no-explicit-any
+async function religarGravacaoDasFuturas(supabase: any, uid: string, accessToken: string) {
+  const desde = new Date(Date.now() - 2 * 3600_000).toISOString();
+  const links = new Set<string>();
+  const { data: ats } = await supabase.from("crm_activities").select("meeting_link")
+    .eq("type", "meeting").eq("status", "pending").eq("google_calendar_user_id", uid)
+    .gt("scheduled_at", desde).not("meeting_link", "is", null).limit(80);
+  for (const a of ats || []) links.add(a.meeting_link);
+  const { data: rps } = await supabase.from("onboarding_meeting_notes").select("meeting_link")
+    .eq("calendar_owner_id", uid).gt("meeting_date", desde).not("meeting_link", "is", null).limit(80);
+  for (const r of rps || []) links.add(r.meeting_link);
+  let ligadas = 0, falhas = 0;
+  for (const l of links) {
+    const r = await ligarGravacaoAutomatica(accessToken, l).catch(() => ({ ok: false }));
+    if (r.ok) ligadas++; else falhas++;
+  }
+  console.log(`[autorecord] reconexão de ${uid}: ${ligadas} reuniões futuras com gravação ligada, ${falhas} falhas`);
+  return { ligadas, falhas };
+}
+
+/** Reunião criada sem gravação por falta de permissão: avisa no sino o dono da agenda e o Fabrício (1 vez por dia). */
+// deno-lint-ignore no-explicit-any
+async function avisarReuniaoSemGravacao(supabase: any, calendarUserId: string, titulo: string) {
+  try {
+    const FABRICIO_STAFF = "b1a918b1-8776-4962-898e-5d97c7cc80c1";
+    const { data: dono } = await supabase.from("onboarding_staff").select("id, name")
+      .eq("user_id", calendarUserId).eq("is_active", true).limit(1).maybeSingle();
+    if (!dono?.id) return;
+    const hoje = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10) + "T03:00:00Z";
+    const { data: ja } = await supabase.from("onboarding_notifications").select("id")
+      .eq("type", "meet_sem_gravacao").eq("reference_id", dono.id).gte("created_at", hoje).limit(1);
+    if (ja?.length) return;
+    const linhas = [{
+      staff_id: dono.id, type: "meet_sem_gravacao", reference_type: "staff", reference_id: dono.id,
+      title: "Suas reuniões do Meet não estão sendo gravadas",
+      message: `A reunião "${String(titulo || "").slice(0, 80)}" foi criada sem gravação automática. Abra o Escritório e clique em Reconectar Google pra voltar a gravar.`,
+    }];
+    if (dono.id !== FABRICIO_STAFF) linhas.push({
+      staff_id: FABRICIO_STAFF, type: "meet_sem_gravacao", reference_type: "staff", reference_id: dono.id,
+      title: `Reuniões de ${dono.name} sem gravação`,
+      message: `A agenda de ${dono.name} criou a reunião "${String(titulo || "").slice(0, 80)}" sem gravação automática. Falta reconectar o Google no Escritório.`,
+    });
+    await supabase.from("onboarding_notifications").insert(linhas);
+  } catch (e) {
+    console.error("avisarReuniaoSemGravacao:", e);
+  }
+}
+
 /** Token do Google do usuário, renovado se venceu (mesma lógica do create-event). */
 // deno-lint-ignore no-explicit-any
 async function tokenGoogleValido(supabase: any, userId: string): Promise<string | null> {
@@ -422,8 +485,18 @@ Deno.serve(async (req) => {
         );
       }
 
+      // Reconectou com a permissão do Meet: religa a gravação das reuniões futuras dela, em segundo plano.
+      const podeGravar = String(tokenResult.scope || "").includes("meetings.space.settings");
+      if (podeGravar) {
+        const tarefa = religarGravacaoDasFuturas(supabase, user.id, tokenResult.access_token)
+          .catch((e) => console.error("[autorecord] reconexão:", e));
+        // deno-lint-ignore no-explicit-any
+        const rt = (globalThis as any).EdgeRuntime;
+        if (rt?.waitUntil) rt.waitUntil(tarefa);
+      }
+
       return new Response(
-        JSON.stringify({ success: true }),
+        JSON.stringify({ success: true, podeGravar }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -440,8 +513,13 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (action === "check-connection") {
+      const conectado = !!tokenData && !tokenError;
+      // podeGravar=false: a conta está conectada mas sem a permissão que liga a gravação do Meet (precisa reconectar)
+      const podeGravar = conectado
+        ? await temPermissaoDeGravacao(await tokenGoogleValido(supabase, effectiveUserId).catch(() => null))
+        : null;
       return new Response(
-        JSON.stringify({ connected: !!tokenData && !tokenError }),
+        JSON.stringify({ connected: conectado, podeGravar }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -875,6 +953,9 @@ Deno.serve(async (req) => {
         ? await ligarGravacaoAutomatica(accessToken, meetingLink).catch((e) => ({ ok: false, motivo: String(e) }))
         : null;
       console.log("Gravação automática:", JSON.stringify(gravacaoAutomatica));
+      if (gravacaoAutomatica && gravacaoAutomatica.ok === false && String((gravacaoAutomatica as { motivo?: string }).motivo || "").includes("403")) {
+        await avisarReuniaoSemGravacao(supabase, calendarUserId, title);
+      }
 
       return new Response(
         JSON.stringify({
