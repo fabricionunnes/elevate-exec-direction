@@ -4,13 +4,15 @@ import { useCRMContext } from "./CRMLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, CheckCircle2, XCircle, Loader2, ExternalLink, RefreshCw, Unplug } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle2, XCircle, Loader2, ExternalLink, RefreshCw, Unplug } from "lucide-react";
 import { toast } from "sonner";
 import { startGoogleCalendarConnection } from "@/lib/googleCalendarOAuth";
 
 export const CRMOfficePage = () => {
   const { staffName, staffRole } = useCRMContext();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
+  // false = conectado, mas sem a permissão que liga a gravação automática do Meet
+  const [podeGravar, setPodeGravar] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -26,6 +28,7 @@ export const CRMOfficePage = () => {
       const { data, error } = await supabase.functions.invoke("google-calendar?action=check-connection");
       if (error) throw error;
       setIsConnected(data?.connected ?? false);
+      setPodeGravar(data?.podeGravar ?? null);
     } catch (err) {
       console.error("Error checking Google Calendar connection:", err);
       setIsConnected(false);
@@ -111,7 +114,31 @@ export const CRMOfficePage = () => {
                 </Badge>
               </div>
 
+              {podeGravar === false && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                      Suas reuniões do Meet não estão sendo gravadas
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Falta uma permissão na sua conta Google. Clique em Reconectar Google e aceite as permissões. As reuniões que você já marcou passam a gravar sozinhas.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={podeGravar === false ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleConnect}
+                  disabled={connecting}
+                  className="gap-1.5"
+                >
+                  {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
+                  Reconectar Google
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
