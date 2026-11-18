@@ -175,6 +175,13 @@ export function ConvertLeadToCompanyDialog({
         companyId = newCompany.id;
       }
 
+      // Pix Automático pago ainda como lead: a recorrência e as parcelas passam pro financeiro da empresa
+      try {
+        await (supabase as any).rpc("pix_automatico_lead_para_empresa", { p_lead: lead.id, p_company: companyId });
+      } catch (e) {
+        console.error("Pix Automático do lead não foi levado pra empresa:", e);
+      }
+
       const { data: existingProject } = await supabase
         .from("onboarding_projects")
         .select("id")
