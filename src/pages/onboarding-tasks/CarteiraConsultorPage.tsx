@@ -43,6 +43,12 @@ interface LinhaCarteira {
   nao_pago_cents: number | null;
   venda_primeiro_mes: boolean;
   atraso_pago_cents: number | null;
+  // Troca de consultor no mês: quem saiu recebe até o dia da troca, quem entrou do dia seguinte em
+  // diante. `atual` falso é o trecho de quem já passou o cliente adiante.
+  atual?: boolean | null;
+  troca_tipo?: string | null;
+  troca_data?: string | null;
+  troca_com?: string | null;
 }
 
 // Só o master recebe isso: a RPC devolve vazio para qualquer outro papel.
@@ -160,6 +166,8 @@ export default function CarteiraConsultorPage() {
   const navigate = useNavigate();
   const { currentStaff, isMaster, loading: carregandoPerm } = useStaffPermissions();
   const [linhas, setLinhas] = useState<LinhaCarteira[]>([]);
+  // clientes que passaram para outro consultor neste mês: fora dos totais da carteira, dentro da comissão
+  const [linhasTroca, setLinhasTroca] = useState<LinhaCarteira[]>([]);
   const [historico, setHistorico] = useState<LinhaHistorico[]>([]);
   const [comissao, setComissao] = useState<LinhaComissao[]>([]);
   const [erroComissao, setErroComissao] = useState<string | null>(null);
@@ -225,7 +233,9 @@ export default function CarteiraConsultorPage() {
       setErroComissao(com.error ? com.error.message || String(com.error) : null);
       setComissao((com.data || []) as LinhaComissao[]);
       const h = (hist.data || []) as LinhaHistorico[];
-      setLinhas((carteira.data || []) as LinhaCarteira[]);
+      const todas = (carteira.data || []) as LinhaCarteira[];
+      setLinhas(todas.filter((l) => l.atual !== false));
+      setLinhasTroca(todas.filter((l) => l.atual === false));
       setHistorico(h);
       const comDado = h.filter((x) => Number(x.faturado_cents) > 0);
       setMesFoco(comDado.length ? comDado[comDado.length - 1].mes : h[h.length - 1]?.mes || "");
@@ -617,20 +627,26 @@ export default function CarteiraConsultorPage() {
   }, [linhas]);
 
   const porConsultor = useMemo(() => {
-    const mapa = new Map<string, { nome: string; linhas: LinhaCarteira[] }>();
+    const mapa = new Map<string, { nome: string; linhas: LinhaCarteira[]; trocas: LinhaCarteira[] }>();
     linhas.forEach((l) => {
-      const atual = mapa.get(l.consultant_id) || { nome: l.consultant_name, linhas: [] };
+      const atual = mapa.get(l.consultant_id) || { nome: l.consultant_name, linhas: [], trocas: [] };
       atual.linhas.push(l);
+      mapa.set(l.consultant_id, atual);
+    });
+    linhasTroca.forEach((l) => {
+      const atual = mapa.get(l.consultant_id) || { nome: l.consultant_name, linhas: [], trocas: [] };
+      atual.trocas.push(l);
       mapa.set(l.consultant_id, atual);
     });
     return Array.from(mapa, ([id, v]) => ({
       id,
       nome: v.nome,
       linhas: v.linhas.sort((a, b) => Number(b.monthly_cents) - Number(a.monthly_cents)),
+      trocas: v.trocas.sort((a, b) => Number(b.monthly_cents) - Number(a.monthly_cents)),
       total: v.linhas.reduce((s, l) => s + Number(l.monthly_cents || 0), 0) / 100,
       fee: v.linhas.reduce((s, l) => s + Number(l.commission_max_cents || 0), 0) / 100,
     })).sort((a, b) => b.total - a.total);
-  }, [linhas]);
+  }, [linhas, linhasTroca]);
 
   if (carregandoPerm) {
     return (
@@ -1450,6 +1466,13 @@ export default function CarteiraConsultorPage() {
                           </i>
                         )}
                         {l.retido && <i className="tag pos"> pediu e foi retido</i>}
+                        {l.troca_tipo === "entrou" && l.troca_data && (
+                          <i className="tag">
+                            {" "}
+                            recebido em {dataBR(l.troca_data)}
+                            {l.troca_com ? `, veio de ${l.troca_com}` : ""}
+                          </i>
+                        )}
                         {Number(l.nao_pago_cents) > 0 && (
                           <i className="tag warn"> não pagou {brl(Number(l.nao_pago_cents) / 100)}</i>
                         )}
@@ -1491,7 +1514,7 @@ export default function CarteiraConsultorPage() {
                             ) : (
                               <span>
                                 {brlFull(Number(l.comissao_cents) / 100)}
-                                {Number(l.comissao_cheia_cents) > Number(l.comissao_cents) && (
+                                {(Number(l.comissao_cheia_cents) > Number(l.comissao_cents) || l.troca_tipo === "entrou") && (
                                   <i className="tag warn">
                                     {" "}
                                     {l.dias_comissionados}/{l.dias_do_mes} dias
@@ -1504,6 +1527,46 @@ export default function CarteiraConsultorPage() {
                     ])}
                     vazio="Nenhuma empresa na carteira."
                   />
+                  {g.trocas.length > 0 && (
+                    <>
+                      <p className="nd" style={{ margin: "16px 0 6px" }}>
+                        Passaram para outro consultor neste mês. A comissão conta até o dia da troca.
+                      </p>
+                      <Tabela
+                        cols={[
+                          { h: "Empresa", tl: true },
+                          { h: "Produto", tl: true },
+                          "Por mês",
+                          { h: "Ficou com o consultor", tl: true },
+                          ...(veComissao ? ["Comissão"] : []),
+                        ]}
+                        rows={g.trocas.map((l) => [
+                          l.company_name,
+                          l.product_name || <Nd />,
+                          brlFull(Number(l.monthly_cents || 0) / 100),
+                          <small className="nd">
+                            até {l.troca_data ? dataBR(l.troca_data) : "a troca"}
+                            {l.troca_com ? `, foi para ${l.troca_com}` : ""}
+                          </small>,
+                          ...(veComissao
+                            ? [
+                                l.comissao_cents == null ? (
+                                  <Nd />
+                                ) : (
+                                  <span>
+                                    {brlFull(Number(l.comissao_cents) / 100)}
+                                    <i className="tag warn">
+                                      {" "}
+                                      {l.dias_comissionados}/{l.dias_do_mes} dias
+                                    </i>
+                                  </span>
+                                ),
+                              ]
+                            : []),
+                        ])}
+                      />
+                    </>
+                  )}
                 </Panel>
               );
             })}
