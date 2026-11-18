@@ -11,6 +11,15 @@ const corsHeaders = {
 
 const ASAAS_BASE = "https://api.asaas.com/v3";
 
+// Pix Automático: o Asaas recusa a descrição da autorização com travessão, acento ou símbolo
+// ("A descrição da autorização contém caracteres não permitidos", Fernanda Oliveira 18/11/2026).
+// Vai só letra sem acento, número e espaço, em até 35 caracteres.
+function descPixAuto(s: unknown, padrao: string): string {
+  const t = String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  return (t || padrao).slice(0, 35).trim();
+}
+
 async function asaasRequest(path: string, method: string, apiKey: string, body?: unknown) {
   console.log(`Asaas ${method} ${path}`);
   const res = await fetch(`${ASAAS_BASE}${path}`, {
@@ -250,10 +259,10 @@ Deno.serve(async (req) => {
         contractId,
         startDate,
         value: valor,
-        description: String(description || "Mensalidade").slice(0, 35),
+        description: descPixAuto(description, "Mensalidade"),
         paymentCreationMode: "SUBSCRIPTION",
         retryPolicy: "ALLOW_THREE_IN_SEVEN_DAYS",
-        immediateQrCode: { originalValue: valor, expirationSeconds, description: String(description || "Primeira parcela").slice(0, 35) },
+        immediateQrCode: { originalValue: valor, expirationSeconds, description: descPixAuto(description, "Primeira parcela") },
       });
       const qrPayload = auth?.immediateQrCode?.payload || auth?.payload || null;
       const qrImage = auth?.immediateQrCode?.encodedImage || auth?.encodedImage || null;
