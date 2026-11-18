@@ -262,7 +262,14 @@ $("cf").addEventListener("submit", function(ev){
   sending = true; $("go").disabled = true; $("go").textContent = "Confirmando…";
   fb("trackCustom","ConfirmouLive",{ evento:"black-unv-2026-11-25" });
   // A confirmação nunca trava: se o registro falhar, a pessoa segue pra agenda do mesmo jeito.
-  var t = trk({ step:1, name:"confirmou", q:1, status:"confirmou", meta:{ contato:{ nome:nome, whatsapp:tel } } });
+  trk({ step:1, name:"confirmou", q:1, status:"confirmou", meta:{ contato:{ nome:nome, whatsapp:tel } } });
+  // Lead no funil Black Friday, etapa "Confirmou live" (quem já está mais à frente fica onde está)
+  var t = fetch(SUPA + "/functions/v1/black-agenda", {
+    method: "POST", keepalive: true,
+    headers: { "Content-Type":"application/json", "Authorization":"Bearer " + ANON, "apikey": ANON },
+    body: JSON.stringify({ action:"confirmou-live", nome:nome, telefone:tel,
+      utm_source: qp("utm_source"), utm_medium: qp("utm_medium"), utm_campaign: qp("utm_campaign") })
+  }).catch(function(){});
   var fim = function(){ done(nome); };
   Promise.race([t, new Promise(function(r){ setTimeout(r, 2500); })]).then(fim, fim);
 });

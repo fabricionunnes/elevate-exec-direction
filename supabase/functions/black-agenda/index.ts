@@ -19,6 +19,7 @@ const ETAPA = {
   base: "34703759-efa1-4b14-b05c-d1a3ec1a4cb2",
   disparo: "68ea903a-9385-48bc-9701-108b0974afb6",
   entrouGrupo: "f4b9d022-23a6-46d1-8a00-710813bf99d6",
+  confirmouLive: "ad297fc6-ded1-4c8c-95f8-bcb806c5bcb4",
   entrouLive: "da053c2c-5a83-4705-97da-d2cce6e61f8f",
   saiuGrupo: "bd85787b-a72c-4aec-996c-48c81ccc881b",
   aplicou: "ef2c955e-7b99-4454-993d-887d33157dc1",
@@ -322,7 +323,7 @@ async function entrouLive(sb: SB, body: Record<string, unknown>) {
       notes: "Entrou na live da Black UNV (25/11) sem estar na base",
     }).select("id, phone, stage_id").single();
     lead = novo;
-  } else if ([ETAPA.base, ETAPA.disparo, ETAPA.entrouGrupo, ETAPA.saiuGrupo].includes(lead.stage_id)) {
+  } else if ([ETAPA.base, ETAPA.disparo, ETAPA.entrouGrupo, ETAPA.confirmouLive, ETAPA.saiuGrupo].includes(lead.stage_id)) {
     // Só avança: quem já aplicou ou agendou não volta pra "Entrou na live"
     await sb.from("crm_leads").update({ stage_id: ETAPA.entrouLive }).eq("id", lead.id);
   }
@@ -334,6 +335,34 @@ async function entrouLive(sb: SB, body: Record<string, unknown>) {
 }
 
 // ── grupo ───────────────────────────────────────────────────────────────────
+// ── confirmação de presença na live (/black/live) ───────────────────────────
+// Cria ou acha o lead do funil Black Friday e põe em "Confirmou live" (etapa criada em 18/11 a pedido
+// do Fabrício). Só avança quem está antes disso (Base, Disparo efetuado, Entrou no grupo, Saiu do grupo);
+// quem já aplicou, agendou ou entrou na live fica onde está. Sem aviso pro comercial.
+async function confirmouLive(sb: SB, body: Record<string, unknown>) {
+  const nome = String(body.nome || "").trim().slice(0, 120);
+  const k = chaveTel(body.telefone);
+  if (nome.length < 2 || !k) return json({ error: "dados_incompletos" }, 400);
+  const tel = String(body.telefone).replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+  const { data: cands } = await sb.from("crm_leads").select("id, phone, stage_id").eq("pipeline_id", PIPELINE)
+    .ilike("phone", `%${k.slice(-8)}`).order("created_at", { ascending: true }).limit(10);
+  const achou: any = (cands || []).find((l: any) => chaveTel(l.phone) === k);
+  if (achou) {
+    if ([ETAPA.base, ETAPA.disparo, ETAPA.entrouGrupo, ETAPA.saiuGrupo].includes(achou.stage_id)) {
+      await sb.from("crm_leads").update({ stage_id: ETAPA.confirmouLive }).eq("id", achou.id);
+    }
+    return json({ ok: true, lead_id: achou.id, novo: false });
+  }
+  const { data: novo } = await sb.from("crm_leads").insert({
+    name: nome, phone: tel, pipeline_id: PIPELINE, stage_id: ETAPA.confirmouLive, owner_staff_id: DONO_FABRICIO,
+    entered_pipeline_at: new Date().toISOString(), urgency: "medium",
+    notes: "Confirmou presença na live da Black UNV (/black/live) sem estar na base",
+    utm_source: String(body.utm_source || "").slice(0, 200) || null, utm_medium: String(body.utm_medium || "").slice(0, 200) || null,
+    utm_campaign: String(body.utm_campaign || "").slice(0, 200) || null,
+  }).select("id").single();
+  return json({ ok: true, lead_id: novo?.id || null, novo: !!novo });
+}
+
 // ── entrada no grupo pelo anúncio ───────────────────────────────────────────
 // Página /black/grupo (destino dos anúncios). Cria ou atualiza o lead na Base do funil Black Friday,
 // sem aviso pro comercial (é topo de funil), e devolve o convite do grupo. Com UTM/fbclid do Meta a
@@ -849,6 +878,7 @@ Deno.serve(async (req) => {
       // prévia do follow-up do grupo: não envia nem grava nada
       case "followup-grupo-previa": return json(await followupGrupo(sb, true));
       case "entrou-live": return await entrouLive(sb, body);
+      case "confirmou-live": return await confirmouLive(sb, body);
       case "entrar-grupo": return await entrarGrupo(sb, body);
       case "garantir": return await garantir(sb, body);
       case "garantia-status": return await garantiaStatus(sb, body);
