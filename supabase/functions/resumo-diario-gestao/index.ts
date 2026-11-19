@@ -188,9 +188,61 @@ async function buildMetrics(supabase: SupabaseClient, companyId: string, today: 
   return { hasToday, rows, lancaram, faltaram };
 }
 
-async function generateSummary(companyName: string, metrics: any, dayLabel = "hoje"): Promise<string> {
+// Texto por IA com reserva (19/11/2026): Anthropic primeiro; se ela falhar (sem crédito, fora do ar,
+// limite), tenta o OpenAI. Devolve "" quando nenhuma responde, e quem chama decide o que fazer.
+async function textoIA(prompt: string, maxTokens: number, temperature?: number): Promise<string> {
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!ANTHROPIC_API_KEY) return "";
+  if (ANTHROPIC_API_KEY) {
+    try {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+        body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, ...(temperature != null ? { temperature } : {}), messages: [{ role: "user", content: prompt }] }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        logUsoIA("resumo-diario-gestao", "claude-haiku-4-5", (data as any)?.usage);
+        const t = (data?.content?.[0]?.text || "").trim();
+        if (t) return t;
+      } else {
+        console.error("resumo-diario-gestao Anthropic", resp.status, (await resp.text()).slice(0, 200), "→ tentando o OpenAI");
+      }
+    } catch (e) { console.error("resumo-diario-gestao Anthropic", String(e), "→ tentando o OpenAI"); }
+  }
+  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+  if (!OPENAI_API_KEY) return "";
+  try {
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
+      body: JSON.stringify({ model: "gpt-4o", max_tokens: maxTokens, ...(temperature != null ? { temperature } : {}), messages: [{ role: "user", content: prompt }] }),
+    });
+    if (!resp.ok) { console.error("resumo-diario-gestao OpenAI", resp.status, (await resp.text()).slice(0, 200)); return ""; }
+    const data = await resp.json();
+    const u = (data as any)?.usage;
+    logUsoIA("resumo-diario-gestao", "gpt-4o", { input_tokens: u?.prompt_tokens ?? 0, output_tokens: u?.completion_tokens ?? 0 }, { reserva: true });
+    return String(data?.choices?.[0]?.message?.content || "").trim();
+  } catch (e) { console.error("resumo-diario-gestao OpenAI", String(e)); return ""; }
+}
+
+// Resumo montado só com os números, sem IA. Entra quando há lançamento e nenhuma IA respondeu: antes o
+// texto caía na cobrança de "painel em branco", acusando a empresa de não ter lançado (Mix Brasil, 19/11/2026).
+function resumoSemIA(companyName: string, metrics: any, dayLabel = "hoje"): string {
+  const sauda = { manhã: "Bom dia", tarde: "Boa tarde", noite: "Boa noite" }[brDayPeriod()];
+  const ref = dayLabel === "hoje" ? "de hoje" : dayLabel === "ontem" ? "de ontem" : "de sábado";
+  const linhas = [...metrics.rows]
+    .sort((a: any, b: any) => Number(b.monetario) - Number(a.monetario))
+    .slice(0, 8)
+    .map((r: any) => {
+      const val = r.monetario ? brl(r.hoje) : String(r.hoje);
+      const med = r.monetario ? brl(r.media7d) : String(r.media7d);
+      const comp = r.delta_pct == null ? "" : ` (média dos 7 dias anteriores: ${med}, ${r.delta_pct >= 0 ? "+" : ""}${r.delta_pct}%)`;
+      return `${r.nome}: ${val}${comp}`;
+    });
+  return `${sauda}, time ${companyName}. Números ${ref}:\n\n${linhas.join("\n")}`;
+}
+
+async function generateSummary(companyName: string, metrics: any, dayLabel = "hoje"): Promise<string> {
   const linhas = metrics.rows.map((r: any) => {
     const val = r.monetario ? brl(r.hoje) : String(r.hoje);
     const med = r.monetario ? brl(r.media7d) : String(r.media7d);
@@ -216,15 +268,7 @@ Regras de escrita:
 - Não invente número que não está na lista. Não use markdown, só texto corrido/linhas.
 - Varie a construção do texto a cada dia — essa mensagem sai diariamente e não pode parecer repetida.`;
 
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-    body: JSON.stringify({ model: MODEL, max_tokens: 500, messages: [{ role: "user", content: prompt }] }),
-  });
-  if (!resp.ok) return "";
-  const data = await resp.json();
-  logUsoIA("resumo-diario-gestao", "claude-haiku-4-5", (data as any)?.usage);
-  return (data?.content?.[0]?.text || "").trim();
+  return await textoIA(prompt, 500);
 }
 
 // Cobrança quando não há número lançado. NÃO pode ser idêntica todos os dias:
@@ -234,26 +278,25 @@ function brDayPeriod(): "manhã" | "tarde" | "noite" {
   const h = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })).getHours();
   return h < 12 ? "manhã" : h < 18 ? "tarde" : "noite";
 }
-const NUDGE_POOL: ((c: string, sauda: string) => string)[] = [
-  (c, s) => `${s}, time ${c}. Os números de hoje ainda não chegaram aqui. Lança os indicadores no sistema que eu devolvo a leitura comercial de vocês. Gestão sem número é aposta.`,
-  (c, s) => `${s}, ${c}. Dia fechando e o sistema ainda está sem os indicadores de hoje. Lança aí que eu te mostro o que subiu, o que caiu e onde focar amanhã.`,
-  (c, s) => `${s}, time ${c}. Faltou o lançamento dos números de hoje. Sem eles eu não consigo devolver a leitura do dia — e a gente decide no escuro. Bora lançar.`,
-  (c, s) => `${s}, ${c}. Ainda não vi os indicadores de hoje no sistema. Quem lança número todo dia enxerga o padrão antes do problema. Sobe aí que eu analiso.`,
-  (c, s) => `${s}, time ${c}. Cadê os números de hoje? Lançou, eu leio e devolvo o direcionamento. Não lançou, a reunião vira opinião.`,
-  (c, s) => `${s}, ${c}. O sistema está sem os lançamentos de hoje. Dois minutos pra lançar, e vocês ganham a leitura do dia de volta. Combinado?`,
-  (c, s) => `${s}, time ${c}. Passando pra cobrar os indicadores do dia — ainda não caíram aqui. Número lançado é decisão embasada; sem ele é achismo.`,
-  (c, s) => `${s}, ${c}. Hoje o painel ficou em branco até agora. Lança os números que eu te devolvo onde apertar amanhã. Consistência no lançamento é metade da gestão.`,
+const NUDGE_POOL: ((c: string, s: string, ref: string) => string)[] = [
+  (c, s, ref) => `${s}, time ${c}. Os números ${ref} ainda não chegaram aqui. Lança os indicadores no sistema que eu devolvo a leitura comercial de vocês. Gestão sem número é aposta.`,
+  (c, s, ref) => `${s}, ${c}. O sistema ainda está sem os indicadores ${ref}. Lança aí que eu te mostro o que subiu, o que caiu e onde focar.`,
+  (c, s, ref) => `${s}, time ${c}. Faltou o lançamento dos números ${ref}. Sem eles eu não consigo devolver a leitura do dia, e a gente decide no escuro. Bora lançar.`,
+  (c, s, ref) => `${s}, ${c}. Ainda não vi os indicadores ${ref} no sistema. Quem lança número todo dia enxerga o padrão antes do problema. Sobe aí que eu analiso.`,
+  (c, s, ref) => `${s}, time ${c}. Cadê os números ${ref}? Lançou, eu leio e devolvo o direcionamento. Não lançou, a reunião vira opinião.`,
+  (c, s, ref) => `${s}, ${c}. O sistema está sem os lançamentos ${ref}. Dois minutos pra lançar, e vocês ganham a leitura do dia de volta. Combinado?`,
+  (c, s, ref) => `${s}, time ${c}. Passando pra cobrar os indicadores ${ref}, que ainda não caíram aqui. Número lançado é decisão embasada; sem ele é achismo.`,
+  (c, s, ref) => `${s}, ${c}. O painel ${ref} ficou em branco até agora. Lança os números que eu te devolvo onde apertar. Consistência no lançamento é metade da gestão.`,
 ];
-function nudgeFallback(companyName: string): string {
+function nudgeFallback(companyName: string, dayLabel = "hoje"): string {
   const sauda = { manhã: "Bom dia", tarde: "Boa tarde", noite: "Boa noite" }[brDayPeriod()];
+  const ref = dayLabel === "hoje" ? "de hoje" : dayLabel === "ontem" ? "de ontem" : "de sábado";
   const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
   let hash = 0;
   for (const ch of companyName) hash = (hash + ch.charCodeAt(0)) % 997;
-  return NUDGE_POOL[(dayOfYear + hash) % NUDGE_POOL.length](companyName, sauda);
+  return NUDGE_POOL[(dayOfYear + hash) % NUDGE_POOL.length](companyName, sauda, ref);
 }
 async function nudgeText(companyName: string, dayLabel = "hoje"): Promise<string> {
-  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!ANTHROPIC_API_KEY) return nudgeFallback(companyName);
   const periodo = brDayPeriod();
   const ref = dayLabel === "hoje" ? "de HOJE" : (dayLabel === "ontem" ? "de ONTEM" : "do SÁBADO");
   const prompt = `Você é Marcelo Almeida, diretor comercial da UNV, no grupo de gestão do cliente ${companyName} no WhatsApp. Os indicadores ${ref} não foram lançados no sistema. Escreva UMA cobrança curta (2 a 3 frases) pedindo pro time lançar os números ${ref}.
@@ -265,20 +308,8 @@ Regras:
 - Diga que com os números você devolve a leitura comercial (o que subiu, o que caiu, onde focar).
 - VARIE a construção: essa mensagem sai todo dia e NÃO pode parecer repetida. Não use a frase "Sem número, reunião vira achismo".
 - Responda SÓ com o texto final da mensagem.`;
-  try {
-    const resp = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-      body: JSON.stringify({ model: MODEL, max_tokens: 300, temperature: 1, messages: [{ role: "user", content: prompt }] }),
-    });
-    if (!resp.ok) return nudgeFallback(companyName);
-    const data = await resp.json();
-    logUsoIA("resumo-diario-gestao", "claude-haiku-4-5", (data as any)?.usage);
-    const text = (data?.content?.[0]?.text || "").trim();
-    return text.length > 30 ? text : nudgeFallback(companyName);
-  } catch {
-    return nudgeFallback(companyName);
-  }
+  const text = await textoIA(prompt, 300, 1);
+  return text.length > 30 ? text : nudgeFallback(companyName, dayLabel);
 }
 
 const MES_NOME = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
@@ -356,7 +387,8 @@ async function processCompany(
   if (!metrics || !metrics.hasToday || metrics.rows.length === 0) {
     text = await nudgeText(c.name, dayLabel);
   } else {
-    text = await generateSummary(c.name, metrics, dayLabel) || await nudgeText(c.name, dayLabel);
+    // com número lançado o texto NUNCA vira cobrança de "não lançou": sem IA, vai o resumo só com os números
+    text = await generateSummary(c.name, metrics, dayLabel) || resumoSemIA(c.name, metrics, dayLabel);
     const parts: string[] = [];
     if (metrics.lancaram.length) parts.push(`Lançaram ${dayLabel}: ${metrics.lancaram.join(", ")}.`);
     if (metrics.faltaram.length) parts.push(morning
