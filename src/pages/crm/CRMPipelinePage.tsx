@@ -485,7 +485,9 @@ export const CRMPipelinePage = () => {
         // 1.400 leads levava vários segundos com etapas zeradas (14/09/2026).
         const PAGE_SIZE = 500;
         const MAX_LEADS = 10000;
-        const CONCURRENCY = 4;
+        // 2 por vez: com 4 em paralelo, num funil de 3,5 mil leads, páginas passavam do tempo
+        // limite do banco (a regra de acesso das etiquetas roda por linha) e sumiam da tela (19/11).
+        const CONCURRENCY = 2;
         let countQuery = supabase
           .from("crm_leads")
           .select("id", { count: "exact", head: true })
@@ -514,9 +516,14 @@ export const CRMPipelinePage = () => {
         const worker = async () => {
           while (next < offsets.length) {
             const idx = next++;
-            const { data: pageData, error: pageError } = await buildLeadQuery(effectiveOrigin, offsets[idx], PAGE_SIZE);
+            // Página que falha tenta de novo: antes ela era pulada calada e os cards dela não apareciam
+            let { data: pageData, error: pageError } = await buildLeadQuery(effectiveOrigin, offsets[idx], PAGE_SIZE);
+            for (let tentativa = 1; pageError && tentativa <= 3 && isCurrentLoad(); tentativa++) {
+              await new Promise((r) => setTimeout(r, 800 * tentativa));
+              ({ data: pageData, error: pageError } = await buildLeadQuery(effectiveOrigin, offsets[idx], PAGE_SIZE));
+            }
             if (!isCurrentLoad()) return;
-            if (pageError) { console.error("Error loading leads page:", pageError); continue; }
+            if (pageError) { console.error("Error loading leads page:", pageError); toast.error("Parte dos leads não carregou. Atualize a página."); continue; }
             pages[idx] = (pageData || []) as Lead[];
             publish();
           }
