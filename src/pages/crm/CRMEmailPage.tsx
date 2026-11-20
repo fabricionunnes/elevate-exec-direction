@@ -143,6 +143,19 @@ export default function CRMEmailPage() {
   const [cursor, setCursor] = useState<number>(-1);
   const [mostrarAtalhos, setMostrarAtalhos] = useState(false);
   const [mostrarAssinatura, setMostrarAssinatura] = useState(false);
+  // Assinatura padrão (Fabrício, 20/11/2026: "quero que já fique a assinatura padrão ativada, se eu quiser
+  // mudar ou tirar eu posso fazer manualmente"): quem ainda não salvou a sua já escreve com nome, empresa,
+  // site e a logomarca da UNV Holdings. Sem telefone, que só entra quando a própria pessoa configurar.
+  const [nomeEquipe, setNomeEquipe] = useState("");
+  useEffect(() => {
+    (async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u?.user) return;
+      const { data } = await db.from("onboarding_staff").select("name").eq("user_id", u.user.id).maybeSingle();
+      if (data?.name) setNomeEquipe(String(data.name));
+    })();
+  }, []);
+  const assinaturaPadrao = useMemo<Assinatura | null>(() => (nomeEquipe ? { ...ASSINATURA_VAZIA, nome: nomeEquipe } : null), [nomeEquipe]);
   const [larguraPastas, setLarguraPastas] = useState<number>(() => larguraSalva("pastas"));
   const [larguraLista, setLarguraLista] = useState<number>(() => larguraSalva("lista"));
   const arrastar = (k: keyof typeof LARGURA, inicial: number, set: (n: number) => void) => (e: RPointerEvent) => {
@@ -511,7 +524,7 @@ export default function CRMEmailPage() {
             <p className="truncate font-medium text-foreground/80">{account.email}</p>
             <p className="flex items-center gap-1.5"><span className={cn("h-1.5 w-1.5 rounded-full", account.last_error ? "bg-destructive" : "bg-emerald-500")} />{account.backfill_done ? "Caixa sincronizada" : "Carregando histórico (90 dias)..."}</p>
             {account.last_error && <p className="text-destructive truncate" title={account.last_error}>Erro: {account.last_error}</p>}
-            <button onClick={() => setMostrarAssinatura(true)} className="flex items-center gap-1 hover:text-foreground"><PenLine className="h-3 w-3" /> Assinatura{account.signature?.ativa && assinaturaTemConteudo(account.signature) ? "" : " (configurar)"}</button>
+            <button onClick={() => setMostrarAssinatura(true)} className="flex items-center gap-1 hover:text-foreground"><PenLine className="h-3 w-3" /> Assinatura{account.signature ? (account.signature.ativa && assinaturaTemConteudo(account.signature) ? "" : " (desligada)") : assinaturaPadrao ? " (padrão)" : " (configurar)"}</button>
             <button onClick={() => setMostrarAtalhos(true)} className="flex items-center gap-1 hover:text-foreground"><Keyboard className="h-3 w-3" /> Atalhos</button>
           </div>
         </aside>
@@ -736,8 +749,8 @@ export default function CRMEmailPage() {
         </section>
       </div>
 
-      {mostrarAssinatura && account && <ConfigAssinatura conta={account} onFechar={() => setMostrarAssinatura(false)} onSalva={(sig, html) => setAccount((p) => (p ? { ...p, signature: sig, signature_html: html } : p))} />}
-      {compor && <Compor compor={compor} conta={account} onAssinatura={() => setMostrarAssinatura(true)} onFechar={() => setCompor(null)} chamar={chamar} onEnviado={() => { setCompor(null); if (account) { carregarLista(account); if (threadSel) abrirThread(threadSel); } }} />}
+      {mostrarAssinatura && account && <ConfigAssinatura conta={account} padrao={assinaturaPadrao} onFechar={() => setMostrarAssinatura(false)} onSalva={(sig, html) => setAccount((p) => (p ? { ...p, signature: sig, signature_html: html } : p))} />}
+      {compor && <Compor compor={compor} conta={account} assinaturaPadrao={assinaturaPadrao} onAssinatura={() => setMostrarAssinatura(true)} onFechar={() => setCompor(null)} chamar={chamar} onEnviado={() => { setCompor(null); if (account) { carregarLista(account); if (threadSel) abrirThread(threadSel); } }} />}
 
       <Dialog open={mostrarAtalhos} onOpenChange={setMostrarAtalhos}>
         <DialogContent className="max-w-md">
@@ -904,8 +917,8 @@ function assinaturaTexto(a: Assinatura): string {
   return [a.nome, [a.cargo, a.empresa].map((x) => x.trim()).filter(Boolean).join(" · "), [a.telefone, a.site].map((x) => x.trim()).filter(Boolean).join(" · "), a.extra].map((x) => x.trim()).filter(Boolean).join("\n");
 }
 
-function ConfigAssinatura({ conta, onFechar, onSalva }: { conta: Account; onFechar: () => void; onSalva: (a: Assinatura, html: string) => void }) {
-  const [a, setA] = useState<Assinatura>({ ...ASSINATURA_VAZIA, ...(conta.signature || {}) });
+function ConfigAssinatura({ conta, padrao, onFechar, onSalva }: { conta: Account; padrao: Assinatura | null; onFechar: () => void; onSalva: (a: Assinatura, html: string) => void }) {
+  const [a, setA] = useState<Assinatura>({ ...ASSINATURA_VAZIA, ...(conta.signature || padrao || {}) });
   const [salvando, setSalvando] = useState(false);
   const [subindo, setSubindo] = useState(false);
   const campo = (k: keyof Assinatura, v: string | number | boolean) => setA((p) => ({ ...p, [k]: v }));
@@ -1008,8 +1021,8 @@ function ConfigAssinatura({ conta, onFechar, onSalva }: { conta: Account; onFech
 }
 
 // ── Compor / responder / encaminhar ────────────────────────────────────────────────────────────
-function Compor({ compor, conta, onFechar, chamar, onEnviado, onAssinatura }: {
-  compor: { modo: "novo" | "responder" | "todos" | "encaminhar"; base?: Msg }; conta: Account; onFechar: () => void; onAssinatura: () => void;
+function Compor({ compor, conta, assinaturaPadrao, onFechar, chamar, onEnviado, onAssinatura }: {
+  compor: { modo: "novo" | "responder" | "todos" | "encaminhar"; base?: Msg }; conta: Account; assinaturaPadrao: Assinatura | null; onFechar: () => void; onAssinatura: () => void;
   chamar: (b: Record<string, unknown>) => Promise<any>; onEnviado: () => void;
 }) {
   const b = compor.base;
@@ -1025,7 +1038,8 @@ function Compor({ compor, conta, onFechar, chamar, onEnviado, onAssinatura }: {
   const [texto, setTexto] = useState("");
   const [anexos, setAnexos] = useState<{ filename: string; mimeType: string; data: string; size: number }[]>([]);
   const [enviando, setEnviando] = useState(false);
-  const sig = conta.signature && assinaturaTemConteudo(conta.signature) ? conta.signature : null;
+  // quem já salvou usa a sua (inclusive desligada); quem nunca salvou usa a padrão
+  const sig = conta.signature ? (assinaturaTemConteudo(conta.signature) ? conta.signature : null) : assinaturaPadrao;
   const [comAssinatura, setComAssinatura] = useState(true);
   const usarAssinatura = !!sig && sig.ativa && comAssinatura;
   const citacao = b ? `<br><br><div style="color:#6b7280;font-size:12px">Em ${quandoLongo(b.internal_date)}, ${escapeHtml(b.from_name || "")} &lt;${escapeHtml(b.from_email || "")}&gt; escreveu:</div><blockquote style="border-left:3px solid #e5e7eb;margin:6px 0;padding-left:12px;color:#6b7280">${b.body_html || `<pre style="white-space:pre-wrap">${escapeHtml(b.body_text || b.snippet || "")}</pre>`}</blockquote>` : "";
