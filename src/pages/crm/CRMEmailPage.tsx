@@ -20,6 +20,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { startGoogleCalendarConnection } from "@/lib/googleCalendarOAuth";
@@ -29,7 +30,7 @@ import { ptBR } from "date-fns/locale";
 import {
   Inbox, Star, Send, Trash2, AlertOctagon, Archive, Mail, MailOpen, Reply, ReplyAll, Forward, Paperclip,
   Search, RefreshCw, Loader2, PenSquare, X, ChevronLeft, ChevronRight, Tag, Download, UserRound, ExternalLink, Plug,
-  Bookmark, Layers, Undo2, Languages, ListFilter, Check, CheckCheck, Keyboard, FileText, Image as ImageIcon, FileSpreadsheet, FileArchive,
+  Bookmark, Layers, Undo2, Languages, ListFilter, Check, CheckCheck, Keyboard, PenLine, FileText, Image as ImageIcon, FileSpreadsheet, FileArchive,
 } from "lucide-react";
 
 type Addr = { name: string; email: string };
@@ -43,7 +44,8 @@ type Msg = {
   lang?: string | null; subject_pt?: string | null; snippet_pt?: string | null; body_pt?: string | null; translated_at?: string | null;
 };
 type Label = { gmail_label_id: string; name: string; type: string | null; color: string | null };
-type Account = { id: string; email: string; backfill_done: boolean; last_sync_at: string | null; last_error: string | null };
+type Assinatura = { ativa: boolean; nome: string; cargo: string; empresa: string; telefone: string; site: string; extra: string; logo: string; largura: number };
+type Account = { id: string; email: string; backfill_done: boolean; last_sync_at: string | null; last_error: string | null; signature?: Assinatura | null; signature_html?: string | null };
 type Conversa = { ultima: Msg; qtd: number; naoLida: boolean; estrela: boolean; importante: boolean; anexo: boolean; ids: string[] };
 type Filtro = "todas" | "nao-lidas" | "importantes" | "estrela" | "anexo";
 
@@ -140,6 +142,7 @@ export default function CRMEmailPage() {
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [cursor, setCursor] = useState<number>(-1);
   const [mostrarAtalhos, setMostrarAtalhos] = useState(false);
+  const [mostrarAssinatura, setMostrarAssinatura] = useState(false);
   const [larguraPastas, setLarguraPastas] = useState<number>(() => larguraSalva("pastas"));
   const [larguraLista, setLarguraLista] = useState<number>(() => larguraSalva("lista"));
   const arrastar = (k: keyof typeof LARGURA, inicial: number, set: (n: number) => void) => (e: RPointerEvent) => {
@@ -413,7 +416,7 @@ export default function CRMEmailPage() {
     const h = (e: KeyboardEvent) => {
       const alvo = e.target as HTMLElement | null;
       const digitando = !!alvo && (["INPUT", "TEXTAREA", "SELECT"].includes(alvo.tagName) || alvo.isContentEditable);
-      if (compor || mostrarAtalhos) { if (e.key === "Escape") setMostrarAtalhos(false); return; }
+      if (compor || mostrarAtalhos || mostrarAssinatura) { if (e.key === "Escape") setMostrarAtalhos(false); return; }
       if (digitando) { if (e.key === "Escape") (alvo as HTMLElement).blur(); return; }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const atual = threadSel ? conversas.findIndex((c) => c.ultima.thread_id === threadSel) : cursor;
@@ -441,7 +444,7 @@ export default function CRMEmailPage() {
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compor, mostrarAtalhos, threadSel, cursor, conversas, selecionadas, naLixeiraOuSpam, abrirThread, arquivar, lixeira, excluirDeVez, marcarEstrela, marcarImportante, marcarLidas, spam, fecharThread, thread, pagina, totalPaginas]);
+  }, [compor, mostrarAtalhos, mostrarAssinatura, threadSel, cursor, conversas, selecionadas, naLixeiraOuSpam, abrirThread, arquivar, lixeira, excluirDeVez, marcarEstrela, marcarImportante, marcarLidas, spam, fecharThread, thread, pagina, totalPaginas]);
 
   // ── Estados vazios ──
   if (account === undefined) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -508,6 +511,7 @@ export default function CRMEmailPage() {
             <p className="truncate font-medium text-foreground/80">{account.email}</p>
             <p className="flex items-center gap-1.5"><span className={cn("h-1.5 w-1.5 rounded-full", account.last_error ? "bg-destructive" : "bg-emerald-500")} />{account.backfill_done ? "Caixa sincronizada" : "Carregando histórico (90 dias)..."}</p>
             {account.last_error && <p className="text-destructive truncate" title={account.last_error}>Erro: {account.last_error}</p>}
+            <button onClick={() => setMostrarAssinatura(true)} className="flex items-center gap-1 hover:text-foreground"><PenLine className="h-3 w-3" /> Assinatura{account.signature?.ativa && assinaturaTemConteudo(account.signature) ? "" : " (configurar)"}</button>
             <button onClick={() => setMostrarAtalhos(true)} className="flex items-center gap-1 hover:text-foreground"><Keyboard className="h-3 w-3" /> Atalhos</button>
           </div>
         </aside>
@@ -732,7 +736,8 @@ export default function CRMEmailPage() {
         </section>
       </div>
 
-      {compor && <Compor compor={compor} conta={account} onFechar={() => setCompor(null)} chamar={chamar} onEnviado={() => { setCompor(null); if (account) { carregarLista(account); if (threadSel) abrirThread(threadSel); } }} />}
+      {mostrarAssinatura && account && <ConfigAssinatura conta={account} onFechar={() => setMostrarAssinatura(false)} onSalva={(sig, html) => setAccount((p) => (p ? { ...p, signature: sig, signature_html: html } : p))} />}
+      {compor && <Compor compor={compor} conta={account} onAssinatura={() => setMostrarAssinatura(true)} onFechar={() => setCompor(null)} chamar={chamar} onEnviado={() => { setCompor(null); if (account) { carregarLista(account); if (threadSel) abrirThread(threadSel); } }} />}
 
       <Dialog open={mostrarAtalhos} onOpenChange={setMostrarAtalhos}>
         <DialogContent className="max-w-md">
@@ -865,9 +870,146 @@ function Mensagem({ m, abertoInicial, chamar, onTraduzida, onBaixar, onEstrela, 
   );
 }
 
+// ── Assinatura (Fabrício, 20/11/2026: "configurar assinatura com logomarca para todos os e-mails
+// respondidos, encaminhados e novos"). Uma por caixa, guardada em mail_accounts.signature (campos) e
+// signature_html (pronta). Entra depois do texto e antes da citação. A logomarca é sempre um arquivo
+// oficial publicado no site ou uma imagem enviada pelo usuário, usada como está, só com a largura ajustada.
+const LOGOS_PRONTAS = [
+  { rotulo: "UNV Holdings", url: "https://unvholdings.com.br/blog/img/unv-holdings.png" },
+  { rotulo: "Universidade Nacional de Vendas", url: "https://unvholdings.com.br/images/unv-logo.png" },
+];
+const ASSINATURA_VAZIA: Assinatura = { ativa: true, nome: "", cargo: "", empresa: "UNV Holdings", telefone: "", site: "unvholdings.com.br", extra: "", logo: LOGOS_PRONTAS[0].url, largura: 110 };
+const atributo = (s: string) => escapeHtml(s).replace(/"/g, "&quot;");
+const assinaturaTemConteudo = (a?: Assinatura | null) => !!a && !!(a.nome || a.cargo || a.empresa || a.telefone || a.site || a.extra || a.logo);
+const enderecoDoSite = (s: string) => (/^https?:\/\//i.test(s) ? s : `https://${s}`);
+
+function assinaturaHtml(a: Assinatura): string {
+  const linha2 = [a.cargo, a.empresa].map((x) => x.trim()).filter(Boolean).map(escapeHtml).join(" · ");
+  const site = a.site.trim();
+  const contato = [a.telefone.trim() ? escapeHtml(a.telefone.trim()) : "", site ? `<a href="${atributo(enderecoDoSite(site))}" style="color:#082B48;text-decoration:none">${escapeHtml(site.replace(/^https?:\/\//i, ""))}</a>` : ""].filter(Boolean).join(" · ");
+  const temLogo = !!a.logo;
+  const largura = Math.min(260, Math.max(60, Math.round(a.largura || 110)));
+  const texto = [
+    a.nome.trim() ? `<div style="font-size:15px;line-height:20px;font-weight:bold;color:#082B48">${escapeHtml(a.nome.trim())}</div>` : "",
+    linha2 ? `<div style="font-size:13px;line-height:18px;color:#4b5563">${linha2}</div>` : "",
+    contato ? `<div style="font-size:13px;line-height:18px;color:#4b5563">${contato}</div>` : "",
+    a.extra.trim() ? `<div style="font-size:12px;line-height:17px;color:#6b7280">${escapeHtml(a.extra.trim()).replace(/\n/g, "<br>")}</div>` : "",
+  ].join("");
+  return `<table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif"><tr>`
+    + (temLogo ? `<td style="vertical-align:middle;padding:0 14px 0 0"><img src="${atributo(a.logo)}" width="${largura}" alt="${atributo(a.empresa.trim() || "Logomarca")}" style="display:block;border:0;width:${largura}px;height:auto"></td>` : "")
+    + (texto ? `<td style="vertical-align:middle;${temLogo ? "border-left:2px solid #F40505;padding:2px 0 2px 14px" : "padding:0"}">${texto}</td>` : "")
+    + `</tr></table>`;
+}
+function assinaturaTexto(a: Assinatura): string {
+  return [a.nome, [a.cargo, a.empresa].map((x) => x.trim()).filter(Boolean).join(" · "), [a.telefone, a.site].map((x) => x.trim()).filter(Boolean).join(" · "), a.extra].map((x) => x.trim()).filter(Boolean).join("\n");
+}
+
+function ConfigAssinatura({ conta, onFechar, onSalva }: { conta: Account; onFechar: () => void; onSalva: (a: Assinatura, html: string) => void }) {
+  const [a, setA] = useState<Assinatura>({ ...ASSINATURA_VAZIA, ...(conta.signature || {}) });
+  const [salvando, setSalvando] = useState(false);
+  const [subindo, setSubindo] = useState(false);
+  const campo = (k: keyof Assinatura, v: string | number | boolean) => setA((p) => ({ ...p, [k]: v }));
+  const logoPropria = !!a.logo && !LOGOS_PRONTAS.some((l) => l.url === a.logo);
+
+  // primeira vez: puxa nome e telefone do cadastro da equipe
+  useEffect(() => {
+    if (conta.signature) return;
+    (async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u?.user) return;
+      const { data } = await db.from("onboarding_staff").select("name, phone").eq("user_id", u.user.id).maybeSingle();
+      if (data) setA((p) => ({ ...p, nome: p.nome || data.name || "", telefone: p.telefone || data.phone || "" }));
+    })();
+  }, [conta.signature]);
+
+  const enviarLogo = async (f: File | undefined) => {
+    if (!f) return;
+    if (!/^image\/(png|jpe?g|gif)$/i.test(f.type)) { toast.error("Use uma imagem PNG, JPG ou GIF (os programas de e-mail não abrem outros formatos)"); return; }
+    if (f.size > 2 * 1024 * 1024) { toast.error("A imagem passa de 2 MB"); return; }
+    setSubindo(true);
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      const ext = (f.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const caminho = `assinaturas/${u?.user?.id || "geral"}/logo-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("email-assets").upload(caminho, f, { contentType: f.type, upsert: true });
+      if (error) throw error;
+      campo("logo", supabase.storage.from("email-assets").getPublicUrl(caminho).data.publicUrl);
+    } catch (e) { toast.error(`Não consegui enviar a imagem: ${(e as Error).message}`); } finally { setSubindo(false); }
+  };
+  const salvar = async () => {
+    setSalvando(true);
+    try {
+      const html = assinaturaHtml(a);
+      const { error } = await db.rpc("mail_assinatura_salvar", { p_config: a, p_html: html });
+      if (error) throw error;
+      toast.success("Assinatura salva"); onSalva(a, html); onFechar();
+    } catch (e) { toast.error((e as Error).message); } finally { setSalvando(false); }
+  };
+  const linha = "flex items-center gap-2 border-b";
+  const rotulo = "text-xs text-muted-foreground w-20 shrink-0";
+  const entrada = "border-0 shadow-none focus-visible:ring-0 px-0";
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onFechar(); }}>
+      <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-2xl">
+        <DialogHeader className="px-5 pt-4 pb-2"><DialogTitle className="text-base tracking-tight" style={{ color: NAVY }}>Assinatura de e-mail</DialogTitle></DialogHeader>
+        <div className="px-5 pb-1 space-y-3 max-h-[70vh] overflow-y-auto">
+          <label className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 cursor-pointer">
+            <span className="text-sm">Usar a assinatura em e-mails novos, respostas e encaminhamentos</span>
+            <Switch checked={a.ativa} onCheckedChange={(v) => campo("ativa", v)} />
+          </label>
+          <div className="space-y-1">
+            <div className={linha}><span className={rotulo}>Nome</span><Input value={a.nome} onChange={(e) => campo("nome", e.target.value)} className={entrada} /></div>
+            <div className={linha}><span className={rotulo}>Cargo</span><Input value={a.cargo} onChange={(e) => campo("cargo", e.target.value)} placeholder="CEO e Fundador" className={entrada} /></div>
+            <div className={linha}><span className={rotulo}>Empresa</span><Input value={a.empresa} onChange={(e) => campo("empresa", e.target.value)} className={entrada} /></div>
+            <div className={linha}><span className={rotulo}>Telefone</span><Input value={a.telefone} onChange={(e) => campo("telefone", e.target.value)} placeholder="(31) 90000-0000" className={entrada} /></div>
+            <div className={linha}><span className={rotulo}>Site</span><Input value={a.site} onChange={(e) => campo("site", e.target.value)} className={entrada} /></div>
+            <div className={linha}><span className={rotulo}>Linha extra</span><Input value={a.extra} onChange={(e) => campo("extra", e.target.value)} placeholder="Endereço, Instagram ou uma frase" className={entrada} /></div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Logomarca</p>
+            <div className="flex flex-wrap gap-2">
+              {LOGOS_PRONTAS.map((l) => (
+                <button key={l.url} type="button" onClick={() => campo("logo", l.url)} className={cn("flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs", a.logo === l.url && "border-2")} style={a.logo === l.url ? { borderColor: NAVY } : undefined}>
+                  <img src={l.url} alt="" className="h-8 w-auto" />{l.rotulo}
+                </button>
+              ))}
+              {logoPropria && (
+                <span className="flex items-center gap-2 rounded-xl border-2 px-2.5 py-1.5 text-xs" style={{ borderColor: NAVY }}><img src={a.logo} alt="" className="h-8 w-auto" />Imagem enviada</span>
+              )}
+              <label className="cursor-pointer flex items-center gap-1.5 rounded-xl border border-dashed px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">
+                {subindo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />} Enviar outra imagem
+                <input type="file" accept="image/png,image/jpeg,image/gif" className="hidden" onChange={(e) => { enviarLogo(e.target.files?.[0]); e.currentTarget.value = ""; }} />
+              </label>
+              <button type="button" onClick={() => campo("logo", "")} className={cn("rounded-xl border px-2.5 py-1.5 text-xs", !a.logo && "border-2")} style={!a.logo ? { borderColor: NAVY } : undefined}>Sem logomarca</button>
+            </div>
+            {a.logo && (
+              <label className="flex items-center gap-3 text-xs text-muted-foreground">Tamanho
+                <input type="range" min={60} max={260} step={5} value={a.largura} onChange={(e) => campo("largura", Number(e.target.value))} className="flex-1" />
+                <span className="w-12 text-right tabular-nums">{a.largura} px</span>
+              </label>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground">Como vai aparecer</p>
+            <div className="rounded-xl border bg-white p-4 overflow-x-auto">
+              <p className="text-[13px] text-gray-400 mb-3">Texto do seu e-mail...</p>
+              {assinaturaTemConteudo(a) ? <div dangerouslySetInnerHTML={{ __html: assinaturaHtml(a) }} /> : <p className="text-xs text-gray-400">Preencha os campos pra ver a assinatura.</p>}
+            </div>
+          </div>
+        </div>
+        <div className="px-5 py-3 border-t flex items-center gap-3 bg-muted/20">
+          <Button onClick={salvar} disabled={salvando || subindo} className="gap-2 rounded-lg px-5" style={{ background: NAVY }}>{salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Salvar</Button>
+          <Button variant="ghost" onClick={onFechar}>Cancelar</Button>
+          <span className="ml-auto text-[11px] text-muted-foreground">vale pra {conta.email}</span>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Compor / responder / encaminhar ────────────────────────────────────────────────────────────
-function Compor({ compor, conta, onFechar, chamar, onEnviado }: {
-  compor: { modo: "novo" | "responder" | "todos" | "encaminhar"; base?: Msg }; conta: Account; onFechar: () => void;
+function Compor({ compor, conta, onFechar, chamar, onEnviado, onAssinatura }: {
+  compor: { modo: "novo" | "responder" | "todos" | "encaminhar"; base?: Msg }; conta: Account; onFechar: () => void; onAssinatura: () => void;
   chamar: (b: Record<string, unknown>) => Promise<any>; onEnviado: () => void;
 }) {
   const b = compor.base;
@@ -883,6 +1025,9 @@ function Compor({ compor, conta, onFechar, chamar, onEnviado }: {
   const [texto, setTexto] = useState("");
   const [anexos, setAnexos] = useState<{ filename: string; mimeType: string; data: string; size: number }[]>([]);
   const [enviando, setEnviando] = useState(false);
+  const sig = conta.signature && assinaturaTemConteudo(conta.signature) ? conta.signature : null;
+  const [comAssinatura, setComAssinatura] = useState(true);
+  const usarAssinatura = !!sig && sig.ativa && comAssinatura;
   const citacao = b ? `<br><br><div style="color:#6b7280;font-size:12px">Em ${quandoLongo(b.internal_date)}, ${escapeHtml(b.from_name || "")} &lt;${escapeHtml(b.from_email || "")}&gt; escreveu:</div><blockquote style="border-left:3px solid #e5e7eb;margin:6px 0;padding-left:12px;color:#6b7280">${b.body_html || `<pre style="white-space:pre-wrap">${escapeHtml(b.body_text || b.snippet || "")}</pre>`}</blockquote>` : "";
   const lista = (s: string) => s.split(/[,;\s]+/).map((x) => x.trim()).filter((x) => /.+@.+\..+/.test(x));
 
@@ -899,8 +1044,11 @@ function Compor({ compor, conta, onFechar, chamar, onEnviado }: {
     const to = lista(para); if (!to.length) { toast.error("Informe pelo menos um destinatário válido"); return; }
     setEnviando(true);
     try {
-      const html = `<div style="font:14px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f2937">${escapeHtml(texto).replace(/\n/g, "<br>")}</div>${compor.modo === "novo" ? "" : citacao}`;
-      await chamar({ action: "send", to, cc: lista(cc), subject: assunto, html, text: texto, thread_id: compor.modo === "encaminhar" ? undefined : b?.thread_id, attachments: anexos.map(({ filename, mimeType, data }) => ({ filename, mimeType, data })) });
+      // assinatura: depois do texto e antes da mensagem citada (novo, resposta e encaminhamento)
+      const assinatura = usarAssinatura && sig ? `<br>${assinaturaHtml(sig)}` : "";
+      const html = `<div style="font:14px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f2937">${escapeHtml(texto).replace(/\n/g, "<br>")}</div>${assinatura}${compor.modo === "novo" ? "" : citacao}`;
+      const textoPuro = usarAssinatura && sig ? `${texto}\n\n${assinaturaTexto(sig)}` : texto;
+      await chamar({ action: "send", to, cc: lista(cc), subject: assunto, html, text: textoPuro, thread_id: compor.modo === "encaminhar" ? undefined : b?.thread_id, attachments: anexos.map(({ filename, mimeType, data }) => ({ filename, mimeType, data })) });
       toast.success("E-mail enviado"); onEnviado();
     } catch (e) { toast.error((e as Error).message); } finally { setEnviando(false); }
   };
@@ -914,7 +1062,19 @@ function Compor({ compor, conta, onFechar, chamar, onEnviado }: {
           {mostrarCc && <div className="flex items-center gap-2 border-b"><span className="text-xs text-muted-foreground w-12">Cc</span><Input value={cc} onChange={(e) => setCc(e.target.value)} className="border-0 shadow-none focus-visible:ring-0 px-0" /></div>}
           <div className="flex items-center gap-2 border-b"><span className="text-xs text-muted-foreground w-12">Assunto</span><Input value={assunto} onChange={(e) => setAssunto(e.target.value)} className="border-0 shadow-none focus-visible:ring-0 px-0" /></div>
           <Textarea value={texto} onChange={(e) => setTexto(e.target.value)} onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") enviar(); }} placeholder="Escreva aqui..." className="min-h-[240px] border-0 shadow-none focus-visible:ring-0 px-0 resize-y text-[14px] leading-relaxed" autoFocus />
-          {b && compor.modo !== "novo" && <p className="text-[11px] text-muted-foreground">A mensagem original vai citada abaixo do seu texto.</p>}
+          {sig && sig.ativa ? (
+            <div className="rounded-xl border px-3 py-2">
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <Checkbox checked={comAssinatura} onCheckedChange={(v) => setComAssinatura(v === true)} id="compor-assinatura" />
+                <label htmlFor="compor-assinatura" className="cursor-pointer">Incluir assinatura</label>
+                <button type="button" onClick={onAssinatura} className="ml-auto hover:text-foreground">Editar</button>
+              </div>
+              {comAssinatura && <div className="mt-2 overflow-x-auto bg-white rounded-lg p-2" dangerouslySetInnerHTML={{ __html: assinaturaHtml(sig) }} />}
+            </div>
+          ) : (
+            <button type="button" onClick={onAssinatura} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"><PenLine className="h-3 w-3" /> {sig ? "Assinatura desligada. Ligar" : "Configurar assinatura com logomarca"}</button>
+          )}
+          {b && compor.modo !== "novo" && <p className="text-[11px] text-muted-foreground">A mensagem original vai citada abaixo do seu texto{usarAssinatura ? " e da assinatura" : ""}.</p>}
           {anexos.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {anexos.map((a, i) => <span key={i} className="flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs"><Paperclip className="h-3 w-3" />{a.filename} <span className="text-muted-foreground">{tamanho(a.size)}</span><button onClick={() => setAnexos((p) => p.filter((_, k) => k !== i))}><X className="h-3 w-3" /></button></span>)}
