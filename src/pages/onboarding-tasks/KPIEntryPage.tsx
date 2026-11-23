@@ -97,19 +97,18 @@ export default function KPIEntryPage() {
         const monthEnd = `${monthYear}-${String(new Date(yy, mm, 0).getDate()).padStart(2, "0")}`;
         const kpiIds = kpis.map((k) => k.id);
 
-        const [settingsRes, targetsRes, entriesRes] = await Promise.all([
-          supabase.from("company_daily_goal_settings")
-            .select("include_saturday, include_sunday, include_holidays")
-            .eq("company_id", companyId).maybeSingle(),
-          supabase.from("kpi_monthly_targets")
-            .select("kpi_id, target_value, level_name, level_order")
-            .eq("company_id", companyId).eq("month_year", monthYear)
-            .eq("salesperson_id", salesperson.id).in("kpi_id", kpiIds),
-          supabase.from("kpi_entries")
-            .select("kpi_id, value, entry_date")
-            .eq("company_id", companyId).eq("salesperson_id", salesperson.id)
-            .gte("entry_date", monthStart).lte("entry_date", monthEnd).in("kpi_id", kpiIds),
-        ]);
+        // Leitura por função (confere o código de acesso): metas e lançamentos do mês
+        const { data: dadosMes } = await (supabase as any).rpc("kpi_entry_dados", {
+          p_company_id: companyId, p_code: salesperson.access_code, p_date: entryDate,
+        });
+        const settingsRes = { data: (dadosMes as any)?.goal_settings ?? null };
+        const targetsRes = {
+          data: (((dadosMes as any)?.targets || []) as any[]).filter(
+            (t) => t.salesperson_id === salesperson.id && kpiIds.includes(t.kpi_id)),
+        };
+        const entriesRes = {
+          data: (((dadosMes as any)?.entries || []) as any[]).filter((e) => kpiIds.includes(e.kpi_id)),
+        };
 
         // dias úteis restantes a partir de hoje (mesma regra do card "Sua Meta Diária")
         const s = settingsRes.data;
@@ -179,102 +178,48 @@ export default function KPIEntryPage() {
 
     setLoading(true);
     try {
-      // Find salesperson by access code
-      const { data: salespersonData, error: spError } = await supabase
-        .from("company_salespeople")
-        .select("*")
-        .eq("access_code", code)
-        .eq("company_id", companyId)
-        .eq("is_active", true)
-        .single();
+      // Leitura única por função: confere o código de acesso e devolve só os
+      // dados da empresa desse código (as tabelas não ficam abertas a visitante).
+      const { data: dadosRaw, error: dadosError } = await (supabase as any).rpc("kpi_entry_dados", {
+        p_company_id: companyId, p_code: code, p_date: entryDate,
+      });
+      const dados = dadosRaw as any;
+      const salespersonData = dados?.salesperson as any;
 
-      if (spError || !salespersonData) {
+      if (dadosError || !salespersonData) {
         toast.error("Código de acesso inválido");
         return;
       }
 
       setSalesperson(salespersonData);
-
-      // Fetch company
-      const { data: companyData } = await supabase
-        .from("onboarding_companies")
-        .select("id, name")
-        .eq("id", companyId)
-        .single();
-
-      setCompany(companyData);
-
-      // Fetch team if salesperson has one
-      if (salespersonData.team_id) {
-        const { data: teamData } = await supabase
-          .from("company_teams")
-          .select("id, name")
-          .eq("id", salespersonData.team_id)
-          .single();
-        setTeam(teamData);
-      }
-
-      // Fetch salesperson's sectors (many-to-many relationship)
-      const { data: spSectorsData } = await supabase
-        .from("salesperson_sectors")
-        .select("sector_id")
-        .eq("salesperson_id", salespersonData.id);
+      setCompany(dados.company || null);
+      setTeam(dados.team || null);
 
       // Setores do vendedor: N:N (salesperson_sectors) + o setor do CADASTRO
       // (company_salespeople.sector_id). A tela de Vendedores grava só no cadastro,
       // então sem esse union os KPIs de setor sumiam do lançamento.
       const sectorIds = Array.from(new Set([
-        ...(spSectorsData || []).map((s: any) => s.sector_id),
+        ...((dados.salesperson_sector_ids || []) as string[]),
         ...(salespersonData.sector_id ? [salespersonData.sector_id] : []),
-      ].filter(Boolean)));
+      ].filter(Boolean))) as string[];
       setSalespersonSectors(sectorIds);
+      setSectors(((dados.sectors || []) as Sector[]).filter((sc) => sectorIds.includes(sc.id)));
 
-      // Fetch sector details if salesperson has sectors
-      if (sectorIds.length > 0) {
-        const { data: sectorsData } = await supabase
-          .from("company_sectors")
-          .select("id, name")
-          .in("id", sectorIds);
-        setSectors(sectorsData || []);
-      }
+      const unitsData = (dados.units || []) as Unit[];
+      setUnits(unitsData);
 
-      // Fetch units
-      const { data: unitsData } = await supabase
-        .from("company_units")
-        .select("id, name")
-        .eq("company_id", companyId)
-        .eq("is_active", true)
-        .order("name");
-
-      setUnits(unitsData || []);
-      
       // Set default unit if salesperson has one
       if (salespersonData.unit_id) {
         setSelectedUnit(salespersonData.unit_id);
-      } else if (unitsData && unitsData.length > 0) {
+      } else if (unitsData.length > 0) {
         setSelectedUnit(unitsData[0].id);
       }
 
-      // Fetch active KPIs - filter by salesperson's sectors
-      let kpisQuery = supabase
-        .from("company_kpis")
-        .select("*")
-        .eq("company_id", companyId)
-        .eq("is_active", true)
-        .order("sort_order");
-
-      const { data: allKpisData, error: kpisError } = await kpisQuery;
-
-      if (kpisError) throw kpisError;
-
-      // Fetch multi-select relationships
-      const kpiIds = (allKpisData || []).map((k: any) => k.id);
-      const [kpiUnitsRes, kpiSectorsRes, kpiTeamsRes, kpiSalespeopleRes] = await Promise.all([
-        kpiIds.length > 0 ? supabase.from("kpi_units").select("kpi_id, unit_id").in("kpi_id", kpiIds) : Promise.resolve({ data: [] }),
-        kpiIds.length > 0 ? supabase.from("kpi_sectors").select("kpi_id, sector_id").in("kpi_id", kpiIds) : Promise.resolve({ data: [] }),
-        kpiIds.length > 0 ? supabase.from("kpi_teams").select("kpi_id, team_id").in("kpi_id", kpiIds) : Promise.resolve({ data: [] }),
-        kpiIds.length > 0 ? supabase.from("kpi_salespeople").select("kpi_id, salesperson_id").in("kpi_id", kpiIds) : Promise.resolve({ data: [] }),
-      ]);
+      const allKpisData = (dados.kpis || []) as any[];
+      const kpiUnitsRes = { data: (dados.kpi_units || []) as any[] };
+      const kpiSectorsRes = { data: (dados.kpi_sectors || []) as any[] };
+      const kpiTeamsRes = { data: (dados.kpi_teams || []) as any[] };
+      const kpiSalespeopleRes = { data: (dados.kpi_salespeople || []) as any[] };
 
       // Build lookup maps for multi-select relationships
       const kpiUnitIds = new Map<string, string[]>();
@@ -385,8 +330,13 @@ export default function KPIEntryPage() {
       });
       setValues(initialValues);
 
-      // Check for existing entries today
-      await fetchExistingEntries(salespersonData.id, entryDate);
+      // Lançamentos já feitos na data (vieram na mesma leitura)
+      const doDia: Record<string, number> = {};
+      ((dados.entries || []) as any[]).forEach((e) => {
+        if (e.entry_date === entryDate) doDia[e.kpi_id] = Number(e.value);
+      });
+      setExistingEntries(doDia);
+      setValues(prev => ({ ...prev, ...doDia }));
 
       setStep("entry");
     } catch (error) {
@@ -397,17 +347,16 @@ export default function KPIEntryPage() {
     }
   };
 
-  const fetchExistingEntries = async (salespersonId: string, date: string) => {
-    const { data } = await supabase
-      .from("kpi_entries")
-      .select("*")
-      .eq("salesperson_id", salespersonId)
-      .eq("entry_date", date);
+  const fetchExistingEntries = async (code: string, date: string) => {
+    const { data: dadosRaw } = await (supabase as any).rpc("kpi_entry_dados", {
+      p_company_id: companyId, p_code: code, p_date: date,
+    });
+    const data = (((dadosRaw as any)?.entries || []) as any[]).filter((e) => e.entry_date === date);
 
-    if (data && data.length > 0) {
+    if (data.length > 0) {
       const entriesMap: Record<string, number> = {};
       data.forEach(entry => {
-        entriesMap[entry.kpi_id] = entry.value;
+        entriesMap[entry.kpi_id] = Number(entry.value);
       });
       setExistingEntries(entriesMap);
       setValues(prev => ({ ...prev, ...entriesMap }));
@@ -419,7 +368,7 @@ export default function KPIEntryPage() {
   const handleDateChange = async (newDate: string) => {
     setEntryDate(newDate);
     if (salesperson) {
-      await fetchExistingEntries(salesperson.id, newDate);
+      await fetchExistingEntries(salesperson.access_code, newDate);
     }
   };
 
@@ -438,40 +387,18 @@ export default function KPIEntryPage() {
     setLoading(true);
     try {
       const unitId = selectedUnit && selectedUnit !== "" ? selectedUnit : (salesperson.unit_id || null);
-      const teamId = salesperson.team_id || null;
 
-      // Process each KPI entry individually to handle updates vs inserts
-      for (const kpi of kpis) {
-        const entryData = {
-          company_id: companyId,
-          salesperson_id: salesperson.id,
-          kpi_id: kpi.id,
-          entry_date: entryDate,
-          value: values[kpi.id] ?? 0,
-          observations: observations,
-          unit_id: unitId,
-          team_id: teamId,
-          sector_id: kpi.sector_id || (salespersonSectors.length === 1 ? salespersonSectors[0] : null),
-          updated_at: new Date().toISOString(),
-        };
-
-        if (existingEntries[kpi.id] !== undefined) {
-          // Update existing entry
-          const { error } = await supabase
-            .from("kpi_entries")
-            .update({ value: entryData.value, observations: entryData.observations, unit_id: entryData.unit_id, updated_at: entryData.updated_at })
-            .eq("salesperson_id", salesperson.id)
-            .eq("kpi_id", kpi.id)
-            .eq("entry_date", entryDate);
-          if (error) throw error;
-        } else {
-          // Insert new entry
-          const { error } = await supabase
-            .from("kpi_entries")
-            .insert(entryData);
-          if (error) throw error;
-        }
-      }
+      // Gravação por função: confere o código e grava só na empresa dele
+      // (equipe e setor do lançamento são resolvidos no servidor).
+      const { error } = await (supabase as any).rpc("kpi_entry_salvar", {
+        p_company_id: companyId,
+        p_code: salesperson.access_code,
+        p_date: entryDate,
+        p_itens: kpis.map((kpi) => ({ kpi_id: kpi.id, value: values[kpi.id] ?? 0 })),
+        p_observations: observations,
+        p_unit_id: unitId,
+      });
+      if (error) throw error;
 
       setStep("success");
       toast.success("Lançamento realizado com sucesso!");
@@ -647,6 +574,7 @@ export default function KPIEntryPage() {
                 companyId={companyId}
                 salespersonId={salesperson.id}
                 salespersonName={salesperson.name}
+                accessCode={salesperson.access_code}
               />
             )}
 
