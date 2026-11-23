@@ -112,23 +112,13 @@ export default function Assessment360Page() {
       }
 
       // Get project info
-      const { data: project } = await supabase
-        .from("onboarding_projects")
-        .select("product_name, onboarding_company_id")
-        .eq("id", cycle.project_id)
-        .single();
+      const { data: projectRaw } = await (supabase as any).rpc("public_project_info", {
+        p_project_id: cycle.project_id,
+      });
+      const project = projectRaw as { product_name: string; company_name: string | null } | null;
 
       if (project) {
-        let companyName = null;
-        if (project.onboarding_company_id) {
-          const { data: company } = await supabase
-            .from("onboarding_companies")
-            .select("name")
-            .eq("id", project.onboarding_company_id)
-            .single();
-          companyName = company?.name || null;
-        }
-        setProjectInfo({ productName: project.product_name, companyName });
+        setProjectInfo({ productName: project.product_name, companyName: project.company_name || null });
       }
 
       setLoading(false);

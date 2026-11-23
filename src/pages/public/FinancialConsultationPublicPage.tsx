@@ -110,11 +110,11 @@ export default function FinancialConsultationPublicPage() {
 
   const loadData = async () => {
     try {
-      const { data, error } = await supabase
-        .from("financial_consultation_forms")
-        .select("*, onboarding_projects!inner(onboarding_company_id)")
-        .eq("access_token", token)
-        .maybeSingle();
+      // Leitura por função: devolve só o formulário deste token (com o nome da empresa)
+      const { data: dataRaw, error } = await (supabase as any).rpc("consultation_form_get", {
+        p_tipo: "financial", p_token: token,
+      });
+      const data = dataRaw as any;
 
       if (error || !data) {
         setNotFound(true);
@@ -130,15 +130,7 @@ export default function FinancialConsultationPublicPage() {
 
       setForm(data);
 
-      const companyId = (data as any).onboarding_projects?.onboarding_company_id;
-      if (companyId) {
-        const { data: company } = await supabase
-          .from("onboarding_companies")
-          .select("name")
-          .eq("id", companyId)
-          .maybeSingle();
-        setCompanyName(company?.name || null);
-      }
+      setCompanyName(data.company_name || null);
 
       const initial: Record<string, string> = {};
       SECTIONS.forEach((section) => {
@@ -172,10 +164,10 @@ export default function FinancialConsultationPublicPage() {
         });
       });
 
-      const { error } = await supabase
-        .from("financial_consultation_forms")
-        .update(updateData)
-        .eq("id", form.id);
+      const { data: gravou, error: rpcError } = await (supabase as any).rpc("consultation_form_update", {
+        p_tipo: "financial", p_token: token, p_patch: updateData,
+      });
+      const error = rpcError || (gravou ? null : new Error("Formulário não encontrado"));
 
       if (error) throw error;
       toast.success("Progresso salvo!");
@@ -213,10 +205,10 @@ export default function FinancialConsultationPublicPage() {
         });
       });
 
-      const { error } = await supabase
-        .from("financial_consultation_forms")
-        .update(updateData)
-        .eq("id", form.id);
+      const { data: gravou, error: rpcError } = await (supabase as any).rpc("consultation_form_update", {
+        p_tipo: "financial", p_token: token, p_patch: updateData,
+      });
+      const error = rpcError || (gravou ? null : new Error("Formulário não encontrado"));
 
       if (error) throw error;
       draft.clear();
