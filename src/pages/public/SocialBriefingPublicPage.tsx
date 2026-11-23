@@ -151,16 +151,15 @@ export default function SocialBriefingPublicPage() {
       }
 
       // Load project info
-      const { data: projectData } = await supabase
-        .from("onboarding_projects")
-        .select("product_name, company:onboarding_companies(name)")
-        .eq("id", briefingData.project_id)
-        .single();
+      const { data: projectRaw } = await (supabase as any).rpc("public_project_info", {
+        p_project_id: briefingData.project_id,
+      });
+      const projectData = projectRaw as { product_name: string; company_name: string | null } | null;
 
       if (projectData) {
         setProjectInfo({
           name: projectData.product_name,
-          company_name: (projectData.company as any)?.name || null,
+          company_name: projectData.company_name || null,
         });
       }
 
