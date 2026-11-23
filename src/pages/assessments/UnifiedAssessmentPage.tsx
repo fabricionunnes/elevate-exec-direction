@@ -105,26 +105,14 @@ export default function UnifiedAssessmentPage() {
       let companyName: string | null = null;
 
       try {
-        const { data: project, error: projectError } = await supabase
-          .from("onboarding_projects")
-          .select("product_name, onboarding_company_id")
-          .eq("id", cycle.project_id)
-          .single();
+        const { data: projectRaw, error: projectError } = await (supabase as any).rpc("public_project_info", {
+          p_project_id: cycle.project_id,
+        });
+        const project = projectRaw as { product_name: string | null; company_name: string | null } | null;
 
         if (!projectError && project) {
           projectName = project.product_name || "";
-
-          if (project.onboarding_company_id) {
-            const { data: company, error: companyError } = await supabase
-              .from("onboarding_companies")
-              .select("name")
-              .eq("id", project.onboarding_company_id)
-              .single();
-
-            if (!companyError && company?.name) {
-              companyName = company.name;
-            }
-          }
+          if (project.company_name) companyName = project.company_name;
         }
       } catch {
         // Silencioso: página pública não pode depender dessas tabelas
