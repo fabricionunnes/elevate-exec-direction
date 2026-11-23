@@ -49,11 +49,9 @@ const StaffRegistrationPage = () => {
 
   const loadRegistration = async () => {
     try {
-      const { data, error } = await supabase
-        .from("staff_registrations")
-        .select("*")
-        .eq("token", token)
-        .maybeSingle();
+      // Leitura só pelo token do link, por função: a tabela não é mais aberta a visitantes (23/11/2026).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("staff_registration_get", { p_token: token });
 
       if (error) throw error;
 
@@ -136,14 +134,8 @@ const StaffRegistrationPage = () => {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase
-        .from("staff_registrations")
-        .update({
-          ...form,
-          status: "submitted",
-          submitted_at: new Date().toISOString(),
-        })
-        .eq("id", registrationId);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).rpc("staff_registration_submit", { p_token: token, p_form: form });
 
       if (error) throw error;
       setSubmitted(true);
