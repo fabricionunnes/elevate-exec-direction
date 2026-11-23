@@ -11,13 +11,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, RefreshCw, Trash2, ShieldCheck } from "lucide-react";
+import { Loader2, Plus, RefreshCw, Trash2, ShieldCheck, ImagePlus, Image as ImageIcon, ExternalLink, X } from "lucide-react";
 
 interface OfficialInstance { id: string; display_name: string | null; phone_number: string | null; status: string }
 interface Template {
   id: string; name: string; status: string; category: string; language: string;
   rejected_reason?: string | null; quality_score?: { score?: string } | null;
-  components: { type: string; text?: string; buttons?: { text: string }[] }[];
+  components: { type: string; format?: string; text?: string; buttons?: { text: string; type?: string; url?: string }[] }[];
 }
 
 const STATUS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -46,7 +46,22 @@ export function OfficialTemplatesTab() {
   const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: "", category: "MARKETING", body: "", footer: "", buttons: "", examples: "" });
+  const [form, setForm] = useState({ name: "", category: "MARKETING", body: "", footer: "", buttons: "", examples: "", linkText: "", linkUrl: "" });
+  const [imagem, setImagem] = useState<File | null>(null);
+  const [imagemPrevia, setImagemPrevia] = useState("");
+  useEffect(() => {
+    if (!imagem) { setImagemPrevia(""); return; }
+    const u = URL.createObjectURL(imagem);
+    setImagemPrevia(u);
+    return () => URL.revokeObjectURL(u);
+  }, [imagem]);
+
+  const escolherImagem = (f: File | null) => {
+    if (!f) { setImagem(null); return; }
+    if (!/^image\/(jpeg|png)$/.test(f.type)) { toast.error("A imagem precisa ser JPG ou PNG"); return; }
+    if (f.size > 5 * 1024 * 1024) { toast.error("A imagem passa de 5 MB. Reduza e tente de novo."); return; }
+    setImagem(f);
+  };
 
   useEffect(() => {
     (async () => {
@@ -80,20 +95,37 @@ export function OfficialTemplatesTab() {
     // regra da Meta: texto não pode começar nem terminar com variável
     if (/^\s*\{\{\d+\}\}/.test(form.body)) { toast.error('O texto não pode começar com variável. Ex.: "Oi, {{1}}! Uma pergunta..."'); return; }
     if (/\{\{\d+\}\}[\s.!?…]*$/.test(form.body)) { toast.error("O texto não pode terminar com variável. Coloque uma frase depois da última {{n}}."); return; }
+    const linkText = form.linkText.trim();
+    const linkUrl = form.linkUrl.trim();
+    if ((linkText || linkUrl) && !(linkText && /^https:\/\/\S+$/i.test(linkUrl))) { toast.error("Botão de link: preencha o texto do botão e um link começando com https://"); return; }
+    if (linkText.length > 25) { toast.error("O texto do botão de link passa de 25 caracteres"); return; }
     setSaving(true);
     try {
+      // imagem do topo: sobe pra pasta pública e a Meta busca pelo link
+      let headerImageUrl: string | undefined;
+      if (imagem) {
+        const ext = imagem.type === "image/png" ? "png" : "jpg";
+        const nomeLimpo = form.name.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_") || "template";
+        const caminho = `templates/${nomeLimpo}-${Date.now()}.${ext}`;
+        const { error: eUp } = await supabase.storage.from("whatsapp-media").upload(caminho, imagem, { contentType: imagem.type, cacheControl: "31536000" });
+        if (eUp) throw new Error(`Não consegui subir a imagem: ${eUp.message}`);
+        headerImageUrl = supabase.storage.from("whatsapp-media").getPublicUrl(caminho).data.publicUrl;
+      }
       const { data, error } = await supabase.functions.invoke("whatsapp-official-api", {
         body: {
           action: "createTemplate", instanceId,
           name: form.name, category: form.category, body: form.body, footer: form.footer || undefined,
           buttons: form.buttons.split(",").map((b) => b.trim()).filter(Boolean),
           examples: form.examples.split("|").map((e) => e.trim()).filter(Boolean),
+          header_image_url: headerImageUrl,
+          link_button: linkText ? { text: linkText, url: linkUrl } : undefined,
         },
       });
       if (error || data?.error) throw new Error(await mensagemDoErro(error, data));
       toast.success(`Template "${data.name}" enviado pra aprovação da Meta`);
       setCreateOpen(false);
-      setForm({ name: "", category: "MARKETING", body: "", footer: "", buttons: "", examples: "" });
+      setForm({ name: "", category: "MARKETING", body: "", footer: "", buttons: "", examples: "", linkText: "", linkUrl: "" });
+      setImagem(null);
       load();
     } catch (e) {
       toast.error((e as Error).message);
@@ -149,6 +181,7 @@ export function OfficialTemplatesTab() {
               const st = STATUS[t.status] || { label: t.status, variant: "outline" as const };
               const body = t.components.find((c) => c.type === "BODY")?.text || "";
               const buttons = t.components.find((c) => c.type === "BUTTONS")?.buttons || [];
+              const temImagem = t.components.some((c) => c.type === "HEADER" && c.format === "IMAGE");
               return (
                 <div key={t.id} className="rounded-lg border p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -157,6 +190,7 @@ export function OfficialTemplatesTab() {
                       <Badge variant={st.variant}>{st.label}</Badge>
                       <Badge variant="outline" className="text-[10px]">{t.category.toLowerCase()}</Badge>
                       <Badge variant="outline" className="text-[10px]">{t.language}</Badge>
+                      {temImagem && <Badge variant="outline" className="text-[10px] gap-1"><ImageIcon className="h-3 w-3" /> com imagem</Badge>}
                       {t.quality_score?.score && t.quality_score.score !== "UNKNOWN" && <Badge variant="outline" className="text-[10px]">qualidade: {t.quality_score.score.toLowerCase()}</Badge>}
                     </div>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Excluir na Meta" onClick={() => handleDelete(t)}>
@@ -165,7 +199,9 @@ export function OfficialTemplatesTab() {
                   </div>
                   <p className="mt-2 text-sm whitespace-pre-wrap text-muted-foreground">{body}</p>
                   {buttons.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">{buttons.map((b) => <Badge key={b.text} variant="outline">{b.text}</Badge>)}</div>
+                    <div className="mt-2 flex flex-wrap gap-1">{buttons.map((b) => (
+                      <Badge key={b.text} variant="outline" className="gap-1" title={b.url || undefined}>{b.type === "URL" && <ExternalLink className="h-3 w-3" />}{b.text}</Badge>
+                    ))}</div>
                   )}
                   {t.status === "REJECTED" && (
                     <p className="mt-2 text-xs text-destructive">Motivo da Meta: {t.rejected_reason || "não informado"}. Ajuste o texto e crie de novo com outro nome.</p>
@@ -178,7 +214,7 @@ export function OfficialTemplatesTab() {
       </CardContent>
 
       <Dialog open={createOpen} onOpenChange={(o) => !saving && setCreateOpen(o)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Novo template</DialogTitle>
             <DialogDescription>Vai pra análise da Meta. Use {"{{1}}"}, {"{{2}}"}… pras variáveis (nome do lead, quem envia, data). Aprovação costuma sair em minutos ou horas.</DialogDescription>
@@ -201,6 +237,24 @@ export function OfficialTemplatesTab() {
               </div>
             </div>
             <div className="space-y-1">
+              <Label>Imagem no topo (opcional)</Label>
+              {imagem ? (
+                <div className="flex items-center gap-3 rounded-lg border p-2">
+                  <img src={imagemPrevia} alt="Imagem do template" className="h-20 w-20 rounded object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm">{imagem.name}</p>
+                    <p className="text-xs text-muted-foreground">{(imagem.size / 1024).toFixed(0)} KB · vai junto em cada envio</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8" title="Tirar a imagem" onClick={() => setImagem(null)}><X className="h-4 w-4" /></Button>
+                </div>
+              ) : (
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed p-3 text-sm text-muted-foreground hover:bg-muted/50">
+                  <ImagePlus className="h-4 w-4" /> Escolher imagem (JPG ou PNG, até 5 MB)
+                  <input type="file" accept="image/jpeg,image/png" className="hidden" onChange={(e) => { escolherImagem(e.target.files?.[0] || null); e.target.value = ""; }} />
+                </label>
+              )}
+            </div>
+            <div className="space-y-1">
               <Label>Texto</Label>
               <Textarea rows={5} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} placeholder={"Olá, {{1}}! Aqui é {{2}}, da UNV Holdings…"} />
               {varCount > 0 && <p className="text-xs text-muted-foreground">{varCount} variável(is). A Meta exige um exemplo pra cada: preencha abaixo separados por | (ex: Carlos | Natalia).</p>}
@@ -218,6 +272,14 @@ export function OfficialTemplatesTab() {
             <div className="space-y-1">
               <Label>Botões de resposta rápida (opcional, até 3, separados por vírgula)</Label>
               <Input value={form.buttons} onChange={(e) => setForm({ ...form, buttons: e.target.value })} placeholder="Pode sim, Agora não" />
+            </div>
+            <div className="space-y-1">
+              <Label>Botão de link (opcional)</Label>
+              <div className="grid grid-cols-5 gap-2">
+                <Input className="col-span-2" value={form.linkText} onChange={(e) => setForm({ ...form, linkText: e.target.value })} placeholder="Saiba mais" maxLength={25} />
+                <Input className="col-span-3" value={form.linkUrl} onChange={(e) => setForm({ ...form, linkUrl: e.target.value })} placeholder="https://..." />
+              </div>
+              <p className="text-xs text-muted-foreground">Abre uma página ou um WhatsApp (https://wa.me/55...). Sem emoji no texto do botão.</p>
             </div>
           </div>
           <DialogFooter>
