@@ -187,6 +187,21 @@ function resolveVar(v: string, nome: string, staffName: string) {
 const render = (body: string, vars: string[], nome: string, staffName: string) =>
   body.replace(/\{\{(\d+)\}\}/g, (_, n) => resolveVar(vars[Number(n) - 1] || "", nome, staffName));
 
+// Modelo com imagem no topo (Fabrício, 23/11/2026): a Meta exige o link da imagem em CADA envio.
+// O link fica em whatsapp_template_status.header_image_url; modelo sem imagem segue igual a antes.
+const imagemDoModelo = new Map<string, string | null>();
+async function imagemTopo(supabase: any, camp: any): Promise<string | null> {
+  const chave = `${camp.template_name}|${camp.template_language || "pt_BR"}`;
+  if (!imagemDoModelo.has(chave)) {
+    const { data, error } = await supabase.from("whatsapp_template_status").select("header_image_url")
+      .eq("template_name", camp.template_name).eq("language", camp.template_language || "pt_BR")
+      .not("header_image_url", "is", null).limit(1).maybeSingle();
+    if (error) { console.error("imagem do modelo:", error.message); return null; } // não guarda a falha
+    imagemDoModelo.set(chave, data?.header_image_url || null);
+  }
+  return imagemDoModelo.get(chave) || null;
+}
+
 async function enviarUm(supabase: any, camp: any, inst: any, r: any, stagesCache: Map<string, any[]>, tagId: string | null) {
   const vars: string[] = Array.isArray(camp.variables) ? camp.variables : [];
   const staffName = camp.created_by_name || "";
@@ -198,6 +213,10 @@ async function enviarUm(supabase: any, camp: any, inst: any, r: any, stagesCache
   const nome = lead?.name || r.lead_name || "";
   try {
     const params = vars.map((v) => ({ type: "text", text: resolveVar(v, nome, staffName) }));
+    const imagem = await imagemTopo(supabase, camp);
+    const components: any[] = [];
+    if (imagem) components.push({ type: "header", parameters: [{ type: "image", image: { link: imagem } }] });
+    if (params.length) components.push({ type: "body", parameters: params });
     const resp = await fetch(`https://graph.facebook.com/v21.0/${inst.phone_number_id}/messages`, {
       method: "POST",
       headers: { Authorization: `Bearer ${inst.access_token}`, "Content-Type": "application/json" },
@@ -209,7 +228,7 @@ async function enviarUm(supabase: any, camp: any, inst: any, r: any, stagesCache
         template: {
           name: camp.template_name,
           language: { code: camp.template_language || "pt_BR" },
-          components: params.length ? [{ type: "body", parameters: params }] : [],
+          components,
         },
       }),
     });
