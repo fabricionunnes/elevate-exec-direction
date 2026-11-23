@@ -161,11 +161,11 @@ export default function TrafficAnalysisPublicPage() {
 
   const loadData = async () => {
     try {
-      const { data, error } = await supabase
-        .from("traffic_analysis_forms")
-        .select("*, onboarding_projects!inner(onboarding_company_id)")
-        .eq("access_token", token)
-        .maybeSingle();
+      // Leitura por função: devolve só o formulário deste token (com o nome da empresa)
+      const { data: dataRaw, error } = await (supabase as any).rpc("consultation_form_get", {
+        p_tipo: "traffic", p_token: token,
+      });
+      const data = dataRaw as any;
 
       if (error || !data) {
         setNotFound(true);
@@ -182,15 +182,7 @@ export default function TrafficAnalysisPublicPage() {
       setForm(data as unknown as TrafficForm);
 
       // Get company name
-      const companyId = (data as any).onboarding_projects?.onboarding_company_id;
-      if (companyId) {
-        const { data: company } = await supabase
-          .from("onboarding_companies")
-          .select("name")
-          .eq("id", companyId)
-          .maybeSingle();
-        setProjectInfo({ company_name: company?.name || null });
-      }
+      setProjectInfo({ company_name: data.company_name || null });
 
       // Initialize form data from existing answers
       const initial: Record<string, string> = {};
@@ -226,10 +218,10 @@ export default function TrafficAnalysisPublicPage() {
         });
       });
 
-      const { error } = await supabase
-        .from("traffic_analysis_forms")
-        .update(payload)
-        .eq("id", form.id);
+      const { data: gravou, error: rpcError } = await (supabase as any).rpc("consultation_form_update", {
+        p_tipo: "traffic", p_token: token, p_patch: payload,
+      });
+      const error = rpcError || (gravou ? null : new Error("Formulário não encontrado"));
 
       if (error) throw error;
       if (!silent) toast.success("Respostas salvas!");
@@ -284,10 +276,10 @@ export default function TrafficAnalysisPublicPage() {
         });
       });
 
-      const { error } = await supabase
-        .from("traffic_analysis_forms")
-        .update(payload)
-        .eq("id", form!.id);
+      const { data: gravou, error: rpcError } = await (supabase as any).rpc("consultation_form_update", {
+        p_tipo: "traffic", p_token: token, p_patch: payload,
+      });
+      const error = rpcError || (gravou ? null : new Error("Formulário não encontrado"));
 
       if (error) throw error;
       setSubmitted(true);
