@@ -74,6 +74,21 @@ Deno.serve(async (req) => {
       if (companyData) companyAddress = companyData;
     }
 
+    // Pagamento de um link: o valor vem do banco, não do pedido. Antes de 23/11/2026 dava pra pagar
+    // qualquer quantia informando o link de uma fatura maior e a fatura ficava como paga.
+    if (payment_link_id) {
+      const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { data: link } = await admin.from("payment_links").select("amount_cents").eq("id", payment_link_id).maybeSingle();
+      if (!link) {
+        return new Response(JSON.stringify({ error: "Link de pagamento não encontrado" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      if (!Number.isFinite(Number(amount_cents)) || Number(amount_cents) < Number(link.amount_cents || 0)) {
+        return new Response(JSON.stringify({ error: "Valor diferente do link de pagamento" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
     if (!customer_name || !customer_email || !amount_cents || !payment_method) {
       return new Response(
         JSON.stringify({ error: "Campos obrigatórios faltando" }),
@@ -222,7 +237,8 @@ Deno.serve(async (req) => {
           paid_at: new Date().toISOString(),
           paid_amount_cents: amount_cents,
         })
-        .eq("payment_link_id", payment_link_id);
+        .eq("payment_link_id", payment_link_id)
+        .lte("amount_cents", amount_cents); // só dá baixa se o pago cobre o valor da fatura
     }
 
     // Build response
