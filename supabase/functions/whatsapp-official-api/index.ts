@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
         return await sendTextMessage(instance, params);
 
       case 'sendTemplate':
-        return await sendTemplateMessage(instance, params);
+        return await sendTemplateMessage(instance, params, supabase);
 
       case 'sendMedia':
         return await sendMediaMessage(instance, params);
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
         return await getTemplates(instance);
 
       case 'createTemplate':
-        return await createTemplate(instance, params);
+        return await createTemplate(instance, params, supabase);
 
       case 'deleteTemplate':
         return await deleteTemplate(instance, params);
@@ -104,8 +104,16 @@ async function sendTextMessage(instance: any, params: any) {
   );
 }
 
-async function sendTemplateMessage(instance: any, params: any) {
-  const { phone, templateName, languageCode = 'pt_BR', components = [] } = params;
+async function sendTemplateMessage(instance: any, params: any, supabase: any) {
+  const { phone, templateName, languageCode = 'pt_BR' } = params;
+  let components: any[] = Array.isArray(params.components) ? params.components : [];
+  // template com imagem no topo: a Meta exige o link da imagem em cada envio
+  if (!components.some((c: any) => String(c?.type || '').toLowerCase() === 'header')) {
+    const { data: tpl } = await supabase.from('whatsapp_template_status').select('header_image_url')
+      .eq('waba_id', instance.waba_id).eq('template_name', templateName).eq('language', languageCode)
+      .not('header_image_url', 'is', null).limit(1).maybeSingle();
+    if (tpl?.header_image_url) components = [{ type: 'header', parameters: [{ type: 'image', image: { link: tpl.header_image_url } }] }, ...components];
+  }
 
   const response = await fetch(
     `${GRAPH_API_URL}/${instance.phone_number_id}/messages`,
@@ -276,7 +284,29 @@ async function verifyConnection(instance: any) {
 
 // Cria template e manda pra aprovação da Meta (status volta PENDING).
 // params: { name, category: MARKETING|UTILITY, language='pt_BR', body, footer?, buttons?: string[] (quick reply), examples?: string[] }
-async function createTemplate(instance: any, params: any) {
+// Imagem do topo do modelo: a Meta não aceita link na criação, só o código de um arquivo enviado
+// pra ela (envio em duas etapas pelo aplicativo dono do token). Devolve esse código.
+async function subirImagemExemplo(instance: any, url: string): Promise<string> {
+  const img = await fetch(url);
+  if (!img.ok) throw new Error('Não consegui abrir a imagem do template');
+  const tipo = (img.headers.get('content-type') || 'image/jpeg').split(';')[0];
+  if (!/^image\/(jpeg|png)$/.test(tipo)) throw new Error('A imagem do template precisa ser JPG ou PNG');
+  const bytes = new Uint8Array(await img.arrayBuffer());
+  if (bytes.length > 5 * 1024 * 1024) throw new Error('A imagem do template passa de 5 MB');
+  const auth = { 'Authorization': `Bearer ${instance.access_token}` };
+  const app = await (await fetch(`${GRAPH_API_URL}/app`, { headers: auth })).json();
+  if (!app?.id) throw new Error('A Meta não informou o aplicativo do token: ' + (app?.error?.message || 'sem detalhe'));
+  const sessao = await (await fetch(`${GRAPH_API_URL}/${app.id}/uploads?file_length=${bytes.length}&file_type=${encodeURIComponent(tipo)}`, { method: 'POST', headers: auth })).json();
+  if (!sessao?.id) throw new Error('A Meta recusou o envio da imagem: ' + (sessao?.error?.message || 'sem detalhe'));
+  const envio = await (await fetch(`${GRAPH_API_URL}/${sessao.id}`, {
+    method: 'POST', headers: { 'Authorization': `OAuth ${instance.access_token}`, 'file_offset': '0' }, body: bytes,
+  })).json();
+  if (!envio?.h) throw new Error('A Meta recusou a imagem: ' + (envio?.error?.message || 'sem detalhe'));
+  return String(envio.h);
+}
+
+// params novos (23/11/2026): header_image_url (imagem no topo), link_button { text, url } (botão que abre um link)
+async function createTemplate(instance: any, params: any, supabase: any) {
   const name = String(params.name || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '_').slice(0, 512);
   const body = String(params.body || '').trim();
   if (!name || !body) throw new Error('Nome e texto do template são obrigatórios');
@@ -285,10 +315,23 @@ async function createTemplate(instance: any, params: any) {
   for (let i = 1; i <= n; i++) if (!vars.has(`{{${i}}}`)) throw new Error(`Variáveis precisam ser sequenciais: falta {{${i}}}`);
   const examples: string[] = Array.isArray(params.examples) ? params.examples.map((e: any) => String(e)) : [];
   while (examples.length < n) examples.push(`Exemplo ${examples.length + 1}`);
-  const components: any[] = [{ type: 'BODY', text: body, ...(n ? { example: { body_text: [examples.slice(0, n)] } } : {}) }];
+  const imagemUrl = String(params.header_image_url || '').trim();
+  const components: any[] = [];
+  if (imagemUrl) {
+    if (!/^https:\/\//i.test(imagemUrl)) throw new Error('O link da imagem precisa começar com https://');
+    components.push({ type: 'HEADER', format: 'IMAGE', example: { header_handle: [await subirImagemExemplo(instance, imagemUrl)] } });
+  }
+  components.push({ type: 'BODY', text: body, ...(n ? { example: { body_text: [examples.slice(0, n)] } } : {}) });
   if (params.footer) components.push({ type: 'FOOTER', text: String(params.footer).slice(0, 60) });
   const buttons = (Array.isArray(params.buttons) ? params.buttons : []).map((b: any) => String(b).trim()).filter(Boolean).slice(0, 3);
-  if (buttons.length) components.push({ type: 'BUTTONS', buttons: buttons.map((t: string) => ({ type: 'QUICK_REPLY', text: t.slice(0, 25) })) });
+  const linkTexto = String(params.link_button?.text || '').trim();
+  const linkUrl = String(params.link_button?.url || '').trim();
+  if ((linkTexto || linkUrl) && !(linkTexto && /^https:\/\//i.test(linkUrl))) throw new Error('Botão de link precisa do texto e de um link começando com https://');
+  const todos: any[] = [
+    ...(linkTexto ? [{ type: 'URL', text: linkTexto.slice(0, 25), url: linkUrl }] : []),
+    ...buttons.map((t: string) => ({ type: 'QUICK_REPLY', text: t.slice(0, 25) })),
+  ];
+  if (todos.length) components.push({ type: 'BUTTONS', buttons: todos });
 
   const response = await fetch(`${GRAPH_API_URL}/${instance.waba_id}/message_templates`, {
     method: 'POST',
@@ -298,6 +341,15 @@ async function createTemplate(instance: any, params: any) {
   const data = await response.json();
   console.log('[WhatsApp Official API] Create template response:', data);
   if (!response.ok) throw new Error(data.error?.error_user_msg || data.error?.message || 'Erro ao criar template');
+  // o disparo precisa do link da imagem em cada envio: fica guardado junto do acompanhamento do template
+  if (imagemUrl) {
+    const { error: eImg } = await supabase.from('whatsapp_template_status').upsert({
+      instance_id: instance.id, waba_id: instance.waba_id, template_name: name, template_id: data.id || null,
+      language: params.language || 'pt_BR', category: data.category || params.category || 'MARKETING',
+      status: data.status || 'PENDING', header_image_url: imagemUrl, atualizado_em: new Date().toISOString(),
+    }, { onConflict: 'waba_id,template_name,language' });
+    if (eImg) console.error('[WhatsApp Official API] guardar imagem do template:', eImg.message);
+  }
   return new Response(JSON.stringify({ success: true, id: data.id, status: data.status, category: data.category, name }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
