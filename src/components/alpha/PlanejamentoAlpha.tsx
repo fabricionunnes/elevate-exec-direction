@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Panel } from "@/components/painel-controle/ui";
 import { brl, fp } from "@/components/painel-controle/fmt";
 import type { DadosAlpha, PlanoMes } from "./tipos";
-import { MESES_CURTO, lucroPlano, soma, despesaFixa } from "./tipos";
+import { MESES_CURTO, MESES_NOME, lucroPlano, soma, despesaFixa } from "./tipos";
 
 const LINHAS: { k: keyof Omit<PlanoMes, "mes">; nome: string }[] = [
   { k: "receita", nome: "Faturamento" },
@@ -22,7 +22,9 @@ const fmtIn = (v: number) => (v ? Math.round(v).toLocaleString("pt-BR") : "");
 /** percentual: ponto ou vírgula são casa decimal ("8.5" e "8,5" valem 8,5) */
 const pctN = (v: string) => Number(String(v).replace(",", ".")) || 0;
 
-export function PlanejamentoAlpha({ d, anterior, projectId, onSalvo }: { d: DadosAlpha; anterior: DadosAlpha | null; projectId: string; onSalvo: () => void }) {
+export function PlanejamentoAlpha({ d, anterior, projectId, onSalvo, inicio }: { d: DadosAlpha; anterior: DadosAlpha | null; projectId: string; onSalvo: () => void; inicio?: string | null }) {
+  // quem entra no meio do ano planeja do mês de entrada até dezembro no conselho do mês 1; o ano seguinte inteiro sai em novembro
+  const mesEntrada = inicio && Number(inicio.slice(0, 4)) === d.ano ? Number(inicio.slice(5, 7)) : 1;
   // base do ano anterior, quando existe no sistema
   const base = useMemo(() => {
     if (!anterior) return null;
@@ -93,6 +95,12 @@ export function PlanejamentoAlpha({ d, anterior, projectId, onSalvo }: { d: Dado
 
   return (
     <>
+      {mesEntrada > 1 && (
+        <div className="al-aviso">
+          Você entrou em {MESES_NOME[mesEntrada - 1].toLowerCase()}. Monte aqui o plano de {MESES_NOME[mesEntrada - 1].toLowerCase()} a dezembro no conselho individual do seu mês 1, sem esperar janeiro.
+          Os meses antes da sua entrada podem ficar em branco. Em novembro, com a mesa, você monta o próximo ano inteiro.
+        </div>
+      )}
       <Panel titulo={`Planejamento ${d.ano}`} sub="as premissas montam o plano; depois tudo é editável mês a mês">
         <div className="al-form">
           <label>Faturamento do ano anterior<input className="al-in num" value={fmtIn(cfg.faturamento_ano_anterior)} onChange={(e) => setCfg({ ...cfg, faturamento_ano_anterior: n(e.target.value) })} /></label>
