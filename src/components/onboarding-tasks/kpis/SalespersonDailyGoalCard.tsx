@@ -10,6 +10,8 @@ interface SalespersonDailyGoalCardProps {
   companyId: string;
   salespersonId: string;
   salespersonName: string;
+  /** Código de acesso do vendedor: a leitura é por função, que confere o código. */
+  accessCode: string;
 }
 
 interface KpiGoalData {
@@ -51,6 +53,7 @@ export const SalespersonDailyGoalCard = ({
   companyId,
   salespersonId,
   salespersonName,
+  accessCode,
 }: SalespersonDailyGoalCardProps) => {
   const [includeSaturday, setIncludeSaturday] = useState(false);
   const [includeSunday, setIncludeSunday] = useState(false);
@@ -59,70 +62,51 @@ export const SalespersonDailyGoalCard = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!companyId) return;
-    supabase
-      .from("company_daily_goal_settings")
-      .select("include_saturday, include_sunday, include_holidays")
-      .eq("company_id", companyId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setIncludeSaturday(data.include_saturday);
-          setIncludeSunday(data.include_sunday);
-          setIncludeHolidays(data.include_holidays);
-        }
-      });
-  }, [companyId]);
-
-  useEffect(() => {
     fetchData();
-  }, [companyId, salespersonId]);
+  }, [companyId, salespersonId, accessCode]);
 
   const fetchData = async () => {
     try {
       const now = new Date();
       const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
       const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
-      const monthYear = format(now, "yyyy-MM");
 
-      const { data: kpis } = await supabase
-        .from("company_kpis")
-        .select("id, name, kpi_type, target_value, is_main_goal")
-        .eq("company_id", companyId)
-        .eq("is_active", true)
-        .eq("is_main_goal", true);
+      // Leitura única por função (confere o código de acesso do vendedor)
+      const { data: dadosRaw } = await (supabase as any).rpc("kpi_entry_dados", {
+        p_company_id: companyId, p_code: accessCode, p_date: format(now, "yyyy-MM-dd"),
+      });
+      const dados = dadosRaw as any;
 
-      if (!kpis || kpis.length === 0) {
+      const gs = dados?.goal_settings;
+      if (gs) {
+        setIncludeSaturday(!!gs.include_saturday);
+        setIncludeSunday(!!gs.include_sunday);
+        setIncludeHolidays(!!gs.include_holidays);
+      }
+
+      const kpis = (((dados?.kpis || []) as any[]).filter((k) => k.is_main_goal)) as {
+        id: string; name: string; kpi_type: string; target_value: number; is_main_goal: boolean;
+      }[];
+
+      if (kpis.length === 0) {
         setLoading(false);
         return;
       }
 
       const kpiIds = kpis.map((k) => k.id);
 
-      const [{ data: targets }, { data: allSalespeople }, { data: entries }, { data: sectors }] = await Promise.all([
-        supabase
-          .from("kpi_monthly_targets")
-          .select("kpi_id, target_value, level_name, salesperson_id, unit_id, team_id")
-          .eq("company_id", companyId)
-          .eq("month_year", monthYear)
-          .in("kpi_id", kpiIds),
-        supabase
-          .from("company_salespeople")
-          .select("id, unit_id, team_id, sector_id")
-          .eq("company_id", companyId)
-          .eq("is_active", true),
-        supabase
-          .from("kpi_entries")
-          .select("kpi_id, value")
-          .eq("salesperson_id", salespersonId)
-          .in("kpi_id", kpiIds)
-          .gte("entry_date", monthStart)
-          .lte("entry_date", monthEnd),
-        supabase
-          .from("company_sectors")
-          .select("id, name")
-          .eq("company_id", companyId),
-      ]);
+      const targets = (((dados?.targets || []) as any[]).filter((t) => kpiIds.includes(t.kpi_id))) as {
+        kpi_id: string; target_value: number; level_name: string;
+        salesperson_id: string | null; unit_id: string | null; team_id: string | null;
+      }[];
+      const allSalespeople = (dados?.salespeople || []) as {
+        id: string; unit_id: string | null; team_id: string | null; sector_id: string | null;
+      }[];
+      const entries = (((dados?.entries || []) as any[])
+        .filter((e) => kpiIds.includes(e.kpi_id) && e.entry_date >= monthStart && e.entry_date <= monthEnd)) as {
+        kpi_id: string; value: number;
+      }[];
+      const sectors = (dados?.sectors || []) as { id: string; name: string }[];
 
       // Gerentes (setor Liderança) não entram no rateio nem herdam meta do escopo
       const leadershipSectorIds = (sectors || [])
