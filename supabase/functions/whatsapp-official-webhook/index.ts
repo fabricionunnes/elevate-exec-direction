@@ -397,6 +397,11 @@ async function processIncomingMessage(
     return;
   }
 
+  // Clique em "Não tenho interesse" depois de um disparo: etiqueta Opt-out (os disparos pulam) e agente calado
+  if (ignoravel && type !== 'text' && SEM_INTERESSE_RE.test(String(content || ''))) {
+    await sairDosDisparos(supabase, conversationId);
+  }
+
   // Update conversation
   const currentUnread = existingConv?.unread_count || 0;
   await supabase
@@ -420,6 +425,30 @@ async function processIncomingMessage(
     detectCancellationIntent(content, phone).catch((err) =>
       console.error('[WhatsApp Official] Cancellation detection error (non-blocking):', err)
     );
+  }
+}
+
+// Tira o lead dos próximos disparos sem marcar perdido: quem recusa um convite pode seguir cliente ou negócio aberto.
+// deno-lint-ignore no-explicit-any
+async function sairDosDisparos(supabase: any, conversationId: string) {
+  try {
+    const { data: conv } = await supabase.from('crm_whatsapp_conversations').select('lead_id').eq('id', conversationId).maybeSingle();
+    let leadId: string | null = conv?.lead_id || null;
+    if (!leadId) {
+      const { data: rec } = await supabase.from('whatsapp_official_campaign_recipients').select('lead_id')
+        .eq('conversation_id', conversationId).not('lead_id', 'is', null).order('sent_at', { ascending: false }).limit(1);
+      leadId = rec?.[0]?.lead_id || null;
+    }
+    if (leadId) {
+      const { data: tag } = await supabase.from('crm_tags').select('id').ilike('name', 'Opt-out').limit(1).maybeSingle();
+      if (tag?.id) await supabase.from('crm_lead_tags').upsert({ lead_id: leadId, tag_id: tag.id }, { onConflict: 'lead_id,tag_id', ignoreDuplicates: true });
+    }
+    // agente fixado pelo disparo para de responder e de fazer follow-up nesta conversa
+    await supabase.from('crm_ai_agent_conversation_overrides').update({ enabled: false, updated_at: new Date().toISOString() })
+      .eq('conversation_id', conversationId).eq('channel', 'whatsapp');
+    console.log('[WhatsApp Official] Saída por botão:', conversationId, leadId);
+  } catch (e) {
+    console.error('[WhatsApp Official] sairDosDisparos', e);
   }
 }
 
@@ -584,6 +613,8 @@ async function storeOfficialMedia(
 // a pessoa mais rápida a escrever levou 89 s. Toque em botão do template chega rápido e é gente.
 const AUTO_RE = /mensagem\s+autom[aá]tica|resposta\s+autom[aá]tica|atendimento\s+(virtual|automatizado|digital)|assistente\s+virtual|agradece(mos)?\s+(a\s+|o\s+)?(sua|seu|pelo|pela)?\s*(mensagem|contato)|agrade[cç]o\s+(o\s+|a\s+)?(seu|sua|pelo|pela)?\s*(contato|mensagem)|obrigad[oa]\s+por\s+(entrar\s+em\s+)?conta(to|tar)|recebemos\s+(a\s+|sua\s+)?mensagem|n[aã]o\s+estamos\s+dispon[ií]ve|fora\s+do\s+(nosso\s+)?hor[aá]rio|hor[aá]rio\s+de\s+(atendimento|funcionamento)|retornaremos|responderemos\s+(assim|em\s+breve|o\s+mais)|entraremos\s+em\s+contato|digite\s+(o\s+n[uú]mero|uma\s+op[cç][aã]o|\d)|escolha\s+(uma|a)\s+op[cç][aã]o|selecione\s+(uma|a)\s+op[cç][aã]o|seja\s+(muito\s+)?bem[-\s]?vind|indispon[ií]vel\s+no\s+momento|desculp[ea],?\s+n[aã]o\s+(identifiquei|entendi)|j[aá]\s+fechamos/i;
 const PARAR_RE = /^\s*parar de receber/i;
+// Botão "Não tenho interesse" dos templates (Fabrício, 23/11/2026): vale como saída dos disparos.
+const SEM_INTERESSE_RE = /^\s*n[aã]o tenho interesse\s*[.!]*\s*$/i;
 const RAPIDA_DE_GENTE_RE = /^\s*(quero entrar no grupo|quero saber mais|sim|n[aã]o|tenho interesse|quero|pode sim|pode|claro|bora|vamos)\s*[.!]*\s*$/i;
 // deno-lint-ignore no-explicit-any
 async function respostaIgnoravelDeDisparo(supabase: any, conversationId: string, content: string, type: string, timestamp: string): Promise<boolean> {
@@ -596,6 +627,7 @@ async function respostaIgnoravelDeDisparo(supabase: any, conversationId: string,
     const r = data?.[0];
     if (!r) return false; // conversa sem disparo recente segue como sempre
     if (PARAR_RE.test(txt)) return true;
+    if (type !== 'text' && SEM_INTERESSE_RE.test(txt)) return true; // botão do template: saída, não conversa
     if (RAPIDA_DE_GENTE_RE.test(txt)) return false;
     const t = Date.parse(timestamp) || Date.now();
     const sentMs = Date.parse(String(r.sent_at));
