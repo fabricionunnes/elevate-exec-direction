@@ -438,7 +438,7 @@ async function ligarWatch(acc: any): Promise<Record<string, unknown>> {
 }
 
 // ── MIME pra envio ─────────────────────────────────────────────────────────────────────────────
-function montarMime(p: { from: string; to: string[]; cc?: string[]; bcc?: string[]; subject: string; html?: string; text?: string; inReplyTo?: string; references?: string; attachments?: { filename: string; mimeType: string; data: string }[] }) {
+function montarMime(p: { from: string; to: string[]; cc?: string[]; bcc?: string[]; subject: string; html?: string; text?: string; inReplyTo?: string; references?: string; attachments?: { filename: string; mimeType: string; data: string; inline?: boolean; cid?: string }[] }) {
   const b = () => "----=_Nexus_" + crypto.randomUUID().replace(/-/g, "");
   const encHeader = (s: string) => /[^\x20-\x7e]/.test(s) ? `=?UTF-8?B?${btoa(unescape(encodeURIComponent(s)))}?=` : s;
   const linhas: string[] = [
@@ -463,7 +463,11 @@ function montarMime(p: { from: string; to: string[]; cc?: string[]; bcc?: string
     `--${mix}`, `Content-Type: multipart/alternative; boundary="${alt}"`, "", ...corpoAlt,
   ];
   for (const a of p.attachments) {
-    partes.push(`--${mix}`, `Content-Type: ${a.mimeType || "application/octet-stream"}; name="${a.filename}"`, "Content-Transfer-Encoding: base64", `Content-Disposition: attachment; filename="${a.filename}"`, "", String(a.data).replace(/(.{76})/g, "$1\r\n"));
+    // imagem colada no corpo (23/11/2026): vai com Content-ID e "inline", e o HTML aponta pra ela com cid:
+    const noCorpo = !!a.inline && !!a.cid && /^[\w.@-]+$/.test(String(a.cid));
+    partes.push(`--${mix}`, `Content-Type: ${a.mimeType || "application/octet-stream"}; name="${a.filename}"`, "Content-Transfer-Encoding: base64",
+      ...(noCorpo ? [`Content-ID: <${a.cid}>`, `X-Attachment-Id: ${a.cid}`, `Content-Disposition: inline; filename="${a.filename}"`] : [`Content-Disposition: attachment; filename="${a.filename}"`]),
+      "", String(a.data).replace(/(.{76})/g, "$1\r\n"));
   }
   partes.push(`--${mix}--`);
   return partes.join("\r\n");
