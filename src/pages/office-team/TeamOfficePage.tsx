@@ -217,9 +217,13 @@ async function loadProfile(): Promise<TeamProfile | null> {
   } = await supabase.auth.getUser()
   if (!user) return null
 
-  // Visitante (login anônimo via convite): perfil reduzido, spawn na
-  // Reunião Principal, sem sala pessoal e sem dados de negócio
-  if ((user as { is_anonymous?: boolean }).is_anonymous) {
+  // Visitante (entra por convite, pela função office-guest-enter): perfil reduzido,
+  // spawn na Reunião Principal, sem sala pessoal e sem dados de negócio.
+  // A marca de visitante fica no app_metadata, que só o servidor grava.
+  const isOfficeGuest =
+    (user as { is_anonymous?: boolean }).is_anonymous === true ||
+    (user.app_metadata as Record<string, unknown> | null)?.office_guest === true
+  if (isOfficeGuest) {
     const meta = user.user_metadata as Record<string, unknown> | null
     const gname = ((meta?.guest_name as string) || 'Visitante').slice(0, 32)
     const colors = avatarColorsFor(user.id)
@@ -344,7 +348,7 @@ async function loadProfile(): Promise<TeamProfile | null> {
   }
 }
 
-/** Entrada de visitante: valida o convite, pede o nome e entra anônimo. */
+/** Entrada de visitante: valida o convite, pede o nome e abre a sessão de visitante. */
 function GuestEntry({ token }: { token: string }) {
   const [name, setName] = useState('')
   const [state, setState] = useState<'checking' | 'ok' | 'invalid' | 'joining'>('checking')
@@ -358,10 +362,21 @@ function GuestEntry({ token }: { token: string }) {
   const join = async () => {
     if (!name.trim() || state === 'joining') return
     setState('joining')
-    const { error } = await supabase.auth.signInAnonymously({
-      options: { data: { guest_name: name.trim(), invite_token: token } },
+    // O login anônimo do projeto está desligado: a função confere o convite no
+    // servidor e devolve a sessão do visitante.
+    const { data, error } = await supabase.functions.invoke('office-guest-enter', {
+      body: { token, name: name.trim() },
     })
-    if (error) {
+    const sess = data as { access_token?: string; refresh_token?: string } | null
+    if (error || !sess?.access_token || !sess.refresh_token) {
+      setState('ok')
+      return
+    }
+    const { error: sessErr } = await supabase.auth.setSession({
+      access_token: sess.access_token,
+      refresh_token: sess.refresh_token,
+    })
+    if (sessErr) {
       setState('ok')
       return
     }
