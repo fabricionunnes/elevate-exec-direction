@@ -68,23 +68,26 @@ export function AlphaProjeto({ projectId, empresa, modo, onVoltar, onSair, onMen
     setErro(null);
     const rpc = (a: number) => (supabase as any).rpc("alpha_painel", { p_project: projectId, p_ano: a });
     const db = supabase as any;
-    const [r1, r0, enc, fech, acoes, negs, salto, cob, proj] = await Promise.all([
+    const [r1, r0, enc, fech, acoes, negs, saltos, cob, proj, presTodas] = await Promise.all([
       rpc(ano), rpc(ano - 1),
       db.from("alpha_encontros").select("mes, data_presencial, data_online, presente_presencial, presente_online, tarefas, ata").eq("project_id", projectId).eq("ano", ano),
-      db.from("alpha_fechamentos").select("mes, fechado_em, observacao").eq("project_id", projectId).eq("ano", ano),
+      // todos os anos: o ciclo de 12 meses de quem entrou no meio do ano cruza a virada
+      db.from("alpha_fechamentos").select("ano, mes, fechado_em, observacao").eq("project_id", projectId),
       db.from("alpha_acoes").select("id, ano, origem, texto, responsavel, prazo, impacto_mensal, status, created_at").eq("project_id", projectId).eq("ano", ano).order("created_at", { ascending: false }),
       db.from("alpha_negocios").select("id, data, tipo, com_quem, descricao, valor, status").eq("project_id", projectId).order("data", { ascending: false }).limit(500),
-      db.from("alpha_saltos").select("tipo, descricao, investimento_total, retorno_esperado, inicio").eq("project_id", projectId).eq("ano", ano).maybeSingle(),
+      db.from("alpha_saltos").select("ano, tipo, descricao, investimento_total, retorno_esperado, inicio").eq("project_id", projectId),
       db.rpc("alpha_capital", { p_project: projectId }),
       db.from("onboarding_projects").select("created_at, contract_start_date").eq("id", projectId).maybeSingle(),
+      db.from("alpha_encontros").select("ano, mes, presente_presencial").eq("project_id", projectId),
     ]);
     const regs = enc.error ? [] : (enc.data as RegistroEncontro[]);
     setEncontros(regs);
     setExtras({
-      fechamentos: fech.error ? [] : fech.data, acoes: acoes.error ? [] : acoes.data, negocios: negs.error ? [] : negs.data,
-      salto: salto.error ? null : salto.data, cobrancas: cob.error ? null : cob.data,
-      presencas: regs.filter((x) => x.presente_presencial === true).length,
-      encontrosRegistrados: regs.filter((x) => x.presente_presencial != null).length,
+      fechamentos: fech.error ? [] : fech.data.filter((f: { ano: number }) => f.ano === ano),
+      fechamentosTodos: fech.error ? [] : fech.data,
+      presencasTodas: presTodas.error ? [] : presTodas.data,
+      saltos: saltos.error ? [] : saltos.data,
+      acoes: acoes.error ? [] : acoes.data, negocios: negs.error ? [] : negs.data, cobrancas: cob.error ? null : cob.data,
       // as tabelas novas ainda não existem no banco: as telas novas avisam em vez de quebrar
       pronto: !fech.error && !acoes.error && !negs.error,
       inicio: proj.error || !proj.data ? null : (proj.data.contract_start_date ?? proj.data.created_at ?? null),
@@ -166,7 +169,7 @@ export function AlphaProjeto({ projectId, empresa, modo, onVoltar, onSair, onMen
             {aba === "negocios" && <NegociosAlpha x={extras} ano={dados.ano} projectId={projectId} onSalvo={carregar} />}
             {aba === "mesa" && <MesaAlpha ano={dados.ano} projectId={projectId} modo={modo} irPara={ir} />}
             {aba === "capital" && <CapitalAlpha d={dados} x={extras} projectId={projectId} onSalvo={carregar} irPara={ir} />}
-            {aba === "planejamento" && <PlanejamentoAlpha d={dados} anterior={anterior} projectId={projectId} onSalvo={carregar} />}
+            {aba === "planejamento" && <PlanejamentoAlpha d={dados} anterior={anterior} projectId={projectId} onSalvo={carregar} inicio={extras.inicio} />}
             {aba === "metas" && <MetasAlpha d={dados} projectId={projectId} onSalvo={carregar} />}
             {aba === "dre" && <DreAlpha d={dados} />}
             {aba === "dfc" && <DfcAlpha d={dados} />}

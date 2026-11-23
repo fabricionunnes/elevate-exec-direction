@@ -15,12 +15,37 @@ export type Negocio = {
 export type Salto = { tipo: string | null; descricao: string | null; investimento_total: number | null; retorno_esperado: string | null; inicio: string | null };
 export type CobrancasAlpha = { atrasadas: number; pagas: number; abertas: number };
 export type ExtrasAlpha = {
-  fechamentos: Fechamento[]; acoes: Acao[]; negocios: Negocio[]; salto: Salto | null; cobrancas: CobrancasAlpha | null;
-  presencas: number; encontrosRegistrados: number; pronto: boolean;
+  fechamentos: Fechamento[]; acoes: Acao[]; negocios: Negocio[]; cobrancas: CobrancasAlpha | null; pronto: boolean;
   /** Data em que o projeto do membro começou: meses anteriores não contam para fechamento nem para o Capital. */
   inicio: string | null;
+  /** Fechamentos, presenças e saltos de todos os anos: o ciclo de 12 meses de quem entra no meio do ano cruza dois anos. */
+  fechamentosTodos: (Fechamento & { ano: number })[];
+  presencasTodas: { ano: number; mes: number; presente_presencial: boolean | null }[];
+  saltos: (Salto & { ano: number })[];
 };
-export const EXTRAS_VAZIO: ExtrasAlpha = { fechamentos: [], acoes: [], negocios: [], salto: null, cobrancas: null, presencas: 0, encontrosRegistrados: 0, pronto: false, inicio: null };
+export const EXTRAS_VAZIO: ExtrasAlpha = { fechamentos: [], acoes: [], negocios: [], cobrancas: null, pronto: false, inicio: null, fechamentosTodos: [], presencasTodas: [], saltos: [] };
+
+/* ---------- ciclo de 12 meses do membro ---------- */
+// Cada membro tem 12 meses contados do mês em que entrou. Quem entra em junho vai de junho a maio:
+// define o salto no mês 11 (conselho de balanço) e recebe o Capital no mês 12. Na renovação começa um ciclo novo.
+export type MesCiclo = { n: number; ano: number; mes: number };
+export type Ciclo = { meses: MesCiclo[]; mesAtual: number; numero: number; fimAno: number; rotulo: string };
+const MES_CURTO = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+export const nomeMesCiclo = (m: { ano: number; mes: number }) => `${MES_CURTO[m.mes - 1]}/${m.ano}`;
+export function cicloAtual(inicio: string | null, hoje = new Date()): Ciclo {
+  const y = inicio ? Number(inicio.slice(0, 4)) : hoje.getFullYear();
+  const m = inicio ? Number(inicio.slice(5, 7)) : 1;
+  const base = y * 12 + (m - 1);
+  const agora = hoje.getFullYear() * 12 + hoje.getMonth();
+  const dif = agora - base;
+  const numero = dif < 0 ? 0 : Math.floor(dif / 12);
+  const ini = base + numero * 12;
+  const meses = Array.from({ length: 12 }, (_, i) => ({ n: i + 1, ano: Math.floor((ini + i) / 12), mes: ((ini + i) % 12) + 1 }));
+  const mesAtual = dif < 0 ? 0 : dif - numero * 12 + 1;
+  return { meses, mesAtual, numero: numero + 1, fimAno: meses[11].ano, rotulo: `${nomeMesCiclo(meses[0])} a ${nomeMesCiclo(meses[11])}` };
+}
+/** Em que mês do ciclo do membro cai um mês do calendário (0 = fora do ciclo atual). */
+export const mesDoCiclo = (c: Ciclo, ano: number, mes: number) => c.meses.find((x) => x.ano === ano && x.mes === mes)?.n ?? 0;
 
 /* ---------- indicadores de base ---------- */
 export type Base = {
@@ -165,23 +190,33 @@ export function saude(d: DadosAlpha, r: Resumo, x: ExtrasAlpha, hoje = new Date(
 export const CAPITAL_VALOR = 6000;
 export const PRESENCA_MINIMA = 10;
 export type Criterio = { k: string; nome: string; ok: boolean; risco: boolean; feito: string; regra: string };
-export function criteriosCapital(d: DadosAlpha, x: ExtrasAlpha, hoje = new Date()): { criterios: Criterio[]; estado: "garantido" | "caminho" | "risco" | "fora" } {
-  const sit = situacaoMeses(d, x.fechamentos, hoje, x.inicio);
-  const passados = sit.filter((s) => s.estado !== "futuro" && s.estado !== "antes");
-  const noPrazo = sit.filter((s) => s.estado === "fechado").length;
-  const perdidos = sit.filter((s) => s.estado === "atrasado" || s.estado === "fechado_fora").length;
-  const mesAtual = hoje.getFullYear() === d.ano ? hoje.getMonth() + 1 : hoje.getFullYear() > d.ano ? 12 : 0;
+/** Os três critérios contados nos 12 meses do contrato do membro, não no ano do calendário. */
+export function criteriosCapital(x: ExtrasAlpha, hoje = new Date()): { criterios: Criterio[]; estado: "garantido" | "caminho" | "risco" | "fora"; ciclo: Ciclo } {
+  const ciclo = cicloAtual(x.inicio, hoje);
+  const sit = ciclo.meses.map((c) => {
+    const prazo = prazoFechamento(c.ano, c.mes);
+    const fimDoMes = new Date(c.ano, c.mes, 1);
+    const f = x.fechamentosTodos.find((k) => k.ano === c.ano && k.mes === c.mes);
+    if (f) return new Date(f.fechado_em) <= prazo ? "fechado" : "fechado_fora";
+    if (hoje < fimDoMes) return "futuro";
+    return hoje > prazo ? "atrasado" : "aberto";
+  });
+  const passados = sit.filter((s) => s !== "futuro").length;
+  const noPrazo = sit.filter((s) => s === "fechado").length;
+  const perdidos = sit.filter((s) => s === "atrasado" || s === "fechado_fora").length;
+  const doCiclo = x.presencasTodas.filter((p) => p.presente_presencial != null && mesDoCiclo(ciclo, p.ano, p.mes) > 0);
+  const presencas = doCiclo.filter((p) => p.presente_presencial === true).length;
+  const faltas = doCiclo.filter((p) => p.presente_presencial === false).length;
   const faltasPossiveis = 12 - PRESENCA_MINIMA;
-  const faltas = Math.max(Math.min(mesAtual, x.encontrosRegistrados) - x.presencas, 0);
   const atr = x.cobrancas?.atrasadas ?? 0;
   const criterios: Criterio[] = [
-    { k: "mensalidades", nome: "Mensalidades em dia", ok: atr === 0, risco: false, feito: atr === 0 ? `${x.cobrancas?.pagas ?? 0} pagas, nenhuma em atraso` : `${atr} em atraso`, regra: "As 12 mensalidades pagas em dia." },
-    { k: "presenca", nome: "Presença nos encontros", ok: faltas <= faltasPossiveis, risco: faltas === faltasPossiveis, feito: `${x.presencas} presenças, ${faltas} falta${faltas === 1 ? "" : "s"}`, regra: `Pelo menos ${PRESENCA_MINIMA} dos 12 encontros presenciais.` },
-    { k: "sistema", nome: "Sistema alimentado", ok: perdidos === 0, risco: sit.some((s) => s.estado === "aberto"), feito: `${noPrazo} de ${passados.length} meses fechados no prazo`, regra: "Cada mês fechado no sistema até o dia 10 do mês seguinte." },
+    { k: "mensalidades", nome: "Mensalidades em dia", ok: atr === 0, risco: false, feito: atr === 0 ? `${x.cobrancas?.pagas ?? 0} pagas, nenhuma em atraso` : `${atr} em atraso`, regra: "As 12 mensalidades do contrato pagas em dia." },
+    { k: "presenca", nome: "Presença nos encontros", ok: faltas <= faltasPossiveis, risco: faltas === faltasPossiveis, feito: `${presencas} presenças, ${faltas} falta${faltas === 1 ? "" : "s"}`, regra: `Pelo menos ${PRESENCA_MINIMA} dos 12 encontros presenciais do seu ciclo.` },
+    { k: "sistema", nome: "Sistema alimentado", ok: perdidos === 0, risco: sit.some((s) => s === "aberto"), feito: `${noPrazo} de ${passados} meses fechados no prazo`, regra: "Cada mês do ciclo fechado no sistema até o dia 10 do mês seguinte." },
   ];
   const todos = criterios.every((c) => c.ok);
-  const estado = !todos ? "fora" : mesAtual >= 12 && !criterios.some((c) => c.risco) ? "garantido" : criterios.some((c) => c.risco) ? "risco" : "caminho";
-  return { criterios, estado };
+  const estado = !todos ? "fora" : ciclo.mesAtual >= 12 && !criterios.some((c) => c.risco) ? "garantido" : criterios.some((c) => c.risco) ? "risco" : "caminho";
+  return { criterios, estado, ciclo };
 }
 
 /* ---------- simulador ---------- */
