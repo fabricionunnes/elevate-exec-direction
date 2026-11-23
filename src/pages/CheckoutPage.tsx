@@ -29,11 +29,8 @@ export default function CheckoutPage() {
       if (linkId) {
         setLoading(true);
 
-        const { data, error } = await supabase
-          .from("payment_links")
-          .select("id, description, amount_cents, payment_method, installments, provider")
-          .eq("id", linkId)
-          .maybeSingle();
+        // Leitura por função: devolve só o link deste endereço
+        const { data, error } = await (supabase as any).rpc("payment_link_get", { p_id: linkId });
 
         if (!error && data) {
           setLinkData({

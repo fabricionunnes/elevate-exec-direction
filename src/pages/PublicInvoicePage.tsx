@@ -47,24 +47,17 @@ export default function PublicInvoicePage() {
 
     const fetchInvoice = async () => {
       // Fetch invoice immediately
-      const { data } = await supabase
-        .from("company_invoices")
-        .select("*")
-        .eq("public_token", token)
-        .single();
+      // Leitura por função: devolve só a fatura deste token
+      const { data } = await (supabase as any).rpc("public_invoice_get", { p_token: token });
 
-      setInvoice(data as any);
+      setInvoice((data as any) || null);
       setLoading(false);
 
       // Update fees in background, then refresh
       supabase.functions.invoke("generate-invoices", {
         body: { action: "update_fees" },
       }).then(async () => {
-        const { data: updated } = await supabase
-          .from("company_invoices")
-          .select("*")
-          .eq("public_token", token!)
-          .single();
+        const { data: updated } = await (supabase as any).rpc("public_invoice_get", { p_token: token });
         if (updated) setInvoice(updated as any);
       });
     };
