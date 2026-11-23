@@ -32,10 +32,30 @@ async function asaasRequest(path: string, method: string, apiKey: string, body?:
   return data;
 }
 
+// Só a equipe ativa (ou uma chamada interna com a chave de serviço) pode usar esta função.
+// Antes de 23/11/2026 ela atendia qualquer um que soubesse o id da fatura.
+async function exigirEquipe(req: Request): Promise<Response | null> {
+  const negar = (status: number, error: string) =>
+    new Response(JSON.stringify({ error }), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (!token) return negar(401, "Faça login pra continuar");
+  const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  if (token === SERVICE_ROLE) return null;
+  const admin = createClient(Deno.env.get("SUPABASE_URL")!, SERVICE_ROLE);
+  const { data, error } = await admin.auth.getUser(token);
+  if (error || !data?.user) return negar(401, "Faça login pra continuar");
+  const { data: staff } = await admin.from("onboarding_staff").select("id").eq("user_id", data.user.id).eq("is_active", true).limit(1);
+  if (!staff?.length) return negar(403, "Sem permissão");
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const barrado = await exigirEquipe(req);
+  if (barrado) return barrado;
 
   try {
     const ASAAS_API_KEY = Deno.env.get("ASAAS_API_KEY");
