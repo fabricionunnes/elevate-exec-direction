@@ -86,11 +86,8 @@ export default function HrCandidateDiscPage() {
   const fetchData = async () => {
     try {
       // Find the DISC record by access_token
-      const { data: disc, error: discError } = await supabase
-        .from("candidate_disc_results")
-        .select("id, candidate_id, status")
-        .eq("access_token", token)
-        .single();
+      const { data: discRaw, error: discError } = await (supabase as any).rpc("disc_public_get", { p_token: token });
+      const disc = discRaw as { id: string; candidate_id: string; status: string } | null;
 
       if (discError || !disc) {
         setError("Link inválido ou expirado");
@@ -247,10 +244,10 @@ export default function HrCandidateDiscPage() {
       const dominantProfile = getDominantProfile(scores);
       const interpretation = getInterpretation(dominantProfile);
 
-      const { error: updateError } = await supabase
-        .from("candidate_disc_results")
-        .update({
-          status: "completed",
+      // Envio por função: grava só o teste deste token, e só enquanto estiver pendente
+      const { data: gravou, error: updateError } = await (supabase as any).rpc("disc_public_submit", {
+        p_token: token,
+        p_result: {
           d_score: scores.D,
           i_score: scores.I,
           s_score: scores.S,
@@ -258,11 +255,11 @@ export default function HrCandidateDiscPage() {
           dominant_profile: dominantProfile,
           interpretation,
           raw_responses: JSON.parse(JSON.stringify(finalAnswers)),
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", discRecord.id);
+        },
+      });
 
       if (updateError) throw updateError;
+      if (!gravou) throw new Error("Teste não encontrado ou já enviado");
 
       confetti({
         particleCount: 100,
