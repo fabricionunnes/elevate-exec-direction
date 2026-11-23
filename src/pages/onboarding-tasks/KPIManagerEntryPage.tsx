@@ -242,12 +242,10 @@ export default function KPIManagerEntryPage() {
     }
     let alive = true;
     (async () => {
-      const { data, error } = await supabase
-        .from("kpi_entries")
-        .select("salesperson_id, kpi_id, value")
-        .eq("company_id", link.company_id)
-        .eq("entry_date", entryDate)
-        .in("salesperson_id", filteredSalespeople.map((sp) => sp.id));
+      // Leitura por função: confere o código do gestor e devolve só a empresa dele
+      const { data, error } = await (supabase as any).rpc("kpi_manager_entries", {
+        p_code: (code || codeFromUrl).trim(), p_date: entryDate,
+      });
       if (!alive) return;
       if (error) {
         console.error("[KPIManager] entries error:", error);
@@ -298,36 +296,14 @@ export default function KPIManagerEntryPage() {
     }
     setSaving(true);
     try {
-      for (const cell of changedCells) {
-        const sp = salespeople.find((s) => s.id === cell.spId);
-        const kpi = kpis.find((k) => k.id === cell.kpiId);
-        if (!sp || !kpi) continue;
-        const sectorForEntry = kpi.sector_id || sp.sector_id || (spSectors[sp.id]?.length === 1 ? spSectors[sp.id][0] : null);
-
-        if (cell.existed) {
-          const { error } = await supabase
-            .from("kpi_entries")
-            .update({ value: cell.value, updated_at: new Date().toISOString() })
-            .eq("company_id", link.company_id)
-            .eq("salesperson_id", cell.spId)
-            .eq("kpi_id", cell.kpiId)
-            .eq("entry_date", entryDate);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase.from("kpi_entries").insert({
-            company_id: link.company_id,
-            salesperson_id: cell.spId,
-            kpi_id: cell.kpiId,
-            entry_date: entryDate,
-            value: cell.value,
-            unit_id: sp.unit_id,
-            team_id: sp.team_id,
-            sector_id: sectorForEntry,
-            observations: "Lançamento gerencial",
-          });
-          if (error) throw error;
-        }
-      }
+      // Gravação por função: confere o código do gestor e grava só na empresa dele
+      // (unidade, equipe e setor do lançamento são resolvidos no servidor).
+      const { error } = await (supabase as any).rpc("kpi_manager_save", {
+        p_code: (code || codeFromUrl).trim(),
+        p_date: entryDate,
+        p_cells: changedCells.map((c) => ({ salesperson_id: c.spId, kpi_id: c.kpiId, value: c.value })),
+      });
+      if (error) throw error;
 
       const next = { ...saved };
       changedCells.forEach((c) => {
