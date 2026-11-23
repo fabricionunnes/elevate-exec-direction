@@ -5,7 +5,7 @@
 // 06/11: redesenho premium. Seleção com ações em massa (lida, não lida, importante, estrela,
 // arquivar, spam, lixeira, restaurar), marcador de importante, pastas Importantes e Todos,
 // filtros rápidos, ações ao passar o mouse e atalhos de teclado (j/k, e, #, s, i, u, x, c, /).
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ClipboardEvent as RClipboardEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 // tabelas mail_* ainda não estão nos tipos gerados do Supabase
@@ -800,6 +800,27 @@ function Mensagem({ m, abertoInicial, chamar, onTraduzida, onBaixar, onEstrela, 
   useEffect(() => { setAberto(abertoInicial); }, [abertoInicial]);
   const ajustar = () => { try { const h = ref.current?.contentWindow?.document?.documentElement?.scrollHeight; if (h) setAltura(Math.min(Math.max(h + 8, 80), 4000)); } catch { /* sandbox */ } };
   const quem = nomeDe(m);
+  // Mensagem que eu mandei (Fabrício, 23/11/2026: "não consigo ver as mensagens que eu mandei"): ganha
+  // "Você", faixa e fundo próprios, pra não se perder no meio das recebidas.
+  const minha = temLabel(m, "SENT");
+  // Imagem embutida no corpo (cid:): o Gmail entrega como anexo. Ao abrir a mensagem, busca cada uma e
+  // troca o endereço cid: pelo conteúdo, senão a imagem colada aparecia quebrada na leitura.
+  const [cids, setCids] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!aberto || !m.body_html || !/cid:/i.test(m.body_html)) return;
+    const alvo = (m.attachments || []).filter((a) => a.contentId && a.attachmentId && /^image\//i.test(a.mimeType || ""));
+    if (!alvo.length) return;
+    let vivo = true;
+    alvo.forEach((a) => {
+      chamar({ action: "attachment", gmail_id: m.gmail_id, attachment_id: a.attachmentId })
+        .then((r) => { if (vivo && r?.data) setCids((p) => ({ ...p, [a.contentId as string]: `data:${a.mimeType};base64,${String(r.data).replace(/-/g, "+").replace(/_/g, "/")}` })); })
+        .catch(() => { /* fica sem a imagem */ });
+    });
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aberto, m.gmail_id]);
+  const comImagens = useMemo(() => (Object.keys(cids).length && m.body_html
+    ? { ...m, body_html: m.body_html.replace(/cid:([^"'\s>)]+)/gi, (t, id) => cids[id] || t) } : m), [m, cids]);
   const anexos = (m.attachments || []).filter((a) => !a.inline);
   // Tradução só quando pedirem: a mensagem abre sempre no original. O primeiro clique em
   // "Traduzir" chama a IA; depois a tradução fica guardada no banco e aparece na hora.
@@ -820,13 +841,14 @@ function Mensagem({ m, abertoInicial, chamar, onTraduzida, onBaixar, onEstrela, 
   };
   const mostrarTraducao = !!m.body_pt && verTraducao;
   return (
-    <div className={cn("rounded-xl border bg-card overflow-hidden transition-shadow", aberto ? "shadow-sm" : "hover:shadow-sm")}>
+    <div className={cn("rounded-xl border bg-card overflow-hidden transition-shadow", aberto ? "shadow-sm" : "hover:shadow-sm", minha && "border-l-4")} style={minha ? { borderLeftColor: NAVY, background: "rgba(13,43,94,0.04)" } : undefined}>
       <button className="w-full text-left px-4 py-3 flex items-start gap-3" onClick={() => setAberto((v) => !v)}>
-        <Avatar className="h-9 w-9 shrink-0"><AvatarFallback className="text-xs font-semibold text-white" style={{ background: corDe(m.from_email || quem) }}>{iniciais(quem)}</AvatarFallback></Avatar>
+        <Avatar className="h-9 w-9 shrink-0"><AvatarFallback className="text-xs font-semibold text-white" style={{ background: minha ? NAVY : corDe(m.from_email || quem) }}>{minha ? <Send className="h-4 w-4" /> : iniciais(quem)}</AvatarFallback></Avatar>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm truncate">{m.from_name || m.from_email}</span>
-            {m.from_name && <span className="text-xs text-muted-foreground truncate hidden sm:inline">&lt;{m.from_email}&gt;</span>}
+            {minha && <span className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white" style={{ background: NAVY }}>Você</span>}
+            <span className="font-semibold text-sm truncate">{minha ? "Você enviou" : (m.from_name || m.from_email)}</span>
+            {(minha || m.from_name) && <span className="text-xs text-muted-foreground truncate hidden sm:inline">&lt;{m.from_email}&gt;</span>}
             {temLabel(m, "IMPORTANT") && <Bookmark className="h-3 w-3 shrink-0 fill-current text-amber-500" />}
             <span className="ml-auto text-[11px] text-muted-foreground shrink-0" title={quandoLongo(m.internal_date)}>{aberto ? quandoLongo(m.internal_date) : quando(m.internal_date)}</span>
             {aberto && !mostrarTraducao && (
@@ -861,7 +883,7 @@ function Mensagem({ m, abertoInicial, chamar, onTraduzida, onBaixar, onEstrela, 
           {mostrarTraducao ? (
             <div className="px-6 py-4 text-[14px] leading-relaxed text-foreground/90 whitespace-pre-wrap [overflow-wrap:anywhere]">{corpoComLinks(m.body_pt || "")}</div>
           ) : (
-            <iframe ref={ref} title={m.subject || "e-mail"} sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin" srcDoc={docDoEmail(m)} onLoad={ajustar} style={{ height: altura }} className="w-full border-0 bg-white" />
+            <iframe ref={ref} title={m.subject || "e-mail"} sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin" srcDoc={docDoEmail(comImagens)} onLoad={ajustar} style={{ height: altura }} className="w-full border-0 bg-white" />
           )}
           {anexos.length > 0 && (
             <div className="px-4 pb-3 pt-2 border-t bg-muted/20 flex flex-wrap gap-2">
@@ -1036,7 +1058,7 @@ function Compor({ compor, conta, assinaturaPadrao, onFechar, chamar, onEnviado, 
   const [mostrarCc, setMostrarCc] = useState(inicialCc.length > 0);
   const [assunto, setAssunto] = useState(compor.modo === "novo" ? "" : compor.modo === "encaminhar" ? `Fwd: ${assuntoBase}` : `Re: ${assuntoBase}`);
   const [texto, setTexto] = useState("");
-  const [anexos, setAnexos] = useState<{ filename: string; mimeType: string; data: string; size: number }[]>([]);
+  const [anexos, setAnexos] = useState<{ filename: string; mimeType: string; data: string; size: number; inline?: boolean; cid?: string; previa?: string }[]>([]);
   const [enviando, setEnviando] = useState(false);
   // quem já salvou usa a sua (inclusive desligada); quem nunca salvou usa a padrão
   const sig = conta.signature ? (assinaturaTemConteudo(conta.signature) ? conta.signature : null) : assinaturaPadrao;
@@ -1054,28 +1076,51 @@ function Compor({ compor, conta, assinaturaPadrao, onFechar, chamar, onEnviado, 
       r.readAsDataURL(f);
     });
   };
+  // Ctrl+V com imagem (Fabrício, 23/11/2026): a imagem colada entra no corpo do e-mail, depois do texto.
+  // Texto colado segue normal. Print de tela vem sem nome, então ganha um.
+  const colar = (e: RClipboardEvent) => {
+    const imgs = Array.from(e.clipboardData?.files || []).filter((f) => f.type.startsWith("image/"));
+    if (!imgs.length) return;
+    e.preventDefault();
+    imgs.forEach((f, i) => {
+      if (f.size > 20 * 1024 * 1024) { toast.error("A imagem passa de 20 MB"); return; }
+      const r = new FileReader();
+      r.onload = () => {
+        const url = String(r.result);
+        const ext = (f.type.split("/")[1] || "png").replace("jpeg", "jpg").replace(/[^a-z0-9]/gi, "");
+        const semNome = !f.name || /^image\.(png|jpe?g|gif|webp)$/i.test(f.name);
+        setAnexos((p) => [...p, {
+          filename: semNome ? `imagem-${p.filter((a) => a.inline).length + 1}.${ext}` : f.name,
+          mimeType: f.type, data: url.split(",")[1] || "", size: f.size, inline: true,
+          cid: `img${Date.now()}${i}${Math.random().toString(36).slice(2, 8)}@nexus`, previa: url,
+        }]);
+      };
+      r.readAsDataURL(f);
+    });
+  };
   const enviar = async () => {
     const to = lista(para); if (!to.length) { toast.error("Informe pelo menos um destinatário válido"); return; }
     setEnviando(true);
     try {
       // assinatura: depois do texto e antes da mensagem citada (novo, resposta e encaminhamento)
       const assinatura = usarAssinatura && sig ? `<br>${assinaturaHtml(sig)}` : "";
-      const html = `<div style="font:14px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f2937">${escapeHtml(texto).replace(/\n/g, "<br>")}</div>${assinatura}${compor.modo === "novo" ? "" : citacao}`;
+      const imagens = anexos.filter((a) => a.inline && a.cid).map((a) => `<div style="margin:12px 0"><img src="cid:${a.cid}" alt="${atributo(a.filename)}" style="max-width:100%;height:auto;border:0"></div>`).join("");
+      const html = `<div style="font:14px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1f2937">${escapeHtml(texto).replace(/\n/g, "<br>")}</div>${imagens}${assinatura}${compor.modo === "novo" ? "" : citacao}`;
       const textoPuro = usarAssinatura && sig ? `${texto}\n\n${assinaturaTexto(sig)}` : texto;
-      await chamar({ action: "send", to, cc: lista(cc), subject: assunto, html, text: textoPuro, thread_id: compor.modo === "encaminhar" ? undefined : b?.thread_id, attachments: anexos.map(({ filename, mimeType, data }) => ({ filename, mimeType, data })) });
+      await chamar({ action: "send", to, cc: lista(cc), subject: assunto, html, text: textoPuro, thread_id: compor.modo === "encaminhar" ? undefined : b?.thread_id, attachments: anexos.map(({ filename, mimeType, data, inline, cid }) => ({ filename, mimeType, data, ...(inline && cid ? { inline: true, cid } : {}) })) });
       toast.success("E-mail enviado"); onEnviado();
     } catch (e) { toast.error((e as Error).message); } finally { setEnviando(false); }
   };
   const titulo = compor.modo === "novo" ? "Nova mensagem" : compor.modo === "encaminhar" ? "Encaminhar" : "Responder";
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onFechar(); }}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-2xl">
+      <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-2xl" onPaste={colar}>
         <DialogHeader className="px-5 pt-4 pb-2"><DialogTitle className="text-base tracking-tight" style={{ color: NAVY }}>{titulo}</DialogTitle></DialogHeader>
         <div className="px-5 space-y-2">
           <div className="flex items-center gap-2 border-b"><span className="text-xs text-muted-foreground w-12">Para</span><Input value={para} onChange={(e) => setPara(e.target.value)} placeholder="email@exemplo.com, outro@exemplo.com" className="border-0 shadow-none focus-visible:ring-0 px-0" />{!mostrarCc && <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => setMostrarCc(true)}>Cc</button>}</div>
           {mostrarCc && <div className="flex items-center gap-2 border-b"><span className="text-xs text-muted-foreground w-12">Cc</span><Input value={cc} onChange={(e) => setCc(e.target.value)} className="border-0 shadow-none focus-visible:ring-0 px-0" /></div>}
           <div className="flex items-center gap-2 border-b"><span className="text-xs text-muted-foreground w-12">Assunto</span><Input value={assunto} onChange={(e) => setAssunto(e.target.value)} className="border-0 shadow-none focus-visible:ring-0 px-0" /></div>
-          <Textarea value={texto} onChange={(e) => setTexto(e.target.value)} onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") enviar(); }} placeholder="Escreva aqui..." className="min-h-[240px] border-0 shadow-none focus-visible:ring-0 px-0 resize-y text-[14px] leading-relaxed" autoFocus />
+          <Textarea value={texto} onChange={(e) => setTexto(e.target.value)} onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") enviar(); }} placeholder="Escreva aqui... (Ctrl+V cola imagem)" className="min-h-[240px] border-0 shadow-none focus-visible:ring-0 px-0 resize-y text-[14px] leading-relaxed" autoFocus />
           {sig && sig.ativa ? (
             <div className="rounded-xl border px-3 py-2">
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -1089,9 +1134,22 @@ function Compor({ compor, conta, assinaturaPadrao, onFechar, chamar, onEnviado, 
             <button type="button" onClick={onAssinatura} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"><PenLine className="h-3 w-3" /> {sig ? "Assinatura desligada. Ligar" : "Configurar assinatura com logomarca"}</button>
           )}
           {b && compor.modo !== "novo" && <p className="text-[11px] text-muted-foreground">A mensagem original vai citada abaixo do seu texto{usarAssinatura ? " e da assinatura" : ""}.</p>}
-          {anexos.length > 0 && (
+          {anexos.some((a) => a.inline) && (
+            <div className="space-y-1">
+              <p className="text-[11px] text-muted-foreground">Imagens coladas: vão no corpo do e-mail, depois do texto.</p>
+              <div className="flex flex-wrap gap-2">
+                {anexos.map((a, i) => a.inline ? (
+                  <span key={i} className="relative inline-block rounded-lg border overflow-hidden bg-white">
+                    <img src={a.previa} alt={a.filename} className="h-20 w-auto max-w-[220px] object-contain" />
+                    <button type="button" title="Tirar a imagem" onClick={() => setAnexos((p) => p.filter((_, k) => k !== i))} className="absolute top-1 right-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80"><X className="h-3 w-3" /></button>
+                  </span>
+                ) : null)}
+              </div>
+            </div>
+          )}
+          {anexos.some((a) => !a.inline) && (
             <div className="flex flex-wrap gap-2">
-              {anexos.map((a, i) => <span key={i} className="flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs"><Paperclip className="h-3 w-3" />{a.filename} <span className="text-muted-foreground">{tamanho(a.size)}</span><button onClick={() => setAnexos((p) => p.filter((_, k) => k !== i))}><X className="h-3 w-3" /></button></span>)}
+              {anexos.map((a, i) => a.inline ? null : <span key={i} className="flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs"><Paperclip className="h-3 w-3" />{a.filename} <span className="text-muted-foreground">{tamanho(a.size)}</span><button onClick={() => setAnexos((p) => p.filter((_, k) => k !== i))}><X className="h-3 w-3" /></button></span>)}
             </div>
           )}
         </div>
