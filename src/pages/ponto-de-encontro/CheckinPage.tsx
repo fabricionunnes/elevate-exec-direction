@@ -57,12 +57,8 @@ export default function CheckinPage() {
     if (companyQuery.trim().length < 2) { setCompanies([]); setShowDropdown(false); return; }
     setLoadingCompanies(true);
     const t = setTimeout(async () => {
-      const { data } = await supabase
-        .from("onboarding_companies")
-        .select("id, name")
-        .ilike("name", `%${companyQuery.trim()}%`)
-        .limit(8);
-      setCompanies(data || []);
+      const { data } = await (supabase as any).rpc("pe_company_search", { p_query: companyQuery.trim() });
+      setCompanies((data as { id: string; name: string }[]) || []);
       setShowDropdown(true);
       setLoadingCompanies(false);
     }, 300);
