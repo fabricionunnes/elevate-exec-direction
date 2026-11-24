@@ -153,7 +153,7 @@ input.bad{border-bottom-color:var(--red)}
 
 <div class="pwrap" id="pwrap" hidden>
   <div class="pbar"><div class="pfill" id="pfill"></div></div>
-  <div class="pmeta"><span id="pstep">Pergunta 1 de 8</span><span><b id="ppct">0%</b> concluído</span></div>
+  <div class="pmeta"><span id="pstep">Pergunta 1 de 9</span><span><b id="ppct">0%</b> concluído</span></div>
 </div>
 
 <main>
@@ -163,14 +163,14 @@ input.bad{border-bottom-color:var(--red)}
   <section class="step on" id="s0">
     <p class="kicker">Diagnóstico financeiro</p>
     <h1>Descubra em 1 minuto onde o dinheiro da sua empresa <em>está vazando.</em></h1>
-    <p class="sub">São <strong>8 perguntas rápidas</strong>. No final você recebe uma leitura do seu cenário financeiro e fala direto com a UNV Finance no WhatsApp.</p>
+    <p class="sub">São <strong>9 perguntas rápidas</strong>. No final você recebe uma leitura do seu cenário financeiro e fala direto com a UNV Finance no WhatsApp.</p>
     <button type="button" class="btn" id="go">Começar o diagnóstico</button>
     <p class="hint">Leva menos de 1 minuto. Seus dados não vão pra lista nenhuma.</p>
   </section>
 
   <!-- 10 — triagem (numerada fora da sequência, mesmo padrão da UNV Ads) -->
   <section class="step" id="s10">
-    <p class="kicker">Pergunta 1 de 8</p>
+    <p class="kicker">Pergunta 1 de 9</p>
     <h2>Você é dono ou sócio da empresa?</h2>
     <p class="sub">O diagnóstico parte de caixa, dívida e faturamento. Só faz sentido pra quem decide isso.</p>
     <div class="opts" id="optEmp"></div>
@@ -180,7 +180,7 @@ input.bad{border-bottom-color:var(--red)}
 
   <!-- 1 — nome -->
   <section class="step" id="s1">
-    <p class="kicker">Pergunta 2 de 8</p>
+    <p class="kicker">Pergunta 2 de 9</p>
     <h2>Como você se chama?</h2>
     <p class="sub">Pra gente te chamar pelo nome.</p>
     <label class="f"><input id="nome" type="text" name="name" autocomplete="name" autocapitalize="words" placeholder="Seu nome completo" maxlength="80" enterkeyhint="next" /></label>
@@ -191,7 +191,7 @@ input.bad{border-bottom-color:var(--red)}
 
   <!-- 2 — whatsapp -->
   <section class="step" id="s2">
-    <p class="kicker">Pergunta 3 de 8</p>
+    <p class="kicker">Pergunta 3 de 9</p>
     <h2>Qual seu WhatsApp?</h2>
     <p class="sub">É por ali que a gente marca sua reunião de alinhamento.</p>
     <label class="f"><input id="tel" type="tel" name="tel" inputmode="numeric" autocomplete="tel" placeholder="(31) 99999-9999" maxlength="24" enterkeyhint="next" /></label>
@@ -202,7 +202,7 @@ input.bad{border-bottom-color:var(--red)}
 
   <!-- 3 — email -->
   <section class="step" id="s3">
-    <p class="kicker">Pergunta 4 de 8</p>
+    <p class="kicker">Pergunta 4 de 9</p>
     <h2>E seu melhor e-mail?</h2>
     <p class="sub">Só pra registrar no sistema. Nada de spam.</p>
     <label class="f"><input id="email" type="email" name="email" inputmode="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="voce@suaempresa.com.br" maxlength="120" enterkeyhint="next" /></label>
@@ -213,7 +213,7 @@ input.bad{border-bottom-color:var(--red)}
 
   <!-- 4 — empresa -->
   <section class="step" id="s4">
-    <p class="kicker">Pergunta 5 de 8</p>
+    <p class="kicker">Pergunta 5 de 9</p>
     <h2>Qual o nome da sua empresa?</h2>
     <p class="sub">A gente dá uma olhada antes de falar com você.</p>
     <label class="f"><input id="empresa" type="text" name="organization" autocomplete="organization" placeholder="Nome da empresa" maxlength="120" enterkeyhint="next" /></label>
@@ -224,7 +224,7 @@ input.bad{border-bottom-color:var(--red)}
 
   <!-- 5 — faturamento -->
   <section class="step" id="s5">
-    <p class="kicker">Pergunta 6 de 8</p>
+    <p class="kicker">Pergunta 6 de 9</p>
     <h2>Quanto sua empresa fatura por mês?</h2>
     <p class="sub">Uma média dos últimos meses já serve.</p>
     <div class="opts" id="optFat"></div>
@@ -232,14 +232,24 @@ input.bad{border-bottom-color:var(--red)}
     <button type="button" class="back" data-back="5">← Voltar</button>
   </section>
 
+  <!-- 13 — funcionários (qualificação). Menos que 5 entra no CRM já como perdido (Fora do ICP) -->
+  <section class="step" id="s13">
+    <p class="kicker">Pergunta 7 de 9</p>
+    <h2>Quantos funcionários você tem hoje?</h2>
+    <p class="sub">Contando com você e os sócios.</p>
+    <div class="opts" id="optFunc"></div>
+    <p class="err" id="e13"></p>
+    <button type="button" class="back" data-back="13" data-back-to="5">← Voltar</button>
+  </section>
+
   <!-- 6 — dor -->
   <section class="step" id="s6">
-    <p class="kicker">Pergunta 7 de 8</p>
+    <p class="kicker">Pergunta 8 de 9</p>
     <h2>O que mais te incomoda no financeiro hoje?</h2>
     <p class="sub">Escolhe a que mais pesa.</p>
     <div class="opts" id="optDor"></div>
     <p class="err" id="e6"></p>
-    <button type="button" class="back" data-back="6">← Voltar</button>
+    <button type="button" class="back" data-back="6" data-back-to="13">← Voltar</button>
   </section>
 
   <!-- 7 — quem cuida -->
@@ -320,6 +330,12 @@ var FAT = [
   {v:"Entre R$ 300 mil e R$ 1 milhão",    s:"300ka1m"},
   {v:"Acima de R$ 1 milhão por mês",      s:"1m+"}
 ];
+var FUNC = [
+  {v:"Menos que 5",      s:"menos5"},
+  {v:"Entre 5 e 10",     s:"5a10"},
+  {v:"Entre 10 e 20",    s:"10a20"},
+  {v:"Acima de 20",      s:"20+"}
+];
 var DOR = [
   {v:"Falta dinheiro pra pagar as contas no fim do mês", s:"caixa"},
   {v:"Dívidas e juros comendo a margem",                  s:"divida"},
@@ -359,11 +375,11 @@ if(PIXEL){
 }
 
 /* ── estado ── */
-var A = { nome:"", tel:"", email:"", empresa:"", fat:null, dor:null, quem:null, emp:null, prefill:"" };
+var A = { nome:"", tel:"", email:"", empresa:"", fat:null, func:null, dor:null, quem:null, emp:null, prefill:"" };
 var cur = 0, maxSeen = 0;
 var STEP_NAMES = { 10:"dono", 1:"nome", 2:"whatsapp", 3:"email", 4:"empresa",
-                   5:"faturamento", 6:"dor", 7:"quem_cuida" };
-var ORDEM = [10, 1, 2, 3, 4, 5, 6, 7];
+                   5:"faturamento", 13:"funcionarios", 6:"dor", 7:"quem_cuida" };
+var ORDEM = [10, 1, 2, 3, 4, 5, 13, 6, 7];
 var TOTAL = ORDEM.length;
 function numPergunta(i){
   var k = ORDEM.indexOf(i === undefined ? cur : i);
@@ -541,6 +557,13 @@ buildOpts($("optFat"), FAT, function(it){
   A.fat = it; err(5,"");
   fb("trackCustom","FormAnswer",{ field:"faturamento", value:it.s });
   if(it.s === "ate30k"){ show(12); return; }   // abaixo do mínimo: sai do fluxo, nada vai pro CRM nem vira Lead
+  show(13);
+});
+// Menos que 5 funcionários não é ICP (Fabrício, 24/11/2026): segue o fluxo e pode falar no WhatsApp,
+// mas entra no CRM já como Perdido (motivo Fora do ICP) e não dispara Lead no pixel.
+buildOpts($("optFunc"), FUNC, function(it){
+  A.func = it; err(13,"");
+  fb("trackCustom","FormAnswer",{ field:"funcionarios", value:it.s });
   show(6);
 });
 buildOpts($("optDor"), DOR, function(it){
@@ -620,9 +643,11 @@ function porQuem(){
 }
 
 /* ── envio ── */
+function foraIcp(){ return !!(A.func && A.func.s === "menos5"); }
 function payloadDesafio(){
   var parts = [];
   if(A.fat) parts.push("Faturamento: " + A.fat.v);
+  if(A.func) parts.push("Funcionários: " + A.func.v);
   if(A.dor) parts.push("Maior dor: " + A.dor.v);
   if(A.quem) parts.push("Quem cuida do financeiro: " + A.quem.v);
   return parts.join(" | ");
@@ -635,6 +660,7 @@ function waText(){
   t += "WhatsApp: " + $("tel").value + "\n";
   t += "E-mail: " + A.email + "\n";
   if(A.fat) t += "Faturamento: " + A.fat.v + "\n";
+  if(A.func) t += "Funcionários: " + A.func.v + "\n";
   if(A.dor) t += "Maior dor: " + A.dor.v + "\n";
   if(A.quem) t += "Quem cuida do financeiro: " + A.quem.v + "\n";
   t += "\nQuero agendar a reunião de alinhamento.";
@@ -647,6 +673,7 @@ function render(){
   $("rDiag").innerHTML = "<b>O que já dá pra ver:</b><br>" + esc(diagnose() + porQuem());
   var rows = [["Nome", A.nome], ["Empresa", A.empresa], ["WhatsApp", $("tel").value], ["E-mail", A.email]];
   if(A.fat) rows.push(["Faturamento", A.fat.v]);
+  if(A.func) rows.push(["Funcionários", A.func.v]);
   if(A.dor) rows.push(["Maior dor", A.dor.v]);
   if(A.quem) rows.push(["Financeiro", A.quem.v]);
   $("rRows").innerHTML = rows.map(function(r){ return "<li><span>" + esc(r[0]) + "</span><b>" + esc(r[1]) + "</b></li>"; }).join("");
@@ -670,6 +697,9 @@ function finish(){
     email: A.email,
     empresa: A.empresa,
     desafio: payloadDesafio(),
+    funcionarios: A.func ? A.func.v : undefined,
+    fora_icp: foraIcp() || undefined,
+    motivo_perda: foraIcp() ? "Fora do ICP" : undefined,
     utm_source: qp("utm_source") || "unvfinance-forms", utm_medium: qp("utm_medium"),
     utm_campaign: qp("utm_campaign"), utm_content: qp("utm_content"), utm_term: qp("utm_term"),
     fbclid: qp("fbclid"),
@@ -688,9 +718,14 @@ function finish(){
   }).then(function(res){
     if(!res.ok) throw new Error((res.data && res.data.error) || "Erro ao enviar");
     var leadId = res.data && res.data.lead_id;
-    trk({ status: "enviou", lead: leadId });
-    fb("track","Lead", { content_name:"Diagnóstico UNV Finance", content_category:A.fat ? A.fat.s : "", value:1, currency:"BRL" },
-       leadId ? { eventID: leadId + ":Lead" } : undefined);
+    trk({ status: foraIcp() ? "enviou_fora_icp" : "enviou", lead: leadId });
+    if(foraIcp()){
+      // não é lead: não manda Lead pro Meta (senão a campanha aprende a trazer esse perfil)
+      fb("trackCustom","LeadForaICP",{ form:"unvfinance-diagnostico", funcionarios:A.func.s });
+    } else {
+      fb("track","Lead", { content_name:"Diagnóstico UNV Finance", content_category:A.fat ? A.fat.s : "", value:1, currency:"BRL" },
+         leadId ? { eventID: leadId + ":Lead" } : undefined);
+    }
     render();
   }).catch(function(e){
     sending = false;

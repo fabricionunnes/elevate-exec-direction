@@ -158,6 +158,7 @@ Deno.serve(async (req) => {
       utm_source, utm_medium, utm_campaign, utm_content, utm_term,
       fbclid, ad_name, adset_name, campaign_name,
       meta_campaign_id, meta_adset_id, meta_ad_id,
+      funcionarios, fora_icp, motivo_perda,
     } = body;
 
     if (!form_token) return jsonResponse({ error: 'Token do formulário é obrigatório' }, 400);
@@ -222,6 +223,7 @@ Deno.serve(async (req) => {
           entered_pipeline_at: reentryAt,
           ...(empresa ? { company: empresa } : {}),
           ...(desafio ? { main_pain: desafio } : {}),
+          ...(funcionarios ? { employee_count: String(funcionarios).slice(0, 60) } : {}),
           ...(observacao && !(existingLead.notes || '').includes(String(observacao).slice(0, 300))
             ? { notes: existingLead.notes ? `${existingLead.notes} | ${String(observacao).slice(0, 300)}` : String(observacao).slice(0, 300) }
             : {}),
@@ -292,6 +294,33 @@ Deno.serve(async (req) => {
     }
 
     if (!stage) return jsonResponse({ error: 'Pipeline sem etapas configuradas' }, 500);
+
+    // Fora do ICP (ex.: Finance com menos de 5 funcionários): o lead entra no CRM já como perdido,
+    // na etapa final de perda do funil. Como a etapa inicial é final_type='lost', o gatilho capi_lead
+    // não manda "Lead" pro Meta. Se o funil não tiver etapa de perda, entra normal.
+    let lostInsert: Record<string, unknown> = {};
+    let entryStageId = stage.id;
+    if (fora_icp === true) {
+      const { data: lostStage } = await supabase
+        .from('crm_stages')
+        .select('id')
+        .eq('pipeline_id', form.pipeline_id)
+        .eq('is_final', true)
+        .eq('final_type', 'lost')
+        .limit(1)
+        .maybeSingle();
+      if (lostStage) {
+        const { data: reason } = await supabase
+          .from('crm_loss_reasons')
+          .select('id')
+          .ilike('name', String(motivo_perda || 'Fora do ICP'))
+          .eq('is_active', true)
+          .limit(1)
+          .maybeSingle();
+        entryStageId = lostStage.id;
+        lostInsert = { closed_at: new Date().toISOString(), loss_reason_id: reason?.id || null };
+      }
+    }
 
     const { data: owner } = await supabase
       .from('onboarding_staff')
@@ -368,7 +397,9 @@ Deno.serve(async (req) => {
         notes,
         urgency: 'medium',
         pipeline_id: form.pipeline_id,
-        stage_id: stage.id,
+        stage_id: entryStageId,
+        ...lostInsert,
+        ...(funcionarios ? { employee_count: String(funcionarios).slice(0, 60) } : {}),
         owner_staff_id: owner?.id || null,
         origin_id: origin?.id || null,
         entered_pipeline_at: new Date().toISOString(),
@@ -438,7 +469,7 @@ Deno.serve(async (req) => {
           company_name: empresa || "",
           pipeline_id: form.pipeline_id,
           pipeline_name: pipelineName,
-          stage_id: stage.id,
+          stage_id: entryStageId,
           stage_name: "",
         },
       });
