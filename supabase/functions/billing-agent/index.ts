@@ -393,6 +393,52 @@ async function faturasVencidas(supabase: any, hoje: string, companyId?: string) 
   return todas.filter((f) => f.send_whatsapp !== false);
 }
 
+/** Próximas parcelas a vencer (hoje em diante), ainda não pagas. O agente não cobra essas: usa pra
+ *  informar data, valor e link quando o cliente pergunta ou quer pagar antes (caso Itinerarte, 24/11/2026:
+ *  a parcela vencia no dia seguinte e o agente respondia "não há nenhuma fatura em aberto"). */
+async function faturasAVencer(supabase: any, hoje: string, companyId: string) {
+  const { data } = await supabase.from("company_invoices").select(`${CAMPOS_FATURA}, auto_debit`)
+    .eq("company_id", companyId).eq("status", "pending").is("paid_at", null).gte("due_date", hoje)
+    .order("due_date", { ascending: true }).limit(3);
+  return (data || []).filter((f: any) => f.send_whatsapp !== false);
+}
+/** Link do Asaas cuja cobrança foi removida lá: a página abre, mas avisa que não dá pra pagar.
+ *  Melhor esforço: qualquer erro de leitura conta como link bom. */
+async function linkRemovido(url: string): Promise<boolean> {
+  if (!/asaas\.com\/i\//i.test(String(url || ""))) return false;
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 6000);
+    const r = await fetch(url, { signal: ctl.signal, headers: { "User-Agent": "Mozilla/5.0" } });
+    clearTimeout(t);
+    if (!r.ok) return false;
+    const html = await r.text();
+    return /removida pelo seu fornecedor|N[ãa]o [ée] poss[íi]vel realizar o pagamento/i.test(html);
+  } catch { return false; }
+}
+/** Desconto de quem paga até a véspera do vencimento (5%, o mesmo da régua e da cobrança no Asaas).
+ *  Não vale pra link de cartão nem pra débito automático. Devolve null quando não se aplica hoje. */
+function descontoAntecipado(f: any, hoje: string): { ate: string; valor: number; desconto: number } | null {
+  if (linkDeCartao(f) || f.auto_debit || !/asaas\.com/i.test(String(f.payment_link_url || ""))) return null;
+  const ate = somaDias(f.due_date, -1);
+  if (hoje > ate) return null;
+  const desconto = Math.round(f.amount_cents * 0.05);
+  return { ate, valor: f.amount_cents - desconto, desconto };
+}
+function blocoAVencer(proximas: any[], hoje: string) {
+  return proximas.map((f, i) => {
+    const dias = diffDias(f.due_date, hoje);
+    const quando = dias === 0 ? "hoje" : dias === 1 ? "amanhã" : `em ${dias} dias`;
+    const parcela = f.installment_number && f.total_installments && f.total_installments > 1 ? ` (parcela ${f.installment_number}/${f.total_installments})` : "";
+    const base = `${i + 1}. ${f.description || "Fatura"}${parcela}. Valor ${brl(f.amount_cents)}. Vence em ${ddmmaaaa(f.due_date)} (${quando}).`;
+    if (f.auto_debit) return `${base} DÉBITO AUTOMÁTICO por Pix: o valor sai sozinho no vencimento, não precisa de link.`;
+    if (f.link_removido) return `${base} LINK INDISPONÍVEL: a cobrança foi removida no Asaas e o financeiro já foi avisado pra gerar outra. Não envie link desta parcela.`;
+    if (!f.payment_link_url || f.payment_link_url === "pending") return `${base} Ainda sem link de pagamento gerado.`;
+    const d = descontoAntecipado(f, hoje);
+    return `${base}${d ? ` Pagando até ${ddmmaaaa(d.ate)} tem 5% de desconto (${brl(d.desconto)}), fica ${brl(d.valor)}; o próprio link já aplica.` : ""} Link de pagamento: ${f.payment_link_url}`;
+  }).join("\n");
+}
+
 /** Conferência extra no Asaas: fatura que já consta recebida lá não é cobrada,
  *  mesmo que a baixa ainda não tenha chegado no Nexus. Melhor esforço: erro = segue o banco. */
 async function pagaNoAsaas(supabase: any, fatura: any): Promise<boolean> {
@@ -565,7 +611,7 @@ const ORIENTACAO_FAIXA: Record<number, string> = {
   4: "ÚLTIMO AVISO. Tom formal e definitivo, sem ameaça e sem adjetivo. Informe que é a última tentativa de resolver por aqui antes das medidas previstas em contrato e peça o pagamento ou um retorno hoje.",
 };
 
-function promptBase(cfg: any, empresa: any, faturas: any[], caso: any, faixa: number, motivos: string[], hoje: string) {
+function promptBase(cfg: any, empresa: any, faturas: any[], caso: any, faixa: number, motivos: string[], hoje: string, proximas: any[] = []) {
   const limite = somaDias(hoje, Number(cfg.max_promise_days ?? 7));
   // Todas as parcelas em aberto com link de cartão: nada de multa e juros no tom nem nas consequências
   const soCartao = faturas.length > 0 && faturas.every(linkDeCartao);
@@ -583,7 +629,16 @@ CLIENTE
 Empresa: ${empresa.name}${contato ? `\nContato: ${contato}` : ""}
 
 FATURAS EM ABERTO (única fonte de verdade para valores, datas e links)
-${faturas.length ? blocoFaturas(faturas, hoje) : "NENHUMA. O sistema não mostra parcela vencida em aberto para este cliente agora. Não cobre. Se ele falou de pagamento, agradeça e encerre."}
+${faturas.length ? blocoFaturas(faturas, hoje) : (proximas.length ? `NENHUMA VENCIDA. Este cliente não está em atraso: não cobre e não fale de atraso, multa ou juros.
+
+PRÓXIMAS PARCELAS A VENCER (não é cobrança; use pra responder o que ele perguntar)
+${blocoAVencer(proximas, hoje)}
+
+COMO AGIR SEM PARCELA VENCIDA
+- Nunca diga que não existe fatura, mensalidade ou cobrança em aberto: existe parcela a vencer. Diga que não há nada vencido e que a próxima vence na data da lista.
+- Se ele pedir o link, perguntar quando vence ou disser que quer pagar, informe valor e vencimento da parcela mais próxima e mande o link dela, sozinho numa linha.
+- Desconto por pagar antes do vencimento: só o que estiver escrito na lista, com o valor de lá. Querer esse desconto não é pedido de negociação, não passe pra humano por isso.
+- Se ele disser que o link não abre, está excluído, cancelado ou com erro: use a ferramenta link_com_problema, que confere o link na hora, e siga o que ela devolver. Parcela marcada LINK INDISPONÍVEL já foi conferida: diga que o link estava com erro e que vamos gerar outro e enviar ainda hoje. Nunca diga "vou verificar" sem usar a ferramenta, e nunca diga que está tudo certo quando ele não conseguiu pagar.` : "NENHUMA. O sistema não mostra parcela vencida nem parcela a vencer para este cliente agora. Não cobre. Se ele falou de pagamento, agradeça e encerre.")}
 
 CONTEXTO DO CLIENTE (lido das conversas anteriores dele com o time da UNV e das anotações do financeiro)
 ${[caso?.manual_note ? `Anotação do financeiro (vale acima do resto): ${caso.manual_note}` : "", caso?.context_summary || ""].filter(Boolean).join("\n") || "Sem histórico relevante."}
@@ -612,6 +667,7 @@ REGRAS QUE NÃO MUDAM
 10. Não repita a mensagem anterior. Leia a conversa e varie a abertura e o argumento.
 11. Imagens e PDFs do cliente chegam descritos entre parênteses, "(imagem do cliente: ...)". Você VÊ o que está neles: responda com base no conteúdo (ex.: print da fatura com multa e juros, explique a multa e os juros com os valores do bloco FATURAS). Nunca diga que não consegue abrir ou ver arquivo.${algumCartao ? `
 12. Parcela marcada no bloco FATURAS como LINK DE CARTÃO DE CRÉDITO não tem multa nem juros: o valor a pagar é o que está escrito ali. Pra ela, nunca cite multa, juros, valor atualizado nem diga que algo "segue correndo", mesmo que outra regra ou o retorno de uma ferramenta mande lembrar disso. Se o cliente perguntar, diga que no link do cartão o valor é esse mesmo.` : ""}
+13. Se o cliente disser que o link de pagamento não abre, está excluído, cancelado ou dá erro, use a ferramenta link_com_problema antes de responder: ela confere o link na hora. Link com erro de verdade, diga que estava com erro e que vamos gerar outro e enviar ainda hoje, sem reenviar o antigo. Link funcionando, reenvie e peça pra tentar de novo. Nunca responda "vou verificar" sem usar a ferramenta.
 
 ESTILO
 Escreva como uma pessoa escreve no WhatsApp. Frases curtas, no máximo 2 parágrafos pequenos. Sem emojis, sem travessão, sem dois-pontos, sem lista, sem negrito. Sem "espero que esteja bem" e sem interjeição de animação. No máximo uma pergunta por mensagem. O link vai sozinho numa linha.${cfg.extra_instructions ? `\n\nORIENTAÇÕES DA UNV\n${cfg.extra_instructions}` : ""}`;
@@ -906,6 +962,11 @@ function ferramentas(cfg: any, hoje: string) {
       input_schema: { type: "object", properties: { o_que_entregou: { type: "string", description: "O que o cliente enviou ou informou, e a qual combinado isso se refere" } }, required: ["o_que_entregou"] },
     },
     {
+      name: "link_com_problema",
+      description: "Use sempre que o cliente disser que o link de pagamento não abre, está excluído, cancelado ou dá erro. Confere na hora se o link está mesmo com erro no Asaas: se estiver, avisa o financeiro pra gerar outro; se não estiver, devolve o link bom pra você reenviar.",
+      input_schema: { type: "object", properties: { detalhe: { type: "string", description: "O que o cliente disse sobre o link" } }, required: ["detalhe"] },
+    },
+    {
       name: "passar_para_humano",
       description: "Desliga o agente para este cliente e avisa a direção da UNV no WhatsApp. Use em qualquer pedido de cancelamento, qualquer reclamação ou insatisfação, contestação, advogado ou Procon, pedido pra parar de receber mensagem, pessoa que não é a responsável.",
       input_schema: { type: "object", properties: { motivo: { type: "string" } }, required: ["motivo"] },
@@ -968,6 +1029,28 @@ async function executarFerramenta(supabase: any, cfg: any, ctx: any, nome: strin
     ctx.patch = { ...ctx.patch, paused_until: `${somaDiasUteis(hoje, 3)}T12:00:00.000Z`, pause_reason: "aguardando confirmação de baixa" };
     return "OK: direção avisada e cobrança pausada. Diga ao cliente que recebeu e que o financeiro confirma a baixa.";
   }
+  if (nome === "link_com_problema") {
+    // Fabrício, 24/11/2026: "o agente tem que ver se de fato está com erro, e se sim, avisar o cliente que
+    // vai gerar outro e aí sim me notificar". Confere o link no Asaas antes de qualquer coisa.
+    const candidatas = [...faturas, ...(ctx.proximas || [])].filter((f: any) => f.payment_link_url && f.payment_link_url !== "pending" && !f.auto_debit).slice(0, 3);
+    const mortas: any[] = [];
+    for (const f of candidatas) {
+      if (f.link_removido === undefined) f.link_removido = await linkRemovido(f.payment_link_url);
+      if (f.link_removido) mortas.push(f);
+    }
+    if (!mortas.length) {
+      const boa = candidatas[0];
+      return boa
+        ? `CONFERIDO: o link está funcionando no Asaas agora (${boa.payment_link_url}). Não avisei o financeiro. Reenvie esse link sozinho numa linha, peça pra ele tentar de novo e, se continuar sem abrir, pedir um print do erro por aqui.`
+        : "CONFERIDO: não há link de pagamento gerado pra este cliente. Diga que o financeiro envia o link.";
+    }
+    if (!(await jaAvisouHoje(supabase, empresa.id, "link_com_problema", hoje))) {
+      const lista = mortas.map((f: any) => `parcela de ${ddmm(f.due_date)} (${brl(f.amount_cents)}): ${f.payment_link_url}`).join("\n");
+      await avisarDono(supabase, cfg, `Cobrança: o link de pagamento da ${empresa.name} está com erro de verdade (cobrança removida no Asaas) e o cliente quer pagar.\n${lista}\n\nO cliente disse: "${String(input?.detalhe || "").slice(0, 200)}". Avisei que vamos gerar outro link. Gera e manda pra ele.\n\nTelefone: ${caso?.phone || ""}`, { company_id: empresa.id }, simulando);
+      if (!simulando) await registrar(supabase, { company_id: empresa.id, direction: "outbound", kind: "link_com_problema", status: "sent", content: String(input?.detalhe || "").slice(0, 300), phone: caso?.phone || null, invoice_ids: mortas.map((f: any) => f.id) });
+    }
+    return "CONFERIDO: o link está mesmo com erro (a cobrança foi removida no Asaas) e o financeiro já foi avisado. Diga ao cliente, em uma frase, que o link estava com erro e que vamos gerar outro e enviar ainda hoje. Não reenvie o link antigo.";
+  }
   if (nome === "passar_para_humano") {
     ctx.patch = { ...ctx.patch, status: "humano", pause_reason: String(input?.motivo || "").slice(0, 300) };
     await avisarDono(supabase, cfg, `Cobrança: ${empresa.name} precisa de você (${total} em aberto). Motivo: ${String(input?.motivo || "").slice(0, 300)}. Desliguei o agente pra esse cliente, não cobro nem respondo mais até religarem na tela.\n\nO que ele escreveu:\n"${String(ctx.fala || "").slice(0, 700)}"\n\nTelefone: ${caso?.phone || ""}`, { company_id: empresa.id }, simulando);
@@ -1026,12 +1109,32 @@ async function responderCliente(supabase: any, cfg: any, conv: any, caso: any, m
   const faturas = (await faturasVencidas(supabase, hoje, companyId)).filter((f) => f.payment_link_url && f.payment_link_url !== "pending");
   const casoAtual = { ...caso, last_inbound_at: new Date().toISOString(), unanswered: 0 };
   const { faixa, motivos } = faturas.length ? calcularFaixa(cfg, diffDias(hoje, faturas[0].due_date), casoAtual) : { faixa: 1, motivos: ["sem parcela vencida em aberto"] };
-  const system = promptBase(cfg, empresa, faturas, casoAtual, faixa, motivos, hoje);
-  const tools = faturas.length ? ferramentas(cfg, hoje) : ferramentas(cfg, hoje).filter((t) => t.name === "passar_para_humano");
-  const ctx: any = { empresa, caso: casoAtual, faturas, hoje, simulando, patch: {}, fala: falaCliente };
+  // Sem parcela vencida: o agente passa a enxergar as próximas a vencer, pra informar e mandar o link certo.
+  let proximas: any[] = [];
+  if (!faturas.length) {
+    proximas = await faturasAVencer(supabase, hoje, companyId);
+    for (const f of proximas.slice(0, 2)) {
+      if (!f.auto_debit && f.payment_link_url && f.payment_link_url !== "pending") f.link_removido = await linkRemovido(f.payment_link_url);
+    }
+    const morto = proximas.find((f) => f.link_removido);
+    if (morto && !(await jaAvisouHoje(supabase, companyId, "link_com_problema", hoje))) {
+      await avisarDono(supabase, cfg, `Cobrança: o link de pagamento da ${empresa.name} está com erro de verdade (cobrança removida no Asaas) e o cliente está falando comigo.\nparcela de ${ddmm(morto.due_date)} (${brl(morto.amount_cents)}): ${morto.payment_link_url}\n\nAvisei que vamos gerar outro link. Gera e manda pra ele.\n\nTelefone: ${caso.phone}`, { company_id: companyId, conversation_id: conv.id }, simulando);
+      if (!simulando) await registrar(supabase, { company_id: companyId, direction: "outbound", kind: "link_com_problema", status: "sent", content: "link removido no Asaas", phone: caso.phone, conversation_id: conv.id, invoice_ids: [morto.id] });
+    }
+  }
+  const system = promptBase(cfg, empresa, faturas, casoAtual, faixa, motivos, hoje, proximas);
+  const tools = faturas.length
+    ? ferramentas(cfg, hoje)
+    : ferramentas(cfg, hoje).filter((t) => t.name === "passar_para_humano" || (proximas.length && t.name === "link_com_problema"));
+  const ctx: any = { empresa, caso: casoAtual, faturas, proximas, hoje, simulando, patch: {}, fala: falaCliente };
   await descreverMidias(supabase, cfg, hist);
   const msgs: any[] = turnos(hist);
   const permitidos = valoresPermitidos(faturas, hoje);
+  for (const f of proximas) {
+    permitidos.add(f.amount_cents);
+    const d = descontoAntecipado(f, hoje);
+    if (d) { permitidos.add(d.valor); permitidos.add(d.desconto); }
+  }
 
   let texto = "";
   let cobrouValor = false;
