@@ -271,6 +271,73 @@ Regras de escrita:
   return await textoIA(prompt, 500);
 }
 
+// ── Planilha diária (23/11/2026): empresa em que a gestão manda no grupo o quadro "acompanhamento de
+// vendas diário". A função kpi-planilha-diaria lê o print, alimenta o Nexus e chama este resumo com os
+// números do quadro (body.aposPlanilha). Aqui não existe "faltou lançar": a fonte é o quadro.
+type PlanilhaDia = {
+  dia: string; meta_dia: number | null; vendido_dia: number; vendido_mes: number;
+  linhas: { nome: string; meta_dia: number | null; vendido_dia: number; vendido_total: number }[];
+};
+function planilhaFatos(p: PlanilhaDia) {
+  const venderam = p.linhas.filter((l) => l.vendido_dia > 0).sort((a, b) => b.vendido_dia - a.vendido_dia);
+  const semVendaHoje = p.linhas.filter((l) => l.vendido_dia <= 0 && l.vendido_total > 0).map((l) => l.nome);
+  const zeradosNoMes = p.linhas.filter((l) => l.vendido_dia <= 0 && l.vendido_total <= 0).map((l) => l.nome);
+  const top = [...p.linhas].filter((l) => l.vendido_total > 0).sort((a, b) => b.vendido_total - a.vendido_total).slice(0, 3);
+  const pctDia = p.meta_dia && p.meta_dia > 0 ? Math.round((p.vendido_dia / p.meta_dia) * 100) : null;
+  return { venderam, semVendaHoje, zeradosNoMes, top, pctDia };
+}
+function resumoPlanilhaSemIA(companyName: string, p: PlanilhaDia): string {
+  const sauda = { manhã: "Bom dia", tarde: "Boa tarde", noite: "Boa noite" }[brDayPeriod()];
+  const f = planilhaFatos(p);
+  const linhas = [
+    `Vendido hoje: ${brl(p.vendido_dia)}${f.pctDia != null ? ` (${f.pctDia}% da meta do dia de ${brl(p.meta_dia!)})` : ""}`,
+    f.venderam.length ? `Quem vendeu: ${f.venderam.map((l) => `${l.nome} ${brl(l.vendido_dia)}`).join(", ")}` : "Ninguém vendeu hoje.",
+    `Acumulado do mês: ${brl(p.vendido_mes)}`,
+  ];
+  return `${sauda}, time ${companyName}. Fechamento de hoje pelo quadro do grupo:\n\n${linhas.join("\n")}`;
+}
+async function generatePlanilhaSummary(companyName: string, p: PlanilhaDia): Promise<string> {
+  const f = planilhaFatos(p);
+  const dados = [
+    `- Vendido hoje: ${brl(p.vendido_dia)}${f.pctDia != null ? ` | Meta do dia: ${brl(p.meta_dia!)} (${f.pctDia}% da meta do dia)` : ""}`,
+    `- Acumulado do mês: ${brl(p.vendido_mes)}`,
+    f.venderam.length
+      ? `- Quem vendeu hoje: ${f.venderam.map((l) => `${l.nome} ${brl(l.vendido_dia)}${l.meta_dia && l.vendido_dia >= l.meta_dia ? " (bateu a meta do dia dela/dele)" : ""}`).join(", ")}`
+      : `- Ninguém vendeu hoje.`,
+    f.semVendaHoje.length ? `- Sem venda hoje (mas com venda no mês): ${f.semVendaHoje.join(", ")}` : "",
+    f.zeradosNoMes.length ? `- Ainda sem nenhuma venda no mês: ${f.zeradosNoMes.join(", ")}` : "",
+    f.top.length ? `- Maiores acumulados do mês: ${f.top.map((l) => `${l.nome} ${brl(l.vendido_total)}`).join(", ")}` : "",
+  ].filter(Boolean).join("\n");
+  const prompt = `Você é Marcelo Almeida, diretor comercial da UNV que acompanha o time do cliente ${companyName} no grupo de gestão do WhatsApp. A gestão acabou de mandar no grupo o quadro de vendas do dia. Escreva o RESUMO DO DIA pra mandar NO GRUPO agora, com base só nesses números.
+
+Números do quadro de hoje:
+${dados}
+
+Regras de escrita:
+- Tom de diretor comercial: direto, humano, sem emoji, sem enrolação, português do Brasil.
+- 5 a 7 linhas no máximo. Agora é ${brDayPeriod()}: comece com a saudação certa pro horário, curta, ao time.
+- Traga o vendido do dia contra a meta do dia, o acumulado do mês e cite pelo nome TODOS que venderam hoje, com o valor de cada um.
+- Destaque 1 vitória (quem puxou o dia) OU 1 ponto de atenção (dia abaixo da meta, gente sem venda).
+- Termine com 1 ação concreta pra amanhã, de EXECUÇÃO (ex: follow-up nas análises em aberto, retomar quem ficou de responder, priorizar a lista de leads).
+- Os números vieram do quadro que a própria gestão mandou: NÃO peça lançamento no sistema e não diga que faltou lançar.
+- O quadro não traz quantidade de vendas: fale só de valores em reais e não invente número de vendas.
+- NUNCA marque, prometa ou sugira reunião, call ou compromisso com dia/horário.
+- Não invente número que não está na lista. Não use markdown, só texto corrido/linhas.
+- Varie a construção do texto a cada dia: essa mensagem sai diariamente e não pode parecer repetida.`;
+  return await textoIA(prompt, 500);
+}
+const NUDGE_PLANILHA: ((c: string, s: string) => string)[] = [
+  (c, s) => `${s}, time ${c}. Ainda não recebi o quadro de vendas de hoje aqui no grupo. Manda o print do acompanhamento que eu fecho o dia e devolvo a leitura.`,
+  (c, s) => `${s}, ${c}. Fiquei sem o acompanhamento de vendas de hoje. Assim que o quadro chegar aqui no grupo eu atualizo os números e mando o resumo do dia.`,
+  (c, s) => `${s}, time ${c}. O quadro de vendas de hoje ainda não apareceu por aqui. Manda o print quando fechar o dia que eu devolvo o que subiu, o que caiu e onde focar amanhã.`,
+  (c, s) => `${s}, ${c}. Hoje o acompanhamento de vendas não chegou no grupo. Me manda o quadro que eu fecho os números do dia com vocês.`,
+];
+function nudgePlanilha(companyName: string): string {
+  const sauda = { manhã: "Bom dia", tarde: "Boa tarde", noite: "Boa noite" }[brDayPeriod()];
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+  return NUDGE_PLANILHA[dayOfYear % NUDGE_PLANILHA.length](companyName, sauda);
+}
+
 // Cobrança quando não há número lançado. NÃO pode ser idêntica todos os dias:
 // a IA escreve um texto novo (com a saudação certa pro horário); se falhar,
 // cai num pool rotacionado por dia+empresa.
@@ -365,6 +432,13 @@ function dueAgora(hhmm: string): boolean {
   const alvo = (h || 0) * 60 + (m || 0);
   return agora >= alvo && agora < alvo + 180;
 }
+// Planilha diária: quanto o agendado espera o quadro depois do horário do resumo.
+const ESPERA_PLANILHA_MIN = 90;
+function minutosDesde(hhmm: string): number {
+  const br = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  const [h, m] = (hhmm || "19:30").split(":").map(Number);
+  return br.getHours() * 60 + br.getMinutes() - ((h || 0) * 60 + (m || 0));
+}
 function hourNum(hhmm: string): number {
   const [h, m] = (hhmm || "19:30").split(":").map(Number);
   return h + (m || 0) / 60;
@@ -375,17 +449,24 @@ function hourNum(hhmm: string): number {
 async function processCompany(
   supabase: SupabaseClient,
   c: { id: string; name: string },
-  opts: { morning: boolean; live: boolean; dry: boolean; instance: string | null; group: { jid: string; name: string }; flags?: boolean },
+  opts: { morning: boolean; live: boolean; dry: boolean; instance: string | null; group: { jid: string; name: string }; flags?: boolean; planilha?: PlanilhaDia | null; planilhaMode?: boolean },
 ): Promise<any> {
-  const { morning, live, dry, instance, group, flags } = opts;
+  const { morning, live, dry, instance, group, flags, planilha, planilhaMode } = opts;
   const isMonday = new Date(brToday() + "T12:00:00").getDay() === 1;
   const today = morning ? daysAgo(brToday(), isMonday ? 2 : 1) : brToday();
   const dayLabel = morning ? (isMonday ? "no sábado" : "ontem") : "hoje";
 
   const metrics = await buildMetrics(supabase, c.id, today);
+  // empresa da planilha diária: o resumo fala só do que o quadro traz (indicador em R$) e nunca cobra lançamento
+  if (planilhaMode && metrics) metrics.rows = metrics.rows.filter((r: any) => r.monetario);
   let text: string;
-  if (!metrics || !metrics.hasToday || metrics.rows.length === 0) {
-    text = await nudgeText(c.name, dayLabel);
+  if (planilha) {
+    // números do quadro que acabou de chegar no grupo (vale mesmo com o dia zerado)
+    text = await generatePlanilhaSummary(c.name, planilha) || resumoPlanilhaSemIA(c.name, planilha);
+  } else if (!metrics || !metrics.hasToday || metrics.rows.length === 0) {
+    text = planilhaMode && !morning ? nudgePlanilha(c.name) : await nudgeText(c.name, dayLabel);
+  } else if (planilhaMode) {
+    text = await generateSummary(c.name, metrics, dayLabel) || resumoSemIA(c.name, metrics, dayLabel);
   } else {
     // com número lançado o texto NUNCA vira cobrança de "não lançou": sem IA, vai o resumo só com os números
     text = await generateSummary(c.name, metrics, dayLabel) || resumoSemIA(c.name, metrics, dayLabel);
@@ -400,7 +481,7 @@ async function processCompany(
     const fb = await monthlyFlagsBlock(supabase, c.id);
     if (fb) text = `${text}\n${fb}`;
   }
-  if (dry) return { processed: true, has_data: !!metrics?.hasToday, morning, today, preview: text };
+  if (dry) return { processed: true, has_data: !!planilha || !!metrics?.hasToday, morning, today, preview: text };
   const target = live ? group.jid : ALERT_PHONE;
   const payload = live ? text : `*[PREVIEW · ${c.name} · grupo: ${group.name}]*\n\n${text}`;
   // Central de Avisos (03/11/2026): a prévia pro Fabrício entra no resumo; o envio ao grupo do cliente segue direto
@@ -463,6 +544,12 @@ Deno.serve(async (req) => {
     }
     const defCfg = (): Cfg => ({ enabled: true, sendTime: "19:30", instance: null, morning: false });
 
+    // Empresas com a planilha diária ligada: o resumo espera o quadro chegar no grupo.
+    const { data: plRows } = await supabase
+      .from("company_automation_settings").select("company_id")
+      .eq("automation_key", "planilha_diaria").eq("enabled", true);
+    const planilhaCos = new Set((plRows || []).map((r: any) => r.company_id));
+
     const gestaoGroups = await fetchGestaoGroups();
     const dateBR = brToday();
     const holiday = isBrazilHoliday(dateBR);
@@ -473,6 +560,33 @@ Deno.serve(async (req) => {
 
     const results: any[] = [];
     let sent = 0;
+
+    // ── APÓS A PLANILHA: chamado pela kpi-planilha-diaria quando o quadro do dia chega no grupo ──
+    // Envia na hora (uma vez por dia, mesmo controle do agendado). Só a chave de serviço envia;
+    // com dry:true devolve o texto sem enviar.
+    if (body.aposPlanilha === true) {
+      const c = (companies || [])[0];
+      if (!body.companyId || !c) return json({ ok: true, mode: "apos_planilha", skipped: "empresa não encontrada ou inativa" });
+      const p = body.planilha as PlanilhaDia | undefined;
+      if (!p || !Array.isArray(p.linhas)) return json({ ok: false, error: "planilha ausente" }, 400);
+      const s = cfg.get(c.id) || defCfg();
+      const group = gestaoGroups.get(c.id);
+      if (body.dry === true) {
+        const r = await processCompany(supabase, c, { morning: false, live: false, dry: true, instance: s.instance, group: group || { jid: "", name: "" }, planilha: p, planilhaMode: true });
+        return json({ ok: true, mode: "apos_planilha", company: c.name, grupo: group?.name || null, ...r });
+      }
+      const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+      if (!bearer || bearer !== Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) return json({ ok: false, error: "não autorizado" }, 401);
+      if (!planilhaCos.has(c.id)) return json({ ok: true, mode: "apos_planilha", skipped: "planilha diária desligada" });
+      if (!s.enabled) return json({ ok: true, mode: "apos_planilha", skipped: "resumo desligado no painel" });
+      if (s.morning) return json({ ok: true, mode: "apos_planilha", skipped: "resumo matinal: sai amanhã cedo" });
+      if (!group) return json({ ok: true, mode: "apos_planilha", skipped: "sem grupo de gestão" });
+      const { error: claimErr } = await supabase.from("company_resumo_sent").insert({ company_id: c.id, sent_date: dateBR });
+      if (claimErr) return json({ ok: true, mode: "apos_planilha", skipped: "já enviado hoje" });
+      const r = await processCompany(supabase, c, { morning: false, live: true, dry: false, instance: s.instance, group, planilha: p, planilhaMode: true });
+      if (!r.ok) await supabase.from("company_resumo_sent").delete().eq("company_id", c.id).eq("sent_date", dateBR);
+      return json({ ok: true, mode: "apos_planilha", company: c.name, ...r });
+    }
 
     // ── MODO AGENDADO (cron de 30/30 min): envia quem está no horário agora ──
     if (body.scheduled === true) {
@@ -489,12 +603,16 @@ Deno.serve(async (req) => {
         const okDay = s.morning ? (dow >= 1 && dow <= 6) : (dow >= 1 && dow <= 5);
         if (!okDay) { results.push({ company: c.name, skipped: "fora do dia da semana", morning: s.morning, dow }); continue; }
         if (already.has(c.id)) { results.push({ company: c.name, skipped: "já enviado hoje" }); continue; }
+        // planilha diária: o resumo da noite sai quando o quadro chega (aposPlanilha). O relógio só entra
+        // como reserva, 1h30 depois do horário: resumo com o que houver ou pedido do quadro.
+        const viaPlanilha = planilhaCos.has(c.id);
+        if (viaPlanilha && !s.morning && minutosDesde(s.sendTime) < ESPERA_PLANILHA_MIN) { results.push({ company: c.name, skipped: "aguardando o quadro do dia" }); continue; }
         const group = gestaoGroups.get(c.id);
         if (!group) { results.push({ company: c.name, skipped: "sem grupo de gestão" }); continue; }
         // claim (dedup atômico): marca antes de enviar; se o envio falhar, libera.
         const { error: claimErr } = await supabase.from("company_resumo_sent").insert({ company_id: c.id, sent_date: dateBR });
         if (claimErr) { results.push({ company: c.name, skipped: "claim duplicado" }); continue; }
-        const r = await processCompany(supabase, c, { morning: s.morning, live: true, dry: false, instance: s.instance, group });
+        const r = await processCompany(supabase, c, { morning: s.morning, live: true, dry: false, instance: s.instance, group, planilhaMode: viaPlanilha });
         if (r.ok) sent++;
         else await supabase.from("company_resumo_sent").delete().eq("company_id", c.id).eq("sent_date", dateBR);
         results.push({ company: c.name, sendTime: s.sendTime, ...r });
@@ -514,7 +632,7 @@ Deno.serve(async (req) => {
       const group = gestaoGroups.get(c.id);
       if (!group) { results.push({ company: c.name, skipped: "sem grupo de gestão" }); continue; }
       if (results.filter((r) => r.processed).length >= limit) break;
-      const r = await processCompany(supabase, c, { morning: s.morning, live, dry: body.dry === true, instance: s.instance, group, flags: body.flags === true });
+      const r = await processCompany(supabase, c, { morning: s.morning, live, dry: body.dry === true, instance: s.instance, group, flags: body.flags === true, planilhaMode: planilhaCos.has(c.id) });
       if (r.ok) sent++;
       results.push({ company: c.name, ...r });
     }
