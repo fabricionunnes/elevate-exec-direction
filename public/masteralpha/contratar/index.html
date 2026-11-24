@@ -23,7 +23,7 @@ body::before, body::after { content: ""; position: fixed; width: 160px; height: 
 body::before { left: 0; top: 0; background: linear-gradient(135deg, var(--navy-deep) 0 34%, var(--gold) 34% 35%, transparent 35% 39.4%, rgba(176,141,79,.55) 39.4% 39.8%, transparent 39.8%); }
 body::after { right: 0; bottom: 0; background: linear-gradient(315deg, var(--navy-deep) 0 34%, var(--gold) 34% 35%, transparent 35% 39.4%, rgba(176,141,79,.55) 39.4% 39.8%, transparent 39.8%); }
 .wrap { max-width: 640px; margin: 0 auto; padding: 40px max(18px, env(safe-area-inset-right)) calc(60px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); }
-.logo { width: 150px; margin: 0 auto 22px; display: block; }
+.logo { width: 150px; height: auto; margin: 0 auto 22px; display: block; }
 .kicker { font-size: 12px; font-weight: 700; letter-spacing: .3em; text-transform: uppercase; color: var(--gold-deep); }
 h1 { font-family: var(--display); font-weight: 400; text-transform: uppercase; color: var(--navy); font-size: clamp(38px, 8vw, 52px); line-height: 1; margin-top: 8px; text-wrap: balance; }
 h1 em { font-style: normal; color: var(--gold); }
