@@ -68,6 +68,7 @@ Deno.serve(async (req) => {
     const entryDate = String(it.date ?? it.data ?? today).slice(0, 10);
     const kpiObj = it.kpis ?? it.indicadores ?? it.metrics ?? {};
     const unmatched: string[] = [];
+    const preservados: string[] = [];
     let applied = 0;
 
     if (!salespersonId) {
@@ -84,6 +85,11 @@ Deno.serve(async (req) => {
       const kpiId = kpiByName.get(norm(rawName));
       const value = Number(rawVal);
       if (!kpiId || Number.isNaN(value)) { unmatched.push(String(rawName)); continue; }
+      // Planilha diária (23/11/2026): se o lançamento desse dia já veio do quadro que a gestão manda no
+      // grupo (kpi-planilha-diaria), o quadro é a fonte e a integração não passa por cima.
+      const { data: atual } = await supabase.from("kpi_entries").select("observations")
+        .eq("salesperson_id", salespersonId).eq("kpi_id", kpiId).eq("entry_date", entryDate).maybeSingle();
+      if (String((atual as any)?.observations || "").startsWith("[PLANILHA")) { preservados.push(String(rawName)); continue; }
       const { error } = await supabase.from("kpi_entries").upsert({
         company_id: companyId, salesperson_id: salespersonId, kpi_id: kpiId,
         entry_date: entryDate, value, observations: "Via integração",
@@ -92,13 +98,13 @@ Deno.serve(async (req) => {
     }
 
     totalApplied += applied;
-    results.push({ salesperson: spRef, date: entryDate, applied, unmatched });
+    results.push({ salesperson: spRef, date: entryDate, applied, unmatched, ...(preservados.length ? { mantido_da_planilha: preservados } : {}) });
     await supabase.from("project_integration_events").insert({
       company_id: companyId, api_key_id: keyRow.id, source: it.source || keyRow.source,
       status: unmatched.length && !applied ? "erro" : "ok",
       salesperson_ref: String(spRef ?? ""), entry_date: entryDate,
       kpis_applied: applied, raw_payload: it,
-      error: unmatched.length ? `KPIs não reconhecidos: ${unmatched.join(", ")}` : null,
+      error: unmatched.length ? `KPIs não reconhecidos: ${unmatched.join(", ")}` : (preservados.length ? `Mantido o valor da planilha diária: ${preservados.join(", ")}` : null),
     });
   }
 
