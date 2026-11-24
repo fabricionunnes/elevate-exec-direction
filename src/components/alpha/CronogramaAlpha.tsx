@@ -2,7 +2,7 @@
 // Clicar no mês abre a página do encontro (EncontroMes).
 import type { DadosAlpha } from "./tipos";
 import { MESES_NOME } from "./tipos";
-import { ENCONTROS, progressoMes } from "./encontros";
+import { ENCONTROS, progressoMes, dataDoEncontro, rotuloDataEncontro } from "./encontros";
 import type { RegistroEncontro } from "./EncontroMes";
 
 export function CronogramaAlpha({ d, registros, onAbrir }: {
@@ -12,7 +12,7 @@ export function CronogramaAlpha({ d, registros, onAbrir }: {
   const mesAtual = hoje.getFullYear() === d.ano ? hoje.getMonth() + 1 : 0;
   return (
     <>
-      <div className="al-aviso">Clique no mês para abrir o encontro: a aula, os números que abrem a Mesa, o que fazer no sistema, os compromissos e a ata.</div>
+      <div className="al-aviso">Os encontros são sempre no sábado. Clique no mês para abrir o encontro: a aula, os números que abrem a Mesa, o que fazer no sistema, os compromissos e a ata.</div>
       <div className="al-crono">
         {ENCONTROS.map((e) => {
           const reg = registros.find((r) => r.mes === e.mes);
@@ -21,6 +21,7 @@ export function CronogramaAlpha({ d, registros, onAbrir }: {
           return (
             <button type="button" key={e.mes} className={`p go ${e.mes === mesAtual ? "atual" : ""}`} onClick={() => onAbrir(e.mes)}>
               <div className="lbl">{MESES_NOME[e.mes - 1]}{e.mes === mesAtual ? " · agora" : ""}</div>
+              {(() => { const dt = reg?.data_presencial ?? dataDoEncontro(d.ano, e.mes); return dt ? <div className="sub" style={{ fontWeight: 700 }}>{rotuloDataEncontro(dt, e.mes)}</div> : null; })()}
               <b style={{ fontSize: 14, margin: "4px 0" }}>{e.tema}</b>
               <div className="sub">{e.objetivo}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>

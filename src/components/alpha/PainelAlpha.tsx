@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Tile, Panel, BarrasItens, BarH, Tabela } from "@/components/painel-controle/ui";
 import { brl, fp, kfmt } from "@/components/painel-controle/fmt";
 import type { DadosAlpha, Resumo } from "./tipos";
-import { ENCONTROS, progressoMes } from "./encontros";
+import { ENCONTROS, progressoMes, dataDoEncontro, rotuloDataEncontro } from "./encontros";
 import type { ItemSaude } from "./analise";
 import {
   MESES_CURTO, MESES_NOME, SEMAFORO_TXT, lucroReal, lucroPlano, despesaFixa, despesaTotalReal, planoDoMes, trimestres, saldosMensais,
@@ -43,7 +43,7 @@ export function PainelAlpha({ d, anterior, r, irPara, tarefasEncontro, onAbrirEn
         const cls = p.feitas === p.total ? "g" : p.feitas ? "a" : "r";
         return (
           <div className="al-enc-card">
-            <div><div className="lbl">Encontro de {MESES_NOME[mesEnc - 1].toLowerCase()}</div><b>{e.tema}</b><span className="sub"> · {e.objetivo}</span></div>
+            <div><div className="lbl">Encontro de {MESES_NOME[mesEnc - 1].toLowerCase()}{dataDoEncontro(d.ano, mesEnc) ? ` · ${rotuloDataEncontro(dataDoEncontro(d.ano, mesEnc)!, mesEnc)}` : ""}</div><b>{e.tema}</b><span className="sub"> · {e.objetivo}</span></div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div className="al-prog" style={{ width: 140 }}><i className={cls} style={{ width: `${(p.feitas / p.total) * 100}%` }} /></div>
               <span className={`st ${cls === "g" ? "g" : cls === "a" ? "a" : "r"}`}>{p.feitas}/{p.total} tarefas no sistema</span>
