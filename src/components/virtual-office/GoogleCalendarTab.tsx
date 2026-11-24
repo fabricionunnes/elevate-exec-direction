@@ -40,6 +40,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MeetingNotesDialog } from "@/components/onboarding-tasks/MeetingNotesDialog";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { buildProjectEventDescription } from "@/lib/projectMeetingDescription";
 import { cn } from "@/lib/utils";
 import {
   Calendar,
@@ -152,6 +154,25 @@ const GoogleCalendarTab = ({ currentStaff: currentStaffProp = null }: GoogleCale
   const [connectedStaff, setConnectedStaff] = useState<ConnectedStaffMember[]>([]);
   const [currentStaff, setCurrentStaff] = useState<ConnectedStaffMember | null>(null);
   const [selectedStaffUserId, setSelectedStaffUserId] = useState<string | null>(null);
+  // Cliente da reunião (24/11/2026, Fabrício: "independente de onde foi agendado no Nexus, tem que vir o
+  // link do cliente"). O Taynon agenda por aqui e o evento nascia sem vínculo com o projeto.
+  const [clientProjects, setClientProjects] = useState<{ id: string; companyName: string; product: string }[]>([]);
+  const [clientProjectId, setClientProjectId] = useState<string>("none");
+
+  useEffect(() => {
+    if (!showCreateDialog || clientProjects.length) return;
+    (async () => {
+      const { data } = await supabase
+        .from("onboarding_projects")
+        .select("id, product_name, status, company:onboarding_companies(name)")
+        .in("status", ["active", "notice_period", "cancellation_signaled", "pending"]);
+      const lista = (data || [])
+        .map((p: any) => ({ id: p.id as string, companyName: String(p.company?.name || "").trim(), product: String(p.product_name || "").trim() }))
+        .filter((p) => p.companyName)
+        .sort((a, b) => a.companyName.localeCompare(b.companyName, "pt-BR") || a.product.localeCompare(b.product, "pt-BR"));
+      setClientProjects(lista);
+    })();
+  }, [showCreateDialog]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isCSOrAdmin = true;
   // false = conectado, mas sem a permissão que liga a gravação automática do Meet
@@ -283,9 +304,13 @@ const GoogleCalendarTab = ({ currentStaff: currentStaffProp = null }: GoogleCale
         .filter((e) => e.includes("@"));
 
       const action = editingEvent ? "update-event" : "create-event";
+      const clientProject = !editingEvent && clientProjectId !== "none" ? clientProjects.find((p) => p.id === clientProjectId) || null : null;
       const body: Record<string, unknown> = {
         title: newEvent.title,
-        description: newEvent.description,
+        // com cliente escolhido, o evento já leva o link do projeto dele
+        description: clientProject
+          ? buildProjectEventDescription(newEvent.description, clientProject.id, { companyName: clientProject.companyName })
+          : newEvent.description,
         startDateTime,
         endDateTime,
         attendees: attendees.length > 0 ? attendees : undefined,
@@ -313,7 +338,26 @@ const GoogleCalendarTab = ({ currentStaff: currentStaffProp = null }: GoogleCale
       }
 
       if (data?.success) {
-        toast.success(editingEvent ? "Evento atualizado com sucesso!" : "Evento criado com sucesso!");
+        // reunião de cliente entra no projeto dele na hora (aba Reuniões, com Preparar e Finalizar)
+        if (clientProject && data.event?.id) {
+          const dono = connectedStaff.find((st) => st.user_id === (selectedStaffUserId || currentStaff?.user_id)) || currentStaff;
+          const { error: vincErr } = await supabase.from("onboarding_meeting_notes").insert({
+            project_id: clientProject.id,
+            staff_id: dono?.id || currentStaff?.id,
+            google_event_id: data.event.id,
+            meeting_title: newEvent.title,
+            meeting_date: new Date(startDateTime).toISOString(),
+            subject: newEvent.title,
+            notes: "",
+            meeting_link: data.event.meetingLink || null,
+            is_finalized: false,
+            scheduled_by: currentStaff?.id || null,
+            calendar_owner_id: dono?.user_id || null,
+            calendar_owner_name: dono?.name || null,
+          } as any);
+          if (vincErr) console.error("Vínculo da reunião com o cliente falhou:", vincErr);
+        }
+        toast.success(editingEvent ? "Evento atualizado com sucesso!" : clientProject ? `Reunião criada e ligada a ${clientProject.companyName}!` : "Evento criado com sucesso!");
         
         if (!editingEvent && data.event.meetingLink) {
           setCreatedMeetLink(data.event.meetingLink);
@@ -375,6 +419,7 @@ const GoogleCalendarTab = ({ currentStaff: currentStaffProp = null }: GoogleCale
     });
     setCreatedMeetLink(null);
     setCopied(false);
+    setClientProjectId("none");
   };
 
   const openCreateDialog = (date?: Date) => {
@@ -1235,6 +1280,24 @@ const GoogleCalendarTab = ({ currentStaff: currentStaffProp = null }: GoogleCale
                     onChange={(e) => setNewEvent((prev) => ({ ...prev, title: e.target.value }))}
                   />
                 </div>
+
+                {!editingEvent && (
+                  <div className="space-y-2">
+                    <Label>Cliente</Label>
+                    <SearchableSelect
+                      value={clientProjectId}
+                      onValueChange={setClientProjectId}
+                      allowNone
+                      noneLabel="Nenhum (evento interno)"
+                      placeholder="Escolha o cliente da reunião"
+                      emptyMessage="Nenhum cliente encontrado."
+                      options={clientProjects.map((p) => ({ value: p.id, label: p.companyName, hint: p.product || undefined }))}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Com o cliente escolhido, o evento leva o link do projeto e a reunião já aparece na aba Reuniões dele.
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="description">Descrição</Label>
