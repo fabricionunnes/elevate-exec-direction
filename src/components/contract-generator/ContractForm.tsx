@@ -50,6 +50,7 @@ export interface ContractFormData {
   isRecurring: boolean;
   isCommissioned?: boolean;      // contrato comissionado: bônus por meta batida
   commissionValue?: number;      // valor do bônus por mês (padrão R$ 2.000,00)
+  alphaSegmento?: string;        // Mastermind Alpha: segmento com exclusividade (vazio = sem exclusividade)
   dueDay: number | undefined; // Dia do mês para vencimento (1, 5, 10, 15, 20, 25)
   startDate: Date | undefined;
 }
@@ -443,6 +444,22 @@ export default function ContractForm({
               </SelectContent>
             </Select>
           </div>
+
+          {formData.productId === "mastermind-alpha" && (
+            <div className="md:col-span-2 space-y-2">
+              <Label htmlFor="alphaSegmento">Exclusividade de segmento</Label>
+              <Input
+                id="alphaSegmento"
+                value={formData.alphaSegmento || ""}
+                onChange={(e) => updateField("alphaSegmento", e.target.value)}
+                placeholder="Ex.: contabilidade. Deixe em branco se este membro não tem exclusividade"
+              />
+              <p className="text-xs text-muted-foreground">
+                Preencha só quando o Fabrício concedeu exclusividade na conversa. Em branco, o contrato diz que não há exclusividade.
+                Para o Alpha, use Valor = mensalidade (R$ 1.500), PIX e recorrente: a 1ª sai na assinatura e as 11 seguintes por PIX Automático.
+              </p>
+            </div>
+          )}
           
           <div className="space-y-2">
             <Label htmlFor="contractValue">Valor Total do Contrato *</Label>

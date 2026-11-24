@@ -21,7 +21,8 @@ import { mergePdfBlobs } from "@/lib/pdf/mergePdfs";
 import ContractForm, { type ContractFormData } from "@/components/contract-generator/ContractForm";
 import ContractPreview from "@/components/contract-generator/ContractPreview";
 import ClausesEditor, { getDefaultEditableClauses, getEditableClausesWithSavedTemplate, type EditableClause } from "@/components/contract-generator/ClausesEditor";
-import { rescisaoClause, buildInvestimentoContent } from "@/data/contractTemplate";
+import { rescisaoClause, buildInvestimentoContent, contractClauses } from "@/data/contractTemplate";
+import { isAlpha, buildAlphaFormato, ALPHA_VIGENCIA } from "@/data/alphaContrato";
 import TemplateEditorDialog from "@/components/contract-generator/TemplateEditorDialog";
 import { generateContractPDF, downloadContractPDF } from "@/components/contract-generator/generateContractPDF";
 import { productDetails } from "@/data/productDetails";
@@ -397,6 +398,10 @@ export default function ContractGeneratorPage() {
 
   // Guarda o último texto gerado da CLÁUSULA 5, para distinguir edição manual de regeneração automática
   const lastGenInvestimentoRef = useRef<string>("");
+  const baseClauseTextRef = useRef<Record<string, string>>(
+    Object.fromEntries(contractClauses.filter((c) => c.id === "formato" || c.id === "vigencia").map((c) => [c.id, c.content]))
+  );
+  const lastAlphaTextRef = useRef<Record<string, string>>({});
 
   // Texto "parece gerado" se, tirando números (valor, parcelas, dia, valor
   // por extenso), bate com alguma variante que o gerador produz. Comparar com os
@@ -410,6 +415,7 @@ export default function ContractGeneratorPage() {
       isRecurring: formData.isRecurring, installments: formData.installments,
       contractValue: formData.contractValue, dueDay: formData.dueDay,
       commissionValue: formData.commissionValue,
+      alpha: isAlpha(formData.productId),
     };
     for (const pm of ["card", "pix", "boleto"] as const) {
       for (const com of [false, true]) {
@@ -432,11 +438,15 @@ export default function ContractGeneratorPage() {
       dueDay: formData.dueDay,
       isCommissioned: formData.isCommissioned,
       commissionValue: formData.commissionValue,
+      alpha: isAlpha(formData.productId),
     });
 
   // Load saved template clauses
   const loadSavedTemplateClauses = async () => {
     const clauses = await getEditableClausesWithSavedTemplate();
+    for (const c of clauses) {
+      if (c.id === "formato" || c.id === "vigencia") baseClauseTextRef.current[c.id] = c.content;
+    }
     const generated = buildCurrentInvestimento();
     lastGenInvestimentoRef.current = generated;
     setEditableClauses(
@@ -530,7 +540,31 @@ export default function ContractGeneratorPage() {
     formData.dueDay,
     formData.isCommissioned,
     formData.commissionValue,
+    formData.productId,
   ]);
+
+  // Mastermind Alpha: cláusulas 3ª (formato) e 4ª (vigência) próprias. Só troca texto
+  // que ainda é o do modelo geral ou o último gerado para o Alpha: edição manual e
+  // contrato antigo carregado do histórico ficam como estão.
+  useEffect(() => {
+    const alpha = isAlpha(formData.productId);
+    const alvo: Record<string, string> = alpha
+      ? { formato: buildAlphaFormato(formData.alphaSegmento), vigencia: ALPHA_VIGENCIA }
+      : {};
+    setEditableClauses((prev) =>
+      prev.map((c) => {
+        if (c.id !== "formato" && c.id !== "vigencia") return c;
+        const base = baseClauseTextRef.current[c.id];
+        const ultimoAlpha = lastAlphaTextRef.current[c.id];
+        const intocada = c.content === base || (!!ultimoAlpha && c.content === ultimoAlpha);
+        if (!intocada) return c;
+        const novo = alpha ? alvo[c.id] : base;
+        if (!novo || novo === c.content) return c;
+        return { ...c, content: novo, originalContent: novo, manuallyEdited: false };
+      })
+    );
+    lastAlphaTextRef.current = alvo;
+  }, [formData.productId, formData.alphaSegmento, editableClauses.length]);
 
   useEffect(() => {
     loadContracts();

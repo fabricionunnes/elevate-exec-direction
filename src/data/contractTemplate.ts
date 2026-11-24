@@ -50,6 +50,8 @@ export interface InvestimentoFormData {
   isCommissioned?: boolean;
   /** Valor do bônus por mês em que a meta é batida (padrão R$ 2.000,00) */
   commissionValue?: number | null;
+  /** UNV Mastermind Alpha: 1ª mensalidade por PIX na assinatura + 11 por PIX Automático */
+  alpha?: boolean;
 }
 
 // Texto por extenso do bônus — o contrato precisa do valor escrito.
@@ -110,7 +112,12 @@ function fmtBRL(v: number): string {
 export function buildInvestimentoContent(fd: InvestimentoFormData): string {
   const label = PAYMENT_LABELS[fd.paymentMethod] || fd.paymentMethod;
   const parts: string[] = [];
-  if (fd.isRecurring) {
+  if (fd.alpha && fd.isRecurring) {
+    parts.push(`I. O valor do presente contrato será de ${fmtBRL(fd.contractValue)} mensais, em 12 (doze) mensalidades, totalizando ${fmtBRL(fd.contractValue * 12)}.`);
+    parts.push(fd.paymentMethod === "pix"
+      ? `II. A 1ª (primeira) mensalidade é paga via PIX no ato da contratação. As 11 (onze) mensalidades seguintes são debitadas por PIX Automático, autorizado pela CONTRATANTE no ato da contratação, na data de vencimento de cada mês.`
+      : `II. O pagamento será realizado mensalmente via ${label}, de forma recorrente.`);
+  } else if (fd.isRecurring) {
     parts.push(`I. O valor do presente contrato será de ${fmtBRL(fd.contractValue)} mensais, com cobrança recorrente.`);
     parts.push(`II. O pagamento será realizado mensalmente via ${label}, de forma recorrente.`);
     parts.push(`Parágrafo único — Desconto por pagamento antecipado: a CONTRATANTE terá 5% (cinco por cento) de desconto sobre o valor da parcela mensal caso efetue o pagamento até 1 (um) dia antes da data de vencimento. Caso a data de vencimento recaia em sábado, domingo ou feriado, o prazo para pagamento com desconto permanece sendo o dia imediatamente anterior à data de vencimento original, NÃO havendo prorrogação para data posterior. O desconto não se aplica a pagamentos realizados na data do vencimento ou após.`);
