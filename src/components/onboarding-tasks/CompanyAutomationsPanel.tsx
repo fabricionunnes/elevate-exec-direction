@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { toast } from "sonner";
-import { Loader2, MessageSquare, CalendarClock, ClipboardCheck, Star, FileText, Trophy, Bell, Megaphone, BarChart3, Target } from "lucide-react";
+import { Loader2, MessageSquare, CalendarClock, ClipboardCheck, Star, FileText, Trophy, Bell, Megaphone, BarChart3, Target, FileSpreadsheet } from "lucide-react";
 
 // Painel liga/desliga das mensagens automáticas enviadas nos grupos do cliente.
 // Sem linha na tabela = LIGADO (default). As edge functions consultam
@@ -25,6 +25,8 @@ const AUTOMATIONS: {
   timeNote?: string;
   /** sem registro na empresa = DESLIGADA (as antigas nascem ligadas) */
   defaultOff?: boolean;
+  /** não envia mensagem própria: esconde a escolha de número */
+  noSender?: boolean;
 }[] = [
   {
     key: "resumo_diario",
@@ -34,6 +36,16 @@ const AUTOMATIONS: {
     sender: "Fabrício",
     icon: MessageSquare,
     defaultTime: "19:30",
+  },
+  {
+    key: "planilha_diaria",
+    label: "Planilha diária de vendas (quadro no grupo)",
+    description: "Pra empresa em que a gestão manda no grupo o print do acompanhamento de vendas (vendido no dia e vendido total por vendedor). O sistema lê o quadro, confere os totais, atualiza o faturamento de cada vendedor e manda o resumo do dia em seguida, sem cobrar lançamento. Se o quadro não chegar até 1h30 depois do horário do resumo, o resumo pede o quadro.",
+    schedule: "quando o quadro chega no grupo",
+    sender: "Marcelo",
+    icon: FileSpreadsheet,
+    defaultOff: true,
+    noSender: true,
   },
   {
     key: "fechamento_dia",
@@ -317,7 +329,7 @@ export function CompanyAutomationsPanel({ companyId }: Props) {
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{a.schedule}</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">{a.description}</p>
-                  {on && (
+                  {on && !a.noSender && (
                     <div className="mt-2 flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">Número:</span>
                       <SearchableSelect
