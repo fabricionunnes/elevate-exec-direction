@@ -354,6 +354,7 @@ async function confirmouLive(sb: SB, body: Record<string, unknown>) {
     if ([ETAPA.base, ETAPA.disparo, ETAPA.entrouGrupo, ETAPA.saiuGrupo].includes(achou.stage_id)) upd.stage_id = ETAPA.confirmouLive;
     if (email && !achou.email) upd.email = email;
     if (Object.keys(upd).length) await sb.from("crm_leads").update(upd).eq("id", achou.id);
+    await registrarConfirmado(sb, tel, nome, achou.id);
     if (email) await convidarNaLive(sb, email, nome, achou.id);
     return json({ ok: true, lead_id: achou.id, novo: false });
   }
@@ -365,6 +366,7 @@ async function confirmouLive(sb: SB, body: Record<string, unknown>) {
     utm_campaign: String(body.utm_campaign || "").slice(0, 200) || null,
   }).select("id").single();
   if (email) await convidarNaLive(sb, email, nome, novo?.id || null);
+  await registrarConfirmado(sb, tel, nome, novo?.id || null);
   return json({ ok: true, lead_id: novo?.id || null, novo: !!novo });
 }
 
@@ -404,6 +406,81 @@ async function convidarNaLive(sb: SB, email: string, nome: string, leadId: strin
   if (Date.now() > LIVE_FIM) return;
   await sb.from("black_live_convidados").upsert({ email, nome, lead_id: leadId }, { onConflict: "email", ignoreDuplicates: true });
   emSegundoPlano(sincronizarConvidadosLive(sb).catch((e) => console.error("[black-agenda] convite da live", e)));
+}
+
+// Descrição do evento da live (Fabrício, 24/11): o convite mostrava só o botão do Meet, e quem entra
+// por ali não passa pelo /black/entrar (não conta em "Entrou na live"). Grava sem avisar os convidados.
+const DESCRICAO_LIVE = `<b>Entre pelo link: <a href="https://unvholdings.com.br/black/entrar">unvholdings.com.br/black/entrar</a></b>
+
+Live da Black Friday UNV com Fabrício Nunnes.
+Quarta, 25/11, às 20h (horário de Brasília). A sala abre 15 minutos antes.
+
+Nessa live eu mostro por que o seu time não bate meta sem você entrar no meio da venda, e abro a condição da Black UNV só pra quem estiver ao vivo.`;
+
+async function descricaoLive(sb: SB) {
+  const tok = await tokenGoogleFabricio(sb);
+  if (!tok) return { ok: false, motivo: "sem_token_google" };
+  await sincronizarConvidadosLive(sb, true); // garante o id do evento
+  if (!eventoLiveId) return { ok: false, motivo: "evento_da_live_nao_achado" };
+  const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventoLiveId}?sendUpdates=none`;
+  const p = await fetch(url, { method: "PATCH", headers: { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ description: DESCRICAO_LIVE }) });
+  if (!p.ok) return { ok: false, motivo: `PATCH ${p.status}: ${(await p.text()).slice(0, 200)}` };
+  const ev = await p.json();
+  return { ok: true, evento: ev.summary, convidados: (ev.attendees || []).length, descricao: ev.description };
+}
+
+// ── aviso individual na hora da live ────────────────────────────────────────
+// Fabrício, 24/11: "enviar individualmente em quem confirmou o link da live na hora que a live começar,
+// através da instância fabricio nunnes". Toda confirmação em /black/live entra em black_live_confirmados;
+// das 20h às 21h do dia 25 o cron de 2 min manda no privado de cada um (até 25 por rodada, 1,5 s entre
+// uma e outra, trava por linha pra nunca mandar duas vezes). Quem confirma depois das 20h recebe na
+// rodada seguinte.
+const AVISO_LIVE_INICIO = Date.parse("2026-11-25T20:00:00-03:00");
+const AVISO_LIVE_FIM = Date.parse("2026-11-25T21:00:00-03:00");
+
+async function registrarConfirmado(sb: SB, tel: string, nome: string, leadId: string | null) {
+  const fone = tel.length <= 11 ? `55${tel}` : tel;
+  await sb.from("black_live_confirmados").upsert({ telefone: fone, nome, lead_id: leadId }, { onConflict: "telefone", ignoreDuplicates: true });
+}
+
+function textoAvisoLive(nome: string) {
+  const primeiro = String(nome || "").trim().split(/\s+/)[0] || "";
+  return `${primeiro ? primeiro + ", começou" : "Começou"}. A live da Black UNV está no ar agora.
+
+Entra por aqui: unvholdings.com.br/black/entrar
+
+Fica até o final: a condição da Black UNV eu abro daqui a pouco, só pra quem está ao vivo.`;
+}
+
+async function avisarConfirmadosLive(sb: SB, simular = false) {
+  const agora = Date.now();
+  if (!simular && (agora < AVISO_LIVE_INICIO || agora > AVISO_LIVE_FIM)) return { ok: true, fora_da_janela: true };
+  const { data: fila } = await sb.from("black_live_confirmados").select("telefone, nome").eq("aviso_status", "pendente")
+    .order("criado_em", { ascending: true }).limit(simular ? 1000 : 25);
+  if (simular) return { ok: true, simulacao: true, pendentes: (fila || []).length, exemplo: textoAvisoLive((fila || [])[0]?.nome || "Fulano") };
+  const { data: inst } = await sb.from("whatsapp_instances").select("instance_name, api_url, api_key").eq("instance_name", INSTANCIA).maybeSingle();
+  if (!inst?.api_url) return { ok: false, motivo: "instancia" };
+  let enviados = 0;
+  for (const c of (fila || []) as any[]) {
+    const { data: trava } = await sb.from("black_live_confirmados").update({ aviso_status: "enviando" })
+      .eq("telefone", c.telefone).eq("aviso_status", "pendente").select("telefone");
+    if (!trava?.length) continue;
+    try {
+      const r = await fetch(`${String(inst.api_url).replace(/\/+$/, "")}/message/sendText/${inst.instance_name}`, {
+        method: "POST", headers: { apikey: inst.api_key, "Content-Type": "application/json" },
+        body: JSON.stringify({ number: c.telefone, text: textoAvisoLive(c.nome) }),
+      });
+      await sb.from("black_live_confirmados").update(r.ok
+        ? { aviso_status: "enviado", aviso_em: new Date().toISOString(), aviso_erro: null }
+        : { aviso_status: "erro", aviso_erro: `HTTP ${r.status}: ${(await r.text()).slice(0, 150)}` }).eq("telefone", c.telefone);
+      if (r.ok) enviados++;
+    } catch (e) {
+      await sb.from("black_live_confirmados").update({ aviso_status: "erro", aviso_erro: String(e).slice(0, 150) }).eq("telefone", c.telefone);
+    }
+    await new Promise((res) => setTimeout(res, 1500));
+  }
+  return { ok: true, enviados };
 }
 
 async function limparTesteLive(sb: SB) {
@@ -964,6 +1041,7 @@ Deno.serve(async (req) => {
         try { await enviarAgendadas(sb); } catch (e) { console.error("[black-agenda] agenda", e); }
         try { await conferirPendentes(sb); } catch (e) { console.error("[black-agenda] pix pendentes", e); }
         try { await sincronizarConvidadosLive(sb); } catch (e) { console.error("[black-agenda] convite da live", e); }
+        try { await avisarConfirmadosLive(sb); } catch (e) { console.error("[black-agenda] aviso da live no privado", e); }
         const resp = await grupoSync(sb);
         // follow-up de quem pediu o grupo e não entrou: depois da leitura dos participantes, a cada 10 min
         if (new Date().getUTCMinutes() % 10 < 2) {
@@ -978,6 +1056,18 @@ Deno.serve(async (req) => {
       case "convidados-live-previa": return json(await sincronizarConvidadosLive(sb, true));
       // tira do evento só os e-mails de teste (fabricio+teste...), sem avisar ninguém
       case "limpar-teste-live": return json(await limparTesteLive(sb));
+      case "descricao-live": return json(await descricaoLive(sb));
+      // prévia do aviso individual das 20h: não envia nada
+      case "aviso-live-previa": return json(await avisarConfirmadosLive(sb, true));
+      // manda o aviso das 20h só pro WhatsApp do Fabrício, pra ele ver como chega
+      case "aviso-live-teste": {
+        const { data: inst } = await sb.from("whatsapp_instances").select("instance_name, api_url, api_key").eq("instance_name", INSTANCIA).maybeSingle();
+        const r = await fetch(`${String(inst?.api_url || "").replace(/\/+$/, "")}/message/sendText/${inst?.instance_name}`, {
+          method: "POST", headers: { apikey: inst?.api_key, "Content-Type": "application/json" },
+          body: JSON.stringify({ number: AVISO_PLACAR, text: textoAvisoLive("Fabrício") }),
+        });
+        return json({ ok: r.ok, status: r.status });
+      }
       case "confirmou-live": return await confirmouLive(sb, body);
       case "entrar-grupo": return await entrarGrupo(sb, body);
       case "garantir": return await garantir(sb, body);
