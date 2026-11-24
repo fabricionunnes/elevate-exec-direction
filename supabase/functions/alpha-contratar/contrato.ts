@@ -54,6 +54,7 @@ function formato(): string {
 (c) o sistema UNV Nexus Alpha alimentado todos os meses, com o fechamento do mês feito até o dia 10 (dez) do mês seguinte.`,
     "X. O Capital do Próximo Salto só é devido com os 3 (três) critérios cumpridos por inteiro. Se o contrato for cancelado ou rescindido antes do fim dos 12 (doze) meses, por qualquer motivo, ou se qualquer critério deixar de ser cumprido, a CONTRATANTE não terá direito a nenhum valor do Capital, nem integral nem proporcional, e nenhuma quantia já paga será restituída a esse título.",
     "XI. O aporte será feito em até 30 (trinta) dias após o último encontro da turma, e deve ser aplicado pela CONTRATANTE no primeiro passo do ciclo seguinte, como a contratação de um vendedor, investimento em tráfego ou um agente de inteligência artificial.",
+    "XII. Natureza da obrigação: a CONTRATADA se obriga a entregar o programa descrito neste contrato (encontros, conselhos, sistema e metodologia), e não a um resultado financeiro. A meta de crescimento de 15% (quinze por cento) do faturamento e as metas de lucro são referências de planejamento, não garantia de resultado. O resultado da empresa da CONTRATANTE depende da sua própria execução, do mercado e de fatores fora do controle da CONTRATADA. O não atingimento de qualquer meta não dá à CONTRATANTE direito a devolução, abatimento, multa, indenização ou rescisão sem o aviso prévio previsto neste contrato. Materiais comerciais e de divulgação (site, apresentações, documentos e mensagens) não alteram o disposto neste item.",
   ].join("\n\n");
 }
 
