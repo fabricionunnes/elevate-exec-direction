@@ -669,6 +669,58 @@ export const productDetails: Record<string, ProductDetail> = {
       "Quem não quer ser confrontado"
     ]
   },
+  "mastermind-alpha": {
+    id: "mastermind-alpha",
+    name: "UNV Mastermind Alpha",
+    tagline: "Mesa de 60 empresários em Alphaville",
+    icon: Crown,
+    color: "bg-amber-500",
+    price: "R$ 1.500",
+    priceType: "/mês",
+    description: "12 meses focados no lucro líquido da empresa: um sábado por mês em Alphaville, sistema próprio e mesa de negócios.",
+    deliverables: [
+      "12 encontros presenciais mensais aos sábados, das 14h às 20h, em Alphaville, Nova Lima/MG, conforme o calendário da turma",
+      "12 encontros online mensais de prestação de contas",
+      "2 GPs de kart no ano, em dia inteiro com almoço, no lugar de 2 encontros presenciais",
+      "3 conselhos individuais de 45 minutos com Fabrício Nunes, nos meses 1, 6 e 11",
+      "Acesso ao sistema UNV Nexus Alpha durante a vigência",
+      "Mesa de negócios: células, rodada de pedidos, um a um mensal, Vitrine Alpha e placar de negócios",
+      "Grupo de WhatsApp da turma",
+      "Kit de boas-vindas e cartão de membro",
+      "Capital do Próximo Salto, nas condições da Cláusula 3ª"
+    ],
+    bestFor: "Donos de empresa com faturamento a partir de R$ 100 mil por mês que querem crescer o lucro com um comercial que roda sem eles",
+    whyRecommended: "Você precisa de plano, número na tela e cobrança de verdade, ao lado de empresários do seu nível.",
+    problemsSolved: [
+      {
+        problem: "A empresa fatura mais todo ano e o lucro não acompanha",
+        solution: "Planejamento anual pelo lucro, com DRE e fechamento mensal no sistema",
+        result: "Meta de lucro clara e acompanhada mês a mês"
+      },
+      {
+        problem: "O comercial só anda quando o dono entra",
+        solution: "Metas, rotina e IA comercial montadas nos encontros, com 3 compromissos cobrados por mês",
+        result: "Um comercial que roda sem o dono"
+      }
+    ],
+    keyBenefits: [
+      "Plano anual dentro do sistema",
+      "Cobrança mensal entre pares",
+      "Mesa de negócios entre membros",
+      "Capital do Próximo Salto"
+    ],
+    timeToResults: "Plano pronto no 1º encontro, resultado medido em 12 meses",
+    idealProfile: [
+      "Faturamento a partir de R$ 100 mil por mês",
+      "Dono à frente do comercial",
+      "Disposto a abrir os números para a mesa"
+    ],
+    notFor: [
+      "Quem fatura menos de R$ 100 mil por mês",
+      "Quem não vai alimentar o sistema",
+      "Quem não pode estar em Alphaville um sábado por mês"
+    ]
+  },
   // Descontinuado: fora do site, mantido só pelo histórico interno (ver discontinuedProductIds).
   "sales-force": {
     id: "sales-force",
