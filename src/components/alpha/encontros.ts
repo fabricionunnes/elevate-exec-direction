@@ -46,6 +46,25 @@ const hot = (texto: string) => ({ hora: "15h45", titulo: "Hot seats nas células
 const vitrine = { hora: "16h00", titulo: "Vitrine Alpha", texto: "Os 5 membros da vez, em rodízio, apresentam seu produto ou serviço para a mesa: 5 minutos cada, com perguntas no fim. Venda, parceria e indicação entre os membros começam aqui. Ao longo do ano, todo mundo tem a sua vez." };
 const vitrineKart = { hora: "12h30", titulo: "Vitrine Alpha no almoço", texto: "Os 5 membros da vez, em rodízio, apresentam seu produto ou serviço para a mesa durante o almoço, antes do GP." };
 
+// Calendário fechado com o Fabrício (23/11/2026): sempre sábado. De abril a dezembro, o 1º sábado livre do mês;
+// no verão a data anda (fim de janeiro, meio de fevereiro e de março) por causa das férias e do Carnaval.
+// Ficam de fora feriados, feriadões emendados no fim de semana, vésperas de Dia das Mães e dos Pais e as férias de julho.
+export const CALENDARIO: Record<number, Record<number, string>> = {
+  2027: { 1: "2027-01-30", 2: "2027-02-20", 3: "2027-03-13", 4: "2027-04-03", 5: "2027-05-15", 6: "2027-06-05",
+          7: "2027-07-03", 8: "2027-08-14", 9: "2027-09-11", 10: "2027-10-02", 11: "2027-11-06", 12: "2027-12-04" },
+};
+export const MESES_GP = [5, 11];
+export function dataDoEncontro(ano: number, mes: number): string | null {
+  return CALENDARIO[ano]?.[mes] ?? null;
+}
+/** "sábado, 30/01, das 14h às 20h" (nos meses de GP, o dia inteiro a partir das 9h) */
+export function rotuloDataEncontro(iso: string, mes: number): string {
+  const [, m, dd] = iso.split("-");
+  const dias = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+  const dia = dias[new Date(`${iso}T12:00:00`).getDay()];
+  return `${dia}, ${dd}/${m}, ${MESES_GP.includes(mes) ? "dia inteiro, a partir das 9h" : "das 14h às 20h"}`;
+}
+
 export const ENCONTROS: Encontro[] = [
   {
     mes: 1, tema: "Planejamento anual", foco: "lucro", marcos: ["Iniciação e kit", "Conselho: diagnóstico"],

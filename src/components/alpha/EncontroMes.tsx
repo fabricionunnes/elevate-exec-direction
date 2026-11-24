@@ -7,7 +7,7 @@ import { Panel, Tabela } from "@/components/painel-controle/ui";
 import { brl, fp } from "@/components/painel-controle/fmt";
 import type { DadosAlpha, Compromisso } from "./tipos";
 import { MESES_NOME, lucroReal, lucroPlano, despesaTotalReal, despesaTotalPlano, planoDoMes } from "./tipos";
-import { ENCONTROS, NOME_ABA, situacao, type Aba } from "./encontros";
+import { ENCONTROS, NOME_ABA, situacao, dataDoEncontro, rotuloDataEncontro, type Aba } from "./encontros";
 
 export type RegistroEncontro = {
   mes: number; data_presencial: string | null; data_online: string | null; presente_presencial: boolean | null;
@@ -19,6 +19,7 @@ export function EncontroMes({ d, mes, projectId, registro, onVoltar, irPara, onS
   onVoltar: () => void; irPara: (aba: Aba) => void; onSalvo: () => void;
 }) {
   const e = ENCONTROS[mes - 1];
+  const dataCal = dataDoEncontro(d.ano, mes);
   const db = supabase as any;
   const [reg, setReg] = useState<RegistroEncontro>(registro ?? {
     mes, data_presencial: null, data_online: null, presente_presencial: null, presente_online: null, tarefas: {}, ata: "",
@@ -69,7 +70,7 @@ export function EncontroMes({ d, mes, projectId, registro, onVoltar, irPara, onS
       <div className="al-enc-top">
         <button type="button" className="al-btn" onClick={onVoltar}>Encontros do ano</button>
         <div className="al-enc-tit">
-          <div className="lbl">{MESES_NOME[mes - 1]} · encontro {mes} de 12</div>
+          <div className="lbl">{MESES_NOME[mes - 1]} · encontro {mes} de 12{(reg.data_presencial ?? dataCal) ? ` · ${rotuloDataEncontro((reg.data_presencial ?? dataCal)!, mes)}` : ""}</div>
           <h2>{e.tema}</h2>
           <p>{e.objetivo}</p>
           <div>{e.marcos.map((m) => <span key={m} className="tag">{m}</span>)}</div>
@@ -130,7 +131,7 @@ export function EncontroMes({ d, mes, projectId, registro, onVoltar, irPara, onS
           <div className="sub">{e.ferramenta}</div>
           <div className="lbl" style={{ margin: "14px 0 6px" }}>Datas e presença</div>
           <div className="al-form" style={{ gridTemplateColumns: "1fr 1fr" }}>
-            <label>Presencial<input className="al-in" type="date" value={reg.data_presencial ?? ""} onChange={(x) => salvar({ data_presencial: x.target.value || null })} /></label>
+            <label>Presencial<input className="al-in" type="date" value={reg.data_presencial ?? dataCal ?? ""} onChange={(x) => salvar({ data_presencial: x.target.value || null })} /></label>
             <label>Online<input className="al-in" type="date" value={reg.data_online ?? ""} onChange={(x) => salvar({ data_online: x.target.value || null })} /></label>
             <label className="al-chk"><input type="checkbox" checked={!!reg.presente_presencial} onChange={(x) => salvar({ presente_presencial: x.target.checked })} /> Esteve no presencial</label>
             <label className="al-chk"><input type="checkbox" checked={!!reg.presente_online} onChange={(x) => salvar({ presente_online: x.target.checked })} /> Esteve no online</label>
