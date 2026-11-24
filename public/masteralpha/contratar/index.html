@@ -80,7 +80,7 @@ input.bad { border-color: #C0392B; background: #FFF6F5; }
   <section id="vDados" class="on">
     <div class="kicker">Confirmar a cadeira</div>
     <h1>Seja bem-vindo <em>à mesa.</em></h1>
-    <p class="sub">Preencha os dados da empresa para o contrato. No passo seguinte você confirma o investimento e paga a 1ª mensalidade no Pix.</p>
+    <p class="sub">Preencha os dados da empresa para o contrato. Depois você assina o contrato na tela e paga a 1ª mensalidade no Pix.</p>
     <form class="card" id="fDados" autocomplete="on" novalidate>
       <h2>Empresa</h2>
       <label><span>Razão social <i>*</i></span><input id="razao" autocomplete="organization" maxlength="160" placeholder="Como está no CNPJ" /></label>
@@ -118,9 +118,20 @@ input.bad { border-color: #C0392B; background: #FFF6F5; }
     <datalist id="ufs"><option value="AC"><option value="AL"><option value="AP"><option value="AM"><option value="BA"><option value="CE"><option value="DF"><option value="ES"><option value="GO"><option value="MA"><option value="MT"><option value="MS"><option value="MG"><option value="PA"><option value="PB"><option value="PR"><option value="PE"><option value="PI"><option value="RJ"><option value="RN"><option value="RS"><option value="RO"><option value="RR"><option value="SC"><option value="SP"><option value="SE"><option value="TO"></datalist>
   </section>
 
-  <!-- 2: investimento e Pix -->
+  <!-- 2: contrato -->
+  <section id="vContrato">
+    <div class="kicker">Contrato</div>
+    <h1>Assine o contrato <em>antes do Pix.</em></h1>
+    <div class="card centro">
+      <p class="sub" style="margin-top:0" id="contratoTxt">Estamos preparando o seu contrato com os dados que você preencheu.</p>
+      <p class="err" id="errContrato" role="alert"></p>
+      <button type="button" class="btn" id="goContrato" disabled>Preparando o contrato...</button>
+      <p class="sub" style="font-size:14px">Você lê, assina na tela e volta para cá sozinho, já no pagamento.</p>
+    </div>
+  </section>
+
+  <!-- 3: investimento e Pix -->
   <section id="vPix">
-    <button type="button" class="voltar" id="voltarPix">← Voltar aos dados</button>
     <div class="kicker">Investimento</div>
     <h1>Pix Automático, <em>sem boleto todo mês.</em></h1>
     <div id="pixAntes">
@@ -219,9 +230,16 @@ $("cep").addEventListener("input", function(){
   }).catch(function(){});
 });
 
-var ID = null, timer = null, EMPRESA = "";
+var ID = null, timer = null, EMPRESA = "", URL_ASSINAR = "";
 var salvo = lido();
-if(salvo.id && salvo.etapa === "pix"){ ID = salvo.id; EMPRESA = salvo.empresa || ""; abrirPix(); gerarPix(true); }
+var voltou = qp("c");
+if(voltou && /^[0-9a-f-]{36}$/i.test(voltou)){
+  // voltou da tela de assinatura
+  ID = voltou; EMPRESA = (salvo.id === voltou && salvo.empresa) || "";
+  guardar({ id: ID, empresa: EMPRESA, etapa: "contrato" });
+  irContrato(false);
+} else if(salvo.id && salvo.etapa === "pix"){ ID = salvo.id; EMPRESA = salvo.empresa || ""; abrirPix(); gerarPix(true); }
+else if(salvo.id && salvo.etapa === "contrato"){ ID = salvo.id; EMPRESA = salvo.empresa || ""; irContrato(false); }
 
 var CAMPOS = [
   ["razao","Razão social"],["fantasia","Nome fantasia"],["cnpj","CNPJ"],["email","E-mail"],["tel","WhatsApp"],
@@ -256,14 +274,37 @@ $("fDados").addEventListener("submit", function(ev){
     guardar({ id: ID, empresa: EMPRESA, etapa: "dados" });
     $("goDados").disabled = false; $("goDados").textContent = "Continuar";
     if(d.status === "pago"){ pago(); return; }
-    abrirPix();
-    if(d.status === "pix_gerado") gerarPix(true);
+    irContrato(true);
   }).catch(function(e){
     $("goDados").disabled = false; $("goDados").textContent = "Continuar";
     var m = { cnpj_invalido:["Confira o CNPJ.","cnpj"], cpf_invalido:["Confira o CPF de quem assina.","cpf"], email_invalido:["Confira o e-mail.","email"], telefone_invalido:["Confira o WhatsApp.","tel"] }[e.code];
     if(m) return erroDados(m[0], m[1]);
     erroDados("Não consegui salvar agora. Confira a internet e tente de novo.");
   });
+});
+
+// Contrato: a função gera o PDF e o envelope; o cliente assina na tela de assinatura da UNV e volta com ?c=<id>.
+function irContrato(seguir){
+  view("vContrato");
+  $("errContrato").textContent = "";
+  $("goContrato").disabled = true; $("goContrato").textContent = "Preparando o contrato...";
+  api({ action:"contrato", id: ID }).then(function(d){
+    if(d.status === "pago"){ pago(); return; }
+    if(d.status === "assinado"){ guardar({ etapa: "pix" }); abrirPix(); return; }
+    URL_ASSINAR = d.url;
+    guardar({ etapa: "contrato" });
+    $("contratoTxt").textContent = "O contrato está pronto, com os dados da sua empresa. Leia, assine na tela e você volta direto para o pagamento.";
+    $("goContrato").disabled = false; $("goContrato").textContent = "Ler e assinar o contrato";
+    if(seguir) location.href = URL_ASSINAR;
+  }).catch(function(e){
+    if(e.code === "contratacao_invalida"){ try { localStorage.removeItem(CHAVE); } catch(x){} view("vDados"); return; }
+    $("goContrato").disabled = false; $("goContrato").textContent = "Tentar de novo";
+    URL_ASSINAR = "";
+    $("errContrato").textContent = "Não consegui preparar o contrato agora. Tente de novo em instantes.";
+  });
+}
+$("goContrato").addEventListener("click", function(){
+  if(URL_ASSINAR) location.href = URL_ASSINAR; else irContrato(true);
 });
 
 function abrirPix(){
@@ -276,7 +317,6 @@ function periodo(ymd){
   var a = +ymd.slice(0,4), m = +ymd.slice(5,7) - 1, f = m + 10, af = a + Math.floor(f / 12);
   $("resPeriodo").textContent = "de " + MESES[m] + (af !== a ? " de " + a : "") + " a " + MESES[f % 12] + " de " + af;
 }
-$("voltarPix").addEventListener("click", function(){ clearInterval(timer); view("vDados"); });
 $("goPix").addEventListener("click", function(){
   if(!$("aceite").checked){ $("errPix").textContent = "Marque a caixa confirmando o valor e o débito mensal."; return; }
   gerarPix(false);
@@ -297,6 +337,7 @@ function gerarPix(retomando){
     $("goPix").disabled = false; $("goPix").textContent = "Gerar o Pix de R$ 1.500";
     if(retomando){ $("pixAntes").hidden = false; $("pixQr").hidden = true; }
     if(e.code === "contratacao_invalida"){ try { localStorage.removeItem(CHAVE); } catch(x){} view("vDados"); return; }
+    if(e.code === "contrato_pendente"){ irContrato(false); return; }
     $("errPix").textContent = "Não consegui gerar o Pix agora. Tente de novo em instantes.";
   });
 }

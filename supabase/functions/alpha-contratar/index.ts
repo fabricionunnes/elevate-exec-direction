@@ -11,10 +11,13 @@
 //
 // action=aplicar   grava a aplicação e cria/atualiza o lead
 // action=dados     dados contratuais do checkout (cria/atualiza o lead) e devolve o id da contratação
-// action=pix       Pix Automático (1ª no QR + 11 débitos mensais a partir de jan/2027), lead em Proposta enviada
+// action=contrato  gera o contrato em PDF, abre o envelope de assinatura e devolve o link do cliente
+//                  (depois de assinar, a tela /#/assinar devolve o cliente para o checkout, no passo do Pix)
+// action=pix       Pix Automático (só com o contrato assinado pelo cliente), (1ª no QR + 11 débitos mensais a partir de jan/2027), lead em Proposta enviada
 // action=status    confere se a 1ª caiu; pago → lead em Fechado e aviso no WhatsApp do Fabrício
 // action=conferir  cron (alpha-contratar-conferir): confere os Pix gerados que ainda não apareceram como pagos
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { clausulasAlpha, gerarPdfAlpha } from "./contrato.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -36,6 +39,8 @@ const ETAPAS_ANTES = new Set([
 const TAG_FATURAMENTO_BAIXO = "a1fa0000-0000-4000-8000-0000000a1f52";
 const DONO_FABRICIO = "b1a918b1-8776-4962-898e-5d97c7cc80c1";
 const INSTANCIA_AVISO = "fabricionunnes";
+const USUARIO_FABRICIO = "98f3de7f-6d6f-4f3c-b2da-b9e479ce96e3"; // auth.users do Fabrício: dono do envelope
+const CHECKOUT_URL = "https://unvholdings.com.br/masteralpha/contratar/";
 const AVISO_FECHOU = "5531989840003";
 
 const FATURAMENTO_MINIMO = 100000;
@@ -279,6 +284,102 @@ async function dados(sb: SB, body: Record<string, unknown>) {
   return json({ ok: true, id: c.id, status: "dados" });
 }
 
+// ── contrato ────────────────────────────────────────────────────────────────
+const hex = (b: ArrayBuffer) => Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, "0")).join("");
+const sha256 = async (x: string | Uint8Array) =>
+  hex(await crypto.subtle.digest("SHA-256", (typeof x === "string" ? new TextEncoder().encode(x) : x) as BufferSource));
+const novoToken = () => { const b = new Uint8Array(32); crypto.getRandomValues(b); return hex(b.buffer); };
+const fmtCnpj = (c: string) => c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+const fmtCpf = (c: string) => c.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+const fmtCep = (c: string) => c.replace(/^(\d{5})(\d{3})$/, "$1-$2");
+
+/** Signatário do cliente no envelope da contratação (o que não é a UNV). */
+async function signatarioCliente(sb: SB, envelopeId: string, email: string) {
+  const { data } = await sb.from("signers").select("id, status, email").eq("envelope_id", envelopeId).order("order_index");
+  return (data || []).find((s: any) => s.email === email) || null;
+}
+
+/** Link de assinatura de uso único para o cliente, com a volta para o checkout. */
+async function linkAssinatura(sb: SB, signerId: string, contratacaoId: string) {
+  await sb.from("signing_tokens").delete().eq("signer_id", signerId).is("used_at", null);
+  const tk = novoToken();
+  const { error } = await sb.from("signing_tokens").insert({ signer_id: signerId, token_hash: await sha256(tk), expires_at: new Date(Date.now() + 7 * 86400000).toISOString() });
+  if (error) throw new Error("token: " + error.message);
+  const volta = `${CHECKOUT_URL}?c=${contratacaoId}`;
+  return `https://unvholdings.com.br/#/assinar/${tk}?volta=${encodeURIComponent(volta)}`;
+}
+
+async function contrato(sb: SB, body: Record<string, unknown>) {
+  const c = await contratacaoRecente(sb, String(body.id || ""));
+  if (!c) return json({ error: "contratacao_invalida" }, 400);
+  if (c.status === "pago") return json({ ok: true, status: "pago" });
+  const email = String(c.email || "").toLowerCase().trim();
+
+  if (c.envelope_id) {
+    const s = await signatarioCliente(sb, c.envelope_id, email);
+    if (s?.status === "signed") return json({ ok: true, status: "assinado" });
+    if (s) return json({ ok: true, status: "assinar", url: await linkAssinatura(sb, s.id, c.id) });
+  }
+
+  const { data: lead } = await sb.from("crm_leads")
+    .select("id, company, trade_name, document, email, phone, zipcode, address, address_number, address_complement, address_neighborhood, city, state, legal_representative_name, marital_status, rg, cpf")
+    .eq("id", c.lead_id).maybeSingle();
+  if (!lead) return json({ error: "contratacao_invalida" }, 400);
+
+  const cnpj = fmtCnpj(digitos(lead.document)), cpf = fmtCpf(digitos(lead.cpf));
+  const endereco = [
+    `${lead.address}, ${lead.address_number}${lead.address_complement ? `, ${lead.address_complement}` : ""}`,
+    lead.address_neighborhood, `${lead.city}/${lead.state}`, `CEP ${fmtCep(digitos(lead.zipcode))}`,
+  ].filter(Boolean).join(", ");
+  const hoje = new Date(Date.now() - 3 * 3600000);
+  const clausulas = clausulasAlpha(VALOR, DIA_DEBITO);
+  const empresa = lead.trade_name || lead.company;
+
+  try {
+    const pdf = await gerarPdfAlpha({
+      razao: lead.company, cnpj, email, endereco, representante: lead.legal_representative_name,
+      estadoCivil: String(lead.marital_status || "").toLowerCase(), rg: lead.rg, cpf, valor: VALOR, diaVencimento: DIA_DEBITO,
+      data: new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate(), 12)),
+    }, clausulas);
+
+    const envelopeId = crypto.randomUUID();
+    const path = `envelopes/${envelopeId}/original.pdf`;
+    const { error: up } = await sb.storage.from("envelopes").upload(path, pdf, { contentType: "application/pdf", upsert: false });
+    if (up) throw new Error("upload: " + up.message);
+    const titulo = `Contrato - ${empresa} - UNV Mastermind Alpha`;
+    const { error: ee } = await sb.from("envelopes").insert({
+      id: envelopeId, owner_user_id: USUARIO_FABRICIO, title: titulo, status: "sent",
+      message: "Contrato do UNV Mastermind Alpha gerado no checkout do site.",
+      original_file_path: path, original_file_hash: await sha256(pdf), expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
+    });
+    if (ee) throw new Error("envelope: " + ee.message);
+    // Cliente primeiro (assina no checkout); a UNV recebe o aviso com o link dela quando o cliente assinar.
+    const { data: sig, error: se } = await sb.from("signers").insert([
+      { envelope_id: envelopeId, name: lead.legal_representative_name, email, cpf: digitos(lead.cpf), order_index: 0, status: "pending" },
+      { envelope_id: envelopeId, name: "Fabrício Augusto Nunes Oliveira", email: "fabricio@universidadevendas.com.br", cpf: "07810271601", order_index: 1, status: "pending" },
+    ]).select("id, email");
+    if (se || !sig) throw new Error("signers: " + (se?.message || "vazio"));
+    await sb.from("audit_events").insert({ envelope_id: envelopeId, event_type: "created", metadata: { origem: "checkout /masteralpha/contratar", contratacao: c.id, total_signers: 2 } });
+
+    const venc = `${somaMeses(ymdBR(Date.now()).slice(0, 8) + "01", 1).slice(0, 8)}${String(DIA_DEBITO).padStart(2, "0")}`;
+    const { error: ge } = await sb.from("generated_contracts").insert({
+      client_name: lead.company, client_document: cnpj, client_address: endereco, client_email: email, client_phone: lead.phone,
+      legal_rep_name: lead.legal_representative_name, legal_rep_cpf: cpf, legal_rep_rg: lead.rg, legal_rep_marital_status: lead.marital_status,
+      legal_rep_nationality: "brasileiro(a)", legal_rep_profession: "empresário(a)", product_id: "mastermind-alpha", product_name: "UNV Mastermind Alpha",
+      contract_value: VALOR, payment_method: "pix", installments: null, is_recurring: true, due_date: venc, start_date: ymdBR(Date.now()),
+      clauses_snapshot: clausulas, envelope_id: envelopeId, created_by: USUARIO_FABRICIO,
+    });
+    if (ge) console.error("[alpha-contratar] generated_contracts", ge.message); // não trava a assinatura
+
+    const cliente = sig.find((s: any) => s.email === email);
+    await sb.from("alpha_contratacoes").update({ envelope_id: envelopeId }).eq("id", c.id);
+    return json({ ok: true, status: "assinar", url: await linkAssinatura(sb, cliente.id, c.id) });
+  } catch (e) {
+    console.error("[alpha-contratar] contrato", e);
+    return json({ error: "falha_contrato", detalhe: String((e as Error).message || e).slice(0, 160) }, 502);
+  }
+}
+
 // ── Pix Automático ──────────────────────────────────────────────────────────
 const ASAAS = "https://api.asaas.com/v3";
 async function asaas(path: string, method = "GET", body?: unknown) {
@@ -301,6 +402,10 @@ async function pix(sb: SB, body: Record<string, unknown>) {
   const c = await contratacaoRecente(sb, String(body.id || ""));
   if (!c) return json({ error: "contratacao_invalida" }, 400);
   if (c.status === "pago") return json({ ok: true, status: "pago" });
+  // O Pix só sai depois que o cliente assina o contrato.
+  const sigC = c.envelope_id ? await signatarioCliente(sb, c.envelope_id, String(c.email || "").toLowerCase().trim()) : null;
+  if (sigC?.status !== "signed") return json({ error: "contrato_pendente" }, 409);
+  if (!c.contrato_assinado_em) await sb.from("alpha_contratacoes").update({ contrato_assinado_em: new Date().toISOString() }).eq("id", c.id);
   if (c.status === "pix_gerado" && c.pix_auth_id) {
     const { data: q } = await sb.from("asaas_pix_automatico").select("qr_payload, qr_image").eq("id", c.pix_auth_id).maybeSingle();
     if (q?.qr_payload) return json({ ok: true, status: "pix_gerado", pix: { payload: q.qr_payload, image: q.qr_image }, link: `https://unvholdings.com.br/#/pix-automatico/${c.pix_auth_id}`, proximo_debito: c.primeiro_debito });
@@ -441,6 +546,7 @@ Deno.serve(async (req) => {
     switch (body.action) {
       case "aplicar": return await aplicar(sb, body);
       case "dados": return await dados(sb, body);
+      case "contrato": return await contrato(sb, body);
       case "pix": return await pix(sb, body);
       case "status": return await status(sb, body);
       case "conferir": return await conferirPendentes(sb);
