@@ -27,6 +27,7 @@ const ORIGEM = "a1fa0000-0000-4000-8000-0000000a1f40";   // origem Mastermind Al
 const ETAPA = {
   aplicacao: "465386ef-3bc3-4687-aa07-701bc322e320",     // Aplicação preenchida (criada pelo Fabrício)
   proposta: "41a9c6cb-563f-4f97-88bd-669b9612b25d",
+  contratoAssinado: "a73c61e2-f1a7-47b7-9031-59bb07ca0394",
   fechado: "2d469072-d361-4152-8ed5-9bf44aca0682",
   perdido: "e692bd8f-c997-4e31-a91d-ed1e22b10b1c",
   foraPerfil: "422d32ed-0ec7-4658-bcad-7a5b6a0f0c4c",
@@ -38,6 +39,7 @@ const ETAPAS_ANTES = new Set([
 ]);
 const TAG_FATURAMENTO_BAIXO = "a1fa0000-0000-4000-8000-0000000a1f52";
 const DONO_FABRICIO = "b1a918b1-8776-4962-898e-5d97c7cc80c1";
+const PRODUTO_ALPHA = "3edffd3a-1d7b-4e2c-a3de-4d467d4c9242"; // crm_products "UNV Mastermind Alpha": sem produto, o ganho vira alerta do Mastermind UNV
 const INSTANCIA_AVISO = "fabricionunnes";
 const USUARIO_FABRICIO = "98f3de7f-6d6f-4f3c-b2da-b9e479ce96e3"; // auth.users do Fabrício: dono do envelope
 const CHECKOUT_URL = "https://unvholdings.com.br/masteralpha/contratar/";
@@ -249,13 +251,13 @@ async function dados(sb: SB, body: Record<string, unknown>) {
     const token = crypto.randomUUID().replace(/-/g, "");
     const { data: novo, error } = await sb.from("crm_leads").insert({
       ...d, name: d.legal_representative_name, pipeline_id: PIPELINE, stage_id: ETAPA.proposta, origin_id: ORIGEM,
-      origin: "Checkout /masteralpha/contratar", owner_staff_id: DONO_FABRICIO, opportunity_value: VALOR * MESES,
+      origin: "Checkout /masteralpha/contratar", owner_staff_id: DONO_FABRICIO, opportunity_value: VALOR * MESES, product_id: PRODUTO_ALPHA,
       entered_pipeline_at: new Date().toISOString(), urgency: "high", notes: nota, contract_form_token: token, ...utm,
     }).select("id, stage_id").single();
     if (error || !novo) { console.error("[alpha-contratar] lead", error); return json({ error: "falha_lead" }, 500); }
     lead = novo;
   } else {
-    const upd: Record<string, unknown> = { ...d, opportunity_value: VALOR * MESES, notes: lead.notes ? `${nota}\n\n${lead.notes}` : nota };
+    const upd: Record<string, unknown> = { ...d, opportunity_value: VALOR * MESES, product_id: PRODUTO_ALPHA, notes: lead.notes ? `${nota}\n\n${lead.notes}` : nota };
     if (!lead.contract_form_token) upd.contract_form_token = crypto.randomUUID().replace(/-/g, "");
     if (!lead.owner_staff_id) upd.owner_staff_id = DONO_FABRICIO;
     if (lead.stage_id !== ETAPA.fechado) Object.assign(upd, { stage_id: ETAPA.proposta, closed_at: null, loss_reason_id: null });
@@ -282,6 +284,18 @@ async function dados(sb: SB, body: Record<string, unknown>) {
     body: JSON.stringify({ leadId: lead.id }),
   }));
   return json({ ok: true, id: c.id, status: "dados" });
+}
+
+// ── etapas do funil (24/11/2026, Fabrício: "assinou contrato vai pra Contrato assinado, pagou vai pra Fechado") ──
+/** Contrato assinado pelo cliente: grava a data e leva o lead para "Contrato assinado" (nunca tira de Fechado). */
+async function marcarContratoAssinado(sb: SB, c: any) {
+  if (!c.contrato_assinado_em) await sb.from("alpha_contratacoes").update({ contrato_assinado_em: new Date().toISOString() }).eq("id", c.id).is("contrato_assinado_em", null);
+  const { data: l } = await sb.from("crm_leads").select("id, stage_id").eq("id", c.lead_id).maybeSingle();
+  if (!l || l.stage_id === ETAPA.fechado || l.stage_id === ETAPA.contratoAssinado) return;
+  await sb.from("crm_leads").update({ stage_id: ETAPA.contratoAssinado, product_id: PRODUTO_ALPHA, closed_at: null, loss_reason_id: null }).eq("id", l.id);
+  const nota = `CHECKOUT MASTERMIND ALPHA (${quando()}): contrato assinado pelo cliente.`;
+  const { data: n } = await sb.from("crm_leads").select("notes").eq("id", l.id).maybeSingle();
+  await sb.from("crm_leads").update({ notes: n?.notes ? `${nota}\n\n${n.notes}` : nota }).eq("id", l.id);
 }
 
 // ── contrato ────────────────────────────────────────────────────────────────
@@ -317,7 +331,7 @@ async function contrato(sb: SB, body: Record<string, unknown>) {
 
   if (c.envelope_id) {
     const s = await signatarioCliente(sb, c.envelope_id, email);
-    if (s?.status === "signed") return json({ ok: true, status: "assinado" });
+    if (s?.status === "signed") { await marcarContratoAssinado(sb, c); return json({ ok: true, status: "assinado" }); }
     if (s) return json({ ok: true, status: "assinar", url: await linkAssinatura(sb, s.id, c.id) });
   }
 
@@ -405,7 +419,7 @@ async function pix(sb: SB, body: Record<string, unknown>) {
   // O Pix só sai depois que o cliente assina o contrato.
   const sigC = c.envelope_id ? await signatarioCliente(sb, c.envelope_id, String(c.email || "").toLowerCase().trim()) : null;
   if (sigC?.status !== "signed") return json({ error: "contrato_pendente" }, 409);
-  if (!c.contrato_assinado_em) await sb.from("alpha_contratacoes").update({ contrato_assinado_em: new Date().toISOString() }).eq("id", c.id);
+  await marcarContratoAssinado(sb, c);
   if (c.status === "pix_gerado" && c.pix_auth_id) {
     const { data: q } = await sb.from("asaas_pix_automatico").select("qr_payload, qr_image").eq("id", c.pix_auth_id).maybeSingle();
     if (q?.qr_payload) return json({ ok: true, status: "pix_gerado", pix: { payload: q.qr_payload, image: q.qr_image }, link: `https://unvholdings.com.br/#/pix-automatico/${c.pix_auth_id}`, proximo_debito: c.primeiro_debito });
@@ -476,7 +490,7 @@ async function pix(sb: SB, body: Record<string, unknown>) {
       status: "pix_gerado", pix_auth_id: auth.id, lead_payment_id: lp?.id || null, pix_gerado_em: new Date().toISOString(),
       primeiro_debito: startDate, fim_contrato: pedido.finishDate ? finishDate : null,
     }).eq("id", c.id);
-    await sb.from("crm_leads").update({ stage_id: ETAPA.proposta, opportunity_value: VALOR * MESES, closed_at: null, loss_reason_id: null }).eq("id", lead.id);
+    // Pix gerado: o lead fica em "Contrato assinado" até a 1ª mensalidade cair (aí vai para Fechado).
     return json({ ok: true, status: "pix_gerado", pix: { payload: qrPayload, image: qrImage }, link, proximo_debito: startDate });
   } catch (e) {
     console.error("[alpha-contratar] pix", e);
@@ -507,7 +521,7 @@ async function conferir(sb: SB, c: any): Promise<string> {
   const { data: trava } = await sb.from("alpha_contratacoes").update({ status: "pago", pago_em: new Date().toISOString() })
     .eq("id", c.id).eq("status", "pix_gerado").select("id");
   if (!trava?.length) return "pago";
-  await sb.from("crm_leads").update({ stage_id: ETAPA.fechado, opportunity_value: VALOR * MESES, closed_at: new Date().toISOString() }).eq("id", c.lead_id);
+  await sb.from("crm_leads").update({ stage_id: ETAPA.fechado, product_id: PRODUTO_ALPHA, opportunity_value: VALOR * MESES, closed_at: new Date().toISOString() }).eq("id", c.lead_id);
   try {
     const { count } = await sb.from("alpha_contratacoes").select("id", { count: "exact", head: true }).eq("status", "pago");
     const { data: inst } = await sb.from("whatsapp_instances").select("instance_name, api_url, api_key").eq("instance_name", INSTANCIA_AVISO).maybeSingle();
@@ -530,12 +544,24 @@ async function status(sb: SB, body: Record<string, unknown>) {
   return json({ ok: true, status: await conferir(sb, c) });
 }
 
+async function conferirAssinaturas(sb: SB) {
+  const { data } = await sb.from("alpha_contratacoes").select("*").not("envelope_id", "is", null).is("contrato_assinado_em", null)
+    .gte("criado_em", new Date(Date.now() - VALIDADE_CONTRATACAO_H * 3600000).toISOString()).limit(30);
+  let n = 0;
+  for (const c of data || []) {
+    const s = await signatarioCliente(sb, c.envelope_id, String(c.email || "").toLowerCase().trim());
+    if (s?.status === "signed") { await marcarContratoAssinado(sb, c); n++; }
+  }
+  return n;
+}
+
 async function conferirPendentes(sb: SB) {
+  const assinados = await conferirAssinaturas(sb);
   const { data } = await sb.from("alpha_contratacoes").select("*").eq("status", "pix_gerado")
     .gte("pix_gerado_em", new Date(Date.now() - 72 * 3600000).toISOString()).limit(30);
   let n = 0;
   for (const c of data || []) if ((await conferir(sb, c)) === "pago") n++;
-  return json({ ok: true, conferidas: (data || []).length, pagas: n });
+  return json({ ok: true, conferidas: (data || []).length, pagas: n, contratos_assinados: assinados });
 }
 
 Deno.serve(async (req) => {
