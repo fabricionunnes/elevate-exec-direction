@@ -63,8 +63,13 @@ Deno.serve(async (req) => {
       // recebe o caso e decide (fail-safe contra convite indevido).
       let productName = "";
       if (lead.product_id) {
-        const { data: prod } = await sb.from("crm_products").select("name").eq("id", lead.product_id).maybeSingle();
-        productName = prod?.name || "";
+        // crm_leads.product_id aponta para onboarding_services (FK); crm_products fica como reserva
+        const { data: svc } = await sb.from("onboarding_services").select("name").eq("id", lead.product_id).maybeSingle();
+        productName = svc?.name || "";
+        if (!productName) {
+          const { data: prod } = await sb.from("crm_products").select("name").eq("id", lead.product_id).maybeSingle();
+          productName = prod?.name || "";
+        }
       }
       if (!productName) {
         await sendWhats(sb, FABRICIO, `Mastermind UNV: ganho no CRM SEM produto preenchido — ${lead.name} (${phone}). Se o produto dá direito ao Mastermind, convida manualmente (ou preenche o produto no lead e move de novo pra Ganho).`);

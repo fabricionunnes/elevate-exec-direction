@@ -39,7 +39,7 @@ const ETAPAS_ANTES = new Set([
 ]);
 const TAG_FATURAMENTO_BAIXO = "a1fa0000-0000-4000-8000-0000000a1f52";
 const DONO_FABRICIO = "b1a918b1-8776-4962-898e-5d97c7cc80c1";
-const PRODUTO_ALPHA = "3edffd3a-1d7b-4e2c-a3de-4d467d4c9242"; // crm_products "UNV Mastermind Alpha": sem produto, o ganho vira alerta do Mastermind UNV
+const PRODUTO_ALPHA = "e5fe845a-cde3-4bd7-a1c3-fae016646767"; // onboarding_services "UNV Mastermind Alpha" (FK de crm_leads.product_id): sem produto, o ganho vira alerta do Mastermind UNV
 const INSTANCIA_AVISO = "fabricionunnes";
 const USUARIO_FABRICIO = "98f3de7f-6d6f-4f3c-b2da-b9e479ce96e3"; // auth.users do Fabrício: dono do envelope
 const CHECKOUT_URL = "https://unvholdings.com.br/masteralpha/contratar/";
