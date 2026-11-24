@@ -5,6 +5,7 @@ import { productDetails } from "@/data/productDetails";
 import { contractClauses, companyInfo, rescisaoClause, buildInvestimentoContent } from "@/data/contractTemplate";
 import { formatCurrencyWithWords, formatCurrencyBR } from "@/lib/numberToWords";
 import type { ContractFormData } from "./ContractForm";
+import { isAlpha } from "@/data/alphaContrato";
 import { formatFullAddress } from "./ContractForm";
 
 // UNV Brand Colors
@@ -319,6 +320,7 @@ export async function generateContractPDF({ formData, customClauses }: GenerateP
             paymentMethod: pm, isRecurring: rec, installments: inst,
             contractValue: formData.contractValue, dueDay: formData.dueDay,
             isCommissioned: com, commissionValue: formData.commissionValue,
+            alpha: isAlpha(formData.productId),
           })) === target))));
       const isDefault = (!clause.manuallyEdited || looksAuto) && (isPlaceholder || isAutoGerada || looksAuto);
       const investimentoContent = isDefault
@@ -330,6 +332,7 @@ export async function generateContractPDF({ formData, customClauses }: GenerateP
             dueDay: formData.dueDay,
             isCommissioned: formData.isCommissioned,
             commissionValue: formData.commissionValue,
+            alpha: isAlpha(formData.productId),
           })
         : clause.content;
       const investimentoLines = wrapText(investimentoContent, contentWidth, 10);

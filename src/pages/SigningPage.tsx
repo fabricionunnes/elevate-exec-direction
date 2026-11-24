@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import SignaturePad from "signature_pad";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,11 @@ const SIGNER_STATUS_LABELS: Record<SignerStatus, string> = {
 
 export default function SigningPage() {
   const { token } = useParams<{ token: string }>();
+  // Checkout do Mastermind Alpha: depois de assinar, volta para o passo do pagamento.
+  // Só aceita o endereço do checkout da UNV (nunca redireciona para fora).
+  const [searchParams] = useSearchParams();
+  const voltaBruta = searchParams.get("volta") || "";
+  const volta = /^https:\/\/unvholdings\.com\.br\/masteralpha\/contratar\/(\?c=[0-9a-f-]{36})?$/i.test(voltaBruta) ? voltaBruta : null;
   const [pageData, setPageData] = useState<SigningPageData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,6 +49,9 @@ export default function SigningPage() {
       .catch(() => setError("Erro de conexão"))
       .finally(() => setLoading(false));
   }, [token]);
+
+  // Link reaberto depois de assinar, vindo do checkout: segue direto para o pagamento.
+  useEffect(() => { if (jaAssinado && volta) window.location.href = volta; }, [jaAssinado, volta]);
 
   useEffect(() => {
     if (!pageData || submitted) return;
@@ -109,6 +117,7 @@ export default function SigningPage() {
       if (!data.success) throw new Error(data.error ?? "Erro ao registrar assinatura");
       setSubmitted(true);
       setAllSigned(data.data.all_signed ?? false);
+      if (volta) setTimeout(() => { window.location.href = volta; }, 1500);
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Erro ao enviar assinatura");
     } finally {
@@ -148,12 +157,17 @@ export default function SigningPage() {
             <p className="text-muted-foreground text-sm mb-4">
               Sua assinatura eletrônica foi registrada com validade jurídica conforme a MP 2.200-2/2001 e Lei 14.063/2020.
             </p>
-            {allSigned && (
+            {volta && (
+              <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-700">
+                Levando você para o pagamento...
+              </div>
+            )}
+            {!volta && allSigned && (
               <div className="bg-green-50 rounded-lg p-3 text-sm text-green-700">
                 Todos os signatários assinaram. O PDF final será gerado e enviado por e-mail.
               </div>
             )}
-            {!allSigned && (
+            {!volta && !allSigned && (
               <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-700">
                 Aguardando assinaturas dos demais signatários.
               </div>
