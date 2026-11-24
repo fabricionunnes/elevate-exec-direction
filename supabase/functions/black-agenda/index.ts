@@ -344,23 +344,118 @@ async function confirmouLive(sb: SB, body: Record<string, unknown>) {
   const k = chaveTel(body.telefone);
   if (nome.length < 2 || !k) return json({ error: "dados_incompletos" }, 400);
   const tel = String(body.telefone).replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
-  const { data: cands } = await sb.from("crm_leads").select("id, phone, stage_id").eq("pipeline_id", PIPELINE)
+  const emailBruto = String(body.email || "").trim().toLowerCase().slice(0, 120);
+  const email = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailBruto) ? emailBruto : "";
+  const { data: cands } = await sb.from("crm_leads").select("id, phone, stage_id, email").eq("pipeline_id", PIPELINE)
     .ilike("phone", `%${k.slice(-8)}`).order("created_at", { ascending: true }).limit(10);
   const achou: any = (cands || []).find((l: any) => chaveTel(l.phone) === k);
   if (achou) {
-    if ([ETAPA.base, ETAPA.disparo, ETAPA.entrouGrupo, ETAPA.saiuGrupo].includes(achou.stage_id)) {
-      await sb.from("crm_leads").update({ stage_id: ETAPA.confirmouLive }).eq("id", achou.id);
-    }
+    const upd: Record<string, unknown> = {};
+    if ([ETAPA.base, ETAPA.disparo, ETAPA.entrouGrupo, ETAPA.saiuGrupo].includes(achou.stage_id)) upd.stage_id = ETAPA.confirmouLive;
+    if (email && !achou.email) upd.email = email;
+    if (Object.keys(upd).length) await sb.from("crm_leads").update(upd).eq("id", achou.id);
+    if (email) await convidarNaLive(sb, email, nome, achou.id);
     return json({ ok: true, lead_id: achou.id, novo: false });
   }
   const { data: novo } = await sb.from("crm_leads").insert({
-    name: nome, phone: tel, pipeline_id: PIPELINE, stage_id: ETAPA.confirmouLive, owner_staff_id: DONO_FABRICIO,
+    name: nome, phone: tel, email: email || null, pipeline_id: PIPELINE, stage_id: ETAPA.confirmouLive, owner_staff_id: DONO_FABRICIO,
     entered_pipeline_at: new Date().toISOString(), urgency: "medium",
     notes: "Confirmou presença na live da Black UNV (/black/live) sem estar na base",
     utm_source: String(body.utm_source || "").slice(0, 200) || null, utm_medium: String(body.utm_medium || "").slice(0, 200) || null,
     utm_campaign: String(body.utm_campaign || "").slice(0, 200) || null,
   }).select("id").single();
+  if (email) await convidarNaLive(sb, email, nome, novo?.id || null);
   return json({ ok: true, lead_id: novo?.id || null, novo: !!novo });
+}
+
+// ── convite da live na agenda do Google ─────────────────────────────────────
+// Fabrício, 24/11: "na confirmação da live já deixar cadastrado o e-mail do participante no evento,
+// pra aparecer na agenda deles". Quem confirma em /black/live entra em black_live_convidados e vira
+// convidado do evento da live na agenda do Fabrício (o Google manda o convite pro e-mail). A conferência
+// roda logo na confirmação e de novo no cron de 2 min: lê o evento, junta quem falta e faz um PATCH só.
+// Como sempre compara a lista inteira com o evento, um convidado perdido por duas gravações juntas volta
+// sozinho. Convidado não vê a lista dos outros nem pode convidar ninguém.
+const GOOGLE_USER_FABRICIO = "98f3de7f-6d6f-4f3c-b2da-b9e479ce96e3";
+let eventoLiveId: string | null = null;
+
+async function tokenGoogleFabricio(sb: SB): Promise<string | null> {
+  const { data: t } = await sb.from("user_google_tokens").select("access_token, refresh_token, token_expires_at")
+    .eq("user_id", GOOGLE_USER_FABRICIO).maybeSingle();
+  if (!t?.access_token) return null;
+  if (!t.token_expires_at || new Date(t.token_expires_at) > new Date(Date.now() + 60_000)) return t.access_token;
+  if (!t.refresh_token) return null;
+  const r = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: Deno.env.get("GOOGLE_CLIENT_ID") || "", client_secret: Deno.env.get("GOOGLE_CLIENT_SECRET") || "",
+      refresh_token: t.refresh_token, grant_type: "refresh_token",
+    }),
+  });
+  if (!r.ok) return null;
+  const d = await r.json();
+  await sb.from("user_google_tokens").update({
+    access_token: d.access_token, token_expires_at: new Date(Date.now() + (d.expires_in || 3600) * 1000).toISOString(),
+  }).eq("user_id", GOOGLE_USER_FABRICIO);
+  return d.access_token;
+}
+
+async function convidarNaLive(sb: SB, email: string, nome: string, leadId: string | null) {
+  if (Date.now() > LIVE_FIM) return;
+  await sb.from("black_live_convidados").upsert({ email, nome, lead_id: leadId }, { onConflict: "email", ignoreDuplicates: true });
+  emSegundoPlano(sincronizarConvidadosLive(sb).catch((e) => console.error("[black-agenda] convite da live", e)));
+}
+
+async function limparTesteLive(sb: SB) {
+  const teste = (e: string) => /^fabricio\+teste[^@]*@universidadevendas\.com\.br$/i.test(e);
+  const tok = await tokenGoogleFabricio(sb);
+  if (!tok) return { ok: false, motivo: "sem_token_google" };
+  await sincronizarConvidadosLive(sb, true); // garante o id do evento
+  if (!eventoLiveId) return { ok: false, motivo: "evento_da_live_nao_achado" };
+  const H = { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" };
+  const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventoLiveId}`;
+  const ev = await (await fetch(url, { headers: H })).json();
+  const ficam = ((ev.attendees || []) as any[]).filter((a) => !teste(String(a.email || "")));
+  const p = await fetch(`${url}?sendUpdates=none`, { method: "PATCH", headers: H, body: JSON.stringify({ attendees: ficam }) });
+  if (!p.ok) return { ok: false, motivo: `PATCH ${p.status}` };
+  await sb.from("black_live_convidados").delete().like("email", "fabricio+teste%@universidadevendas.com.br");
+  return { ok: true, removidos: (ev.attendees || []).length - ficam.length, ficaram: ficam.length };
+}
+
+async function sincronizarConvidadosLive(sb: SB, simular = false) {
+  if (Date.now() > LIVE_FIM) return { ok: true, encerrado: true };
+  const { data: lista } = await sb.from("black_live_convidados").select("email").limit(3000);
+  if (!lista?.length && !simular) return { ok: true, total: 0 };
+  const tok = await tokenGoogleFabricio(sb);
+  if (!tok) return { ok: false, motivo: "sem_token_google" };
+  const H = { Authorization: `Bearer ${tok}` };
+  const base = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
+  if (!eventoLiveId) {
+    const r = await fetch(`${base}?timeMin=2026-11-25T21:00:00Z&timeMax=2026-11-26T02:00:00Z&singleEvents=true&maxResults=50`, { headers: H });
+    if (!r.ok) return { ok: false, motivo: `lista ${r.status}` };
+    const itens = ((await r.json()).items || []) as any[];
+    const ev = itens.find((e) => JSON.stringify([e.hangoutLink, e.conferenceData, e.location, e.description]).includes(MEET_LIVE.split("/").pop()!));
+    if (!ev) return { ok: false, motivo: "evento_da_live_nao_achado", eventos: itens.map((e) => e.summary) };
+    eventoLiveId = ev.id;
+  }
+  const g = await fetch(`${base}/${eventoLiveId}`, { headers: H });
+  if (!g.ok) { eventoLiveId = null; return { ok: false, motivo: `evento ${g.status}` }; }
+  const ev = await g.json();
+  const atuais = (ev.attendees || []) as any[];
+  const tem = new Set(atuais.map((a) => String(a.email || "").toLowerCase()));
+  const faltam: string[] = [...new Set<string>((lista || []).map((l: any) => String(l.email)))].filter((e) => !tem.has(e));
+  const info = { evento: ev.summary, inicio: ev.start?.dateTime, convidados_no_evento: atuais.length, faltam: faltam.length,
+    ve_os_outros: ev.guestsCanSeeOtherGuests !== false };
+  if (simular) return { ok: true, simulacao: true, ...info };
+  if (faltam.length || ev.guestsCanSeeOtherGuests !== false || ev.guestsCanInviteOthers !== false) {
+    const p = await fetch(`${base}/${eventoLiveId}?sendUpdates=all`, {
+      method: "PATCH", headers: { ...H, "Content-Type": "application/json" },
+      body: JSON.stringify({ attendees: [...atuais, ...faltam.map((email) => ({ email }))], guestsCanSeeOtherGuests: false, guestsCanInviteOthers: false }),
+    });
+    if (!p.ok) return { ok: false, motivo: `PATCH ${p.status}: ${(await p.text()).slice(0, 200)}` };
+  }
+  await sb.from("black_live_convidados").update({ no_evento: true, atualizado_em: new Date().toISOString() }).eq("no_evento", false);
+  return { ok: true, ...info, adicionados: faltam.length };
 }
 
 // ── entrada no grupo pelo anúncio ───────────────────────────────────────────
@@ -868,6 +963,7 @@ Deno.serve(async (req) => {
         // a agenda do grupo não pode depender da leitura de participantes dar certo
         try { await enviarAgendadas(sb); } catch (e) { console.error("[black-agenda] agenda", e); }
         try { await conferirPendentes(sb); } catch (e) { console.error("[black-agenda] pix pendentes", e); }
+        try { await sincronizarConvidadosLive(sb); } catch (e) { console.error("[black-agenda] convite da live", e); }
         const resp = await grupoSync(sb);
         // follow-up de quem pediu o grupo e não entrou: depois da leitura dos participantes, a cada 10 min
         if (new Date().getUTCMinutes() % 10 < 2) {
@@ -878,6 +974,10 @@ Deno.serve(async (req) => {
       // prévia do follow-up do grupo: não envia nem grava nada
       case "followup-grupo-previa": return json(await followupGrupo(sb, true));
       case "entrou-live": return await entrouLive(sb, body);
+      // conferência do convite da live sem gravar nada (lê o evento e diz quantos faltam)
+      case "convidados-live-previa": return json(await sincronizarConvidadosLive(sb, true));
+      // tira do evento só os e-mails de teste (fabricio+teste...), sem avisar ninguém
+      case "limpar-teste-live": return json(await limparTesteLive(sb));
       case "confirmou-live": return await confirmouLive(sb, body);
       case "entrar-grupo": return await entrarGrupo(sb, body);
       case "garantir": return await garantir(sb, body);

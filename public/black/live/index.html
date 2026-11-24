@@ -105,9 +105,10 @@ input.bad{border-color:var(--red)}
 
     <form class="card" id="cf" autocomplete="on" novalidate>
       <h2>Confirmar presença</h2>
-      <p class="k">Depois de confirmar, é um toque pra salvar a live no Google Agenda ou no calendário do iPhone, já com o link dentro.</p>
+      <p class="k">Coloca seu e-mail que o convite da live chega na sua agenda do Google, já com o link dentro.</p>
       <label><span>Seu nome</span><input id="nome" type="text" name="name" autocomplete="name" autocapitalize="words" placeholder="Seu nome completo" maxlength="80" /></label>
       <label><span>Seu WhatsApp</span><input id="tel" type="tel" name="tel" inputmode="numeric" autocomplete="tel" placeholder="(31) 99999-9999" maxlength="24" /></label>
+      <label><span>Seu e-mail</span><input id="email" type="email" name="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="voce@empresa.com.br" maxlength="120" /></label>
       <p class="err" id="err"></p>
       <button type="submit" class="btn" id="go">Confirmar minha presença</button>
       <p class="hint">Seus dados ficam só com a UNV. Nada de lista de spam.</p>
@@ -125,7 +126,7 @@ input.bad{border-color:var(--red)}
   <section id="done" class="card">
     <div class="ok"><svg viewBox="0 0 24 24" fill="none" stroke="#18B26B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
     <h2 id="dTitle">Presença confirmada.</h2>
-    <p class="k">Agora salva na sua agenda pra não esquecer. O link da live já vai dentro do evento.</p>
+    <p class="k" id="dTexto">Agora salva na sua agenda pra não esquecer. O link da live já vai dentro do evento.</p>
     <a class="btn blue" id="gcal" href="#" target="_blank" rel="noopener">Salvar no Google Agenda</a>
     <a class="btn ghost" id="ics" href="/black/live/live-black-unv.ics">Salvar no iPhone ou Outlook</a>
     <div class="meet">Link pra entrar na live: <b>unvholdings.com.br/black/entrar</b><br>Quarta, 25/11, às 20h (horário de Brasília)</div>
@@ -238,9 +239,10 @@ function err(msg, el){
   if(el){ el.classList.add("bad"); el.focus(); }
 }
 
-function done(nome){
+function done(nome, email){
   $("ask").style.display = "none";
   $("dTitle").textContent = nome.split(" ")[0] + ", presença confirmada.";
+  if(email) $("dTexto").textContent = "O convite da live vai chegar em " + email + " em alguns minutos e já aparece na sua agenda do Google. Se você usa iPhone ou Outlook, salva também pelo botão abaixo.";
   $("gcal").href = gcalUrl();
   $("done").style.display = "block";
   try { window.scrollTo(0,0); } catch(e){}
@@ -256,21 +258,23 @@ $("cf").addEventListener("submit", function(ev){
   if(nome.length < 2) return err("Escreve seu nome pra eu te chamar direito.", $("nome"));
   var tel = $("tel").value.replace(/\D/g,"");
   if(tel.length < 10) return err("Coloca seu WhatsApp com DDD.", $("tel"));
+  var email = $("email").value.trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return err("Coloca seu e-mail pra receber o convite na agenda.", $("email"));
   err("");
   nome = capitalize(nome);
   try { var o = JSON.parse(localStorage.getItem("black_lead") || "{}"); o.nome = nome; o.tel = tel; localStorage.setItem("black_lead", JSON.stringify(o)); } catch(e){}
   sending = true; $("go").disabled = true; $("go").textContent = "Confirmando…";
   fb("trackCustom","ConfirmouLive",{ evento:"black-unv-2026-11-25" });
   // A confirmação nunca trava: se o registro falhar, a pessoa segue pra agenda do mesmo jeito.
-  trk({ step:1, name:"confirmou", q:1, status:"confirmou", meta:{ contato:{ nome:nome, whatsapp:tel } } });
+  trk({ step:1, name:"confirmou", q:1, status:"confirmou", meta:{ contato:{ nome:nome, whatsapp:tel, email:email } } });
   // Lead no funil Black Friday, etapa "Confirmou live" (quem já está mais à frente fica onde está)
   var t = fetch(SUPA + "/functions/v1/black-agenda", {
     method: "POST", keepalive: true,
     headers: { "Content-Type":"application/json", "Authorization":"Bearer " + ANON, "apikey": ANON },
-    body: JSON.stringify({ action:"confirmou-live", nome:nome, telefone:tel,
+    body: JSON.stringify({ action:"confirmou-live", nome:nome, telefone:tel, email:email,
       utm_source: qp("utm_source"), utm_medium: qp("utm_medium"), utm_campaign: qp("utm_campaign") })
   }).catch(function(){});
-  var fim = function(){ done(nome); };
+  var fim = function(){ done(nome, email); };
   Promise.race([t, new Promise(function(r){ setTimeout(r, 2500); })]).then(fim, fim);
 });
 
