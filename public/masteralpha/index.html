@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>UNV Mastermind Alpha · Uma mesa de 60 empresários em Alphaville</title>
+<meta name="description" content="12 meses focados no lucro líquido da sua empresa. Um sábado por mês em Alphaville, sistema próprio, participação de lucro a cada trimestre e uma mesa de negócios com uma cadeira por segmento." />
+<link rel="canonical" href="https://unvholdings.com.br/masteralpha/" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="UNV Mastermind Alpha" />
+<meta property="og:description" content="Cresça 15% ou mais em 12 meses, com um comercial que roda sem você. 60 cadeiras, uma por segmento." />
+<meta property="og:image" content="https://unvholdings.com.br/masteralpha/og.jpg" />
+<meta property="og:url" content="https://unvholdings.com.br/masteralpha/" />
+<meta name="theme-color" content="#071D3D" />
+<link rel="icon" href="/favicon.ico" />
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+/* Padrão visual do PDF premium do Alpha: fundo perolado, cantos em azul-marinho com fio dourado,
+   águia em marca d'água, títulos em Bebas Neue, texto em Helvetica. Logo original, sem alteração. */
+:root {
+  --navy: #0B2A55; --navy-deep: #071D3D; --gold: #B08D4F; --gold-deep: #94733A; --gold-soft: #D8BD86;
+  --ink: #1C2B44; --muted: #4A5870; --line: #E4DED0; --paper: #FFFFFF; --pearl: #F3F4F6; --red: #F40505;
+  --display: 'Bebas Neue', 'BebasB', Impact, sans-serif;
+  --text: 'Helvetica Now Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--text); color: var(--ink); background: linear-gradient(118deg, #FFFFFF 0%, #F6F6F7 45%, #ECEDF0 100%); background-attachment: fixed; -webkit-font-smoothing: antialiased; line-height: 1.6; }
+img { max-width: 100%; display: block; }
+a { color: inherit; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+.kicker { font-size: 12px; font-weight: 700; letter-spacing: .34em; text-transform: uppercase; color: var(--gold-deep); }
+h1, h2, h3.d { font-family: var(--display); font-weight: 400; text-transform: uppercase; color: var(--navy); line-height: 1; letter-spacing: .012em; text-wrap: balance; }
+h1 em, h2 em { font-style: normal; color: var(--gold); }
+h2 { font-size: clamp(38px, 5.4vw, 60px); margin-top: 10px; }
+p { color: var(--muted); }
+.lead { font-size: 19px; color: var(--ink); max-width: 62ch; }
+section { position: relative; padding: 96px 0; }
+.corner-tl, .corner-br { position: absolute; width: 200px; height: 200px; pointer-events: none; z-index: 0; }
+.corner-tl { left: 0; top: 0; background: linear-gradient(135deg, var(--navy-deep) 0 34%, var(--gold) 34% 35%, transparent 35% 39.4%, rgba(176,141,79,.55) 39.4% 39.8%, transparent 39.8%); }
+.corner-br { right: 0; bottom: 0; background: linear-gradient(315deg, var(--navy-deep) 0 34%, var(--gold) 34% 35%, transparent 35% 39.4%, rgba(176,141,79,.55) 39.4% 39.8%, transparent 39.8%); }
+.aguia { position: absolute; right: 0; top: 0; width: min(46vw, 460px); opacity: .55; pointer-events: none; z-index: 0;
+  -webkit-mask-image: linear-gradient(to left, #000 50%, transparent), linear-gradient(to bottom, #000 55%, transparent); -webkit-mask-composite: source-in; mask-composite: intersect; }
+section > .wrap { position: relative; z-index: 1; }
+
+/* botões */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; font-family: var(--text); font-size: 15px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; text-decoration: none; border: 0; cursor: pointer;
+  background: linear-gradient(135deg, #0C2C5A, var(--navy-deep)); color: #fff; padding: 20px 34px; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--gold), 0 14px 30px -14px rgba(7,29,61,.7); transition: transform .15s, box-shadow .15s; }
+.btn:hover { transform: translateY(-1px); box-shadow: inset 0 -2px 0 var(--gold-soft), 0 18px 34px -14px rgba(7,29,61,.8); }
+.btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.btn.gold { background: linear-gradient(135deg, var(--gold-soft), var(--gold)); color: var(--navy-deep); box-shadow: 0 14px 30px -14px rgba(148,115,58,.8); }
+.btn.gold:hover { box-shadow: 0 18px 34px -14px rgba(148,115,58,.9); }
+
+/* topo */
+.top { position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,.86); backdrop-filter: saturate(1.4) blur(10px); -webkit-backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
+.top .marca { font-family: var(--display); font-size: 24px; color: var(--navy); letter-spacing: .04em; text-decoration: none; white-space: nowrap; }
+.top .marca span { color: var(--gold); }
+.top nav { display: flex; gap: 22px; align-items: center; }
+.top nav a { font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; color: var(--muted); }
+.top nav a:hover { color: var(--navy); }
+.top .btn { padding: 11px 18px; font-size: 12px; }
+.top nav a.btn, .top nav a.btn:hover { color: #fff; }
+@media (max-width: 860px) { .top nav a.l { display: none; } }
+
+/* capa */
+.capa { padding: 0; overflow: hidden; }
+.capa .alto { position: relative; padding: 48px 0 44px; text-align: center; }
+.capa .logo { width: min(400px, 78vw); margin: 0 auto; }
+.capa .tag { margin-top: 26px; font-size: 13px; font-weight: 500; letter-spacing: .42em; text-transform: uppercase; color: var(--muted); }
+.capa .tag span { color: var(--gold); padding: 0 6px; }
+.banda { position: relative; background: linear-gradient(118deg, #0C2C5A, var(--navy-deep)); color: #fff; padding: 64px 0 70px; }
+.banda::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--gold); }
+.banda .kicker { color: var(--gold-soft); }
+.banda h1 { color: #fff; font-size: clamp(44px, 7vw, 86px); margin-top: 14px; max-width: 19ch; }
+.banda h1 em { color: var(--gold-soft); }
+.banda .lead { color: #C9D4E8; margin-top: 22px; }
+.banda .acoes { margin-top: 34px; display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+.banda .acoes small { color: #93A3BE; font-size: 14px; }
+.meta { margin-top: 46px; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 0; border-top: 1px solid rgba(255,255,255,.14); }
+.meta div { padding: 20px 16px 0 0; }
+.meta b { display: block; font-family: var(--display); font-weight: 400; font-size: 46px; line-height: 1; color: #fff; }
+.meta span { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: #C9D4E8; font-weight: 700; }
+@media (max-width: 700px) { .meta { grid-template-columns: repeat(2, minmax(0,1fr)); row-gap: 8px; } }
+
+/* régua */
+.regua { margin-top: 44px; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 22px; }
+.rg { border-top: 3px solid var(--navy); padding-top: 16px; }
+.rg:nth-child(2n) { border-top-color: var(--gold); }
+.rg .n { font-family: var(--display); font-size: 20px; color: var(--gold-deep); }
+.rg h3 { font-size: 18px; color: var(--navy); margin: 2px 0 6px; }
+.rg p { font-size: 15px; }
+@media (max-width: 860px) { .regua { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 480px) { .regua { grid-template-columns: minmax(0,1fr); } }
+
+/* blocos de duas colunas */
+.duas { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 56px; align-items: center; }
+@media (max-width: 900px) { .duas { grid-template-columns: minmax(0,1fr); gap: 36px; } }
+
+/* sábado */
+.roteiro { background: var(--paper); border: 1px solid var(--line); border-top: 3px solid var(--gold); border-radius: 3px; }
+.slot { display: grid; grid-template-columns: 76px minmax(0,1fr); gap: 14px; padding: 14px 22px; border-bottom: 1px solid var(--line); align-items: baseline; }
+.slot:last-child { border-bottom: 0; }
+.slot .h { font-family: var(--display); font-size: 24px; color: var(--gold-deep); }
+.slot .t { font-weight: 700; color: var(--navy); }
+.slot .t span { display: block; font-weight: 400; color: var(--muted); font-size: 14px; }
+
+/* cards */
+.cards { margin-top: 40px; display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 20px; }
+.card { background: var(--paper); border: 1px solid var(--line); border-top: 3px solid var(--gold); border-radius: 3px; padding: 26px 24px; }
+.card:nth-child(2n) { border-top-color: var(--navy); }
+.card h3 { font-size: 18px; color: var(--navy); margin-bottom: 8px; }
+.card p { font-size: 15px; }
+.card.dest { background: linear-gradient(135deg, #0C2C5A, var(--navy-deep)); border-color: var(--navy-deep); border-top-color: var(--gold); }
+.card.dest h3 { color: #fff; } .card.dest p { color: #C9D4E8; }
+@media (max-width: 900px) { .cards { grid-template-columns: minmax(0,1fr); } }
+
+/* sistema */
+.tela { border: 1px solid var(--line); border-radius: 4px; box-shadow: 0 30px 60px -30px rgba(7,29,61,.55); }
+.funcs { margin-top: 26px; display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px 26px; }
+.funcs div { border-left: 2px solid var(--gold); padding-left: 12px; }
+.funcs b { display: block; color: var(--navy); font-size: 15px; }
+.funcs span { font-size: 14px; color: var(--muted); }
+@media (max-width: 520px) { .funcs { grid-template-columns: minmax(0,1fr); } }
+
+/* calendário */
+.cal { margin-top: 40px; display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 12px; }
+.m { background: var(--paper); border: 1px solid var(--line); border-radius: 3px; padding: 16px 14px; }
+.m .mn { font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.m .dt { font-family: var(--display); font-size: 40px; line-height: 1; color: var(--navy); margin-top: 6px; }
+.m .te { font-size: 13px; color: var(--ink); font-weight: 600; margin-top: 4px; line-height: 1.35; }
+.m.kart { background: linear-gradient(135deg, #0C2C5A, var(--navy-deep)); border-color: var(--navy-deep); }
+.m.kart .mn { color: var(--gold-soft); } .m.kart .dt { color: #fff; } .m.kart .te { color: #C9D4E8; }
+.m.key { border-top: 3px solid var(--gold); }
+.legenda { margin-top: 16px; font-size: 14px; }
+@media (max-width: 900px) { .cal { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+@media (max-width: 480px) { .cal { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+
+/* dinheiro */
+.conta { margin-top: 30px; background: var(--paper); border: 1px solid var(--gold); border-radius: 3px; overflow: hidden; }
+.conta div { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.3fr); gap: 16px; padding: 14px 22px; border-bottom: 1px solid var(--line); font-size: 15px; }
+.conta div:last-child { border: 0; background: var(--navy-deep); color: #fff; }
+.conta b { color: var(--navy); } .conta div:last-child b { color: var(--gold-soft); }
+.conta i { font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--gold-deep); margin-right: 8px; }
+.conta span { color: var(--muted); } .conta div:last-child span { color: #C9D4E8; }
+
+/* kit */
+.fotos { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); gap: 16px; margin-top: 40px; }
+.fotos img { border-radius: 3px; border: 1px solid var(--line); width: 100%; height: 100%; object-fit: cover; }
+@media (max-width: 760px) { .fotos { grid-template-columns: minmax(0,1fr); } }
+
+/* anfitrião */
+.host { display: grid; grid-template-columns: minmax(0,320px) minmax(0,1fr); gap: 56px; align-items: center; }
+.host .foto { position: relative; }
+.host .foto img { width: 100%; height: auto; border-radius: 3px; background: linear-gradient(180deg, #E9EBEF, #D9DDE4); }
+.host .foto::after { content: ""; position: absolute; left: -12px; bottom: -12px; width: 60%; height: 60%; border-left: 2px solid var(--gold); border-bottom: 2px solid var(--gold); z-index: -1; }
+.numeros { margin-top: 26px; display: flex; flex-wrap: wrap; gap: 28px; }
+.numeros b { display: block; font-family: var(--display); font-size: 40px; font-weight: 400; color: var(--navy); line-height: 1; }
+.numeros span { font-size: 13px; color: var(--muted); }
+@media (max-width: 760px) { .host { grid-template-columns: minmax(0,1fr); } .host .foto { max-width: 300px; } }
+
+/* passos */
+.passos { margin-top: 40px; display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 20px; counter-reset: p; }
+.passo { counter-increment: p; position: relative; padding: 26px 24px 24px; background: var(--paper); border: 1px solid var(--line); border-radius: 3px; }
+.passo::before { content: counter(p, decimal-leading-zero); font-family: var(--display); font-size: 46px; color: var(--gold); line-height: 1; display: block; }
+.passo h3 { color: var(--navy); font-size: 18px; margin: 8px 0 6px; }
+.passo p { font-size: 15px; }
+@media (max-width: 860px) { .passos { grid-template-columns: minmax(0,1fr); } }
+
+/* aplicação */
+.aplicar { background: linear-gradient(118deg, #0C2C5A, var(--navy-deep)); color: #fff; overflow: hidden; }
+.aplicar::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--gold); }
+.aplicar h2 { color: #fff; } .aplicar h2 em { color: var(--gold-soft); }
+.aplicar .kicker { color: var(--gold-soft); }
+.aplicar .lead { color: #C9D4E8; }
+.form { margin-top: 36px; background: var(--paper); color: var(--ink); border-radius: 4px; padding: 34px; border-top: 3px solid var(--gold); box-shadow: 0 40px 70px -40px rgba(0,0,0,.7); }
+.grid-f { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px 18px; }
+.grid-f .full { grid-column: 1 / -1; }
+.form label { display: block; }
+.form label > span { display: block; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--navy); margin-bottom: 6px; }
+.form input, .form select, .form textarea { width: 100%; font: inherit; font-size: 16px; color: var(--ink); background: #F7F7F9; border: 1px solid #D9D5CA; border-radius: 3px; padding: 13px 14px; }
+.form textarea { min-height: 96px; resize: vertical; }
+.form input:focus, .form select:focus, .form textarea:focus { outline: 2px solid var(--gold); outline-offset: 0; background: #fff; }
+.form .bad { border-color: #C0392B; background: #FFF6F5; }
+.form .err { color: #B3261E; font-size: 14px; margin-top: 14px; min-height: 1px; }
+.form .rodape { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 18px; align-items: center; justify-content: space-between; }
+.form .rodape small { color: var(--muted); font-size: 13px; max-width: 46ch; }
+.ok { text-align: center; padding: 18px 6px; }
+.ok .selo { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 16px; display: grid; place-items: center; background: radial-gradient(circle at 35% 35%, var(--gold-soft), var(--gold) 55%, var(--gold-deep)); box-shadow: 0 0 0 6px rgba(176,141,79,.18); }
+.ok h3 { font-family: var(--display); font-weight: 400; font-size: 40px; color: var(--navy); text-transform: uppercase; line-height: 1; }
+.ok p { margin: 12px auto 0; max-width: 52ch; }
+@media (max-width: 640px) { .grid-f { grid-template-columns: minmax(0,1fr); } .form { padding: 24px 18px; } }
+
+footer { padding: 40px 0 calc(40px + env(safe-area-inset-bottom)); font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+footer b { color: var(--navy); letter-spacing: .12em; text-transform: uppercase; font-size: 12px; }
+
+.reveal { opacity: 1; transform: none; transition: opacity .6s ease, transform .6s ease; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .btn { transition: none; } }
+</style>
+<script>document.documentElement.className += " js";</script>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="marca" href="/">UNV <span>/</span> Mastermind Alpha</a>
+    <nav aria-label="Seções">
+      <a class="l" href="#encontro">O encontro</a>
+      <a class="l" href="#mesa">A mesa</a>
+      <a class="l" href="#calendario">Calendário</a>
+      <a class="btn" href="#aplicar">Aplicar</a>
+    </nav>
+  </div>
+</header>
+
+<!-- CAPA -->
+<section class="capa">
+  <div class="alto">
+    <div class="corner-tl" aria-hidden="true"></div>
+    <img class="aguia" src="aguia.webp" alt="" aria-hidden="true">
+    <div class="wrap">
+      <img class="logo" src="logo-alpha.webp" width="900" height="627" alt="UNV Mastermind Alpha">
+      <div class="tag">Turma 1 <span>/</span> 60 cadeiras <span>/</span> 12 meses</div>
+    </div>
+  </div>
+  <div class="banda">
+    <div class="wrap">
+      <div class="kicker">A promessa</div>
+      <h1><em>Cresça 15% ou mais em 12 meses,</em> com um comercial que roda sem você.</h1>
+      <p class="lead">Um ano inteiro focado no lucro líquido da sua empresa. Um sábado por mês em Alphaville, com o plano dentro do sistema, cobrança de verdade e uma mesa de empresários onde cada segmento tem uma cadeira só.</p>
+      <div class="acoes">
+        <a class="btn gold" href="#aplicar">Aplicar para uma cadeira</a>
+        <small>A entrada é por aplicação. Cada empresa passa por uma conversa individual com o Fabrício.</small>
+      </div>
+      <div class="meta">
+        <div><b>1</b><span>plano anual no sistema</span></div>
+        <div><b>4</b><span>participações de lucro</span></div>
+        <div><b>12</b><span>sábados presenciais</span></div>
+        <div><b>12</b><span>encontros online</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- O QUE É -->
+<section id="o-que-e">
+  <div class="corner-br" aria-hidden="true"></div>
+  <div class="wrap reveal">
+    <div class="kicker">O que é</div>
+    <h2>Um ano inteiro focado no <em>lucro líquido</em> da sua empresa.</h2>
+    <p class="lead" style="margin-top:18px">Vender mais e faturar mais só vale se virar lucro no bolso. No Alpha você planeja o ano dentro do UNV Nexus, recebe metas estruturadas mês a mês, aplica na prática com o Fabrício Nunnes e outros empresários, e a cada três meses retira a sua participação no lucro.</p>
+    <div class="regua">
+      <div class="rg"><div class="n">01</div><h3>Planejar</h3><p>No mês em que você entra, o plano é montado no sistema: faturamento 15% maior, orçamento de despesas e meta de lucro mês a mês.</p></div>
+      <div class="rg"><div class="n">02</div><h3>Medir</h3><p>O painel fica ligado ao financeiro da empresa. DRE e fluxo de caixa saem prontos, todo mês.</p></div>
+      <div class="rg"><div class="n">03</div><h3>Corrigir</h3><p>Cada encontro abre com os seus números. Quem sai do plano entra em plano de correção na hora, sem esperar o fim do ano.</p></div>
+      <div class="rg"><div class="n">04</div><h3>Distribuir</h3><p>A cada trimestre, o lucro apurado vira a sua participação de lucro, com a reserva de caixa garantida.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- O ENCONTRO -->
+<section id="encontro">
+  <div class="corner-tl" aria-hidden="true"></div>
+  <div class="wrap duas reveal">
+    <div>
+      <div class="kicker">O encontro presencial</div>
+      <h2>Um sábado por mês, <em>em Alphaville.</em></h2>
+      <p class="lead" style="margin-top:18px">Decisão boa sai de onde existe confiança. Por isso o encontro acontece em Alphaville, Nova Lima, das 14h às 20h: trabalho de verdade, esporte e churrasco.</p>
+      <p style="margin-top:14px">Quinze dias depois, um encontro online cobra o que cada um prometeu. Duas vezes por ano, o sábado vira um dia inteiro de GP de kart.</p>
+    </div>
+    <div class="roteiro" role="list" aria-label="Roteiro do sábado">
+      <div class="slot" role="listitem"><div class="h">14h00</div><div class="t">Chegada e café</div></div>
+      <div class="slot" role="listitem"><div class="h">14h15</div><div class="t">Aula ao vivo no sistema<span>e hot seat na sua célula de 10</span></div></div>
+      <div class="slot" role="listitem"><div class="h">16h00</div><div class="t">Vitrine Alpha<span>os membros da vez apresentam o seu negócio para a mesa</span></div></div>
+      <div class="slot" role="listitem"><div class="h">16h30</div><div class="t">Compromissos e rodada de pedidos<span>cada um sai com 3 compromissos e diz quem quer conhecer</span></div></div>
+      <div class="slot" role="listitem"><div class="h">17h00</div><div class="t">Esporte<span>beach tênis, vôlei, futebol</span></div></div>
+      <div class="slot" role="listitem"><div class="h">18h15</div><div class="t">Churrasco</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- A MESA -->
+<section id="mesa">
+  <div class="corner-br" aria-hidden="true"></div>
+  <div class="wrap reveal">
+    <div class="kicker">A mesa de negócios</div>
+    <h2>Sessenta cadeiras. <em>Uma por segmento.</em></h2>
+    <p class="lead" style="margin-top:18px">Ninguém senta ao lado de um concorrente. A mesa é feita para gerar negócio entre os membros, e cada negócio fechado entra no placar do grupo.</p>
+    <div class="cards">
+      <div class="card"><h3>Uma cadeira por segmento</h3><p>Cada segmento tem um lugar só. Quem entra primeiro, senta.</p></div>
+      <div class="card"><h3>Células de 10</h3><p>A turma trabalha em grupos de dez, então todo mundo tem voz e hot seat.</p></div>
+      <div class="card"><h3>Rodada de pedidos</h3><p>Em todo encontro, cada membro diz em 30 segundos quem quer conhecer.</p></div>
+      <div class="card"><h3>Um a um do mês</h3><p>Todo mês você faz 30 minutos com outro membro, sorteado pelo sistema.</p></div>
+      <div class="card"><h3>Vitrine Alpha</h3><p>Ao longo do ano, todo membro apresenta o seu produto ou serviço para a mesa.</p></div>
+      <div class="card dest"><h3>Placar de negócios</h3><p>O que a mesa gerou entre os membros aparece no sistema, no mês e no ano.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- O SISTEMA -->
+<section id="sistema">
+  <div class="corner-tl" aria-hidden="true"></div>
+  <div class="wrap duas reveal">
+    <div>
+      <div class="kicker">O sistema</div>
+      <h2>O seu projeto no <em>UNV Nexus Alpha.</em></h2>
+      <p class="lead" style="margin-top:18px">Cada membro ganha um projeto próprio no sistema, ligado ao financeiro da empresa. Ele mostra o lucro, diz onde ele está escapando e cobra a rotina do mês.</p>
+      <div class="funcs">
+        <div><b>Painel de controle</b><span>lucro, faturamento, margem e caixa contra o plano</span></div>
+        <div><b>Diagnóstico</b><span>o que os seus números estão dizendo, em português</span></div>
+        <div><b>Planejamento e metas</b><span>o ano montado mês a mês, por produto e vendedor</span></div>
+        <div><b>Participação de lucro</b><span>quanto sai para o dono a cada trimestre</span></div>
+      </div>
+    </div>
+    <img class="tela" src="painel.webp" width="1182" height="761" loading="lazy" alt="Painel de controle do Alpha no UNV Nexus, com lucro, faturamento e caixa contra o planejado">
+  </div>
+</section>
+
+<!-- DINHEIRO -->
+<section id="lucro">
+  <div class="corner-br" aria-hidden="true"></div>
+  <div class="wrap duas reveal">
+    <div>
+      <div class="kicker">Participação de lucro</div>
+      <h2>Lucro no bolso <em>a cada três meses.</em></h2>
+      <p class="lead" style="margin-top:18px">Empresa que cresce e não distribui lucro está só trocando dinheiro de lugar. No Alpha, todo trimestre fecha no sistema e vira decisão na mesa.</p>
+      <div class="conta" role="table" aria-label="Como a participação de lucro é calculada">
+        <div role="row"><b role="cell">Lucro líquido do trimestre</b><span role="cell">apurado no DRE do sistema</span></div>
+        <div role="row"><b role="cell"><i>menos</i>Reserva de caixa</b><span role="cell">até completar a reserva definida no plano</span></div>
+        <div role="row"><b role="cell"><i>menos</i>Reinvestimento</b><span role="cell">o percentual que você decidiu no plano</span></div>
+        <div role="row"><b role="cell">Sua participação de lucro</b><span role="cell">retirada com o trimestre fechado</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="kicker">Capital do Próximo Salto</div>
+      <h2>Quem executa <em>ganha o próximo passo.</em></h2>
+      <p class="lead" style="margin-top:18px">No fim dos 12 meses do seu contrato, o Fabrício investe na empresa de quem executou o ano: mensalidades em dia, presença em pelo menos 10 dos 12 encontros e sistema alimentado.</p>
+      <p style="margin-top:14px">O investimento vai para o primeiro passo do ciclo seguinte: um vendedor novo, tráfego ou um agente de IA. Os detalhes são apresentados na conversa individual. O Alpha não paga presença. Paga execução.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CALENDÁRIO -->
+<section id="calendario">
+  <div class="corner-tl" aria-hidden="true"></div>
+  <div class="wrap reveal">
+    <div class="kicker">Calendário 2027</div>
+    <h2>Doze sábados <em>já fechados.</em></h2>
+    <p class="lead" style="margin-top:18px">Sempre aos sábados, das 14h às 20h. As datas fogem de feriado prolongado e de férias, para você bloquear a agenda do ano inteiro de uma vez.</p>
+    <div class="cal">
+      <div class="m key"><div class="mn">Janeiro</div><div class="dt">23</div><div class="te">Planejamento anual</div></div>
+      <div class="m"><div class="mn">Fevereiro</div><div class="dt">20</div><div class="te">Metas estruturadas</div></div>
+      <div class="m"><div class="mn">Março</div><div class="dt">13</div><div class="te">Margem e preço</div></div>
+      <div class="m"><div class="mn">Abril</div><div class="dt">03</div><div class="te">Despesas e caixa</div></div>
+      <div class="m kart"><div class="mn">Maio · GP de kart</div><div class="dt">15</div><div class="te">IA comercial</div></div>
+      <div class="m"><div class="mn">Junho</div><div class="dt">05</div><div class="te">Revisão do semestre</div></div>
+      <div class="m"><div class="mn">Julho</div><div class="dt">03</div><div class="te">Time e remuneração</div></div>
+      <div class="m"><div class="mn">Agosto</div><div class="dt">14</div><div class="te">Marketing e CAC</div></div>
+      <div class="m"><div class="mn">Setembro</div><div class="dt">11</div><div class="te">Ticket e recorrência</div></div>
+      <div class="m"><div class="mn">Outubro</div><div class="dt">02</div><div class="te">Processos e IA na operação</div></div>
+      <div class="m kart"><div class="mn">Novembro · GP de kart</div><div class="dt">06</div><div class="te">Orçamento do próximo ano</div></div>
+      <div class="m key"><div class="mn">Dezembro</div><div class="dt">04</div><div class="te">Fechamento do ano</div></div>
+    </div>
+    <p class="legenda">Nos meses de GP, o encontro é o dia inteiro, a partir das 9h. Quem entra no meio do ano tem 12 meses contados da entrada e não perde nada.</p>
+  </div>
+</section>
+
+<!-- KIT -->
+<section id="membro">
+  <div class="corner-br" aria-hidden="true"></div>
+  <div class="wrap reveal">
+    <div class="kicker">Ser membro</div>
+    <h2>Iniciação, kit <em>e cartão de membro.</em></h2>
+    <p class="lead" style="margin-top:18px">Quem entra para a mesa recebe o kit de boas-vindas e o cartão de membro Alpha, e passa pela iniciação no primeiro encontro.</p>
+    <div class="fotos">
+      <img src="cartao.webp" width="1400" height="700" loading="lazy" alt="Cartão de membro do UNV Mastermind Alpha, frente e verso">
+      <img src="kit.webp" width="1200" height="666" loading="lazy" alt="Kit de boas-vindas do Mastermind Alpha com garrafa, taça, caderno e acessórios">
+    </div>
+  </div>
+</section>
+
+<!-- ANFITRIÃO -->
+<section id="fabricio">
+  <div class="corner-tl" aria-hidden="true"></div>
+  <div class="wrap host reveal">
+    <div class="foto"><img src="fabricio.webp" width="800" height="997" loading="lazy" alt="Fabrício Nunnes, CEO e fundador da UNV"></div>
+    <div>
+      <div class="kicker">Quem conduz</div>
+      <h2>Fabrício <em>Nunnes.</em></h2>
+      <p class="lead" style="margin-top:18px">CEO e fundador da UNV, a Universidade Nacional de Vendas. Mais de 20 anos em vendas e mais de 10 como diretor comercial. Hoje é o diretor comercial terceirizado de pequenas e médias empresas em todo o Brasil.</p>
+      <div class="numeros">
+        <div><b>+20</b><span>anos em vendas</span></div>
+        <div><b>+R$ 1 bi</b><span>em vendas geradas</span></div>
+        <div><b>+600</b><span>empresas atendidas</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMO ENTRAR -->
+<section id="como">
+  <div class="corner-br" aria-hidden="true"></div>
+  <div class="wrap reveal">
+    <div class="kicker">Como entrar</div>
+    <h2>A entrada é <em>por aplicação.</em></h2>
+    <div class="passos">
+      <div class="passo"><h3>Aplicação</h3><p>Você responde algumas perguntas sobre a sua empresa. Leva dois minutos.</p></div>
+      <div class="passo"><h3>Conversa individual</h3><p>O time do Fabrício analisa cada aplicação e chama no WhatsApp quem tem o perfil da mesa.</p></div>
+      <div class="passo"><h3>Cadeira confirmada</h3><p>Com a cadeira do seu segmento confirmada, você recebe o acesso, o kit e a data do seu primeiro encontro.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- APLICAÇÃO -->
+<section id="aplicar" class="aplicar">
+  <div class="wrap reveal">
+    <div class="kicker">Aplicação</div>
+    <h2>Aplique para <em>a sua cadeira.</em></h2>
+    <p class="lead" style="margin-top:18px">Responda com os números reais da empresa. As respostas ficam só com o time do Fabrício.</p>
+
+    <form class="form" id="fAplicar" novalidate>
+      <div id="campos">
+        <div class="grid-f">
+          <label><span>Seu nome</span><input id="nome" name="nome" autocomplete="name" autocapitalize="words" maxlength="120" required></label>
+          <label><span>WhatsApp com DDD</span><input id="tel" name="telefone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="24" placeholder="(31) 99999-9999" required></label>
+          <label><span>E-mail</span><input id="email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="160" required></label>
+          <label><span>Empresa</span><input id="empresa" name="empresa" autocomplete="organization" maxlength="160" required></label>
+          <label><span>Segmento</span><input id="segmento" name="segmento" maxlength="120" placeholder="Ex.: contabilidade para clínicas" required></label>
+          <label><span>Cidade</span><input id="cidade" name="cidade" autocomplete="address-level2" maxlength="100" placeholder="Ex.: Nova Lima"></label>
+          <label><span>Faturamento mensal da empresa</span>
+            <select id="faturamento" name="faturamento" required>
+              <option value="">Escolha a faixa</option>
+              <option value="ate50">Até R$ 50 mil</option>
+              <option value="50a100">De R$ 50 mil a R$ 100 mil</option>
+              <option value="100a300">De R$ 100 mil a R$ 300 mil</option>
+              <option value="300a1m">De R$ 300 mil a R$ 1 milhão</option>
+              <option value="acima1m">Acima de R$ 1 milhão</option>
+            </select>
+          </label>
+          <label><span>Vendedores no time</span>
+            <select id="vendedores" name="vendedores">
+              <option value="">Escolha</option>
+              <option>Nenhum, eu vendo</option><option>1 a 2</option><option>3 a 5</option><option>6 a 10</option><option>Mais de 10</option>
+            </select>
+          </label>
+          <label class="full"><span>O que você quer resolver nos próximos 12 meses?</span><textarea id="desafio" name="desafio" maxlength="1200" placeholder="Ex.: o faturamento cresceu mas o lucro não acompanhou, e a venda ainda depende de mim"></textarea></label>
+        </div>
+        <p class="err" id="err" role="alert" hidden></p>
+        <div class="rodape">
+          <small>Ao enviar, você autoriza o time da UNV a falar com você no WhatsApp sobre o Mastermind Alpha.</small>
+          <button type="submit" class="btn gold" id="enviar">Enviar aplicação</button>
+        </div>
+      </div>
+      <div class="ok" id="ok" hidden>
+        <div class="selo" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#071D3D" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <h3 id="okTitulo">Aplicação recebida.</h3>
+        <p>O time do Fabrício analisa cada aplicação com cuidado e chama no WhatsApp para a conversa individual. Fique de olho nas próximas mensagens.</p>
+      </div>
+    </form>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span><b>UNV Mastermind Alpha</b> · Universidade Nacional de Vendas · CNPJ 51.356.237/0001-40</span>
+    <span><a href="/">unvholdings.com.br</a> · <a href="/privacidade">Privacidade</a></span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var SUPA = "https://xrncvhzxjmddqluxoosu.supabase.co";
+  var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+  var FN = SUPA + "/functions/v1/alpha-contratar";
+  function $(id){ return document.getElementById(id); }
+  function qp(n){ try { return new URLSearchParams(location.search).get(n) || undefined; } catch(e){ return undefined; } }
+
+  // Meta Pixel (o mesmo da UNV Finance e da UNV Ads)
+  var PIXEL = "2043723569621789";
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");
+  function fb(){ try { fbq.apply(null, arguments); } catch(e){} }
+  fb("set", "autoConfig", false, PIXEL); fb("init", PIXEL); fb("track", "PageView");
+
+  function maskPhone(v){
+    var d = String(v || "").replace(/\D/g,"").replace(/^0+/,"");
+    if(d.length > 11 && d.slice(0,2) === "55") d = d.slice(2);
+    d = d.slice(0,11);
+    if(d.length <= 2) return d.length ? "(" + d : d;
+    if(d.length <= 6) return "(" + d.slice(0,2) + ") " + d.slice(2);
+    if(d.length <= 10) return "(" + d.slice(0,2) + ") " + d.slice(2,6) + "-" + d.slice(6);
+    return "(" + d.slice(0,2) + ") " + d.slice(2,7) + "-" + d.slice(7);
+  }
+  $("tel").addEventListener("input", function(){ var m = maskPhone(this.value); if(m !== this.value) this.value = m; });
+
+  function erro(msg, id){
+    var e = $("err");
+    Array.prototype.forEach.call(document.querySelectorAll("#fAplicar .bad"), function(x){ x.classList.remove("bad"); });
+    if(!msg){ e.hidden = true; e.textContent = ""; return; }
+    e.hidden = false; e.textContent = msg;
+    if(id){ $(id).classList.add("bad"); $(id).focus(); }
+  }
+
+  var iniciou = false;
+  $("fAplicar").addEventListener("input", function(){ if(!iniciou){ iniciou = true; fb("trackCustom", "AplicacaoIniciada", { form: "masteralpha" }); } });
+
+  $("fAplicar").addEventListener("submit", function(ev){
+    ev.preventDefault();
+    var nome = $("nome").value.trim(), tel = $("tel").value.replace(/\D/g,""), email = $("email").value.trim();
+    if(nome.length < 2) return erro("Coloque o seu nome.", "nome");
+    if(tel.length < 10) return erro("Coloque o WhatsApp com DDD.", "tel");
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return erro("Confira o e-mail.", "email");
+    if(!$("empresa").value.trim()) return erro("Coloque o nome da empresa.", "empresa");
+    if(!$("segmento").value.trim()) return erro("Conte o segmento da empresa.", "segmento");
+    if(!$("faturamento").value) return erro("Escolha a faixa de faturamento mensal.", "faturamento");
+    erro("");
+    var btn = $("enviar"); btn.disabled = true; btn.textContent = "Enviando...";
+    fetch(FN, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + ANON, "apikey": ANON },
+      body: JSON.stringify({
+        action: "aplicar", nome: nome, telefone: tel, email: email, empresa: $("empresa").value, segmento: $("segmento").value,
+        cidade: $("cidade").value, faturamento: $("faturamento").value, vendedores: $("vendedores").value, desafio: $("desafio").value,
+        utm_source: qp("utm_source"), utm_medium: qp("utm_medium"), utm_campaign: qp("utm_campaign"),
+        utm_content: qp("utm_content"), utm_term: qp("utm_term"), fbclid: qp("fbclid")
+      })
+    }).then(function(r){ return r.json().then(function(d){ return { ok: r.ok && !d.error, d: d }; }); })
+    .then(function(res){
+      if(!res.ok){
+        var m = { email_invalido: ["Confira o e-mail.", "email"], telefone_invalido: ["Confira o WhatsApp.", "tel"], dados_incompletos: ["Falta preencher algum campo.", null] }[res.d && res.d.error];
+        btn.disabled = false; btn.textContent = "Enviar aplicação";
+        return erro(m ? m[0] : "Não consegui enviar agora. Tente de novo em instantes.", m ? m[1] : null);
+      }
+      if(res.d.q) fb("track", "Lead", { content_name: "Mastermind Alpha - aplicação" });
+      else fb("trackCustom", "AplicacaoForaDoPerfil", { form: "masteralpha" });
+      var primeiro = nome.split(/\s+/)[0].replace(/[<>&"]/g, "");
+      $("okTitulo").textContent = "Aplicação recebida, " + primeiro + ".";
+      $("campos").hidden = true; $("ok").hidden = false;
+      $("aplicar").scrollIntoView({ behavior: "smooth", block: "start" });
+    }).catch(function(){
+      btn.disabled = false; btn.textContent = "Enviar aplicação";
+      erro("Não consegui enviar agora. Confira a internet e tente de novo.");
+    });
+  });
+
+  if("IntersectionObserver" in window){
+    var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); } }); }, { rootMargin: "0px 0px -40px 0px" });
+    Array.prototype.forEach.call(document.querySelectorAll(".reveal"), function(el){ io.observe(el); });
+  } else {
+    Array.prototype.forEach.call(document.querySelectorAll(".reveal"), function(el){ el.classList.add("in"); });
+  }
+})();
+</script>
+</body>
+</html>

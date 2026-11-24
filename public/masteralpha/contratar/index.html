@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Confirmar a cadeira · UNV Mastermind Alpha</title>
+<meta name="robots" content="noindex, nofollow" />
+<meta name="theme-color" content="#071D3D" />
+<link rel="icon" href="/favicon.ico" />
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+/* Checkout do Alpha no padrão visual do PDF premium. Link enviado depois da conversa individual. */
+:root {
+  --navy: #0B2A55; --navy-deep: #071D3D; --gold: #B08D4F; --gold-deep: #94733A; --gold-soft: #D8BD86;
+  --ink: #1C2B44; --muted: #4A5870; --line: #E4DED0; --paper: #FFFFFF;
+  --display: 'Bebas Neue', Impact, sans-serif;
+  --text: 'Helvetica Now Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--text); color: var(--ink); background: linear-gradient(118deg, #FFFFFF 0%, #F6F6F7 45%, #ECEDF0 100%); min-height: 100vh; -webkit-font-smoothing: antialiased; line-height: 1.55; position: relative; overflow-x: hidden; }
+body::before, body::after { content: ""; position: fixed; width: 160px; height: 160px; z-index: -1; pointer-events: none; }
+body::before { left: 0; top: 0; background: linear-gradient(135deg, var(--navy-deep) 0 34%, var(--gold) 34% 35%, transparent 35% 39.4%, rgba(176,141,79,.55) 39.4% 39.8%, transparent 39.8%); }
+body::after { right: 0; bottom: 0; background: linear-gradient(315deg, var(--navy-deep) 0 34%, var(--gold) 34% 35%, transparent 35% 39.4%, rgba(176,141,79,.55) 39.4% 39.8%, transparent 39.8%); }
+.wrap { max-width: 640px; margin: 0 auto; padding: 40px max(18px, env(safe-area-inset-right)) calc(60px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); }
+.logo { width: 150px; margin: 0 auto 22px; display: block; }
+.kicker { font-size: 12px; font-weight: 700; letter-spacing: .3em; text-transform: uppercase; color: var(--gold-deep); }
+h1 { font-family: var(--display); font-weight: 400; text-transform: uppercase; color: var(--navy); font-size: clamp(38px, 8vw, 52px); line-height: 1; margin-top: 8px; text-wrap: balance; }
+h1 em { font-style: normal; color: var(--gold); }
+.sub { color: var(--muted); margin-top: 12px; }
+section { display: none; } section.on { display: block; }
+.card { background: var(--paper); border: 1px solid var(--line); border-top: 3px solid var(--gold); border-radius: 4px; padding: 26px 24px; margin-top: 24px; box-shadow: 0 30px 60px -40px rgba(7,29,61,.45); }
+.card h2 { font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--navy); margin: 22px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.card h2:first-child { margin-top: 0; }
+label { display: block; margin-bottom: 14px; }
+label > span { display: block; font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 5px; }
+label i { color: var(--gold-deep); font-style: normal; }
+input { width: 100%; font: inherit; font-size: 16px; color: var(--ink); background: #F7F7F9; border: 1px solid #D9D5CA; border-radius: 3px; padding: 12px 13px; }
+input:focus { outline: 2px solid var(--gold); outline-offset: 0; background: #fff; }
+input.bad { border-color: #C0392B; background: #FFF6F5; }
+.l2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 0 14px; }
+.l2b { display: grid; grid-template-columns: minmax(0,1.6fr) minmax(0,1fr); gap: 0 14px; }
+.err { color: #B3261E; font-size: 14px; min-height: 1px; margin: 4px 0 10px; }
+.btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; font: inherit; font-size: 15px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; border: 0; cursor: pointer; padding: 18px 22px; border-radius: 3px;
+  background: linear-gradient(135deg, var(--gold-soft), var(--gold)); color: var(--navy-deep); box-shadow: 0 14px 30px -14px rgba(148,115,58,.8); text-decoration: none; }
+.btn.navy { background: linear-gradient(135deg, #0C2C5A, var(--navy-deep)); color: #fff; box-shadow: inset 0 -2px 0 var(--gold); }
+.btn:disabled { opacity: .6; cursor: default; }
+.btn:focus-visible { outline: 2px solid var(--navy); outline-offset: 3px; }
+.voltar { background: none; border: 0; font: inherit; color: var(--muted); cursor: pointer; font-size: 14px; margin-bottom: 6px; }
+.resumo { background: linear-gradient(135deg, #0C2C5A, var(--navy-deep)); color: #fff; border-radius: 4px; padding: 24px; margin-top: 20px; position: relative; }
+.resumo::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--gold); border-radius: 4px 4px 0 0; }
+.resumo .v { font-family: var(--display); font-size: 58px; line-height: 1; }
+.resumo .v small { font-family: var(--text); font-size: 16px; color: #C9D4E8; }
+.resumo ul { list-style: none; margin-top: 14px; }
+.resumo li { padding: 9px 0; border-top: 1px solid rgba(255,255,255,.14); color: #C9D4E8; font-size: 15px; }
+.resumo li b { color: #fff; }
+.resumo .emp { font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--gold-soft); margin-bottom: 6px; }
+.aceite { display: grid; grid-template-columns: 22px minmax(0,1fr); gap: 10px; align-items: start; margin: 20px 0 6px; font-size: 14px; color: var(--ink); cursor: pointer; }
+.aceite input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--navy); }
+.qr { background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 18px; width: min(280px, 100%); margin: 20px auto 14px; }
+.qr img { width: 100%; height: auto; display: block; }
+.cola { font-family: ui-monospace, Menlo, monospace; font-size: 12px; word-break: break-all; background: #F7F7F9; border: 1px dashed #D9D5CA; border-radius: 3px; padding: 12px; margin-bottom: 12px; max-height: 110px; overflow: auto; }
+.espera { display: flex; align-items: center; gap: 10px; justify-content: center; color: var(--muted); font-size: 14px; margin-top: 14px; }
+.spin { width: 16px; height: 16px; border: 2px solid var(--line); border-top-color: var(--gold); border-radius: 50%; animation: g 1s linear infinite; }
+@keyframes g { to { transform: rotate(360deg); } }
+.passos { margin: 6px 0 0 18px; color: var(--muted); font-size: 14px; }
+.passos li { margin: 4px 0; }
+.selo { width: 72px; height: 72px; border-radius: 50%; margin: 10px auto 18px; display: grid; place-items: center; background: radial-gradient(circle at 35% 35%, var(--gold-soft), var(--gold) 55%, var(--gold-deep)); box-shadow: 0 0 0 7px rgba(176,141,79,.18); }
+.centro { text-align: center; }
+.rodape { margin-top: 30px; text-align: center; font-size: 12px; color: var(--muted); }
+@media (max-width: 480px) { .l2, .l2b { grid-template-columns: minmax(0,1fr); } .card { padding: 22px 16px; } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <img class="logo" src="/masteralpha/logo-alpha.webp" width="900" height="627" alt="UNV Mastermind Alpha">
+
+  <!-- 1: dados contratuais -->
+  <section id="vDados" class="on">
+    <div class="kicker">Confirmar a cadeira</div>
+    <h1>Seja bem-vindo <em>à mesa.</em></h1>
+    <p class="sub">Preencha os dados da empresa para o contrato. No passo seguinte você confirma o investimento e paga a 1ª mensalidade no Pix.</p>
+    <form class="card" id="fDados" autocomplete="on" novalidate>
+      <h2>Empresa</h2>
+      <label><span>Razão social <i>*</i></span><input id="razao" autocomplete="organization" maxlength="160" placeholder="Como está no CNPJ" /></label>
+      <label><span>Nome fantasia <i>*</i></span><input id="fantasia" maxlength="160" placeholder="Como a empresa é conhecida" /></label>
+      <label><span>CNPJ <i>*</i></span><input id="cnpj" inputmode="numeric" maxlength="18" placeholder="00.000.000/0000-00" /></label>
+      <div class="l2">
+        <label><span>E-mail <i>*</i></span><input id="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="160" /></label>
+        <label><span>WhatsApp <i>*</i></span><input id="tel" type="tel" inputmode="numeric" autocomplete="tel" maxlength="24" placeholder="(31) 99999-9999" /></label>
+      </div>
+      <h2>Endereço</h2>
+      <div class="l2">
+        <label><span>CEP <i>*</i></span><input id="cep" inputmode="numeric" autocomplete="postal-code" maxlength="9" placeholder="00000-000" /></label>
+        <label><span>UF <i>*</i></span><input id="uf" list="ufs" maxlength="2" autocapitalize="characters" placeholder="MG" /></label>
+      </div>
+      <label><span>Endereço <i>*</i></span><input id="endereco" autocomplete="address-line1" maxlength="200" placeholder="Rua, avenida" /></label>
+      <div class="l2">
+        <label><span>Número <i>*</i></span><input id="numero" maxlength="30" /></label>
+        <label><span>Complemento</span><input id="complemento" maxlength="100" placeholder="Sala, loja" /></label>
+      </div>
+      <div class="l2">
+        <label><span>Bairro <i>*</i></span><input id="bairro" maxlength="100" /></label>
+        <label><span>Cidade <i>*</i></span><input id="cidade" autocomplete="address-level2" maxlength="100" /></label>
+      </div>
+      <h2>Quem assina pela empresa</h2>
+      <label><span>Nome completo <i>*</i></span><input id="rep" autocomplete="name" autocapitalize="words" maxlength="160" /></label>
+      <label><span>Estado civil <i>*</i></span><input id="civil" list="civis" maxlength="40" placeholder="Digite ou escolha" /></label>
+      <div class="l2">
+        <label><span>RG <i>*</i></span><input id="rg" maxlength="30" /></label>
+        <label><span>CPF <i>*</i></span><input id="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" /></label>
+      </div>
+      <p class="err" id="errDados" role="alert"></p>
+      <button type="submit" class="btn" id="goDados">Continuar</button>
+    </form>
+    <datalist id="civis"><option value="Solteiro(a)"><option value="Casado(a)"><option value="Divorciado(a)"><option value="Viúvo(a)"><option value="Separado(a)"><option value="União Estável"></datalist>
+    <datalist id="ufs"><option value="AC"><option value="AL"><option value="AP"><option value="AM"><option value="BA"><option value="CE"><option value="DF"><option value="ES"><option value="GO"><option value="MA"><option value="MT"><option value="MS"><option value="MG"><option value="PA"><option value="PB"><option value="PR"><option value="PE"><option value="PI"><option value="RJ"><option value="RN"><option value="RS"><option value="RO"><option value="RR"><option value="SC"><option value="SP"><option value="SE"><option value="TO"></datalist>
+  </section>
+
+  <!-- 2: investimento e Pix -->
+  <section id="vPix">
+    <button type="button" class="voltar" id="voltarPix">← Voltar aos dados</button>
+    <div class="kicker">Investimento</div>
+    <h1>Pix Automático, <em>sem boleto todo mês.</em></h1>
+    <div id="pixAntes">
+      <div class="resumo">
+        <div class="emp" id="resEmpresa">Sua empresa</div>
+        <div class="v">R$ 1.500 <small>por mês · 12 meses</small></div>
+        <ul>
+          <li><b>Hoje:</b> a 1ª mensalidade, no QR Code do Pix.</li>
+          <li><b>Depois:</b> 11 mensalidades debitadas sozinhas todo dia 10, <span id="resPeriodo">de janeiro a novembro de 2027</span>.</li>
+          <li><b>Incluso:</b> 12 sábados presenciais, 12 encontros online, o projeto no UNV Nexus, o kit e o cartão de membro.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <ol class="passos">
+          <li>Abra o app do seu banco e pague o QR Code.</li>
+          <li>O banco pede para autorizar o Pix Automático. Confirme.</li>
+          <li>Pronto. As próximas mensalidades saem sozinhas, e você pode ver ou cancelar a autorização no app do banco.</li>
+        </ol>
+        <label class="aceite"><input type="checkbox" id="aceite" /><span>Entendo que o UNV Mastermind Alpha custa <b>R$ 1.500 por mês por 12 meses</b>. Pago agora a 1ª mensalidade e autorizo o débito das 11 seguintes no dia 10 de cada mês.</span></label>
+        <p class="err" id="errPix" role="alert"></p>
+        <button type="button" class="btn" id="goPix">Gerar o Pix de R$ 1.500</button>
+      </div>
+    </div>
+    <div id="pixQr" class="card centro" hidden>
+      <p class="sub" style="margin-top:0">Pague no app do banco e confirme a autorização do Pix Automático.</p>
+      <div class="qr"><img id="qrImg" alt="QR Code do Pix de R$ 1.500" /></div>
+      <div class="cola" id="cola"></div>
+      <button type="button" class="btn navy" id="copiar">Copiar código Pix</button>
+      <div class="espera"><span class="spin" aria-hidden="true"></span><span>Esperando o pagamento. Esta tela muda sozinha.</span></div>
+    </div>
+  </section>
+
+  <!-- 3: pago -->
+  <section id="vPago">
+    <div class="card centro">
+      <div class="selo" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#071D3D" stroke-width="2.6"><path d="M20 6L9 17l-5-5"/></svg></div>
+      <div class="kicker">Cadeira confirmada</div>
+      <h1 id="pagoTitulo">Bem-vindo <em>ao Alpha.</em></h1>
+      <p class="sub">A 1ª mensalidade caiu e o Pix Automático está ativo. O time do Fabrício vai te chamar no WhatsApp com o acesso ao sistema, o kit de membro e a agenda do primeiro encontro: <b>sábado, 23 de janeiro de 2027</b>, em Alphaville.</p>
+    </div>
+  </section>
+
+  <p class="rodape">UNV Mastermind Alpha · Universidade Nacional de Vendas · CNPJ 51.356.237/0001-40<br>Pagamento processado pelo Asaas.</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+var SUPA = "https://xrncvhzxjmddqluxoosu.supabase.co";
+var ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybmN2aHp4am1kZHFsdXhvb3N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjY3NjQsImV4cCI6MjA5NDQ0Mjc2NH0.9j-4JHscbdL4gcf0wbgcSBkxjuxg6TKjocAD2FJVHFk";
+var FN = SUPA + "/functions/v1/alpha-contratar";
+var CHAVE = "unv_alpha_contratacao";
+var MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+function $(id){ return document.getElementById(id); }
+function qp(n){ try { return new URLSearchParams(location.search).get(n) || undefined; } catch(e){ return undefined; } }
+function view(id){ Array.prototype.forEach.call(document.querySelectorAll("section"), function(s){ s.classList.toggle("on", s.id === id); }); try { window.scrollTo(0,0); } catch(e){} }
+function api(body){
+  return fetch(FN, { method:"POST", headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + ANON, "apikey": ANON }, body: JSON.stringify(body) })
+    .then(function(r){ return r.json().then(function(d){ if(!r.ok || d.error){ var e = new Error(d && d.error || r.status); e.code = d && d.error; throw e; } return d; }); });
+}
+function guardar(o){ try { var s = JSON.parse(localStorage.getItem(CHAVE) || "{}"); for(var k in o) s[k] = o[k]; s.em = Date.now(); localStorage.setItem(CHAVE, JSON.stringify(s)); } catch(e){} }
+function lido(){ try { var s = JSON.parse(localStorage.getItem(CHAVE) || "{}"); return (s.em && Date.now() - s.em < 24*3600000) ? s : {}; } catch(e){ return {}; } }
+function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return { "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]; }); }
+
+function maskPhone(v){
+  var d = String(v || "").replace(/\D/g,"").replace(/^0+/,"");
+  if(d.length > 11 && d.slice(0,2) === "55") d = d.slice(2);
+  d = d.slice(0,11);
+  if(d.length <= 2) return d.length ? "(" + d : d;
+  if(d.length <= 6) return "(" + d.slice(0,2) + ") " + d.slice(2);
+  if(d.length <= 10) return "(" + d.slice(0,2) + ") " + d.slice(2,6) + "-" + d.slice(6);
+  return "(" + d.slice(0,2) + ") " + d.slice(2,7) + "-" + d.slice(7);
+}
+function maskCnpj(v){ var d = String(v||"").replace(/\D/g,"").slice(0,14); return d.replace(/^(\d{2})(\d)/,"$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1/$2").replace(/(\d{4})(\d{1,2})$/,"$1-$2"); }
+function maskCpf(v){ var d = String(v||"").replace(/\D/g,"").slice(0,11); return d.replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})\.(\d{3})(\d)/,"$1.$2.$3").replace(/(\d{3})\.(\d{3})\.(\d{3})(\d{1,2})$/,"$1.$2.$3-$4"); }
+function maskCep(v){ var d = String(v||"").replace(/\D/g,"").slice(0,8); return d.length > 5 ? d.slice(0,5) + "-" + d.slice(5) : d; }
+function cpfOk(c){ if(c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false; for(var t=9;t<11;t++){ var s=0; for(var i=0;i<t;i++) s+=+c[i]*(t+1-i); if(((s*10)%11)%10 !== +c[t]) return false; } return true; }
+function cnpjOk(c){ if(c.length !== 14 || /^(\d)\1{13}$/.test(c)) return false; var p=[5,4,3,2,9,8,7,6,5,4,3,2]; for(var k=0;k<2;k++){ var pe=k?[6].concat(p):p, s=0; for(var i=0;i<pe.length;i++) s+=+c[i]*pe[i]; var r=s%11<2?0:11-s%11; if(r !== +c[12+k]) return false; } return true; }
+var MASCARAS = { tel: maskPhone, cnpj: maskCnpj, cpf: maskCpf, cep: maskCep };
+Object.keys(MASCARAS).forEach(function(id){
+  ["input","blur"].forEach(function(ev){ $(id).addEventListener(ev, function(){ var m = MASCARAS[id](this.value); if(m !== this.value) this.value = m; }); });
+});
+$("uf").addEventListener("input", function(){ var v = this.value.toUpperCase().replace(/[^A-Z]/g,"").slice(0,2); if(v !== this.value) this.value = v; });
+var ultimoCep = "";
+$("cep").addEventListener("input", function(){
+  var c = this.value.replace(/\D/g,"");
+  if(c.length !== 8 || c === ultimoCep) return;
+  ultimoCep = c;
+  fetch("https://viacep.com.br/ws/" + c + "/json/").then(function(r){ return r.json(); }).then(function(d){
+    if(!d || d.erro) return;
+    if(d.logradouro && !$("endereco").value) $("endereco").value = d.logradouro;
+    if(d.bairro && !$("bairro").value) $("bairro").value = d.bairro;
+    if(d.localidade) $("cidade").value = d.localidade;
+    if(d.uf) $("uf").value = d.uf;
+    if(!$("numero").value) $("numero").focus();
+  }).catch(function(){});
+});
+
+var ID = null, timer = null, EMPRESA = "";
+var salvo = lido();
+if(salvo.id && salvo.etapa === "pix"){ ID = salvo.id; EMPRESA = salvo.empresa || ""; abrirPix(); gerarPix(true); }
+
+var CAMPOS = [
+  ["razao","Razão social"],["fantasia","Nome fantasia"],["cnpj","CNPJ"],["email","E-mail"],["tel","WhatsApp"],
+  ["cep","CEP"],["uf","UF"],["endereco","Endereço"],["numero","Número"],["bairro","Bairro"],["cidade","Cidade"],
+  ["rep","Nome de quem assina"],["civil","Estado civil"],["rg","RG"],["cpf","CPF"]
+];
+function erroDados(msg, id){
+  $("errDados").textContent = msg || "";
+  Array.prototype.forEach.call(document.querySelectorAll("#fDados input"), function(i){ i.classList.remove("bad"); });
+  if(id){ $(id).classList.add("bad"); $(id).focus(); }
+}
+$("fDados").addEventListener("submit", function(ev){
+  ev.preventDefault();
+  for(var i=0;i<CAMPOS.length;i++){ if(!$(CAMPOS[i][0]).value.trim()) return erroDados("Falta preencher: " + CAMPOS[i][1] + ".", CAMPOS[i][0]); }
+  var cnpj = $("cnpj").value.replace(/\D/g,""), cpf = $("cpf").value.replace(/\D/g,""), tel = $("tel").value.replace(/\D/g,"");
+  if(!cnpjOk(cnpj)) return erroDados("Confira o CNPJ.", "cnpj");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test($("email").value.trim())) return erroDados("Confira o e-mail.", "email");
+  if(tel.length < 10) return erroDados("Coloque o WhatsApp com DDD.", "tel");
+  if($("cep").value.replace(/\D/g,"").length !== 8) return erroDados("Confira o CEP.", "cep");
+  if($("uf").value.trim().length !== 2) return erroDados("Coloque a UF com 2 letras.", "uf");
+  if(!cpfOk(cpf)) return erroDados("Confira o CPF de quem assina.", "cpf");
+  erroDados("");
+  $("goDados").disabled = true; $("goDados").textContent = "Salvando...";
+  EMPRESA = $("fantasia").value.trim() || $("razao").value.trim();
+  api({
+    action:"dados", razao_social:$("razao").value, nome_fantasia:$("fantasia").value, cnpj:cnpj, email:$("email").value, telefone:tel,
+    cep:$("cep").value, uf:$("uf").value, endereco:$("endereco").value, numero:$("numero").value, complemento:$("complemento").value,
+    bairro:$("bairro").value, cidade:$("cidade").value, representante:$("rep").value, estado_civil:$("civil").value, rg:$("rg").value, cpf:cpf,
+    utm_source: qp("utm_source"), utm_medium: qp("utm_medium"), utm_campaign: qp("utm_campaign")
+  }).then(function(d){
+    ID = d.id;
+    guardar({ id: ID, empresa: EMPRESA, etapa: "dados" });
+    $("goDados").disabled = false; $("goDados").textContent = "Continuar";
+    if(d.status === "pago"){ pago(); return; }
+    abrirPix();
+    if(d.status === "pix_gerado") gerarPix(true);
+  }).catch(function(e){
+    $("goDados").disabled = false; $("goDados").textContent = "Continuar";
+    var m = { cnpj_invalido:["Confira o CNPJ.","cnpj"], cpf_invalido:["Confira o CPF de quem assina.","cpf"], email_invalido:["Confira o e-mail.","email"], telefone_invalido:["Confira o WhatsApp.","tel"] }[e.code];
+    if(m) return erroDados(m[0], m[1]);
+    erroDados("Não consegui salvar agora. Confira a internet e tente de novo.");
+  });
+});
+
+function abrirPix(){
+  $("resEmpresa").textContent = EMPRESA || "Sua empresa";
+  $("pixAntes").hidden = false; $("pixQr").hidden = true; $("errPix").textContent = "";
+  view("vPix");
+}
+function periodo(ymd){
+  if(!ymd) return;
+  var a = +ymd.slice(0,4), m = +ymd.slice(5,7) - 1, f = m + 10, af = a + Math.floor(f / 12);
+  $("resPeriodo").textContent = "de " + MESES[m] + (af !== a ? " de " + a : "") + " a " + MESES[f % 12] + " de " + af;
+}
+$("voltarPix").addEventListener("click", function(){ clearInterval(timer); view("vDados"); });
+$("goPix").addEventListener("click", function(){
+  if(!$("aceite").checked){ $("errPix").textContent = "Marque a caixa confirmando o valor e o débito mensal."; return; }
+  gerarPix(false);
+});
+function gerarPix(retomando){
+  $("errPix").textContent = "";
+  $("goPix").disabled = true; $("goPix").textContent = "Gerando o Pix...";
+  api({ action:"pix", id: ID }).then(function(d){
+    guardar({ etapa: "pix" });
+    if(d.status === "pago"){ pago(); return; }
+    if(!d.pix || !d.pix.payload) throw new Error("sem_pix");
+    periodo(d.proximo_debito);
+    $("qrImg").src = "data:image/png;base64," + d.pix.image;
+    $("cola").textContent = d.pix.payload;
+    $("pixAntes").hidden = true; $("pixQr").hidden = false;
+    acompanhar();
+  }).catch(function(e){
+    $("goPix").disabled = false; $("goPix").textContent = "Gerar o Pix de R$ 1.500";
+    if(retomando){ $("pixAntes").hidden = false; $("pixQr").hidden = true; }
+    if(e.code === "contratacao_invalida"){ try { localStorage.removeItem(CHAVE); } catch(x){} view("vDados"); return; }
+    $("errPix").textContent = "Não consegui gerar o Pix agora. Tente de novo em instantes.";
+  });
+}
+function acompanhar(){
+  clearInterval(timer);
+  timer = setInterval(function(){
+    api({ action:"status", id: ID }).then(function(d){ if(d.status === "pago"){ clearInterval(timer); pago(); } }).catch(function(){});
+  }, 5000);
+}
+function pago(){
+  clearInterval(timer);
+  guardar({ etapa: "pago" });
+  if(EMPRESA) $("pagoTitulo").innerHTML = "Bem-vindo, " + esc(EMPRESA) + ". <em>A cadeira é sua.</em>";
+  view("vPago");
+}
+$("copiar").addEventListener("click", function(){
+  var t = $("cola").textContent;
+  var feito = function(){ $("copiar").textContent = "Código copiado"; setTimeout(function(){ $("copiar").textContent = "Copiar código Pix"; }, 2500); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(feito, function(){});
+  else { var r = document.createRange(); r.selectNodeContents($("cola")); var s = getSelection(); s.removeAllRanges(); s.addRange(r); try { document.execCommand("copy"); feito(); } catch(e){} }
+});
+document.addEventListener("visibilitychange", function(){
+  if(!document.hidden && ID && !$("pixQr").hidden) api({ action:"status", id: ID }).then(function(d){ if(d.status === "pago") pago(); }).catch(function(){});
+});
+})();
+</script>
+</body>
+</html>

@@ -43,6 +43,7 @@ const productCategories: ProductCategory[] = [
       { name: "UNV Board", href: "/unv-board", highlight: true },
       { name: "UNV Partners", href: "/partners" },
       { name: "UNV Mastermind", href: "/mastermind", highlight: true },
+      { name: "UNV Mastermind Alpha", href: "/masteralpha/", staticPage: true, highlight: true },
     ],
   },
   {
