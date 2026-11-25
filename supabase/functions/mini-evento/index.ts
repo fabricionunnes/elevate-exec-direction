@@ -11,7 +11,12 @@
 // action=checkout  cria/atualiza o lead, gera o Pix no Asaas e o link de cartão no Mercado Pago da Yasmim,
 //                  e leva o lead pra "Checkout iniciado"
 // action=status    confere as duas cobranças; pago → inscrição paga, lead em "Ingresso pago", etiqueta e aviso no WhatsApp
-// action=conferir  cron (mini-evento-conferir): confere os checkouts abertos dos últimos 3 dias
+// action=conferir  cron (mini-evento-conferir, a cada 5 min): confere os checkouts abertos dos últimos 3 dias e manda
+//                  a primeira mensagem de WhatsApp pra quem preencheu o formulário e ainda não pagou
+//
+// WhatsApp (Fabrício, 25/11/2026: "usa a instância Fabrício Nunnes"): número comum, texto livre, sem modelo do Meta.
+// Como é o número de uso dele, quem já tem conversa recente ali NÃO recebe mensagem automática: fica na fila do
+// painel pra abordagem manual. O agente "Mini-eventos - Time do Fabrício" é fixado na conversa nova.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -29,6 +34,11 @@ const TAG_PAGO = "e1e00000-0000-4000-8000-000000000032";
 const TAG_SOCIO = "e1e00000-0000-4000-8000-000000000033";
 const DONO_FABRICIO = "b1a918b1-8776-4962-898e-5d97c7cc80c1";
 const INSTANCIA_AVISO = "fabricionunnes";
+const INSTANCIA_LEADS = "fabricionunnes";        // de onde sai a mensagem pro lead
+const AGENTE = "e1e00000-0000-4000-8000-000000000009";
+const ESPERA_MIN = 3;                            // minutos depois do formulário (com o cron de 5 min, sai entre 3 e 8)
+const CONVERSA_RECENTE_DIAS = 45;                // conversa com mensagem nesse prazo = contato dele, não automatiza
+const MAX_POR_RODADA = 8;
 const AVISO_PARA = "5531989840003";
 
 const cors = {
@@ -106,10 +116,19 @@ const FAIXAS: Record<string, { rotulo: string; min: number }> = {
 const VENDEDORES: Record<string, string> = { so_eu: "Só eu", "1_3": "1 a 3", "4_10": "4 a 10", "10_mais": "Mais de 10" };
 
 /** O que veio na URL do anúncio (o lead guarda pra saber qual promessa e qual criativo trouxe a pessoa). */
+/** O Meta manda o nome do anúncio codificado ("P01+PLANEJAMENTO+2027+%7C+VIDEO"); o painel casa pelo nome limpo. */
+function limpo(v: unknown, max = 160) {
+  let t = so(v, max * 3);
+  if (/%[0-9A-Fa-f]{2}|\+/.test(t)) { try { t = decodeURIComponent(t.replace(/\+/g, " ")); } catch { t = t.replace(/\+/g, " "); } }
+  return t.trim().slice(0, max);
+}
+/** Robô de revisão de anúncio e de prévia de link não conta como visita. */
+const ROBO = /facebookexternalhit|facebot|meta-externalagent|bot\b|crawler|spider|headless|lighthouse|preview|whatsapp\//i;
+
 function rastreio(body: Record<string, unknown>) {
   return {
-    utm_source: so(body.utm_source, 80) || null, utm_medium: so(body.utm_medium, 80) || null, utm_campaign: so(body.utm_campaign, 160) || null,
-    utm_content: so(body.utm_content, 160) || null, utm_term: so(body.utm_term, 160) || null, fbclid: so(body.fbclid, 300) || null,
+    utm_source: so(body.utm_source, 80) || null, utm_medium: so(body.utm_medium, 80) || null, utm_campaign: limpo(body.utm_campaign) || null,
+    utm_content: limpo(body.utm_content) || null, utm_term: limpo(body.utm_term) || null, fbclid: so(body.fbclid, 300) || null,
     meta_ad_id: /^\d{6,}$/.test(so(body.ad_id, 40)) ? so(body.ad_id, 40) : null,
     meta_adset_id: /^\d{6,}$/.test(so(body.adset_id, 40)) ? so(body.adset_id, 40) : null,
     meta_campaign_id: /^\d{6,}$/.test(so(body.campaign_id, 40)) ? so(body.campaign_id, 40) : null,
@@ -144,7 +163,8 @@ async function turma(sb: SB, body: Record<string, unknown>) {
   return json({ turma: publica(t, await pagos(sb, t.id)) });
 }
 
-async function visita(sb: SB, body: Record<string, unknown>) {
+async function visita(sb: SB, body: Record<string, unknown>, agente: string) {
+  if (!agente || ROBO.test(agente)) return json({ ok: true });
   const t = await turmaPorSlug(sb, body.slug);
   if (!t) return json({ ok: false });
   const sessao = so(body.sessao, 60);
@@ -155,7 +175,7 @@ async function visita(sb: SB, body: Record<string, unknown>) {
   if (!ja?.length) {
     await sb.from("miniev_eventos").insert({
       turma_id: t.id, tipo, sessao, lead_id: leadId,
-      dados: { utm_source: so(body.utm_source, 80) || null, utm_content: so(body.utm_content, 160) || null, p: so(body.p, 4) || null, origem: so(body.origem, 40) || null },
+      dados: { utm_source: so(body.utm_source, 80) || null, utm_content: limpo(body.utm_content) || null, p: so(body.p, 4) || null, origem: so(body.origem, 40) || null },
     });
   } else if (leadId && !ja[0].lead_id) {
     await sb.from("miniev_eventos").update({ lead_id: leadId }).eq("id", ja[0].id);
@@ -361,6 +381,18 @@ async function conferir(sb: SB, i: any): Promise<string> {
       url: p.provider === "asaas" ? i.invoice_url : i.cartao_url, status: "paid", payer_email: i.email, paid_at: new Date().toISOString(), billing_type: p.billingType === "CREDIT_CARD" ? "CREDIT_CARD" : "PIX",
     }).then((r: any) => { if (r.error) console.error("[mini-evento] lead_payment", r.error); });
   }
+  // confirmação pro próprio lead, pelo mesmo número
+  try {
+    const { data: tt } = await sb.from("miniev_turmas").select("data_evento, horario, cidade").eq("id", i.turma_id).maybeSingle();
+    if (tt) {
+      const [, mes, dia] = String(tt.data_evento).split("-");
+      const semana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"][new Date(`${tt.data_evento}T12:00:00-03:00`).getDay()];
+      const nome = primeiroNome(i.nome);
+      const texto = `Vaga confirmada${nome ? `, ${nome}` : ""}. ${semana}, ${dia}/${mes}, das ${tt.horario}, em ${tt.cidade}. O endereço, o mapa e o grupo da turma chegam por aqui antes do evento. Pra eu preparar seu material: se você pudesse resolver uma coisa só no seu comercial nesse dia, qual seria?`;
+      const r = await mandarWhatsApp(sb, { leadId: i.lead_id, nome: i.nome, telefone: i.telefone, texto, soConversaNova: false });
+      if (!r.ok) console.error("[mini-evento] confirmação não enviada:", r.motivo);
+    }
+  } catch (e) { console.error("[mini-evento] confirmação", e); }
   try {
     const { data: t } = await sb.from("miniev_turmas").select("nome, vagas").eq("id", i.turma_id).maybeSingle();
     const n = await pagos(sb, i.turma_id);
@@ -375,6 +407,122 @@ async function conferir(sb: SB, i: any): Promise<string> {
     }
   } catch (e) { console.error("[mini-evento] aviso", e); }
   return "pago";
+}
+
+// ── WhatsApp pelo número comum ──────────────────────────────────────────────
+const horaBR = () => Number(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo", hour: "numeric", hour12: false })) % 24;
+const primeiroNome = (n: unknown) => { const p = String(n || "").trim().split(/\s+/)[0] || ""; return p ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : ""; };
+function variantesBR(d: string): string[] {
+  const out = new Set<string>([d]);
+  if (d.startsWith("55") && d.length === 13 && d[4] === "9") out.add(d.slice(0, 4) + d.slice(5));
+  if (d.startsWith("55") && d.length === 12) out.add(d.slice(0, 4) + "9" + d.slice(4));
+  return [...out];
+}
+
+/** Manda um texto pro lead pela instância Fabrício Nunnes e grava no Atendimento. Devolve o motivo quando não manda. */
+async function mandarWhatsApp(sb: SB, a: { leadId: string | null; nome: string; telefone: string; texto: string; soConversaNova: boolean }): Promise<{ ok: boolean; motivo?: string; conversa?: string }> {
+  const bruto = digitos(a.telefone);
+  if (bruto.length < 10) return { ok: false, motivo: "telefone inválido" };
+  const numero = bruto.startsWith("55") && bruto.length > 11 ? bruto : `55${bruto}`;
+  const { data: inst } = await sb.from("whatsapp_instances").select("id, instance_name, api_url, api_key, status").eq("instance_name", INSTANCIA_LEADS).maybeSingle();
+  if (!inst?.api_url || inst.status !== "connected") return { ok: false, motivo: "número Fabrício Nunnes desconectado" };
+  const base = String(inst.api_url).replace(/\/+$/, "");
+  // telefone como o WhatsApp conhece (muitos voltam sem o nono dígito)
+  let jid = numero;
+  try {
+    const r = await fetch(`${base}/chat/whatsappNumbers/${inst.instance_name}`, { method: "POST", headers: { apikey: inst.api_key, "Content-Type": "application/json" }, body: JSON.stringify({ numbers: [numero] }) });
+    const d = await r.json();
+    const hit = Array.isArray(d) ? d[0] : null;
+    if (hit && hit.exists === false) return { ok: false, motivo: "telefone sem WhatsApp" };
+    const doJid = String(hit?.jid || "").split("@")[0].replace(/\D/g, "");
+    if (doJid.length >= 10) jid = doJid;
+  } catch (e) { console.error("[mini-evento] whatsappNumbers", e); }
+
+  const variantes = [...new Set([jid, ...variantesBR(jid), ...variantesBR(numero)])];
+  const { data: contatos } = await sb.from("crm_whatsapp_contacts").select("id, phone, lead_id").in("phone", variantes);
+  let contato = (contatos || []).find((c: any) => c.phone === jid) || (contatos || [])[0] || null;
+  const idsContato = (contatos || []).map((c: any) => c.id);
+  let conversa: any = null;
+  if (idsContato.length) {
+    const { data: ex } = await sb.from("crm_whatsapp_conversations").select("id, lead_id, last_message_at, merged_into")
+      .eq("instance_id", inst.id).in("contact_id", idsContato).is("merged_into", null)
+      .order("last_message_at", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
+    conversa = ex || null;
+  }
+  // Já conversa com o Fabrício por aqui? Não entra mensagem automática nem agente: fica pra abordagem manual.
+  const recente = conversa?.last_message_at && Date.now() - new Date(conversa.last_message_at).getTime() < CONVERSA_RECENTE_DIAS * 86400000;
+  if (a.soConversaNova && recente && conversa.lead_id !== a.leadId) return { ok: false, motivo: "já tem conversa recente com o Fabrício neste número" };
+
+  if (!contato) {
+    const { data: novo, error } = await sb.from("crm_whatsapp_contacts").insert({ phone: jid, name: a.nome || jid, lead_id: a.leadId }).select("id, phone, lead_id").single();
+    if (error) return { ok: false, motivo: `contato: ${error.message}` };
+    contato = novo;
+  }
+  let nova = false;
+  if (!conversa) {
+    const { data: criada, error } = await sb.from("crm_whatsapp_conversations")
+      .insert({ instance_id: inst.id, contact_id: contato.id, lead_id: a.leadId, status: "open", unread_count: 0 }).select("id, lead_id, merged_into").single();
+    if (error) return { ok: false, motivo: `conversa: ${error.message}` };
+    conversa = criada; nova = true;
+  } else if (a.leadId && !conversa.lead_id) {
+    await sb.from("crm_whatsapp_conversations").update({ lead_id: a.leadId }).eq("id", conversa.id);
+  }
+
+  const r = await fetch(`${base}/message/sendText/${inst.instance_name}`, { method: "POST", headers: { apikey: inst.api_key, "Content-Type": "application/json" }, body: JSON.stringify({ number: jid, text: a.texto }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) return { ok: false, motivo: `envio recusado (${r.status})` };
+  const remoteId = d?.key?.id || null;
+  await sb.from("crm_whatsapp_messages").insert({
+    conversation_id: conversa.id, content: a.texto, type: "text", direction: "outbound", status: "sent",
+    remote_id: remoteId, whatsapp_message_id: remoteId, is_ai: false, sent_by: null,
+  }).then((x: any) => { if (x.error) console.error("[mini-evento] msg", x.error); });
+  // conversa aberta por aqui: o agente dos mini-eventos fica fixado nela
+  if (nova || conversa.lead_id === a.leadId) {
+    const { data: tem } = await sb.from("crm_ai_agent_conversation_overrides").select("id").eq("conversation_id", conversa.id).limit(1);
+    if (!tem?.length) {
+      await sb.from("crm_ai_agent_conversation_overrides").insert({ agent_id: AGENTE, conversation_id: conversa.id, channel: "whatsapp", enabled: true, reply_mode: "auto", locked: true })
+        .then((x: any) => { if (x.error) console.error("[mini-evento] agente na conversa", x.error); });
+    }
+  }
+  return { ok: true, conversa: conversa.id };
+}
+
+/** Primeira mensagem: quem preencheu o formulário há alguns minutos, está em "Novo lead" ou "Checkout iniciado" e não pagou. */
+async function abordarNovos(sb: SB) {
+  const h = horaBR();
+  if (h < 8 || h >= 21) return { enviados: 0, fora_do_horario: true };
+  const { data: turmas } = await sb.from("miniev_turmas").select("id, nome, data_evento, cidade, venda_ate").eq("ativa", true);
+  let enviados = 0, pulados = 0;
+  for (const t of turmas || []) {
+    if (t.venda_ate && new Date(t.venda_ate).getTime() < Date.now()) continue;
+    // só quem entrou por esta turma: evento lead_criado dos últimos 3 dias, ainda sem abordagem registrada
+    const { data: criados } = await sb.from("miniev_eventos").select("lead_id, em").eq("turma_id", t.id).eq("tipo", "lead_criado")
+      .gte("em", new Date(Date.now() - 3 * 86400000).toISOString()).lte("em", new Date(Date.now() - ESPERA_MIN * 60000).toISOString()).order("em").limit(200);
+    const ids = [...new Set((criados || []).map((e: any) => e.lead_id).filter(Boolean))];
+    if (!ids.length) continue;
+    const { data: feitos } = await sb.from("miniev_eventos").select("lead_id").eq("turma_id", t.id).in("tipo", ["whatsapp_abordado", "whatsapp_pulado"]).in("lead_id", ids);
+    const jaFoi = new Set((feitos || []).map((e: any) => e.lead_id));
+    const { data: leads } = await sb.from("crm_leads").select("id, name, phone, stage_id").in("id", ids.filter((i) => !jaFoi.has(i))).in("stage_id", [ETAPA.novo, ETAPA.checkout]);
+    const [, mes, dia] = String(t.data_evento).split("-");
+    const semana = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"][new Date(`${t.data_evento}T12:00:00-03:00`).getDay()];
+    for (const l of (leads || []).slice(0, MAX_POR_RODADA - enviados)) {
+      const { data: paga } = await sb.from("miniev_inscricoes").select("id").eq("turma_id", t.id).eq("lead_id", l.id).eq("status", "pago").limit(1);
+      if (paga?.length) continue;
+      const nome = primeiroNome(l.name);
+      const texto = `${nome ? `${nome}, aqui` : "Aqui"} é do time do Fabrício Nunnes. Vi que você se inscreveu no workshop de ${semana}, dia ${dia}/${mes}, em ${t.cidade}, mas sua vaga ainda não está confirmada. Ficou alguma dúvida ou travou no pagamento?`;
+      let r: { ok: boolean; motivo?: string; conversa?: string };
+      try { r = await mandarWhatsApp(sb, { leadId: l.id, nome: l.name, telefone: l.phone, texto, soConversaNova: true }); }
+      catch (e) { r = { ok: false, motivo: String((e as Error).message || e).slice(0, 120) }; }
+      await sb.from("miniev_eventos").insert({ turma_id: t.id, tipo: r.ok ? "whatsapp_abordado" : "whatsapp_pulado", lead_id: l.id, dados: r.ok ? { conversa: r.conversa } : { motivo: r.motivo } });
+      if (r.ok) {
+        enviados++;
+        if (l.stage_id === ETAPA.novo) await sb.from("crm_leads").update({ stage_id: ETAPA.abordado }).eq("id", l.id).eq("stage_id", ETAPA.novo);
+        await new Promise((ok) => setTimeout(ok, 2500));
+      } else pulados++;
+      if (enviados >= MAX_POR_RODADA) break;
+    }
+  }
+  return { enviados, pulados };
 }
 
 async function status(sb: SB, body: Record<string, unknown>) {
@@ -397,7 +545,9 @@ async function conferirPendentes(sb: SB) {
   for (const i of data || []) {
     try { if (await conferir(sb, i) === "pago") n++; } catch (e) { console.error("[mini-evento] conferir", i.id, e); }
   }
-  return json({ conferidos: (data || []).length, pagos: n });
+  let whatsapp: unknown = null;
+  try { whatsapp = await abordarNovos(sb); } catch (e) { console.error("[mini-evento] abordar", e); whatsapp = { erro: String((e as Error).message || e).slice(0, 160) }; }
+  return json({ conferidos: (data || []).length, pagos: n, whatsapp });
 }
 
 Deno.serve(async (req) => {
@@ -408,7 +558,7 @@ Deno.serve(async (req) => {
     switch (body.action) {
       case "turma": return await turma(sb, body);
       case "lead": return await lead(sb, body);
-      case "visita": return await visita(sb, body);
+      case "visita": return await visita(sb, body, req.headers.get("user-agent") || "");
       case "checkout": return await checkout(sb, body);
       case "status": return await status(sb, body);
       case "conferir": return await conferirPendentes(sb);
