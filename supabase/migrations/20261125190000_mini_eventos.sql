@@ -43,6 +43,8 @@ create table if not exists public.miniev_inscricoes (
   pago_em timestamptz, avisado_em timestamptz,
   presente_em timestamptz
 );
+-- Cartão pelo Mercado Pago da Yasmim (Pix segue no Asaas da UNV)
+alter table public.miniev_inscricoes add column if not exists mp_preference_id text, add column if not exists cartao_url text;
 create index if not exists miniev_inscricoes_turma on public.miniev_inscricoes (turma_id, status);
 create index if not exists miniev_inscricoes_lead on public.miniev_inscricoes (lead_id);
 
@@ -50,7 +52,7 @@ create index if not exists miniev_inscricoes_lead on public.miniev_inscricoes (l
 create table if not exists public.miniev_eventos (
   id bigint generated always as identity primary key,
   turma_id uuid not null references public.miniev_turmas(id) on delete cascade,
-  tipo text not null,                               -- pagina_vista | checkout_iniciado | ingresso_pago | presenca | presenca_desfeita
+  tipo text not null,                               -- captura_vista | lead_criado | pagina_vista | checkout_iniciado | ingresso_pago | presenca | presenca_desfeita
   lead_id uuid, inscricao_id uuid, sessao text,
   dados jsonb, em timestamptz not null default now()
 );

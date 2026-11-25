@@ -1,11 +1,16 @@
 // Funil de mini-eventos (25/11/2026): ingresso de R$ 97 pago direto no site pelo Asaas.
 // Páginas: unvholdings.com.br/evento (venda), /evento/checkout e /evento/obrigado.
 //
-// action=turma     dados públicos da turma (data, local, preço, vagas restantes)
-// action=visita    registra a visita à página de venda (uma por sessão)
-// action=checkout  cria/atualiza o lead no funil Mini-eventos, gera a cobrança no Asaas (Pix na tela ou cartão
-//                  no link do Asaas) e leva o lead pra "Checkout iniciado"
-// action=status    confere a cobrança; pago → inscrição paga, lead em "Ingresso pago", etiqueta e aviso no WhatsApp
+// Caminho do cliente (Fabrício, 25/11/2026: "melhor criar uma página nova, melhor que o nativo"):
+// anúncio → /evento/inscricao (formulário nosso, lead criado na hora) → /evento (venda) → /evento/checkout → /evento/obrigado
+// Pagamento: Pix pelo Asaas da UNV; cartão pelo Mercado Pago da Yasmim ("o pagamento no cartão é pra usar a conta da Yasmim").
+//
+// action=turma     dados públicos da turma (data, local, preço; vagas restantes só com menos de 10 sobrando)
+// action=lead      formulário da página de captura: cria/atualiza o lead em "Novo lead" (1º passo: contato; 2º: respostas)
+// action=visita    registra a visita à captura ou à página de venda (uma por sessão e por tipo), ligada ao lead quando há
+// action=checkout  cria/atualiza o lead, gera o Pix no Asaas e o link de cartão no Mercado Pago da Yasmim,
+//                  e leva o lead pra "Checkout iniciado"
+// action=status    confere as duas cobranças; pago → inscrição paga, lead em "Ingresso pago", etiqueta e aviso no WhatsApp
 // action=conferir  cron (mini-evento-conferir): confere os checkouts abertos dos últimos 3 dias
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -19,6 +24,7 @@ const ETAPA = { novo: etapa(0), abordado: etapa(1), checkout: etapa(2), pago: et
 const ANTES_DO_CHECKOUT = new Set([ETAPA.novo, ETAPA.abordado, ETAPA.naoComprou, ETAPA.perdido, ETAPA.foraPerfil]);
 const ANTES_DO_PAGO = new Set([...ANTES_DO_CHECKOUT, ETAPA.checkout]);
 const ORIGEM = "e1e00000-0000-4000-8000-000000000002";
+const TAG_TURMA = "e1e00000-0000-4000-8000-000000000031";
 const TAG_PAGO = "e1e00000-0000-4000-8000-000000000032";
 const TAG_SOCIO = "e1e00000-0000-4000-8000-000000000033";
 const DONO_FABRICIO = "b1a918b1-8776-4962-898e-5d97c7cc80c1";
@@ -77,6 +83,39 @@ async function asaas(path: string, method = "GET", body?: unknown) {
   return d;
 }
 
+// Mercado Pago da Yasmim (o segredo foi salvo como MERCADOPAGOYAS no painel; aceita os dois nomes)
+const MP_YAS = () => Deno.env.get("MERCADOPAGO_YAS_ACCESS_TOKEN") || Deno.env.get("MERCADOPAGOYAS") || "";
+async function mp(path: string, method = "GET", body?: unknown) {
+  const r = await fetch(`https://api.mercadopago.com${path}`, {
+    method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${MP_YAS()}` },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d?.message || `Mercado Pago HTTP ${r.status}`);
+  return d;
+}
+const SITE = "https://unvholdings.com.br";
+const uuidOk = (v: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(String(v || ""));
+
+const FAIXAS: Record<string, { rotulo: string; min: number }> = {
+  ate_50: { rotulo: "Até R$ 50 mil", min: 0 },
+  "50_150": { rotulo: "R$ 50 mil a R$ 150 mil", min: 50000 },
+  "150_500": { rotulo: "R$ 150 mil a R$ 500 mil", min: 150000 },
+  "500_mais": { rotulo: "Acima de R$ 500 mil", min: 500000 },
+};
+const VENDEDORES: Record<string, string> = { so_eu: "Só eu", "1_3": "1 a 3", "4_10": "4 a 10", "10_mais": "Mais de 10" };
+
+/** O que veio na URL do anúncio (o lead guarda pra saber qual promessa e qual criativo trouxe a pessoa). */
+function rastreio(body: Record<string, unknown>) {
+  return {
+    utm_source: so(body.utm_source, 80) || null, utm_medium: so(body.utm_medium, 80) || null, utm_campaign: so(body.utm_campaign, 160) || null,
+    utm_content: so(body.utm_content, 160) || null, utm_term: so(body.utm_term, 160) || null, fbclid: so(body.fbclid, 300) || null,
+    meta_ad_id: /^\d{6,}$/.test(so(body.ad_id, 40)) ? so(body.ad_id, 40) : null,
+    meta_adset_id: /^\d{6,}$/.test(so(body.adset_id, 40)) ? so(body.adset_id, 40) : null,
+    meta_campaign_id: /^\d{6,}$/.test(so(body.campaign_id, 40)) ? so(body.campaign_id, 40) : null,
+  };
+}
+
 async function turmaPorSlug(sb: SB, slug: unknown) {
   const s = so(slug, 60);
   const q = sb.from("miniev_turmas").select("*").eq("ativa", true);
@@ -110,12 +149,16 @@ async function visita(sb: SB, body: Record<string, unknown>) {
   if (!t) return json({ ok: false });
   const sessao = so(body.sessao, 60);
   if (!sessao) return json({ ok: false });
-  const { data: ja } = await sb.from("miniev_eventos").select("id").eq("turma_id", t.id).eq("tipo", "pagina_vista").eq("sessao", sessao).limit(1);
+  const tipo = body.tipo === "captura_vista" ? "captura_vista" : "pagina_vista";
+  const leadId = uuidOk(body.lead_id) ? String(body.lead_id) : null;
+  const { data: ja } = await sb.from("miniev_eventos").select("id, lead_id").eq("turma_id", t.id).eq("tipo", tipo).eq("sessao", sessao).limit(1);
   if (!ja?.length) {
     await sb.from("miniev_eventos").insert({
-      turma_id: t.id, tipo: "pagina_vista", sessao,
-      dados: { utm_source: so(body.utm_source, 80) || null, utm_content: so(body.utm_content, 120) || null, origem: so(body.origem, 40) || null },
+      turma_id: t.id, tipo, sessao, lead_id: leadId,
+      dados: { utm_source: so(body.utm_source, 80) || null, utm_content: so(body.utm_content, 160) || null, p: so(body.p, 4) || null, origem: so(body.origem, 40) || null },
     });
+  } else if (leadId && !ja[0].lead_id) {
+    await sb.from("miniev_eventos").update({ lead_id: leadId }).eq("id", ja[0].id);
   }
   return json({ ok: true });
 }
@@ -128,6 +171,49 @@ async function acharLead(sb: SB, k: string, email?: string) {
     .eq("pipeline_id", PIPELINE).or(ors.join(",")).order("created_at", { ascending: false }).limit(10);
   const c = data || [];
   return c.find((l: any) => chaveTel(l.phone) === k) || (email ? c.find((l: any) => String(l.email || "").toLowerCase() === email) : null) || null;
+}
+
+/** Formulário da página de captura. 1º passo: nome, WhatsApp e e-mail (o lead já nasce aqui). 2º passo: as três respostas. */
+async function lead(sb: SB, body: Record<string, unknown>) {
+  const t = await turmaPorSlug(sb, body.slug);
+  if (!t) return json({ error: "turma_nao_encontrada" }, 404);
+  const a = { nome: so(body.nome, 120), telefone: digitos(body.telefone), email: so(body.email, 160).toLowerCase(), desafio: so(body.desafio, 800) };
+  if (a.nome.length < 2) return json({ error: "nome" }, 400);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(a.email)) return json({ error: "email_invalido" }, 400);
+  const k = chaveTel(a.telefone);
+  if (!k) return json({ error: "telefone_invalido" }, 400);
+  const faixa = FAIXAS[so(body.faturamento, 20)], vend = VENDEDORES[so(body.vendedores, 20)];
+  const phone = a.telefone.replace(/^55(?=\d{10,11}$)/, "");
+  const r = rastreio(body);
+  const p = so(body.p, 4);
+  const respostas = faixa || vend || a.desafio
+    ? [`RESPOSTAS DO FORMULÁRIO (${quando()})`, faixa ? `Faturamento mensal: ${faixa.rotulo}` : "", vend ? `Vendedores: ${vend}` : "", a.desafio ? `Maior desafio comercial: ${a.desafio}` : ""].filter(Boolean).join("\n")
+    : "";
+  let l = await acharLead(sb, k, a.email);
+  let novo = false;
+  if (!l) {
+    const nota = [`INSCRIÇÃO NO MINI-EVENTO pelo site (${quando()}) · ${t.nome}${p ? ` · promessa ${p}` : ""}`, respostas].filter(Boolean).join("\n\n");
+    const { data: criado, error } = await sb.from("crm_leads").insert({
+      name: a.nome, phone, email: a.email, pipeline_id: PIPELINE, stage_id: ETAPA.novo, origin_id: ORIGEM, origin: "Site /evento/inscricao",
+      opportunity_value: t.preco_cents / 100, entered_pipeline_at: new Date().toISOString(), notes: nota,
+      main_pain: a.desafio || null, estimated_revenue: faixa?.min || null,
+      utm_source: r.utm_source || "site", utm_medium: r.utm_medium, utm_campaign: r.utm_campaign || "mini-evento", utm_content: r.utm_content, utm_term: r.utm_term,
+      fbclid: r.fbclid, ad_name: r.utm_content, adset_name: r.utm_term, campaign_name: r.utm_campaign,
+      meta_ad_id: r.meta_ad_id, meta_adset_id: r.meta_adset_id, meta_campaign_id: r.meta_campaign_id,
+    }).select("id").single();
+    if (error || !criado) { console.error("[mini-evento] lead", error); return json({ error: "falha_lead" }, 500); }
+    l = criado; novo = true;
+    await sb.from("crm_lead_tags").insert({ lead_id: l.id, tag_id: TAG_TURMA }).then((x: any) => { if (x.error) console.error("[mini-evento] tag", x.error); });
+    await sb.from("miniev_eventos").insert({ turma_id: t.id, tipo: "lead_criado", lead_id: l.id, sessao: so(body.sessao, 60) || null, dados: { p: p || null, anuncio: r.utm_content } });
+  } else if (respostas || a.nome) {
+    const upd: Record<string, unknown> = { name: a.nome, email: a.email };
+    if (respostas) upd.notes = l.notes ? `${respostas}\n\n${l.notes}` : respostas;
+    if (a.desafio) upd.main_pain = a.desafio;
+    if (faixa) upd.estimated_revenue = faixa.min || null;
+    const { error } = await sb.from("crm_leads").update(upd).eq("id", l.id);
+    if (error) console.error("[mini-evento] lead upd", error);
+  }
+  return json({ lead_id: l.id, novo });
 }
 
 async function checkout(sb: SB, body: Record<string, unknown>) {
@@ -159,21 +245,23 @@ async function checkout(sb: SB, body: Record<string, unknown>) {
   // Checkout aberto do mesmo valor nas últimas 20 horas: reaproveita a mesma cobrança
   const aberta = (minhas || []).find((i: any) => i.status === "checkout" && chaveTel(i.telefone) === k && i.valor_cents === valor && i.asaas_payment_id
     && Date.now() - new Date(i.criado_em).getTime() < 20 * 3600000);
-  if (aberta) return json({ id: aberta.id, status: "checkout", valor_cents: valor, pix_payload: aberta.pix_payload, pix_image: aberta.pix_image, invoice_url: aberta.invoice_url });
+  if (aberta) return json({ id: aberta.id, status: "checkout", valor_cents: valor, pix_payload: aberta.pix_payload, pix_image: aberta.pix_image, cartao_url: aberta.cartao_url });
 
-  const utm = {
-    utm_source: so(body.utm_source, 80) || null, utm_medium: so(body.utm_medium, 80) || null, utm_campaign: so(body.utm_campaign, 120) || null,
-    utm_content: so(body.utm_content, 120) || null, utm_term: so(body.utm_term, 120) || null, fbclid: so(body.fbclid, 300) || null,
-  };
+  const utm = rastreio(body);
   const nota = `CHECKOUT DO INGRESSO (${quando()}) · ${t.nome} · ${brl(valor)}${a.com_socio ? ` · com sócio: ${a.socio_nome}` : ""}`;
   let lead = await acharLead(sb, k, a.email);
+  if (!lead && uuidOk(body.lead_id)) {
+    const { data: conhecido } = await sb.from("crm_leads").select("id, phone, email, stage_id, notes, owner_staff_id").eq("id", body.lead_id).eq("pipeline_id", PIPELINE).maybeSingle();
+    if (conhecido) lead = conhecido;
+  }
   if (!lead) {
     const { data: novo, error } = await sb.from("crm_leads").insert({
       name: a.nome, phone, email: a.email, document: a.documento, pipeline_id: PIPELINE, stage_id: ETAPA.checkout,
       origin_id: ORIGEM, origin: "Site /evento", owner_staff_id: DONO_FABRICIO, opportunity_value: valor / 100,
       entered_pipeline_at: new Date().toISOString(), notes: nota, has_partner: a.com_socio || null,
       utm_source: utm.utm_source || "site", utm_medium: utm.utm_medium, utm_campaign: utm.utm_campaign || "mini-evento",
-      utm_content: utm.utm_content, utm_term: utm.utm_term, fbclid: utm.fbclid,
+      utm_content: utm.utm_content, utm_term: utm.utm_term, fbclid: utm.fbclid, ad_name: utm.utm_content, adset_name: utm.utm_term,
+      campaign_name: utm.utm_campaign, meta_ad_id: utm.meta_ad_id, meta_adset_id: utm.meta_adset_id, meta_campaign_id: utm.meta_campaign_id,
     }).select("id").single();
     if (error || !novo) { console.error("[mini-evento] lead", error); return json({ error: "falha_lead" }, 500); }
     lead = novo;
@@ -199,18 +287,36 @@ async function checkout(sb: SB, body: Record<string, unknown>) {
     // Vence amanhã; nunca depois do dia do evento
     const venc = [ymdBR(Date.now() + 86400000), String(t.data_evento)].sort()[0];
     const pay = await asaas("/payments", "POST", {
-      customer: cliente.id, billingType: "UNDEFINED", value: valor / 100, dueDate: venc,
+      customer: cliente.id, billingType: "PIX", value: valor / 100, dueDate: venc,
       description: `Ingresso · Workshop presencial com Fabrício Nunnes · ${t.cidade} · ${dia}/${mes}/${ano}${a.com_socio ? " · 2 pessoas" : ""}`,
       externalReference: `miniev:${insc.id}`,
     });
     let qr: any = null;
     try { qr = await asaas(`/payments/${pay.id}/pixQrCode`); } catch (e) { console.error("[mini-evento] qr", e); }
+    // Cartão: Mercado Pago da Yasmim (só cartão; a conferência é pela referência miniev:<id>)
+    let cartao: any = null;
+    if (MP_YAS()) {
+      try {
+        const volta = `${SITE}/evento/obrigado/?i=${insc.id}&t=${encodeURIComponent(t.slug)}`;
+        cartao = await mp("/checkout/preferences", "POST", {
+          items: [{ title: `Ingresso · Workshop presencial com Fabrício Nunnes · ${dia}/${mes}${a.com_socio ? " · 2 pessoas" : ""}`, quantity: 1, unit_price: valor / 100, currency_id: "BRL" }],
+          payer: { name: a.nome, email: a.email },
+          external_reference: `miniev:${insc.id}`,
+          back_urls: { success: volta, pending: volta, failure: `${SITE}/evento/checkout/?t=${encodeURIComponent(t.slug)}` },
+          auto_return: "approved",
+          payment_methods: { installments: 3, excluded_payment_types: [{ id: "ticket" }, { id: "bank_transfer" }, { id: "atm" }] },
+          statement_descriptor: "WORKSHOP UNV",
+        });
+      } catch (e) { console.error("[mini-evento] cartão (Mercado Pago Yas)", e); }
+    } else console.error("[mini-evento] sem token do Mercado Pago Yas: checkout só com Pix");
+    const cartaoUrl = cartao?.init_point || null;
     await sb.from("miniev_inscricoes").update({
       asaas_customer_id: cliente.id, asaas_payment_id: pay.id, invoice_url: pay.invoiceUrl,
       pix_payload: qr?.payload || null, pix_image: qr?.encodedImage || null,
+      mp_preference_id: cartao?.id || null, cartao_url: cartaoUrl,
     }).eq("id", insc.id);
     await sb.from("miniev_eventos").insert({ turma_id: t.id, tipo: "checkout_iniciado", lead_id: lead.id, inscricao_id: insc.id, dados: { valor: valor / 100, com_socio: a.com_socio } });
-    return json({ id: insc.id, status: "checkout", valor_cents: valor, pix_payload: qr?.payload || null, pix_image: qr?.encodedImage || null, invoice_url: pay.invoiceUrl });
+    return json({ id: insc.id, status: "checkout", valor_cents: valor, pix_payload: qr?.payload || null, pix_image: qr?.encodedImage || null, cartao_url: cartaoUrl });
   } catch (e) {
     console.error("[mini-evento] asaas", e);
     await sb.from("miniev_inscricoes").update({ status: "cancelado" }).eq("id", insc.id);
@@ -221,12 +327,21 @@ async function checkout(sb: SB, body: Record<string, unknown>) {
 /** Confere a cobrança no Asaas. Pago: marca a inscrição (uma vez só), anda o lead, etiqueta e avisa. */
 async function conferir(sb: SB, i: any): Promise<string> {
   if (i.status === "pago") return "pago";
-  if (!i.asaas_payment_id) return i.status;
-  const p = await asaas(`/payments/${i.asaas_payment_id}`);
-  if (!["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"].includes(p.status)) {
-    if (p.deleted || p.status === "REFUNDED") await sb.from("miniev_inscricoes").update({ status: "cancelado" }).eq("id", i.id).eq("status", "checkout");
-    return "checkout";
+  if (!i.asaas_payment_id && !i.mp_preference_id) return i.status;
+  // p = como foi pago: Pix (Asaas da UNV) ou cartão (Mercado Pago da Yasmim)
+  let p: { billingType: string; ref: string; provider: string } | null = null;
+  if (i.asaas_payment_id) {
+    const a = await asaas(`/payments/${i.asaas_payment_id}`);
+    if (["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"].includes(a.status)) p = { billingType: "PIX", ref: i.asaas_payment_id, provider: "asaas" };
   }
+  if (!p && i.mp_preference_id && MP_YAS()) {
+    try {
+      const b = await mp(`/v1/payments/search?external_reference=${encodeURIComponent(`miniev:${i.id}`)}&sort=date_created&criteria=desc&limit=10`);
+      const ok = (b?.results || []).find((x: any) => x.status === "approved");
+      if (ok) p = { billingType: "CREDIT_CARD", ref: String(ok.id), provider: "mercadopago_yas" };
+    } catch (e) { console.error("[mini-evento] conferir cartão", e); }
+  }
+  if (!p) return "checkout";
   const { data: trava } = await sb.from("miniev_inscricoes").update({ status: "pago", pago_em: new Date().toISOString() })
     .eq("id", i.id).eq("status", "checkout").select("id");
   if (!trava?.length) return "pago";
@@ -242,8 +357,8 @@ async function conferir(sb: SB, i: any): Promise<string> {
       if (!tem) await sb.from("crm_lead_tags").insert({ lead_id: i.lead_id, tag_id: tag });
     }
     await sb.from("crm_lead_payments").insert({
-      lead_id: i.lead_id, amount_cents: i.valor_cents, description: "Ingresso do mini-evento", provider: "asaas", provider_ref: i.asaas_payment_id,
-      url: i.invoice_url, status: "paid", payer_email: i.email, paid_at: new Date().toISOString(), billing_type: p.billingType === "CREDIT_CARD" ? "CREDIT_CARD" : "PIX",
+      lead_id: i.lead_id, amount_cents: i.valor_cents, description: "Ingresso do mini-evento", provider: p.provider, provider_ref: p.ref,
+      url: p.provider === "asaas" ? i.invoice_url : i.cartao_url, status: "paid", payer_email: i.email, paid_at: new Date().toISOString(), billing_type: p.billingType === "CREDIT_CARD" ? "CREDIT_CARD" : "PIX",
     }).then((r: any) => { if (r.error) console.error("[mini-evento] lead_payment", r.error); });
   }
   try {
@@ -251,7 +366,7 @@ async function conferir(sb: SB, i: any): Promise<string> {
     const n = await pagos(sb, i.turma_id);
     const { data: inst } = await sb.from("whatsapp_instances").select("instance_name, api_url, api_key").eq("instance_name", INSTANCIA_AVISO).maybeSingle();
     if (inst?.api_url) {
-      const texto = `*INGRESSO PAGO*\n\n${i.nome}${i.com_socio ? ` + sócio (${i.socio_nome})` : ""}\n${i.telefone}\n${brl(i.valor_cents)}\n\n${t?.nome || "Mini-evento"}: ${n} de ${t?.vagas || 25} vagas`;
+      const texto = `*INGRESSO PAGO*\n\n${i.nome}${i.com_socio ? ` + sócio (${i.socio_nome})` : ""}\n${i.telefone}\n${brl(i.valor_cents)} · ${p.provider === "asaas" ? "Pix (Asaas)" : "cartão (Mercado Pago Yas)"}\n\n${t?.nome || "Mini-evento"}: ${n} de ${t?.vagas || 25} vagas`;
       await fetch(`${String(inst.api_url).replace(/\/+$/, "")}/message/sendText/${inst.instance_name}`, {
         method: "POST", headers: { apikey: inst.api_key, "Content-Type": "application/json" },
         body: JSON.stringify({ number: AVISO_PARA, text: texto }),
@@ -276,7 +391,7 @@ async function status(sb: SB, body: Record<string, unknown>) {
 }
 
 async function conferirPendentes(sb: SB) {
-  const { data } = await sb.from("miniev_inscricoes").select("*").eq("status", "checkout").not("asaas_payment_id", "is", null)
+  const { data } = await sb.from("miniev_inscricoes").select("*").eq("status", "checkout")
     .gte("criado_em", new Date(Date.now() - 3 * 86400000).toISOString()).order("criado_em", { ascending: false }).limit(60);
   let n = 0;
   for (const i of data || []) {
@@ -292,6 +407,7 @@ Deno.serve(async (req) => {
     const sb = createClient(SUPABASE_URL, SERVICE_ROLE);
     switch (body.action) {
       case "turma": return await turma(sb, body);
+      case "lead": return await lead(sb, body);
       case "visita": return await visita(sb, body);
       case "checkout": return await checkout(sb, body);
       case "status": return await status(sb, body);

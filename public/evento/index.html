@@ -332,7 +332,9 @@ var M = window.MiniEvento; M.pixel();
 var u = M.utm();
 function $(id){ return document.getElementById(id); }
 function cada(sel, f){ Array.prototype.forEach.call(document.querySelectorAll(sel), f); }
-cada("a.ir", function(a){ a.href = M.comTurma(a.getAttribute("href")); });
+M.anuncio();
+cada("a.ir", function(a){ a.href = M.seguir(a.getAttribute("href")); });
+var PR = M.promessa(), LEAD = M.leadSalvo();
 
 /* números que sobem */
 function conta(raiz){
@@ -380,11 +382,8 @@ function calc(){
 ["leads","conv","ticket"].forEach(function(id){ $(id).addEventListener("input", calc); }); calc();
 
 /* headline da promessa vencedora: *trecho* vira destaque */
-function titulo(p){
-  var h = M.esc(p).replace(/\*(.+?)\*/g, '<span class="r">$1</span>');
-  if(h.indexOf('class="r"') < 0){ var w = h.split(" "); if(w.length > 5){ var i = Math.max(2, w.length - 5); h = w.slice(0,i).join(" ") + ' <span class="r">' + w.slice(i, w.length-1).join(" ") + "</span> " + w[w.length-1]; } }
-  $("promessa").innerHTML = h;
-}
+function titulo(p){ $("promessa").innerHTML = M.tituloHtml(p); }
+if(PR) titulo(PR.titulo);
 function contagem(ate){
   function t(){
     var s = Math.floor((new Date(ate).getTime() - Date.now()) / 1000);
@@ -407,14 +406,14 @@ function turma(){
   });
 }
 turma().then(function(t){
-  if(t.promessa) titulo(t.promessa);
+  if(!PR && t.promessa) titulo(t.promessa);
   if(t.venda_ate) contagem(t.venda_ate);
   M.evento("ViewContent", { content_name:"Mini-evento " + t.slug, value:t.preco_cents/100, currency:"BRL" });
   /* vagas ao vivo: confere de minuto em minuto enquanto a aba está aberta */
   setInterval(function(){ if(!document.hidden) turma().catch(function(){}); }, 60000);
 }).catch(function(){ /* a página funciona com os textos padrão */ });
 
-M.api({ action:"visita", slug:M.slug(), sessao:M.sessao(), utm_source:u.utm_source, utm_content:u.utm_content, origem:document.referrer ? "link" : "direto" }).catch(function(){});
+M.api({ action:"visita", tipo:"pagina_vista", slug:M.slug(), sessao:M.sessao(), lead_id:LEAD && LEAD.id, p:PR && PR.n, utm_source:u.utm_source, utm_content:u.utm_content, origem:document.referrer ? "link" : "direto" }).catch(function(){});
 })();
 </script>
 </body>

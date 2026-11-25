@@ -44,6 +44,7 @@ function pixel(){
   window.fbq("init", PIXEL); window.fbq("track", "PageView");
 }
 function evento(nome, dados, opcoes){ try { if(window.fbq) window.fbq("track", nome, dados || {}, opcoes || {}); } catch(e){} }
+function eventoProprio(nome, dados){ try { if(window.fbq) window.fbq("trackCustom", nome, dados || {}); } catch(e){} }
 
 /* Preenche tudo que depende da turma: [data-t="campo"] recebe o texto */
 function preencher(t){
@@ -60,5 +61,42 @@ function preencher(t){
   return v;
 }
 
-window.MiniEvento = { api: api, qp: qp, sessao: sessao, utm: utm, slug: slug, comTurma: comTurma, brl: brl, dataExtenso: dataExtenso, esc: esc, pixel: pixel, evento: evento, preencher: preencher };
+/* As 10 promessas do teste. O anúncio manda ?p=N e a página repete a mesma headline (o que a pessoa clicou é o que ela lê). */
+var PROMESSAS = {
+  1:  ["Empresário de BH: 2027 começa em menos de um mês.", "Saia em um dia com o *planejamento comercial de 2027* pronto"],
+  2:  ["12 meses. 12 metas batidas.", "O plano pra *bater meta* nos 12 meses de 2027"],
+  3:  ["Se você tirar 15 dias de férias, sua empresa vende?", "Tire o *dono do comercial* sem o faturamento cair"],
+  4:  ["Quanto sua empresa vai vender mês que vem?", "Monte seu *funil previsível* em um dia"],
+  5:  ["Seu vendedor não bate meta. A culpa é dele ou do processo?", "Monte o processo que faz o *time vender* sem você cobrar"],
+  6:  ["Você não precisa de mais lead.", "Venda mais com o *mesmo time* e a mesma verba"],
+  7:  ["Lead sem resposta é venda perdida.", "Monte em um dia o *time de IA* que atende, qualifica e agenda"],
+  8:  ["Sua empresa está perdendo venda. Você sabe onde?", "Descubra *onde sua empresa perde venda* e quanto isso custa"],
+  9:  ["Sistema escala. Improviso não.", "Construa a *máquina de vendas* da sua empresa em um dia"],
+  10: ["Sem palco. Sem plateia de 500 pessoas.", "*25 empresários de BH* em uma sala montando o comercial de 2027"]
+};
+/* promessa da visita: vem em ?p= e fica guardada pra seguir da captura até o checkout */
+function promessaN(){
+  var p = qp("p");
+  try { if(p && PROMESSAS[+p]) sessionStorage.setItem("unv_miniev_p", String(+p)); else p = sessionStorage.getItem("unv_miniev_p"); } catch(e){}
+  return p && PROMESSAS[+p] ? +p : null;
+}
+function promessa(){ var n = promessaN(); return n ? { n: n, gancho: PROMESSAS[n][0], titulo: PROMESSAS[n][1] } : null; }
+function tituloHtml(p){
+  var h = esc(p).replace(/\*(.+?)\*/g, '<span class="r">$1</span>');
+  if(h.indexOf('class="r"') < 0){ var w = h.split(" "); if(w.length > 5){ var i = Math.max(2, w.length - 5); h = w.slice(0,i).join(" ") + ' <span class="r">' + w.slice(i, w.length-1).join(" ") + "</span> " + w[w.length-1]; } }
+  return h;
+}
+/* quem preencheu o formulário: guarda pra ligar a visita e o checkout à pessoa e não pedir os dados de novo */
+function leadSalvo(){ try { var l = JSON.parse(localStorage.getItem("unv_miniev_lead") || "null"); return l && l.id && Date.now() - l.em < 30*86400000 ? l : null; } catch(e){ return null; } }
+function salvaLead(o){ try { var l = leadSalvo() || {}; for(var k in o) l[k] = o[k]; l.em = Date.now(); localStorage.setItem("unv_miniev_lead", JSON.stringify(l)); } catch(e){} }
+/* ids do anúncio que vêm na URL */
+function anuncio(){
+  var o = {}; try { o = JSON.parse(sessionStorage.getItem("unv_miniev_ad") || "{}"); } catch(e){}
+  ["ad_id","adset_id","campaign_id"].forEach(function(k){ var v = qp(k); if(v) o[k] = v; });
+  try { sessionStorage.setItem("unv_miniev_ad", JSON.stringify(o)); } catch(e){}
+  return o;
+}
+function seguir(href){ var n = promessaN(), u = comTurma(href); return n ? u + (u.indexOf("?") < 0 ? "?" : "&") + "p=" + n : u; }
+
+window.MiniEvento = { api: api, qp: qp, sessao: sessao, utm: utm, slug: slug, comTurma: comTurma, brl: brl, dataExtenso: dataExtenso, esc: esc, pixel: pixel, evento: evento, preencher: preencher, promessa: promessa, promessaN: promessaN, tituloHtml: tituloHtml, leadSalvo: leadSalvo, salvaLead: salvaLead, eventoProprio: eventoProprio, anuncio: anuncio, seguir: seguir };
 })();

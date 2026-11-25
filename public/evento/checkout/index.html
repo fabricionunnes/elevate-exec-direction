@@ -58,8 +58,8 @@ body{ background:var(--bg); }
       <img id="qr" alt="QR Code do Pix">
       <div class="copia"><input id="payload" readonly><button type="button" id="copiar">Copiar</button></div>
       <div class="aguarda"><i></i><span>Aguardando o pagamento. Esta tela atualiza sozinha.</span></div>
-      <div class="ou">Prefere cartão de crédito?</div>
-      <a class="btn claro" id="cartao" target="_blank" rel="noopener">Pagar com cartão</a>
+      <div class="ou">Prefere cartão de crédito? Em até 3 vezes.</div>
+      <a class="btn claro" id="cartao" rel="noopener">Pagar com cartão</a>
       <p class="erro" id="erroPix"></p>
     </div>
   </div>
@@ -71,7 +71,7 @@ body{ background:var(--bg); }
     <div class="linha"><span><span data-t="semanaCap">Quinta-feira</span>, <span data-t="dataLonga">10 de dezembro</span></span><span data-t="horario">14h às 21h</span></div>
     <div class="linha"><span data-t="local">Hotel em Belo Horizonte</span><span>coffee incluso</span></div>
     <div class="linha total"><span>Total</span><span id="total">R$ 97</span></div>
-    <p style="font-size:13px;color:var(--mut);margin-top:10px"><span data-resta="sim" style="display:none">Restam <b data-t="restantes"></b> de <span data-t="vagas">25</span> vagas. </span>Pagamento processado pelo Asaas.</p>
+    <p style="font-size:13px;color:var(--mut);margin-top:10px"><span data-resta="sim" style="display:none">Restam <b data-t="restantes"></b> de <span data-t="vagas">25</span> vagas. </span>Pix pelo Asaas, cartão pelo Mercado Pago.</p>
   </aside>
 </div></div>
 
@@ -84,7 +84,9 @@ body{ background:var(--bg); }
 var M = window.MiniEvento; M.pixel();
 var u = M.utm(), T = { preco_cents:9700, preco_socio_cents:4700 }, CHAVE = "unv_miniev_checkout", timer = null;
 function $(id){ return document.getElementById(id); }
-$("voltar").href = M.comTurma("/evento/");
+$("voltar").href = M.seguir("/evento/");
+var LEAD = M.leadSalvo(), AD = M.anuncio();
+if(LEAD){ if(LEAD.nome) $("nome").value = LEAD.nome; if(LEAD.telefone) $("telefone").value = LEAD.telefone; if(LEAD.email) $("email").value = LEAD.email; }
 
 function total(){ return T.preco_cents + ($("comSocio").checked ? T.preco_socio_cents : 0); }
 function pinta(){ var t = M.brl(total()); $("total").textContent = t; $("totalBtn").textContent = t; $("linhaSocio").style.display = $("comSocio").checked ? "flex" : "none"; $("campoSocio").style.display = $("comSocio").checked ? "flex" : "none"; }
@@ -102,7 +104,7 @@ function mostraPix(d){
   $("passoDados").style.display = "none"; $("passoPix").style.display = "block";
   if(d.pix_image){ $("qr").src = "data:image/png;base64," + d.pix_image; $("payload").value = d.pix_payload || ""; }
   else { $("qr").style.display = "none"; document.querySelector(".copia").style.display = "none"; }
-  if(d.invoice_url) $("cartao").href = d.invoice_url; else { $("cartao").style.display = "none"; document.querySelector(".ou").style.display = "none"; }
+  if(d.cartao_url) $("cartao").href = d.cartao_url; else { $("cartao").style.display = "none"; document.querySelector(".ou").style.display = "none"; }
   try { localStorage.setItem(CHAVE, JSON.stringify({ id:d.id, em:Date.now() })); } catch(e){}
   acompanha(d.id); window.scrollTo(0,0);
 }
@@ -130,8 +132,9 @@ $("passoDados").addEventListener("submit", function(ev){
   ev.preventDefault(); $("erro").textContent = "";
   var b = $("btnPagar"); b.disabled = true; var txt = b.innerHTML; b.textContent = "Gerando a cobrança...";
   var corpo = { action:"checkout", slug:M.slug(), nome:$("nome").value, telefone:$("telefone").value, email:$("email").value, documento:$("documento").value,
-    com_socio:$("comSocio").checked, socio_nome:$("socioNome").value };
+    com_socio:$("comSocio").checked, socio_nome:$("socioNome").value, lead_id:LEAD && LEAD.id };
   for(var k in u) corpo[k] = u[k];
+  for(var k2 in AD) corpo[k2] = AD[k2];
   M.evento("InitiateCheckout", { value:total()/100, currency:"BRL", content_name:"Mini-evento" });
   M.api(corpo).then(function(d){ if(d.status === "pago") return pago(d.id, d.valor_cents || total()); mostraPix(d); })
     .catch(function(e){ $("erro").textContent = ERROS[e.code] || "Não deu certo agora. Tente de novo em instantes."; b.disabled = false; b.innerHTML = txt; });
