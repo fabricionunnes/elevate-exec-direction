@@ -718,7 +718,7 @@ async function conferirGarantia(sb: SB, g: any) {
     const { count } = await sb.from("black_garantias").select("id", { count: "exact", head: true }).eq("status", "pago");
     const { data: inst } = await sb.from("whatsapp_instances").select("instance_name, api_url, api_key").eq("instance_name", INSTANCIA).maybeSingle();
     if (inst?.api_url) {
-      const texto = `*PIX PAGO NA BLACK UNV*\n\n${g.empresa}${g.cidade ? `, de ${g.cidade}` : ""}\n${g.nome}\n\nGarantidas até agora: ${count ?? "?"}`;
+      const texto = `*PIX PAGO NA BLACK UNV*\n\n${g.empresa}${g.cidade ? `, de ${g.cidade}` : ""}\n${g.nome}\nTelefone: ${foneBonito(g.telefone)}\n\nGarantidas até agora: ${count ?? "?"}`;
       await fetch(`${String(inst.api_url).replace(/\/+$/, "")}/message/sendText/${inst.instance_name}`, {
         method: "POST", headers: { apikey: inst.api_key, "Content-Type": "application/json" },
         body: JSON.stringify({ number: AVISO_PLACAR, text: texto }),
