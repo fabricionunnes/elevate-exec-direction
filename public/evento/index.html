@@ -4,162 +4,321 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Workshop presencial com Fabrício Nunnes · Belo Horizonte</title>
-<meta name="description" content="Um dia de mesa de trabalho em Belo Horizonte pra montar o comercial de 2027 da sua empresa: meta, funil e time. 25 vagas.">
+<meta name="description" content="Sete horas de mesa de trabalho em Belo Horizonte pra montar o comercial de 2027 da sua empresa: meta, funil e time. 25 vagas.">
 <meta property="og:title" content="Workshop presencial com Fabrício Nunnes · Belo Horizonte">
 <meta property="og:description" content="Monte o comercial de 2027 da sua empresa em um dia. 25 vagas.">
 <meta property="og:image" content="https://unvholdings.com.br/evento/og.jpg">
 <meta name="robots" content="noindex">
+<meta name="theme-color" content="#082B48">
 <link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="image" href="/evento/fabricio-palestra.webp" fetchpriority="high">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap">
 <link rel="stylesheet" href="/evento/evento.css">
 <style>
-.hero{ background:var(--navy); color:#fff; overflow:hidden; }
-.hero .wrap{ display:grid; grid-template-columns:1.15fr .85fr; gap:30px; align-items:end; padding-top:40px; }
-.hero .txt{ padding-bottom:44px; align-self:center; }
-.hero h1{ margin:10px 0 18px; font-size:clamp(40px,5.6vw,74px); }
-.hero .sub{ font-size:19px; color:#d5dfea; max-width:520px; }
-.hero .quando{ display:flex; flex-wrap:wrap; gap:10px; margin:22px 0 26px; }
-.hero .quando > span{ border:1px solid rgba(255,255,255,.28); border-radius:999px; padding:8px 16px; font-weight:700; font-size:15px; }
-.hero .foto{ align-self:end; }
-.hero .foto img{ width:100%; max-width:430px; height:min(520px,62vh); object-fit:cover; object-position:50% 12%; margin:0 auto; border-radius:18px 18px 0 0; }
-.hero small{ display:block; margin-top:14px; color:#aebfd0; font-size:14px; }
-.lista{ list-style:none; padding:0; margin:0; display:grid; gap:12px; }
-.lista li{ padding-left:30px; position:relative; font-size:17px; }
-.lista li:before{ content:""; position:absolute; left:0; top:9px; width:16px; height:3px; background:var(--red); }
-.agenda{ border-top:1px solid var(--line); }
-.agenda div{ display:grid; grid-template-columns:92px 1fr; gap:16px; padding:15px 0; border-bottom:1px solid var(--line); align-items:baseline; }
-.agenda b{ font-family:"Bebas Neue",sans-serif; font-size:28px; color:var(--navy); }
-.agenda span i{ display:block; font-style:normal; color:var(--mut); font-size:15px; }
-.quem{ display:grid; grid-template-columns:300px 1fr; gap:34px; align-items:center; }
-.quem img{ border-radius:16px; }
-.nums{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:22px; }
-.nums div{ border-left:3px solid var(--red); padding-left:12px; }
-.nums b{ font-family:"Bebas Neue",sans-serif; font-size:38px; line-height:1; display:block; }
-.nums span{ font-size:13.5px; color:#d5dfea; }
-.oferta{ text-align:center; }
-.oferta .preco{ font-family:"Bebas Neue",sans-serif; font-size:clamp(84px,14vw,150px); line-height:.9; color:var(--navy); margin:8px 0 6px; }
-.oferta ul{ list-style:none; padding:0; margin:18px auto 26px; max-width:440px; text-align:left; display:grid; gap:9px; }
-.oferta li{ padding-left:28px; position:relative; }
-.oferta li:before{ content:"✓"; position:absolute; left:0; color:var(--red); font-weight:700; }
-details{ border-bottom:1px solid var(--line); padding:16px 0; }
-summary{ font-weight:700; cursor:pointer; font-size:17px; color:var(--navy); }
-details p{ margin:10px 0 0; color:var(--mut); }
-.barra{ position:fixed; left:0; right:0; bottom:0; z-index:20; background:#fff; border-top:1px solid var(--line); box-shadow:0 -8px 24px rgba(8,43,72,.10); }
+:root{ --navy2:#051c30; --fio:rgba(255,255,255,.14); }
+body{ background:#fff; }
+.sec{ padding:92px 0; }
+h2{ font-size:clamp(38px,5.4vw,68px); }
+.olho{ display:flex; align-items:center; gap:10px; }
+.olho:before{ content:""; width:34px; height:2px; background:var(--grad); }
+
+/* aparece ao rolar */
+.sobe{ opacity:0; transform:translateY(26px); transition:opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+.sobe.on{ opacity:1; transform:none; }
+@media (prefers-reduced-motion:reduce){ .sobe{ opacity:1; transform:none; transition:none; } .faixa .trilho{ animation:none !important; } }
+
+/* topo */
+.topo{ position:sticky; top:0; z-index:30; }
+.topo .wrap{ padding-top:8px; padding-bottom:8px; }
+.topo img{ height:46px; }
+.topo .btn{ font-size:18px; padding:10px 20px 8px; box-shadow:none; width:auto; }
+
+/* dobra 1 */
+.hero{ position:relative; background:var(--navy2); color:#fff; overflow:hidden; isolation:isolate; }
+.hero:before{ content:""; position:absolute; inset:0; z-index:-2;
+  background:radial-gradient(900px 620px at 78% 30%, rgba(233,29,45,.42), transparent 62%), radial-gradient(700px 500px at 8% 100%, rgba(8,43,72,.95), transparent 70%), linear-gradient(160deg,#082B48 0%,#051c30 70%); }
+.hero:after{ content:""; position:absolute; inset:0; z-index:-1; opacity:.5;
+  background-image:linear-gradient(var(--fio) 1px, transparent 1px), linear-gradient(90deg, var(--fio) 1px, transparent 1px); background-size:64px 64px;
+  -webkit-mask-image:radial-gradient(900px 600px at 70% 30%, #000, transparent 75%); mask-image:radial-gradient(900px 600px at 70% 30%, #000, transparent 75%); }
+.hero .wrap{ display:grid; grid-template-columns:1.12fr .88fr; gap:40px; align-items:center; padding-top:58px; padding-bottom:70px; max-width:1180px; }
+.hero h1{ font-size:clamp(46px,6.6vw,96px); margin:16px 0 20px; }
+.hero h1 .r{ background:linear-gradient(180deg,#ff5a4d,#E91D2D 55%,#CC572D); -webkit-background-clip:text; background-clip:text; }
+.hero .sub{ font-size:clamp(17px,1.6vw,20px); color:#cfdae6; max-width:540px; }
+.fatos{ display:grid; grid-template-columns:repeat(4,auto); gap:0; margin:28px 0 30px; border-top:1px solid var(--fio); border-bottom:1px solid var(--fio); width:fit-content; }
+.fatos div{ padding:14px 22px 12px; border-left:1px solid var(--fio); }
+.fatos div:first-child{ border-left:0; padding-left:0; }
+.fatos b{ display:block; font-family:"Bebas Neue",sans-serif; font-size:30px; line-height:1; letter-spacing:.02em; }
+.fatos span{ font-size:12px; text-transform:uppercase; letter-spacing:.12em; color:#9fb3c8; font-weight:700; }
+.fatos b span{ font:inherit; color:inherit; letter-spacing:inherit; text-transform:inherit; }
+.hero small{ display:block; margin-top:14px; color:#9fb3c8; font-size:14px; }
+.hero .btn{ font-size:30px; padding:20px 44px 16px; }
+.retrato{ position:relative; justify-self:center; width:min(440px,100%); }
+.retrato:before{ content:""; position:absolute; inset:22px -18px -18px 22px; border:2px solid #E91D2D; border-radius:22px; z-index:-1; }
+.retrato img{ width:100%; aspect-ratio:4/5; object-fit:cover; object-position:50% 14%; border-radius:22px; box-shadow:0 40px 80px rgba(0,0,0,.5); }
+.selo{ position:absolute; background:rgba(255,255,255,.96); color:var(--navy); border-radius:16px; padding:14px 18px; box-shadow:0 20px 44px rgba(0,0,0,.35); backdrop-filter:blur(8px); }
+.selo.a{ left:-34px; bottom:54px; display:flex; align-items:center; gap:14px; }
+.selo.b{ right:-22px; top:34px; text-align:center; }
+.selo b{ font-family:"Bebas Neue",sans-serif; font-size:40px; line-height:.9; display:block; }
+.selo span{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--mut); }
+.selo b span{ font:inherit; color:inherit; letter-spacing:inherit; }
+.anel{ width:66px; height:66px; flex:none; }
+.anel circle{ fill:none; stroke-width:7; }
+.anel .t{ stroke:#e3e9f0; } .anel .p{ stroke:url(#gr); stroke-linecap:round; transform:rotate(-90deg); transform-origin:50% 50%; transition:stroke-dashoffset 1.2s ease; }
+.fechado{ display:none; background:#fff3f3; border:1px solid #f3c2c2; color:#8a1616; border-radius:12px; padding:16px; font-weight:700; margin-top:18px; }
+
+/* faixa que corre */
+.faixa{ background:var(--grad); color:#fff; overflow:hidden; white-space:nowrap; padding:13px 0 10px; }
+.faixa .trilho{ display:inline-block; animation:corre 28s linear infinite; font-family:"Bebas Neue",sans-serif; font-size:24px; letter-spacing:.06em; }
+.faixa .trilho span{ margin:0 26px; } .faixa .trilho i{ font-style:normal; opacity:.55; }
+@keyframes corre{ to{ transform:translateX(-50%); } }
+
+/* para quem é */
+.dores{ display:grid; gap:0; counter-reset:d; border-top:1px solid var(--line); }
+.dores li{ list-style:none; display:grid; grid-template-columns:64px 1fr; gap:14px; align-items:baseline; padding:20px 0; border-bottom:1px solid var(--line); font-size:19px; transition:padding .25s, background .25s; }
+.dores li:before{ counter-increment:d; content:"0" counter(d); font-family:"Bebas Neue",sans-serif; font-size:34px; color:#c9d3de; transition:color .25s; }
+.dores li:hover{ padding-left:14px; background:var(--bg); } .dores li:hover:before{ color:#E91D2D; }
+
+/* a sala */
+.sala{ background:var(--navy2); color:#fff; position:relative; overflow:hidden; }
+.sala h2{ color:#fff; }
+.sala .wrap{ display:grid; grid-template-columns:.9fr 1.1fr; gap:50px; align-items:center; }
+.cadeiras{ display:grid; grid-template-columns:repeat(5,1fr); gap:12px; max-width:440px; margin:0 auto; }
+.cad{ aspect-ratio:1; border-radius:14px; border:1.5px solid rgba(255,255,255,.22); display:flex; align-items:center; justify-content:center; font-family:"Bebas Neue",sans-serif; font-size:22px; color:rgba(255,255,255,.4); transition:all .5s; }
+.cad.oc{ background:var(--grad); border-color:transparent; color:#fff; box-shadow:0 8px 20px rgba(233,29,45,.35); }
+.cad.sua{ border-color:#fff; color:#fff; animation:pulsa 1.8s infinite; }
+@keyframes pulsa{ 0%{ box-shadow:0 0 0 0 rgba(255,255,255,.55); } 100%{ box-shadow:0 0 0 16px rgba(255,255,255,0); } }
+.legenda{ display:flex; gap:18px; justify-content:center; margin-top:18px; font-size:13px; color:#9fb3c8; font-weight:700; }
+.legenda i{ display:inline-block; width:12px; height:12px; border-radius:4px; margin-right:6px; vertical-align:-1px; }
+
+/* entregas */
+.entregas{ display:grid; grid-template-columns:repeat(4,1fr); gap:18px; margin-top:36px; }
+.ent{ position:relative; background:#fff; border:1px solid var(--line); border-radius:18px; padding:30px 24px 26px; overflow:hidden; transition:transform .3s, box-shadow .3s, border-color .3s; }
+.ent:hover{ transform:translateY(-8px); box-shadow:0 26px 50px rgba(8,43,72,.14); border-color:transparent; }
+.ent:after{ content:""; position:absolute; left:0; right:0; top:0; height:4px; background:var(--grad); transform:scaleX(0); transform-origin:left; transition:transform .4s; }
+.ent:hover:after{ transform:scaleX(1); }
+.ent .n{ font-family:"Bebas Neue",sans-serif; font-size:74px; line-height:.8; color:transparent; -webkit-text-stroke:1.5px #c2cdd9; display:block; margin-bottom:16px; }
+.ent:hover .n{ -webkit-text-stroke-color:#E91D2D; }
+.ent p{ color:var(--mut); margin:8px 0 0; }
+
+/* calculadora */
+.calc{ background:var(--bg); }
+.calc .wrap{ display:grid; grid-template-columns:1fr 1fr; gap:44px; align-items:center; }
+.painel{ background:#fff; border-radius:22px; padding:30px; box-shadow:0 30px 60px rgba(8,43,72,.10); border:1px solid var(--line); }
+.ctl{ margin-bottom:20px; }
+.ctl label{ display:flex; justify-content:space-between; font-weight:700; color:var(--navy); font-size:15px; margin-bottom:8px; }
+.ctl label b{ font-family:"Bebas Neue",sans-serif; font-size:24px; color:#E91D2D; line-height:1; }
+.ctl input[type=range]{ width:100%; accent-color:#E91D2D; height:28px; }
+.res{ background:var(--navy); color:#fff; border-radius:16px; padding:22px; margin-top:6px; }
+.res span{ font-size:12.5px; text-transform:uppercase; letter-spacing:.1em; font-weight:700; color:#9fb3c8; }
+.res > b{ display:block; font-family:"Bebas Neue",sans-serif; font-size:clamp(44px,5vw,64px); line-height:1; margin:4px 0 2px; }
+.res small{ color:#cfdae6; font-size:14.5px; }
+
+/* agenda */
+.linha{ position:relative; padding-left:34px; }
+.linha:before{ content:""; position:absolute; left:8px; top:8px; bottom:8px; width:2px; background:linear-gradient(180deg,#E91D2D,#082B48); }
+.linha div{ position:relative; padding:0 0 26px; }
+.linha div:before{ content:""; position:absolute; left:-33px; top:5px; width:16px; height:16px; border-radius:50%; background:#fff; border:3px solid #E91D2D; }
+.linha b{ font-family:"Bebas Neue",sans-serif; font-size:26px; color:#E91D2D; margin-right:12px; }
+.linha strong{ font-size:19px; color:var(--navy); }
+.linha i{ display:block; font-style:normal; color:var(--mut); }
+
+/* quem conduz */
+.quem{ display:grid; grid-template-columns:340px 1fr; gap:48px; align-items:center; }
+.quem img{ border-radius:20px; box-shadow:0 30px 60px rgba(0,0,0,.4); }
+.nums{ display:grid; grid-template-columns:repeat(4,1fr); gap:18px; margin-top:28px; }
+.nums div{ border-top:2px solid #E91D2D; padding-top:12px; }
+.nums b{ font-family:"Bebas Neue",sans-serif; font-size:clamp(38px,4.4vw,56px); line-height:1; display:block; }
+.nums > div > span{ font-size:13.5px; color:#cfdae6; }
+
+/* oferta */
+.oferta .cartao{ max-width:760px; margin:0 auto; background:var(--navy2); color:#fff; border-radius:28px; padding:46px 40px; text-align:center; position:relative; overflow:hidden; isolation:isolate; box-shadow:0 40px 80px rgba(8,43,72,.28); }
+.oferta .cartao:before{ content:""; position:absolute; inset:0; z-index:-1; background:radial-gradient(520px 320px at 50% 0%, rgba(233,29,45,.5), transparent 70%); }
+.oferta h2{ color:#fff; }
+.oferta .preco{ font-family:"Bebas Neue",sans-serif; font-size:clamp(110px,17vw,190px); line-height:.86; margin:14px 0 4px; }
+.oferta ul{ list-style:none; padding:0; margin:24px auto 30px; max-width:430px; text-align:left; display:grid; gap:11px; }
+.oferta li{ padding-left:30px; position:relative; color:#e3ebf3; }
+.oferta li:before{ content:""; position:absolute; left:0; top:6px; width:16px; height:9px; border-left:3px solid #E91D2D; border-bottom:3px solid #E91D2D; transform:rotate(-45deg); }
+.oferta .btn{ font-size:30px; padding:20px 46px 16px; }
+
+details{ border-bottom:1px solid var(--line); padding:20px 0; }
+summary{ font-weight:700; cursor:pointer; font-size:18px; color:var(--navy); list-style:none; display:flex; justify-content:space-between; gap:12px; }
+summary::-webkit-details-marker{ display:none; }
+summary:after{ content:"+"; font-family:"Bebas Neue",sans-serif; font-size:28px; line-height:.8; color:#E91D2D; transition:transform .25s; }
+details[open] summary:after{ transform:rotate(45deg); }
+details p{ margin:12px 0 0; color:var(--mut); font-size:16.5px; }
+
+.barra{ position:fixed; left:0; right:0; bottom:0; z-index:40; background:rgba(255,255,255,.97); backdrop-filter:blur(10px); border-top:1px solid var(--line); box-shadow:0 -10px 30px rgba(8,43,72,.12); transform:translateY(110%); transition:transform .4s; }
+.barra.on{ transform:none; }
 .barra .wrap{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding-top:10px; padding-bottom:10px; }
 .barra .cont{ font-weight:700; color:var(--navy); font-size:14.5px; line-height:1.3; }
-.barra .cont b{ color:var(--red); }
+.barra .cont b{ color:#E91D2D; font-variant-numeric:tabular-nums; }
 .barra .btn{ font-size:21px; padding:12px 24px 10px; white-space:nowrap; width:auto; }
-.fechado{ display:none; background:#fff3f3; border:1px solid #f3c2c2; color:#8a1616; border-radius:12px; padding:16px; font-weight:700; margin-top:18px; }
-@media (max-width:820px){ .hero .wrap{ grid-template-columns:1fr; padding-top:34px; } .hero .txt{ padding-bottom:10px; } .quem{ grid-template-columns:1fr; } .nums{ grid-template-columns:repeat(2,1fr); } .barra .cont small{ display:none; } }
+
+@media (max-width:900px){
+  .sec{ padding:60px 0; }
+  .hero .wrap, .sala .wrap, .calc .wrap, .quem{ grid-template-columns:1fr; }
+  .hero .wrap{ padding-top:34px; padding-bottom:50px; gap:44px; }
+  .fatos{ grid-template-columns:repeat(2,1fr); width:100%; } .fatos div{ padding:12px 0 10px 16px; } .fatos div:nth-child(odd){ padding-left:0; border-left:0; } .fatos div:nth-child(n+3){ border-top:1px solid var(--fio); }
+  .selo.a{ left:-8px; } .selo.b{ right:-8px; } .retrato{ width:min(360px,88%); }
+  .entregas{ grid-template-columns:1fr; } .nums{ grid-template-columns:repeat(2,1fr); }
+  .topo .info{ display:none; } .hero .btn, .oferta .btn{ font-size:26px; padding:18px 20px 14px; }
+  .oferta .cartao{ padding:38px 22px; } .dores li{ font-size:17px; grid-template-columns:50px 1fr; }
+}
 </style>
 </head>
 <body>
 
 <header class="topo"><div class="wrap">
-  <img src="/evento/logo-unv-holdings.png" alt="UNV Holdings" width="155" height="118">
-  <div class="info"><span data-t="semanaCap">Quinta-feira</span>, <span data-t="data">10/12</span> · <span data-t="horario">14h às 21h</span><br><span data-t="cidade">Belo Horizonte</span> · presencial</div>
+  <img src="/evento/logo-unv-holdings.webp" alt="UNV Holdings" width="165" height="125">
+  <div class="info"><span data-t="semanaCap">Quinta-feira</span>, <span data-t="data">10/12</span> · <span data-t="horario">14h às 21h</span> · <span data-t="cidade">Belo Horizonte</span></div>
+  <a class="btn ir" href="/evento/checkout/">Garantir vaga</a>
 </div></header>
 
 <section class="hero"><div class="wrap">
-  <div class="txt">
+  <div>
     <div class="olho" style="color:#ff8f7a">Workshop presencial com Fabrício Nunnes</div>
     <h1 id="promessa">Saia em um dia com o <span class="r">planejamento comercial de 2027</span> pronto</h1>
     <p class="sub">Sete horas de mesa de trabalho, com o seu número na mão. Você chega com a empresa do jeito que está e sai com meta, funil e rotina do time definidos.</p>
-    <div class="quando"><span><span data-t="semanaCap">Quinta-feira</span>, <span data-t="dataLonga">10 de dezembro</span></span><span data-t="horario">14h às 21h</span><span data-t="cidade">Belo Horizonte</span><span><span data-t="vagas">25</span> vagas</span></div>
-    <a class="btn ir" href="/evento/checkout/">Quero minha vaga por <span data-t="preco">R$ 97</span></a>
+    <div class="fatos">
+      <div><b data-t="data">10/12</b><span data-t="semana">quinta-feira</span></div>
+      <div><b data-t="horario">14h às 21h</b><span>presencial</span></div>
+      <div><b data-t="cidade">Belo Horizonte</b><span>em hotel</span></div>
+      <div><b><span data-t="vagas">25</span> vagas</b><span>turma única</span></div>
+    </div>
+    <a class="btn ir" id="cta1" href="/evento/checkout/">Quero minha vaga por <span data-t="preco">R$ 97</span></a>
     <div class="fechado" id="fechado"></div>
     <small>Pix ou cartão. A vaga só fica confirmada com o pagamento.</small>
   </div>
-  <div class="foto"><img src="/evento/fabricio-palestra.webp" alt="Fabrício Nunnes palestrando" width="900" height="1125"></div>
+  <div class="retrato">
+    <img src="/evento/fabricio-palestra.webp" alt="Fabrício Nunnes palestrando" width="900" height="1125" fetchpriority="high">
+    <div class="selo a">
+      <svg class="anel" viewBox="0 0 66 66" aria-hidden="true"><defs><linearGradient id="gr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E91D2D"/><stop offset="1" stop-color="#CC572D"/></linearGradient></defs>
+        <circle class="t" cx="33" cy="33" r="28"/><circle class="p" id="anel" cx="33" cy="33" r="28" stroke-dasharray="175.9" stroke-dashoffset="175.9"/></svg>
+      <div><b data-t="restantes">25</b><span>vagas restantes</span></div>
+    </div>
+    <div class="selo b"><b>7h</b><span>de trabalho<br>na sua empresa</span></div>
+  </div>
 </div></section>
 
-<section class="sec"><div class="wrap grade g2" style="align-items:start;gap:44px">
-  <div>
+<div class="faixa" aria-hidden="true"><div class="trilho" id="trilho"></div></div>
+
+<section class="sec"><div class="wrap grade g2" style="align-items:start;gap:54px">
+  <div class="sobe">
     <div class="olho">Para quem é</div>
-    <h2>Dono de empresa que quer parar de <span class="r">depender de mês bom</span></h2>
+    <h2>Dono de empresa que cansou de <span class="r">depender de mês bom</span></h2>
+    <p style="margin-top:18px;font-size:18px;color:var(--mut)">Empresa com pelo menos um vendedor, faturando acima de R$ 50 mil por mês.</p>
   </div>
-  <ul class="lista">
-    <li>Sua empresa tem pelo menos um vendedor e fatura acima de R$ 50 mil por mês.</li>
+  <ul class="dores sobe" style="padding:0;margin:0">
     <li>Você entra o ano sem a meta desdobrada por mês, por canal e por vendedor.</li>
     <li>O faturamento oscila e você não sabe quanto vai entrar no mês que vem.</li>
     <li>Quando você sai do comercial, a venda cai.</li>
     <li>O lead chega, mas se perde no meio do caminho.</li>
+    <li>O time só bate meta quando você entra pra fechar.</li>
   </ul>
 </div></section>
 
-<section class="sec cinza"><div class="wrap">
-  <div class="olho">O que você leva pronto</div>
-  <h2 style="max-width:760px">Quatro documentos preenchidos com o <span class="r">número da sua empresa</span></h2>
-  <div class="grade g4" style="margin-top:28px">
-    <div class="card"><b class="n">01</b><h3>Raio-x comercial</h3><p>Conversão, ticket médio e CAC da sua empresa, calculados na hora. Você enxerga onde a venda está escapando.</p></div>
-    <div class="card"><b class="n">02</b><h3>Mapa de metas 2027</h3><p>A meta do ano desdobrada por mês, por canal e por vendedor.</p></div>
-    <div class="card"><b class="n">03</b><h3>Funil desenhado</h3><p>De onde vem o lead, por onde ele passa e onde a inteligência artificial entra pra atender, qualificar e agendar.</p></div>
-    <div class="card"><b class="n">04</b><h3>Rotina do time</h3><p>Script, follow-up e o ritual semanal de gestão que faz o time vender sem você cobrar.</p></div>
+<section class="sec sala"><div class="wrap">
+  <div class="sobe">
+    <div class="olho" style="color:#ff8f7a">A sala</div>
+    <h2><span data-t="vagas">25</span> cadeiras. <span class="r">Sem palco.</span> Sem plateia de 500 pessoas.</h2>
+    <p style="margin-top:18px;font-size:18px;color:#cfdae6">Turma pequena de propósito. Cada empresário trabalha no próprio número, com o Fabrício passando de mesa em mesa. As cadeiras ao lado mostram a turma agora, em tempo real.</p>
+    <p style="margin-top:22px"><a class="btn ir" href="/evento/checkout/">Pegar a minha cadeira</a></p>
+  </div>
+  <div class="sobe">
+    <div class="cadeiras" id="cadeiras"></div>
+    <div class="legenda"><span><i style="background:linear-gradient(180deg,#E91D2D,#CC572D)"></i>ocupada</span><span><i style="border:1.5px solid #fff"></i>a sua</span><span><i style="border:1.5px solid rgba(255,255,255,.3)"></i>livre</span></div>
   </div>
 </div></section>
 
-<section class="sec"><div class="wrap grade g2" style="align-items:start;gap:44px">
-  <div>
+<section class="sec"><div class="wrap">
+  <div class="sobe"><div class="olho">O que você leva pronto</div>
+  <h2 style="max-width:860px">Quatro documentos preenchidos com o <span class="r">número da sua empresa</span></h2></div>
+  <div class="entregas">
+    <div class="ent sobe"><b class="n">01</b><h3>Raio-x comercial</h3><p>Conversão, ticket médio e CAC da sua empresa, calculados na hora. Você enxerga onde a venda está escapando.</p></div>
+    <div class="ent sobe"><b class="n">02</b><h3>Mapa de metas 2027</h3><p>A meta do ano desdobrada por mês, por canal e por vendedor.</p></div>
+    <div class="ent sobe"><b class="n">03</b><h3>Funil desenhado</h3><p>De onde vem o lead, por onde ele passa e onde a inteligência artificial entra pra atender, qualificar e agendar.</p></div>
+    <div class="ent sobe"><b class="n">04</b><h3>Rotina do time</h3><p>Script, follow-up e o ritual semanal de gestão que faz o time vender sem você cobrar.</p></div>
+  </div>
+</div></section>
+
+<section class="sec calc"><div class="wrap">
+  <div class="sobe">
+    <div class="olho">Faça a conta agora</div>
+    <h2>Quanto vale <span class="r">um ponto de conversão</span> na sua empresa?</h2>
+    <p style="margin-top:18px;font-size:18px;color:var(--mut)">Mexa nos três números. É esta conta, com os dados reais da sua empresa, que você faz na primeira hora do workshop.</p>
+  </div>
+  <div class="painel sobe">
+    <div class="ctl"><label>Leads por mês <b id="vLeads">120</b></label><input type="range" id="leads" min="10" max="1000" step="10" value="120" aria-label="Leads por mês"></div>
+    <div class="ctl"><label>Conversão em venda hoje <b id="vConv">8%</b></label><input type="range" id="conv" min="1" max="50" step="1" value="8" aria-label="Conversão em venda"></div>
+    <div class="ctl"><label>Ticket médio <b id="vTicket">R$ 2.500</b></label><input type="range" id="ticket" min="100" max="30000" step="100" value="2500" aria-label="Ticket médio"></div>
+    <div class="res"><span>Cada ponto a mais de conversão vale</span><b id="rAno">R$ 36.000</b><small>em 2027, ou <strong id="rMes">R$ 3.000</strong> por mês, com os mesmos leads e o mesmo time. Hoje você vende <strong id="rHoje">R$ 24.000</strong> por mês com essa conversão.</small></div>
+  </div>
+</div></section>
+
+<section class="sec"><div class="wrap grade g2" style="align-items:start;gap:54px">
+  <div class="sobe">
     <div class="olho">Agenda do dia</div>
-    <h2>Das <span data-t="horario">14h às 21h</span>, sem palco e sem plateia de 500 pessoas</h2>
-    <p style="margin-top:16px;color:var(--mut);font-size:17px">Turma pequena de propósito. É mesa de trabalho: cada bloco termina com um documento seu preenchido.</p>
+    <h2>Das <span data-t="horario">14h às 21h</span>, um documento pronto <span class="r">a cada bloco</span></h2>
   </div>
-  <div class="agenda">
-    <div><b>13h30</b><span>Credenciamento<i>Café e material na mesa.</i></span></div>
-    <div><b>14h00</b><span>Diagnóstico<i>Raio-x comercial da sua empresa, ao vivo.</i></span></div>
-    <div><b>15h30</b><span>Meta de 2027<i>Desdobrada por mês, canal e vendedor.</i></span></div>
-    <div><b>16h45</b><span>Coffee<i>Conversa de mesa com os outros empresários.</i></span></div>
-    <div><b>17h15</b><span>Funil e captação<i>Canais, rotina e onde entra a IA.</i></span></div>
-    <div><b>18h30</b><span>Conversão<i>Script, follow-up e ritual de gestão do time.</i></span></div>
-    <div><b>19h45</b><span>Casos reais e próximos passos<i>O que fazer na manhã seguinte.</i></span></div>
+  <div class="linha sobe">
+    <div><b>13h30</b><strong>Credenciamento</strong><i>Café e material na mesa.</i></div>
+    <div><b>14h00</b><strong>Diagnóstico</strong><i>Raio-x comercial da sua empresa, ao vivo.</i></div>
+    <div><b>15h30</b><strong>Meta de 2027</strong><i>Desdobrada por mês, canal e vendedor.</i></div>
+    <div><b>16h45</b><strong>Coffee</strong><i>Conversa de mesa com os outros empresários.</i></div>
+    <div><b>17h15</b><strong>Funil e captação</strong><i>Canais, rotina e onde entra a IA.</i></div>
+    <div><b>18h30</b><strong>Conversão</strong><i>Script, follow-up e ritual de gestão do time.</i></div>
+    <div style="padding-bottom:0"><b>19h45</b><strong>Casos reais e próximos passos</strong><i>O que fazer na manhã seguinte.</i></div>
   </div>
 </div></section>
 
-<section class="sec navy"><div class="wrap quem">
-  <img src="/evento/fabricio.webp" alt="Fabrício Nunnes" width="700" height="875" loading="lazy">
-  <div>
+<section class="sec sala"><div class="wrap quem">
+  <img class="sobe" src="/evento/fabricio.webp" alt="Fabrício Nunnes" width="700" height="875" loading="lazy" decoding="async">
+  <div class="sobe">
     <div class="olho" style="color:#ff8f7a">Quem conduz</div>
     <h2>Fabrício Nunnes</h2>
-    <p style="margin-top:14px;font-size:18px;color:#d5dfea">CEO da UNV Holdings. Atua como diretor comercial de pequenas e médias empresas: estrutura o time, o processo e a gestão pra empresa bater meta todos os meses.</p>
+    <p style="margin-top:16px;font-size:19px;color:#cfdae6;max-width:560px">CEO da UNV Holdings. Atua como diretor comercial de pequenas e médias empresas: estrutura o time, o processo e a gestão pra empresa bater meta todos os meses.</p>
     <div class="nums">
-      <div><b>+20 anos</b><span>em vendas</span></div>
-      <div><b>+10 anos</b><span>como diretor comercial</span></div>
-      <div><b>+600</b><span>empresas atendidas</span></div>
+      <div><b>+<span class="conta" data-ate="20">20</span></b><span>anos em vendas</span></div>
+      <div><b>+<span class="conta" data-ate="10">10</span></b><span>anos como diretor comercial</span></div>
+      <div><b>+<span class="conta" data-ate="600">600</span></b><span>empresas atendidas</span></div>
       <div><b>+R$ 1 bi</b><span>em vendas geradas</span></div>
     </div>
-    <p style="margin-top:22px"><a href="https://www.instagram.com/ofabricionunnes/" target="_blank" rel="noopener" style="color:#fff;font-weight:700">@ofabricionunnes no Instagram</a></p>
+    <p style="margin-top:26px"><a href="https://www.instagram.com/ofabricionunnes/" target="_blank" rel="noopener" style="color:#fff;font-weight:700">@ofabricionunnes no Instagram</a></p>
   </div>
 </div></section>
 
-<section class="sec cinza" id="oferta"><div class="wrap oferta">
-  <div class="olho">Ingresso</div>
-  <h2><span data-t="vagas">25</span> vagas. Restam <span class="r" data-t="restantes">25</span>.</h2>
-  <div class="preco" data-t="preco">R$ 97</div>
-  <p style="color:var(--mut)">por pessoa, no Pix ou no cartão</p>
-  <ul>
-    <li>Sete horas presenciais com o Fabrício, em <span data-t="cidade">Belo Horizonte</span></li>
-    <li>Os quatro documentos da sua empresa preenchidos</li>
-    <li>Material impresso e coffee</li>
-    <li>Pode levar o sócio por mais <span data-t="precoSocio">R$ 47</span></li>
-  </ul>
-  <a class="btn ir" href="/evento/checkout/">Garantir minha vaga</a>
+<section class="sec oferta" id="oferta"><div class="wrap">
+  <div class="cartao sobe">
+    <div class="olho" style="color:#ff8f7a;justify-content:center">Ingresso</div>
+    <h2>Restam <span data-t="restantes" style="color:#ff5a4d">25</span> de <span data-t="vagas">25</span> vagas</h2>
+    <div class="preco" data-t="preco">R$ 97</div>
+    <p style="color:#9fb3c8;margin:0">por pessoa, no Pix ou no cartão</p>
+    <ul>
+      <li>Sete horas presenciais com o Fabrício, em <span data-t="cidade">Belo Horizonte</span></li>
+      <li>Os quatro documentos da sua empresa preenchidos</li>
+      <li>Material impresso e coffee</li>
+      <li>Pode levar o sócio por mais <span data-t="precoSocio">R$ 47</span></li>
+    </ul>
+    <a class="btn ir" href="/evento/checkout/">Garantir minha vaga</a>
+    <p style="margin:16px 0 0;color:#9fb3c8;font-size:14px" id="contOferta"></p>
+  </div>
 </div></section>
 
-<section class="sec"><div class="wrap" style="max-width:760px">
-  <div class="olho">Dúvidas</div>
-  <h2>Antes de garantir a vaga</h2>
-  <div style="margin-top:18px">
+<section class="sec" style="padding-top:20px"><div class="wrap" style="max-width:780px">
+  <div class="sobe"><div class="olho">Dúvidas</div><h2>Antes de garantir a vaga</h2></div>
+  <div class="sobe" style="margin-top:20px">
     <details><summary>Onde vai ser?</summary><p>Em hotel em <span data-t="cidade">Belo Horizonte</span>. O endereço completo, o mapa e o estacionamento chegam junto com a confirmação da vaga.</p></details>
     <details><summary>Posso levar meu sócio?</summary><p>Pode. Na página de pagamento você inclui o sócio por mais <span data-t="precoSocio">R$ 47</span>. Os dois trabalham nos mesmos documentos.</p></details>
     <details><summary>O que preciso levar?</summary><p>Notebook ou caderno e os números do seu comercial: faturamento, quantidade de vendas e de leads dos últimos meses. Se não tiver tudo, a gente estima na hora.</p></details>
     <details><summary>Até quando posso comprar?</summary><p>Até a véspera, às 18h, ou até acabarem as vagas. Depois disso a lista fecha pra imprimir o material.</p></details>
-    <details><summary>Emite nota fiscal?</summary><p>Sim. Depois do pagamento, peça a nota respondendo a mensagem de confirmação no WhatsApp.</p></details>
     <details><summary>E se eu pagar e não puder ir?</summary><p>Sua vaga vale pra próxima turma. É só avisar o time pelo WhatsApp.</p></details>
   </div>
 </div></section>
 
 <footer class="rodape"><div class="wrap">UNV Holdings · Universidade Nacional de Vendas · CNPJ 51.356.237/0001-40<br>Pagamento processado pelo Asaas. <a href="/#/privacidade">Política de privacidade</a></div></footer>
 
-<div class="barra"><div class="wrap">
+<div class="barra" id="barra"><div class="wrap">
   <div class="cont"><span id="contTxt">Vendas até a véspera, 18h</span><br><small>Restam <b data-t="restantes">25</b> de <span data-t="vagas">25</span> vagas</small></div>
   <a class="btn ir" href="/evento/checkout/">Garantir vaga · <span data-t="preco">R$ 97</span></a>
 </div></div>
@@ -170,36 +329,87 @@ details p{ margin:10px 0 0; color:var(--mut); }
 "use strict";
 var M = window.MiniEvento; M.pixel();
 var u = M.utm();
-Array.prototype.forEach.call(document.querySelectorAll("a.ir"), function(a){ a.href = M.comTurma(a.getAttribute("href")); });
+function $(id){ return document.getElementById(id); }
+function cada(sel, f){ Array.prototype.forEach.call(document.querySelectorAll(sel), f); }
+cada("a.ir", function(a){ a.href = M.comTurma(a.getAttribute("href")); });
 
-/* Headline da promessa vencedora: destaca o trecho entre asteriscos, se vier marcado */
+/* números que sobem */
+function conta(raiz){
+  Array.prototype.forEach.call(raiz.querySelectorAll(".conta"), function(el){
+    var ate = +el.getAttribute("data-ate"), t0 = null;
+    if(el.feito) return; el.feito = true;
+    function p(t){ if(!t0) t0 = t; var k = Math.min(1, (t - t0) / 1100); el.textContent = Math.round(ate * (1 - Math.pow(1 - k, 3))); if(k < 1) requestAnimationFrame(p); }
+    requestAnimationFrame(p);
+  });
+}
+/* aparece ao rolar */
+if("IntersectionObserver" in window){
+  var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add("on"); io.unobserve(e.target); conta(e.target); } }); }, { threshold:.14 });
+  cada(".sobe", function(el, i){ el.style.transitionDelay = (i % 4) * 70 + "ms"; io.observe(el); });
+} else cada(".sobe", function(el){ el.classList.add("on"); });
+
+/* barra fixa só depois que o primeiro botão sai da tela */
+window.addEventListener("scroll", function(){ $("barra").classList.toggle("on", $("cta1").getBoundingClientRect().bottom < 0); }, { passive:true });
+
+/* cadeiras da sala */
+function cadeiras(vagas, restantes){
+  var oc = vagas - restantes, h = "";
+  for(var i = 1; i <= vagas; i++) h += '<div class="cad' + (i <= oc ? " oc" : i === oc + 1 ? " sua" : "") + '">' + (i < 10 ? "0" + i : i) + "</div>";
+  $("cadeiras").innerHTML = h;
+  $("anel").style.strokeDashoffset = (175.9 * (1 - restantes / vagas)).toFixed(1);
+}
+cadeiras(25, 25);
+
+/* faixa que corre */
+function faixa(v){
+  var itens = [v.semanaCap + " " + v.data, v.cidade, v.horario, v.vagas + " vagas", "7 horas de mesa de trabalho", "Ingresso " + v.preco], h = "";
+  for(var k = 0; k < 6; k++) itens.forEach(function(t){ h += "<span>" + M.esc(t) + "</span><i>✦</i>"; });
+  $("trilho").innerHTML = h;
+}
+faixa({ semanaCap:"Quinta-feira", data:"10/12", cidade:"Belo Horizonte", horario:"14h às 21h", vagas:25, preco:"R$ 97" });
+
+/* calculadora */
+function dinheiro(v){ return "R$ " + Math.round(v).toLocaleString("pt-BR"); }
+function calc(){
+  var l = +$("leads").value, c = +$("conv").value, t = +$("ticket").value, mes = l * 0.01 * t;
+  $("vLeads").textContent = l; $("vConv").textContent = c + "%"; $("vTicket").textContent = dinheiro(t);
+  $("rMes").textContent = dinheiro(mes); $("rAno").textContent = dinheiro(mes * 12); $("rHoje").textContent = dinheiro(l * c / 100 * t);
+}
+["leads","conv","ticket"].forEach(function(id){ $(id).addEventListener("input", calc); }); calc();
+
+/* headline da promessa vencedora: *trecho* vira destaque */
 function titulo(p){
   var h = M.esc(p).replace(/\*(.+?)\*/g, '<span class="r">$1</span>');
   if(h.indexOf('class="r"') < 0){ var w = h.split(" "); if(w.length > 5){ var i = Math.max(2, w.length - 5); h = w.slice(0,i).join(" ") + ' <span class="r">' + w.slice(i, w.length-1).join(" ") + "</span> " + w[w.length-1]; } }
-  document.getElementById("promessa").innerHTML = h;
+  $("promessa").innerHTML = h;
 }
-
 function contagem(ate){
-  var el = document.getElementById("contTxt");
   function t(){
     var s = Math.floor((new Date(ate).getTime() - Date.now()) / 1000);
-    if(s <= 0){ el.textContent = "Vendas encerradas"; return; }
+    if(s <= 0){ $("contTxt").textContent = "Vendas encerradas"; $("contOferta").textContent = ""; return; }
     var d = Math.floor(s/86400), h = Math.floor(s%86400/3600), m = Math.floor(s%3600/60), x = s%60;
-    el.innerHTML = "Lista fecha em <b>" + (d ? d + "d " : "") + ("0"+h).slice(-2) + "h " + ("0"+m).slice(-2) + "m " + ("0"+x).slice(-2) + "s</b>";
+    var txt = (d ? d + "d " : "") + ("0"+h).slice(-2) + "h " + ("0"+m).slice(-2) + "m " + ("0"+x).slice(-2) + "s";
+    $("contTxt").innerHTML = "Lista fecha em <b>" + txt + "</b>"; $("contOferta").textContent = "A lista fecha em " + txt + ".";
   }
   t(); setInterval(t, 1000);
 }
 
-M.api({ action:"turma", slug:M.slug() }).then(function(d){
-  var t = d.turma; M.preencher(t);
+function turma(){
+  return M.api({ action:"turma", slug:M.slug() }).then(function(d){
+    var t = d.turma, v = M.preencher(t); cadeiras(t.vagas, t.restantes); faixa(v);
+    if(!t.aberta){
+      var f = $("fechado"); f.style.display = "block"; f.textContent = t.restantes <= 0 ? "As vagas desta turma esgotaram." : "As vendas desta turma estão encerradas.";
+      cada("a.ir", function(a){ a.removeAttribute("href"); a.style.opacity = ".5"; a.style.pointerEvents = "none"; });
+    }
+    return t;
+  });
+}
+turma().then(function(t){
   if(t.promessa) titulo(t.promessa);
   if(t.venda_ate) contagem(t.venda_ate);
-  if(!t.aberta){
-    var f = document.getElementById("fechado"); f.style.display = "block";
-    f.textContent = t.restantes <= 0 ? "As vagas desta turma esgotaram." : "As vendas desta turma estão encerradas.";
-    Array.prototype.forEach.call(document.querySelectorAll("a.ir"), function(a){ a.setAttribute("disabled",""); a.removeAttribute("href"); a.style.opacity = ".5"; });
-  }
   M.evento("ViewContent", { content_name:"Mini-evento " + t.slug, value:t.preco_cents/100, currency:"BRL" });
+  /* vagas ao vivo: confere de minuto em minuto enquanto a aba está aberta */
+  setInterval(function(){ if(!document.hidden) turma().catch(function(){}); }, 60000);
 }).catch(function(){ /* a página funciona com os textos padrão */ });
 
 M.api({ action:"visita", slug:M.slug(), sessao:M.sessao(), utm_source:u.utm_source, utm_content:u.utm_content, origem:document.referrer ? "link" : "direto" }).catch(function(){});

@@ -1,5 +1,4 @@
 /* Mini-evento: identidade oficial UNV (vermelho #F40505, navy #082B48, preto, branco; Bebas Neue + Helvetica) */
-@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap");
 :root{ --navy:#082B48; --red:#F40505; --grad:linear-gradient(180deg,#E91D2D,#CC572D); --ink:#0b1b2b; --mut:#52657a; --line:#dfe5ec; --bg:#f4f6f9; }
 *{ box-sizing:border-box; }
 html{ scroll-behavior:smooth; }
