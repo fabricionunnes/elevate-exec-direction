@@ -11,8 +11,9 @@
 // action=checkout  cria/atualiza o lead, gera o Pix no Asaas e o link de cartão no Mercado Pago da Yasmim,
 //                  e leva o lead pra "Checkout iniciado"
 // action=status    confere as duas cobranças; pago → inscrição paga, lead em "Ingresso pago", etiqueta e aviso no WhatsApp
-// action=conferir  cron (mini-evento-conferir, a cada 5 min): confere os checkouts abertos dos últimos 3 dias e manda
-//                  a primeira mensagem de WhatsApp pra quem preencheu o formulário e ainda não pagou
+// action=conferir  cron (mini-evento-conferir, a cada 5 min): confere os checkouts abertos dos últimos 3 dias, manda
+//                  a primeira mensagem de WhatsApp pra quem preencheu o formulário e ainda não pagou, e roda as trilhas
+// action=simular_trilhas  { hoje: "AAAA-MM-DD", hora } mostra o que as trilhas mandariam, sem enviar (chave de serviço)
 //
 // WhatsApp (Fabrício, 25/11/2026: "usa a instância Fabrício Nunnes"): número comum, texto livre, sem modelo do Meta.
 // Como é o número de uso dele, quem já tem conversa recente ali NÃO recebe mensagem automática: fica na fila do
@@ -36,7 +37,9 @@ const DONO_FABRICIO = "b1a918b1-8776-4962-898e-5d97c7cc80c1";
 const INSTANCIA_AVISO = "fabricionunnes";
 const INSTANCIA_LEADS = "fabricionunnes";        // de onde sai a mensagem pro lead
 const AGENTE = "e1e00000-0000-4000-8000-000000000009";
-const ESPERA_MIN = 3;                            // minutos depois do formulário (com o cron de 5 min, sai entre 3 e 8)
+// Fabrício, 25/11: "nem deu tempo de ler a página, não seria melhor mandar uns 3 minutos depois?" e "já com o link
+// pra pessoa retornar à página pra comprar". Espera 3 min; com o cron de 2 em 2 minutos sai entre 3 e 5.
+const ESPERA_MIN = 3;
 const CONVERSA_RECENTE_DIAS = 45;                // conversa com mensagem nesse prazo = contato dele, não automatiza
 const MAX_POR_RODADA = 8;
 const AVISO_PARA = "5531989840003";
@@ -496,10 +499,12 @@ async function abordarNovos(sb: SB) {
   for (const t of turmas || []) {
     if (t.venda_ate && new Date(t.venda_ate).getTime() < Date.now()) continue;
     // só quem entrou por esta turma: evento lead_criado dos últimos 3 dias, ainda sem abordagem registrada
-    const { data: criados } = await sb.from("miniev_eventos").select("lead_id, em").eq("turma_id", t.id).eq("tipo", "lead_criado")
+    const { data: criados } = await sb.from("miniev_eventos").select("lead_id, em, dados").eq("turma_id", t.id).eq("tipo", "lead_criado")
       .gte("em", new Date(Date.now() - 3 * 86400000).toISOString()).lte("em", new Date(Date.now() - ESPERA_MIN * 60000).toISOString()).order("em").limit(200);
     const ids = [...new Set((criados || []).map((e: any) => e.lead_id).filter(Boolean))];
     if (!ids.length) continue;
+    // a promessa do anúncio em que a pessoa clicou: o link da mensagem abre a página com a mesma headline
+    const promessaDe = new Map<string, string>((criados || []).filter((e: any) => /^\d{1,2}$/.test(String(e.dados?.p || ""))).map((e: any) => [e.lead_id, String(e.dados.p)]));
     const { data: feitos } = await sb.from("miniev_eventos").select("lead_id").eq("turma_id", t.id).in("tipo", ["whatsapp_abordado", "whatsapp_pulado"]).in("lead_id", ids);
     const jaFoi = new Set((feitos || []).map((e: any) => e.lead_id));
     const { data: leads } = await sb.from("crm_leads").select("id, name, phone, stage_id").in("id", ids.filter((i) => !jaFoi.has(i))).in("stage_id", [ETAPA.novo, ETAPA.checkout]);
@@ -509,7 +514,8 @@ async function abordarNovos(sb: SB) {
       const { data: paga } = await sb.from("miniev_inscricoes").select("id").eq("turma_id", t.id).eq("lead_id", l.id).eq("status", "pago").limit(1);
       if (paga?.length) continue;
       const nome = primeiroNome(l.name);
-      const texto = `${nome ? `${nome}, aqui` : "Aqui"} é do time do Fabrício Nunnes. Vi que você se inscreveu no workshop de ${semana}, dia ${dia}/${mes}, em ${t.cidade}, mas sua vaga ainda não está confirmada. Ficou alguma dúvida ou travou no pagamento?`;
+      const link = `${SITE}/evento/${promessaDe.has(l.id) ? `?p=${promessaDe.get(l.id)}` : ""}`;
+      const texto = `${nome ? `${nome}, aqui` : "Aqui"} é do time do Fabrício Nunnes. Vi sua inscrição no workshop de ${semana}, dia ${dia}/${mes}, em ${t.cidade}. A vaga fica garantida com o ingresso, e o link pra garantir a sua é este: ${link}\n\nFicou alguma dúvida? Pode me perguntar por aqui.`;
       let r: { ok: boolean; motivo?: string; conversa?: string };
       try { r = await mandarWhatsApp(sb, { leadId: l.id, nome: l.name, telefone: l.phone, texto, soConversaNova: true }); }
       catch (e) { r = { ok: false, motivo: String((e as Error).message || e).slice(0, 120) }; }
@@ -523,6 +529,120 @@ async function abordarNovos(sb: SB) {
     }
   }
   return { enviados, pulados };
+}
+
+// ── Trilhas de mensagens (playbook, seção 07), ajustadas à data do evento (D) ─────────────────────
+// Quem não comprou:  A2 4h depois do formulário · A3 no dia seguinte · A4 D-3 8h (últimas vagas) ·
+//                    A5 D-2 10h (só checkout aberto) · A6 D-1 10h (última chamada)
+// Quem comprou:      B3 D-1 17h (local e presença) · B4 D 9h (bom dia)
+// Depois do evento:  C1 D+1 10h presentes · C2 D+1 10h quem não comprou · C3 D+1 10h pagou e faltou
+// Regras: 8h às 21h; cada mensagem uma vez por pessoa; quem já respondeu sai das trilhas A (a conversa é do agente);
+// quem não recebeu a primeira mensagem (contato do Fabrício) não recebe as seguintes; perdido e fora do perfil ficam de fora.
+const LINK_VAGA = `${SITE}/evento/`;
+const SEMANA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+const ymdMais = (ymd: string, n: number) => { const d = new Date(`${ymd}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+
+async function trilhas(sb: SB, limite: number, simular?: { hoje: string; hora: number }) {
+  const hoje = simular?.hoje || ymdBR(Date.now()), h = simular?.hora ?? horaBR();
+  const resumo: Record<string, number> = {};
+  const previa: { chave: string; nome: string; texto: string }[] = [];
+  if (h < 8 || h >= 21) return { fora_do_horario: true };
+  let enviados = 0;
+  const { data: turmas } = await sb.from("miniev_turmas").select("*").eq("ativa", true);
+  for (const t of turmas || []) {
+    const D = String(t.data_evento);
+    if (hoje > ymdMais(D, 2) || hoje < ymdMais(D, -20)) continue;
+    const { data: evs } = await sb.from("miniev_eventos").select("tipo, lead_id, em, dados").eq("turma_id", t.id)
+      .in("tipo", ["lead_criado", "whatsapp_abordado", "whatsapp_trilha"]).not("lead_id", "is", null).order("em").limit(4000);
+    const criado = new Map<string, number>(), abordado = new Set<string>(), feito = new Set<string>(), promessaDe = new Map<string, string>();
+    for (const e of evs || []) {
+      if (e.tipo === "lead_criado" && !criado.has(e.lead_id)) criado.set(e.lead_id, new Date(e.em).getTime());
+      if (e.tipo === "lead_criado" && /^\d{1,2}$/.test(String(e.dados?.p || ""))) promessaDe.set(e.lead_id, String(e.dados.p));
+      if (e.tipo === "whatsapp_abordado") abordado.add(e.lead_id);
+      if (e.tipo === "whatsapp_trilha") feito.add(`${e.lead_id}:${e.dados?.chave}`);
+    }
+    const { data: insc } = await sb.from("miniev_inscricoes").select("lead_id, nome, telefone, status, presente_em").eq("turma_id", t.id).not("lead_id", "is", null);
+    const pago = new Map<string, any>(), checkout = new Set<string>();
+    for (const i of insc || []) { if (i.status === "pago") pago.set(i.lead_id, i); else if (i.status === "checkout") checkout.add(i.lead_id); }
+    const ids = [...new Set([...criado.keys(), ...pago.keys()])];
+    if (!ids.length) continue;
+    const leads = new Map<string, any>();
+    for (let k = 0; k < ids.length; k += 200) {
+      const { data } = await sb.from("crm_leads").select("id, name, phone, stage_id, main_pain").in("id", ids.slice(k, k + 200));
+      for (const l of data || []) leads.set(l.id, l);
+    }
+    // quem já respondeu no WhatsApp (qualquer mensagem recebida numa conversa ligada ao lead)
+    const respondeu = new Set<string>();
+    for (let k = 0; k < ids.length; k += 200) {
+      const { data: convs } = await sb.from("crm_whatsapp_conversations").select("id, lead_id").in("lead_id", ids.slice(k, k + 200));
+      const porConv = new Map<string, string>((convs || []).map((c: any) => [c.id, c.lead_id]));
+      if (!porConv.size) continue;
+      const { data: msgs } = await sb.from("crm_whatsapp_messages").select("conversation_id").in("conversation_id", [...porConv.keys()]).eq("direction", "inbound").limit(2000);
+      for (const m of msgs || []) { const l = porConv.get(m.conversation_id); if (l) respondeu.add(l); }
+    }
+
+    const [, mes, dia] = D.split("-"), semana = SEMANA[new Date(`${D}T12:00:00-03:00`).getDay()], Semana = semana.charAt(0).toUpperCase() + semana.slice(1);
+    const hIni = Number(String(t.horario || "").match(/(\d{1,2})h/)?.[1] || 14);
+    const local = [t.local_nome, t.endereco].filter(Boolean).join(", ");
+    const agora = simular ? new Date(`${hoje}T${String(h).padStart(2, "0")}:30:00-03:00`).getTime() : Date.now();
+    const naoComprou = (id: string) => !pago.has(id);
+    const fora = (l: any) => l.stage_id === ETAPA.perdido || l.stage_id === ETAPA.foraPerfil;
+    const horasDesde = (id: string) => (agora - (criado.get(id) || agora)) / 3600000;
+    const dor = (l: any) => String(l.main_pain || "").replace(/\s+/g, " ").trim().replace(/[.!?]+$/, "").slice(0, 140);
+
+    // deno-lint-ignore no-explicit-any
+    const link = (l: any) => `${LINK_VAGA}${promessaDe.has(l.id) ? `?p=${promessaDe.get(l.id)}` : ""}`;
+    const etapas: { chave: string; quem: (id: string, l: any) => boolean; texto: (n: string, l: any) => string; novaEtapa?: string }[] = [
+      { chave: "A2", quem: (id, l) => naoComprou(id) && abordado.has(id) && !respondeu.has(id) && horasDesde(id) >= 4 && horasDesde(id) < 20 && hoje < D,
+        texto: (n, l) => dor(l)
+          ? `${n}vi que você respondeu que seu maior desafio hoje é: "${dor(l)}". É exatamente o que a gente trabalha no workshop de ${semana}. Quer que eu te mande o link da vaga?`
+          : `${n}o workshop de ${semana} é mesa de trabalho: você sai com meta, funil e rotina do time definidos pra 2027. Quer que eu te mande o link da vaga?` },
+      { chave: "A3", quem: (id) => naoComprou(id) && abordado.has(id) && !respondeu.has(id) && horasDesde(id) >= 22 && horasDesde(id) < 72 && hoje < ymdMais(D, -1),
+        texto: (n, l) => `${n}só pra você ter clareza do que leva pronto na ${semana}: raio-x comercial da sua empresa, mapa de metas de 2027, funil desenhado e rotina do time. São ${t.vagas} vagas e a turma é única. Garante a sua aqui: ${link(l)}` },
+      { chave: "A4", quem: (id) => hoje === ymdMais(D, -3) && naoComprou(id) && abordado.has(id) && !respondeu.has(id) && horasDesde(id) >= 4,
+        texto: (n, l) => `${n}abrimos hoje as últimas vagas do workshop de ${semana}, dia ${dia}/${mes}, em ${t.cidade}. Quem entra hoje ainda pega lugar na mesa. Garante a sua: ${link(l)}` },
+      { chave: "A5", quem: (id) => hoje === ymdMais(D, -2) && h >= 10 && naoComprou(id) && checkout.has(id) && abordado.has(id) && !respondeu.has(id),
+        texto: (n) => `${n}vi que você chegou a abrir o pagamento do workshop e não concluiu. Consigo segurar sua vaga até hoje às 18h. Quer fechar no Pix? ${LINK_VAGA}checkout/` },
+      { chave: "A6", quem: (id) => hoje === ymdMais(D, -1) && h >= 10 && h < 18 && naoComprou(id) && abordado.has(id) && !respondeu.has(id) && horasDesde(id) >= 4,
+        texto: (n, l) => `${n}fecho a lista do workshop hoje às 18h pra imprimir o material. Depois disso não consigo incluir. Ainda quer ir? ${link(l)}` },
+      // sem endereço cadastrado na turma a mensagem da véspera não sai (aparece em "sem_endereco" no resumo)
+      { chave: "B3", quem: (id) => hoje === ymdMais(D, -1) && h >= 17 && pago.has(id) && !!t.endereco,
+        texto: (n) => `${n}é amanhã. ${Semana}, ${dia}/${mes}, das ${t.horario}. Local: ${local}.${t.mapa_url ? ` Mapa: ${t.mapa_url}` : ""} O credenciamento abre 30 minutos antes. Traz notebook ou caderno e os números do seu comercial. Confirma presença com um OK?` },
+      { chave: "B4", quem: (id) => hoje === D && h >= 9 && h < hIni && pago.has(id),
+        texto: (n) => `Bom dia${n ? `, ${n.replace(/, $/, "")}` : ""}. É hoje. O credenciamento abre às ${hIni - 1}h30 e a gente começa às ${hIni}h em ponto. Te espero lá.` },
+      { chave: "C1", quem: (id) => hoje === ymdMais(D, 1) && h >= 10 && pago.has(id) && !!pago.get(id).presente_em,
+        texto: (n) => `${n}foi muito bom ter você no workshop. Quero olhar com você o plano que montou e definir os próximos passos. Qual o melhor horário pra uma conversa de 40 minutos com o Fabrício essa semana?` },
+      { chave: "C2", quem: (id) => hoje === ymdMais(D, 1) && h >= 10 && naoComprou(id) && abordado.has(id), novaEtapa: ETAPA.naoComprou,
+        texto: (n) => `${n}vi que você se inscreveu no workshop e não conseguiu ir. Qual tem sido sua maior dificuldade no comercial hoje? Se fizer sentido, a gente marca 30 minutos essa semana pra olhar isso.` },
+      { chave: "C3", quem: (id) => hoje === ymdMais(D, 1) && h >= 10 && pago.has(id) && !pago.get(id).presente_em, novaEtapa: etapa(10),
+        texto: (n) => `${n}senti sua falta no workshop. Sua vaga vale pra próxima turma. Enquanto isso, quer que a gente olhe seu comercial em uma conversa rápida essa semana?` },
+    ];
+    if (hoje === ymdMais(D, -1) && h >= 17 && !t.endereco && pago.size) resumo.sem_endereco = pago.size;
+
+    for (const e of etapas) {
+      for (const id of ids) {
+        const l = leads.get(id);
+        if (!l || fora(l) || feito.has(`${id}:${e.chave}`) || !e.quem(id, l)) continue;
+        const i = pago.get(id);
+        const nome = primeiroNome(i?.nome || l.name);
+        const texto = e.texto(nome ? `${nome}, ` : "", l).replace(/^([a-zà-ú])/, (c) => c.toUpperCase());
+        if (simular) { previa.push({ chave: e.chave, nome: l.name, texto }); resumo[e.chave] = (resumo[e.chave] || 0) + 1; continue; }
+        if (enviados >= limite) { resumo.na_fila = (resumo.na_fila || 0) + 1; continue; }
+        let r: { ok: boolean; motivo?: string };
+        try { r = await mandarWhatsApp(sb, { leadId: id, nome: l.name, telefone: i?.telefone || l.phone, texto, soConversaNova: false }); }
+        catch (x) { r = { ok: false, motivo: String((x as Error).message || x).slice(0, 120) }; }
+        // registra mesmo quando falha, pra não ficar tentando a cada 5 minutos
+        await sb.from("miniev_eventos").insert({ turma_id: t.id, tipo: "whatsapp_trilha", lead_id: id, dados: { chave: e.chave, ok: r.ok, motivo: r.motivo || null } });
+        feito.add(`${id}:${e.chave}`);
+        if (r.ok) {
+          enviados++; resumo[e.chave] = (resumo[e.chave] || 0) + 1;
+          if (e.novaEtapa && ANTES_DO_PAGO.has(l.stage_id) || (e.chave === "C3" && l.stage_id === ETAPA.pago)) await sb.from("crm_leads").update({ stage_id: e.novaEtapa }).eq("id", id);
+          await new Promise((ok) => setTimeout(ok, 2500));
+        } else resumo.falhas = (resumo.falhas || 0) + 1;
+      }
+    }
+  }
+  return simular ? { simulacao: true, resumo, previa: previa.slice(0, 40) } : { enviados, resumo };
 }
 
 async function status(sb: SB, body: Record<string, unknown>) {
@@ -545,9 +665,10 @@ async function conferirPendentes(sb: SB) {
   for (const i of data || []) {
     try { if (await conferir(sb, i) === "pago") n++; } catch (e) { console.error("[mini-evento] conferir", i.id, e); }
   }
-  let whatsapp: unknown = null;
+  let whatsapp: any = null, trilha: unknown = null;
   try { whatsapp = await abordarNovos(sb); } catch (e) { console.error("[mini-evento] abordar", e); whatsapp = { erro: String((e as Error).message || e).slice(0, 160) }; }
-  return json({ conferidos: (data || []).length, pagos: n, whatsapp });
+  try { trilha = await trilhas(sb, Math.max(0, MAX_POR_RODADA - (whatsapp?.enviados || 0))); } catch (e) { console.error("[mini-evento] trilhas", e); trilha = { erro: String((e as Error).message || e).slice(0, 160) }; }
+  return json({ conferidos: (data || []).length, pagos: n, whatsapp, trilha });
 }
 
 Deno.serve(async (req) => {
@@ -562,6 +683,15 @@ Deno.serve(async (req) => {
       case "checkout": return await checkout(sb, body);
       case "status": return await status(sb, body);
       case "conferir": return await conferirPendentes(sb);
+      case "simular_trilhas": {
+        // só mostra o que sairia em tal dia e hora; não envia nada. Exige a chave de serviço do projeto.
+        // a chave enviada precisa conseguir rodar uma função restrita ao serviço (o projeto tem chave nova e antiga)
+        const chave = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+        const teste = chave ? await createClient(SUPABASE_URL, chave).rpc("miniev_painel_interno", { p_slug: "-" }) : { error: true };
+        if (teste.error) return json({ error: "sem_acesso" }, 403);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(so(body.hoje, 10))) return json({ error: "hoje_invalido" }, 400);
+        return json(await trilhas(sb, 0, { hoje: so(body.hoje, 10), hora: Number(body.hora) || 10 }));
+      }
       default: return json({ error: "acao_invalida" }, 400);
     }
   } catch (e) {
