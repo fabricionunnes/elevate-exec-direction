@@ -7,13 +7,14 @@
 // - Faturamento abaixo de R$ 100 mil por mês não entra no Mastermind, mas a pessoa NÃO é avisada:
 //   a tela de resposta é a mesma, e o lead ganha a etiqueta "Faturamento baixo".
 // - Checkout: Pix Automático de R$ 1.500/mês. A 1ª mensalidade é paga no QR na hora (o Asaas exige
-//   pagamento para autorizar) e as 11 seguintes saem sozinhas, a primeira delas em janeiro/2027.
+//   pagamento para autorizar) e as 11 seguintes saem sozinhas, a primeira delas em fevereiro/2027
+//   (Fabrício, 25/11/2026: "pagar a primeira agora e a segunda somente em fevereiro").
 //
 // action=aplicar   grava a aplicação e cria/atualiza o lead
 // action=dados     dados contratuais do checkout (cria/atualiza o lead) e devolve o id da contratação
 // action=contrato  gera o contrato em PDF, abre o envelope de assinatura e devolve o link do cliente
 //                  (depois de assinar, a tela /#/assinar devolve o cliente para o checkout, no passo do Pix)
-// action=pix       Pix Automático (só com o contrato assinado pelo cliente), (1ª no QR + 11 débitos mensais a partir de jan/2027), lead em Proposta enviada
+// action=pix       Pix Automático (só com o contrato assinado pelo cliente), (1ª no QR + 11 débitos mensais a partir de fev/2027), lead em Proposta enviada
 // action=status    confere se a 1ª caiu; pago → lead em Fechado e aviso no WhatsApp do Fabrício
 // action=conferir  cron (alpha-contratar-conferir): confere os Pix gerados que ainda não apareceram como pagos
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -57,7 +58,7 @@ const FAIXAS: Record<string, { rotulo: string; min: number }> = {
 const VALOR = 1500;
 const MESES = 12;
 const DIA_DEBITO = 10;                 // débitos mensais no dia 10
-const PRIMEIRO_DEBITO_MIN = "2027-01-10"; // a 2ª mensalidade nunca antes de janeiro/2027
+const PRIMEIRO_DEBITO_MIN = "2027-02-10"; // a 2ª mensalidade nunca antes de 10/02/2027 (11 débitos: fev a dez)
 const VALIDADE_CONTRATACAO_H = 72;
 
 const CAMPO = {
@@ -406,7 +407,7 @@ async function asaas(path: string, method = "GET", body?: unknown) {
   return d;
 }
 
-/** 2ª mensalidade: dia 10 do mês seguinte, nunca antes de 10/01/2027. As outras seguem todo dia 10. */
+/** 2ª mensalidade: dia 10 do mês seguinte, nunca antes de 10/02/2027. As outras seguem todo dia 10. */
 function primeiroDebito(hoje: string) {
   const prox = `${somaMeses(hoje.slice(0, 8) + "01", 1).slice(0, 8)}${String(DIA_DEBITO).padStart(2, "0")}`;
   return prox < PRIMEIRO_DEBITO_MIN ? PRIMEIRO_DEBITO_MIN : prox;
