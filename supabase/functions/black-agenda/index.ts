@@ -670,11 +670,30 @@ async function garantir(sb: SB, body: Record<string, unknown>) {
       asaas_payment_id: String(pag.id), lead_payment_id: lp?.id || null, pix_payload: qr?.payload || null,
       pix_image: qr?.encodedImage || null, pix_expira_em: qr?.expirationDate ? new Date(qr.expirationDate).toISOString() : null,
     }).eq("id", g?.id);
+    // Fabrício, 25/11: aviso no WhatsApp dele toda vez que alguém gera o Pix, com nome, empresa e telefone
+    emSegundoPlano(avisarPixGerado(sb, { nome, empresa, tel }).catch((e) => console.error("[black-agenda] aviso pix gerado", e)));
     return json({ ok: true, id: g?.id, lead_id: lead.id, status: "pendente", pix: { payload: qr?.payload || null, image: qr?.encodedImage || null }, fatura: pag.invoiceUrl || null });
   } catch (e) {
     console.error("[black-agenda] garantir", e);
     return json({ error: "falha_cobranca", detalhe: String((e as Error).message || e).slice(0, 160) }, 502);
   }
+}
+
+function foneBonito(tel: string) {
+  const d = String(tel || "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return d;
+}
+
+async function avisarPixGerado(sb: SB, d: { nome: string; empresa: string; tel: string }) {
+  const { data: inst } = await sb.from("whatsapp_instances").select("instance_name, api_url, api_key").eq("instance_name", INSTANCIA).maybeSingle();
+  if (!inst?.api_url) return;
+  const texto = `*PIX GERADO NA BLACK UNV*\n\nNome: ${d.nome}\nEmpresa: ${d.empresa}\nTelefone: ${foneBonito(d.tel)}\n\nAinda não pagou.`;
+  await fetch(`${String(inst.api_url).replace(/\/+$/, "")}/message/sendText/${inst.instance_name}`, {
+    method: "POST", headers: { apikey: inst.api_key, "Content-Type": "application/json" },
+    body: JSON.stringify({ number: AVISO_PLACAR, text: texto }),
+  });
 }
 
 /** Confere no Asaas e, se pagou, fecha o lead e avisa o placar. Idempotente (pago_em). */
@@ -1059,6 +1078,8 @@ Deno.serve(async (req) => {
       case "descricao-live": return json(await descricaoLive(sb));
       // prévia do aviso individual das 20h: não envia nada
       case "aviso-live-previa": return json(await avisarConfirmadosLive(sb, true));
+      // manda um aviso de "Pix gerado" de exemplo só pro WhatsApp do Fabrício
+      case "aviso-pix-teste": await avisarPixGerado(sb, { nome: "Teste do aviso", empresa: "Empresa Exemplo", tel: "31999999999" }); return json({ ok: true });
       // manda o aviso das 20h só pro WhatsApp do Fabrício, pra ele ver como chega
       case "aviso-live-teste": {
         const { data: inst } = await sb.from("whatsapp_instances").select("instance_name, api_url, api_key").eq("instance_name", INSTANCIA).maybeSingle();
