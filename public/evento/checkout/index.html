@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Garantir minha vaga · Workshop presencial com Fabrício Nunnes</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap">
+<link rel="stylesheet" href="/evento/evento.css">
+<style>
+body{ background:var(--bg); }
+.caixa{ max-width:980px; margin:34px auto 0; display:grid; grid-template-columns:1fr 360px; gap:22px; align-items:start; }
+.card h2{ font-size:38px; margin-bottom:6px; }
+.resumo .linha{ display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); font-size:15.5px; }
+.resumo .total{ font-family:"Bebas Neue",sans-serif; font-size:40px; color:var(--navy); border:0; padding-top:14px; align-items:baseline; }
+.socio{ display:flex; gap:12px; align-items:flex-start; border:1.5px dashed #9fb0c2; border-radius:12px; padding:14px; margin:6px 0 14px; cursor:pointer; background:#fbfcfe; }
+.socio input{ width:22px; height:22px; margin-top:2px; accent-color:#E91D2D; flex:none; }
+.socio b{ color:var(--navy); }
+.socio span{ display:block; color:var(--mut); font-size:14px; }
+#passoPix{ display:none; text-align:center; }
+#qr{ width:250px; height:250px; margin:16px auto 10px; border:1px solid var(--line); border-radius:12px; padding:8px; background:#fff; }
+.copia{ display:flex; gap:8px; margin:12px 0; }
+.copia input{ flex:1; min-width:0; font-size:13px; padding:12px; border:1.5px solid #c7d1dc; border-radius:10px; background:#f7f9fb; }
+.copia button{ border:0; background:var(--navy); color:#fff; font-weight:700; border-radius:10px; padding:0 18px; cursor:pointer; white-space:nowrap; }
+.aguarda{ display:flex; align-items:center; justify-content:center; gap:10px; color:var(--mut); font-weight:700; margin:16px 0 6px; }
+.aguarda i{ width:12px; height:12px; border-radius:50%; background:#16a34a; animation:p 1.2s infinite; }
+@keyframes p{ 0%{ box-shadow:0 0 0 0 rgba(22,163,74,.5) } 100%{ box-shadow:0 0 0 14px rgba(22,163,74,0) } }
+.ou{ color:var(--mut); font-size:14px; margin:16px 0 10px; }
+@media (max-width:820px){ .caixa{ grid-template-columns:1fr; margin-top:18px; } .resumo{ order:-1; } }
+</style>
+</head>
+<body>
+<header class="topo"><div class="wrap">
+  <a id="voltar" href="/evento/"><img src="/evento/logo-unv-holdings.webp" alt="UNV Holdings" width="155" height="118"></a>
+  <div class="info"><span data-t="semanaCap">Quinta-feira</span>, <span data-t="data">10/12</span> · <span data-t="horario">14h às 21h</span><br><span data-t="cidade">Belo Horizonte</span> · presencial</div>
+</div></header>
+
+<div class="wrap"><div class="caixa">
+  <div class="card">
+    <form id="passoDados" novalidate>
+      <h2>Garanta sua vaga</h2>
+      <p style="color:var(--mut)">Preencha seus dados e pague por Pix ou cartão. A confirmação chega na hora.</p>
+      <div class="campo"><label for="nome">Nome completo</label><input id="nome" autocomplete="name" required></div>
+      <div class="campo"><label for="telefone">WhatsApp com DDD</label><input id="telefone" inputmode="tel" autocomplete="tel" placeholder="(31) 99999-9999" required></div>
+      <div class="campo"><label for="email">E-mail</label><input id="email" type="email" autocomplete="email" required></div>
+      <div class="campo"><label for="documento">CPF ou CNPJ</label><input id="documento" inputmode="numeric" placeholder="Só pra emitir a cobrança" required></div>
+      <label class="socio"><input type="checkbox" id="comSocio"><div><b>Levar meu sócio por + <span data-t="precoSocio">R$ 47</span></b><span>Os dois trabalham juntos nos mesmos documentos da empresa.</span></div></label>
+      <div class="campo" id="campoSocio" style="display:none"><label for="socioNome">Nome do sócio</label><input id="socioNome" autocomplete="off"></div>
+      <button class="btn" id="btnPagar" type="submit" style="width:100%">Pagar <span id="totalBtn">R$ 97</span></button>
+      <p class="erro" id="erro"></p>
+    </form>
+
+    <div id="passoPix">
+      <h2>Pague com Pix</h2>
+      <p style="color:var(--mut)">Abra o app do seu banco e aponte a câmera pro código, ou use o copia e cola.</p>
+      <img id="qr" alt="QR Code do Pix">
+      <div class="copia"><input id="payload" readonly><button type="button" id="copiar">Copiar</button></div>
+      <div class="aguarda"><i></i><span>Aguardando o pagamento. Esta tela atualiza sozinha.</span></div>
+      <div class="ou">Prefere cartão de crédito? Em até 3 vezes.</div>
+      <a class="btn claro" id="cartao" rel="noopener">Pagar com cartão</a>
+      <p class="erro" id="erroPix"></p>
+    </div>
+  </div>
+
+  <aside class="card resumo">
+    <h3>Resumo</h3>
+    <div class="linha"><span>Workshop presencial com Fabrício Nunnes</span><b data-t="preco">R$ 97</b></div>
+    <div class="linha" id="linhaSocio" style="display:none"><span>Sócio</span><b data-t="precoSocio">R$ 47</b></div>
+    <div class="linha"><span><span data-t="semanaCap">Quinta-feira</span>, <span data-t="dataLonga">10 de dezembro</span></span><span data-t="horario">14h às 21h</span></div>
+    <div class="linha"><span data-t="local">Hotel em Belo Horizonte</span><span>coffee incluso</span></div>
+    <div class="linha total"><span>Total</span><span id="total">R$ 97</span></div>
+    <p style="font-size:13px;color:var(--mut);margin-top:10px"><span data-resta="sim" style="display:none">Restam <b data-t="restantes"></b> de <span data-t="vagas">25</span> vagas. </span>Pix pelo Asaas, cartão pelo Mercado Pago.</p>
+  </aside>
+</div></div>
+
+<footer class="rodape" style="padding-bottom:40px"><div class="wrap">UNV Holdings · Universidade Nacional de Vendas · CNPJ 51.356.237/0001-40</div></footer>
+
+<script src="/evento/evento.js"></script>
+<script>
+(function(){
+"use strict";
+var M = window.MiniEvento; M.pixel();
+var u = M.utm(), T = { preco_cents:9700, preco_socio_cents:4700 }, CHAVE = "unv_miniev_checkout", timer = null;
+function $(id){ return document.getElementById(id); }
+$("voltar").href = M.seguir("/evento/");
+var LEAD = M.leadSalvo(), AD = M.anuncio();
+if(LEAD){ if(LEAD.nome) $("nome").value = LEAD.nome; if(LEAD.telefone) $("telefone").value = LEAD.telefone; if(LEAD.email) $("email").value = LEAD.email; }
+
+function total(){ return T.preco_cents + ($("comSocio").checked ? T.preco_socio_cents : 0); }
+function pinta(){ var t = M.brl(total()); $("total").textContent = t; $("totalBtn").textContent = t; $("linhaSocio").style.display = $("comSocio").checked ? "flex" : "none"; $("campoSocio").style.display = $("comSocio").checked ? "flex" : "none"; }
+$("comSocio").addEventListener("change", pinta);
+
+function mTel(v){ var d = v.replace(/\D/g,"").replace(/^55(?=\d{10,11}$)/,"").slice(0,11); if(d.length <= 2) return d; if(d.length <= 6) return "(" + d.slice(0,2) + ") " + d.slice(2); if(d.length <= 10) return "(" + d.slice(0,2) + ") " + d.slice(2,6) + "-" + d.slice(6); return "(" + d.slice(0,2) + ") " + d.slice(2,7) + "-" + d.slice(7); }
+function mDoc(v){ var d = v.replace(/\D/g,"").slice(0,14); if(d.length <= 11) return d.replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d)/,"$1.$2").replace(/(\d{3})(\d{1,2})$/,"$1-$2"); return d.replace(/^(\d{2})(\d)/,"$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1/$2").replace(/(\d{4})(\d)/,"$1-$2"); }
+$("telefone").addEventListener("input", function(){ this.value = mTel(this.value); });
+$("documento").addEventListener("input", function(){ this.value = mDoc(this.value); });
+
+var ERROS = { nome_completo:"Digite seu nome completo.", email_invalido:"Confira o e-mail.", telefone_invalido:"Confira o WhatsApp com DDD.", documento_invalido:"CPF ou CNPJ inválido.",
+  socio_nome:"Digite o nome do sócio.", esgotado:"As vagas desta turma esgotaram.", encerrado:"As vendas desta turma estão encerradas.", falha_cobranca:"Não consegui gerar a cobrança. Confira o CPF ou CNPJ e tente de novo." };
+
+function mostraPix(d){
+  $("passoDados").style.display = "none"; $("passoPix").style.display = "block";
+  if(d.pix_image){ $("qr").src = "data:image/png;base64," + d.pix_image; $("payload").value = d.pix_payload || ""; }
+  else { $("qr").style.display = "none"; document.querySelector(".copia").style.display = "none"; }
+  if(d.cartao_url) $("cartao").href = d.cartao_url; else { $("cartao").style.display = "none"; document.querySelector(".ou").style.display = "none"; }
+  try { localStorage.setItem(CHAVE, JSON.stringify({ id:d.id, em:Date.now() })); } catch(e){}
+  acompanha(d.id); window.scrollTo(0,0);
+}
+function pago(id, valor){
+  try { localStorage.removeItem(CHAVE); } catch(e){}
+  location.href = M.comTurma("/evento/obrigado/?i=" + encodeURIComponent(id) + "&v=" + (valor/100));
+}
+function acompanha(id){
+  clearInterval(timer); var n = 0, rodando = false;
+  timer = setInterval(function(){
+    if(rodando || document.hidden && n % 3) { n++; return; }
+    rodando = true; n++;
+    M.api({ action:"status", id:id }).then(function(d){ if(d.status === "pago"){ clearInterval(timer); pago(id, d.valor_cents); } })
+      .catch(function(){}).then(function(){ rodando = false; });
+    if(n > 360) clearInterval(timer);
+  }, 5000);
+}
+$("copiar").addEventListener("click", function(){
+  var i = $("payload"); i.select();
+  (navigator.clipboard ? navigator.clipboard.writeText(i.value) : Promise.reject()).catch(function(){ document.execCommand("copy"); });
+  this.textContent = "Copiado"; var b = this; setTimeout(function(){ b.textContent = "Copiar"; }, 2000);
+});
+
+$("passoDados").addEventListener("submit", function(ev){
+  ev.preventDefault(); $("erro").textContent = "";
+  var b = $("btnPagar"); b.disabled = true; var txt = b.innerHTML; b.textContent = "Gerando a cobrança...";
+  var corpo = { action:"checkout", slug:M.slug(), nome:$("nome").value, telefone:$("telefone").value, email:$("email").value, documento:$("documento").value,
+    com_socio:$("comSocio").checked, socio_nome:$("socioNome").value, lead_id:LEAD && LEAD.id };
+  for(var k in u) corpo[k] = u[k];
+  for(var k2 in AD) corpo[k2] = AD[k2];
+  M.evento("InitiateCheckout", { value:total()/100, currency:"BRL", content_name:"Mini-evento" });
+  M.api(corpo).then(function(d){ if(d.status === "pago") return pago(d.id, d.valor_cents || total()); mostraPix(d); })
+    .catch(function(e){ $("erro").textContent = ERROS[e.code] || "Não deu certo agora. Tente de novo em instantes."; b.disabled = false; b.innerHTML = txt; });
+});
+
+M.api({ action:"turma", slug:M.slug() }).then(function(d){
+  T = d.turma; M.preencher(T); pinta();
+  if(!T.aberta){ $("erro").textContent = T.esgotado ? ERROS.esgotado : ERROS.encerrado; $("btnPagar").disabled = true; }
+}).catch(function(){});
+
+/* Voltou pra página com um Pix já gerado: retoma de onde parou */
+try {
+  var g = JSON.parse(localStorage.getItem(CHAVE) || "null");
+  if(g && g.id && Date.now() - g.em < 20*3600000){
+    M.api({ action:"status", id:g.id }).then(function(d){ if(d.status === "pago") pago(g.id, d.valor_cents); }).catch(function(){});
+  }
+} catch(e){}
+pinta();
+})();
+</script>
+</body>
+</html>
