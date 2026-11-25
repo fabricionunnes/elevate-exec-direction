@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Workshop presencial com Fabrício Nunnes · Belo Horizonte</title>
-<meta name="description" content="Sete horas de mesa de trabalho em Belo Horizonte pra montar o comercial de 2027 da sua empresa: meta, funil e time. 25 vagas.">
-<meta property="og:title" content="Workshop presencial com Fabrício Nunnes · Belo Horizonte">
+<title>Workshop presencial com Fabrício Nunnes · Grande BH</title>
+<meta name="description" content="Sete horas de mesa de trabalho na Grande BH pra montar o comercial de 2027 da sua empresa: meta, funil e time. 25 vagas.">
+<meta property="og:title" content="Workshop presencial com Fabrício Nunnes · Grande BH">
 <meta property="og:description" content="Monte o comercial de 2027 da sua empresa em um dia. 25 vagas.">
 <meta property="og:image" content="https://unvholdings.com.br/evento/og.jpg">
 <meta name="robots" content="noindex">
@@ -48,7 +48,7 @@ h2{ font-size:clamp(38px,5.4vw,68px); }
 .fatos{ display:grid; grid-template-columns:repeat(4,auto); gap:0; margin:28px 0 30px; border-top:1px solid var(--fio); border-bottom:1px solid var(--fio); width:fit-content; }
 .fatos div{ padding:14px 22px 12px; border-left:1px solid var(--fio); }
 .fatos div:first-child{ border-left:0; padding-left:0; }
-.fatos b{ display:block; font-family:"Bebas Neue",sans-serif; font-size:30px; line-height:1; letter-spacing:.02em; }
+.fatos b{ display:block; white-space:nowrap; font-family:"Bebas Neue",sans-serif; font-size:30px; line-height:1; letter-spacing:.02em; }
 .fatos span{ font-size:12px; text-transform:uppercase; letter-spacing:.12em; color:#9fb3c8; font-weight:700; }
 .fatos b span{ font:inherit; color:inherit; letter-spacing:inherit; text-transform:inherit; }
 .hero small{ display:block; margin-top:14px; color:#9fb3c8; font-size:14px; }
@@ -124,11 +124,11 @@ h2{ font-size:clamp(38px,5.4vw,68px); }
 .linha i{ display:block; font-style:normal; color:var(--mut); }
 
 /* quem conduz */
-.quem{ display:grid; grid-template-columns:340px 1fr; gap:48px; align-items:center; }
-.quem img{ border-radius:20px; box-shadow:0 30px 60px rgba(0,0,0,.4); }
+.sala .wrap.quem{ display:grid; grid-template-columns:minmax(0,360px) 1fr; gap:48px; align-items:center; }
+.quem img{ width:100%; aspect-ratio:4/5; object-fit:cover; object-position:50% 12%; border-radius:20px; box-shadow:0 30px 60px rgba(0,0,0,.4); }
 .nums{ display:grid; grid-template-columns:repeat(4,1fr); gap:18px; margin-top:28px; }
 .nums div{ border-top:2px solid #E91D2D; padding-top:12px; }
-.nums b{ font-family:"Bebas Neue",sans-serif; font-size:clamp(38px,4.4vw,56px); line-height:1; display:block; }
+.nums b{ font-family:"Bebas Neue",sans-serif; font-size:clamp(34px,3.5vw,50px); line-height:1; display:block; white-space:nowrap; }
 .nums > div > span{ font-size:13.5px; color:#cfdae6; }
 
 /* oferta */
@@ -157,7 +157,8 @@ details p{ margin:12px 0 0; color:var(--mut); font-size:16.5px; }
 
 @media (max-width:900px){
   .sec{ padding:60px 0; }
-  .hero .wrap, .sala .wrap, .calc .wrap, .quem{ grid-template-columns:1fr; }
+  .hero .wrap, .sala .wrap, .sala .wrap.quem, .calc .wrap{ grid-template-columns:1fr; }
+  .quem img{ max-width:340px; margin:0 auto; }
   .hero .wrap{ padding-top:34px; padding-bottom:50px; gap:44px; }
   .fatos{ grid-template-columns:repeat(2,1fr); width:100%; } .fatos div{ padding:12px 0 10px 16px; } .fatos div:nth-child(odd){ padding-left:0; border-left:0; } .fatos div:nth-child(n+3){ border-top:1px solid var(--fio); }
   .selo.a{ left:-8px; } .selo.b{ right:-8px; } .retrato{ width:min(360px,88%); }
@@ -171,7 +172,7 @@ details p{ margin:12px 0 0; color:var(--mut); font-size:16.5px; }
 
 <header class="topo"><div class="wrap">
   <img src="/evento/logo-unv-holdings.webp" alt="UNV Holdings" width="165" height="125">
-  <div class="info"><span data-t="semanaCap">Quinta-feira</span>, <span data-t="data">10/12</span> · <span data-t="horario">14h às 21h</span> · <span data-t="cidade">Belo Horizonte</span></div>
+  <div class="info"><span data-t="semanaCap">Quinta-feira</span>, <span data-t="data">10/12</span> · <span data-t="horario">14h às 21h</span> · <span data-t="cidade">Grande BH</span></div>
   <a class="btn ir" href="/evento/checkout/">Garantir vaga</a>
 </div></header>
 
@@ -183,7 +184,7 @@ details p{ margin:12px 0 0; color:var(--mut); font-size:16.5px; }
     <div class="fatos">
       <div><b data-t="data">10/12</b><span data-t="semana">quinta-feira</span></div>
       <div><b data-t="horario">14h às 21h</b><span>sete horas</span></div>
-      <div><b data-t="cidade">Belo Horizonte</b><span>encontro presencial</span></div>
+      <div><b data-t="cidade">Grande BH</b><span>encontro presencial</span></div>
       <div><b><span data-t="vagas">25</span> vagas</b><span>turma única</span></div>
     </div>
     <a class="btn ir" id="cta1" href="/evento/checkout/">Quero minha vaga por <span data-t="preco">R$ 97</span></a>
@@ -296,7 +297,7 @@ details p{ margin:12px 0 0; color:var(--mut); font-size:16.5px; }
     <div class="preco" data-t="preco">R$ 97</div>
     <p style="color:#9fb3c8;margin:0">por pessoa, no Pix ou no cartão</p>
     <ul>
-      <li>Sete horas presenciais com o Fabrício, em <span data-t="cidade">Belo Horizonte</span></li>
+      <li>Sete horas presenciais com o Fabrício, <span data-t="emCidade">na Grande BH</span></li>
       <li>Os quatro documentos da sua empresa preenchidos</li>
       <li>Material impresso e coffee</li>
       <li>Pode levar o sócio por mais <span data-t="precoSocio">R$ 47</span></li>
@@ -309,7 +310,7 @@ details p{ margin:12px 0 0; color:var(--mut); font-size:16.5px; }
 <section class="sec" style="padding-top:20px"><div class="wrap" style="max-width:780px">
   <div class="sobe"><div class="olho">Dúvidas</div><h2>Antes de garantir a vaga</h2></div>
   <div class="sobe" style="margin-top:20px">
-    <details><summary>Onde vai ser?</summary><p>Em <span data-t="cidade">Belo Horizonte</span>. O endereço completo, o mapa e o estacionamento chegam junto com a confirmação da vaga.</p></details>
+    <details><summary>Onde vai ser?</summary><p><span data-t="EmCidade">Na Grande BH</span>. O endereço completo, o mapa e o estacionamento chegam junto com a confirmação da vaga.</p></details>
     <details><summary>Posso levar meu sócio?</summary><p>Pode. Na página de pagamento você inclui o sócio por mais <span data-t="precoSocio">R$ 47</span>. Os dois trabalham nos mesmos documentos.</p></details>
     <details><summary>O que preciso levar?</summary><p>Notebook ou caderno e os números do seu comercial: faturamento, quantidade de vendas e de leads dos últimos meses. Se não tiver tudo, a gente estima na hora.</p></details>
     <details><summary>Até quando posso comprar?</summary><p>Até a véspera, às 18h, ou até acabarem as vagas. Depois disso a lista fecha pra imprimir o material.</p></details>
@@ -370,7 +371,7 @@ function faixa(v){
   for(var k = 0; k < 6; k++) itens.forEach(function(t){ h += "<span>" + M.esc(t) + "</span><i>✦</i>"; });
   $("trilho").innerHTML = h;
 }
-faixa({ semanaCap:"Quinta-feira", data:"10/12", cidade:"Belo Horizonte", horario:"14h às 21h", vagas:25, preco:"R$ 97" });
+faixa({ semanaCap:"Quinta-feira", data:"10/12", cidade:"Grande BH", horario:"14h às 21h", vagas:25, preco:"R$ 97" });
 
 /* calculadora */
 function dinheiro(v){ return "R$ " + Math.round(v).toLocaleString("pt-BR"); }

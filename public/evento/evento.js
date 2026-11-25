@@ -29,6 +29,8 @@ function slug(){ return qp("t") || ""; }
 function comTurma(href){ var s = slug(); return s ? href + (href.indexOf("?") < 0 ? "?" : "&") + "t=" + encodeURIComponent(s) : href; }
 function brl(cents){ return (cents/100).toLocaleString("pt-BR", { style:"currency", currency:"BRL" }).replace(",00",""); }
 function dataExtenso(ymd){ var p = String(ymd).split("-"); var d = new Date(+p[0], +p[1]-1, +p[2]); return { dia: p[2], mes: p[1], semana: DIAS[d.getDay()], mesNome: MESES[d.getMonth()], curto: p[2] + "/" + p[1] }; }
+/* "em Belo Horizonte", mas "na Grande BH" */
+function emCidade(c){ return (/^grande\s/i.test(String(c || "")) ? "na " : "em ") + c; }
 function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){ return { "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]; }); }
 
 /* Pixel do Meta */
@@ -52,8 +54,9 @@ function preencher(t){
   var v = {
     semana: d.semana, semanaCap: d.semana.charAt(0).toUpperCase() + d.semana.slice(1), data: d.curto, dataLonga: d.dia + " de " + d.mesNome,
     horario: t.horario, cidade: t.cidade, preco: brl(t.preco_cents), precoSocio: brl(t.preco_socio_cents), vagas: t.vagas, restantes: t.restantes,
-    promessa: t.promessa || "", local: t.local_nome || ("Em " + t.cidade)
+    promessa: t.promessa || "", emCidade: emCidade(t.cidade), EmCidade: emCidade(t.cidade).replace(/^./, function(c){ return c.toUpperCase(); })
   };
+  v.local = t.local_nome || v.EmCidade;
   Array.prototype.forEach.call(document.querySelectorAll("[data-t]"), function(el){ var k = el.getAttribute("data-t"); if(v[k] !== undefined && v[k] !== null) el.textContent = v[k]; });
   /* vagas restantes só aparecem quando o servidor manda o número (menos de 10 sobrando) */
   var sabe = t.restantes !== null && t.restantes !== undefined;

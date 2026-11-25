@@ -480,7 +480,7 @@ export const CRMLayout = () => {
                       </DropdownMenuItem>
                     </>
                   )}
-                  {isAdmin && (
+                  {isMaster && (
                     <DropdownMenuItem asChild>
                       <Link to="/crm/mini-eventos" className="flex items-center gap-2">
                         <FileText className="h-4 w-4 text-muted-foreground" />
