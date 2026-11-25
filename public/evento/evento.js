@@ -52,7 +52,7 @@ function preencher(t){
   var v = {
     semana: d.semana, semanaCap: d.semana.charAt(0).toUpperCase() + d.semana.slice(1), data: d.curto, dataLonga: d.dia + " de " + d.mesNome,
     horario: t.horario, cidade: t.cidade, preco: brl(t.preco_cents), precoSocio: brl(t.preco_socio_cents), vagas: t.vagas, restantes: t.restantes,
-    promessa: t.promessa || "", local: t.local_nome || ("Hotel em " + t.cidade)
+    promessa: t.promessa || "", local: t.local_nome || ("Em " + t.cidade)
   };
   Array.prototype.forEach.call(document.querySelectorAll("[data-t]"), function(el){ var k = el.getAttribute("data-t"); if(v[k] !== undefined && v[k] !== null) el.textContent = v[k]; });
   /* vagas restantes só aparecem quando o servidor manda o número (menos de 10 sobrando) */
