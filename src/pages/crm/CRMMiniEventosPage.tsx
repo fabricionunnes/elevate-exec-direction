@@ -63,7 +63,8 @@ function Placar({ rotulo, valor, meta, texto, cor }: { rotulo: string; valor: nu
 }
 
 const CRMMiniEventosPage = () => {
-  const { isAdmin } = useCRMContext();
+  // só o master vê (Fabrício, 25/11/2026: "só eu vou ter acesso")
+  const { isMaster } = useCRMContext();
   const [slug, setSlug] = useState<string | null>(null);
   const [turmas, setTurmas] = useState<{ slug: string; nome: string; data_evento: string }[]>([]);
   const [p, setP] = useState<Painel | null>(null);
@@ -164,7 +165,7 @@ const CRMMiniEventosPage = () => {
     };
   }, [p]);
 
-  if (!isAdmin) return <Navigate to="/crm" replace />;
+  if (!isMaster) return <Navigate to="/crm" replace />;
   if (!p || !c) {
     return (
       <div className="p-8 text-center text-slate-500">

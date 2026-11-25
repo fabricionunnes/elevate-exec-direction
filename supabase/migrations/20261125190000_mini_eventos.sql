@@ -1,7 +1,8 @@
 -- Funil de mini-eventos (25/11/2026): evento presencial de um dia, ingresso de R$ 97 vendido em 7 dias,
 -- que leva o empresário à call de onde sai o Mastermind Alpha.
 -- Páginas: unvholdings.com.br/evento (venda), /evento/checkout e /evento/obrigado (função mini-evento, Asaas).
--- Painel em tempo real: /#/crm/mini-eventos.
+-- Painel em tempo real: /#/crm/mini-eventos. Só o master acessa (Fabrício, 25/11/2026: "só eu vou ter acesso"):
+-- tabelas, painel e check-in são travados por is_master().
 -- O funil "Mini-eventos" do CRM (pipeline e1e00000-…0001, 13 etapas), a origem, as etiquetas, o agente e o
 -- vínculo do formulário do Meta foram criados no CRM em 25/11/2026, a pedido do Fabrício.
 
@@ -67,14 +68,14 @@ begin
     execute format('grant all on public.%I to service_role', t);
     execute format('grant select on public.%I to authenticated', t);
     execute format('drop policy if exists %I on public.%I', t || '_staff', t);
-    execute format('create policy %I on public.%I for select to authenticated using ((select public.is_staff_admin_or_master()))', t || '_staff', t);
+    execute format('create policy %I on public.%I for select to authenticated using ((select public.is_master()))', t || '_staff', t);
   end loop;
 end $$;
 grant update (nome, promessa, local_nome, endereco, mapa_url, grupo_whatsapp, vagas, venda_ate, venda_desde, meta_campaign_ids, metas, curva, ativa)
   on public.miniev_turmas to authenticated;
 drop policy if exists miniev_turmas_staff_edita on public.miniev_turmas;
 create policy miniev_turmas_staff_edita on public.miniev_turmas for update to authenticated
-  using ((select public.is_staff_admin_or_master())) with check ((select public.is_staff_admin_or_master()));
+  using ((select public.is_master())) with check ((select public.is_master()));
 
 -- Tempo real do painel: cada evento novo chega na tela sem recarregar
 do $$ begin
@@ -162,7 +163,7 @@ grant execute on function public.miniev_painel_interno(text) to service_role;
 create or replace function public.miniev_painel(p_slug text)
 returns jsonb language plpgsql stable security definer set search_path = public as $$
 begin
-  if not public.is_staff_admin_or_master() then raise exception 'sem acesso'; end if;
+  if not public.is_master() then raise exception 'sem acesso'; end if;
   return public.miniev_painel_interno(p_slug);
 end $$;
 revoke all on function public.miniev_painel(text) from public, anon;
@@ -173,7 +174,7 @@ create or replace function public.miniev_checkin(p_inscricao uuid, p_presente bo
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare i miniev_inscricoes%rowtype; t miniev_turmas%rowtype; v_etapa uuid; v_atual int;
 begin
-  if not public.is_staff_admin_or_master() then raise exception 'sem acesso'; end if;
+  if not public.is_master() then raise exception 'sem acesso'; end if;
   select * into i from miniev_inscricoes where id = p_inscricao and status = 'pago';
   if not found then raise exception 'inscrição não encontrada ou não paga'; end if;
   select * into t from miniev_turmas where id = i.turma_id;
@@ -197,8 +198,8 @@ grant execute on function public.miniev_checkin(uuid, boolean) to authenticated;
 
 -- ── Turma 1: quinta 10/12/2026, Belo Horizonte ──────────────────────────────
 insert into public.miniev_turmas (slug, nome, promessa, data_evento, horario, cidade, venda_ate, venda_desde, meta_campaign_ids, form_id, pipeline_id)
-values ('bh-10dez', 'Workshop presencial · BH · 10/12', 'Saia em um dia com o planejamento comercial de 2027 pronto',
-        '2026-12-10', '14h às 21h', 'Belo Horizonte', '2026-12-09 18:00:00-03', '2026-12-03',
+values ('bh-10dez', 'Workshop presencial · Grande BH · 10/12', 'Saia em um dia com o planejamento comercial de 2027 pronto',
+        '2026-12-10', '14h às 21h', 'Grande BH', '2026-12-09 18:00:00-03', '2026-12-03',
         array['120251672176750504'], '1152182700649939', 'e1e00000-0000-4000-8000-000000000001')
 on conflict (slug) do nothing;
 

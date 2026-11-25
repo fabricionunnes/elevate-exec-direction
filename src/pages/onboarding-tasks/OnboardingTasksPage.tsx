@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain, Network, AudioLines, Radar, Gauge, ClipboardCheck, Bot, Wallet, Mail } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle, Gamepad2, Presentation, LayoutGrid, Zap, Code2, DollarSign, FileSignature, Scale, Brain, Network, AudioLines, Radar, Gauge, Ticket, ClipboardCheck, Bot, Wallet, Mail } from "lucide-react";
 import { GlobalAccessControlPanel } from "@/components/onboarding-tasks/GlobalAccessControlPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -1908,6 +1908,7 @@ const OnboardingTasksPage = () => {
   // Projeto "Time de IA" da própria UNV (onboarding_projects); enquanto o módulo é só interno, o atalho aponta direto pra ele
   const TIME_IA_UNV_PATH = "/time-ia/30991de4-61d1-4261-af7e-d814b812c4ad";
   const appsDaBusca: AppDaBusca[] = [
+    ...(isMaster ? [{ titulo: "Mini eventos", caminho: "/crm/mini-eventos", grupo: "Gestão", palavras: "evento workshop ingresso mastermind alpha funil painel tempo real" }] : []),
     ...(isMaster ? [{ titulo: "Painel de Controle", caminho: "/painel-de-controle", grupo: "Gestão", palavras: "caixa vendas tráfego clientes atendimento ia dashboard" },
                     { titulo: "Painel ao vivo", caminho: "/painel-de-controle/ao-vivo", grupo: "Gestão", palavras: "gestão à vista tv tela" },
                     { titulo: "Planejamento", caminho: "/planejamento", grupo: "Gestão", palavras: "plano anual meta orçamento planejado realizado 2027 estratégico" }] : []),
@@ -3067,6 +3068,19 @@ const OnboardingTasksPage = () => {
               >
                 <Gauge className="h-4 w-4" />
                 Painel de Controle
+              </Button>
+            )}
+
+            {/* Mini eventos: painel em tempo real do funil de mini-eventos. Só o master (Fabrício, 25/11/2026). */}
+            {isMaster && (
+              <Button
+                size="sm"
+                className="gap-1.5 bg-[#E91D2D] text-white hover:bg-[#c8182a]"
+                onClick={() => navigate("/crm/mini-eventos")}
+                title="Mini eventos: anúncios, leads, ingressos, WhatsApp e presença em tempo real"
+              >
+                <Ticket className="h-4 w-4" />
+                Mini eventos
               </Button>
             )}
 

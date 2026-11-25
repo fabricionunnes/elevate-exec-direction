@@ -3,7 +3,8 @@
 *{ box-sizing:border-box; }
 html{ scroll-behavior:smooth; }
 body{ margin:0; font-family:"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif; color:var(--ink); background:#fff; line-height:1.5; -webkit-font-smoothing:antialiased; }
-img{ max-width:100%; display:block; }
+/* height:auto é obrigatório: sem ele a imagem com width/height no HTML encolhe na largura e fica esticada na altura */
+img{ max-width:100%; height:auto; display:block; }
 a{ color:inherit; }
 .wrap{ width:100%; max-width:1080px; margin:0 auto; padding:0 22px; }
 h1,h2,h3,.bebas{ font-family:"Bebas Neue","Arial Narrow",sans-serif; font-weight:400; text-transform:uppercase; letter-spacing:.01em; line-height:.95; margin:0; }

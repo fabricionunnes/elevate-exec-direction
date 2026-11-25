@@ -108,6 +108,8 @@ async function mp(path: string, method = "GET", body?: unknown) {
   return d;
 }
 const SITE = "https://unvholdings.com.br";
+/** "em Belo Horizonte", mas "na Grande BH". */
+const emCidade = (c: unknown) => `${/^grande\s/i.test(String(c || "")) ? "na" : "em"} ${c}`;
 const uuidOk = (v: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(String(v || ""));
 
 const FAIXAS: Record<string, { rotulo: string; min: number }> = {
@@ -391,7 +393,7 @@ async function conferir(sb: SB, i: any): Promise<string> {
       const [, mes, dia] = String(tt.data_evento).split("-");
       const semana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"][new Date(`${tt.data_evento}T12:00:00-03:00`).getDay()];
       const nome = primeiroNome(i.nome);
-      const texto = `Vaga confirmada${nome ? `, ${nome}` : ""}. ${semana}, ${dia}/${mes}, das ${tt.horario}, em ${tt.cidade}. O endereço, o mapa e o grupo da turma chegam por aqui antes do evento. Pra eu preparar seu material: se você pudesse resolver uma coisa só no seu comercial nesse dia, qual seria?`;
+      const texto = `Vaga confirmada${nome ? `, ${nome}` : ""}. ${semana}, ${dia}/${mes}, das ${tt.horario}, ${emCidade(tt.cidade)}. O endereço, o mapa e o grupo da turma chegam por aqui antes do evento. Pra eu preparar seu material: se você pudesse resolver uma coisa só no seu comercial nesse dia, qual seria?`;
       const r = await mandarWhatsApp(sb, { leadId: i.lead_id, nome: i.nome, telefone: i.telefone, texto, soConversaNova: false });
       if (!r.ok) console.error("[mini-evento] confirmação não enviada:", r.motivo);
     }
@@ -515,7 +517,7 @@ async function abordarNovos(sb: SB) {
       if (paga?.length) continue;
       const nome = primeiroNome(l.name);
       const link = `${SITE}/evento/${promessaDe.has(l.id) ? `?p=${promessaDe.get(l.id)}` : ""}`;
-      const texto = `${nome ? `${nome}, aqui` : "Aqui"} é do time do Fabrício Nunnes. Vi sua inscrição no workshop de ${semana}, dia ${dia}/${mes}, em ${t.cidade}. A vaga fica garantida com o ingresso, e o link pra garantir a sua é este: ${link}\n\nFicou alguma dúvida? Pode me perguntar por aqui.`;
+      const texto = `${nome ? `${nome}, aqui` : "Aqui"} é do time do Fabrício Nunnes. Vi sua inscrição no workshop de ${semana}, dia ${dia}/${mes}, ${emCidade(t.cidade)}. A vaga fica garantida com o ingresso, e o link pra garantir a sua é este: ${link}\n\nFicou alguma dúvida? Pode me perguntar por aqui.`;
       let r: { ok: boolean; motivo?: string; conversa?: string };
       try { r = await mandarWhatsApp(sb, { leadId: l.id, nome: l.name, telefone: l.phone, texto, soConversaNova: true }); }
       catch (e) { r = { ok: false, motivo: String((e as Error).message || e).slice(0, 120) }; }
@@ -600,7 +602,7 @@ async function trilhas(sb: SB, limite: number, simular?: { hoje: string; hora: n
       { chave: "A3", quem: (id) => naoComprou(id) && abordado.has(id) && !respondeu.has(id) && horasDesde(id) >= 22 && horasDesde(id) < 72 && hoje < ymdMais(D, -1),
         texto: (n, l) => `${n}só pra você ter clareza do que leva pronto na ${semana}: raio-x comercial da sua empresa, mapa de metas de 2027, funil desenhado e rotina do time. São ${t.vagas} vagas e a turma é única. Garante a sua aqui: ${link(l)}` },
       { chave: "A4", quem: (id) => hoje === ymdMais(D, -3) && naoComprou(id) && abordado.has(id) && !respondeu.has(id) && horasDesde(id) >= 4,
-        texto: (n, l) => `${n}abrimos hoje as últimas vagas do workshop de ${semana}, dia ${dia}/${mes}, em ${t.cidade}. Quem entra hoje ainda pega lugar na mesa. Garante a sua: ${link(l)}` },
+        texto: (n, l) => `${n}abrimos hoje as últimas vagas do workshop de ${semana}, dia ${dia}/${mes}, ${emCidade(t.cidade)}. Quem entra hoje ainda pega lugar na mesa. Garante a sua: ${link(l)}` },
       { chave: "A5", quem: (id) => hoje === ymdMais(D, -2) && h >= 10 && naoComprou(id) && checkout.has(id) && abordado.has(id) && !respondeu.has(id),
         texto: (n) => `${n}vi que você chegou a abrir o pagamento do workshop e não concluiu. Consigo segurar sua vaga até hoje às 18h. Quer fechar no Pix? ${LINK_VAGA}checkout/` },
       { chave: "A6", quem: (id) => hoje === ymdMais(D, -1) && h >= 10 && h < 18 && naoComprou(id) && abordado.has(id) && !respondeu.has(id) && horasDesde(id) >= 4,
