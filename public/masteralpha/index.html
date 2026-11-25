@@ -95,6 +95,11 @@ section > .wrap { position: relative; z-index: 1; }
 @media (max-width: 480px) { .regua { grid-template-columns: minmax(0,1fr); } }
 
 /* blocos de duas colunas */
+.chef .foto { position: relative; }
+.chef .foto img { width: 100%; height: auto; display: block; border-radius: 3px; }
+.chef .foto::after { content: ""; position: absolute; right: -12px; bottom: -12px; width: 55%; height: 55%; border-right: 2px solid var(--gold); border-bottom: 2px solid var(--gold); pointer-events: none; }
+.chef .marca-chef { width: 170px; height: auto; display: block; margin-bottom: 18px; }
+.chef .meses { margin-top: 20px; font-size: 13px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-deep); }
 .duas { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 56px; align-items: center; }
 @media (max-width: 900px) { .duas { grid-template-columns: minmax(0,1fr); gap: 36px; } }
 
@@ -278,6 +283,20 @@ footer b { color: var(--navy); letter-spacing: .12em; text-transform: uppercase;
       <div class="slot" role="listitem"><div class="h">16h30</div><div class="t">Compromissos e rodada de pedidos<span>cada um sai com 3 compromissos e diz quem quer conhecer</span></div></div>
       <div class="slot" role="listitem"><div class="h">17h00</div><div class="t">Esporte<span>beach tênis, vôlei, futebol</span></div></div>
       <div class="slot" role="listitem"><div class="h">18h15</div><div class="t">Churrasco ou Chef Alpha<span>a cada dois meses, degustação preparada por um chef ou por membros da turma</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- CHEF ALPHA -->
+<section id="chef" class="chef">
+  <div class="wrap duas reveal">
+    <div class="foto"><img src="chef.webp" width="1400" height="821" alt="Chef finalizando pratos de degustação" loading="lazy"></div>
+    <div>
+      <img class="marca-chef" src="chef-alpha.webp" width="600" height="417" alt="Chef Alpha">
+      <h2>A cada dois meses, <em>a mesa vira degustação.</em></h2>
+      <p class="lead" style="margin-top:18px">No lugar do churrasco, um chef convidado ou membros da própria turma cozinham para a mesa inteira. Pratos diferentes, servidos em degustação, para provar, comentar e descobrir junto.</p>
+      <p style="margin-top:14px">Comer junto aproxima. É ali que a conversa de negócio vira relação, e a relação vira negócio.</p>
+      <div class="meses">Fevereiro · Abril · Junho · Agosto · Outubro · Dezembro</div>
     </div>
   </div>
 </section>
