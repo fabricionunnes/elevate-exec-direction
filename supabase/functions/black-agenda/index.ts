@@ -499,6 +499,31 @@ async function meetAberto(sb: SB, soVer = false) {
   return { ok: p.ok, status: p.status, config: d?.config || d };
 }
 
+async function ofertaPrivado(sb: SB, simular: boolean) {
+  const { data: membros } = await sb.from("black_grupo_membros").select("lead_id, telefone").eq("no_grupo", true).not("lead_id", "is", null);
+  const ids = [...new Set((membros || []).map((m: any) => m.lead_id))];
+  const { data: leads } = await sb.from("crm_leads").select("id, name, phone, stage_id").in("id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]);
+  const { data: ja } = await sb.from("black_oferta_privado").select("lead_id");
+  const feitos = new Set((ja || []).map((x: any) => x.lead_id));
+  const pular = ["5531989840003", "553194622556", "5517992061688"];
+  const alvo = (leads || []).filter((l: any) => l.stage_id !== ETAPA.ganho && !feitos.has(l.id) && l.phone && !pular.includes(String(l.phone).replace(/\D/g, "")));
+  if (simular) return { ok: true, simulacao: true, total: alvo.length, nomes: alvo.map((l: any) => l.name) };
+  let enviados = 0; const erros: string[] = [];
+  for (const l of alvo as any[]) {
+    const pn = /^grupo black|@|\d/i.test(String(l.name || "")) ? "" : primeiroNome(l.name);
+    const texto = `Oi${pn ? `, ${pn}` : ""}! Aqui é o Ricardo, da UNV.\n\nVi que você está no grupo da Black Friday UNV e quis te chamar direto, porque a condição fecha hoje às 23h59 e sobraram só 3 vagas.\n\nPor R$ 2.000 por mês você tem diretor comercial na rotina do seu time, treinamento dos vendedores, processos comerciais implementados e gestão de tráfego pago, com o CRM da UNV de bônus. Separado, isso sai R$ 6.500 por mês.\n\nPra garantir a sua vaga: unvholdings.com.br/black/garantir\n\nSe tiver qualquer dúvida, me responde aqui que eu te ajudo agora.`;
+    const { error: trava } = await sb.from("black_oferta_privado").insert({ lead_id: l.id, telefone: l.phone });
+    if (trava) continue;
+    try {
+      const r = await abrirConversa(sb, { id: l.id, phone: l.phone }, texto);
+      if (!r.ok || r.erro) { erros.push(`${l.name}: ${r.erro || "falha"}`); await sb.from("black_oferta_privado").update({ erro: String(r.erro || "falha").slice(0, 200) }).eq("lead_id", l.id); }
+      else enviados++;
+    } catch (e) { erros.push(`${l.name}: ${String(e).slice(0, 80)}`); }
+    await new Promise((res) => setTimeout(res, 1800));
+  }
+  return { ok: true, enviados, erros };
+}
+
 async function limparTesteLive(sb: SB) {
   const teste = (e: string) => /^fabricio\+teste[^@]*@universidadevendas\.com\.br$/i.test(e);
   const tok = await tokenGoogleFabricio(sb);
@@ -1094,6 +1119,8 @@ Deno.serve(async (req) => {
       case "descricao-live": return json(await descricaoLive(sb));
       // sala do Meet da live aberta: quem tem o link entra sem pedir (Fabrício, 25/11)
       case "meet-aberto": return json(await meetAberto(sb, body.ver === true));
+      // oferta no privado, pelo Ricardo, pra quem está no grupo (Fabrício, 25/11 noite); {"simular":true} só lista
+      case "oferta-privado": return json(await ofertaPrivado(sb, body.simular === true));
       // prévia do aviso individual das 20h: não envia nada
       case "aviso-live-previa": return json(await avisarConfirmadosLive(sb, true));
       // manda um aviso de "Pix gerado" de exemplo só pro WhatsApp do Fabrício
