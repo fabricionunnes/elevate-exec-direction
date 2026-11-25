@@ -71,7 +71,7 @@ body{ background:var(--bg); }
     <div class="linha"><span><span data-t="semanaCap">Quinta-feira</span>, <span data-t="dataLonga">10 de dezembro</span></span><span data-t="horario">14h às 21h</span></div>
     <div class="linha"><span data-t="local">Hotel em Belo Horizonte</span><span>coffee incluso</span></div>
     <div class="linha total"><span>Total</span><span id="total">R$ 97</span></div>
-    <p style="font-size:13px;color:var(--mut);margin-top:10px">Restam <b data-t="restantes">25</b> de <span data-t="vagas">25</span> vagas. Pagamento processado pelo Asaas.</p>
+    <p style="font-size:13px;color:var(--mut);margin-top:10px"><span data-resta="sim" style="display:none">Restam <b data-t="restantes"></b> de <span data-t="vagas">25</span> vagas. </span>Pagamento processado pelo Asaas.</p>
   </aside>
 </div></div>
 
@@ -139,7 +139,7 @@ $("passoDados").addEventListener("submit", function(ev){
 
 M.api({ action:"turma", slug:M.slug() }).then(function(d){
   T = d.turma; M.preencher(T); pinta();
-  if(!T.aberta){ $("erro").textContent = T.restantes <= 0 ? ERROS.esgotado : ERROS.encerrado; $("btnPagar").disabled = true; }
+  if(!T.aberta){ $("erro").textContent = T.esgotado ? ERROS.esgotado : ERROS.encerrado; $("btnPagar").disabled = true; }
 }).catch(function(){});
 
 /* Voltou pra página com um Pix já gerado: retoma de onde parou */

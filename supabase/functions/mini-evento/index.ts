@@ -87,12 +87,15 @@ async function pagos(sb: SB, turmaId: string) {
   const { count } = await sb.from("miniev_inscricoes").select("id", { count: "exact", head: true }).eq("turma_id", turmaId).eq("status", "pago");
   return count || 0;
 }
+/** Vagas restantes só aparecem quando sobram menos de 10 (Fabrício, 25/11/2026). Antes disso o número nem sai daqui. */
+const MOSTRA_RESTANTES_ABAIXO_DE = 10;
 function publica(t: any, nPagos: number) {
+  const sobra = Math.max(0, t.vagas - nPagos);
   const aberta = !t.venda_ate || new Date(t.venda_ate).getTime() > Date.now();
   return {
     slug: t.slug, nome: t.nome, promessa: t.promessa, data_evento: t.data_evento, horario: t.horario, cidade: t.cidade,
     local_nome: t.local_nome, preco_cents: t.preco_cents, preco_socio_cents: t.preco_socio_cents, vagas: t.vagas,
-    restantes: Math.max(0, t.vagas - nPagos), venda_ate: t.venda_ate, aberta: aberta && nPagos < t.vagas,
+    restantes: sobra < MOSTRA_RESTANTES_ABAIXO_DE ? sobra : null, esgotado: sobra <= 0, venda_ate: t.venda_ate, aberta: aberta && nPagos < t.vagas,
   };
 }
 

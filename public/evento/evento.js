@@ -53,7 +53,10 @@ function preencher(t){
     horario: t.horario, cidade: t.cidade, preco: brl(t.preco_cents), precoSocio: brl(t.preco_socio_cents), vagas: t.vagas, restantes: t.restantes,
     promessa: t.promessa || "", local: t.local_nome || ("Hotel em " + t.cidade)
   };
-  Array.prototype.forEach.call(document.querySelectorAll("[data-t]"), function(el){ var k = el.getAttribute("data-t"); if(v[k] !== undefined) el.textContent = v[k]; });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-t]"), function(el){ var k = el.getAttribute("data-t"); if(v[k] !== undefined && v[k] !== null) el.textContent = v[k]; });
+  /* vagas restantes só aparecem quando o servidor manda o número (menos de 10 sobrando) */
+  var sabe = t.restantes !== null && t.restantes !== undefined;
+  Array.prototype.forEach.call(document.querySelectorAll("[data-resta]"), function(el){ el.style.display = (el.getAttribute("data-resta") === "sim") === sabe ? "" : "none"; });
   return v;
 }
 

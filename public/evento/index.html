@@ -193,9 +193,10 @@ details p{ margin:12px 0 0; color:var(--mut); font-size:16.5px; }
   <div class="retrato">
     <img src="/evento/fabricio-palestra.webp" alt="Fabrício Nunnes palestrando" width="900" height="1125" fetchpriority="high">
     <div class="selo a">
-      <svg class="anel" viewBox="0 0 66 66" aria-hidden="true"><defs><linearGradient id="gr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E91D2D"/><stop offset="1" stop-color="#CC572D"/></linearGradient></defs>
+      <svg class="anel" viewBox="0 0 66 66" aria-hidden="true" data-resta="sim" style="display:none"><defs><linearGradient id="gr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E91D2D"/><stop offset="1" stop-color="#CC572D"/></linearGradient></defs>
         <circle class="t" cx="33" cy="33" r="28"/><circle class="p" id="anel" cx="33" cy="33" r="28" stroke-dasharray="175.9" stroke-dashoffset="175.9"/></svg>
-      <div><b data-t="restantes">25</b><span>vagas restantes</span></div>
+      <div data-resta="sim" style="display:none"><b data-t="restantes"></b><span>vagas restantes</span></div>
+      <div data-resta="nao"><b data-t="vagas">25</b><span>vagas na turma</span></div>
     </div>
     <div class="selo b"><b>7h</b><span>de trabalho<br>na sua empresa</span></div>
   </div>
@@ -222,12 +223,12 @@ details p{ margin:12px 0 0; color:var(--mut); font-size:16.5px; }
   <div class="sobe">
     <div class="olho" style="color:#ff8f7a">A sala</div>
     <h2><span data-t="vagas">25</span> cadeiras. <span class="r">Sem palco.</span> Sem plateia de 500 pessoas.</h2>
-    <p style="margin-top:18px;font-size:18px;color:#cfdae6">Turma pequena de propósito. Cada empresário trabalha no próprio número, com o Fabrício passando de mesa em mesa. As cadeiras ao lado mostram a turma agora, em tempo real.</p>
+    <p style="margin-top:18px;font-size:18px;color:#cfdae6">Turma pequena de propósito. Cada empresário trabalha no próprio número, com o Fabrício passando de mesa em mesa. <span data-resta="sim" style="display:none">As cadeiras ao lado mostram a turma agora, em tempo real.</span><span data-resta="nao">Uma delas pode ser a sua.</span></p>
     <p style="margin-top:22px"><a class="btn ir" href="/evento/checkout/">Pegar a minha cadeira</a></p>
   </div>
   <div class="sobe">
     <div class="cadeiras" id="cadeiras"></div>
-    <div class="legenda"><span><i style="background:linear-gradient(180deg,#E91D2D,#CC572D)"></i>ocupada</span><span><i style="border:1.5px solid #fff"></i>a sua</span><span><i style="border:1.5px solid rgba(255,255,255,.3)"></i>livre</span></div>
+    <div class="legenda" data-resta="sim" style="display:none"><span><i style="background:linear-gradient(180deg,#E91D2D,#CC572D)"></i>ocupada</span><span><i style="border:1.5px solid #fff"></i>a sua</span><span><i style="border:1.5px solid rgba(255,255,255,.3)"></i>livre</span></div>
   </div>
 </div></section>
 
@@ -291,7 +292,7 @@ details p{ margin:12px 0 0; color:var(--mut); font-size:16.5px; }
 <section class="sec oferta" id="oferta"><div class="wrap">
   <div class="cartao sobe">
     <div class="olho" style="color:#ff8f7a;justify-content:center">Ingresso</div>
-    <h2>Restam <span data-t="restantes" style="color:#ff5a4d">25</span> de <span data-t="vagas">25</span> vagas</h2>
+    <h2 data-resta="sim" style="display:none">Restam <span data-t="restantes" style="color:#ff5a4d"></span> de <span data-t="vagas">25</span> vagas</h2><h2 data-resta="nao"><span data-t="vagas">25</span> vagas. <span style="color:#ff5a4d">Turma única.</span></h2>
     <div class="preco" data-t="preco">R$ 97</div>
     <p style="color:#9fb3c8;margin:0">por pessoa, no Pix ou no cartão</p>
     <ul>
@@ -319,7 +320,7 @@ details p{ margin:12px 0 0; color:var(--mut); font-size:16.5px; }
 <footer class="rodape"><div class="wrap">UNV Holdings · Universidade Nacional de Vendas · CNPJ 51.356.237/0001-40<br>Pagamento processado pelo Asaas. <a href="/#/privacidade">Política de privacidade</a></div></footer>
 
 <div class="barra" id="barra"><div class="wrap">
-  <div class="cont"><span id="contTxt">Vendas até a véspera, 18h</span><br><small>Restam <b data-t="restantes">25</b> de <span data-t="vagas">25</span> vagas</small></div>
+  <div class="cont"><span id="contTxt">Vendas até a véspera, 18h</span><br><small data-resta="sim" style="display:none">Restam <b data-t="restantes"></b> de <span data-t="vagas">25</span> vagas</small><small data-resta="nao"><span data-t="vagas">25</span> vagas · turma única</small></div>
   <a class="btn ir" href="/evento/checkout/">Garantir vaga · <span data-t="preco">R$ 97</span></a>
 </div></div>
 
@@ -353,12 +354,13 @@ window.addEventListener("scroll", function(){ $("barra").classList.toggle("on", 
 
 /* cadeiras da sala */
 function cadeiras(vagas, restantes){
-  var oc = vagas - restantes, h = "";
-  for(var i = 1; i <= vagas; i++) h += '<div class="cad' + (i <= oc ? " oc" : i === oc + 1 ? " sua" : "") + '">' + (i < 10 ? "0" + i : i) + "</div>";
+  /* sem o número (10 ou mais sobrando) as cadeiras ficam neutras, só a "sua" pisca */
+  var sabe = restantes !== null && restantes !== undefined, oc = sabe ? vagas - restantes : -1, h = "";
+  for(var i = 1; i <= vagas; i++) h += '<div class="cad' + (sabe && i <= oc ? " oc" : (sabe ? i === oc + 1 : i === 13) ? " sua" : "") + '">' + (i < 10 ? "0" + i : i) + "</div>";
   $("cadeiras").innerHTML = h;
-  $("anel").style.strokeDashoffset = (175.9 * (1 - restantes / vagas)).toFixed(1);
+  if(sabe) $("anel").style.strokeDashoffset = (175.9 * (1 - restantes / vagas)).toFixed(1);
 }
-cadeiras(25, 25);
+cadeiras(25, null);
 
 /* faixa que corre */
 function faixa(v){
@@ -398,7 +400,7 @@ function turma(){
   return M.api({ action:"turma", slug:M.slug() }).then(function(d){
     var t = d.turma, v = M.preencher(t); cadeiras(t.vagas, t.restantes); faixa(v);
     if(!t.aberta){
-      var f = $("fechado"); f.style.display = "block"; f.textContent = t.restantes <= 0 ? "As vagas desta turma esgotaram." : "As vendas desta turma estão encerradas.";
+      var f = $("fechado"); f.style.display = "block"; f.textContent = t.esgotado ? "As vagas desta turma esgotaram." : "As vendas desta turma estão encerradas.";
       cada("a.ir", function(a){ a.removeAttribute("href"); a.style.opacity = ".5"; a.style.pointerEvents = "none"; });
     }
     return t;
