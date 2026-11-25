@@ -202,9 +202,9 @@ values ('bh-10dez', 'Workshop presencial · BH · 10/12', 'Saia em um dia com o 
         array['120251672176750504'], '1152182700649939', 'e1e00000-0000-4000-8000-000000000001')
 on conflict (slug) do nothing;
 
--- Confere a cada 5 minutos os checkouts abertos (quem pagou e fechou a aba)
+-- A cada 2 minutos: confere os checkouts abertos (quem pagou e fechou a aba) e roda as mensagens de WhatsApp
 select cron.unschedule(jobid) from cron.job where jobname = 'mini-evento-conferir';
-select cron.schedule('mini-evento-conferir', '*/5 * * * *', $c$
+select cron.schedule('mini-evento-conferir', '*/2 * * * *', $c$
   select net.http_post(
     url := 'https://xrncvhzxjmddqluxoosu.supabase.co/functions/v1/mini-evento',
     headers := '{"Content-Type":"application/json"}'::jsonb,
