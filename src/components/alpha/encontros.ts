@@ -89,7 +89,7 @@ export const ENCONTROS: Encontro[] = [
     ],
   },
   {
-    mes: 2, tema: "Metas estruturadas", foco: "receita", marcos: [],
+    mes: 2, tema: "Metas estruturadas", foco: "receita", marcos: ["Chef Alpha"],
     objetivo: "A meta da empresa desce para mês, produto e vendedor, e passa a ser acompanhada toda semana.",
     aula: [
       abre("faturamento"),
@@ -130,7 +130,7 @@ export const ENCONTROS: Encontro[] = [
     ],
   },
   {
-    mes: 4, tema: "Despesas e caixa", foco: "caixa", marcos: ["1ª participação de lucro"],
+    mes: 4, tema: "Despesas e caixa", foco: "caixa", marcos: ["Chef Alpha", "1ª participação de lucro"],
     objetivo: "Fechar o 1º trimestre, cortar o que não gera receita e transformar lucro em caixa, com a primeira participação de lucro.",
     aula: [
       abre("caixa"),
@@ -168,7 +168,7 @@ export const ENCONTROS: Encontro[] = [
     ],
   },
   {
-    mes: 6, tema: "Revisão do semestre", foco: "lucro", marcos: ["Conselho: revisão", "Fecha o 2º trimestre"],
+    mes: 6, tema: "Revisão do semestre", foco: "lucro", marcos: ["Chef Alpha", "Conselho: revisão", "Fecha o 2º trimestre"],
     objetivo: "Comparar o semestre com o plano e replanejar julho a dezembro com o que aprendeu.",
     aula: [
       abre("lucro acumulado"),
@@ -206,7 +206,7 @@ export const ENCONTROS: Encontro[] = [
     ],
   },
   {
-    mes: 8, tema: "Marketing e CAC", foco: "despesa", marcos: [],
+    mes: 8, tema: "Marketing e CAC", foco: "despesa", marcos: ["Chef Alpha"],
     objetivo: "Saber quanto custa trazer cada cliente e qual canal devolve o investimento.",
     aula: [
       abre("despesa comercial"),
@@ -243,7 +243,7 @@ export const ENCONTROS: Encontro[] = [
     ],
   },
   {
-    mes: 10, tema: "Processos e IA na operação", foco: "despesa", marcos: ["3ª participação de lucro"],
+    mes: 10, tema: "Processos e IA na operação", foco: "despesa", marcos: ["Chef Alpha", "3ª participação de lucro"],
     objetivo: "Tirar custo da operação com processo e automação, e liberar o dono do operacional.",
     aula: [
       abre("despesas"),
@@ -281,7 +281,7 @@ export const ENCONTROS: Encontro[] = [
     ],
   },
   {
-    mes: 12, tema: "Fechamento do ano", foco: "lucro", marcos: ["4ª participação de lucro", "Capital do Próximo Salto", "Renovação"],
+    mes: 12, tema: "Fechamento do ano", foco: "lucro", marcos: ["Chef Alpha", "4ª participação de lucro", "Capital do Próximo Salto", "Renovação"],
     objetivo: "Fechar o ano no sistema, comparar com o plano de janeiro e distribuir o lucro do último trimestre.",
     aula: [
       abre("lucro do ano"),

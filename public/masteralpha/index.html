@@ -133,6 +133,7 @@ section > .wrap { position: relative; z-index: 1; }
 .m.kart { background: linear-gradient(135deg, #0C2C5A, var(--navy-deep)); border-color: var(--navy-deep); }
 .m.kart .mn { color: var(--gold-soft); } .m.kart .dt { color: #fff; } .m.kart .te { color: #C9D4E8; }
 .m.key { border-top: 3px solid var(--gold); }
+.m.chef .mn { color: var(--gold-deep); }
 .legenda { margin-top: 16px; font-size: 14px; }
 @media (max-width: 900px) { .cal { grid-template-columns: repeat(3, minmax(0,1fr)); } }
 @media (max-width: 480px) { .cal { grid-template-columns: repeat(2, minmax(0,1fr)); } }
@@ -267,8 +268,8 @@ footer b { color: var(--navy); letter-spacing: .12em; text-transform: uppercase;
     <div>
       <div class="kicker">O encontro presencial</div>
       <h2>Um sábado por mês, <em>em Alphaville.</em></h2>
-      <p class="lead" style="margin-top:18px">Decisão boa sai de onde existe confiança. Por isso o encontro acontece em Alphaville, Nova Lima, das 14h às 20h: trabalho de verdade, esporte e churrasco.</p>
-      <p style="margin-top:14px">Quinze dias depois, um encontro online cobra o que cada um prometeu. Duas vezes por ano, o sábado vira um dia inteiro de GP de kart.</p>
+      <p class="lead" style="margin-top:18px">Decisão boa sai de onde existe confiança. Por isso o encontro acontece em Alphaville, Nova Lima, das 14h às 20h: trabalho de verdade, esporte e mesa farta.</p>
+      <p style="margin-top:14px">Quinze dias depois, um encontro online cobra o que cada um prometeu. Duas vezes por ano, o sábado vira um dia inteiro de GP de kart. E a cada dois meses o churrasco dá lugar ao Chef Alpha: um chef convidado, ou membros da turma, cozinhando para a mesa inteira, com degustação de pratos diferentes.</p>
     </div>
     <div class="roteiro" role="list" aria-label="Roteiro do sábado">
       <div class="slot" role="listitem"><div class="h">14h00</div><div class="t">Chegada e café</div></div>
@@ -276,7 +277,7 @@ footer b { color: var(--navy); letter-spacing: .12em; text-transform: uppercase;
       <div class="slot" role="listitem"><div class="h">16h00</div><div class="t">Vitrine Alpha<span>os membros da vez apresentam o seu negócio para a mesa</span></div></div>
       <div class="slot" role="listitem"><div class="h">16h30</div><div class="t">Compromissos e rodada de pedidos<span>cada um sai com 3 compromissos e diz quem quer conhecer</span></div></div>
       <div class="slot" role="listitem"><div class="h">17h00</div><div class="t">Esporte<span>beach tênis, vôlei, futebol</span></div></div>
-      <div class="slot" role="listitem"><div class="h">18h15</div><div class="t">Churrasco</div></div>
+      <div class="slot" role="listitem"><div class="h">18h15</div><div class="t">Churrasco ou Chef Alpha<span>a cada dois meses, degustação preparada por um chef ou por membros da turma</span></div></div>
     </div>
   </div>
 </section>
@@ -351,19 +352,19 @@ footer b { color: var(--navy); letter-spacing: .12em; text-transform: uppercase;
     <p class="lead" style="margin-top:18px">Sempre aos sábados, das 14h às 20h. As datas fogem de feriado prolongado e de férias, para você bloquear a agenda do ano inteiro de uma vez.</p>
     <div class="cal">
       <div class="m key"><div class="mn">Janeiro</div><div class="dt">23</div><div class="te">Planejamento anual</div></div>
-      <div class="m"><div class="mn">Fevereiro</div><div class="dt">20</div><div class="te">Metas estruturadas</div></div>
+      <div class="m chef"><div class="mn">Fevereiro · Chef Alpha</div><div class="dt">20</div><div class="te">Metas estruturadas</div></div>
       <div class="m"><div class="mn">Março</div><div class="dt">13</div><div class="te">Margem e preço</div></div>
-      <div class="m"><div class="mn">Abril</div><div class="dt">03</div><div class="te">Despesas e caixa</div></div>
+      <div class="m chef"><div class="mn">Abril · Chef Alpha</div><div class="dt">03</div><div class="te">Despesas e caixa</div></div>
       <div class="m kart"><div class="mn">Maio · GP de kart</div><div class="dt">15</div><div class="te">IA comercial</div></div>
-      <div class="m"><div class="mn">Junho</div><div class="dt">05</div><div class="te">Revisão do semestre</div></div>
+      <div class="m chef"><div class="mn">Junho · Chef Alpha</div><div class="dt">05</div><div class="te">Revisão do semestre</div></div>
       <div class="m"><div class="mn">Julho</div><div class="dt">03</div><div class="te">Time e remuneração</div></div>
-      <div class="m"><div class="mn">Agosto</div><div class="dt">14</div><div class="te">Marketing e CAC</div></div>
+      <div class="m chef"><div class="mn">Agosto · Chef Alpha</div><div class="dt">14</div><div class="te">Marketing e CAC</div></div>
       <div class="m"><div class="mn">Setembro</div><div class="dt">11</div><div class="te">Ticket e recorrência</div></div>
-      <div class="m"><div class="mn">Outubro</div><div class="dt">02</div><div class="te">Processos e IA na operação</div></div>
+      <div class="m chef"><div class="mn">Outubro · Chef Alpha</div><div class="dt">02</div><div class="te">Processos e IA na operação</div></div>
       <div class="m kart"><div class="mn">Novembro · GP de kart</div><div class="dt">06</div><div class="te">Orçamento do próximo ano</div></div>
-      <div class="m key"><div class="mn">Dezembro</div><div class="dt">04</div><div class="te">Fechamento do ano</div></div>
+      <div class="m key chef"><div class="mn">Dezembro · Chef Alpha</div><div class="dt">04</div><div class="te">Fechamento do ano</div></div>
     </div>
-    <p class="legenda">Nos meses de GP, o encontro é o dia inteiro, a partir das 9h. Quem entra no meio do ano tem 12 meses contados da entrada e não perde nada.</p>
+    <p class="legenda">Nos meses de GP, o encontro é o dia inteiro, a partir das 9h. Nos meses do Chef Alpha, o churrasco vira degustação. Quem entra no meio do ano tem 12 meses contados da entrada e não perde nada.</p>
   </div>
 </section>
 
