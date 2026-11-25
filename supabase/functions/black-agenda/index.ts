@@ -483,6 +483,22 @@ async function avisarConfirmadosLive(sb: SB, simular = false) {
   return { ok: true, enviados };
 }
 
+async function meetAberto(sb: SB, soVer = false) {
+  const tok = await tokenGoogleFabricio(sb);
+  if (!tok) return { ok: false, motivo: "sem_token_google" };
+  const H = { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" };
+  const code = MEET_LIVE.split("/").pop();
+  const g = await fetch(`https://meet.googleapis.com/v2/spaces/${code}`, { headers: H });
+  const esp = await g.json().catch(() => ({}));
+  if (!g.ok) return { ok: false, motivo: `GET ${g.status}`, detalhe: JSON.stringify(esp).slice(0, 300) };
+  if (soVer) return { ok: true, espaco: esp };
+  const p = await fetch(`https://meet.googleapis.com/v2/${esp.name}?updateMask=config.accessType,config.moderationRestrictions.presentRestriction`, {
+    method: "PATCH", headers: H, body: JSON.stringify({ config: { accessType: "OPEN", moderationRestrictions: { presentRestriction: "HOSTS_ONLY" } } }),
+  });
+  const d = await p.json().catch(() => ({}));
+  return { ok: p.ok, status: p.status, config: d?.config || d };
+}
+
 async function limparTesteLive(sb: SB) {
   const teste = (e: string) => /^fabricio\+teste[^@]*@universidadevendas\.com\.br$/i.test(e);
   const tok = await tokenGoogleFabricio(sb);
@@ -1076,6 +1092,8 @@ Deno.serve(async (req) => {
       // tira do evento só os e-mails de teste (fabricio+teste...), sem avisar ninguém
       case "limpar-teste-live": return json(await limparTesteLive(sb));
       case "descricao-live": return json(await descricaoLive(sb));
+      // sala do Meet da live aberta: quem tem o link entra sem pedir (Fabrício, 25/11)
+      case "meet-aberto": return json(await meetAberto(sb, body.ver === true));
       // prévia do aviso individual das 20h: não envia nada
       case "aviso-live-previa": return json(await avisarConfirmadosLive(sb, true));
       // manda um aviso de "Pix gerado" de exemplo só pro WhatsApp do Fabrício
