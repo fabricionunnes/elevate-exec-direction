@@ -82,6 +82,7 @@ export default function FunilDesenho({ d }: { d: DesenhoDados }) {
   const m = d.metas || {};
   const abordados = Math.max(0, d.leads - d.semAbordagem);
   const sobraram = Math.max(0, d.leads - d.ingressos);
+  const pico = d.dias.reduce((m, x, i) => ((x.ref || 0) > (d.dias[m]?.ref || 0) ? i : m), 0);
   return (
     <div className="space-y-5">
       {/* Fase 1 */}
@@ -136,7 +137,7 @@ export default function FunilDesenho({ d }: { d: DesenhoDados }) {
         {/* Semana de vendas */}
         <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_300px]" style={{ minWidth: 1010 }}>
           <div className="rounded-xl bg-slate-50 p-3">
-            <div className="text-[11px] font-extrabold uppercase tracking-wider text-[#082B48]">A semana de vendas · o quarto dia é o dia da verdade</div>
+            <div className="text-[11px] font-extrabold uppercase tracking-wider text-[#082B48]">A semana de vendas · o dia em vermelho é o dia da verdade</div>
             <div className="mt-2 flex h-28 items-end gap-2">
               {d.dias.map((x, i) => (
                 <div key={x.ymd} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
@@ -145,15 +146,15 @@ export default function FunilDesenho({ d }: { d: DesenhoDados }) {
                     <div className="w-full rounded-t-md bg-slate-200" style={{ height: `${((x.ref || 0) / d.maxDia) * 100}%` }} />
                     <div className="absolute bottom-0 left-0 right-0 rounded-t-md" style={{ height: `${(x.vendas / d.maxDia) * 100}%`, background: "linear-gradient(180deg,#E91D2D,#CC572D)" }} />
                   </div>
-                  <span className={`text-[10.5px] font-semibold ${i === 3 ? "text-[#E91D2D]" : "text-slate-500"}`}>{x.rotulo}</span>
+                  <span className={`text-[10.5px] font-semibold ${i === pico ? "text-[#E91D2D]" : "text-slate-500"}`}>{x.rotulo}</span>
                 </div>
               ))}
             </div>
-            <p className="mt-1.5 text-[11px] text-slate-500">Vermelho: vendas reais. Cinza: curva de referência do método (2, 1, 0, 12, 4, 6). O resto até 25 entra na rapa do tacho.</p>
+            <p className="mt-1.5 text-[11px] text-slate-500">Vermelho: vendas reais. Cinza: curva de referência do método, com o pico 3 dias antes do evento. O resto até 25 entra na rapa do tacho.</p>
           </div>
           <div className="rounded-xl border-2 border-dashed border-[#E91D2D] p-3 text-[12px] leading-snug text-slate-700">
             <div className="text-[11px] font-extrabold uppercase tracking-wider text-[#E91D2D]">Risco calculado</div>
-            <p className="mt-1">Nos 3 primeiros dias, até R$ 600 queimados. Cada venda devolve R$ 97 pro tráfego.</p>
+            <p className="mt-1">Antes do pico, até R$ 800 queimados. Cada venda devolve R$ 97 pro tráfego.</p>
             <p className="mt-1"><b>O dia do pico fechou sem venda?</b> Encerra a campanha e trabalha os leads pra call.</p>
           </div>
         </div>
