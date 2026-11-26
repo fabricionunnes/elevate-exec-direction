@@ -74,28 +74,28 @@ const Msg = ({ quando, texto }: { quando: string; texto: string }) => (
 );
 
 const PROMESSAS: [string, string, string][] = [
-  ["Planejamento 2027", "Como fazer um planejamento comercial de 2027 que bate meta desde janeiro e acaba com o ano no improviso, mesmo sem contratar consultoria", "Empresa entra o ano sem meta desdobrada"],
-  ["Meta todo mês", "Como bater meta nos 12 meses de 2027 e acabar com a montanha-russa do faturamento, mesmo sem aumentar o time", "Faturamento que oscila"],
-  ["Dono fora do comercial", "Como tirar o dono do comercial e ver a empresa vender mais, mesmo sem contratar um gerente", "Só o dono vende"],
-  ["Previsibilidade", "Como ter previsibilidade de vendas e saber no dia 1 quanto vai faturar no mês, mesmo sem aumentar a verba", "Não sabe quanto vai entrar"],
-  ["Time que vende", "Como ter um time de vendas que bate meta sozinho e parar de cobrar todo dia, mesmo sem trocar de vendedor", "Time sem processo"],
-  ["Vender mais sem contratar", "Como dobrar a conversão e parar de perder o lead que você já pagou, mesmo sem aumentar a verba", "Lead entra e não fecha"],
-  ["IA no comercial", "Como ter um time de IA no comercial que responde todo lead em 1 minuto e acaba com a venda perdida, mesmo sem entender de tecnologia", "Lead sem resposta, follow-up esquecido"],
-  ["Diagnóstico", "Como fazer um diagnóstico comercial que mostra onde sua empresa perde venda e recupera esse dinheiro, mesmo sem contratar consultoria", "Não sabe onde está o furo"],
+  ["Planejamento 2027", "Como fazer um planejamento comercial de 2027 que bate meta desde janeiro, mesmo sem consultoria", "Empresa entra o ano sem meta desdobrada"],
+  ["Meta todo mês", "Como bater meta nos 12 meses de 2027, mesmo sem aumentar o time", "Faturamento que oscila"],
+  ["Dono fora do comercial", "Como tirar o dono do comercial e vender mais, mesmo sem contratar gerente", "Só o dono vende"],
+  ["Previsibilidade", "Como ter previsibilidade de vendas e saber no dia 1 quanto vai faturar, mesmo sem mais verba", "Não sabe quanto vai entrar"],
+  ["Time que vende", "Como ter um time de vendas que bate meta sem você cobrar, mesmo sem trocar de vendedor", "Time sem processo"],
+  ["Vender mais sem contratar", "Como dobrar a conversão dos leads que você já paga, mesmo sem aumentar a verba", "Lead entra e não fecha"],
+  ["IA no comercial", "Como ter um time de IA no comercial que responde em 1 minuto, mesmo sem entender de tecnologia", "Lead sem resposta, follow-up esquecido"],
+  ["Diagnóstico", "Como achar onde sua empresa perde venda com um diagnóstico comercial, mesmo sem consultoria", "Não sabe onde está o furo"],
   ["Máquina de vendas", "Como criar uma máquina de vendas que bate meta toda semana, sem depender do dono", "Venda no improviso"],
-  ["Sala fechada", "Como 25 empresários de BH vão sair do improviso e montar o comercial de 2027 em uma sala fechada, mesmo sem parar a empresa por mais de uma tarde", "Empresário sozinho, sem referência"],
+  ["Sala fechada", "Como 25 empresários de BH vão montar o comercial de 2027 em uma sala fechada, sem parar a empresa", "Empresário sozinho, sem referência"],
 ];
 const ANUNCIOS: [string, string][] = [
-  ["Empresário de BH: 2027 começa em menos de um mês. Sua meta já está desdobrada?", "Como fazer um planejamento comercial de 2027 que bate meta desde janeiro e acaba com o ano no improviso, mesmo sem contratar consultoria"],
-  ["12 meses, 12 metas batidas. É o plano que eu aplico nas empresas que atendo, montado com você em um dia.", "Como bater meta nos 12 meses de 2027 e acabar com a montanha-russa do faturamento, mesmo sem aumentar o time"],
-  ["Se você tirar 15 dias de férias, sua empresa vende? Se a resposta é não, o problema não é o time. É processo.", "Como tirar o dono do comercial e ver a empresa vender mais, mesmo sem contratar um gerente"],
-  ["Quanto sua empresa vai vender mês que vem? Se você não sabe responder, falta funil.", "Como ter previsibilidade de vendas e saber no dia 1 quanto vai faturar no mês, mesmo sem aumentar a verba"],
-  ["Seu vendedor não bate meta. A culpa é dele ou do processo? Na maioria das vezes é do processo que não existe.", "Como ter um time de vendas que bate meta sozinho e parar de cobrar todo dia, mesmo sem trocar de vendedor"],
-  ["Você não precisa de mais lead. Precisa converter o que já chega.", "Como dobrar a conversão e parar de perder o lead que você já pagou, mesmo sem aumentar a verba"],
-  ["Lead sem resposta é venda perdida. Você monta o seu time de IA pra atender, qualificar e agendar.", "Como ter um time de IA no comercial que responde todo lead em 1 minuto e acaba com a venda perdida, mesmo sem entender de tecnologia"],
-  ["Sua empresa está perdendo venda. Você sabe onde?", "Como fazer um diagnóstico comercial que mostra onde sua empresa perde venda e recupera esse dinheiro, mesmo sem contratar consultoria"],
+  ["Empresário de BH: 2027 começa em menos de um mês. Sua meta já está desdobrada?", "Como fazer um planejamento comercial de 2027 que bate meta desde janeiro, mesmo sem consultoria"],
+  ["12 meses, 12 metas batidas. É o plano que eu aplico nas empresas que atendo, montado com você em um dia.", "Como bater meta nos 12 meses de 2027, mesmo sem aumentar o time"],
+  ["Se você tirar 15 dias de férias, sua empresa vende? Se a resposta é não, o problema não é o time. É processo.", "Como tirar o dono do comercial e vender mais, mesmo sem contratar gerente"],
+  ["Quanto sua empresa vai vender mês que vem? Se você não sabe responder, falta funil.", "Como ter previsibilidade de vendas e saber no dia 1 quanto vai faturar, mesmo sem mais verba"],
+  ["Seu vendedor não bate meta. A culpa é dele ou do processo? Na maioria das vezes é do processo que não existe.", "Como ter um time de vendas que bate meta sem você cobrar, mesmo sem trocar de vendedor"],
+  ["Você não precisa de mais lead. Precisa converter o que já chega.", "Como dobrar a conversão dos leads que você já paga, mesmo sem aumentar a verba"],
+  ["Lead sem resposta é venda perdida. Você monta o seu time de IA pra atender, qualificar e agendar.", "Como ter um time de IA no comercial que responde em 1 minuto, mesmo sem entender de tecnologia"],
+  ["Sua empresa está perdendo venda. Você sabe onde?", "Como achar onde sua empresa perde venda com um diagnóstico comercial, mesmo sem consultoria"],
   ["Sistema escala. Improviso não.", "Como criar uma máquina de vendas que bate meta toda semana, sem depender do dono"],
-  ["25 empresários. Uma sala. Sete horas de trabalho. Sem palco, sem plateia de 500 pessoas.", "Como 25 empresários de BH vão sair do improviso e montar o comercial de 2027 em uma sala fechada, mesmo sem parar a empresa por mais de uma tarde"],
+  ["25 empresários. Uma sala. Sete horas de trabalho. Sem palco, sem plateia de 500 pessoas.", "Como 25 empresários de BH vão montar o comercial de 2027 em uma sala fechada, sem parar a empresa"],
 ];
 
 export default function Playbook() {

@@ -66,16 +66,16 @@ function preencher(t){
 
 /* As 10 promessas do teste. O anúncio manda ?p=N e a página repete a mesma headline (o que a pessoa clicou é o que ela lê). */
 var PROMESSAS = {
-  1:  ["Empresário de BH: 2027 começa em menos de um mês.", "Como fazer um *planejamento comercial de 2027* que bate meta desde janeiro e acaba com o ano no improviso, mesmo sem contratar consultoria"],
-  2:  ["12 meses. 12 metas batidas.", "Como *bater meta nos 12 meses* de 2027 e acabar com a montanha-russa do faturamento, mesmo sem aumentar o time"],
-  3:  ["Se você tirar 15 dias de férias, sua empresa vende?", "Como *tirar o dono do comercial* e ver a empresa vender mais, mesmo sem contratar um gerente"],
-  4:  ["Quanto sua empresa vai vender mês que vem?", "Como ter *previsibilidade de vendas* e saber no dia 1 quanto vai faturar no mês, mesmo sem aumentar a verba"],
-  5:  ["Seu vendedor não bate meta. A culpa é dele ou do processo?", "Como ter um *time de vendas que bate meta* sozinho e parar de cobrar todo dia, mesmo sem trocar de vendedor"],
-  6:  ["Você não precisa de mais lead.", "Como *dobrar a conversão* e parar de perder o lead que você já pagou, mesmo sem aumentar a verba"],
-  7:  ["Lead sem resposta é venda perdida.", "Como ter um *time de IA no comercial* que responde todo lead em 1 minuto e acaba com a venda perdida, mesmo sem entender de tecnologia"],
-  8:  ["Sua empresa está perdendo venda. Você sabe onde?", "Como fazer um *diagnóstico comercial* que mostra onde sua empresa perde venda e recupera esse dinheiro, mesmo sem contratar consultoria"],
+  1:  ["Empresário de BH: 2027 começa em menos de um mês.", "Como fazer um *planejamento comercial de 2027* que bate meta desde janeiro, mesmo sem consultoria"],
+  2:  ["12 meses. 12 metas batidas.", "Como *bater meta nos 12 meses* de 2027, mesmo sem aumentar o time"],
+  3:  ["Se você tirar 15 dias de férias, sua empresa vende?", "Como *tirar o dono do comercial* e vender mais, mesmo sem contratar gerente"],
+  4:  ["Quanto sua empresa vai vender mês que vem?", "Como ter *previsibilidade de vendas* e saber no dia 1 quanto vai faturar, mesmo sem mais verba"],
+  5:  ["Seu vendedor não bate meta. A culpa é dele ou do processo?", "Como ter um *time de vendas que bate meta* sem você cobrar, mesmo sem trocar de vendedor"],
+  6:  ["Você não precisa de mais lead.", "Como *dobrar a conversão* dos leads que você já paga, mesmo sem aumentar a verba"],
+  7:  ["Lead sem resposta é venda perdida.", "Como ter um *time de IA no comercial* que responde em 1 minuto, mesmo sem entender de tecnologia"],
+  8:  ["Sua empresa está perdendo venda. Você sabe onde?", "Como achar onde sua empresa perde venda com um *diagnóstico comercial,* mesmo sem consultoria"],
   9:  ["Sistema escala. Improviso não.", "Como criar uma *máquina de vendas* que bate meta toda semana, sem depender do dono"],
-  10: ["Sem palco. Sem plateia de 500 pessoas.", "Como *25 empresários de BH* vão sair do improviso e montar o comercial de 2027 em uma *sala fechada,* mesmo sem parar a empresa por mais de uma tarde"]
+  10: ["Sem palco. Sem plateia de 500 pessoas.", "Como *25 empresários de BH* vão montar o comercial de 2027 em uma *sala fechada,* sem parar a empresa"]
 };
 /* promessa da visita: vem em ?p= e fica guardada pra seguir da captura até o checkout */
 function promessaN(){
