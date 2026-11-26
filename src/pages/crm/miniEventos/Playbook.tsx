@@ -82,7 +82,7 @@ const PROMESSAS: [string, string, string][] = [
   ["Vender mais sem contratar", "Como dobrar a conversão sem contratar e sem aumentar a verba", "Lead entra e não fecha"],
   ["IA no comercial", "Como colocar um time de IA no comercial em uma tarde, sem entender de tecnologia", "Lead sem resposta, follow-up esquecido"],
   ["Diagnóstico", "Como descobrir onde sua empresa perde venda com um diagnóstico comercial de uma tarde", "Não sabe onde está o furo"],
-  ["Máquina de vendas", "Como montar sua máquina de vendas em uma tarde, sem depender de vendedor estrela", "Venda no improviso"],
+  ["Máquina de vendas", "Como criar uma máquina de vendas que bate meta toda semana, sem depender do dono", "Venda no improviso"],
   ["Sala fechada", "Como 25 empresários de BH vão montar o comercial de 2027 em uma sala fechada, em uma tarde", "Empresário sozinho, sem referência"],
 ];
 const ANUNCIOS: [string, string][] = [
@@ -94,7 +94,7 @@ const ANUNCIOS: [string, string][] = [
   ["Você não precisa de mais lead. Precisa converter o que já chega.", "Como dobrar a conversão sem contratar e sem aumentar a verba"],
   ["Lead sem resposta é venda perdida. Você monta o seu time de IA pra atender, qualificar e agendar.", "Como colocar um time de IA no comercial em uma tarde, sem entender de tecnologia"],
   ["Sua empresa está perdendo venda. Você sabe onde?", "Como descobrir onde sua empresa perde venda com um diagnóstico comercial de uma tarde"],
-  ["Sistema escala. Improviso não.", "Como montar sua máquina de vendas em uma tarde, sem depender de vendedor estrela"],
+  ["Sistema escala. Improviso não.", "Como criar uma máquina de vendas que bate meta toda semana, sem depender do dono"],
   ["25 empresários. Uma sala. Sete horas de trabalho. Sem palco, sem plateia de 500 pessoas.", "Como 25 empresários de BH vão montar o comercial de 2027 em uma sala fechada, em uma tarde"],
 ];
 
