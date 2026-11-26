@@ -74,28 +74,28 @@ const Msg = ({ quando, texto }: { quando: string; texto: string }) => (
 );
 
 const PROMESSAS: [string, string, string][] = [
-  ["Planejamento 2027", "Saia com o planejamento comercial de 2027 da sua empresa pronto: meta, funil e time.", "Empresa entra o ano sem meta desdobrada"],
-  ["Meta todo mês", "O plano para sua empresa bater meta nos 12 meses de 2027, sem depender de mês bom.", "Faturamento que oscila"],
-  ["Dono fora do comercial", "Como tirar o dono da operação de vendas em 2027 sem o faturamento cair.", "Só o dono vende"],
-  ["Previsibilidade", "Saiba quanto sua empresa vai vender no mês que vem. Monte seu funil previsível em um dia.", "Não sabe quanto vai entrar"],
-  ["Time que vende", "Seu vendedor não bate meta? Em um dia você monta o processo que faz o time vender sem você cobrar.", "Time sem processo"],
-  ["Vender mais sem contratar", "Como aumentar as vendas com o mesmo time e a mesma verba, só arrumando a conversão.", "Lead entra e não fecha"],
-  ["IA no comercial", "Monte em um dia o time de IA que atende, qualifica e agenda para o seu vendedor fechar.", "Lead sem resposta, follow-up esquecido"],
-  ["Diagnóstico", "Descubra em um dia onde sua empresa está perdendo venda e quanto isso custa por mês.", "Não sabe onde está o furo"],
-  ["Máquina de vendas", "Do improviso ao sistema: construa a máquina de vendas da sua empresa em um dia.", "Venda no improviso"],
-  ["Sala fechada", "25 empresários de BH em uma sala, um dia inteiro, montando o comercial de 2027 juntos.", "Empresário sozinho, sem referência"],
+  ["Planejamento 2027", "Como fechar o planejamento comercial de 2027 em uma tarde, sem consultoria de 6 meses", "Empresa entra o ano sem meta desdobrada"],
+  ["Meta todo mês", "Como bater meta nos 12 meses de 2027, sem depender de mês bom", "Faturamento que oscila"],
+  ["Dono fora do comercial", "Como tirar o dono do comercial sem o faturamento cair", "Só o dono vende"],
+  ["Previsibilidade", "Como ter previsibilidade de vendas e parar de torcer no fim do mês", "Não sabe quanto vai entrar"],
+  ["Time que vende", "Como fazer seu time bater meta sem você cobrar todo dia", "Time sem processo"],
+  ["Vender mais sem contratar", "Como dobrar a conversão sem contratar e sem aumentar a verba", "Lead entra e não fecha"],
+  ["IA no comercial", "Como colocar um time de IA no comercial em uma tarde, sem entender de tecnologia", "Lead sem resposta, follow-up esquecido"],
+  ["Diagnóstico", "Como descobrir onde sua empresa perde venda com um diagnóstico comercial de uma tarde", "Não sabe onde está o furo"],
+  ["Máquina de vendas", "Como montar sua máquina de vendas em uma tarde, sem depender de vendedor estrela", "Venda no improviso"],
+  ["Sala fechada", "Como 25 empresários de BH vão montar o comercial de 2027 em uma sala fechada, em uma tarde", "Empresário sozinho, sem referência"],
 ];
 const ANUNCIOS: [string, string][] = [
-  ["Empresário de BH: 2027 começa em menos de um mês. Sua meta já está desdobrada?", "Saia com o planejamento comercial de 2027 pronto"],
-  ["12 meses, 12 metas batidas. É o plano que eu aplico nas empresas que atendo, montado com você em um dia.", "O plano pra bater meta nos 12 meses de 2027"],
-  ["Se você tirar 15 dias de férias, sua empresa vende? Se a resposta é não, o problema não é o time. É processo.", "Tire o dono do comercial sem o faturamento cair"],
-  ["Quanto sua empresa vai vender mês que vem? Se você não sabe responder, falta funil.", "Monte seu funil previsível em um dia"],
-  ["Seu vendedor não bate meta. A culpa é dele ou do processo? Na maioria das vezes é do processo que não existe.", "O processo que faz o time vender sem você cobrar"],
-  ["Você não precisa de mais lead. Precisa converter o que já chega.", "Venda mais com o mesmo time e a mesma verba"],
-  ["Lead sem resposta é venda perdida. Você monta o seu time de IA pra atender, qualificar e agendar.", "Monte em um dia o time de IA do seu comercial"],
-  ["Sua empresa está perdendo venda. Você sabe onde?", "Descubra onde sua empresa perde venda"],
-  ["Sistema escala. Improviso não.", "Construa a máquina de vendas da sua empresa"],
-  ["25 empresários. Uma sala. Sete horas de trabalho. Sem palco, sem plateia de 500 pessoas.", "25 empresários de BH montando o comercial de 2027"],
+  ["Empresário de BH: 2027 começa em menos de um mês. Sua meta já está desdobrada?", "Como fechar o planejamento comercial de 2027 em uma tarde, sem consultoria de 6 meses"],
+  ["12 meses, 12 metas batidas. É o plano que eu aplico nas empresas que atendo, montado com você em um dia.", "Como bater meta nos 12 meses de 2027, sem depender de mês bom"],
+  ["Se você tirar 15 dias de férias, sua empresa vende? Se a resposta é não, o problema não é o time. É processo.", "Como tirar o dono do comercial sem o faturamento cair"],
+  ["Quanto sua empresa vai vender mês que vem? Se você não sabe responder, falta funil.", "Como ter previsibilidade de vendas e parar de torcer no fim do mês"],
+  ["Seu vendedor não bate meta. A culpa é dele ou do processo? Na maioria das vezes é do processo que não existe.", "Como fazer seu time bater meta sem você cobrar todo dia"],
+  ["Você não precisa de mais lead. Precisa converter o que já chega.", "Como dobrar a conversão sem contratar e sem aumentar a verba"],
+  ["Lead sem resposta é venda perdida. Você monta o seu time de IA pra atender, qualificar e agendar.", "Como colocar um time de IA no comercial em uma tarde, sem entender de tecnologia"],
+  ["Sua empresa está perdendo venda. Você sabe onde?", "Como descobrir onde sua empresa perde venda com um diagnóstico comercial de uma tarde"],
+  ["Sistema escala. Improviso não.", "Como montar sua máquina de vendas em uma tarde, sem depender de vendedor estrela"],
+  ["25 empresários. Uma sala. Sete horas de trabalho. Sem palco, sem plateia de 500 pessoas.", "Como 25 empresários de BH vão montar o comercial de 2027 em uma sala fechada, em uma tarde"],
 ];
 
 export default function Playbook() {
@@ -248,7 +248,7 @@ export default function Playbook() {
               ["Pergunta 3", "Maior desafio comercial hoje (aberta curta)"], ["Final", "\"Falta um passo: garanta sua vaga.\" Leva pra página de venda"],
             ]} />
             <Blocos titulo="2 · Página de venda" link="/evento/" itens={[
-              ["Dobra 1", "Promessa. Workshop presencial com Fabrício Nunnes. Quinta 10/12, 14h às 21h. Botão de R$ 97"], ["Barra fixa", "Contagem até o fim da venda. Vagas restantes só aparecem abaixo de 10"],
+              ["Dobra 1", "Promessa no formato \"como... sem...\". Workshop presencial com Fabrício Nunnes. Quinta 10/12, 14h às 21h. Botão de R$ 97"], ["Barra fixa", "Contagem até o fim da venda. Vagas restantes só aparecem abaixo de 10"],
               ["Pra quem é", "Dono de empresa com pelo menos 1 vendedor, faturando acima de R$ 50 mil por mês"], ["O que você leva", "4 entregas do dia, cada uma um documento preenchido"],
               ["Agenda", "Diagnóstico e meta, depois funil e time"], ["Quem conduz", "Foto, bio curta, números. Link do Instagram"],
               ["Prova", "Cases com resultado em número"], ["Oferta", "R$ 97 · coffee incluso · 25 vagas"], ["Dúvidas", "Local, estacionamento, nota fiscal, pode levar sócio"],
