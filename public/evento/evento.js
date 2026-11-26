@@ -74,7 +74,7 @@ var PROMESSAS = {
   6:  ["Você não precisa de mais lead.", "Como *dobrar a conversão* sem contratar e sem aumentar a verba"],
   7:  ["Lead sem resposta é venda perdida.", "Como colocar um *time de IA no comercial* em uma tarde, sem entender de tecnologia"],
   8:  ["Sua empresa está perdendo venda. Você sabe onde?", "Como descobrir onde sua empresa perde venda com um *diagnóstico comercial* de uma tarde"],
-  9:  ["Sistema escala. Improviso não.", "Como montar sua *máquina de vendas* em uma tarde, sem depender de vendedor estrela"],
+  9:  ["Sistema escala. Improviso não.", "Como criar uma *máquina de vendas* que bate meta toda semana, sem depender do dono"],
   10: ["Sem palco. Sem plateia de 500 pessoas.", "Como *25 empresários de BH* vão montar o comercial de 2027 em uma *sala fechada,* em uma tarde"]
 };
 /* promessa da visita: vem em ?p= e fica guardada pra seguir da captura até o checkout */
