@@ -38,6 +38,7 @@ const pctTxt = (v: number) => `${v.toLocaleString("pt-BR", { maximumFractionDigi
 const hora = (iso: string) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 const DIA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 const TIPO: Record<string, string> = {
+  captura_vista: "abriu a página de captura", lead_criado: "preencheu a captura", whatsapp_trilha: "recebeu mensagem no WhatsApp",
   pagina_vista: "abriu a página de venda", checkout_iniciado: "abriu o checkout", ingresso_pago: "pagou o ingresso",
   presenca: "chegou no evento", presenca_desfeita: "presença desmarcada",
 };
@@ -297,7 +298,7 @@ const CRMMiniEventosPage = () => {
       {/* Linha 4: promessas e criativos */}
       <div className="rounded-xl border bg-white p-4 overflow-x-auto">
         <h2 className="text-sm font-extrabold uppercase tracking-wider text-[#082B48]">Promessas e criativos</h2>
-        <p className="text-xs text-slate-500 mb-3">Promessa vencedora é a que tem mais cliques com o mesmo gasto. Gasto e cliques vêm do Meta, que o Nexus lê de 2 em 2 horas.</p>
+        <p className="text-xs text-slate-500 mb-3">Promessa vencedora é a que tem mais cliques com o mesmo gasto. Gasto e cliques no link vêm direto do Meta, lidos de 4 em 4 minutos.</p>
         {c.promessas.length === 0 ? <p className="text-sm text-slate-500">Sem dado do Meta ainda. A tabela enche depois que a campanha roda e o Nexus sincroniza.</p> : (
           <table className="w-full text-sm">
             <thead><tr className="text-left text-[11px] uppercase tracking-wider text-slate-500 border-b">

@@ -660,6 +660,46 @@ async function status(sb: SB, body: Record<string, unknown>) {
   return json(resp);
 }
 
+// Meta ao vivo (25/11/2026): cliques no link, gasto e impressões por anúncio, lidos direto do Meta a cada 4 minutos
+// e gravados na turma. O painel usa essa leitura no lugar da sincronização de 2 em 2 horas do CRM.
+const META_CONTA = "act_2103286213692801"; // UNV Holdings
+const META_API = "https://graph.facebook.com/v21.0/";
+async function metaVivo(sb: SB) {
+  const corte = new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10);
+  const { data: turmas } = await sb.from("miniev_turmas").select("id, meta_campaign_ids, meta_vivo_em").gte("data_evento", corte);
+  const pend = (turmas || []).filter((t: any) => (t.meta_campaign_ids || []).length && (!t.meta_vivo_em || Date.now() - new Date(t.meta_vivo_em).getTime() > 4 * 60000));
+  if (!pend.length) return { lidas: 0 };
+  const { data: conta } = await sb.from("crm_meta_ads_accounts").select("access_token").eq("ad_account_id", META_CONTA).eq("is_connected", true).maybeSingle();
+  if (!conta?.access_token) return { erro: "sem_token" };
+  const pega = async (path: string, params: Record<string, string>) => {
+    const linhas: any[] = [];
+    let url: string | null = `${META_API}${path}?${new URLSearchParams({ ...params, limit: "200", access_token: conta.access_token })}`;
+    for (let i = 0; url && i < 5; i++) {
+      const r = await fetch(url); const j = await r.json();
+      if (!r.ok || j.error) throw new Error(`meta ${path}: ${JSON.stringify(j.error || j).slice(0, 200)}`);
+      linhas.push(...(j.data || [])); url = j.paging?.next || null;
+    }
+    return linhas;
+  };
+  let lidas = 0;
+  for (const t of pend) {
+    // marca a tentativa antes de ler: se o Meta recusar (limite de chamadas), só tenta de novo em 4 minutos e mantém a última leitura
+    await sb.from("miniev_turmas").update({ meta_vivo_em: new Date().toISOString() }).eq("id", t.id);
+    const porAd = new Map<string, any>();
+    for (const camp of t.meta_campaign_ids) {
+      // todos os anúncios da campanha entram, mesmo sem entrega, pra tabela de promessas já nascer completa
+      for (const a of await pega(`${camp}/ads`, { fields: "id,name,adset{name}" })) porAd.set(a.id, { ad_name: a.name, adset_name: a.adset?.name || "", spend: 0, clicks: 0, impressions: 0 });
+      for (const x of await pega(`${camp}/insights`, { level: "ad", date_preset: "maximum", fields: "ad_id,ad_name,adset_name,spend,inline_link_clicks,impressions" })) {
+        const o = porAd.get(x.ad_id) || { ad_name: x.ad_name, adset_name: x.adset_name };
+        porAd.set(x.ad_id, { ...o, spend: Number(x.spend || 0), clicks: Number(x.inline_link_clicks || 0), impressions: Number(x.impressions || 0) });
+      }
+    }
+    await sb.from("miniev_turmas").update({ meta_vivo: [...porAd.values()], meta_vivo_em: new Date().toISOString() }).eq("id", t.id);
+    lidas++;
+  }
+  return { lidas };
+}
+
 async function conferirPendentes(sb: SB) {
   const { data } = await sb.from("miniev_inscricoes").select("*").eq("status", "checkout")
     .gte("criado_em", new Date(Date.now() - 3 * 86400000).toISOString()).order("criado_em", { ascending: false }).limit(60);
@@ -670,7 +710,9 @@ async function conferirPendentes(sb: SB) {
   let whatsapp: any = null, trilha: unknown = null;
   try { whatsapp = await abordarNovos(sb); } catch (e) { console.error("[mini-evento] abordar", e); whatsapp = { erro: String((e as Error).message || e).slice(0, 160) }; }
   try { trilha = await trilhas(sb, Math.max(0, MAX_POR_RODADA - (whatsapp?.enviados || 0))); } catch (e) { console.error("[mini-evento] trilhas", e); trilha = { erro: String((e as Error).message || e).slice(0, 160) }; }
-  return json({ conferidos: (data || []).length, pagos: n, whatsapp, trilha });
+  let meta: unknown = null;
+  try { meta = await metaVivo(sb); } catch (e) { console.error("[mini-evento] meta", e); meta = { erro: String((e as Error).message || e).slice(0, 200) }; }
+  return json({ conferidos: (data || []).length, pagos: n, whatsapp, trilha, meta });
 }
 
 Deno.serve(async (req) => {
