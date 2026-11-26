@@ -7,6 +7,8 @@ import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, RefreshCw } from "l
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useCRMContext } from "./CRMLayout";
+import FunilDesenho from "./miniEventos/FunilDesenho";
+import Playbook from "./miniEventos/Playbook";
 
 // As tabelas e funções miniev_* ainda não estão nos tipos gerados
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -71,6 +73,7 @@ const CRMMiniEventosPage = () => {
   const [erro, setErro] = useState<string | null>(null);
   const [pisca, setPisca] = useState(false);
   const [marcando, setMarcando] = useState<string | null>(null);
+  const [aba, setAba] = useState<"desenho" | "painel" | "playbook">("desenho");
   const rodando = useRef(false);
 
   useEffect(() => {
@@ -205,6 +208,25 @@ const CRMMiniEventosPage = () => {
         </div>
       )}
 
+      <div className="flex flex-wrap gap-1.5">
+        {([["desenho", "Desenho do funil"], ["painel", "Painel ao vivo"], ["playbook", "Playbook completo"]] as const).map(([k, r]) => (
+          <button key={k} onClick={() => setAba(k)} className={`rounded-lg px-4 py-2 text-sm font-extrabold uppercase tracking-wide transition-colors ${aba === k ? "bg-[#E91D2D] text-white" : "border bg-white text-[#082B48] hover:bg-slate-100"}`}>{r}</button>
+        ))}
+      </div>
+
+      {aba === "desenho" && (
+        <FunilDesenho d={{
+          cidade: t.cidade, dataEv: dEv, horario: t.horario, preco: t.preco_cents / 100, vagas: t.vagas,
+          cliques: c.cliques, gasto: c.gasto, receita: c.receita, leads: pl.leads, pagina: pl.pagina, checkout: pl.checkout, ingressos: pl.ingressos, presentes: pl.presentes,
+          semAbordagem: p.fila.length, naoComprou: c.etapa("Não comprou ingresso"), pagouFaltou: c.etapa("Pagou e faltou"), presencaConfirmada: c.etapa("Presença confirmada"),
+          callsAgendadas: c.aPartir(6), callsRealizadas: c.aPartir(7), fechados: c.etapa("Mastermind fechado"),
+          metas: c.m, vencedora: c.promessas[0]?.cliques ? c.promessas[0].nome : null,
+          conjuntos: c.promessas.length, anuncios: p.anuncios.length, dias: c.dias, maxDia: c.maxDia,
+        }} />
+      )}
+      {aba === "playbook" && <Playbook />}
+
+      {aba === "painel" && (<>
       {/* Linha 1: placar */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         <Placar rotulo="Ingressos" valor={pl.ingressos} meta={c.m.ingressos ?? t.vagas} />
@@ -374,6 +396,7 @@ const CRMMiniEventosPage = () => {
           ))}
         </div>
       </div>
+      </>)}
     </div>
   );
 };
