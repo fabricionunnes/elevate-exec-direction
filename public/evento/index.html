@@ -414,7 +414,7 @@ turma().then(function(t){
   setInterval(function(){ if(!document.hidden) turma().catch(function(){}); }, 60000);
 }).catch(function(){ /* a página funciona com os textos padrão */ });
 
-M.api({ action:"visita", tipo:"pagina_vista", slug:M.slug(), sessao:M.sessao(), lead_id:LEAD && LEAD.id, p:PR && PR.n, utm_source:u.utm_source, utm_content:u.utm_content, origem:document.referrer ? "link" : "direto" }).catch(function(){});
+M.api({ action:"visita", tipo:"pagina_vista", slug:M.slug(), sessao:M.sessao(), lead_id:LEAD && LEAD.id, p:PR && PR.n, utm_source:u.utm_source, utm_content:u.utm_content, clique:u.fbclid ? 1 : 0, origem:document.referrer ? "link" : "direto" }).catch(function(){});
 })();
 </script>
 </body>

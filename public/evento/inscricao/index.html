@@ -150,7 +150,7 @@ function $(id){ return document.getElementById(id); }
 if(PR){ $("gancho").textContent = PR.gancho; $("promessa").innerHTML = M.tituloHtml(PR.titulo); }
 
 M.api({ action:"turma", slug:M.slug() }).then(function(d){ M.preencher(d.turma); if(!PR && d.turma.promessa) $("promessa").innerHTML = M.tituloHtml(d.turma.promessa); }).catch(function(){});
-M.api({ action:"visita", tipo:"captura_vista", slug:M.slug(), sessao:M.sessao(), lead_id:LEAD && LEAD.id, p:PR && PR.n, utm_source:u.utm_source, utm_content:u.utm_content }).catch(function(){});
+M.api({ action:"visita", tipo:"captura_vista", slug:M.slug(), sessao:M.sessao(), lead_id:LEAD && LEAD.id, p:PR && PR.n, utm_source:u.utm_source, utm_content:u.utm_content, clique:u.fbclid ? 1 : 0 }).catch(function(){});
 
 function mTel(v){ var d = v.replace(/\D/g,"").replace(/^55(?=\d{10,11}$)/,"").slice(0,11); if(d.length <= 2) return d; if(d.length <= 6) return "(" + d.slice(0,2) + ") " + d.slice(2); if(d.length <= 10) return "(" + d.slice(0,2) + ") " + d.slice(2,6) + "-" + d.slice(6); return "(" + d.slice(0,2) + ") " + d.slice(2,7) + "-" + d.slice(7); }
 $("telefone").addEventListener("input", function(){ this.value = mTel(this.value); });
