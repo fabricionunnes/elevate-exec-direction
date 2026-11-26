@@ -170,6 +170,8 @@ async function turma(sb: SB, body: Record<string, unknown>) {
 
 async function visita(sb: SB, body: Record<string, unknown>, agente: string) {
   if (!agente || ROBO.test(agente)) return json({ ok: true });
+  // revisão de anúncio do Meta abre o link com as marcações do anúncio mas sem o identificador de clique: não é visita de gente
+  if (/^(meta|facebook|instagram|fb|ig)$/i.test(so(body.utm_source, 80)) && !body.clique) return json({ ok: true });
   const t = await turmaPorSlug(sb, body.slug);
   if (!t) return json({ ok: false });
   const sessao = so(body.sessao, 60);
