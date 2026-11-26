@@ -66,16 +66,16 @@ function preencher(t){
 
 /* As 10 promessas do teste. O anúncio manda ?p=N e a página repete a mesma headline (o que a pessoa clicou é o que ela lê). */
 var PROMESSAS = {
-  1:  ["Empresário de BH: 2027 começa em menos de um mês.", "Como fechar o *planejamento comercial de 2027* em uma tarde, sem consultoria de 6 meses"],
-  2:  ["12 meses. 12 metas batidas.", "Como *bater meta nos 12 meses* de 2027, sem depender de mês bom"],
-  3:  ["Se você tirar 15 dias de férias, sua empresa vende?", "Como *tirar o dono do comercial* sem o faturamento cair"],
-  4:  ["Quanto sua empresa vai vender mês que vem?", "Como ter *previsibilidade de vendas* e parar de torcer no fim do mês"],
-  5:  ["Seu vendedor não bate meta. A culpa é dele ou do processo?", "Como fazer seu *time bater meta* sem você cobrar todo dia"],
-  6:  ["Você não precisa de mais lead.", "Como *dobrar a conversão* sem contratar e sem aumentar a verba"],
-  7:  ["Lead sem resposta é venda perdida.", "Como colocar um *time de IA no comercial* em uma tarde, sem entender de tecnologia"],
-  8:  ["Sua empresa está perdendo venda. Você sabe onde?", "Como descobrir onde sua empresa perde venda com um *diagnóstico comercial* de uma tarde"],
+  1:  ["Empresário de BH: 2027 começa em menos de um mês.", "Como fazer um *planejamento comercial de 2027* que bate meta desde janeiro e acaba com o ano no improviso, mesmo sem contratar consultoria"],
+  2:  ["12 meses. 12 metas batidas.", "Como *bater meta nos 12 meses* de 2027 e acabar com a montanha-russa do faturamento, mesmo sem aumentar o time"],
+  3:  ["Se você tirar 15 dias de férias, sua empresa vende?", "Como *tirar o dono do comercial* e ver a empresa vender mais, mesmo sem contratar um gerente"],
+  4:  ["Quanto sua empresa vai vender mês que vem?", "Como ter *previsibilidade de vendas* e saber no dia 1 quanto vai faturar no mês, mesmo sem aumentar a verba"],
+  5:  ["Seu vendedor não bate meta. A culpa é dele ou do processo?", "Como ter um *time de vendas que bate meta* sozinho e parar de cobrar todo dia, mesmo sem trocar de vendedor"],
+  6:  ["Você não precisa de mais lead.", "Como *dobrar a conversão* e parar de perder o lead que você já pagou, mesmo sem aumentar a verba"],
+  7:  ["Lead sem resposta é venda perdida.", "Como ter um *time de IA no comercial* que responde todo lead em 1 minuto e acaba com a venda perdida, mesmo sem entender de tecnologia"],
+  8:  ["Sua empresa está perdendo venda. Você sabe onde?", "Como fazer um *diagnóstico comercial* que mostra onde sua empresa perde venda e recupera esse dinheiro, mesmo sem contratar consultoria"],
   9:  ["Sistema escala. Improviso não.", "Como criar uma *máquina de vendas* que bate meta toda semana, sem depender do dono"],
-  10: ["Sem palco. Sem plateia de 500 pessoas.", "Como *25 empresários de BH* vão montar o comercial de 2027 em uma *sala fechada,* em uma tarde"]
+  10: ["Sem palco. Sem plateia de 500 pessoas.", "Como *25 empresários de BH* vão sair do improviso e montar o comercial de 2027 em uma *sala fechada,* mesmo sem parar a empresa por mais de uma tarde"]
 };
 /* promessa da visita: vem em ?p= e fica guardada pra seguir da captura até o checkout */
 function promessaN(){
@@ -84,6 +84,8 @@ function promessaN(){
   return p && PROMESSAS[+p] ? +p : null;
 }
 function promessa(){ var n = promessaN(); return n ? { n: n, gancho: PROMESSAS[n][0], titulo: PROMESSAS[n][1] } : null; }
+/* headline longa ganha letra menor, pra promessa caber sem tomar a tela */
+function ajustaTitulo(el, p){ if(!el) return; var n = String(p||"").replace(/\*/g,"").length; el.classList.remove("t-media","t-longa"); if(n > 105) el.classList.add("t-longa"); else if(n > 75) el.classList.add("t-media"); }
 function tituloHtml(p){
   var h = esc(p).replace(/\*(.+?)\*/g, '<span class="r">$1</span>');
   if(h.indexOf('class="r"') < 0){ var w = h.split(" "); if(w.length > 5){ var i = Math.max(2, w.length - 5); h = w.slice(0,i).join(" ") + ' <span class="r">' + w.slice(i, w.length-1).join(" ") + "</span> " + w[w.length-1]; } }
@@ -101,5 +103,5 @@ function anuncio(){
 }
 function seguir(href){ var n = promessaN(), u = comTurma(href); return n ? u + (u.indexOf("?") < 0 ? "?" : "&") + "p=" + n : u; }
 
-window.MiniEvento = { api: api, qp: qp, sessao: sessao, utm: utm, slug: slug, comTurma: comTurma, brl: brl, dataExtenso: dataExtenso, esc: esc, pixel: pixel, evento: evento, preencher: preencher, promessa: promessa, promessaN: promessaN, tituloHtml: tituloHtml, leadSalvo: leadSalvo, salvaLead: salvaLead, eventoProprio: eventoProprio, anuncio: anuncio, seguir: seguir };
+window.MiniEvento = { api: api, qp: qp, sessao: sessao, utm: utm, slug: slug, comTurma: comTurma, brl: brl, dataExtenso: dataExtenso, esc: esc, pixel: pixel, evento: evento, preencher: preencher, promessa: promessa, promessaN: promessaN, tituloHtml: tituloHtml, ajustaTitulo: ajustaTitulo, leadSalvo: leadSalvo, salvaLead: salvaLead, eventoProprio: eventoProprio, anuncio: anuncio, seguir: seguir };
 })();
