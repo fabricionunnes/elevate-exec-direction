@@ -38,3 +38,7 @@ p{ margin:0 0 14px; }
 .campo input{ font:inherit; font-size:16px; padding:13px 14px; border:1.5px solid #c7d1dc; border-radius:10px; outline:none; background:#fff; }
 .campo input:focus{ border-color:var(--navy); box-shadow:0 0 0 3px rgba(8,43,72,.12); }
 @media (max-width:820px){ .g2,.g3,.g4{ grid-template-columns:1fr; } .sec{ padding:48px 0; } .topo img{ height:44px; } .btn{ font-size:24px; width:100%; } }
+
+/* headline da promessa por tamanho da frase (ver ajustaTitulo no evento.js) */
+h1.t-media{ font-size:clamp(30px,3.9vw,56px) !important; }
+h1.t-longa{ font-size:clamp(26px,3.2vw,46px) !important; line-height:1 !important; }

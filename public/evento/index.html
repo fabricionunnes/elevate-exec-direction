@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="image" href="/evento/fabricio-palestra.webp" fetchpriority="high">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap">
-<link rel="stylesheet" href="/evento/evento.css?v=20261125d">
+<link rel="stylesheet" href="/evento/evento.css?v=20261125e">
 <style>
 :root{ --navy2:#051c30; --fio:rgba(255,255,255,.14); }
 body{ background:#fff; }
@@ -179,7 +179,7 @@ details p{ margin:12px 0 0; color:var(--mut); font-size:16.5px; }
 <section class="hero"><div class="wrap">
   <div>
     <div class="olho" style="color:#ff8f7a">Workshop presencial com Fabrício Nunnes</div>
-    <h1 id="promessa">Como fechar o <span class="r">planejamento comercial de 2027</span> em uma tarde, sem consultoria de 6 meses</h1>
+    <h1 id="promessa" class="t-longa">Como fazer um <span class="r">planejamento comercial de 2027</span> que bate meta desde janeiro e acaba com o ano no improviso, mesmo sem contratar consultoria</h1>
     <p class="sub">Sete horas de mesa de trabalho, com o seu número na mão. Você chega com a empresa do jeito que está e sai com meta, funil e rotina do time definidos.</p>
     <div class="fatos">
       <div><b data-t="data">10/12</b><span data-t="semana">quinta-feira</span></div>
@@ -325,7 +325,7 @@ details p{ margin:12px 0 0; color:var(--mut); font-size:16.5px; }
   <a class="btn ir" href="/evento/checkout/">Garantir vaga · <span data-t="preco">R$ 97</span></a>
 </div></div>
 
-<script src="/evento/evento.js?v=20261125d"></script>
+<script src="/evento/evento.js?v=20261125e"></script>
 <script>
 (function(){
 "use strict";
@@ -383,7 +383,7 @@ function calc(){
 ["leads","conv","ticket"].forEach(function(id){ $(id).addEventListener("input", calc); }); calc();
 
 /* headline da promessa vencedora: *trecho* vira destaque */
-function titulo(p){ $("promessa").innerHTML = M.tituloHtml(p); }
+function titulo(p){ $("promessa").innerHTML = M.tituloHtml(p); M.ajustaTitulo($("promessa"), p); }
 if(PR) titulo(PR.titulo);
 function contagem(ate){
   function t(){

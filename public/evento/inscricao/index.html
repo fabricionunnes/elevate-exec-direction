@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="image" href="/evento/fabricio-palestra.webp" fetchpriority="high">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap">
-<link rel="stylesheet" href="/evento/evento.css?v=20261125d">
+<link rel="stylesheet" href="/evento/evento.css?v=20261125e">
 <style>
 :root{ --navy2:#051c30; --fio:rgba(255,255,255,.14); }
 body{ background:var(--navy2); color:#fff; }
@@ -89,7 +89,7 @@ textarea:focus{ border-color:var(--navy); box-shadow:0 0 0 3px rgba(8,43,72,.12)
   <div>
     <div class="olho">Workshop presencial com Fabrício Nunnes</div>
     <p class="gancho" id="gancho" style="margin-top:14px">Empresário de BH: 2027 começa em menos de um mês.</p>
-    <h1 id="promessa">Como fechar o <span class="r">planejamento comercial de 2027</span> em uma tarde, sem consultoria de 6 meses</h1>
+    <h1 id="promessa" class="t-longa">Como fazer um <span class="r">planejamento comercial de 2027</span> que bate meta desde janeiro e acaba com o ano no improviso, mesmo sem contratar consultoria</h1>
     <p class="sub">Sete horas de mesa de trabalho, com o seu número na mão. Você sai com raio-x comercial, mapa de metas de 2027, funil desenhado e rotina do time.</p>
     <div class="fatos">
       <div><b data-t="data">10/12</b><span data-t="semana">quinta-feira</span></div>
@@ -140,16 +140,16 @@ textarea:focus{ border-color:var(--navy); box-shadow:0 0 0 3px rgba(8,43,72,.12)
 </div></section>
 <footer class="rodape" style="text-align:center;font-size:13px;color:var(--mut)"><div class="wrap">UNV Holdings · Universidade Nacional de Vendas · CNPJ 51.356.237/0001-40</div></footer>
 
-<script src="/evento/evento.js?v=20261125d"></script>
+<script src="/evento/evento.js?v=20261125e"></script>
 <script>
 (function(){
 "use strict";
 var M = window.MiniEvento; M.pixel();
 var u = M.utm(), AD = M.anuncio(), PR = M.promessa(), LEAD = M.leadSalvo();
 function $(id){ return document.getElementById(id); }
-if(PR){ $("gancho").textContent = PR.gancho; $("promessa").innerHTML = M.tituloHtml(PR.titulo); }
+if(PR){ $("gancho").textContent = PR.gancho; $("promessa").innerHTML = M.tituloHtml(PR.titulo); M.ajustaTitulo($("promessa"), PR.titulo); }
 
-M.api({ action:"turma", slug:M.slug() }).then(function(d){ M.preencher(d.turma); if(!PR && d.turma.promessa) $("promessa").innerHTML = M.tituloHtml(d.turma.promessa); }).catch(function(){});
+M.api({ action:"turma", slug:M.slug() }).then(function(d){ M.preencher(d.turma); if(!PR && d.turma.promessa) { $("promessa").innerHTML = M.tituloHtml(d.turma.promessa); M.ajustaTitulo($("promessa"), d.turma.promessa); } }).catch(function(){});
 M.api({ action:"visita", tipo:"captura_vista", slug:M.slug(), sessao:M.sessao(), lead_id:LEAD && LEAD.id, p:PR && PR.n, utm_source:u.utm_source, utm_content:u.utm_content, clique:u.fbclid ? 1 : 0 }).catch(function(){});
 
 function mTel(v){ var d = v.replace(/\D/g,"").replace(/^55(?=\d{10,11}$)/,"").slice(0,11); if(d.length <= 2) return d; if(d.length <= 6) return "(" + d.slice(0,2) + ") " + d.slice(2); if(d.length <= 10) return "(" + d.slice(0,2) + ") " + d.slice(2,6) + "-" + d.slice(6); return "(" + d.slice(0,2) + ") " + d.slice(2,7) + "-" + d.slice(7); }
