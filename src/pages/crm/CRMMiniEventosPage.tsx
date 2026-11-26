@@ -147,7 +147,7 @@ const CRMMiniEventosPage = () => {
     const parados = p.checkouts_abertos.filter((x) => x.minutos > 120).length;
     if (parados) alertas.push(`${parados} checkout${parados > 1 ? "s" : ""} aberto${parados > 1 ? "s" : ""} há mais de 2 horas sem pagamento`);
     if (gasto * 100 > p.turma.teto_trafego_cents) alertas.push(`Gasto de ${brl(gasto)} passou do teto de ${brl(p.turma.teto_trafego_cents / 100)}`);
-    const meio = dias[3];
+    const meio = dias.reduce<(typeof dias)[number] | undefined>((m, x) => ((x.ref || 0) > (m?.ref || 0) ? x : m), dias[0]);
     if (meio && pl.ingressos === 0 && (hoje > meio.ymd || (hoje === meio.ymd && new Date().getHours() >= 21))) alertas.push("Dia do pico passou sem nenhuma venda: encerrar a campanha e trabalhar os leads pra call");
     // promessa = conjunto de anúncios
     const prom = new Map<string, { nome: string; gasto: number; cliques: number; impressoes: number; leads: number; vendas: number }>();
