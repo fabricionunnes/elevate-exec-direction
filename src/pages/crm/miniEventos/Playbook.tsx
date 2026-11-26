@@ -383,7 +383,7 @@ export default function Playbook() {
         <div>
           <Titulo n="09 · Acompanhamento" sub="Cada etapa do funil vira um evento registrado, e o painel compara o realizado com a meta.">O que este painel registra</Titulo>
           <Tabela cab={["Evento", "Quando dispara", "De onde vem", "Meta da turma"]} linhas={[
-            ["Clique no anúncio", "Clique no link do anúncio", "Meta Ads, lido de 2 em 2 horas", "1.000"],
+            ["Clique no anúncio", "Clique no link do anúncio", "Meta Ads, lido de 4 em 4 minutos", "1.000"],
             ["Lead criado", "Captura enviada", "Página de captura", "100"],
             ["Página vista", "Lead abre a página de venda", "Página de venda", "90"],
             ["Checkout iniciado", "Cobrança gerada", "Checkout", "45"],
