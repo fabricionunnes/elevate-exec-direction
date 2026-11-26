@@ -55,6 +55,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Páginas do mini-evento (/evento/): nunca pelo cache, senão quem já visitou o site vê promessa e layout antigos
+  if (url.pathname.startsWith('/evento/')) return;
+
   // Navigation requests: ALWAYS network-first, NEVER serve cached HTML
   // (caching index.html is what breaks Safari after deploys)
   if (request.mode === 'navigate') {
