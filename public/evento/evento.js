@@ -66,16 +66,16 @@ function preencher(t){
 
 /* As 10 promessas do teste. O anúncio manda ?p=N e a página repete a mesma headline (o que a pessoa clicou é o que ela lê). */
 var PROMESSAS = {
-  1:  ["Empresário de BH: 2027 começa em menos de um mês.", "Saia em um dia com o *planejamento comercial de 2027* pronto"],
-  2:  ["12 meses. 12 metas batidas.", "O plano pra *bater meta* nos 12 meses de 2027"],
-  3:  ["Se você tirar 15 dias de férias, sua empresa vende?", "Tire o *dono do comercial* sem o faturamento cair"],
-  4:  ["Quanto sua empresa vai vender mês que vem?", "Monte seu *funil previsível* em um dia"],
-  5:  ["Seu vendedor não bate meta. A culpa é dele ou do processo?", "Monte o processo que faz o *time vender* sem você cobrar"],
-  6:  ["Você não precisa de mais lead.", "Venda mais com o *mesmo time* e a mesma verba"],
-  7:  ["Lead sem resposta é venda perdida.", "Monte em um dia o *time de IA* que atende, qualifica e agenda"],
-  8:  ["Sua empresa está perdendo venda. Você sabe onde?", "Descubra *onde sua empresa perde venda* e quanto isso custa"],
-  9:  ["Sistema escala. Improviso não.", "Construa a *máquina de vendas* da sua empresa em um dia"],
-  10: ["Sem palco. Sem plateia de 500 pessoas.", "*25 empresários de BH* em uma sala montando o comercial de 2027"]
+  1:  ["Empresário de BH: 2027 começa em menos de um mês.", "Como fechar o *planejamento comercial de 2027* em uma tarde, sem consultoria de 6 meses"],
+  2:  ["12 meses. 12 metas batidas.", "Como *bater meta nos 12 meses* de 2027, sem depender de mês bom"],
+  3:  ["Se você tirar 15 dias de férias, sua empresa vende?", "Como *tirar o dono do comercial* sem o faturamento cair"],
+  4:  ["Quanto sua empresa vai vender mês que vem?", "Como ter *previsibilidade de vendas* e parar de torcer no fim do mês"],
+  5:  ["Seu vendedor não bate meta. A culpa é dele ou do processo?", "Como fazer seu *time bater meta* sem você cobrar todo dia"],
+  6:  ["Você não precisa de mais lead.", "Como *dobrar a conversão* sem contratar e sem aumentar a verba"],
+  7:  ["Lead sem resposta é venda perdida.", "Como colocar um *time de IA no comercial* em uma tarde, sem entender de tecnologia"],
+  8:  ["Sua empresa está perdendo venda. Você sabe onde?", "Como descobrir onde sua empresa perde venda com um *diagnóstico comercial* de uma tarde"],
+  9:  ["Sistema escala. Improviso não.", "Como montar sua *máquina de vendas* em uma tarde, sem depender de vendedor estrela"],
+  10: ["Sem palco. Sem plateia de 500 pessoas.", "Como *25 empresários de BH* vão montar o comercial de 2027 em uma *sala fechada,* em uma tarde"]
 };
 /* promessa da visita: vem em ?p= e fica guardada pra seguir da captura até o checkout */
 function promessaN(){

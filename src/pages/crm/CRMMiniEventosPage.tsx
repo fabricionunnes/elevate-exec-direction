@@ -188,7 +188,7 @@ const CRMMiniEventosPage = () => {
             Ao vivo · atualizado às {hora(p.agora)}
           </div>
           <h1 className="text-2xl font-extrabold text-[#082B48]">Mini-evento · {t.cidade} · {dEv} · {t.horario}</h1>
-          {t.promessa && <p className="text-sm text-slate-600">Promessa da página: {t.promessa}</p>}
+          {t.promessa && <p className="text-sm text-slate-600">Promessa da página: {t.promessa.replace(/\*/g, "")}</p>}
         </div>
         {turmas.length > 1 && (
           <select className="h-9 rounded-md border bg-white px-2 text-sm" value={slug || ""} onChange={(e) => setSlug(e.target.value)}>
