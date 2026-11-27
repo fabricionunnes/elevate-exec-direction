@@ -24,7 +24,7 @@ export type DadosContrato = {
 export type Clausula = { id: string; title: string; content: string; isDynamic?: boolean };
 
 const ENTREGAVEIS = [
-  "12 encontros presenciais mensais aos sábados, das 14h às 20h, em Alphaville, Nova Lima/MG, conforme o calendário da turma",
+  "12 encontros presenciais mensais aos sábados, das 14h às 20h, em local informado pela CONTRATADA, conforme o calendário da turma",
   "12 encontros online mensais de prestação de contas",
   "2 GPs de kart no ano, em dia inteiro com almoço, no lugar de 2 encontros presenciais",
   "3 conselhos individuais de 45 minutos com Fabrício Nunes, nos meses 1, 6 e 11",
@@ -41,7 +41,7 @@ const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", curren
 function formato(): string {
   return [
     "I. O UNV Mastermind Alpha é um programa em turma fechada de até 60 (sessenta) empresários, com duração de 12 (doze) meses, conduzido por Fabrício Nunes, com foco no crescimento do lucro líquido da empresa da CONTRATANTE.",
-    "II. Encontros presenciais: 1 (um) encontro por mês, aos sábados, das 14h às 20h, em Alphaville, Nova Lima/MG, no local informado pela CONTRATADA, conforme o calendário anual da turma divulgado pela CONTRATADA. Em 2 (dois) meses do ano o encontro presencial é substituído por um GP de kart, em dia inteiro, com almoço.",
+    "II. Encontros presenciais: 1 (um) encontro por mês, aos sábados, das 14h às 20h, em local informado pela CONTRATADA, conforme o calendário anual da turma divulgado pela CONTRATADA. Em 2 (dois) meses do ano o encontro presencial é substituído por um GP de kart, em dia inteiro, com almoço.",
     "III. Encontros online: 1 (um) encontro por mês de prestação de contas, por videoconferência, cerca de 15 (quinze) dias depois de cada encontro presencial.",
     "IV. Também integram o programa: 3 (três) conselhos individuais de 45 (quarenta e cinco) minutos com Fabrício Nunes, nos meses 1, 6 e 11; acesso ao sistema UNV Nexus Alpha durante a vigência; a mesa de negócios (células, rodada de pedidos, um a um mensal, Vitrine Alpha e placar de negócios); o grupo de WhatsApp da turma; e o kit de boas-vindas com o cartão de membro.",
     "V. Alpha IA: bônus com valor de referência de R$ 15.000,00 (quinze mil reais), entregue sem cobrança à parte. Ao longo da vigência, a CONTRATADA desenha e implanta 3 (três) processos de inteligência artificial na empresa da CONTRATANTE, definidos em conjunto a partir do diagnóstico, e treina 1 (um) colaborador indicado pela CONTRATANTE como Operador Alpha IA, responsável por executar e manter esses processos no dia a dia. Assinaturas, ferramentas e consumo de serviços de terceiros usados nos processos ficam por conta da CONTRATANTE. O bônus acompanha o contrato: encerrado o contrato, encerra-se a implantação ainda não concluída.",
