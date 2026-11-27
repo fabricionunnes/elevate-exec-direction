@@ -672,14 +672,14 @@ export const productDetails: Record<string, ProductDetail> = {
   "mastermind-alpha": {
     id: "mastermind-alpha",
     name: "UNV Mastermind Alpha",
-    tagline: "Mesa de 60 empresários em Alphaville",
+    tagline: "Mesa de 60 empresários",
     icon: Crown,
     color: "bg-amber-500",
     price: "R$ 1.500",
     priceType: "/mês",
-    description: "12 meses focados no lucro líquido da empresa: um sábado por mês em Alphaville, sistema próprio e mesa de negócios.",
+    description: "12 meses focados no lucro líquido da empresa: um encontro presencial por mês, sistema próprio e mesa de negócios.",
     deliverables: [
-      "12 encontros presenciais mensais aos sábados, das 14h às 20h, em Alphaville, Nova Lima/MG, conforme o calendário da turma",
+      "12 encontros presenciais mensais aos sábados, das 14h às 20h, em local informado pela CONTRATADA, conforme o calendário da turma",
       "12 encontros online mensais de prestação de contas",
       "2 GPs de kart no ano, em dia inteiro com almoço, no lugar de 2 encontros presenciais",
       "3 conselhos individuais de 45 minutos com Fabrício Nunes, nos meses 1, 6 e 11",
@@ -719,7 +719,7 @@ export const productDetails: Record<string, ProductDetail> = {
     notFor: [
       "Quem fatura menos de R$ 100 mil por mês",
       "Quem não vai alimentar o sistema",
-      "Quem não pode estar em Alphaville um sábado por mês"
+      "Quem não pode estar em um encontro presencial por mês"
     ]
   },
   // Descontinuado: fora do site, mantido só pelo histórico interno (ver discontinuedProductIds).
