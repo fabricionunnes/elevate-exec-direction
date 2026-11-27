@@ -95,6 +95,15 @@ section > .wrap { position: relative; z-index: 1; }
 @media (max-width: 480px) { .regua { grid-template-columns: minmax(0,1fr); } }
 
 /* blocos de duas colunas */
+.ia-box { border: 1px solid var(--gold); border-radius: 3px; padding: 34px 32px; background: linear-gradient(135deg, #0C2C5A, var(--navy-deep)); color: #C9D4E8; }
+.ia-box .k { font-size: 12px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-soft); }
+.ia-box .v { font-family: var(--display); font-size: 72px; line-height: 1; color: #fff; margin-top: 8px; white-space: nowrap; }
+.ia-box p { margin-top: 10px; color: #C9D4E8; }
+.ia-passos { display: grid; gap: 22px; margin-top: 26px; }
+.ia-passos > div { display: grid; grid-template-columns: 52px minmax(0,1fr); gap: 14px; }
+.ia-passos b { font-family: var(--display); font-size: 36px; line-height: 1; color: var(--gold); }
+.ia-passos h3 { font-size: 18px; color: var(--navy); }
+.ia-passos p { margin-top: 4px; }
 .chef .foto { position: relative; }
 .chef .foto img { width: 100%; height: auto; display: block; border-radius: 3px; }
 .chef .foto::after { content: ""; position: absolute; right: -12px; bottom: -12px; width: 55%; height: 55%; border-right: 2px solid var(--gold); border-bottom: 2px solid var(--gold); pointer-events: none; }
@@ -283,6 +292,26 @@ footer b { color: var(--navy); letter-spacing: .12em; text-transform: uppercase;
       <div class="slot" role="listitem"><div class="h">16h30</div><div class="t">Compromissos e rodada de pedidos<span>cada um sai com 3 compromissos e diz quem quer conhecer</span></div></div>
       <div class="slot" role="listitem"><div class="h">17h00</div><div class="t">Esporte<span>beach tênis, vôlei, futebol</span></div></div>
       <div class="slot" role="listitem"><div class="h">18h15</div><div class="t">Churrasco ou Chef Alpha<span>a cada dois meses, degustação preparada por um chef ou por membros da turma</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ALPHA IA -->
+<section id="alpha-ia">
+  <div class="wrap duas reveal">
+    <div>
+      <div class="kicker">Alpha IA · Bônus</div>
+      <h2>A IA trabalhando na sua empresa, <em>com alguém para operar.</em></h2>
+      <div class="ia-passos">
+        <div><b>01</b><div><h3>Desenho</h3><p>A partir do diagnóstico, escolhemos juntos os 3 processos em que a IA mais gera resultado na sua empresa.</p></div></div>
+        <div><b>02</b><div><h3>Implantação</h3><p>A UNV coloca os 3 processos no ar ao longo do ano: atendimento, follow-up, reativação da base, rotina de gestão.</p></div></div>
+        <div><b>03</b><div><h3>Operador Alpha IA</h3><p>Uma pessoa do seu time é treinada para operar e manter os processos. A IA vira rotina da empresa, não projeto esquecido.</p></div></div>
+      </div>
+    </div>
+    <div class="ia-box">
+      <div class="k">Valor do bônus</div>
+      <div class="v">R$ 15 mil</div>
+      <p>De presente para todo membro do Alpha, já incluso nos 12 meses. Assinaturas e ferramentas de terceiros usadas nos processos ficam por conta da empresa.</p>
     </div>
   </div>
 </section>

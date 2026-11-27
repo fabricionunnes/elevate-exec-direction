@@ -16,9 +16,9 @@ export const ALPHA_CAPITAL = 6000;
 function exclusividadeTexto(segmento?: string | null): string {
   const s = (segmento || "").trim();
   if (s) {
-    return `VII. Exclusividade de segmento: a CONTRATADA concede à CONTRATANTE exclusividade no segmento de ${s} durante a vigência deste contrato, de modo que nenhuma outra empresa desse segmento será admitida na turma enquanto este contrato estiver vigente e adimplente.`;
+    return `VIII. Exclusividade de segmento: a CONTRATADA concede à CONTRATANTE exclusividade no segmento de ${s} durante a vigência deste contrato, de modo que nenhuma outra empresa desse segmento será admitida na turma enquanto este contrato estiver vigente e adimplente.`;
   }
-  return "VII. Exclusividade de segmento: este contrato NÃO inclui exclusividade de segmento. Outras empresas do mesmo segmento da CONTRATANTE podem participar da turma.";
+  return "VIII. Exclusividade de segmento: este contrato NÃO inclui exclusividade de segmento. Outras empresas do mesmo segmento da CONTRATANTE podem participar da turma.";
 }
 
 export function buildAlphaFormato(segmento?: string | null): string {
@@ -27,17 +27,18 @@ export function buildAlphaFormato(segmento?: string | null): string {
     "II. Encontros presenciais: 1 (um) encontro por mês, aos sábados, das 14h às 20h, em Alphaville, Nova Lima/MG, no local informado pela CONTRATADA, conforme o calendário anual da turma divulgado pela CONTRATADA. Em 2 (dois) meses do ano o encontro presencial é substituído por um GP de kart, em dia inteiro, com almoço.",
     "III. Encontros online: 1 (um) encontro por mês de prestação de contas, por videoconferência, cerca de 15 (quinze) dias depois de cada encontro presencial.",
     "IV. Também integram o programa: 3 (três) conselhos individuais de 45 (quarenta e cinco) minutos com Fabrício Nunes, nos meses 1, 6 e 11; acesso ao sistema UNV Nexus Alpha durante a vigência; a mesa de negócios (células, rodada de pedidos, um a um mensal, Vitrine Alpha e placar de negócios); o grupo de WhatsApp da turma; e o kit de boas-vindas com o cartão de membro.",
-    "V. A CONTRATADA poderá alterar a data ou o local de um encontro por motivo relevante, comunicando a CONTRATANTE com antecedência mínima de 15 (quinze) dias, salvo caso fortuito ou força maior.",
-    "VI. A participação é pessoal e intransferível do representante da CONTRATANTE que assina este contrato. A ausência em encontros não gera reposição, desconto ou abatimento nas mensalidades.",
+    "V. Alpha IA: bônus com valor de referência de R$ 15.000,00 (quinze mil reais), entregue sem cobrança à parte. Ao longo da vigência, a CONTRATADA desenha e implanta 3 (três) processos de inteligência artificial na empresa da CONTRATANTE, definidos em conjunto a partir do diagnóstico, e treina 1 (um) colaborador indicado pela CONTRATANTE como Operador Alpha IA, responsável por executar e manter esses processos no dia a dia. Assinaturas, ferramentas e consumo de serviços de terceiros usados nos processos ficam por conta da CONTRATANTE. O bônus acompanha o contrato: encerrado o contrato, encerra-se a implantação ainda não concluída.",
+    "VI. A CONTRATADA poderá alterar a data ou o local de um encontro por motivo relevante, comunicando a CONTRATANTE com antecedência mínima de 15 (quinze) dias, salvo caso fortuito ou força maior.",
+    "VII. A participação é pessoal e intransferível do representante da CONTRATANTE que assina este contrato. A ausência em encontros não gera reposição, desconto ou abatimento nas mensalidades.",
     exclusividadeTexto(segmento),
-    "VIII. As informações compartilhadas pelos membros nos encontros, no grupo e no sistema são confidenciais e não podem ser divulgadas a terceiros, durante e após a vigência deste contrato.",
-    `IX. Capital do Próximo Salto: ao final dos 12 (doze) meses, a CONTRATADA fará um aporte de R$ 6.000,00 (seis mil reais), por PIX, na conta da empresa da CONTRATANTE, desde que a CONTRATANTE cumpra, cumulativamente, os 3 (três) critérios abaixo:
+    "IX. As informações compartilhadas pelos membros nos encontros, no grupo e no sistema são confidenciais e não podem ser divulgadas a terceiros, durante e após a vigência deste contrato.",
+    `X. Capital do Próximo Salto: ao final dos 12 (doze) meses, a CONTRATADA fará um aporte de R$ 6.000,00 (seis mil reais), por PIX, na conta da empresa da CONTRATANTE, desde que a CONTRATANTE cumpra, cumulativamente, os 3 (três) critérios abaixo:
 (a) as 12 (doze) mensalidades pagas, todas em dia;
 (b) presença em pelo menos 10 (dez) dos 12 (doze) encontros presenciais;
 (c) o sistema UNV Nexus Alpha alimentado todos os meses, com o fechamento do mês feito até o dia 10 (dez) do mês seguinte.`,
-    "X. O Capital do Próximo Salto só é devido com os 3 (três) critérios cumpridos por inteiro. Se o contrato for cancelado ou rescindido antes do fim dos 12 (doze) meses, por qualquer motivo, ou se qualquer critério deixar de ser cumprido, a CONTRATANTE não terá direito a nenhum valor do Capital, nem integral nem proporcional, e nenhuma quantia já paga será restituída a esse título.",
-    "XI. O aporte será feito em até 30 (trinta) dias após o último encontro da turma, e deve ser aplicado pela CONTRATANTE no primeiro passo do ciclo seguinte, como a contratação de um vendedor, investimento em tráfego ou um agente de inteligência artificial.",
-    "XII. Natureza da obrigação: a CONTRATADA se obriga a entregar o programa descrito neste contrato (encontros, conselhos, sistema e metodologia), e não a um resultado financeiro. A meta de crescimento de 15% (quinze por cento) do faturamento e as metas de lucro são referências de planejamento, não garantia de resultado. O resultado da empresa da CONTRATANTE depende da sua própria execução, do mercado e de fatores fora do controle da CONTRATADA. O não atingimento de qualquer meta não dá à CONTRATANTE direito a devolução, abatimento, multa, indenização ou rescisão sem o aviso prévio previsto neste contrato. Materiais comerciais e de divulgação (site, apresentações, documentos e mensagens) não alteram o disposto neste item.",
+    "XI. O Capital do Próximo Salto só é devido com os 3 (três) critérios cumpridos por inteiro. Se o contrato for cancelado ou rescindido antes do fim dos 12 (doze) meses, por qualquer motivo, ou se qualquer critério deixar de ser cumprido, a CONTRATANTE não terá direito a nenhum valor do Capital, nem integral nem proporcional, e nenhuma quantia já paga será restituída a esse título.",
+    "XII. O aporte será feito em até 30 (trinta) dias após o último encontro da turma, e deve ser aplicado pela CONTRATANTE no primeiro passo do ciclo seguinte, como a contratação de um vendedor, investimento em tráfego ou um agente de inteligência artificial.",
+    "XIII. Natureza da obrigação: a CONTRATADA se obriga a entregar o programa descrito neste contrato (encontros, conselhos, sistema e metodologia), e não a um resultado financeiro. A meta de crescimento de 15% (quinze por cento) do faturamento e as metas de lucro são referências de planejamento, não garantia de resultado. O resultado da empresa da CONTRATANTE depende da sua própria execução, do mercado e de fatores fora do controle da CONTRATADA. O não atingimento de qualquer meta não dá à CONTRATANTE direito a devolução, abatimento, multa, indenização ou rescisão sem o aviso prévio previsto neste contrato. Materiais comerciais e de divulgação (site, apresentações, documentos e mensagens) não alteram o disposto neste item.",
   ].join("\n\n");
 }
 

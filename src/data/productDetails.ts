@@ -687,6 +687,7 @@ export const productDetails: Record<string, ProductDetail> = {
       "Mesa de negócios: células, rodada de pedidos, um a um mensal, Vitrine Alpha e placar de negócios",
       "Grupo de WhatsApp da turma",
       "Kit de boas-vindas e cartão de membro",
+      "Alpha IA: 3 processos de inteligência artificial implantados e 1 colaborador treinado como Operador Alpha IA (bônus com valor de referência de R$ 15.000, sem cobrança à parte), nas condições da Cláusula 3ª",
       "Capital do Próximo Salto, nas condições da Cláusula 3ª"
     ],
     bestFor: "Donos de empresa com faturamento a partir de R$ 100 mil por mês que querem crescer o lucro com um comercial que roda sem eles",
