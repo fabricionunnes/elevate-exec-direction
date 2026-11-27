@@ -104,6 +104,15 @@ section > .wrap { position: relative; z-index: 1; }
 .ia-passos b { font-family: var(--display); font-size: 36px; line-height: 1; color: var(--gold); }
 .ia-passos h3 { font-size: 18px; color: var(--navy); }
 .ia-passos p { margin-top: 4px; }
+.valor { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,340px); gap: 48px; align-items: center; margin-top: 34px; }
+.vl-row { display: flex; justify-content: space-between; gap: 18px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 15px; color: var(--ink); }
+.vl-row b { color: var(--navy); white-space: nowrap; }
+.vl-row em { font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--gold-deep); margin-left: 8px; }
+.vl-box { border: 1px solid var(--gold); border-radius: 3px; padding: 32px 30px; background: linear-gradient(135deg, #0C2C5A, var(--navy-deep)); color: #C9D4E8; }
+.vl-box .k { font-size: 12px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--gold-soft); }
+.vl-box .v { font-family: var(--display); font-size: 64px; line-height: 1; color: #fff; margin-top: 8px; white-space: nowrap; }
+.vl-box p { margin-top: 12px; color: #C9D4E8; }
+@media (max-width: 900px) { .valor { grid-template-columns: minmax(0,1fr); gap: 28px; } }
 .chef .foto { position: relative; }
 .chef .foto img { width: 100%; height: auto; display: block; border-radius: 3px; }
 .chef .foto::after { content: ""; position: absolute; right: -12px; bottom: -12px; width: 55%; height: 55%; border-right: 2px solid var(--gold); border-bottom: 2px solid var(--gold); pointer-events: none; }
@@ -311,7 +320,7 @@ footer b { color: var(--navy); letter-spacing: .12em; text-transform: uppercase;
     <div class="ia-box">
       <div class="k">Valor do bônus</div>
       <div class="v">R$ 15 mil</div>
-      <p>De presente para todo membro do Alpha, já incluso nos 12 meses. Assinaturas e ferramentas de terceiros usadas nos processos ficam por conta da empresa.</p>
+      <p>De presente para todo membro do Alpha, já incluso nos 12 meses, junto com o CRM e o ERP Financeiro da UNV, também de bônus. Assinaturas e ferramentas de terceiros usadas nos processos ficam por conta da empresa.</p>
     </div>
   </div>
 </section>
@@ -387,6 +396,33 @@ footer b { color: var(--navy); letter-spacing: .12em; text-transform: uppercase;
       <h2>Quem executa <em>ganha o próximo passo.</em></h2>
       <p class="lead" style="margin-top:18px">No fim dos 12 meses do seu contrato, o Fabrício investe na empresa de quem executou o ano: mensalidades em dia, presença em pelo menos 10 dos 12 encontros e sistema alimentado.</p>
       <p style="margin-top:14px">O investimento vai para o primeiro passo do ciclo seguinte: um vendedor novo, tráfego ou um agente de IA. Os detalhes são apresentados na conversa individual. O Alpha não paga presença. Paga execução.</p>
+    </div>
+  </div>
+</section>
+
+<!-- QUANTO VALE -->
+<section id="valor">
+  <div class="wrap reveal">
+    <div class="kicker">Quanto vale</div>
+    <h2>Tudo isso, <em>se fosse contratado separado.</em></h2>
+    <div class="valor">
+      <div>
+        <div class="vl-row"><span>12 encontros presenciais com o Fabrício</span><b>R$ 7.164</b></div>
+        <div class="vl-row"><span>12 encontros online de prestação de contas</span><b>R$ 3.000</b></div>
+        <div class="vl-row"><span>3 conselhos individuais com o Fabrício</span><b>R$ 6.000</b></div>
+        <div class="vl-row"><span>Sistema UNV Nexus Alpha, 12 meses</span><b>R$ 6.000</b></div>
+        <div class="vl-row"><span>ERP Financeiro, 12 meses <em>bônus</em></span><b>R$ 3.600</b></div>
+        <div class="vl-row"><span>CRM, 12 meses <em>bônus</em></span><b>R$ 4.800</b></div>
+        <div class="vl-row"><span>Alpha IA: 3 processos de IA e o operador <em>bônus</em></span><b>R$ 15.000</b></div>
+        <div class="vl-row"><span>2 GPs de kart</span><b>R$ 358</b></div>
+        <p style="margin-top:14px;font-size:14px">Mais o Chef Alpha, os churrascos, o kit de boas-vindas, o cartão de membro e o Capital do Próximo Salto para quem executa o ano. Os bônus são entregues sem cobrança à parte.</p>
+      </div>
+      <div class="vl-box">
+        <div class="k">Separado, vale</div>
+        <div class="v">R$ 45.922</div>
+        <p>No Alpha, tudo isso cabe numa mensalidade bem menor. O investimento é apresentado na conversa individual com o Fabrício.</p>
+        <a class="btn gold" href="#aplicar" style="margin-top:18px">Aplicar para uma cadeira</a>
+      </div>
     </div>
   </div>
 </section>
